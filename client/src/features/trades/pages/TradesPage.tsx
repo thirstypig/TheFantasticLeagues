@@ -71,7 +71,7 @@ export function TradesPage() {
       <div className="mb-6">
         <PageHeader 
             title="Trade Negotiation Hub" 
-            subtitle="View current proposals, history, and league trading activity in the liquid market." 
+            subtitle="View current proposals, history, and league trading activity."
             rightElement={
                 <Button
                     onClick={() => setActiveTab("create")}
@@ -79,7 +79,7 @@ export function TradesPage() {
                     className="px-8 shadow-xl shadow-blue-500/20"
                 >
                     <Plus className="w-4 h-4 mr-2" />
-                    Propose Protocol
+                    Propose Trade
                 </Button>
             }
         />
@@ -101,7 +101,7 @@ export function TradesPage() {
           size="sm"
           className="px-6"
         >
-          League Grid
+          League Activity
         </Button>
         {activeTab === "create" && (
           <Button
@@ -120,11 +120,11 @@ export function TradesPage() {
           <div>
             <div className="flex items-center gap-4 mb-8">
                 <div className="w-1.5 h-6 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"></div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)]">Active Negotiations</h2>
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-[var(--lg-text-heading)]">Active Trades</h2>
             </div>
             {myActive.length === 0 && (
               <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                No active trade proposals detected in the grid.
+                No active trade proposals.
               </div>
             )}
             <div className="grid gap-6">
@@ -137,11 +137,11 @@ export function TradesPage() {
           <div>
             <div className="flex items-center gap-4 mb-8">
                 <div className="w-1.5 h-6 bg-[var(--lg-text-muted)] opacity-20 rounded-full"></div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)] opacity-60">Historical Archive</h2>
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-[var(--lg-text-heading)] opacity-60">Trade History</h2>
             </div>
             {myHistory.length === 0 && (
               <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                No archived trade personnel files.
+                No past trades.
               </div>
             )}
             <div className="grid gap-6">
@@ -158,11 +158,11 @@ export function TradesPage() {
         <div className="grid gap-6">
             <div className="flex items-center gap-4 mb-4">
                 <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-lg shadow-blue-500/20"></div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)]">Global Trade Log</h2>
+                <h2 className="text-2xl font-bold uppercase tracking-tight text-[var(--lg-text-heading)]">League Trades</h2>
             </div>
           {leagueTrades.length === 0 && (
             <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-              No global trade movements detected.
+              No league trades found.
             </div>
           )}
           {leagueTrades.map((t) => (

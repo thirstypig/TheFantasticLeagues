@@ -186,15 +186,15 @@ export default function Team() {
     <div className="flex-1 min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
       <main className="max-w-7xl mx-auto px-6 py-12">
         <header className="mb-10 text-center relative">
-          <h1 className="text-5xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)] mb-4">{teamName}</h1>
-          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--lg-text-muted)] opacity-60">
-            Current Deployment: {hitters.length} Hitters • {pitchers.length} Pitchers
+          <h1 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)] mb-4">{teamName}</h1>
+          <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
+            Roster: {hitters.length} Hitters • {pitchers.length} Pitchers
           </div>
           
           <div className="mt-8 flex justify-center gap-6">
              <Link to="/season">
                <Button variant="ghost" size="sm">
-                 <span className="opacity-40 ml-[-4px] mr-2">←</span> Registry
+                 <span className="opacity-40 ml-[-4px] mr-2">←</span> Teams
                </Button>
              </Link>
              
@@ -203,7 +203,7 @@ export default function Team() {
                  <Button 
                     onClick={() => setIsManaging(true)}
                  >
-                    <span>⚡ Mobilize Roster</span>
+                    <span>Manage Roster</span>
                  </Button>
              )}
           </div>
@@ -222,7 +222,7 @@ export default function Team() {
                 variant={activeTab === "hitters" ? "default" : "ghost"}
                 className="px-8"
               >
-                Aggression: Hitters
+                Hitters
               </Button>
             </Link>
             <Link to="#pitchers">
@@ -230,7 +230,7 @@ export default function Team() {
                 variant={activeTab === "pitchers" ? "default" : "ghost"}
                 className="px-8"
               >
-                Control: Pitchers
+                Pitchers
               </Button>
             </Link>
           </div>
@@ -296,56 +296,56 @@ export default function Team() {
                       return (
                         <Tr
                           key={key}
-                          className="border-t border-white/5 cursor-pointer hover:bg-white/5 transition-all"
+                          className="border-t border-[var(--lg-border-faint)] cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
                           onClick={() => setSelected(p)}
                           title="Click for player details"
                         >
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {tm || "—"}
                           </Td>
                           <Td align="center">{p?.player_name ?? p?.name ?? p?.playerName ?? ""}</Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {elig || "—"}
                           </Td>
 
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {gDH ? gDH : "—"}
                           </Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {gC ? gC : "—"}
                           </Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {g1B ? g1B : "—"}
                           </Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {g2B ? g2B : "—"}
                           </Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {g3B ? g3B : "—"}
                           </Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {gSS ? gSS : "—"}
                           </Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {gOF ? gOF : "—"}
                           </Td>
 
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.R)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.HR)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.RBI)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.SB)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {formatAvg(p?.AVG)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {gs}
                           </Td>
                         </Tr>
@@ -400,37 +400,37 @@ export default function Team() {
                       return (
                         <Tr
                           key={key}
-                          className="border-t border-white/5 cursor-pointer hover:bg-white/5 transition-all"
+                          className="border-t border-[var(--lg-border-faint)] cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
                           onClick={() => setSelected(p)}
                           title="Click for player details"
                         >
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {tm || "—"}
                           </Td>
                           <Td align="center">{p?.player_name ?? p?.name ?? p?.playerName ?? ""}</Td>
-                          <Td align="center" className="text-slate-500">
+                          <Td align="center">
                             {elig}
                           </Td>
 
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.W)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.SV)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {asNum(p?.K)}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {String(p?.IP ?? "").trim() || "—"}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {String(p?.ERA ?? "").trim() || "—"}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {String(p?.WHIP ?? "").trim() || "—"}
                           </Td>
-                          <Td align="center" className="tabular-nums">
+                          <Td align="center">
                             {so}
                           </Td>
                         </Tr>
@@ -448,9 +448,9 @@ export default function Team() {
         {/* Roster Manager Modal */}
         {isManaging && (
              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
-                 <div className="w-full max-w-7xl h-[90vh] bg-[#0c0c0c] rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col liquid-glass">
-                      <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-                          <h2 className="text-xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)]">Orchestrator: Roster Mobilization</h2>
+                 <div className="w-full max-w-7xl h-[90vh] bg-[#0c0c0c] rounded-3xl border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden flex flex-col liquid-glass">
+                      <div className="p-6 border-b border-[var(--lg-border-subtle)] flex justify-between items-center bg-[var(--lg-tint)]">
+                          <h2 className="text-xl font-semibold uppercase text-[var(--lg-text-heading)]">Roster Management</h2>
                           <Button 
                              onClick={() => { setIsManaging(false); window.location.reload(); }}
                              variant="ghost"

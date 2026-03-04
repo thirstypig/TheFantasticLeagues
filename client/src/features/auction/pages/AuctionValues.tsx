@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { getAuctionValues, type PlayerSeasonStat } from "../../../api";
 import PlayerDetailModal from "../../players/components/PlayerDetailModal";
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
 function norm(v: any) {
   return String(v ?? "").trim();
@@ -117,17 +118,17 @@ export default function AuctionValues() {
   return (
     <div className="px-10 py-8">
       <div className="mb-6 text-center">
-        <div className="text-4xl font-semibold text-white">Auction Values</div>
+        <div className="text-4xl font-semibold text-[var(--lg-text-heading)]">Auction Values</div>
         <div className="mt-2 text-sm text-white/60">
           Read-only display of auction values (engine is deferred).
         </div>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-        <div className="rounded-full bg-white/5 p-1">
+        <div className="rounded-full bg-[var(--lg-tint)] p-1">
           <button
             className={`rounded-full px-4 py-2 text-sm ${
-              group === "hitters" ? "bg-sky-600/80 text-white" : "text-white/70 hover:bg-white/10"
+              group === "hitters" ? "bg-sky-600/80 text-white" : "text-white/70 hover:bg-[var(--lg-tint-hover)]"
             }`}
             onClick={() => setGroup("hitters")}
           >
@@ -135,7 +136,7 @@ export default function AuctionValues() {
           </button>
           <button
             className={`rounded-full px-4 py-2 text-sm ${
-              group === "pitchers" ? "bg-sky-600/80 text-white" : "text-white/70 hover:bg-white/10"
+              group === "pitchers" ? "bg-sky-600/80 text-white" : "text-white/70 hover:bg-[var(--lg-tint-hover)]"
             }`}
             onClick={() => setGroup("pitchers")}
           >
@@ -147,72 +148,69 @@ export default function AuctionValues() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search player / team / pos…"
-          className="w-[320px] rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40"
+          className="w-[320px] rounded-full border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-4 py-2 text-sm text-white placeholder:text-white/40"
         />
       </div>
 
-      <div className="mx-auto max-w-6xl overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-        <table className="min-w-[900px] w-full border-separate border-spacing-0">
-          <thead>
-            <tr className="text-xs text-white/60">
-              <Th>PLAYER</Th>
-              <Th w={90}>TEAM</Th>
-              <Th w={110}>POS</Th>
-              <Th w={110} className="text-right">
-                VALUE
-              </Th>
-              <Th w={220}>REL</Th>
-            </tr>
-          </thead>
+      <div className="mx-auto max-w-6xl">
+        <ThemedTable>
+          <ThemedThead>
+            <ThemedTr>
+              <ThemedTh>PLAYER</ThemedTh>
+              <ThemedTh className="w-[90px]">TEAM</ThemedTh>
+              <ThemedTh className="w-[110px]">POS</ThemedTh>
+              <ThemedTh align="right" className="w-[110px]">VALUE</ThemedTh>
+              <ThemedTh className="w-[220px]">REL</ThemedTh>
+            </ThemedTr>
+          </ThemedThead>
 
           <tbody>
             {loading ? (
-              <tr>
-                <td className="px-4 py-6 text-sm text-white/60" colSpan={5}>
-                  Loading…
-                </td>
-              </tr>
+              <ThemedTr>
+                <ThemedTd colSpan={5} className="py-6">
+                  <span className="text-[var(--lg-text-muted)]">Loading…</span>
+                </ThemedTd>
+              </ThemedTr>
             ) : error ? (
-              <tr>
-                <td className="px-4 py-6 text-sm text-red-300" colSpan={5}>
-                  {error}
-                </td>
-              </tr>
+              <ThemedTr>
+                <ThemedTd colSpan={5} className="py-6">
+                  <span className="text-red-300">{error}</span>
+                </ThemedTd>
+              </ThemedTr>
             ) : filtered.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-sm text-white/60" colSpan={5}>
-                  No results.
-                </td>
-              </tr>
+              <ThemedTr>
+                <ThemedTd colSpan={5} className="py-6">
+                  <span className="text-[var(--lg-text-muted)]">No results.</span>
+                </ThemedTd>
+              </ThemedTr>
             ) : (
               filtered.map((p) => {
                 const value = getValue(p); // number
                 const ratio = value > 0 && maxValue > 0 ? value / maxValue : 0;
 
                 return (
-                  <tr
+                  <ThemedTr
                     key={(p as any).row_id ?? `${p.mlb_id}-${rowIsPitcher(p) ? "P" : "H"}`}
-                    className="cursor-pointer text-sm text-white/90 hover:bg-white/5"
                     onClick={() => setSelected(p)}
                   >
-                    <Td className="font-medium text-left">{playerName(p)}</Td>
-                    <Td className="text-white/80">{ogbaTeam(p) || "FA"}</Td>
-                    <Td className="text-white/80">{posStr(p) || (rowIsPitcher(p) ? "P" : "—")}</Td>
-                    <Td className="tabular-nums text-right">{value > 0 ? fmt1(value) : "-"}</Td>
-                    <Td>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                    <ThemedTd>{playerName(p)}</ThemedTd>
+                    <ThemedTd>{ogbaTeam(p) || "FA"}</ThemedTd>
+                    <ThemedTd>{posStr(p) || (rowIsPitcher(p) ? "P" : "—")}</ThemedTd>
+                    <ThemedTd align="right">{value > 0 ? fmt1(value) : "-"}</ThemedTd>
+                    <ThemedTd>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--lg-tint-hover)]">
                         <div
                           className="h-2 rounded-full bg-sky-500/80"
                           style={{ width: `${Math.round(ratio * 100)}%` }}
                         />
                       </div>
-                    </Td>
-                  </tr>
+                    </ThemedTd>
+                  </ThemedTr>
                 );
               })
             )}
           </tbody>
-        </table>
+        </ThemedTable>
       </div>
 
       <PlayerDetailModal open={!!selected} player={selected} onClose={() => setSelected(null)} />
@@ -220,25 +218,3 @@ export default function AuctionValues() {
   );
 }
 
-function Th({
-  children,
-  w,
-  className,
-}: {
-  children: React.ReactNode;
-  w?: number;
-  className?: string;
-}) {
-  return (
-    <th
-      style={w ? { width: w } : undefined}
-      className={`border-b border-white/10 px-3 py-3 text-left font-medium ${className ?? ""}`}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <td className={`border-b border-white/10 px-3 py-3 ${className ?? ""}`}>{children}</td>;
-}

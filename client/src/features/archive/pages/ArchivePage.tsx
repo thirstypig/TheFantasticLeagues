@@ -456,28 +456,28 @@ export default function ArchivePage() {
   };
 
   return (
-    <div className="flex-1 min-h-screen bg-[var(--fbst-surface-primary)] text-[var(--fbst-text-primary)]">
+    <div className="flex-1 min-h-screen bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)]">
       <main className="max-w-7xl mx-auto px-6 py-12">
         <PageHeader 
           title="Historical Archive" 
-          subtitle="Registry of FSBT Legacies: Investigative performance logs and recruitment historicals."
+          subtitle="League History: Season stats and draft records."
         />
 
         {error && (
           <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300 flex items-center gap-3">
              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-            System Error: {error}
+            Error: {error}
           </div>
         )}
 
         {/* TOP SELECTORS */}
         <div className="mb-12 flex flex-wrap gap-6 items-center">
-            <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-white/10 pr-6 bg-white/[0.02]">
-              <div className="bg-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[var(--fbst-text-muted)]">Temporal Cycle</div>
+            <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-[var(--lg-border-subtle)] pr-6 bg-[var(--lg-tint)]">
+              <div className="bg-[var(--lg-tint)] px-4 py-2 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">Season</div>
               <select
                 value={selectedYear || ''}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-transparent text-sm text-[var(--fbst-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--fbst-accent)] transition-colors"
+                className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-colors"
               >
                 <option value="" className="bg-[#0c0c0c] border-none">Select Year...</option>
                 {seasons.map((s) => {
@@ -489,27 +489,27 @@ export default function ArchivePage() {
               </select>
             </div>
 
-            <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-white/10 pr-6 bg-white/[0.02]">
-              <div className="bg-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[var(--fbst-text-muted)]">Data Interval</div>
+            <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-[var(--lg-border-subtle)] pr-6 bg-[var(--lg-tint)]">
+              <div className="bg-[var(--lg-tint)] px-4 py-2 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">View</div>
               <select
                 value={selectedPeriod || ''}
                 onChange={(e) => setSelectedPeriod(Number(e.target.value))}
                 disabled={!selectedYear}
-                className="bg-transparent text-sm text-[var(--fbst-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--fbst-accent)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <option value="0" className="bg-[#0c0c0c] border-none">Unified Season (Matrix)</option>
+                <option value="0" className="bg-[#0c0c0c] border-none">Full Season</option>
                 {periods.map((p) => {
                   const formatDate = (dateStr: string | null) => {
                     if (!dateStr) return '';
                     const d = new Date(dateStr);
                     return `${d.getMonth() + 1}/${d.getDate()}`;
                   };
-                  const startLabel = p.periodNumber === 1 ? 'Phase 0' : formatDate(p.startDate);
+                  const startLabel = p.periodNumber === 1 ? 'Start' : formatDate(p.startDate);
                   const endLabel = formatDate(p.endDate);
                   const dateRange = startLabel && endLabel ? ` [${startLabel} → ${endLabel}]` : '';
                   return (
                     <option key={p.id} value={p.periodNumber} className="bg-[#0c0c0c] border-none">
-                      Interval {p.periodNumber}{dateRange}
+                      Period {p.periodNumber}{dateRange}
                     </option>
                   );
                 })}
@@ -523,7 +523,7 @@ export default function ArchivePage() {
                 variant="amber"
                 size="sm"
               >
-                {recalculating ? 'Processing...' : '⟳ Sync Registry'}
+                {recalculating ? 'Processing...' : '⟳ Sync Data'}
               </Button>
             )}
         </div>
@@ -536,21 +536,21 @@ export default function ArchivePage() {
               variant={activeTab === 'standings' ? 'default' : 'ghost'}
               className="px-8"
             >
-              Aggregated Standings
+              Standings
             </Button>
             <Button
               onClick={() => setActiveTab('stats')}
               variant={activeTab === 'stats' ? 'default' : 'ghost'}
               className="px-8"
             >
-              Performance Metrics
+              Player Stats
             </Button>
             <Button
               onClick={() => setActiveTab('draft')}
               variant={activeTab === 'draft' ? 'default' : 'ghost'}
               className="px-8"
             >
-              Draft Reclamation
+              Draft Results
             </Button>
             {canEdit && (
               <Button
@@ -558,7 +558,7 @@ export default function ArchivePage() {
                 variant={activeTab === 'admin' ? 'amber' : 'ghost'}
                 className={`px-8 ${activeTab !== 'admin' ? 'text-amber-500/60 hover:text-amber-500' : ''}`}
               >
-                Orchestration
+                Admin
               </Button>
             )}
           </div>
@@ -572,24 +572,24 @@ export default function ArchivePage() {
               {/* Pre-Draft Trades */}
               <div className="lg:col-span-2">
                 {draftTrades.length > 0 ? (
-                  <div className="rounded-3xl liquid-glass border border-white/10 shadow-xl overflow-hidden">
+                  <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-xl overflow-hidden">
                     <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
                        <span className="text-amber-500">📝</span>
-                       <h3 className="text-sm font-black uppercase tracking-widest text-amber-500">Capital Reallocations</h3>
+                       <h3 className="text-sm font-medium uppercase text-amber-500">Pre-Draft Trades</h3>
                     </div>
                     <div className="p-6">
                       <ThemedTable bare>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-[var(--lg-divide)]">
                           {draftTrades.map((trade, i) => (
-                            <ThemedTr key={i} className="group border-none hover:bg-white/5 transition-all">
+                            <ThemedTr key={i} className="group border-none">
                                 <ThemedTd className="py-2.5">
                                     <div className="flex items-center gap-3">
-                                        <div className="bg-white/5 px-3 py-1 rounded-xl text-[10px] font-black tabular-nums text-[var(--fbst-accent)] border border-white/5">${trade.amount}</div>
-                                        <div className="text-[var(--fbst-text-primary)] font-black tracking-tight">{trade.fromTeamName} <span className="text-[var(--fbst-text-muted)] opacity-30">→</span> {trade.toTeamName}</div>
+                                        <div className="bg-[var(--lg-tint)] px-3 py-1 rounded-xl text-xs font-bold tabular-nums text-[var(--lg-accent)] border border-[var(--lg-border-faint)]">${trade.amount}</div>
+                                        <div className="font-semibold">{trade.fromTeamName} <span className="text-[var(--lg-text-muted)] opacity-30">→</span> {trade.toTeamName}</div>
                                     </div>
                                 </ThemedTd>
-                                <ThemedTd className="py-2.5 text-right">
-                                    {trade.note && <div className="text-[var(--fbst-text-muted)] text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">"{trade.note}"</div>}
+                                <ThemedTd align="right" className="py-2.5">
+                                    {trade.note && <div className="text-[var(--lg-text-muted)] text-xs font-medium uppercase opacity-40 group-hover:opacity-100 transition-opacity">"{trade.note}"</div>}
                                 </ThemedTd>
                             </ThemedTr>
                           ))}
@@ -598,26 +598,26 @@ export default function ArchivePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-3xl border border-dashed border-white/10 p-12 text-center text-[var(--fbst-text-muted)] italic text-sm opacity-40">
-                    Baseline capital distribution (No pre-draft reallocations).
+                  <div className="rounded-3xl border border-dashed border-[var(--lg-border-subtle)] p-12 text-center text-[var(--lg-text-muted)] italic text-sm opacity-40">
+                    No pre-draft trades for this season.
                   </div>
                 )}
               </div>
 
               {/* Keeper Legend */}
-              <div className="rounded-3xl liquid-glass border border-white/10 p-6 shadow-xl">
-                <div className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] mb-4">Schema Legend</div>
+              <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] p-6 shadow-xl">
+                <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] mb-4">Legend</div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-[var(--fbst-text-secondary)]">Protected Status</span>
-                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-black uppercase tracking-tighter">Keeper</span>
+                     <span className="text-xs font-bold text-[var(--lg-text-secondary)]">Keeper</span>
+                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 text-xs font-bold uppercase tracking-tight">Keeper</span>
                   </div>
                   <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-[var(--fbst-text-secondary)]">Hitter Class</span>
+                     <span className="text-xs font-bold text-[var(--lg-text-secondary)]">Hitter</span>
                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
                   </div>
                   <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-[var(--fbst-text-secondary)]">Pitcher Class</span>
+                     <span className="text-xs font-bold text-[var(--lg-text-secondary)]">Pitcher</span>
                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                   </div>
                 </div>
@@ -626,9 +626,9 @@ export default function ArchivePage() {
 
             {/* Draft Results by Team */}
             {draftLoading ? (
-              <div className="text-center py-20 text-[var(--fbst-text-muted)] italic animate-pulse">Reconstructing draft ledger...</div>
+              <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading draft data...</div>
             ) : draftPlayers.length === 0 ? (
-              <div className="text-center py-20 text-[var(--fbst-text-muted)] italic opacity-40">Zero player records found for the {selectedYear} recruitment cycle.</div>
+              <div className="text-center py-20 text-[var(--lg-text-muted)] italic opacity-40">No player records found for {selectedYear}.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.keys(OGBA_TEAM_NAMES).sort().map(teamCode => {
@@ -655,7 +655,7 @@ export default function ArchivePage() {
                   const yearKeepers = KEEPER_MAP[selectedYear!]?.[teamCode] || [];
 
                   return (
-                    <div key={teamCode} className="rounded-3xl liquid-glass border border-white/10 shadow-xl overflow-hidden self-start">
+                    <div key={teamCode} className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-xl overflow-hidden self-start">
                       {/* Collapsible Header */}
                       <button
                         onClick={() => {
@@ -664,18 +664,18 @@ export default function ArchivePage() {
                           else newExpanded.add(teamCode);
                           setExpandedTeams(newExpanded);
                         }}
-                        className="w-full px-8 py-6 flex items-center justify-between bg-white/5 border-b border-white/10 hover:bg-white/10 transition-colors"
+                        className="w-full px-8 py-6 flex items-center justify-between bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-transform ${isExpanded ? 'rotate-180 bg-white/10' : 'bg-white/5 opacity-40'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-transform ${isExpanded ? 'rotate-180 bg-[var(--lg-tint-hover)]' : 'bg-[var(--lg-tint)] opacity-40'}`}>
                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </div>
                           <div>
-                            <div className="font-black text-lg tracking-tight text-[var(--fbst-text-heading)]">{OGBA_TEAM_NAMES[teamCode] || teamCode}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-60">{teamPlayers.length} Nodes</div>
+                            <div className="font-semibold text-lg text-[var(--lg-text-heading)]">{OGBA_TEAM_NAMES[teamCode] || teamCode}</div>
+                            <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">{teamPlayers.length} Players</div>
                           </div>
                         </div>
-                        <div className="text-xl font-black text-emerald-400 tabular-nums">${totalSpent}</div>
+                        <div className="text-xl font-bold text-emerald-400 tabular-nums">${totalSpent}</div>
                       </button>
                       
                       {/* Collapsible Content - Compact Tables */}
@@ -683,34 +683,34 @@ export default function ArchivePage() {
                         <div className="w-full">
                           {/* Hitters */}
                           {hitters.length > 0 && (
-                            <div className="border-b border-white/5">
-                              <div className="px-8 py-3 bg-blue-500/5 text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Batting Roster</div>
+                            <div className="border-b border-[var(--lg-border-faint)]">
+                              <div className="px-8 py-3 bg-blue-500/5 text-xs font-medium uppercase text-blue-400">Batting Roster</div>
                               <ThemedTable bare>
                                 <ThemedThead>
                                   <ThemedTr>
-                                    <ThemedTh className="px-8 py-3">Identity</ThemedTh>
-                                    <ThemedTh align="center" className="w-12">Sector</ThemedTh>
-                                    <ThemedTh align="center" className="w-12">Org</ThemedTh>
-                                    <ThemedTh align="right" className="px-8 py-3 w-20">Value</ThemedTh>
+                                    <ThemedTh className="px-8">Player</ThemedTh>
+                                    <ThemedTh align="center" className="w-12">Pos</ThemedTh>
+                                    <ThemedTh align="center" className="w-12">MLB</ThemedTh>
+                                    <ThemedTh align="right" className="px-8 w-20">$</ThemedTh>
                                   </ThemedTr>
                                 </ThemedThead>
-                                <tbody className="divide-y divide-white/5">
+                                <tbody className="divide-y divide-[var(--lg-divide)]">
                                   {hitters.map((p, i) => {
                                     const isKeeper = p.isKeeper || yearKeepers.some((k: string) => 
                                       p.playerName === k || p.fullName === k || p.fullName.includes(k)
                                     );
                                     return (
                                       <ThemedTr key={i} className={isKeeper ? 'bg-amber-500/5' : ''}>
-                                        <ThemedTd className="px-8 py-3 font-black tracking-tight">
+                                        <ThemedTd className="px-8">
                                           <div className="flex items-center gap-3">
                                             <span className="text-blue-400">{p.fullName}</span>
                                             {isKeeper && (
-                                              <span className="px-1.5 py-0.5 rounded-lg bg-amber-500 text-white text-[8px] font-black uppercase shadow-lg shadow-amber-500/20">K</span>
+                                              <span className="px-1.5 py-0.5 rounded-lg bg-amber-500 text-white text-[8px] font-bold uppercase shadow-lg shadow-amber-500/20">K</span>
                                             )}
                                           </div>
                                         </ThemedTd>
-                                        <ThemedTd align="center" className="text-[var(--fbst-text-muted)] opacity-60 font-black">{p.mlbTeam || 'FA'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-8 py-3 font-black text-emerald-400 tabular-nums text-base tracking-tighter">${p.draftDollars}</ThemedTd>
+                                        <ThemedTd align="center">{p.mlbTeam || 'FA'}</ThemedTd>
+                                        <ThemedTd align="right" className="px-8"><span className="text-emerald-400">${p.draftDollars}</span></ThemedTd>
                                       </ThemedTr>
                                     );
                                   })}
@@ -722,38 +722,38 @@ export default function ArchivePage() {
                           {/* Pitchers */}
                           {pitchers.length > 0 && (
                             <div>
-                              <div className="px-8 py-3 bg-purple-500/5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Pitching Roster</div>
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="bg-white/5 text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">
-                                    <th className="px-8 py-3 text-left">Identity</th>
-                                    <th className="px-4 py-3 text-center w-12">Pos</th>
-                                    <th className="px-4 py-3 text-center w-12">Org</th>
-                                    <th className="px-8 py-3 text-right w-20">Value</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
+                              <div className="px-8 py-3 bg-purple-500/5 text-xs font-medium uppercase text-purple-400">Pitching Roster</div>
+                              <ThemedTable bare>
+                                <ThemedThead>
+                                  <ThemedTr>
+                                    <ThemedTh className="px-8">Player</ThemedTh>
+                                    <ThemedTh align="center" className="w-12">Pos</ThemedTh>
+                                    <ThemedTh align="center" className="w-12">MLB</ThemedTh>
+                                    <ThemedTh align="right" className="px-8 w-20">$</ThemedTh>
+                                  </ThemedTr>
+                                </ThemedThead>
+                                <tbody className="divide-y divide-[var(--lg-divide)]">
                                   {pitchers.map((p, i) => {
-                                    const isKeeper = p.isKeeper || yearKeepers.some((k: string) => 
+                                    const isKeeper = p.isKeeper || yearKeepers.some((k: string) =>
                                       p.playerName === k || p.fullName === k || p.fullName.includes(k)
                                     );
                                     return (
-                                      <tr key={i} className={`hover:bg-white/5 transition-colors ${isKeeper ? 'bg-amber-500/5' : ''}`}>
-                                        <td className="px-8 py-3 font-bold">
+                                      <ThemedTr key={i} className={isKeeper ? 'bg-amber-500/5' : ''}>
+                                        <ThemedTd className="px-8">
                                           <div className="flex items-center gap-3">
                                             <span className="text-purple-400">{p.fullName}</span>
                                             {isKeeper && (
-                                              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-[8px] font-black uppercase">K</span>
+                                              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-[8px] font-bold uppercase">K</span>
                                             )}
                                           </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center text-[var(--fbst-text-muted)] opacity-60">{p.mlbTeam || 'FA'}</td>
-                                        <td className="px-8 py-3 text-right font-black text-emerald-400 tabular-nums">${p.draftDollars}</td>
-                                      </tr>
+                                        </ThemedTd>
+                                        <ThemedTd align="center">{p.mlbTeam || 'FA'}</ThemedTd>
+                                        <ThemedTd align="right" className="px-8"><span className="text-emerald-400">${p.draftDollars}</span></ThemedTd>
+                                      </ThemedTr>
                                     );
                                   })}
                                 </tbody>
-                              </table>
+                              </ThemedTable>
                             </div>
                           )}
 
@@ -772,7 +772,7 @@ export default function ArchivePage() {
         {activeTab === 'standings' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {standingsLoading ? (
-              <div className="text-center py-20 text-[var(--fbst-text-muted)] italic animate-pulse">Aggregating standings data...</div>
+              <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading standings...</div>
             ) : selectedPeriod && selectedPeriod > 0 ? (
                 // Period Detail View
                 <div className="space-y-12">
@@ -794,7 +794,7 @@ export default function ArchivePage() {
                 </div>
             ) : (
                 // Season Matrix View
-                <div className="rounded-3xl liquid-glass border border-white/10 shadow-2xl overflow-hidden">
+                <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden">
                   <SeasonTable 
                       periods={periodMeta} 
                       rows={seasonRows} 
@@ -807,44 +807,44 @@ export default function ArchivePage() {
 
         {/* Period Trends Tab (Cumulative Results) */}
         {activeTab === 'period-results' && selectedYear && (
-          <div className="rounded-3xl liquid-glass border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-white/5 border-b border-white/10 px-8 py-6 flex items-center justify-between">
+          <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] px-8 py-6 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-black tracking-tight text-[var(--fbst-text-heading)]">Standings Evolution</h2>
-                <div className="mt-1 text-sm font-medium text-[var(--fbst-text-muted)]">Cumulative point velocity across all intervals.</div>
+                <h2 className="text-xl font-semibold text-[var(--lg-text-heading)]">Standings Evolution</h2>
+                <div className="mt-1 text-sm font-medium text-[var(--lg-text-muted)]">Cumulative points across all periods.</div>
               </div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--fbst-text-muted)] opacity-40">Scroll to Sort</div>
+              <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-40">Click to sort</div>
             </div>
 
             <div className="overflow-x-auto">
               {periodResultsLoading ? (
-                <div className="text-center py-20 text-[var(--fbst-text-muted)] italic animate-pulse">Calculating point velocities...</div>
+                <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading points...</div>
               ) : periodResults.length === 0 ? (
-                <div className="text-center py-20 text-[var(--fbst-text-muted)] italic opacity-40">Zero velocity data available.</div>
+                <div className="text-center py-20 text-[var(--lg-text-muted)] italic opacity-40">No data available.</div>
               ) : (
                 <ThemedTable bare>
                   <ThemedThead>
                     <ThemedTr>
-                      <ThemedTh className="px-8 py-5 min-w-[240px]">Franchise</ThemedTh>
+                      <ThemedTh className="px-8">Team</ThemedTh>
                       {periodResults.map(p => (
-                        <ThemedTh 
-                          key={p.periodNumber} 
+                        <ThemedTh
+                          key={p.periodNumber}
                           onClick={() => handleSort(p.periodNumber)}
                           align="center"
-                          className="px-4 py-5 cursor-pointer"
+                          className="px-4"
                         >
                           <div className="flex items-center justify-center gap-2">
-                            Interval {p.periodNumber}
+                            P{p.periodNumber}
                             {sortConfig.key === p.periodNumber && (
-                              <span className="text-[var(--fbst-accent)]">{sortConfig.direction === 'desc' ? '▼' : '▲'}</span>
+                              <span className="text-[var(--lg-accent)]">{sortConfig.direction === 'desc' ? '▼' : '▲'}</span>
                             )}
                           </div>
                         </ThemedTh>
                       ))}
-                      <ThemedTh 
+                      <ThemedTh
                         onClick={() => handleSort('final')}
                         align="center"
-                        className="px-8 py-5 text-[var(--fbst-accent)] cursor-pointer bg-[var(--fbst-accent)]/5"
+                        className="px-8"
                       >
                         <div className="flex items-center justify-center gap-1">
                           RESULT
@@ -855,7 +855,7 @@ export default function ArchivePage() {
                       </ThemedTh>
                     </ThemedTr>
                   </ThemedThead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-[var(--lg-divide)]">
                     {Object.keys(OGBA_TEAM_NAMES)
                       .sort((a, b) => {
                         const getScore = (teamCode: string, key: string | number) => {
@@ -876,7 +876,7 @@ export default function ArchivePage() {
 
                         return (
                           <ThemedTr key={teamCode} className="group border-none">
-                            <ThemedTd className="px-8 py-4 font-black tracking-tight text-[var(--fbst-text-primary)]">
+                            <ThemedTd className="px-8">
                               {OGBA_TEAM_NAMES[teamCode] || teamCode}
                             </ThemedTd>
                             {periodResults.map(p => {
@@ -884,13 +884,13 @@ export default function ArchivePage() {
                               const maxScore = Math.max(...p.standings.map((s: any) => s.totalScore));
                               const isWinner = standing && standing.totalScore === maxScore;
                               return (
-                                <ThemedTd key={p.periodNumber} align="center" className={`px-4 py-4 tabular-nums ${isWinner ? 'font-black text-amber-400 bg-amber-500/5' : 'text-[var(--fbst-text-muted)] font-medium'}`}>
-                                  {standing ? standing.totalScore.toFixed(1) : '-'}
+                                <ThemedTd key={p.periodNumber} align="center" className={`px-4 ${isWinner ? 'bg-amber-500/5' : ''}`}>
+                                  {isWinner ? <span className="font-bold text-amber-400">{standing ? standing.totalScore.toFixed(1) : '-'}</span> : (standing ? standing.totalScore.toFixed(1) : '-')}
                                 </ThemedTd>
                               );
                             })}
-                            <ThemedTd align="center" className="px-8 py-4 font-black text-[var(--fbst-accent)] bg-[var(--fbst-accent)]/5 tabular-nums text-base tracking-tighter">
-                              {finalScore.toFixed(1)}
+                            <ThemedTd align="center" className="px-8">
+                              <span className="font-bold text-[var(--lg-accent)]">{finalScore.toFixed(1)}</span>
                             </ThemedTd>
                           </ThemedTr>
                         );
@@ -899,8 +899,8 @@ export default function ArchivePage() {
                 </ThemedTable>
               )}
             </div>
-            <div className="px-8 py-4 bg-white/5 border-t border-white/10 text-[10px] font-bold uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-60">
-              * Indices represent cumulative point aggregates at terminal interval nodes.
+            <div className="px-8 py-4 bg-[var(--lg-tint)] border-t border-[var(--lg-border-subtle)] text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
+              * Values represent cumulative point totals through each period.
             </div>
           </div>
         )}
@@ -910,14 +910,14 @@ export default function ArchivePage() {
         {activeTab === 'stats' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {loading ? (
-              <div className="text-center py-20 text-[var(--fbst-text-muted)] italic animate-pulse">Filtering archival data streams...</div>
+              <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading...</div>
             ) : stats.length === 0 && selectedYear && selectedPeriod ? (
-              <div className="text-center py-20 text-[var(--fbst-text-muted)] italic opacity-40">No records found for the specified temporal coordinates.</div>
+              <div className="text-center py-20 text-[var(--lg-text-muted)] italic opacity-40">No records found.</div>
             ) : (
               <div className="space-y-8">
-                <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 shadow-lg justify-center w-fit mx-auto mb-12">
-                   <div className="bg-white/5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[var(--fbst-text-muted)]">Inventory</div>
-                   <div className="text-sm font-bold text-[var(--fbst-text-primary)]">{stats.length} Nodes • {teamCodes.length} Franchises</div>
+                <div className="flex items-center gap-4 bg-[var(--lg-tint)] p-4 rounded-3xl border border-[var(--lg-border-subtle)] shadow-lg justify-center w-fit mx-auto mb-12">
+                   <div className="bg-[var(--lg-tint)] px-3 py-1.5 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">Summary</div>
+                   <div className="text-sm font-bold text-[var(--lg-text-primary)]">{stats.length} Players • {teamCodes.length} Teams</div>
                 </div>
 
                 {teamCodes.map((teamCode) => {
@@ -928,18 +928,18 @@ export default function ArchivePage() {
                   const missingIds = teamPlayers.filter(p => !p.mlbId).length;
 
                   return (
-                    <div key={teamCode} className="rounded-3xl liquid-glass border border-white/10 shadow-xl overflow-hidden self-start">
+                    <div key={teamCode} className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-xl overflow-hidden self-start">
                       <button
                         onClick={() => toggleTeam(teamCode)}
-                        className="w-full px-8 py-6 flex items-center justify-between bg-white/5 border-b border-white/10 hover:bg-white/10 transition-colors"
+                        className="w-full px-8 py-6 flex items-center justify-between bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-transform ${isExpanded ? 'rotate-180 bg-white/10' : 'bg-white/5 opacity-40'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-transform ${isExpanded ? 'rotate-180 bg-[var(--lg-tint-hover)]' : 'bg-[var(--lg-tint)] opacity-40'}`}>
                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                           </div>
                           <div>
-                            <div className="font-black text-lg tracking-tight text-[var(--fbst-text-heading)]">{OGBA_TEAM_NAMES[teamCode] || teamCode}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-60">
+                            <div className="font-semibold text-lg text-[var(--lg-text-heading)]">{OGBA_TEAM_NAMES[teamCode] || teamCode}</div>
+                            <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
                                {hitters.length}H / {pitchers.length}P
                                {missingIds > 0 && <span className="ml-2 text-amber-500">⚠️ {missingIds} UNLINKED</span>}
                             </div>
@@ -950,40 +950,40 @@ export default function ArchivePage() {
                       {isExpanded && (
                         <div className="p-8 space-y-12 animate-in slide-in-from-top-4 duration-300">
                           {hitters.length > 0 && (
-                            <div className="rounded-2xl border border-white/5 overflow-hidden">
-                              <div className="px-6 py-3 bg-blue-500/5 text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 border-b border-white/5">Batting Stats</div>
+                            <div className="rounded-2xl border border-[var(--lg-border-faint)] overflow-hidden">
+                              <div className="px-6 py-3 bg-blue-500/5 text-xs font-medium uppercase text-blue-400 border-b border-[var(--lg-border-faint)]">Batting Stats</div>
                               <div className="overflow-x-auto">
                                 <ThemedTable bare>
                                   <ThemedThead>
                                     <ThemedTr>
-                                      <ThemedTh className="px-6 py-4">Identity</ThemedTh>
-                                      <ThemedTh align="center">Sector</ThemedTh>
-                                      <ThemedTh align="center">Org</ThemedTh>
+                                      <ThemedTh className="px-6">Player</ThemedTh>
+                                      <ThemedTh align="center">Pos</ThemedTh>
+                                      <ThemedTh align="center">MLB</ThemedTh>
                                       <ThemedTh align="right">R</ThemedTh>
                                       <ThemedTh align="right">HR</ThemedTh>
                                       <ThemedTh align="right">RBI</ThemedTh>
                                       <ThemedTh align="right">SB</ThemedTh>
                                       <ThemedTh align="right">AVG</ThemedTh>
-                                      <ThemedTh align="right" className="px-6 py-4 text-sky-400">GS</ThemedTh>
+                                      <ThemedTh align="right" className="px-6">GS</ThemedTh>
                                     </ThemedTr>
                                   </ThemedThead>
-                                  <tbody className="divide-y divide-white/5">
+                                  <tbody className="divide-y divide-[var(--lg-divide)]">
                                     {hitters.map((p) => (
                                       <ThemedTr key={p.id} onClick={() => setEditingStat(p)} className="cursor-pointer group">
-                                        <ThemedTd className="px-6 py-3 font-black tracking-tight">
+                                        <ThemedTd className="px-6">
                                           <div className="flex items-center gap-2">
-                                            <span className="text-[var(--fbst-text-primary)] group-hover:text-[var(--fbst-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
+                                            <span className="group-hover:text-[var(--lg-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
                                             {!p.mlbId && <span className="text-amber-500 text-[8px]" title="Missing MLB ID">⚠️</span>}
                                           </div>
                                         </ThemedTd>
-                                        <ThemedTd align="center" className="text-[var(--fbst-text-muted)] font-black uppercase opacity-60">{p.position || '—'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-[var(--fbst-text-muted)] opacity-40 font-black">{p.mlbTeam || '—'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.R ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.HR ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.RBI ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.SB ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.AVG !== undefined ? fmtRate(p.AVG) : '.000'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-6 py-3 tabular-nums font-black text-sky-400 opacity-60 group-hover:opacity-100 transition-opacity">{p.GS ?? '0'}</ThemedTd>
+                                        <ThemedTd align="center">{p.position || '—'}</ThemedTd>
+                                        <ThemedTd align="center">{p.mlbTeam || '—'}</ThemedTd>
+                                        <ThemedTd align="right">{p.R ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.HR ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.RBI ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.SB ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.AVG !== undefined ? fmtRate(p.AVG) : '.000'}</ThemedTd>
+                                        <ThemedTd align="right" className="px-6"><span className="text-sky-400">{p.GS ?? '0'}</span></ThemedTd>
                                       </ThemedTr>
                                     ))}
                                   </tbody>
@@ -993,40 +993,40 @@ export default function ArchivePage() {
                           )}
 
                           {pitchers.length > 0 && (
-                            <div className="rounded-2xl border border-white/5 overflow-hidden">
-                              <div className="px-6 py-3 bg-purple-500/5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 border-b border-white/5">Pitching Stats</div>
+                            <div className="rounded-2xl border border-[var(--lg-border-faint)] overflow-hidden">
+                              <div className="px-6 py-3 bg-purple-500/5 text-xs font-medium uppercase text-purple-400 border-b border-[var(--lg-border-faint)]">Pitching Stats</div>
                               <div className="overflow-x-auto">
                                 <ThemedTable bare>
                                   <ThemedThead>
                                     <ThemedTr>
-                                      <ThemedTh className="px-6 py-4">Identity</ThemedTh>
-                                      <ThemedTh align="center">Sector</ThemedTh>
-                                      <ThemedTh align="center">Org</ThemedTh>
+                                      <ThemedTh className="px-6">Player</ThemedTh>
+                                      <ThemedTh align="center">Pos</ThemedTh>
+                                      <ThemedTh align="center">MLB</ThemedTh>
                                       <ThemedTh align="right">W</ThemedTh>
                                       <ThemedTh align="right">SV</ThemedTh>
                                       <ThemedTh align="right">K</ThemedTh>
                                       <ThemedTh align="right">ERA</ThemedTh>
                                       <ThemedTh align="right">WHIP</ThemedTh>
-                                      <ThemedTh align="right" className="px-6 py-4 text-purple-400">SO</ThemedTh>
+                                      <ThemedTh align="right" className="px-6">SO</ThemedTh>
                                     </ThemedTr>
                                   </ThemedThead>
-                                  <tbody className="divide-y divide-white/5">
+                                  <tbody className="divide-y divide-[var(--lg-divide)]">
                                     {pitchers.map((p) => (
                                       <ThemedTr key={p.id} onClick={() => setEditingStat(p)} className="cursor-pointer group">
-                                        <ThemedTd className="px-6 py-3 font-black tracking-tight">
+                                        <ThemedTd className="px-6">
                                           <div className="flex items-center gap-2">
-                                            <span className="text-[var(--fbst-text-primary)] group-hover:text-[var(--fbst-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
+                                            <span className="group-hover:text-[var(--lg-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
                                             {!p.mlbId && <span className="text-amber-500 text-[8px]" title="Missing MLB ID">⚠️</span>}
                                           </div>
                                         </ThemedTd>
-                                        <ThemedTd align="center" className="text-[var(--fbst-text-muted)] font-black uppercase opacity-60">{p.position || 'P'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-[var(--fbst-text-muted)] opacity-40 font-black">{p.mlbTeam || '—'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.W ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.SV ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.K ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.ERA?.toFixed(2) ?? '0.00'}</ThemedTd>
-                                        <ThemedTd align="right" className="tabular-nums font-black">{p.WHIP?.toFixed(2) ?? '0.00'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-6 py-3 tabular-nums font-black text-purple-400 opacity-60 group-hover:opacity-100 transition-opacity">{p.SO ?? '0'}</ThemedTd>
+                                        <ThemedTd align="center">{p.position || 'P'}</ThemedTd>
+                                        <ThemedTd align="center">{p.mlbTeam || '—'}</ThemedTd>
+                                        <ThemedTd align="right">{p.W ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.SV ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.K ?? '0'}</ThemedTd>
+                                        <ThemedTd align="right">{p.ERA?.toFixed(2) ?? '0.00'}</ThemedTd>
+                                        <ThemedTd align="right">{p.WHIP?.toFixed(2) ?? '0.00'}</ThemedTd>
+                                        <ThemedTd align="right" className="px-6"><span className="text-purple-400">{p.SO ?? '0'}</span></ThemedTd>
                                       </ThemedTr>
                                     ))}
                                   </tbody>

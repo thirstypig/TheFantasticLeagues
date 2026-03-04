@@ -33,9 +33,9 @@ export default function NominationQueue({ teams, queue, queueIndex, myTeamId }: 
 
   return (
     <div className="w-full bg-[var(--lg-glass-bg)] backdrop-blur-[var(--lg-glass-blur)] rounded-[var(--lg-radius-xl)] border border-[var(--lg-glass-border)] p-5 shadow-[var(--lg-glass-shadow)] transition-all">
-      <div className="flex items-center gap-3 mb-5 pb-3 border-b border-[var(--lg-glass-border)] text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-[0.2em] opacity-60">
+      <div className="flex items-center gap-3 mb-5 pb-3 border-b border-[var(--lg-glass-border)] text-xs font-bold text-[var(--lg-text-muted)] uppercase tracking-wide opacity-60">
           <Users size={14} className="text-[var(--lg-accent)]" /> 
-          <span>Nomination Sequence</span>
+          <span>Nomination Order</span>
       </div>
       <div className="space-y-3">
           {rotationTeams.map((team, idx) => (
@@ -50,7 +50,7 @@ export default function NominationQueue({ teams, queue, queueIndex, myTeamId }: 
                 }`}
               >
                   <div className="flex items-center gap-4">
-                      <span className={`text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                      <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
                         team.id === myTeamId
                           ? 'bg-white text-[var(--lg-accent)]'
                           : idx === 0 
@@ -60,7 +60,7 @@ export default function NominationQueue({ teams, queue, queueIndex, myTeamId }: 
                           {idx + 1}
                       </span>
                       <div className="flex flex-col">
-                        <span className={`text-[11px] font-black uppercase tracking-widest ${
+                        <span className={`text-[11px] font-bold uppercase tracking-wide ${
                           team.id === myTeamId
                             ? 'text-white'
                             : idx === 0 
@@ -70,13 +70,13 @@ export default function NominationQueue({ teams, queue, queueIndex, myTeamId }: 
                             {team.name}
                         </span>
                         {team.id === myTeamId && (
-                          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/70">Strategic Agent Active</span>
+                          <span className="text-[8px] font-bold uppercase tracking-wide text-white/70">Your Turn</span>
                         )}
                       </div>
                   </div>
                   
                   {idx === 0 && team.id !== myTeamId && (
-                     <span className="text-[9px] font-black uppercase tracking-widest text-[var(--lg-accent)] animate-pulse">On Clock</span>
+                     <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-accent)] animate-pulse">On Clock</span>
                   )}
               </div>
           ))}

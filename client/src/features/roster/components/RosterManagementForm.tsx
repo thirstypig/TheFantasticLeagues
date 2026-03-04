@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
 interface RosterEntry {
   id: number;
@@ -201,37 +202,35 @@ export default function RosterManagementForm({ year, teamCodes }: RosterManageme
             No players on roster for {selectedTeam} in {year}.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className={`w-full text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-              <thead>
-                <tr className={theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'}>
-                  <th className="px-3 py-2 text-left">Player</th>
-                  <th className="px-3 py-2 text-left">Position</th>
-                  <th className="px-3 py-2 text-left">MLB Team</th>
-                  <th className="px-3 py-2 text-right">Cost</th>
-                  <th className="px-3 py-2 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className={theme === 'dark' ? 'divide-y divide-slate-600' : 'divide-y divide-gray-200'}>
-                {roster.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="px-3 py-2">{entry.playerName}</td>
-                    <td className="px-3 py-2">{entry.position}</td>
-                    <td className="px-3 py-2">{entry.mlbTeam || '-'}</td>
-                    <td className="px-3 py-2 text-right">${entry.acquisitionCost}</td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => handleDelete(entry.id, entry.playerName)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ThemedTable>
+            <ThemedThead>
+              <ThemedTr>
+                <ThemedTh>Player</ThemedTh>
+                <ThemedTh>Position</ThemedTh>
+                <ThemedTh>MLB Team</ThemedTh>
+                <ThemedTh align="right">Cost</ThemedTh>
+                <ThemedTh align="center">Actions</ThemedTh>
+              </ThemedTr>
+            </ThemedThead>
+            <tbody>
+              {roster.map((entry) => (
+                <ThemedTr key={entry.id}>
+                  <ThemedTd>{entry.playerName}</ThemedTd>
+                  <ThemedTd>{entry.position}</ThemedTd>
+                  <ThemedTd>{entry.mlbTeam || '-'}</ThemedTd>
+                  <ThemedTd align="right">${entry.acquisitionCost}</ThemedTd>
+                  <ThemedTd align="center">
+                    <button
+                      onClick={() => handleDelete(entry.id, entry.playerName)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Delete
+                    </button>
+                  </ThemedTd>
+                </ThemedTr>
+              ))}
+            </tbody>
+          </ThemedTable>
         )}
       </div>
     </div>

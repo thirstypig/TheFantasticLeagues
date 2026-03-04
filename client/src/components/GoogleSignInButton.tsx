@@ -18,7 +18,7 @@ export default function GoogleSignInButton({ label = "Continue with Google", onC
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center justify-center gap-2 w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-medium transition-all duration-200"
+      className="flex items-center justify-center gap-2 w-full h-11 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] hover:border-[var(--lg-border-subtle)] text-white font-medium transition-all duration-200"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path

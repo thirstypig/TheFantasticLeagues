@@ -87,36 +87,36 @@ export default function AddDropTab({ players, onClaim }: AddDropTabProps) {
         <div className="space-y-6">
             <div className="flex flex-wrap gap-4 mb-2 items-center">
                 {/* Toggle */}
-                <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 backdrop-blur-md">
-                    <button 
+                <div className="flex bg-[var(--lg-tint)] rounded-2xl p-1 border border-[var(--lg-border-subtle)] backdrop-blur-md">
+                    <button
                         onClick={() => { setViewGroup('hitters'); setSortKey('name'); }}
-                        className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewGroup === 'hitters' ? 'bg-[var(--fbst-accent)] text-white shadow-lg' : 'text-[var(--fbst-text-muted)] hover:text-white hover:bg-white/5'}`}
+                        className={`px-5 py-2 rounded-xl text-xs font-medium uppercase transition-all ${viewGroup === 'hitters' ? 'bg-[var(--lg-accent)] text-white shadow-lg' : 'text-[var(--lg-text-muted)] hover:text-white hover:bg-[var(--lg-tint)]'}`}
                     >
-                        Strike Force
+                        Hitters
                     </button>
-                    <button 
+                    <button
                          onClick={() => { setViewGroup('pitchers'); setSortKey('name'); }}
-                         className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--fbst-accent)] text-white shadow-lg' : 'text-[var(--fbst-text-muted)] hover:text-white hover:bg-white/5'}`}
+                         className={`px-5 py-2 rounded-xl text-xs font-medium uppercase transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--lg-accent)] text-white shadow-lg' : 'text-[var(--lg-text-muted)] hover:text-white hover:bg-[var(--lg-tint)]'}`}
                     >
-                        Defense Core
+                        Pitchers
                     </button>
                 </div>
 
                 <div className="relative flex-1 min-w-[240px]">
                     <input 
-                        className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-white outline-none focus:border-[var(--fbst-accent)] transition-all font-bold placeholder:opacity-30"
-                        placeholder="Search Unrestricted Agents..."
+                        className="w-full rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-5 py-3 text-sm text-white outline-none focus:border-[var(--lg-accent)] transition-all font-bold placeholder:opacity-30"
+                        placeholder="Search free agents..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
                 
                 <select 
-                     className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-white outline-none focus:border-[var(--fbst-accent)] transition-all font-bold cursor-pointer"
+                     className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-5 py-3 text-sm text-white outline-none focus:border-[var(--lg-accent)] transition-all font-bold cursor-pointer"
                      value={posFilter}
                      onChange={e => setPosFilter(e.target.value)}
                 >
-                    <option value="ALL" className="text-black">All Sectors</option>
+                    <option value="ALL" className="text-black">All Positions</option>
                     {uniquePositions.map(p => <option key={p} value={p} className="text-black">{p}</option>)}
                 </select>
             </div>
@@ -124,74 +124,74 @@ export default function AddDropTab({ players, onClaim }: AddDropTabProps) {
             <ThemedTable>
                 <ThemedThead>
                     <ThemedTr>
-                        <ThemedTh onClick={() => handleSort('name')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">
+                        <ThemedTh onClick={() => handleSort('name')}>
                            <div className="flex items-center gap-1">Player {sortKey === 'name' && (sortDesc ? '▼' : '▲')}</div>
                         </ThemedTh>
-                        <ThemedTh onClick={() => handleSort('mlb_team')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">
+                        <ThemedTh onClick={() => handleSort('mlb_team')}>
                            <div className="flex items-center gap-1">Team {sortKey === 'mlb_team' && (sortDesc ? '▼' : '▲')}</div>
                         </ThemedTh>
-                        <ThemedTh onClick={() => handleSort('pos')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">
-                           <div className="flex items-center gap-1">Sector {sortKey === 'pos' && (sortDesc ? '▼' : '▲')}</div>
+                        <ThemedTh onClick={() => handleSort('pos')}>
+                           <div className="flex items-center gap-1">Pos {sortKey === 'pos' && (sortDesc ? '▼' : '▲')}</div>
                         </ThemedTh>
-                        
+
                         {viewGroup === 'hitters' ? (
                             <>
-                                <ThemedTh align="center" onClick={() => handleSort('R')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">R</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('HR')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">HR</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('RBI')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">RBI</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('SB')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">SB</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('AVG')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">AVG</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('R')}>R</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('HR')}>HR</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('RBI')}>RBI</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('SB')}>SB</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('AVG')}>AVG</ThemedTh>
                             </>
                         ) : (
                             <>
-                                <ThemedTh align="center" onClick={() => handleSort('W')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">W</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('SV')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">SV</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('K')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">K</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('ERA')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">ERA</ThemedTh>
-                                <ThemedTh align="center" onClick={() => handleSort('WHIP')} className="cursor-pointer hover:text-[var(--fbst-text-primary)]">WHIP</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('W')}>W</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('SV')}>SV</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('K')}>K</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('ERA')}>ERA</ThemedTh>
+                                <ThemedTh align="center" onClick={() => handleSort('WHIP')}>WHIP</ThemedTh>
                             </>
                         )}
                         
                         <ThemedTh align="center">Action</ThemedTh>
                     </ThemedTr>
                 </ThemedThead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[var(--lg-divide)]">
                      {filtered.map(p => (
                          <ThemedTr key={`${p.mlb_id}-${viewGroup}`}>
-                             <ThemedTd className="font-black text-[var(--fbst-text-primary)] tracking-tight whitespace-nowrap">{p.player_name}</ThemedTd>
-                             <ThemedTd className="font-bold text-[var(--fbst-text-muted)]">{p.mlb_team}</ThemedTd>
-                             <ThemedTd className="font-black text-[var(--fbst-text-secondary)] font-mono text-[10px] uppercase tracking-widest bg-white/5 py-1 px-2 rounded-lg inline-block my-3 ml-4">{getPrimaryPosition?.(p.positions) || p.positions}</ThemedTd>
+                             <ThemedTd>{p.player_name}</ThemedTd>
+                             <ThemedTd>{p.mlb_team}</ThemedTd>
+                             <ThemedTd><span className="font-mono text-xs uppercase bg-[var(--lg-tint)] py-1 px-2 rounded-lg inline-block">{getPrimaryPosition?.(p.positions) || p.positions}</span></ThemedTd>
                              
                              {viewGroup === 'hitters' ? (
                                  <>
-                                     <ThemedTd align="center" className="font-mono">{p.R}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{p.HR}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{p.RBI}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{p.SB}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{fmtRate(Number(p.AVG || 0))}</ThemedTd>
+                                     <ThemedTd align="center">{p.R}</ThemedTd>
+                                     <ThemedTd align="center">{p.HR}</ThemedTd>
+                                     <ThemedTd align="center">{p.RBI}</ThemedTd>
+                                     <ThemedTd align="center">{p.SB}</ThemedTd>
+                                     <ThemedTd align="center">{fmtRate(Number(p.AVG || 0))}</ThemedTd>
                                  </>
                              ) : (
                                  <>
-                                     <ThemedTd align="center" className="font-mono">{p.W}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{p.SV}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{p.K}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{Number(p.ERA || 0).toFixed(2)}</ThemedTd>
-                                     <ThemedTd align="center" className="font-mono">{Number(p.WHIP || 0).toFixed(2)}</ThemedTd>
+                                     <ThemedTd align="center">{p.W}</ThemedTd>
+                                     <ThemedTd align="center">{p.SV}</ThemedTd>
+                                     <ThemedTd align="center">{p.K}</ThemedTd>
+                                     <ThemedTd align="center">{Number(p.ERA || 0).toFixed(2)}</ThemedTd>
+                                     <ThemedTd align="center">{Number(p.WHIP || 0).toFixed(2)}</ThemedTd>
                                  </>
                              )}
 
                              <ThemedTd align="center">
                                  <button 
                                      onClick={() => onClaim(p)}
-                                     className="px-4 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                     className="px-4 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-medium uppercase transition-all"
                                  >
-                                     Secure
+                                     Claim
                                  </button>
                              </ThemedTd>
                          </ThemedTr>
                      ))}
                      {filtered.length === 0 && (
-                         <ThemedTr><ThemedTd colSpan={9} className="py-20 text-center text-xs font-black text-[var(--fbst-text-muted)] uppercase tracking-[0.2em]">Zero velocity players found</ThemedTd></ThemedTr>
+                         <ThemedTr><ThemedTd colSpan={9} align="center" className="py-20"><span className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">No players found</span></ThemedTd></ThemedTr>
                      )}
                 </tbody>
             </ThemedTable>

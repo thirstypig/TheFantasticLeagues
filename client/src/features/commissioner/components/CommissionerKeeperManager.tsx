@@ -130,7 +130,7 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
                  <div className="w-1/3 space-y-4">
                      <h3 className="font-bold text-lg text-white">Add Keeper</h3>
                      <select 
-                        className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-white outline-none"
+                        className="w-full p-2 bg-slate-950 border border-[var(--lg-border-subtle)] rounded-xl text-white outline-none"
                         value={selectedTeamId}
                         onChange={e => setSelectedTeamId(e.target.value)}
                      >
@@ -140,17 +140,17 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
                      
                      <div className="relative">
                          <input 
-                            className="w-full p-2 bg-slate-950 border border-white/10 rounded-xl text-white outline-none"
+                            className="w-full p-2 bg-slate-950 border border-[var(--lg-border-subtle)] rounded-xl text-white outline-none"
                             placeholder="Search Player (MLB)..."
                             value={query}
                             onChange={e => setQuery(e.target.value)}
                          />
                          {searchResults.length > 0 && (
-                             <div className="absolute top-full left-0 right-0 bg-slate-800 border border-white/10 max-h-60 overflow-auto z-10 rounded-xl mt-1 shadow-lg">
+                             <div className="absolute top-full left-0 right-0 bg-slate-800 border border-[var(--lg-border-subtle)] max-h-60 overflow-auto z-10 rounded-xl mt-1 shadow-lg">
                                  {searchResults.map(p => (
                                      <div 
                                         key={p.id} 
-                                        className="p-2 hover:bg-slate-700 cursor-pointer flex justify-between text-sm text-white border-b border-white/5 last:border-0"
+                                        className="p-2 hover:bg-slate-700 cursor-pointer flex justify-between text-sm text-white border-b border-[var(--lg-border-faint)] last:border-0"
                                         onClick={() => handleAddKeeper(p)}
                                      >
                                          <span>{p.name} <span className="text-white/50">({p.position})</span></span>
@@ -165,7 +165,7 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
                          <label className="text-white text-sm">Cost:</label>
                          <input 
                             type="number" 
-                            className="p-2 bg-slate-950 border border-white/10 rounded-xl w-24 text-white outline-none"
+                            className="p-2 bg-slate-950 border border-[var(--lg-border-subtle)] rounded-xl w-24 text-white outline-none"
                             value={bid}
                             onChange={e => setBid(Number(e.target.value))}
                          />
@@ -180,11 +180,11 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
                              const teamKeepers = keeperRosters.filter(r => r.teamId === t.id);
                              if (teamKeepers.length === 0) return null;
                              return (
-                                 <div key={t.id} className="bg-slate-950/50 p-3 rounded-xl border border-white/10">
+                                 <div key={t.id} className="bg-slate-950/50 p-3 rounded-xl border border-[var(--lg-border-subtle)]">
                                      <div className="font-bold text-sky-400 mb-2 text-sm">{t.name}</div>
                                      <div className="space-y-1">
                                          {teamKeepers.map(r => (
-                                             <div key={r.id} className="flex justify-between items-center text-xs group hover:bg-white/5 p-1 rounded">
+                                             <div key={r.id} className="flex justify-between items-center text-xs group hover:bg-[var(--lg-tint)] p-1 rounded">
                                                  <span className="text-white">{r.player.name} <span className="text-amber-400 font-mono">(${r.price})</span></span>
                                                  <button 
                                                     onClick={() => handleRemove(r.id)}

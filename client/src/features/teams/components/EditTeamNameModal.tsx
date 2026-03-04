@@ -45,16 +45,16 @@ export default function EditTeamNameModal({
         className="relative w-full max-w-md rounded-[var(--lg-radius-2xl)] bg-[var(--lg-glass-bg)] backdrop-blur-[var(--lg-glass-blur)] border border-[var(--lg-glass-border)] shadow-[var(--lg-glass-shadow)] p-8 animate-in zoom-in-95 duration-200"
       >
         <div className="mb-6">
-          <h3 className="text-2xl font-black tracking-tighter text-[var(--lg-text-heading)]">
-            Franchise Rebranding
+          <h3 className="text-2xl font-bold tracking-tight text-[var(--lg-text-heading)]">
+            Rename Team
           </h3>
-          <p className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mt-1 opacity-60">Updating Identity: {teamCode}</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mt-1 opacity-60">Team: {teamCode}</p>
         </div>
         
         <form onSubmit={handleSubmit}>
           <div className="mb-8">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-              New Franchise Designation
+            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+              New Team Name
             </label>
             <input
               type="text"

@@ -45,7 +45,7 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10"
+      className="rounded-full border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-3 py-2 text-sm text-white/80 hover:bg-[var(--lg-tint-hover)]"
       onClick={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
       aria-label="Toggle theme"
       title="Toggle theme"

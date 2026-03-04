@@ -18,24 +18,24 @@ export default function MyNominationQueue({ players, queueIds, onRemove, onNomin
     const queuedPlayers = queueIds.map(id => players.find(p => String(p.mlb_id) === id)).filter(Boolean) as PlayerSeasonStat[];
 
     return (
-        <div className="w-full bg-[var(--fbst-surface-elevated)] rounded-xl border border-[var(--fbst-table-border)] flex flex-col shadow-sm max-h-[300px] flex-1">
-            <div className="p-3 border-b border-[var(--fbst-table-border)] flex justify-between items-center bg-[var(--fbst-surface-secondary)]">
-                <div className="text-xs font-bold text-[var(--fbst-text-muted)] uppercase tracking-wider flex items-center gap-2">
+        <div className="w-full bg-[var(--lg-glass-bg-hover)] rounded-xl border border-[var(--lg-table-border)] flex flex-col shadow-sm max-h-[300px] flex-1">
+            <div className="p-3 border-b border-[var(--lg-table-border)] flex justify-between items-center bg-[var(--lg-bg-secondary)]">
+                <div className="text-xs font-bold text-[var(--lg-text-muted)] uppercase tracking-wider flex items-center gap-2">
                     <span>Your Nomination Queue</span>
-                    <span className="bg-[var(--fbst-surface-elevated)] px-1.5 rounded text-[var(--fbst-text-primary)]">{queueIds.length}</span>
+                    <span className="bg-[var(--lg-glass-bg-hover)] px-1.5 rounded text-[var(--lg-text-primary)]">{queueIds.length}</span>
                 </div>
             </div>
             
             <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {queuedPlayers.length === 0 && (
-                    <div className="text-center text-[var(--fbst-text-muted)] text-xs italic py-8">
+                    <div className="text-center text-[var(--lg-text-muted)] text-xs italic py-8">
                         Your queue is empty.
                         <br/>
                         Add players from the Player Pool.
                     </div>
                 )}
                 {queuedPlayers.map(p => (
-                    <div key={p.mlb_id} className="flex items-center justify-between p-2 rounded bg-[var(--fbst-surface-primary)] border border-[var(--fbst-table-border)] group hover:border-[var(--fbst-accent-primary)] transition-colors">
+                    <div key={p.mlb_id} className="flex items-center justify-between p-2 rounded bg-[var(--lg-glass-bg)] border border-[var(--lg-table-border)] group hover:border-[var(--lg-accent)] transition-colors">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded bg-gray-800 overflow-hidden shrink-0">
                                  <img 
@@ -45,12 +45,12 @@ export default function MyNominationQueue({ players, queueIds, onRemove, onNomin
                                  />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-sm font-bold text-[var(--fbst-text-primary)] leading-tight">{p.player_name}</span>
-                                <div className="text-[10px] text-[var(--fbst-text-muted)] flex gap-1">
+                                <span className="text-sm font-bold text-[var(--lg-text-primary)] leading-tight">{p.player_name}</span>
+                                <div className="text-xs text-[var(--lg-text-muted)] flex gap-1">
                                      <span className="font-mono">{getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT')}</span>
                                      <span>•</span>
                                      <span>{p.mlb_team}</span>
-                                     <span className="text-[var(--fbst-accent-success)] font-bold ml-1">${p.value || p.dollar_value}</span>
+                                     <span className="text-[var(--lg-success)] font-bold ml-1">${p.value || p.dollar_value}</span>
                                 </div>
                             </div>
                         </div>
@@ -59,7 +59,7 @@ export default function MyNominationQueue({ players, queueIds, onRemove, onNomin
                             {onNominate && isMyTurn && (
                                 <button 
                                     onClick={() => onNominate(p)}
-                                    className="p-1.5 bg-[var(--fbst-accent-primary)] hover:bg-[var(--fbst-accent-primary)]/90 text-white rounded shadow-sm"
+                                    className="p-1.5 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/90 text-white rounded shadow-sm"
                                     title="Nominate Now"
                                 >
                                     <Gavel size={14} />
@@ -67,7 +67,7 @@ export default function MyNominationQueue({ players, queueIds, onRemove, onNomin
                             )}
                             <button 
                                 onClick={() => onRemove(String(p.mlb_id))}
-                                className="p-1.5 text-[var(--fbst-text-muted)] hover:text-red-400 hover:bg-red-900/20 rounded"
+                                className="p-1.5 text-[var(--lg-text-muted)] hover:text-red-400 hover:bg-red-900/20 rounded"
                                 title="Remove from Queue"
                             >
                                 <Trash2 size={14} />

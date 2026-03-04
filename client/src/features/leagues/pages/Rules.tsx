@@ -193,22 +193,22 @@ export default function Rules() {
     <div className="max-w-5xl mx-auto px-6 py-12">
        <div className="flex items-center justify-between mb-12">
             <div>
-                <h1 className="text-4xl font-black tracking-tight text-[var(--lg-text-heading)]">Internal Protocols</h1>
-                <p className="text-[var(--lg-text-muted)] mt-2 font-medium">{isLocked ? "🔒 Strategic configurations are terminal for the current cycle." : "Modify active league parameters and governance rules."}</p>
+                <h1 className="text-4xl font-bold tracking-tight text-[var(--lg-text-heading)]">League Rules</h1>
+                <p className="text-[var(--lg-text-muted)] mt-2 font-medium">{isLocked ? "🔒 Rules are locked for the current season." : "View and edit league settings."}</p>
             </div>
            
            {canEdit && !isLocked && (
                 <div className="flex gap-3">
                     {editMode ? (
                         <div className="flex gap-4">
-                            <Button variant="outline" size="sm" onClick={() => { setEditMode(false); setPendingChanges({}); }}>Abort</Button>
+                            <Button variant="outline" size="sm" onClick={() => { setEditMode(false); setPendingChanges({}); }}>Cancel</Button>
                             <Button variant="emerald" size="sm" onClick={handleSave} disabled={saving}>
-                                {saving ? "Syncing..." : "Commit Changes"}
+                                {saving ? "Saving..." : "Save Changes"}
                             </Button>
                         </div>
                     ) : (
                         <Button variant="default" onClick={() => setEditMode(true)}>
-                            Initialize Edit
+                            Edit Rules
                         </Button>
                     )}
                 </div>
@@ -233,7 +233,7 @@ export default function Rules() {
                              ) : (
                                  <span className="text-2xl">📄</span>
                              )}
-                            <h2 className="text-xl font-black tracking-tight text-[var(--lg-text-heading)] capitalize">{cat.replace('_', ' ')} Registry</h2>
+                            <h2 className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] capitalize">{cat.replace('_', ' ')}</h2>
                         </div>
                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                            {catRules.map(rule => {
@@ -250,7 +250,7 @@ export default function Rules() {
 
                                 return (
                                     <div key={rule.id} className="space-y-2">
-                                        <label className="block text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-[0.2em] opacity-60 ml-1">{rule.label}</label>
+                                        <label className="block text-xs font-bold text-[var(--lg-text-muted)] uppercase tracking-wide opacity-60 ml-1">{rule.label}</label>
                                        <div>
                                            {RenderInput(rule, val, config, isEditing, (v) => handleChange(rule.id, v))}
                                        </div>
@@ -274,13 +274,13 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
             try {
                 const obj = JSON.parse(val);
                 if (Array.isArray(obj)) return <div className="text-[var(--lg-text-primary)] text-sm font-bold flex flex-wrap gap-2">{obj.map(item => (
-                    <span key={item} className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">{item}</span>
+                    <span key={item} className="bg-[var(--lg-tint)] px-2.5 py-1 rounded-lg border border-[var(--lg-border-faint)]">{item}</span>
                 ))}</div>;
                 return (
                     <div className="flex flex-wrap gap-2">
                         {Object.entries(obj).map(([k, v]) => (
-                            <span key={k} className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 text-xs font-black tracking-tight text-[var(--lg-text-primary)]">
-                                <span className="text-[var(--lg-text-muted)] opacity-40 uppercase text-[9px] tracking-widest mr-2">{k}</span>
+                            <span key={k} className="bg-[var(--lg-tint)] px-3 py-1.5 rounded-xl border border-[var(--lg-border-faint)] text-xs font-bold tracking-tight text-[var(--lg-text-primary)]">
+                                <span className="text-[var(--lg-text-muted)] opacity-40 uppercase text-xs tracking-wide mr-2">{k}</span>
                                 {String(v)}
                             </span>
                         ))}
@@ -288,7 +288,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
                 );
             } catch { return <span className="text-[var(--lg-text-primary)] font-bold">{val}</span>; }
         }
-        return <div className="text-xl font-black text-[var(--lg-text-primary)] tracking-tight">{val}<span className="text-[var(--lg-accent)] ml-1 opacity-60">{config.suffix}</span></div>;
+        return <div className="text-xl font-bold text-[var(--lg-text-primary)] tracking-tight">{val}<span className="text-[var(--lg-accent)] ml-1 opacity-60">{config.suffix}</span></div>;
     }
 
     // Edit inputs
@@ -314,7 +314,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
                     step={config.step ?? 1} 
                     value={val} 
                     onChange={e => onChange(e.target.value)}
-                    className="flex-1 accent-[var(--lg-accent)] h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                    className="flex-1 accent-[var(--lg-accent)] h-2 bg-[var(--lg-tint-hover)] rounded-lg appearance-none cursor-pointer"
                 />
                 <span className="w-8 text-right font-mono text-[var(--lg-text-primary)]">{val}</span>
             </div>

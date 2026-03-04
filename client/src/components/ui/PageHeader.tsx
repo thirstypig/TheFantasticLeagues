@@ -25,22 +25,22 @@ export default function PageHeader({
   backTo,
 }: PageHeaderProps) {
   return (
-    <div className={`py-12 mb-8 ${className || ""}`}>
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div className="space-y-2">
+    <div className={`py-8 mb-6 ${className || ""}`}>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="space-y-1">
           {backTo && (
             <Link
               to={backTo}
-              className="mb-4 inline-flex items-center text-xs font-bold uppercase tracking-widest text-[var(--lg-text-muted)] hover:text-[var(--lg-accent)] transition-colors"
+              className="mb-3 inline-flex items-center text-xs font-medium text-[var(--lg-text-muted)] hover:text-[var(--lg-accent)] transition-colors"
             >
               &larr; Back
             </Link>
           )}
-          <h1 className="lg-heading-1 text-5xl drop-shadow-sm">
+          <h1 className="lg-heading-1 text-3xl">
             {title}
           </h1>
           {subtitle && (
-            <div className="text-sm text-[var(--lg-text-secondary)] font-medium max-w-2xl leading-relaxed">
+            <div className="text-sm text-[var(--lg-text-secondary)] max-w-2xl leading-relaxed">
               {subtitle}
             </div>
           )}

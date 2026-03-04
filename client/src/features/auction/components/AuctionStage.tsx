@@ -65,15 +65,15 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
       const rotationTeams = queueIds.slice(queueIndex, queueIndex + 5).map(qid => teams.find(t => t.id === qid)).filter(Boolean) as Team[];
 
       return (
-          <div className="h-full flex flex-col items-center justify-center p-12 lg-card relative overflow-hidden bg-white/[0.01]">
+          <div className="h-full flex flex-col items-center justify-center p-12 lg-card relative overflow-hidden bg-transparent">
                <Users size={300} className="absolute -bottom-20 -right-20 text-[var(--lg-accent)] opacity-[0.03] rotate-12" />
 
                <div className="flex flex-col items-center text-center z-10">
-                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-8 border border-white/10 shadow-2xl">
+                  <div className="w-20 h-20 rounded-full bg-[var(--lg-tint)] flex items-center justify-center mb-8 border border-[var(--lg-border-subtle)] shadow-2xl">
                     <MonitorStop size={32} className="text-[var(--lg-text-muted)] opacity-40" />
                   </div>
-                  <h3 className="text-4xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)] mb-3">Awaiting Nomination</h3>
-                  <p className="text-xs max-w-xs text-[var(--lg-text-muted)] mb-12 font-black uppercase tracking-[0.2em] leading-relaxed opacity-60">
+                  <h3 className="text-4xl font-bold uppercase tracking-tight text-[var(--lg-text-heading)] mb-3">Awaiting Nomination</h3>
+                  <p className="text-xs max-w-xs text-[var(--lg-text-muted)] mb-12 font-bold uppercase tracking-wide leading-relaxed opacity-60">
                      {myTeamId && rotationTeams[0]?.id === myTeamId ? 
                         <span className="text-[var(--lg-accent)] animate-pulse">It's your turn. Select a player to begin.</span> : 
                         "The room is open. Stand by for the next nominee."}
@@ -108,7 +108,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
   return (
     <div className="flex flex-col h-full gap-8">
         {/* Nominee Card */}
-        <div className="lg-card p-0 overflow-hidden flex flex-col md:flex-row relative bg-white/[0.01] animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="lg-card p-0 overflow-hidden flex flex-col md:flex-row relative bg-transparent animate-in fade-in slide-in-from-top-4 duration-500">
             
             {/* Player Image */}
             <div className="w-full md:w-1/3 bg-black/40 border-r border-[var(--lg-glass-border)] relative flex items-center justify-center min-h-[260px] group">
@@ -118,34 +118,34 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                     className="object-cover h-full w-full opacity-80 group-hover:opacity-100 transition-opacity duration-500"
                     onError={(e) => (e.currentTarget.src = 'https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/generic/headshot/67/current')}
                  />
-                 <div className="absolute top-4 left-4 bg-[var(--lg-accent)] text-white px-4 py-2 rounded-[var(--lg-radius-lg)] text-[11px] font-black uppercase tracking-widest shadow-2xl">
+                 <div className="absolute top-4 left-4 bg-[var(--lg-accent)] text-white px-4 py-2 rounded-[var(--lg-radius-lg)] text-[11px] font-bold uppercase tracking-wide shadow-2xl">
                     {nomination.positions || (nomination.isPitcher ? 'P' : 'UT')}
                  </div>
             </div>
 
             {/* Info & Timer */}
             <div className="flex-1 flex flex-col">
-                <div className="p-8 border-b border-[var(--lg-glass-border)] flex justify-between items-start bg-white/5">
+                <div className="p-8 border-b border-[var(--lg-glass-border)] flex justify-between items-start bg-[var(--lg-tint)]">
                     <div>
-                        <h2 className="text-4xl font-black text-[var(--lg-text-heading)] leading-none tracking-tighter mb-3">{nomination.playerName}</h2>
-                        <div className="text-[11px] font-black text-[var(--lg-text-muted)] uppercase tracking-[0.2em] flex items-center gap-2 opacity-60">
+                        <h2 className="text-4xl font-bold text-[var(--lg-text-heading)] leading-none tracking-tight mb-3">{nomination.playerName}</h2>
+                        <div className="text-[11px] font-bold text-[var(--lg-text-muted)] uppercase tracking-wide flex items-center gap-2 opacity-60">
                              {nomination.playerTeam}
                         </div>
                     </div>
                     
                     {/* Timer Display */}
                     <div className="flex flex-col items-end">
-                        <div className={`text-7xl font-black tabular-nums tracking-tighter transition-all duration-300 ${
+                        <div className={`text-7xl font-bold tabular-nums tracking-tight transition-all duration-300 ${
                             isCriticalTime ? 'text-[var(--lg-error)] animate-pulse scale-110 origin-right' : 'text-[var(--lg-text-primary)]'
                         }`}>
                             {timeLeft}
                         </div>
-                        {nomination.status === 'paused' && <div className="text-[var(--lg-warning)] font-black uppercase text-[10px] tracking-widest mt-2 border border-[var(--lg-warning)]/20 bg-[var(--lg-warning)]/10 px-2 py-0.5 rounded-md">SYSTEM PAUSED</div>}
+                        {nomination.status === 'paused' && <div className="text-[var(--lg-warning)] font-bold uppercase text-xs tracking-wide mt-2 border border-[var(--lg-warning)]/20 bg-[var(--lg-warning)]/10 px-2 py-0.5 rounded-md">SYSTEM PAUSED</div>}
                     </div>
                 </div>
 
-                <div className="p-8 bg-white/[0.02] flex-1 flex flex-col justify-center">
-                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--lg-text-muted)] mb-5 flex items-center gap-3">
+                <div className="p-8 bg-[var(--lg-tint)] flex-1 flex flex-col justify-center">
+                   <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-5 flex items-center gap-3">
                       <span className={`w-2 h-2 rounded-full animate-pulse ${isCriticalTime ? 'bg-[var(--lg-error)]' : 'bg-[var(--lg-accent)]'}`} /> 
                       Live Auction Stream Active
                    </div>
@@ -189,20 +189,20 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
         {/* Bidding Interface */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Current Valuation Status */}
-            <div className={`lg-card p-10 flex flex-col justify-between relative overflow-hidden transition-all duration-500 ${isHighBidder ? 'border-[var(--lg-success)]/40 bg-[var(--lg-success)]/5 ring-1 ring-[var(--lg-success)]/20' : 'bg-white/[0.01]'}`}>
+            <div className={`lg-card p-10 flex flex-col justify-between relative overflow-hidden transition-all duration-500 ${isHighBidder ? 'border-[var(--lg-success)]/40 bg-[var(--lg-success)]/5 ring-1 ring-[var(--lg-success)]/20' : 'bg-transparent'}`}>
                 {isHighBidder && (
-                  <div className="absolute top-0 right-0 bg-[var(--lg-success)] text-white px-6 py-2 rounded-bl-[var(--lg-radius-2xl)] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">
+                  <div className="absolute top-0 right-0 bg-[var(--lg-success)] text-white px-6 py-2 rounded-bl-[var(--lg-radius-2xl)] text-xs font-bold uppercase tracking-wide shadow-xl">
                     Leading Bidder
                   </div>
                 )}
                 <div>
-                   <div className="text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-[0.2em] mb-6 opacity-60">Live Valuation</div>
-                   <div className="text-8xl font-black text-[var(--lg-text-heading)] tracking-tighter tabular-nums mb-6 flex items-start">
+                   <div className="text-xs font-bold text-[var(--lg-text-muted)] uppercase tracking-wide mb-6 opacity-60">Live Valuation</div>
+                   <div className="text-8xl font-bold text-[var(--lg-text-heading)] tracking-tight tabular-nums mb-6 flex items-start">
                        <span className="text-3xl mt-3 opacity-20 mr-1">$</span>{currentBid}
                    </div>
                    <div className="flex flex-col gap-1">
-                      <div className="text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-widest opacity-40">Identity Held By:</div>
-                      <div className={`text-sm font-black uppercase tracking-widest ${isHighBidder ? 'text-[var(--lg-success)]' : 'text-[var(--lg-text-primary)]'}`}>
+                      <div className="text-xs font-bold text-[var(--lg-text-muted)] uppercase tracking-wide opacity-40">Identity Held By:</div>
+                      <div className={`text-sm font-bold uppercase tracking-wide ${isHighBidder ? 'text-[var(--lg-success)]' : 'text-[var(--lg-text-primary)]'}`}>
                           {highBidderTeam?.name || 'GENESIS BID'} {isHighBidder ? '(YOU)' : ''}
                       </div>
                    </div>
@@ -210,7 +210,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             </div>
 
             {/* Bidding Actions */}
-            <div className="lg-card p-10 flex flex-col gap-6 justify-center bg-white/[0.01]">
+            <div className="lg-card p-10 flex flex-col gap-6 justify-center bg-transparent">
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                      <Button 
                         disabled={!canAffordMin || isHighBidder || nomination.status !== 'running'}
@@ -220,23 +220,23 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         className="h-32 flex flex-col items-center justify-center gap-1 shadow-2xl shadow-blue-500/40 relative overflow-hidden group"
                     >
                          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Increment +$1</span>
-                        <span className="text-3xl font-black tracking-tighter">BID ${minRaise}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide opacity-60">Increment +$1</span>
+                        <span className="text-3xl font-bold tracking-tight">BID ${minRaise}</span>
                      </Button>
                      <Button 
                         disabled={!canAffordJump || isHighBidder || nomination.status !== 'running'}
                         onClick={() => onBid(jumpRaise)}
                         variant="secondary"
                         size="lg"
-                        className="h-32 flex flex-col items-center justify-center gap-1 bg-white/5 border-white/10 hover:bg-white/10 transition-all group"
+                        className="h-32 flex flex-col items-center justify-center gap-1 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] transition-all group"
                      >
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--lg-text-muted)] opacity-60">Strategic +$5</span>
-                        <span className="text-3xl font-black tracking-tighter text-[var(--lg-accent)]">JUMP ${jumpRaise}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-60">Strategic +$5</span>
+                        <span className="text-3xl font-bold tracking-tight text-[var(--lg-accent)]">JUMP ${jumpRaise}</span>
                      </Button>
                  </div>
                  
                  <div className="mt-2 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--lg-text-muted)] opacity-30">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-30">
                        Max Strategic Reserve: <span className="text-[var(--lg-text-primary)] opacity-100">${myTeam?.maxBid || 0}</span>
                     </p>
                  </div>
@@ -244,7 +244,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
         </div>
         
         {/* Nomination Queue Section */}
-        <div className="w-full mt-4 bg-white/[0.01] rounded-[var(--lg-radius-2xl)] border border-white/[0.05] p-1">
+        <div className="w-full mt-4 bg-transparent rounded-[var(--lg-radius-2xl)] border border-[var(--lg-border-faint)] p-1">
             <NominationQueue 
                 teams={teams} 
                 queue={serverState?.queue || []} 

@@ -75,33 +75,33 @@ export default function AIAnalysisTab({ log, teams }: AIAnalysisTabProps) {
 
 
   return (
-    <div className="h-full overflow-auto p-4 space-y-8 bg-[var(--fbst-surface-primary)] text-[var(--fbst-text-primary)]">
+    <div className="h-full overflow-auto p-4 space-y-8 bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)]">
       
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[var(--fbst-table-border)] pb-4">
+      <div className="flex items-center justify-between border-b border-[var(--lg-table-border)] pb-4">
           <div>
             <h3 className="text-xl font-bold flex items-center gap-2 text-purple-400">
                 <Award className="w-6 h-6" />
                 AI Auction Analysis
             </h3>
-            <p className="text-xs text-[var(--fbst-text-muted)] mt-1">
+            <p className="text-xs text-[var(--lg-text-muted)] mt-1">
                 Real-time evaluation of auction performance and roster construction.
             </p>
           </div>
           <div className="text-right">
-             <div className="text-xs text-[var(--fbst-text-muted)]">Transactions Analyzed</div>
+             <div className="text-xs text-[var(--lg-text-muted)]">Transactions Analyzed</div>
              <div className="font-bold text-lg">{wins.length}</div>
           </div>
       </div>
 
       {/* Team Grades */}
       <section>
-          <h4 className="text-sm font-bold uppercase tracking-wider text-[var(--fbst-text-muted)] mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-bold uppercase tracking-wider text-[var(--lg-text-muted)] mb-3 flex items-center gap-2">
               <BarChart3 className="w-4 h-4" /> Live Team Grades
           </h4>
           <div className="grid grid-cols-1 gap-3">
               {teamGrades.map(t => (
-                  <div key={t.teamId} className="flex items-center justify-between p-3 bg-[var(--fbst-surface-secondary)] rounded-lg border border-[var(--fbst-table-border)]">
+                  <div key={t.teamId} className="flex items-center justify-between p-3 bg-[var(--lg-bg-secondary)] rounded-lg border border-[var(--lg-table-border)]">
                       <div className="flex items-center gap-3">
                           <div className={`
                              w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg border-2
@@ -114,7 +114,7 @@ export default function AIAnalysisTab({ log, teams }: AIAnalysisTabProps) {
                           </div>
                           <div>
                               <div className="font-bold">{t.name}</div>
-                              <div className="text-xs text-[var(--fbst-text-muted)]">{t.reason}</div>
+                              <div className="text-xs text-[var(--lg-text-muted)]">{t.reason}</div>
                           </div>
                       </div>
                       <div className="text-xs font-mono opacity-50">SCORE: {t.score}</div>
@@ -125,21 +125,21 @@ export default function AIAnalysisTab({ log, teams }: AIAnalysisTabProps) {
 
       {/* Notable Transactions */}
       <section>
-          <h4 className="text-sm font-bold uppercase tracking-wider text-[var(--fbst-text-muted)] mb-3 flex items-center gap-2">
+          <h4 className="text-sm font-bold uppercase tracking-wider text-[var(--lg-text-muted)] mb-3 flex items-center gap-2">
               <TrendingUp className="w-4 h-4" /> Notable Moves
           </h4>
           <div className="space-y-2">
                {notableTransactions.filter(t => t.type !== 'FAIR').length === 0 && (
-                   <div className="text-sm text-[var(--fbst-text-muted)] italic">No notable steals or overpays yet.</div>
+                   <div className="text-sm text-[var(--lg-text-muted)] italic">No notable steals or overpays yet.</div>
                )}
                {notableTransactions.filter(t => t.type !== 'FAIR').slice(0, 5).map((t, i) => (
-                   <div key={i} className="flex items-center justify-between p-2 text-sm border-b border-[var(--fbst-table-border)]/50 last:border-0">
+                   <div key={i} className="flex items-center justify-between p-2 text-sm border-b border-[var(--lg-table-border)]/50 last:border-0">
                        <div className="flex items-center gap-2">
                            {t.type === 'STEAL' ? <TrendingUp className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-orange-500" />}
                            <span><span className="font-bold">{t.playerName}</span> to {t.teamName}</span>
                        </div>
                        <div className="font-mono">
-                           ${t.amount} <span className="text-[var(--fbst-text-muted)] text-xs">({t.type})</span>
+                           ${t.amount} <span className="text-[var(--lg-text-muted)] text-xs">({t.type})</span>
                        </div>
                    </div>
                ))}

@@ -372,7 +372,7 @@ export default function Commissioner() {
             <button
               onClick={loadAll}
               className={cls(
-                "rounded-xl border border-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/5",
+                "rounded-xl border border-[var(--lg-border-subtle)] px-3 py-2 text-sm text-white/80 hover:bg-[var(--lg-tint)]",
                 busy && "opacity-60 cursor-not-allowed"
               )}
               disabled={busy}
@@ -384,33 +384,33 @@ export default function Commissioner() {
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/60">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/60">
             Loading…
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-red-300">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-red-300">
             {error}
           </div>
         ) : !me ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
             You are not logged in.
           </div>
         ) : !leagueFromList ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
             League not found.
           </div>
         ) : !canCommissioner ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
             You are not a commissioner for this league.
           </div>
         ) : !league ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
             Commissioner data not available.
           </div>
         ) : (
           <>
             {/* League header */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-lg font-semibold text-white">
@@ -419,8 +419,8 @@ export default function Commissioner() {
                   <div className="mt-1 text-sm text-white/60">
                     draftMode: {league.draftMode}
                     {league.draftMode === "DRAFT" ? ` · draftOrder: ${league.draftOrder ?? "—"}` : null}
-                    <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs">role: {accessRole ?? "—"}</span>
-                    {me.isAdmin ? <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs">Admin</span> : null}
+                    <span className="ml-2 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs">role: {accessRole ?? "—"}</span>
+                    {me.isAdmin ? <span className="ml-2 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs">Admin</span> : null}
                   </div>
                 </div>
 
@@ -432,7 +432,7 @@ export default function Commissioner() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex gap-2 border-b border-white/10 pb-4 mb-6 overflow-x-auto">
+            <div className="flex gap-2 border-b border-[var(--lg-border-subtle)] pb-4 mb-6 overflow-x-auto">
                 {['overview', 'rosters', 'keepers', 'controls'].map((tab) => (
                     <button
                         key={tab}
@@ -445,7 +445,7 @@ export default function Commissioner() {
                             "px-4 py-2 text-sm font-semibold rounded-lg capitalize transition-colors",
                             activeTab === tab 
                                 ? "bg-white text-slate-900" 
-                                : "text-white/60 hover:text-white hover:bg-white/5"
+                                : "text-white/60 hover:text-white hover:bg-[var(--lg-tint)]"
                         )}
                     >
                         {tab}
@@ -457,7 +457,7 @@ export default function Commissioner() {
             {activeTab === 'overview' && (
                 <div className="grid gap-5 lg:grid-cols-2">
                   {/* Members */}
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-lg font-semibold text-white">Members</div>
                       <div className="text-xs text-white/50">{overview.memberships.length} total</div>
@@ -467,7 +467,7 @@ export default function Commissioner() {
                       {overview.memberships.map((m) => (
                         <div
                           key={m.id}
-                          className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2"
+                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2"
                         >
                           <div className="min-w-0">
                             <div className="truncate text-sm text-white">
@@ -475,24 +475,24 @@ export default function Commissioner() {
                             </div>
                             <div className="truncate text-xs text-white/50">{m.user?.email}</div>
                           </div>
-                          <div className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80">
+                          <div className="shrink-0 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-white/80">
                             {m.role}
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 p-4">
                       <div className="mb-2 text-sm font-semibold text-white">Add member (by email)</div>
                       <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
                         <input
-                          className="md:col-span-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="owner@email.com"
                           value={inviteEmail}
                           onChange={(e) => setInviteEmail(e.target.value)}
                         />
                         <select
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           value={inviteRole}
                           onChange={(e) => setInviteRole(e.target.value as any)}
                           title={!me.isAdmin ? "Commissioner role requires Admin." : "Select role"}
@@ -508,7 +508,7 @@ export default function Commissioner() {
                           <button
                             type="submit"
                             className={cls(
-                              "rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15",
+                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-white hover:bg-[var(--lg-tint-hover)]",
                               busy && "opacity-60 cursor-not-allowed"
                             )}
                             disabled={busy}
@@ -525,7 +525,7 @@ export default function Commissioner() {
                   </div>
 
                   {/* Teams */}
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-lg font-semibold text-white">Teams</div>
                       <div className="text-xs text-white/50">{overview.teams.length} total</div>
@@ -535,7 +535,7 @@ export default function Commissioner() {
                       {overview.teams.map((t) => (
                         <div
                           key={t.id}
-                          className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 group"
+                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 group"
                         >
                           <div className="min-w-0">
                             <div className="truncate text-sm font-bold text-white">
@@ -582,14 +582,14 @@ export default function Commissioner() {
                       ))}
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 p-4">
                       <div className="mb-2 text-sm font-semibold text-white">Create team</div>
                       <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
                         {priorTeams.length > 0 && (
                           <div className="md:col-span-3 mb-2">
                             <label className="block text-xs text-white/60 mb-1">Link to prior year team (optional)</label>
                             <select
-                              className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                              className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                               value={selectedPriorTeamId}
                               onChange={(e) => {
                                 const id = e.target.value ? Number(e.target.value) : "";
@@ -613,13 +613,13 @@ export default function Commissioner() {
                           </div>
                         )}
                         <input
-                          className="md:col-span-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="Team name"
                           value={teamName}
                           onChange={(e) => setTeamName(e.target.value)}
                         />
                         <input
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="Code (OGBA)"
                           value={teamCode}
                           onChange={(e) => setTeamCode(e.target.value)}
@@ -628,7 +628,7 @@ export default function Commissioner() {
                         <div className="md:col-span-2">
                           <label className="block text-xs text-white/60">Budget</label>
                           <input
-                            className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                            className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                             type="number"
                             value={teamBudget}
                             onChange={(e) => setTeamBudget(Number(e.target.value))}
@@ -639,7 +639,7 @@ export default function Commissioner() {
                           <button
                             type="submit"
                             className={cls(
-                              "w-full rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15",
+                              "w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-white hover:bg-[var(--lg-tint-hover)]",
                               busy && "opacity-60 cursor-not-allowed"
                             )}
                             disabled={busy}
@@ -650,12 +650,12 @@ export default function Commissioner() {
                       </form>
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/60 p-4">
+                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 p-4">
                       <div className="mb-2 text-sm font-semibold text-white">Assign team owner</div>
 
                       <form onSubmit={onAssignOwner} className="grid gap-2 md:grid-cols-3">
                         <select
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           value={ownerTeamId}
                           onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}
                         >
@@ -668,7 +668,7 @@ export default function Commissioner() {
                         </select>
 
                         <select
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           value={ownerUserId}
                           onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}
                         >
@@ -681,7 +681,7 @@ export default function Commissioner() {
                         </select>
 
                         <input
-                          className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-white/20"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="Owner display name (optional)"
                           value={ownerName}
                           onChange={(e) => setOwnerName(e.target.value)}
@@ -691,7 +691,7 @@ export default function Commissioner() {
                           <button
                             type="submit"
                             className={cls(
-                              "rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15",
+                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-white hover:bg-[var(--lg-tint-hover)]",
                               busy && "opacity-60 cursor-not-allowed"
                             )}
                             disabled={busy}
@@ -712,7 +712,7 @@ export default function Commissioner() {
             {/* Tab: Rosters */}
             {activeTab === 'rosters' && (
                 <div className="space-y-6">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                        <h2 className="text-xl font-bold mb-4 text-white">Manual Roster Management</h2>
                        <CommissionerRosterTool
                           leagueId={lid}
@@ -726,7 +726,7 @@ export default function Commissioner() {
             {/* Tab: Keepers */}
             {activeTab === 'keepers' && (
                 <div className="space-y-6">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                          <h2 className="text-xl font-bold mb-4 text-white">Keeper Selection Agent</h2>
                          <KeeperPrepDashboard leagueId={lid} />
                     </div>

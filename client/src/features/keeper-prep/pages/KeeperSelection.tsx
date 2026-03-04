@@ -98,7 +98,7 @@ export default function KeeperSelection() {
   if (error) return <div className="p-10 text-center text-red-400">{error}</div>;
 
   return (
-    <div className="flex flex-col h-full bg-[var(--fbst-surface-primary)] overflow-hidden">
+    <div className="flex flex-col h-full bg-[var(--lg-glass-bg)] overflow-hidden">
       <PageHeader 
         title="Keeper Selection" 
         subtitle={`Select players to keep for ${team?.name || "Team"}`}
@@ -115,7 +115,7 @@ export default function KeeperSelection() {
                 </div>
             )}
             {/* Summary Card */}
-            <div className="grid grid-cols-3 gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 text-center shadow-xl backdrop-blur-sm">
+            <div className="grid grid-cols-3 gap-4 rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center shadow-xl backdrop-blur-sm">
                 <div>
                    <div className="text-xs uppercase tracking-wider text-white/50">Total Budget</div>
                    <div className="mt-1 text-2xl font-bold text-white">{fmtMoney(budget)}</div>
@@ -136,9 +136,9 @@ export default function KeeperSelection() {
             </div>
 
             {/* Roster Table */}
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+            <div className="overflow-hidden rounded-2xl border border-[var(--lg-border-subtle)] bg-black/20">
               <table className="w-full text-left text-sm text-white/80">
-                  <thead className="bg-white/5 text-xs font-semibold uppercase tracking-wider text-white/50">
+                  <thead className="bg-[var(--lg-tint)] text-xs font-semibold uppercase tracking-wider text-white/50">
                       <tr>
                           <th className="px-6 py-4">Pos</th>
                           <th className="px-6 py-4">Player</th>
@@ -147,13 +147,13 @@ export default function KeeperSelection() {
                           <th className="px-6 py-4 text-center">Keep?</th>
                       </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-[var(--lg-divide)]">
                       {roster.map(r => {
                           const isSelected = selectedIds.has(r.id);
                           return (
                               <tr 
                                 key={r.id} 
-                                className={`transition-colors hover:bg-white/[0.02] ${isSelected ? "bg-sky-900/10" : ""}`}
+                                className={`transition-colors hover:bg-[var(--lg-tint)] ${isSelected ? "bg-sky-900/10" : ""}`}
                                 onClick={() => toggleKeeper(r.id)}
                               >
                                   <td className="px-6 py-4 font-mono text-white/40">{r.player?.posPrimary || r.assignedPosition}</td>
@@ -166,7 +166,7 @@ export default function KeeperSelection() {
                                         checked={isSelected} 
                                         disabled={isLocked}
                                         onChange={() => {}} // handled by row click
-                                        className="h-5 w-5 rounded border-white/20 bg-white/5 text-sky-500 focus:ring-sky-500/50 disabled:opacity-30"
+                                        className="h-5 w-5 rounded border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-sky-500 focus:ring-sky-500/50 disabled:opacity-30"
                                       />
                                   </td>
                               </tr>
@@ -180,7 +180,7 @@ export default function KeeperSelection() {
             </div>
 
             {/* Sticky Action Footer (Mobile friendly) */}
-            <div className="sticky bottom-4 mx-auto max-w-md rounded-2xl border border-white/10 bg-slate-900/90 p-4 shadow-2xl backdrop-blur-md">
+            <div className="sticky bottom-4 mx-auto max-w-md rounded-2xl border border-[var(--lg-border-subtle)] bg-slate-900/90 p-4 shadow-2xl backdrop-blur-md">
                  <div className="flex items-center justify-between gap-4">
                      <div className="text-sm">
                          <div className="text-white/50">Keeping</div>

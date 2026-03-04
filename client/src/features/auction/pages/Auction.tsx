@@ -120,7 +120,7 @@ export default function Auction() {
       }));
   }, [auctionState?.teams, myTeamId]);
   
-  if (initLoading) return <div className="p-8 text-center text-[var(--fbst-text-muted)]">Loading auction room...</div>;
+  if (initLoading) return <div className="p-8 text-center text-[var(--lg-text-muted)]">Loading auction room...</div>;
 
   return (
     <AuctionLayout
@@ -180,23 +180,23 @@ export default function Auction() {
                     { 
                         key: 'log', 
                         label: 'Log', 
-                        content: <div className="h-full overflow-auto bg-[var(--fbst-surface-primary)] divide-y divide-[var(--fbst-table-border)]">
+                        content: <div className="h-full overflow-auto bg-[var(--lg-glass-bg)] divide-y divide-[var(--lg-table-border)]">
                             {(!auctionState?.log || auctionState.log.length === 0) && (
-                                <div className="p-4 text-center text-[var(--fbst-text-muted)] text-sm">
+                                <div className="p-4 text-center text-[var(--lg-text-muted)] text-sm">
                                     No auction activity yet.
                                 </div>
                             )}
                             {auctionState?.log?.map((evt, i) => (
-                                <div key={i} className="p-3 flex flex-col gap-1 text-sm hover:bg-[var(--fbst-surface-secondary)]/30">
+                                <div key={i} className="p-3 flex flex-col gap-1 text-sm hover:bg-[var(--lg-bg-secondary)]/30">
                                     <div className="flex justify-between items-start">
-                                        <span className={`font-bold ${evt.type === 'WIN' ? 'text-[var(--fbst-accent-success)]' : evt.type === 'BID' ? 'text-[var(--fbst-text-primary)]' : 'text-[var(--fbst-accent-primary)]'}`}>
+                                        <span className={`font-bold ${evt.type === 'WIN' ? 'text-[var(--lg-success)]' : evt.type === 'BID' ? 'text-[var(--lg-text-primary)]' : 'text-[var(--lg-accent)]'}`}>
                                             {evt.type}
                                         </span>
-                                        <span className="text-[10px] text-[var(--fbst-text-muted)]">
+                                        <span className="text-xs text-[var(--lg-text-muted)]">
                                             {new Date(evt.timestamp).toLocaleTimeString()}
                                         </span>
                                     </div>
-                                    <div className="text-[var(--fbst-text-secondary)]">
+                                    <div className="text-[var(--lg-text-secondary)]">
                                         {evt.message}
                                     </div>
                                 </div>

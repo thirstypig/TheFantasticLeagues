@@ -7,7 +7,7 @@ import React from "react";
  */
 export default function AuctionTab() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6">
       <div className="text-xl font-semibold text-white">Auction</div>
       <div className="mt-2 text-sm text-white/70">
         Auction features are paused for now. This placeholder keeps the client build passing.

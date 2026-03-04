@@ -86,7 +86,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
 
   return (
     <div className={className}>
-       <h3 className="mb-4 text-xl font-semibold text-white border-b border-white/10 pb-2">Live Rosters</h3>
+       <h3 className="mb-4 text-xl font-semibold text-white border-b border-[var(--lg-border-subtle)] pb-2">Live Rosters</h3>
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
            {teams.map(team => {
                const teamRoster = rostersByTeam[team.id] || [];
@@ -95,8 +95,8 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                const remaining = budget - totalSpent;
                
                return (
-                   <div key={team.id} className="rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden flex flex-col h-96">
-                       <div className="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center">
+                   <div key={team.id} className="rounded-xl border border-[var(--lg-border-subtle)] bg-slate-900/60 overflow-hidden flex flex-col h-96">
+                       <div className="p-3 bg-[var(--lg-tint)] border-b border-[var(--lg-border-faint)] flex justify-between items-center">
                            <div className="font-semibold text-white truncate max-w-[120px]" title={team.name}>{team.name}</div>
                            <div className="text-xs text-white/60 flex flex-col items-end">
                                <span className={remaining < 0 ? 'text-red-400' : 'text-green-400'}>${remaining} left</span>
@@ -108,13 +108,13 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                <div className="text-center text-xs text-white/20 mt-10">No players</div>
                            )}
                            {teamRoster.map(r => (
-                               <div key={r.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
+                               <div key={r.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-[var(--lg-tint)] rounded group">
                                    <div className="flex items-center gap-2 overflow-hidden">
                                        <span className="font-mono text-white/50 w-5 text-center shrink-0">{r.player.posPrimary}</span>
                                        <span className="text-white truncate group-hover:text-sky-300 transition-colors">{r.player.name}</span>
                                    </div>
                                    <div className="flex items-center gap-2">
-                                        {r.player.mlbId && <span className="text-[9px] px-1 bg-white/5 rounded text-white/30">MLB</span>}
+                                        {r.player.mlbId && <span className="text-xs px-1 bg-[var(--lg-tint)] rounded text-white/30">MLB</span>}
                                         <span className="font-semibold text-amber-400 w-6 text-right">${r.price}</span>
                                    </div>
                                </div>

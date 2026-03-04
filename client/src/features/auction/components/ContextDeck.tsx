@@ -20,7 +20,7 @@ export default function ContextDeck({ tabs }: ContextDeckProps) {
   return (
     <div className="flex flex-col h-full w-full liquid-glass backdrop-blur-3xl">
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 p-2 bg-white/5 border-b border-white/10">
+      <div className="flex items-center gap-1 p-2 bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)]">
         {tabs.map((tab) => {
           const isActive = activeKey === tab.key;
           return (
@@ -28,16 +28,16 @@ export default function ContextDeck({ tabs }: ContextDeckProps) {
               key={tab.key}
               onClick={() => setActiveKey(tab.key)}
               className={`
-                relative px-5 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all
+                relative px-5 py-2.5 text-xs font-bold uppercase tracking-wide rounded-xl transition-all
                 ${isActive 
-                  ? 'bg-[var(--fbst-accent)] text-white shadow-lg shadow-red-500/10' 
-                  : 'text-[var(--fbst-text-muted)] hover:text-[var(--fbst-text-primary)] hover:bg-white/5'
+                  ? 'bg-[var(--lg-accent)] text-white shadow-lg shadow-red-500/10' 
+                  : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]'
                 }
               `}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`ml-2 text-[10px] tabular-nums ${isActive ? 'text-white/50' : 'text-white/30'}`}>
+                <span className={`ml-2 text-xs tabular-nums ${isActive ? 'text-white/50' : 'text-white/30'}`}>
                   {tab.count}
                 </span>
               )}

@@ -90,7 +90,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ],
     },
     {
-      title: "Intelligence",
+      title: "Stats",
       items: [
         { to: "/period", label: "Period", show: true },
         { to: "/season", label: "Season", show: true },
@@ -98,7 +98,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ],
     },
     {
-      title: "Logistics",
+      title: "Activity",
       items: [
         { to: "/trades", label: "Trades", show: true },
         { to: "/transactions", label: "Transactions", show: true },
@@ -106,7 +106,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ],
     },
     {
-      title: "System",
+      title: "Admin",
       items: [
         { to: "/leagues", label: "Leagues", show: true },
         { to: "/rules", label: "Rules", show: true },
@@ -207,10 +207,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   to={me ? "/" : "/login"}
                   className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-black text-sm shadow-2xl shadow-blue-500/40 transform -rotate-3 hover:rotate-0 transition-transform duration-500">FBST</div>
+                  <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-bold text-sm shadow-2xl shadow-blue-500/40 transform -rotate-3 hover:rotate-0 transition-transform duration-500">FBST</div>
                   <div className="flex flex-col">
-                    <span className="text-xl font-black tracking-tight text-[var(--lg-text-heading)] leading-none">FBST</span>
-                    <span className="text-[9px] font-bold tracking-widest text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">Fantasy Baseball Stat Tool</span>
+                    <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">FBST</span>
+                    <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">Fantasy Baseball Stat Tool</span>
                   </div>
                 </Link>
               )}
@@ -218,14 +218,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className={`flex items-center gap-1 ${!sidebarOpen && 'flex-col mx-auto'}`}>
                 <button
                   onClick={toggleTheme}
-                  className="p-2 rounded-lg hover:bg-white/5 text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
+                  className="p-2 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
                   title="Toggle Theme"
                 >
                   {theme === 'dark' ? '☀️' : '🌙'}
                 </button>
                 <button
                   onClick={() => setSidebarVisible(false)}
-                  className="p-2 rounded-lg hover:bg-white/5 text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
+                  className="p-2 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
                   title="Minimize Sidebar"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,15 +255,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            <div className={`mt-8 pt-8 border-t border-white/5 ${!sidebarOpen && 'flex flex-col items-center'}`}>
+            <div className={`mt-8 pt-8 border-t border-[var(--lg-border-faint)] ${!sidebarOpen && 'flex flex-col items-center'}`}>
               {loading ? (
                 <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
               ) : me ? (
                 <div className={`flex items-center gap-3 ${!sidebarOpen && 'flex-col'}`}>
                   {me.avatarUrl ? (
-                    <img src={me.avatarUrl} alt={me.name || 'User'} className="h-10 w-10 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-white/10" />
+                    <img src={me.avatarUrl} alt={me.name || 'User'} className="h-10 w-10 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
                   ) : (
-                    <div className="h-10 w-10 rounded-[var(--lg-radius-md)] bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black text-[var(--lg-text-muted)]">
+                    <div className="h-10 w-10 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)]">
                         {me.name?.[0] || 'U'}
                     </div>
                   )}
@@ -271,13 +271,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   {sidebarOpen && (
                     <>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] opacity-40 mb-0.5">Linked Unit</div>
-                        <div className="text-xs font-black text-[var(--lg-text-primary)] truncate uppercase tracking-tight">{me.name || me.email}</div>
+                        <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-40 mb-0.5">Account</div>
+                        <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate uppercase tracking-tight">{me.name || me.email}</div>
                       </div>
                       <button
                         onClick={onLogout}
                         className="p-2 rounded-lg hover:bg-rose-500/10 text-[var(--lg-text-muted)] hover:text-rose-400 transition-all"
-                        title="Deactivate Link"
+                        title="Sign Out"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -290,7 +290,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <button
                         onClick={onLogout}
                         className="p-2 rounded-lg hover:bg-rose-500/10 text-[var(--lg-text-muted)] hover:text-rose-400 transition-all"
-                        title="Deactivate Link"
+                        title="Sign Out"
                       >
                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -306,7 +306,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       w-full flex items-center gap-2 rounded-xl bg-[var(--lg-accent)] text-white font-semibold transition-all shadow-lg shadow-blue-500/20
                       ${sidebarOpen ? 'px-4 py-2.5 justify-center' : 'p-2 justify-center'}
                     `}
-                    title="Initialize Link"
+                    title="Sign In"
                   >
                     <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -320,7 +320,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex-1 flex flex-col min-h-screen transition-all duration-300">
-          <header className={`sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-white/[0.05] px-6 py-5 lg:hidden bg-[var(--lg-bg-page)]/80 backdrop-blur-3xl`}>
+          <header className={`sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--lg-border-faint)] px-6 py-5 lg:hidden bg-[var(--lg-bg-page)]/80 backdrop-blur-3xl`}>
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg-button lg-button-secondary p-2.5"
@@ -331,8 +331,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             
             <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-[var(--lg-accent)] flex items-center justify-center text-[10px] text-white font-black">FB</div>
-                <span className="text-xs font-black tracking-[0.2em] uppercase text-[var(--lg-text-heading)]">Protocol</span>
+                <div className="w-6 h-6 rounded bg-[var(--lg-accent)] flex items-center justify-center text-xs text-white font-bold">FB</div>
+                <span className="text-xs font-bold tracking-wide uppercase text-[var(--lg-text-heading)]">FBST</span>
             </div>
 
             <button

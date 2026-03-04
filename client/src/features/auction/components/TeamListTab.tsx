@@ -114,7 +114,7 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
 
   return (
     <div className="h-full overflow-y-auto scrollbar-hide">
-        <div className="divide-y divide-white/5">
+        <div className="divide-y divide-[var(--lg-divide)]">
             {teams.map((team: Team, idx: number) => {
                 const isExpanded = expandedId === team.id;
                 const isLoading = loadingIds.has(team.id);
@@ -129,54 +129,54 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
                 });
                 
                 return (
-                    <div key={team.id} className={`${team.isMe ? 'bg-white/5' : ''}`}>
+                    <div key={team.id} className={`${team.isMe ? 'bg-[var(--lg-tint)]' : ''}`}>
                         <div 
-                            className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-all"
+                            className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
                             onClick={() => setExpandedId(isExpanded ? null : team.id)}
                         >
                             <div className="flex items-center gap-4">
-                                <span className="text-[var(--fbst-text-muted)] font-black text-[10px] w-6 opacity-30">{String(idx + 1).padStart(2, '0')}</span>
+                                <span className="text-[var(--lg-text-muted)] font-bold text-xs w-6 opacity-30">{String(idx + 1).padStart(2, '0')}</span>
                                 <div className="flex flex-col">
-                                    <span className={`font-black tracking-tight ${team.isMe ? 'text-[var(--fbst-accent)]' : 'text-[var(--fbst-text-primary)]'}`}>
+                                    <span className={`font-semibold ${team.isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-primary)]'}`}>
                                         {team.name}
                                     </span>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-50">
-                                        {team.rosterCount} / 26 Capacity
+                                    <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">
+                                        {team.rosterCount} / 26 Roster
                                     </span>
                                 </div>
                             </div>
                             
                             <div className="flex items-center gap-8 text-right">
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-50">Budget</span>
-                                    <span className="font-black text-[var(--fbst-text-primary)] tracking-tight">${team.budget}</span>
+                                    <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Budget</span>
+                                    <span className="font-semibold text-[var(--lg-text-primary)]">${team.budget}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-50">Max Bid</span>
-                                    <span className="font-black text-[var(--fbst-accent)] tracking-tight">${team.maxBid}</span>
+                                    <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Max Bid</span>
+                                    <span className="font-semibold text-[var(--lg-accent)]">${team.maxBid}</span>
                                 </div>
-                                <div className={`text-[var(--fbst-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             </div>
                         </div>
 
                         {isExpanded && (
-                            <div className="bg-black/20 border-t border-white/5 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="bg-black/20 border-t border-[var(--lg-border-faint)] animate-in fade-in slide-in-from-top-2 duration-300">
                                 {isLoading ? (
-                                    <div className="px-6 py-12 text-center text-[var(--fbst-text-muted)] text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
-                                        Synchronizing Roster Data...
+                                    <div className="px-6 py-12 text-center text-[var(--lg-text-muted)] text-xs font-medium uppercase animate-pulse">
+                                        Loading roster...
                                     </div>
                                 ) : (
                                     <ThemedTable>
                                         <ThemedThead>
                                             <ThemedTr>
-                                                <ThemedTh className="w-16">Sector</ThemedTh>
-                                                <ThemedTh>Agent</ThemedTh>
+                                                <ThemedTh className="w-16">Pos</ThemedTh>
+                                                <ThemedTh>Player</ThemedTh>
                                                 <ThemedTh align="right" className="pr-6">Salary</ThemedTh>
                                             </ThemedTr>
                                         </ThemedThead>
-                                        <tbody className="divide-y divide-white/5">
+                                        <tbody className="divide-y divide-[var(--lg-divide)]">
                                             {roster.map((entry: RosterEntry) => {
                                                 const mlbId = entry.mlbId || entry.playerId; 
                                                 const name = entry.name || `Player #${entry.playerId}`;
@@ -200,10 +200,10 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
                                                 return (
                                                     <React.Fragment key={entry.id}>
                                                         <ThemedTr 
-                                                            className={`cursor-pointer ${isRowExpanded ? 'bg-white/5' : ''}`}
+                                                            className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : ''}`}
                                                             onClick={() => setExpandedPlayerId(isRowExpanded ? null : entry.id)}
                                                         >
-                                                            <ThemedTd className="py-2 text-[10px] font-black font-mono">
+                                                            <ThemedTd className="py-2">
                                                               <div onClick={(e) => e.stopPropagation()}>
                                                                 <select 
                                                                     className="appearance-none bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all outline-none"
@@ -221,11 +221,11 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
                                                                 </select>
                                                               </div>
                                                             </ThemedTd>
-                                                            <ThemedTd className={`py-2 font-black tracking-tight ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>
-                                                                {displayName}
+                                                            <ThemedTd className="py-2">
+                                                                <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
-                                                            <ThemedTd align="right" className="py-2 pr-6 font-mono font-black text-[var(--fbst-accent)]">
-                                                                ${entry.price}
+                                                            <ThemedTd align="right" className="py-2 pr-6">
+                                                                <span className="font-semibold text-[var(--lg-accent)]">${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (
@@ -242,9 +242,9 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
                                             {/* Dummy Keepers */}
                                             {Array.from({ length: Math.max(0, 4 - roster.length) }).map((_, i) => (
                                                  <ThemedTr key={`keeper-dummy-${i}`} className="opacity-30">
-                                                    <ThemedTd className="py-2 font-black font-mono text-[10px] italic">K</ThemedTd>
-                                                    <ThemedTd className="py-2 font-black italic text-[10px] uppercase tracking-widest">Keeper Slot {roster.length + i + 1}</ThemedTd>
-                                                    <ThemedTd align="right" className="py-2 pr-6 font-mono font-black opacity-30">$-</ThemedTd>
+                                                    <ThemedTd className="py-2"><span className="italic">K</span></ThemedTd>
+                                                    <ThemedTd className="py-2"><span className="italic font-medium uppercase">Keeper Slot {roster.length + i + 1}</span></ThemedTd>
+                                                    <ThemedTd align="right" className="py-2 pr-6">$-</ThemedTd>
                                                  </ThemedTr>
                                             ))}
                                         </tbody>

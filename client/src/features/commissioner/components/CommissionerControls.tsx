@@ -115,14 +115,14 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* 1. Period Setup */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                 <h3 className="text-lg font-semibold text-white mb-4">Season Periods</h3>
 
                 {/* List */}
                 <div className="space-y-2 mb-4">
                     {periods.length === 0 && <div className="text-white/50 text-sm italic">No periods defined.</div>}
                     {periods.map(p => (
-                        <div key={p.id} className="flex items-center justify-between text-sm bg-white/5 p-2 rounded">
+                        <div key={p.id} className="flex items-center justify-between text-sm bg-[var(--lg-tint)] p-2 rounded">
                             <div>
                                 <span className="font-medium text-white">{p.name}</span>
                                 <span className="mx-2 text-white/30">|</span>
@@ -134,29 +134,29 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
                 </div>
 
                 {/* Add Form */}
-                <div className="bg-white/5 p-3 rounded-xl space-y-3">
+                <div className="bg-[var(--lg-tint)] p-3 rounded-xl space-y-3">
                     <div className="text-xs font-semibold text-white/60 uppercase">Add / Edit Period</div>
                     <input 
-                        className="w-full bg-black/20 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                        className="w-full bg-black/20 border border-[var(--lg-border-subtle)] rounded px-2 py-1 text-white text-sm"
                         placeholder="Period Name (e.g. Period 1)"
                         value={pName}
                         onChange={e => setPName(e.target.value)}
                     />
                     <div className="grid grid-cols-2 gap-2">
                         <div>
-                            <label className="text-[10px] text-white/40 block">Start Date</label>
+                            <label className="text-xs text-white/40 block">Start Date</label>
                             <input 
                                 type="date" 
-                                className="w-full bg-black/20 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                                className="w-full bg-black/20 border border-[var(--lg-border-subtle)] rounded px-2 py-1 text-white text-sm"
                                 value={pStart}
                                 onChange={e => setPStart(e.target.value)}
                             />
                         </div>
                         <div>
-                        <label className="text-[10px] text-white/40 block">End Date</label>
+                        <label className="text-xs text-white/40 block">End Date</label>
                             <input 
                                 type="date" 
-                                className="w-full bg-black/20 border border-white/10 rounded px-2 py-1 text-white text-sm"
+                                className="w-full bg-black/20 border border-[var(--lg-border-subtle)] rounded px-2 py-1 text-white text-sm"
                                 value={pEnd}
                                 onChange={e => setPEnd(e.target.value)}
                             />
@@ -164,7 +164,7 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
                     </div>
                     <button 
                         onClick={handleSavePeriod} 
-                        className="w-full bg-[var(--fbst-accent-primary)] text-white text-sm font-bold py-1.5 rounded hover:opacity-90"
+                        className="w-full bg-[var(--lg-accent)] text-white text-sm font-bold py-1.5 rounded hover:opacity-90"
                     >
                         Save Period
                     </button>
@@ -173,21 +173,21 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
 
             <div className="space-y-6">
                 {/* 2. Auction Settings */}
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <h3 className="text-lg font-semibold text-white mb-4">Auction Settings</h3>
                     
-                    <div className="bg-white/5 p-3 rounded-xl space-y-3">
+                    <div className="bg-[var(--lg-tint)] p-3 rounded-xl space-y-3">
                         <label className="block text-sm text-white/80">Bid Limit Timer (Seconds)</label>
                         <div className="flex gap-2">
                             <input 
                                 type="number" 
-                                className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-white"
+                                className="flex-1 bg-black/20 border border-[var(--lg-border-subtle)] rounded px-2 py-1 text-white"
                                 value={timerDuration}
                                 onChange={e => setTimerDuration(e.target.value)}
                             />
                             <button 
                                 onClick={handleSaveTimer}
-                                className="px-4 bg-white/10 hover:bg-white/20 text-white rounded text-sm"
+                                className="px-4 bg-[var(--lg-tint-hover)] hover:bg-[var(--lg-tint-hover)] text-white rounded text-sm"
                             >
                                 Save
                             </button>
@@ -197,7 +197,7 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
                 </div>
 
                 {/* 3. Actions */}
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <h3 className="text-lg font-semibold text-white mb-4">Actions</h3>
                     
                     <button 

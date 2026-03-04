@@ -204,7 +204,7 @@ const SeasonPage: React.FC = () => {
               </div>
               <Link 
                 to="/players" 
-                className="ml-2 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/5 group"
+                className="ml-2 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-xs font-medium uppercase shadow-lg shadow-blue-500/5 group"
               >
                 <span>Final Rosters</span>
                 <span className="group-hover:translate-x-0.5 transition-transform">→</span>
@@ -216,7 +216,7 @@ const SeasonPage: React.FC = () => {
         {error && (
           <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300 flex items-center gap-3">
              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-            System Error: {error}
+            Error: {error}
           </div>
         )}
 
@@ -224,7 +224,7 @@ const SeasonPage: React.FC = () => {
           <div className="mt-8">
             <div className="mb-6 flex items-center justify-between px-2">
                <div>
-                  <h2 className="text-2xl font-black tracking-tight text-[var(--lg-text-heading)]">Point Matrix</h2>
+                  <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Point Matrix</h2>
                   <div className="mt-1 text-sm font-medium text-[var(--lg-text-muted)] opacity-60">Cumulative results across all completed periods.</div>
                </div>
             </div>
@@ -233,7 +233,7 @@ const SeasonPage: React.FC = () => {
                 <ThemedThead>
                   <ThemedTr>
                     <ThemedTh align="center" className="w-16">#</ThemedTh>
-                    <ThemedTh>Franchise</ThemedTh>
+                    <ThemedTh>Team</ThemedTh>
                     
                     {periodIds.map((pid) => (
                       <ThemedTh key={pid} align="center" className="min-w-[80px]">
@@ -241,43 +241,43 @@ const SeasonPage: React.FC = () => {
                       </ThemedTh>
                     ))}
 
-                    <ThemedTh align="center" className="text-[var(--lg-accent)] min-w-[120px]">
+                    <ThemedTh align="center" className="min-w-[120px]">
                       TOTAL
                     </ThemedTh>
                     <ThemedTh align="right" className="pr-8">Link</ThemedTh>
                   </ThemedTr>
                 </ThemedThead>
 
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[var(--lg-divide)]">
                   {loading ? (
                     <ThemedTr>
-                      <ThemedTd colSpan={periodIds.length + 4} align="center" className="py-20 text-[var(--lg-text-muted)] italic font-medium animate-pulse">
-                        Synchronizing season dataset...
+                      <ThemedTd colSpan={periodIds.length + 4} align="center" className="py-20">
+                        <span className="text-[var(--lg-text-muted)] italic animate-pulse">Loading season data...</span>
                       </ThemedTd>
                     </ThemedTr>
                   ) : rows.length === 0 ? (
                     <ThemedTr>
-                      <ThemedTd colSpan={periodIds.length + 4} align="center" className="py-20 text-[var(--lg-text-muted)] italic font-medium">
-                        No season records available.
+                      <ThemedTd colSpan={periodIds.length + 4} align="center" className="py-20">
+                        <span className="text-[var(--lg-text-muted)] italic">No season records available.</span>
                       </ThemedTd>
                     </ThemedTr>
                   ) : (
                     sortedRows.map((row, idx) => (
                       <ThemedTr key={row.teamId} className="group">
-                        <ThemedTd align="center" className="text-xs font-bold text-[var(--lg-text-muted)] opacity-50 tabular-nums">{idx + 1}</ThemedTd>
+                        <ThemedTd align="center">{idx + 1}</ThemedTd>
                         <ThemedTd>
-                          <div className="text-sm font-bold text-[var(--lg-text-primary)]">{row.teamName}</div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mt-1 opacity-60">{row.teamCode || '-'}</div>
+                          <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{row.teamName}</div>
+                          <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] mt-1 opacity-60">{row.teamCode || '-'}</div>
                         </ThemedTd>
                         
                         {periodIds.map((_pid, pIdx) => (
-                          <ThemedTd key={pIdx} align="center" className="font-medium text-[var(--lg-text-primary)] tabular-nums">
+                          <ThemedTd key={pIdx} align="center">
                             {Number(row.periodPoints[pIdx] || 0).toFixed(1).replace(/\.0$/, "")}
                           </ThemedTd>
                         ))}
 
                         <ThemedTd align="center">
-                          <span className="text-sm font-black text-[var(--lg-accent)] tabular-nums">{row.totalPoints.toFixed(1).replace(/\.0$/, "")}</span>
+                          <span className="text-sm font-semibold text-[var(--lg-accent)]">{row.totalPoints.toFixed(1).replace(/\.0$/, "")}</span>
                         </ThemedTd>
                         <ThemedTd align="right" className="pr-8">
                            {row.teamCode ? (
@@ -300,7 +300,7 @@ const SeasonPage: React.FC = () => {
         ) : (
           <div className="space-y-12">
             <div className="flex items-center gap-4 lg-card p-4 justify-center">
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--lg-text-muted)]">Focus Period</span>
+               <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Select Period</span>
                <div className="flex gap-2">
                  {periodIds.map(pid => (
                    <Button
@@ -318,7 +318,7 @@ const SeasonPage: React.FC = () => {
 
             {periodLoading ? (
                <div className="text-center py-20">
-                  <div className="text-[var(--fbst-text-muted)] text-lg font-medium italic animate-pulse">Scanning period telemetry...</div>
+                  <div className="text-[var(--lg-text-muted)] text-lg font-medium italic animate-pulse">Loading stats...</div>
                </div>
             ) : (
               <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
