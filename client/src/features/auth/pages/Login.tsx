@@ -16,6 +16,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(urlError === "not_approved" ? "not_approved" : "");
   const [loading, setLoading] = useState(false);
+  const [devLoading, setDevLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,12 +140,28 @@ export default function Login() {
 
             {import.meta.env.DEV && (
               <div className="pt-6 border-t border-white/5">
-                <a
-                  href="/api/auth/dev-login"
-                  className="flex items-center justify-center gap-2 w-full h-12 px-6 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs uppercase tracking-widest transition-all"
+                <button
+                  type="button"
+                  disabled={devLoading}
+                  onClick={async () => {
+                    setDevLoading(true);
+                    setError("");
+                    try {
+                      const res = await fetch("/api/auth/dev-login", { method: "POST" });
+                      const { email: devEmail, password: devPwd, error: apiErr } = await res.json();
+                      if (apiErr) throw new Error(apiErr);
+                      await loginWithPassword(devEmail, devPwd);
+                      window.location.href = "/";
+                    } catch (err: any) {
+                      setError(err.message || "Dev login failed");
+                    } finally {
+                      setDevLoading(false);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 w-full h-12 px-6 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-50"
                 >
-                  <span className="text-amber-400">⚡</span> Dev Login
-                </a>
+                  <span className="text-amber-400">⚡</span> {devLoading ? "Logging in..." : "Dev Login"}
+                </button>
               </div>
             )}
           </div>

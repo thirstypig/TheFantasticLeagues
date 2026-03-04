@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../../../lib/supabase';
 
 
 interface ArchiveAdminPanelProps {
@@ -14,6 +15,11 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
   const [uploading, setUploading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const getToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -34,7 +40,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     formData.append('file', file);
 
     try {
-      const token = localStorage.getItem('token'); // Simplistic auth
+      const token = await getToken(); // Simplistic auth
       // In real app, use axios instance or fetch wrapper from api.ts
       // But for file upload, fetch is easy.
       
@@ -69,7 +75,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting full sync for ${selectedYear} (Auto-match + Stats)...`]);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getToken();
       const response = await fetch(`/api/archive/${selectedYear}/sync`, {
         method: 'POST',
         headers: {
@@ -99,7 +105,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting auto-match for ${all ? 'all seasons' : selectedYear}...`]);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getToken();
       const url = all ? '/api/archive/auto-match-all' : `/api/archive/${selectedYear}/auto-match`;
       const response = await fetch(url, {
         method: 'POST',
@@ -139,7 +145,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting live season archival...`]);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getToken();
       const response = await fetch(`/api/archive/archive-current`, {
         method: 'POST',
         headers: {
@@ -174,7 +180,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting global recalculation for all seasons...`]);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = await getToken();
       const response = await fetch(`/api/archive/recalculate-all`, {
         method: 'POST',
         headers: {
@@ -257,7 +263,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
                   <span>Upload .xlsx to overwrite draft/standings/periods.</span>
                   <input 
                     type="file" 
-                    accept=".xlsx, .xls" 
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" 
                     onChange={handleFileChange}
                     className="text-xs"
                   />

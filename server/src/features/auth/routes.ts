@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../../db/prisma.js";
+import { supabaseAdmin } from "../../lib/supabase.js";
 
 const router = Router();
 
@@ -58,5 +59,41 @@ router.get("/me", async (req, res) => {
     return res.status(500).json({ error: "Auth check failed" });
   }
 });
+
+// Dev-only: set a known password on the first admin user and return credentials
+if (process.env.NODE_ENV !== "production") {
+  router.post("/dev-login", async (_req, res) => {
+    try {
+      const DEV_PASSWORD = "Password123";
+
+      const dbUser = await prisma.user.findFirst({
+        where: { isAdmin: true },
+        select: { email: true },
+      });
+
+      if (!dbUser) {
+        return res.status(404).json({ error: "No admin user found in DB" });
+      }
+
+      // Find or create the Supabase user with a known password
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+      const sbUser = users.find((u: any) => u.email === dbUser.email);
+
+      if (sbUser) {
+        await supabaseAdmin.auth.admin.updateUserById(sbUser.id, { password: DEV_PASSWORD });
+      } else {
+        await supabaseAdmin.auth.admin.createUser({
+          email: dbUser.email,
+          password: DEV_PASSWORD,
+          email_confirm: true,
+        });
+      }
+
+      return res.json({ email: dbUser.email, password: DEV_PASSWORD });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+}
 
 export const authRouter = router;

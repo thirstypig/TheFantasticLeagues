@@ -4,6 +4,39 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-03 (Session 3)
+
+### Completed
+- Fixed `ArchiveAdminPanel.tsx` auth: replaced 5x `localStorage.getItem('token')` with `supabase.auth.getSession()` helper
+- Added MIME types to file input accept attribute for better browser compatibility
+- Imported 2025 season from `Fantasy_Baseball_2025 - FINAL.xlsx` via terminal curl (UI was inaccessible)
+  - 8 teams, 7 periods, 184 draft picks, 251 auto-matched players (46 unmatched)
+- Ran MLB data sync: 1,110 player records updated with real stats
+- Confirmed user `jimmychang316@gmail.com` is already admin + commissioner (leagues 1 & 2)
+- Researched UI/UX best practices for dark/light mode, liquid glass, and sidebar spacing
+
+### Pending / Next Steps — UI/UX Redesign
+- [ ] **Compact sidebar nav** — current items are `10px font-black uppercase tracking-widest` with `10px 16px` padding. Change to `text-sm font-medium` (14px/500), normal case, `6px 10px` padding
+- [ ] **Fix dark/light mode colors** — align with shadcn v4 OKLCH defaults or fix `--lg-*` token inconsistencies
+- [ ] **Clean up legacy CSS vars** — audit & replace all `var(--fbst-*)` references with `var(--lg-*)` tokens
+- [ ] **Delete stale files**: `components/ThemeContext.tsx`, `components/NavBar.tsx`, `components/Layout.tsx`
+- [ ] **Liquid glass tuning** — light mode glass too opaque (0.65 → 0.15), dark mode blur too strong (40px sidebar → 16-20px)
+- [ ] See detailed plan: `.claude/projects/.../memory/ui-redesign.md`
+
+### Pending / Next Steps — Archive
+- [ ] 46 unmatched players still need manual matching or improved auto-match logic
+- [ ] Verify archive page period/season sections display correctly with populated stats
+
+### Concerns / Tech Debt
+- **Duplicate ThemeContext**: `contexts/ThemeContext.tsx` (active, key: `fbst-theme`) vs `components/ThemeContext.tsx` (stale, key: `theme`) — delete the stale one
+- **ArchiveAdminPanel uses legacy `--fbst-*` vars** — needs migration to `--lg-*`
+- **Orchestration tab invisible** — only shows for `isAdmin` users; no way to discover it exists if you're not admin
+
+### Test Results
+- Did not run tests this session (focused on data import + UI research)
+
+---
+
 ## Session 2026-02-21 (Session 2)
 
 ### Completed
