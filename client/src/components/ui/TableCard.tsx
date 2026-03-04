@@ -104,7 +104,7 @@ export function Th({
     <th
       style={w ? { width: w } : undefined}
       className={[
-        "px-6 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--lg-text-muted)]",
+        "px-6 py-5 text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]",
         alignCls(align),
         className ?? "",
       ].join(" ")}
@@ -126,7 +126,7 @@ export function Td({
   return (
     <td
       className={[
-        "px-6 py-4 align-middle text-[var(--lg-text-primary)] text-[13px] font-bold tabular-nums tracking-tight",
+        "px-6 py-4 align-middle text-[var(--lg-text-primary)] text-sm tabular-nums",
         alignCls(align),
         className ?? "",
       ].join(" ")}

@@ -45,10 +45,10 @@ export default function Signup() {
       
       <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
         <Link to="/" className="flex items-center gap-3 mb-12 justify-center group">
-          <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-black text-sm shadow-2xl shadow-blue-500/40 transform group-hover:-rotate-6 transition-transform">FBST</div>
+          <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-bold text-sm shadow-2xl shadow-blue-500/40 transform group-hover:-rotate-6 transition-transform">FBST</div>
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[var(--lg-text-heading)] leading-none">FBST</span>
-            <span className="text-[9px] font-bold tracking-widest text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">Fantasy Baseball Stat Tool</span>
+            <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">FBST</span>
+            <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">Fantasy Baseball Stat Tool</span>
           </div>
         </Link>
 
@@ -56,7 +56,7 @@ export default function Signup() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[var(--lg-accent)] to-transparent opacity-50" />
           
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-black tracking-tight text-[var(--lg-text-heading)] mb-2">Create Account</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-[var(--lg-text-heading)] mb-2">Create Account</h2>
             <p className="text-sm font-medium text-[var(--lg-text-secondary)] opacity-60">Create your free account</p>
           </div>
 
@@ -67,16 +67,16 @@ export default function Signup() {
                 href="/api/auth/yahoo"
                 className="flex items-center justify-center gap-2 w-full h-11 px-4 rounded-xl bg-[#6001d2]/10 border border-[#6001d2]/20 hover:bg-[#6001d2]/20 hover:border-[#6001d2]/30 text-white font-medium transition-all duration-200"
               >
-                <span className="w-5 h-5 flex items-center justify-center bg-[#6001d2] rounded-full text-[10px] font-bold">Y</span>
+                <span className="w-5 h-5 flex items-center justify-center bg-[#6001d2] rounded-full text-xs font-bold">Y</span>
                 Yahoo
               </a>
             </div>
 
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/5"></div>
+                <div className="w-full border-t border-[var(--lg-border-faint)]"></div>
               </div>
-              <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+              <div className="relative flex justify-center text-xs uppercase tracking-wide">
                 <span className="bg-[var(--lg-card-bg)] px-3 text-[var(--lg-text-muted)] font-bold">Or sign up with email</span>
               </div>
             </div>
@@ -90,7 +90,7 @@ export default function Signup() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-medium"
+                  className="w-full h-12 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-medium"
                   placeholder="John Doe"
                 />
               </div>
@@ -103,7 +103,7 @@ export default function Signup() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl bg-white/5 border border-white/10 focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all placeholder:text-white/20 text-sm font-medium"
+                  className="w-full h-12 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all placeholder:text-white/20 text-sm font-medium"
                   placeholder="you@example.com"
                 />
               </div>
@@ -117,7 +117,7 @@ export default function Signup() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-12 pl-4 pr-11 rounded-xl bg-white/5 border border-white/10 focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-medium"
+                    className="w-full h-12 pl-4 pr-11 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-medium"
                   />
                   <button
                     type="button"

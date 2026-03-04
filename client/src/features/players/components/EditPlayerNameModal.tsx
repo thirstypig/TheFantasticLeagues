@@ -72,30 +72,30 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-6">
-          <h2 className="text-2xl font-black tracking-tighter text-[var(--lg-text-heading)]">Identity Override</h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mt-1 opacity-60">Updating Player Credentials</p>
+          <h2 className="text-2xl font-bold tracking-tight text-[var(--lg-text-heading)]">Edit Player Name</h2>
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mt-1 opacity-60">Update player display name</p>
         </div>
 
         {/* Current abbreviated name (reference) */}
         <div className="mb-6">
-          <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-            Transmission ID (Reference)
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            Current Name (Reference)
           </label>
-          <div className="px-4 py-3 rounded-[var(--lg-radius-lg)] border border-[var(--lg-glass-border)] bg-black/20 text-[var(--lg-text-muted)] font-black tracking-widest text-sm">
+          <div className="px-4 py-3 rounded-[var(--lg-radius-lg)] border border-[var(--lg-glass-border)] bg-black/20 text-[var(--lg-text-muted)] font-bold tracking-wide text-sm">
             {stat.playerName}
           </div>
         </div>
 
         {/* MLB Player Search */}
         <div className="mb-6 relative">
-          <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-            Central Database Search
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            Search MLB Players
           </label>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search MLB Registry..."
+            placeholder="Search MLB players..."
             className="lg-input w-full"
           />
           
@@ -106,17 +106,17 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
                 <button
                   key={player.id}
                   onClick={() => handleSelectPlayer(player)}
-                  className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-b-0 transition-colors group"
+                  className="w-full text-left px-4 py-3 hover:bg-[var(--lg-tint)] border-b border-[var(--lg-border-faint)] last:border-b-0 transition-colors group"
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-[var(--lg-text-primary)] group-hover:text-[var(--lg-accent)] transition-colors">{player.name}</span>
                     {(player.mlbId || player.id) && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-[var(--lg-radius-sm)] bg-blue-500/10 text-blue-400 font-black border border-blue-500/20">
+                      <span className="text-xs px-2 py-0.5 rounded-[var(--lg-radius-sm)] bg-blue-500/10 text-blue-400 font-bold border border-blue-500/20">
                         #{player.mlbId || player.id}
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mt-1 opacity-60">
+                  <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mt-1 opacity-60">
                     {player.team && <span>{player.team} • </span>}
                     {player.position || player.posPrimary || 'UT'}
                   </div>
@@ -125,16 +125,16 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
             </div>
           )}
           {searching && (
-            <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-accent)] mt-2 animate-pulse">
-              Querying MLB records...
+            <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-accent)] mt-2 animate-pulse">
+              Searching...
             </div>
           )}
         </div>
 
         {/* Full Name Input */}
         <div className="mb-6">
-          <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-            Target Display Identity
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            Display Name
           </label>
           <input
             type="text"
@@ -147,15 +147,15 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
 
         {/* MLB ID Input */}
         <div className="mb-8">
-          <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-            MLB Registry ID (Optional)
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            MLB ID (Optional)
           </label>
           <input
             type="text"
             value={mlbId}
             onChange={(e) => setMlbId(e.target.value)}
             placeholder="e.g., 660271"
-            className="lg-input w-full text-blue-400 font-black tracking-widest"
+            className="lg-input w-full text-blue-400 font-bold tracking-wide"
           />
         </div>
 
@@ -179,7 +179,7 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
             disabled={saving || !fullName.trim()}
             className="lg-button-primary px-8 py-2"
           >
-            {saving ? 'Synchronizing...' : 'Update Record'}
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

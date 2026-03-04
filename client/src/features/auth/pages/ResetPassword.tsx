@@ -62,12 +62,12 @@ export default function ResetPassword() {
       <div className="lg-auth-hero">
         <div>
            <div className="flex items-center gap-3 mb-8">
-             <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm">
+             <div className="w-10 h-10 rounded-xl bg-[var(--lg-tint-hover)] border border-[var(--lg-border-subtle)] flex items-center justify-center backdrop-blur-sm">
                <span className="font-bold text-white text-lg">F</span>
              </div>
              <div className="text-xl font-bold tracking-tight text-white">FBST</div>
            </div>
-           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6 text-white leading-tight">
+           <h1 className="text-4xl md:text-3xl font-extrabold tracking-tight mb-6 text-white leading-tight">
              New <br/> Beginnings.
            </h1>
            <p className="text-lg text-white/70 max-w-md leading-relaxed">
@@ -107,7 +107,7 @@ export default function ResetPassword() {
                      required
                      value={password}
                      onChange={(e) => setPassword(e.target.value)}
-                     className="w-full h-11 pl-4 pr-11 rounded-xl bg-white/5 border border-white/10 focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all"
+                     className="w-full h-11 pl-4 pr-11 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all"
                    />
                    <button
                      type="button"
@@ -129,7 +129,7 @@ export default function ResetPassword() {
                      required
                      value={confirmPassword}
                      onChange={(e) => setConfirmPassword(e.target.value)}
-                     className="w-full h-11 pl-4 pr-11 rounded-xl bg-white/5 border border-white/10 focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all"
+                     className="w-full h-11 pl-4 pr-11 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all"
                    />
                    <button
                      type="button"

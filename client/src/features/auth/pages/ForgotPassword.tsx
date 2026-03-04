@@ -40,12 +40,12 @@ export default function ForgotPassword() {
       <div className="lg-auth-hero">
         <div>
            <div className="flex items-center gap-3 mb-8">
-             <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm">
+             <div className="w-10 h-10 rounded-xl bg-[var(--lg-tint-hover)] border border-[var(--lg-border-subtle)] flex items-center justify-center backdrop-blur-sm">
                <span className="font-bold text-white text-lg">F</span>
              </div>
              <div className="text-xl font-bold tracking-tight text-white">FBST</div>
            </div>
-           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6 text-white leading-tight">
+           <h1 className="text-4xl md:text-3xl font-extrabold tracking-tight mb-6 text-white leading-tight">
              Recover <br/> Access.
            </h1>
            <p className="text-lg text-white/70 max-w-md leading-relaxed">
@@ -68,7 +68,7 @@ export default function ForgotPassword() {
                 </div>
                 <Link 
                   to="/login"
-                  className="w-full h-11 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl transition-all text-center flex items-center justify-center"
+                  className="w-full h-11 bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] text-white font-semibold rounded-xl transition-all text-center flex items-center justify-center"
                 >
                   Return to Login
                 </Link>
@@ -84,7 +84,7 @@ export default function ForgotPassword() {
                    required
                    value={email}
                    onChange={(e) => setEmail(e.target.value)}
-                   className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all placeholder:text-white/20"
+                   className="w-full h-11 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all placeholder:text-white/20"
                    placeholder="name@example.com"
                  />
                </div>

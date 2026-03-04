@@ -83,7 +83,7 @@ function SortablePlayer({ player, compact = false }: { player: RosterPlayer; com
         </span>
         <div className="flex flex-col">
             <span className="font-semibold text-slate-200 leading-tight">{player.name}</span>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wide">
+            <span className="text-xs text-slate-500 uppercase tracking-wide">
                 {player.mlbTeam || 'FA'} • {player.posList}
             </span>
         </div>

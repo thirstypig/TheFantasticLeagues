@@ -122,18 +122,18 @@ const Standings = () => {
       <div className="px-6 pt-6">
         <PageHeader 
           title="Standings Central" 
-          subtitle={viewMode === 'season' ? "Grand Total Registry: All-Time Aggregated Scores" : `Tactical Analysis: Period ${selectedPeriod} Snapshot`}
+          subtitle={viewMode === 'season' ? "All-Time Standings" : `Period ${selectedPeriod} Standings`}
           rightElement={
-            <div className="flex bg-white/5 p-1 rounded-[var(--lg-radius-lg)] border border-white/10 backdrop-blur-3xl">
+            <div className="flex bg-[var(--lg-tint)] p-1 rounded-[var(--lg-radius-lg)] border border-[var(--lg-border-subtle)] backdrop-blur-3xl">
                 <button
                     onClick={() => setViewMode('season')}
-                    className={`px-6 py-2 rounded-[var(--lg-radius-md)] text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${viewMode === 'season' ? 'bg-[var(--lg-accent)] text-white shadow-xl shadow-blue-500/20 scale-[1.02]' : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-white/5'}`}
+                    className={`px-6 py-2 rounded-[var(--lg-radius-md)] text-xs font-bold uppercase tracking-wide transition-all duration-300 ${viewMode === 'season' ? 'bg-[var(--lg-accent)] text-white shadow-xl shadow-blue-500/20 scale-[1.02]' : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]'}`}
                 >
                     Season
                 </button>
                 <button
                     onClick={() => setViewMode('period')}
-                    className={`px-6 py-2 rounded-[var(--lg-radius-md)] text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${viewMode === 'period' ? 'bg-[var(--lg-accent)] text-white shadow-xl shadow-blue-500/20 scale-[1.02]' : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-white/5'}`}
+                    className={`px-6 py-2 rounded-[var(--lg-radius-md)] text-xs font-bold uppercase tracking-wide transition-all duration-300 ${viewMode === 'period' ? 'bg-[var(--lg-accent)] text-white shadow-xl shadow-blue-500/20 scale-[1.02]' : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]'}`}
                 >
                     Period
                 </button>
@@ -144,16 +144,16 @@ const Standings = () => {
       
       <div className="max-w-7xl mx-auto w-full px-6 py-8 custom-scrollbar">
       {viewMode === 'period' && (
-        <div className="flex flex-wrap items-center gap-6 mb-12 lg-card p-4 bg-white/[0.01]">
+        <div className="flex flex-wrap items-center gap-6 mb-12 lg-card p-4 bg-transparent">
             <div className="flex items-center gap-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--lg-text-muted)] opacity-60">Chronology Matrix</label>
+              <label className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-60">Select Period</label>
               <select 
                   value={selectedPeriod || ''} 
                   onChange={e => setSelectedPeriod(Number(e.target.value))}
-                  className="lg-input w-auto min-w-[240px] font-black uppercase tracking-widest text-[10px] py-2.5"
+                  className="lg-input w-auto min-w-[240px] font-bold uppercase tracking-wide text-xs py-2.5"
               >
                   {periods.map(p => (
-                      <option key={p.id} value={p.periodNumber}>Deployment Cycle {p.periodNumber}</option>
+                      <option key={p.id} value={p.periodNumber}>Period {p.periodNumber}</option>
                   ))}
               </select>
             </div>
@@ -163,7 +163,7 @@ const Standings = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 text-[var(--lg-text-muted)]">
           <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-6"></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">Synchronizing Standings Aggregate...</p>
+          <p className="text-xs font-bold uppercase tracking-wide animate-pulse">Loading standings...</p>
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -178,7 +178,7 @@ const Standings = () => {
                   <div className="space-y-10">
                     <div className="flex items-center gap-4 mb-8">
                        <div className="w-2 h-8 bg-blue-500 rounded-full shadow-lg shadow-blue-500/20"></div>
-                       <h3 className="text-2xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)]">
+                       <h3 className="text-2xl font-bold uppercase tracking-tight text-[var(--lg-text-heading)]">
                         Hitting Division
                       </h3>
                     </div>
@@ -197,7 +197,7 @@ const Standings = () => {
                   <div className="space-y-10">
                     <div className="flex items-center gap-4 mb-8">
                        <div className="w-2 h-8 bg-purple-500 rounded-full shadow-lg shadow-purple-500/20"></div>
-                       <h3 className="text-2xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)]">
+                       <h3 className="text-2xl font-bold uppercase tracking-tight text-[var(--lg-text-heading)]">
                         Pitching Division
                       </h3>
                     </div>

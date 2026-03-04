@@ -25,25 +25,25 @@
        CORE DESIGN TOKENS - LIGHT MODE
        ============================================ */
 
-    /* Background */
-    --lg-bg-primary: #f0f4f8;
-    --lg-bg-secondary: #e2e8f0;
+    /* Background — cool gray, not white */
+    --lg-bg-primary: #e4e9f0;
+    --lg-bg-secondary: #d8dfe8;
     --lg-bg-page: linear-gradient(
       145deg,
-      #f0f4f8 0%,
-      #dce4ed 50%,
-      #e8eef5 100%
+      #e0e6ee 0%,
+      #d2dae5 50%,
+      #dbe2ec 100%
     );
 
-    /* Glass */
-    --lg-glass-bg: rgba(255, 255, 255, 0.65);
-    --lg-glass-bg-hover: rgba(255, 255, 255, 0.8);
-    --lg-glass-border: rgba(255, 255, 255, 0.5);
-    --lg-glass-border-subtle: rgba(0, 45, 114, 0.12);
+    /* Glass — visible panels on the gray background */
+    --lg-glass-bg: rgba(248, 250, 252, 0.5);
+    --lg-glass-bg-hover: rgba(248, 250, 252, 0.65);
+    --lg-glass-border: rgba(255, 255, 255, 0.4);
+    --lg-glass-border-subtle: rgba(0, 45, 114, 0.1);
     --lg-glass-blur: blur(20px);
     --lg-glass-shadow:
-      0 4px 24px rgba(0, 45, 114, 0.08), 0 1px 2px rgba(0, 45, 114, 0.04),
-      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      0 4px 24px rgba(0, 45, 114, 0.06), 0 1px 2px rgba(0, 45, 114, 0.03),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
     /* Text */
     --lg-text-primary: #0f172a;
@@ -64,15 +64,22 @@
     --lg-table-row-alt: rgba(0, 45, 114, 0.02);
 
     /* Sidebar */
-    --lg-sidebar-bg: rgba(255, 255, 255, 0.7);
+    --lg-sidebar-bg: rgba(248, 250, 252, 0.55);
     --lg-sidebar-border: rgba(0, 45, 114, 0.08);
     --lg-sidebar-item-hover: rgba(0, 45, 114, 0.06);
     --lg-sidebar-item-active: rgba(0, 45, 114, 0.12);
 
     /* Inputs */
-    --lg-input-bg: rgba(255, 255, 255, 0.8);
+    --lg-input-bg: rgba(248, 250, 252, 0.7);
     --lg-input-border: rgba(0, 45, 114, 0.15);
     --lg-input-focus: var(--lg-pantone-294-bright);
+
+    /* Mode-aware tints (navy on light, white on dark) */
+    --lg-tint: rgba(0, 45, 114, 0.04);
+    --lg-tint-hover: rgba(0, 45, 114, 0.08);
+    --lg-border-faint: rgba(0, 45, 114, 0.06);
+    --lg-border-subtle: rgba(0, 45, 114, 0.1);
+    --lg-divide: rgba(0, 45, 114, 0.06);
 
     /* Status Colors */
     --lg-success: #059669;
@@ -120,19 +127,6 @@
     --lg-transition-hover: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --lg-transition-micro: 0.1s ease-out;
 
-    /* Legacy compatibility */
-    --glass-bg: var(--lg-glass-bg);
-    --glass-border: var(--lg-glass-border);
-    --glass-blur: var(--lg-glass-blur);
-    --glass-shadow: var(--lg-glass-shadow);
-    --fbst-accent: var(--lg-accent);
-    --fbst-text-heading: var(--lg-text-heading);
-    --fbst-text-primary: var(--lg-text-primary);
-    --fbst-text-muted: var(--lg-text-muted);
-    --fbst-table-header-bg: var(--lg-table-header-bg);
-    --fbst-table-border: var(--lg-table-border);
-    --fbst-table-row-hover: var(--lg-table-row-hover);
-
     /* Shadcn compatibility tokens */
     --background: 210 40% 96.1%;
     --foreground: 222.2 84% 4.9%;
@@ -174,7 +168,7 @@
     --lg-glass-bg-hover: rgba(30, 41, 59, 0.85);
     --lg-glass-border: rgba(255, 255, 255, 0.12);
     --lg-glass-border-subtle: rgba(26, 117, 255, 0.15);
-    --lg-glass-blur: blur(24px);
+    --lg-glass-blur: blur(16px);
     --lg-glass-shadow:
       0 4px 32px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -207,6 +201,13 @@
     --lg-input-bg: rgba(30, 41, 59, 0.6);
     --lg-input-border: rgba(255, 255, 255, 0.1);
     --lg-input-focus: var(--lg-pantone-294-bright);
+
+    /* Mode-aware tints - Dark (white tints) */
+    --lg-tint: rgba(255, 255, 255, 0.05);
+    --lg-tint-hover: rgba(255, 255, 255, 0.1);
+    --lg-border-faint: rgba(255, 255, 255, 0.05);
+    --lg-border-subtle: rgba(255, 255, 255, 0.1);
+    --lg-divide: rgba(255, 255, 255, 0.05);
 
     /* Delta Colors - Dark */
     --lg-delta-positive: #34d399;
@@ -273,45 +274,6 @@
     background: var(--lg-bg-page);
   }
 
-  /* ============================================
-     ABSTRACT BACKGROUND IMAGE
-     ============================================ */
-
-  /* Base background - Light Mode (Subtle tint of the image) */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -2;
-    background-image: url('./assets/bg-abstract-blue.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    opacity: 0.08; /* Very subtle texture on light mode */
-    pointer-events: none;
-  }
-  
-  /* Additional depth for Light Mode */
-  body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background: radial-gradient(circle at center, transparent 0%, rgba(255,255,255,0.8) 100%);
-    pointer-events: none;
-  }
-
-  /* Dark Mode - Full vibrancy */
-  .dark body::before {
-    opacity: 1; /* Full visibility */
-    filter: brightness(0.8) contrast(1.1); /* Slight adjustment for text contrast */
-  }
-
-  .dark body::after {
-    /* Optional overlay to ensure text readability if needed, or remove */
-    background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.4) 100%);
-    opacity: 0.6;
-  }
 
   /* ============================================
      DEFAULT TABLE STYLES
@@ -371,37 +333,34 @@
 
   .lg-heading-1 {
     font-size: var(--lg-font-size-3xl);
-    font-weight: 900;
+    font-weight: 700;
     color: var(--lg-text-heading);
-    letter-spacing: -0.04em;
+    letter-spacing: -0.02em;
     line-height: 1.1;
-    text-transform: uppercase;
   }
 
   .lg-heading-2 {
     font-size: var(--lg-font-size-2xl);
-    font-weight: 900;
+    font-weight: 700;
     color: var(--lg-text-heading);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.01em;
     line-height: 1.2;
-    text-transform: uppercase;
   }
 
   .lg-heading-3 {
     font-size: var(--lg-font-size-xl);
-    font-weight: 900;
+    font-weight: 700;
     color: var(--lg-text-heading);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
     line-height: 1.3;
-    text-transform: uppercase;
   }
 
   .lg-label {
     font-size: var(--lg-font-size-xs);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--lg-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
   }
 
   .lg-body {
@@ -420,8 +379,8 @@
 
   .lg-sidebar {
     background: var(--lg-sidebar-bg);
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-right: 1px solid var(--lg-sidebar-border);
     box-shadow:
       10px 0 50px rgba(0, 0, 0, 0.1),
@@ -431,14 +390,14 @@
   .lg-sidebar-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
+    gap: 10px;
+    padding: 6px 10px;
     border-radius: var(--lg-radius-md);
     color: var(--lg-text-secondary);
-    font-size: 10px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
     transition: all var(--lg-transition-hover);
     cursor: pointer;
     border: 1px solid transparent;
@@ -459,13 +418,13 @@
   }
 
   .lg-sidebar-section-label {
-    font-size: 9px;
-    font-weight: 900;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--lg-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.3em;
-    padding: 16px 16px 8px;
-    opacity: 0.4;
+    letter-spacing: 0.1em;
+    padding: 12px 10px 6px;
+    opacity: 0.6;
   }
 
   /* ============================================
@@ -501,7 +460,7 @@
   .lg-button-secondary {
     background: var(--lg-glass-bg);
     color: var(--lg-text-primary);
-    border: 1px solid var(--lg-glass-border);
+    border: 1px solid var(--lg-border-subtle);
     backdrop-filter: var(--lg-glass-blur);
   }
 

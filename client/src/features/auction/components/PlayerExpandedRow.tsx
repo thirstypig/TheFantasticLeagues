@@ -8,6 +8,7 @@ import {
   CareerPitchingRow,
   FieldingStatRow
 } from '../../../api';
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
 interface PlayerExpandedRowProps {
   player: PlayerSeasonStat;
@@ -60,14 +61,14 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
   const isPitcher = player.is_pitcher;
 
   return (
-    <tr className="bg-[var(--fbst-surface-secondary)]/20 cursor-default" onClick={e => e.stopPropagation()}>
-        <td colSpan={colSpan} className="px-3 py-3">
+    <tr className="bg-[var(--lg-bg-secondary)]/20 cursor-default" onClick={e => e.stopPropagation()}>
+        <ThemedTd colSpan={colSpan} className="px-3 py-3">
             <div className="flex flex-col gap-3">
                 
                 {/* Positional Usage */}
                 <div className="flex items-center gap-2 text-xs">
-                    <span className="font-semibold text-[var(--fbst-text-muted)]">POSITIONS:</span>
-                    <span className="font-mono bg-[var(--fbst-surface-elevated)] px-2 py-0.5 rounded border border-[var(--fbst-table-border)] text-[var(--fbst-text-primary)]">
+                    <span className="font-semibold text-[var(--lg-text-muted)]">POSITIONS:</span>
+                    <span className="font-mono bg-[var(--lg-glass-bg-hover)] px-2 py-0.5 rounded border border-[var(--lg-table-border)] text-[var(--lg-text-primary)]">
                         {getPrimaryPosition(player.positions) || 'N/A'}
                     </span>
                 </div>
@@ -75,13 +76,13 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                 {/* Fielding Stats (2024) - Hitters Only */}
                 {!isPitcher && fieldingStats.length > 0 && (
                     <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold text-[var(--fbst-text-muted)] uppercase tracking-wider">2024 Defensive Usage</span>
+                        <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">2024 Defensive Usage</span>
                         <div className="flex flex-wrap gap-2">
                             {fieldingStats.map((f, i) => (
-                                <div key={i} className="text-xs bg-[var(--fbst-surface-elevated)] border border-[var(--fbst-table-border)] px-2 py-1 rounded flex gap-2 items-center text-[var(--fbst-text-primary)]">
+                                <div key={i} className="text-xs bg-[var(--lg-glass-bg-hover)] border border-[var(--lg-table-border)] px-2 py-1 rounded flex gap-2 items-center text-[var(--lg-text-primary)]">
                                     <span className="font-bold">{f.position}</span>
-                                    <span className="text-[var(--fbst-text-muted)]">{f.games} G</span>
-                                    <span className="text-[var(--fbst-text-muted)]">({f.gamesStarted} GS)</span>
+                                    <span className="text-[var(--lg-text-muted)]">{f.games} G</span>
+                                    <span className="text-[var(--lg-text-muted)]">({f.gamesStarted} GS)</span>
                                 </div>
                             ))}
                         </div>
@@ -89,55 +90,55 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                 )}
 
                 {/* Career Stats Table */}
-                <div className="overflow-x-auto rounded border border-[var(--fbst-table-border)] bg-[var(--fbst-surface-elevated)]">
-                    <table className="w-full text-xs text-center text-[var(--fbst-text-primary)]">
-                        <thead className="bg-[var(--fbst-surface-secondary)] font-semibold text-[var(--fbst-text-muted)]">
-                            <tr>
-                                <th className="py-1 px-2 text-left">Year</th>
-                                <th className="py-1 px-2">Team</th>
+                <div className="overflow-x-auto rounded border border-[var(--lg-table-border)]">
+                    <ThemedTable bare>
+                        <ThemedThead>
+                            <ThemedTr>
+                                <ThemedTh>Year</ThemedTh>
+                                <ThemedTh align="center">Team</ThemedTh>
                                 {isPitcher ? (
                                     <>
-                                        <th>W</th><th>L</th><th>SV</th><th>K</th><th>ERA</th><th>WHIP</th><th>SO</th>
+                                        <ThemedTh align="center">W</ThemedTh><ThemedTh align="center">L</ThemedTh><ThemedTh align="center">SV</ThemedTh><ThemedTh align="center">K</ThemedTh><ThemedTh align="center">ERA</ThemedTh><ThemedTh align="center">WHIP</ThemedTh><ThemedTh align="center">SO</ThemedTh>
                                     </>
                                 ) : (
                                     <>
-                                        <th>AB</th><th>R</th><th>HR</th><th>RBI</th><th>SB</th><th>AVG</th><th>GS</th>
+                                        <ThemedTh align="center">AB</ThemedTh><ThemedTh align="center">R</ThemedTh><ThemedTh align="center">HR</ThemedTh><ThemedTh align="center">RBI</ThemedTh><ThemedTh align="center">SB</ThemedTh><ThemedTh align="center">AVG</ThemedTh><ThemedTh align="center">GS</ThemedTh>
                                     </>
                                 )}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--fbst-table-border)]">
-                            {loading && <tr><td colSpan={9} className="py-4 text-[var(--fbst-text-muted)]">Loading stats...</td></tr>}
-                            {error && !loading && <tr><td colSpan={9} className="py-4 text-red-500">Failed to load stats.</td></tr>}
+                            </ThemedTr>
+                        </ThemedThead>
+                        <tbody>
+                            {loading && <ThemedTr><ThemedTd colSpan={9} align="center" className="py-4"><span className="text-[var(--lg-text-muted)]">Loading stats...</span></ThemedTd></ThemedTr>}
+                            {error && !loading && <ThemedTr><ThemedTd colSpan={9} align="center" className="py-4"><span className="text-red-500">Failed to load stats.</span></ThemedTd></ThemedTr>}
                             {!loading && !error && careerStats.map((r, i) => (
-                                <tr key={i} className={r.year === 'TOT' ? 'font-bold bg-[var(--fbst-surface-secondary)]/50' : ''}>
-                                    <td className="py-1 px-2 text-left">{r.year === 'TOT' ? 'Career totals' : r.year}</td>
-                                    <td className="py-1 px-2">{r.tm}</td>
+                                <ThemedTr key={i} className={r.year === 'TOT' ? 'font-bold bg-[var(--lg-bg-secondary)]/50' : ''}>
+                                    <ThemedTd>{r.year === 'TOT' ? 'Career totals' : r.year}</ThemedTd>
+                                    <ThemedTd align="center">{r.tm}</ThemedTd>
                                     {isPitcher ? (
                                         <>
-                                            <td>{(r as CareerPitchingRow).W}</td>
-                                            <td>{(r as CareerPitchingRow).L}</td>
-                                            <td>{(r as CareerPitchingRow).SV}</td>
-                                            <td>{(r as CareerPitchingRow).SO}</td>
-                                            <td>{(r as CareerPitchingRow).ERA}</td>
-                                            <td>{(r as CareerPitchingRow).WHIP}</td>
-                                            <td>{(r as CareerPitchingRow).SHO}</td>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).W}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).L}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).SV}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).SO}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).ERA}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).WHIP}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerPitchingRow).SHO}</ThemedTd>
                                         </>
                                     ) : (
                                         <>
-                                            <td>{(r as CareerHittingRow).AB}</td>
-                                            <td>{(r as CareerHittingRow).R}</td>
-                                            <td>{(r as CareerHittingRow).HR}</td>
-                                            <td>{(r as CareerHittingRow).RBI}</td>
-                                            <td>{(r as CareerHittingRow).SB}</td>
-                                            <td>{(r as CareerHittingRow).AVG}</td>
-                                            <td>{(r as CareerHittingRow).GS}</td>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).AB}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).R}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).HR}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).RBI}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).SB}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).AVG}</ThemedTd>
+                                            <ThemedTd align="center">{(r as CareerHittingRow).GS}</ThemedTd>
                                         </>
                                     )}
-                                </tr>
+                                </ThemedTr>
                             ))}
                         </tbody>
-                    </table>
+                    </ThemedTable>
                 </div>
 
                 {/* Action Buttons */}
@@ -145,7 +146,7 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                     {!isTaken && onQueue && (
                         <button 
                             onClick={() => onQueue(player.mlb_id || '')}
-                            className={`text-sm font-bold bg-[var(--fbst-surface-secondary)] border border-[var(--fbst-table-border)] text-[var(--fbst-text-primary)] px-4 py-2 rounded shadow hover:bg-[var(--fbst-surface-elevated)] active:scale-95 transition-all ${isQueued?.(player.mlb_id || '') ? 'text-[var(--fbst-accent-success)] border-[var(--fbst-accent-success)]' : ''}`}
+                            className={`text-sm font-bold bg-[var(--lg-bg-secondary)] border border-[var(--lg-table-border)] text-[var(--lg-text-primary)] px-4 py-2 rounded shadow hover:bg-[var(--lg-glass-bg-hover)] active:scale-95 transition-all ${isQueued?.(player.mlb_id || '') ? 'text-[var(--lg-success)] border-[var(--lg-success)]' : ''}`}
                         >
                             {isQueued?.(player.mlb_id || '') ? '✓ Queued' : '+ Queue'}
                         </button>
@@ -153,19 +154,19 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                     {!isTaken && onNominate && (
                         <button 
                             onClick={() => onNominate(player)}
-                            className="text-sm font-bold bg-[var(--fbst-text-primary)] text-[var(--fbst-surface-primary)] px-4 py-2 rounded shadow hover:opacity-90 active:scale-95 transition-all"
+                            className="text-sm font-bold bg-[var(--lg-text-primary)] text-[var(--lg-glass-bg)] px-4 py-2 rounded shadow hover:opacity-90 active:scale-95 transition-all"
                         >
                             Nominate
                         </button>
                     )}
                     {isTaken && (
-                        <span className="text-xs font-bold text-[var(--fbst-text-muted)] self-center px-2">
+                        <span className="text-xs font-bold text-[var(--lg-text-muted)] self-center px-2">
                             {ownerName ? `Held by ${ownerName}` : 'Player Taken'}
                         </span>
                     )}
                 </div>
             </div>
-        </td>
+        </ThemedTd>
     </tr>
   );
 }

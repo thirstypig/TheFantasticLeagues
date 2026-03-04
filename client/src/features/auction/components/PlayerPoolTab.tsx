@@ -115,23 +115,23 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
 
   return (
-    <div className="h-full flex flex-col bg-[var(--fbst-surface-primary)]">
+    <div className="h-full flex flex-col bg-[var(--lg-glass-bg)]">
       {/* Search & Filter Header */}
-      <div className="p-3 border-b border-[var(--fbst-table-border)] flex items-center gap-4 shadow-sm bg-[var(--fbst-surface-elevated)] z-10 overflow-x-auto min-h-[60px] scrollbar-hide">
+      <div className="p-3 border-b border-[var(--lg-table-border)] flex items-center gap-4 shadow-sm bg-[var(--lg-glass-bg-hover)] z-10 overflow-x-auto min-h-[60px] scrollbar-hide">
         
         {/* Group Select (Hit/Pitch) */}
-        <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 backdrop-blur-md shrink-0">
+        <div className="flex bg-[var(--lg-tint)] rounded-2xl p-1 border border-[var(--lg-border-subtle)] backdrop-blur-md shrink-0">
             <button 
                 onClick={() => setViewGroup('hitters')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewGroup === 'hitters' ? 'bg-[var(--fbst-accent)] text-white shadow-lg' : 'text-[var(--fbst-text-muted)] hover:text-white hover:bg-white/5'}`}
+                className={`px-4 py-2 text-xs font-medium uppercase rounded-xl transition-all ${viewGroup === 'hitters' ? 'bg-[var(--lg-accent)] text-white shadow-lg' : 'text-[var(--lg-text-muted)] hover:text-white hover:bg-[var(--lg-tint)]'}`}
             >
-                Strike Force
+                Hitters
             </button>
             <button 
                 onClick={() => setViewGroup('pitchers')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--fbst-accent)] text-white shadow-lg' : 'text-[var(--fbst-text-muted)] hover:text-white hover:bg-white/5'}`}
+                className={`px-4 py-2 text-xs font-medium uppercase rounded-xl transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--lg-accent)] text-white shadow-lg' : 'text-[var(--lg-text-muted)] hover:text-white hover:bg-[var(--lg-tint)]'}`}
             >
-                Defense Core
+                Pitchers
             </button>
         </div>
 
@@ -142,80 +142,80 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                 placeholder="Search..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-5 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-sm text-white font-bold outline-none focus:border-[var(--fbst-accent)] transition-all placeholder:opacity-30"
+                className="w-full px-5 py-2.5 rounded-2xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-sm text-white font-bold outline-none focus:border-[var(--lg-accent)] transition-all placeholder:opacity-30"
             />
         </div>
 
         {/* View Mode (All/Avail) */}
-        <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 backdrop-blur-md shrink-0">
+        <div className="flex bg-[var(--lg-tint)] rounded-2xl p-1 border border-[var(--lg-border-subtle)] backdrop-blur-md shrink-0">
             <button 
                 onClick={() => setViewMode('all')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewMode === 'all' ? 'bg-white/10 text-white' : 'text-[var(--fbst-text-muted)] hover:text-white'}`}
+                className={`px-4 py-2 text-xs font-medium uppercase rounded-xl transition-all ${viewMode === 'all' ? 'bg-[var(--lg-tint-hover)] text-white' : 'text-[var(--lg-text-muted)] hover:text-white'}`}
             >
                 All
             </button>
             <button 
                 onClick={() => setViewMode('remaining')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewMode === 'remaining' ? 'bg-white/10 text-white' : 'text-[var(--fbst-text-muted)] hover:text-white'}`}
+                className={`px-4 py-2 text-xs font-medium uppercase rounded-xl transition-all ${viewMode === 'remaining' ? 'bg-[var(--lg-tint-hover)] text-white' : 'text-[var(--lg-text-muted)] hover:text-white'}`}
             >
                 Avail
             </button>
         </div>
 
         {/* Divider */}
-        <div className="h-8 w-px bg-white/10 mx-2 shrink-0" />
+        <div className="h-8 w-px bg-[var(--lg-tint-hover)] mx-2 shrink-0" />
 
         {/* Filters */}
         <div className="flex gap-2 shrink-0">
             <select 
                 value={filterTeam}
                 onChange={(e) => setFilterTeam(e.target.value)}
-                className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-2xl border border-white/10 bg-white/5 text-white outline-none focus:border-[var(--fbst-accent)] transition-all cursor-pointer"
+                className="px-4 py-2.5 text-xs font-medium uppercase rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-white outline-none focus:border-[var(--lg-accent)] transition-all cursor-pointer"
             >
                 {uniqueTeams.map(t => <option key={t} value={t} className="text-black">{t === 'ALL' ? 'Teams' : t}</option>)}
             </select>
             <select 
                 value={filterPos}
                 onChange={(e) => setFilterPos(e.target.value)}
-                className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-2xl border border-white/10 bg-white/5 text-white outline-none focus:border-[var(--fbst-accent)] transition-all cursor-pointer"
+                className="px-4 py-2.5 text-xs font-medium uppercase rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-white outline-none focus:border-[var(--lg-accent)] transition-all cursor-pointer"
             >
-                <option value="ALL" className="text-black">Sector</option>
+                <option value="ALL" className="text-black">Position</option>
                 {uniquePositions.map(p => <option key={p} value={p} className="text-black">{p}</option>)}
             </select>
         </div>
       </div>
 
       {/* Table Header (Sticky) */}
-      <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-[var(--fbst-table-border)]">
+      <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-[var(--lg-table-border)]">
         <ThemedTable>
             <ThemedThead className="sticky top-0 z-10 shadow-lg">
                 <ThemedTr>
-                    <ThemedTh onClick={() => handleHeaderClick('name')} className="cursor-pointer">Player</ThemedTh>
+                    <ThemedTh onClick={() => handleHeaderClick('name')}>Player</ThemedTh>
                   
                     {viewGroup === 'hitters' ? (
                         <>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('R')} className="cursor-pointer">R</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('HR')} className="cursor-pointer">HR</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('RBI')} className="cursor-pointer">RBI</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('SB')} className="cursor-pointer">SB</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('AVG')} className="cursor-pointer">AVG</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('GS')} className="cursor-pointer">GS</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('R')}>R</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('HR')}>HR</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('RBI')}>RBI</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('SB')}>SB</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('AVG')}>AVG</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('GS')}>GS</ThemedTh>
                         </>
                     ) : (
                         <>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('W')} className="cursor-pointer">W</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('SV')} className="cursor-pointer">SV</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('K')} className="cursor-pointer">K</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('ERA')} className="cursor-pointer">ERA</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('WHIP')} className="cursor-pointer">WHIP</ThemedTh>
-                             <ThemedTh align="center" onClick={() => handleHeaderClick('SO')} className="cursor-pointer">SO</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('W')}>W</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('SV')}>SV</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('K')}>K</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('ERA')}>ERA</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('WHIP')}>WHIP</ThemedTh>
+                             <ThemedTh align="center" onClick={() => handleHeaderClick('SO')}>SO</ThemedTh>
                         </>
                     )}
                     
-                    <ThemedTh align="center" onClick={() => handleHeaderClick('value')} className="cursor-pointer">Value</ThemedTh>
+                    <ThemedTh align="center" onClick={() => handleHeaderClick('value')}>Value</ThemedTh>
                 </ThemedTr>
             </ThemedThead>
-            <tbody className="divide-y divide-[var(--fbst-table-border)]">
+            <tbody className="divide-y divide-[var(--lg-table-border)]">
                 {filteredPlayers.map((p: PlayerSeasonStat) => {
                     const isExpanded = expandedId === p.row_id;
                     const isTaken = !!p.ogba_team_code || !!p.team; 
@@ -224,21 +224,21 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                     return (
                         <React.Fragment key={p.row_id}>
                             <ThemedTr 
-                                className={`cursor-pointer ${isExpanded ? 'bg-white/5' : ''} ${isTaken ? 'opacity-50' : ''}`}
+                                className={`cursor-pointer ${isExpanded ? 'bg-[var(--lg-tint)]' : ''} ${isTaken ? 'opacity-50' : ''}`}
                                 onClick={() => toggleExpand(p.row_id)}
                             >
                                 <ThemedTd className="py-3">
-                                    <div className="font-black text-[var(--fbst-text-primary)] tracking-tight">
+                                    <div className="font-semibold text-[var(--lg-text-primary)]">
                                         {p.mlb_full_name || p.player_name}
                                     </div>
-                                    <div className="text-[10px] text-[var(--fbst-text-muted)] flex gap-2 items-center font-black uppercase tracking-widest mt-0.5">
-                                        <span className="text-[var(--fbst-accent)]">{getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT')}</span>
+                                    <div className="text-xs text-[var(--lg-text-muted)] flex gap-2 items-center font-medium uppercase mt-0.5">
+                                        <span className="text-[var(--lg-accent)]">{getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT')}</span>
                                         <span className="opacity-30">•</span>
                                         <span>{p.mlb_team || 'FA'}</span>
                                         {isTaken && (
                                             <>
                                                 <span className="opacity-30">•</span>
-                                                <span className="text-[var(--fbst-accent)]">
+                                                <span className="text-[var(--lg-accent)]">
                                                     {owner ? owner.name : p.ogba_team_code}
                                                 </span>
                                             </>
@@ -248,27 +248,27 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                 
                                 {viewGroup === 'hitters' ? (
                                     <>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.R || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.HR || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.RBI || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.SB || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{typeof p.AVG === 'number' ? fmtRate(p.AVG) : '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.GS || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.R || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.HR || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.RBI || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.SB || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{typeof p.AVG === 'number' ? fmtRate(p.AVG) : '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.GS || '-'}</ThemedTd>
                                     </>
                                 ) : (
                                     <>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.W || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.SV || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.K || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.ERA ? Number(p.ERA).toFixed(2) : '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.WHIP ? Number(p.WHIP).toFixed(2) : '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="font-mono font-bold text-[var(--fbst-text-secondary)]">{p.SO || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.W || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.SV || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.K || '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.ERA ? Number(p.ERA).toFixed(2) : '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.WHIP ? Number(p.WHIP).toFixed(2) : '-'}</ThemedTd>
+                                        <ThemedTd align="center">{p.SO || '-'}</ThemedTd>
                                     </>
                                 )}
 
                                 <ThemedTd align="center">
                                     <div className="flex items-center justify-center gap-3">
-                                        <span className="font-black text-[var(--fbst-accent)] tracking-tighter text-base">
+                                        <span className="font-semibold text-[var(--lg-accent)] text-base">
                                             ${p.value || p.dollar_value || '-'}
                                         </span>
                                         {!isTaken && onNominate && (
@@ -277,7 +277,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                     e.stopPropagation();
                                                     onNominate(p);
                                                 }}
-                                                className="bg-[var(--fbst-accent)] hover:bg-[var(--fbst-accent-hover)] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95"
+                                                className="bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white text-xs font-medium uppercase px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95"
                                             >
                                                 Bid
                                             </button>
@@ -303,8 +303,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             </tbody>
         </ThemedTable>
         {filteredPlayers.length === 0 && (
-            <div className="py-20 text-center text-xs font-black text-[var(--fbst-text-muted)] uppercase tracking-[0.2em]">
-                Zero velocity signals found
+            <div className="py-20 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase">
+                No players found
             </div>
         )}
       </div>

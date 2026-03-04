@@ -133,13 +133,13 @@ const SeasonStandings = () => {
       <div className="mb-10">
         <PageHeader 
           title="Historical Season Standings" 
-          subtitle="Cumulative performance metrics for the 2025 archival cycle." 
+          subtitle="Cumulative roto points for the 2025 season."
         />
       </div>
 
       <div className="lg-card p-10">
         <div className="mb-8">
-          <h2 className="text-2xl font-black tracking-tighter text-[var(--lg-text-heading)] uppercase">2025 OGBA Matrix</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-[var(--lg-text-heading)] uppercase">2025 OGBA Matrix</h2>
           <p className="text-sm text-[var(--lg-text-secondary)] mt-2 opacity-60 leading-relaxed">
             Cumulative roto points by meeting date. Values already include ties
             and half-points exactly as scored in the 2025 sheet.
@@ -150,8 +150,8 @@ const SeasonStandings = () => {
       </div>
 
       <div className="mt-8 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--lg-text-muted)] opacity-30">
-          Source: Official 2025 Tactical Ledger
+        <p className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-30">
+          2025 Season Stats
         </p>
       </div>
     </div>

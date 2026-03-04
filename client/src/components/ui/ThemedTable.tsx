@@ -1,22 +1,36 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableCell,
+} from './table';
 
 interface ThemedTableProps {
   children: React.ReactNode;
   className?: string;
-  /** Set to true if this table is already inside a liquid-glass container */
+  /** Set to true if this table is already inside a styled container */
   bare?: boolean;
 }
 
 /**
- * ThemedTable - Standard table wrapper using liquid glass design tokens
- * 
- * By default, includes liquid-glass styling. Set `bare={true}` if the table
- * is already inside a liquid-glass container to avoid double backgrounds.
+ * ThemedTable - Wraps shadcn Table with optional liquid-glass container.
+ * Set `bare={true}` if already inside a glass container.
  */
 export function ThemedTable({ children, className = '', bare = false }: ThemedTableProps) {
+  if (bare) {
+    return (
+      <Table className={className}>
+        {children}
+      </Table>
+    );
+  }
+
   return (
-    <div className={`overflow-x-auto ${bare ? '' : 'rounded-3xl liquid-glass'} ${className}`}>
-      <table className="min-w-full text-sm">
+    <div className={cn('overflow-x-auto rounded-2xl liquid-glass', className)}>
+      <table className="w-full caption-bottom text-sm">
         {children}
       </table>
     </div>
@@ -29,11 +43,7 @@ interface ThemedTheadProps {
 }
 
 export function ThemedThead({ children, className = '' }: ThemedTheadProps) {
-  return (
-    <thead className={`bg-[var(--lg-table-header-bg)] border-b border-[var(--lg-table-border)] ${className}`}>
-      {children}
-    </thead>
-  );
+  return <TableHeader className={className}>{children}</TableHeader>;
 }
 
 interface ThemedThProps {
@@ -45,20 +55,20 @@ interface ThemedThProps {
 }
 
 export function ThemedTh({ children, className = '', align = 'left', onClick, title }: ThemedThProps) {
-  const alignClass = {
-    left: 'text-left',
-    center: 'text-center',
-    right: 'text-right',
-  }[align];
-  
+  const alignClass = { left: 'text-left', center: 'text-center', right: 'text-right' }[align];
+
   return (
-    <th 
+    <TableHead
       onClick={onClick}
       title={title}
-      className={`px-4 py-4 ${alignClass} text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)] ${onClick ? 'cursor-pointer hover:text-[var(--lg-accent)]' : ''} ${className}`}
+      className={cn(
+        alignClass,
+        onClick && 'cursor-pointer hover:text-[var(--lg-accent)]',
+        className
+      )}
     >
       {children}
-    </th>
+    </TableHead>
   );
 }
 
@@ -71,12 +81,12 @@ interface ThemedTrProps {
 
 export function ThemedTr({ children, className = '', onClick }: ThemedTrProps) {
   return (
-    <tr 
+    <TableRow
       onClick={onClick}
-      className={`border-b border-[var(--lg-table-border)] last:border-0 hover:bg-[var(--lg-table-row-hover)] transition-colors duration-150 ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      className={cn(onClick && 'cursor-pointer', className)}
     >
       {children}
-    </tr>
+    </TableRow>
   );
 }
 
@@ -88,18 +98,11 @@ interface ThemedTdProps {
 }
 
 export function ThemedTd({ children, className = '', align = 'left', colSpan }: ThemedTdProps) {
-  const alignClass = {
-    left: 'text-left',
-    center: 'text-center',
-    right: 'text-right',
-  }[align];
-  
+  const alignClass = { left: 'text-left', center: 'text-center', right: 'text-right' }[align];
+
   return (
-    <td 
-      colSpan={colSpan}
-      className={`px-4 py-4 ${alignClass} text-sm text-[var(--lg-text-primary)] ${className}`}
-    >
+    <TableCell colSpan={colSpan} className={cn(alignClass, className)}>
       {children}
-    </td>
+    </TableCell>
   );
 }

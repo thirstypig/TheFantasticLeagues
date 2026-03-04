@@ -19,9 +19,9 @@ const buttonVariants = cva(
           "bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)] border border-[var(--lg-glass-border)] hover:bg-[var(--lg-glass-bg-hover)] font-bold",
         ghost: "hover:bg-[var(--lg-glass-bg-hover)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] font-medium",
         link: "text-[var(--lg-accent)] underline-offset-4 hover:underline",
-        amber: "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 font-black tracking-widest uppercase text-[10px]",
-        emerald: "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 font-black tracking-widest uppercase text-[10px]",
-        red: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 font-black tracking-widest uppercase text-[10px]",
+        amber: "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 font-bold tracking-wide uppercase text-xs",
+        emerald: "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 font-bold tracking-wide uppercase text-xs",
+        red: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 font-bold tracking-wide uppercase text-xs",
       },
       size: {
         default: "h-11 px-6 py-2 rounded-2xl",

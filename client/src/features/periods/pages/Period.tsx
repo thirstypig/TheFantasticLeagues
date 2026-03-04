@@ -15,9 +15,7 @@ import {
   type PeriodCategoryStandingTable,
   type PeriodCategoryKey,
 } from "../../../lib/api";
-import { classNames } from "../../../lib/classNames";
-import { useTheme } from "../../../contexts/ThemeContext";
-import { ThemedTable, ThemedThead } from "../../../components/ui/ThemedTable";
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { OGBA_TEAM_NAMES } from "../../../lib/ogbaTeams";
 import PageHeader from "../../../components/ui/PageHeader";
 
@@ -157,7 +155,6 @@ export default function Period() {
   const [resp, setResp] = useState<PeriodCategoryStandingsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -212,24 +209,24 @@ export default function Period() {
           title="Period Performance" 
           subtitle={
             <div className="space-y-2">
-              <div className="text-[var(--fbst-text-secondary)]">Category standings computed server-side from player-period totals.</div>
+              <div className="text-[var(--lg-text-secondary)]">Category standings computed server-side from player-period totals.</div>
               {resp && (
-                <div className="flex gap-4 text-xs font-bold uppercase tracking-widest text-[var(--fbst-text-muted)]">
+                <div className="flex gap-4 text-xs font-medium uppercase text-[var(--lg-text-muted)]">
                   <span>Period: {String((resp as any).periodId ?? periodLabel)}</span>
-                  {(resp as any).periodNum && <span>Batch #{(resp as any).periodNum}</span>}
-                  {teamCount && <span>Census: {teamCount} Teams</span>}
+                  {(resp as any).periodNum && <span>Period #{(resp as any).periodNum}</span>}
+                  {teamCount && <span>Teams: {teamCount}</span>}
                 </div>
               )}
             </div>
           }
           rightElement={
             <>
-              <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-white/10 pr-4">
-                <div className="bg-white/5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-[var(--fbst-text-muted)]">Historical Select</div>
+              <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-[var(--lg-border-subtle)] pr-4">
+                <div className="bg-[var(--lg-tint)] px-3 py-2 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">Select Period</div>
                 <select
                   value={periodId}
                   onChange={(e) => setPeriodId(Number(e.target.value))}
-                  className="bg-transparent text-sm text-[var(--fbst-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--fbst-accent)] transition-colors"
+                  className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-colors"
                 >
                   {PERIOD_OPTIONS.map((p) => (
                     <option key={p.id} value={p.id} className="bg-slate-900 border-none">
@@ -240,7 +237,7 @@ export default function Period() {
               </div>
               <Link 
                 to="/players" 
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/5 group"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-xs font-medium uppercase shadow-lg shadow-blue-500/5 group"
               >
                 <span>Final Rosters</span>
                 <span className="group-hover:translate-x-0.5 transition-transform">→</span>
@@ -252,33 +249,33 @@ export default function Period() {
         {error && (
           <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300 flex items-center gap-3">
              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-            System Error: {error}
+            Error: {error}
           </div>
         )}
 
         {/* TOP: Standings (category points) */}
         <div className="mb-12">
-          <div className="overflow-hidden rounded-3xl liquid-glass border border-white/10 shadow-2xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/5 border-b border-white/10 px-8 py-6">
+          <div className="overflow-hidden rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] px-8 py-6">
               <div>
-                <h2 className="text-xl font-black tracking-tight text-[var(--fbst-text-heading)]">Roto Standings</h2>
-                <div className="mt-1 text-sm font-medium text-[var(--fbst-text-muted)]">
+                <h2 className="text-xl font-semibold text-[var(--lg-text-heading)]">Roto Standings</h2>
+                <div className="mt-1 text-sm font-medium text-[var(--lg-text-muted)]">
                   Live ranking matrix based on category performance (1..{teamCount || "N"}).
                 </div>
               </div>
 
-              <div className="flex items-center gap-8 border-l border-white/10 pl-8 h-12">
+              <div className="flex items-center gap-8 border-l border-[var(--lg-border-subtle)] pl-8 h-12">
                 <div className="space-y-1">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">Integrity Check</div>
-                  <div className="text-xl font-black text-[var(--fbst-text-primary)] tabular-nums flex items-end gap-2 leading-none">
+                  <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Point Check</div>
+                  <div className="text-xl font-bold text-[var(--lg-text-primary)] tabular-nums flex items-end gap-2 leading-none">
                     {loading ? "---" : fmt1(totalPointsAllTeams)}
                     {expectedTotal ? (
-                      <span className="text-[10px] font-bold text-[var(--fbst-text-muted)] opacity-60">/ {fmt1(expectedTotal)}</span>
+                      <span className="text-xs font-bold text-[var(--lg-text-muted)] opacity-60">/ {fmt1(expectedTotal)}</span>
                     ) : null}
                   </div>
                 </div>
                 {expectedTotal && (
-                   <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                   <div className={`px-3 py-1.5 rounded-xl text-xs font-medium uppercase border ${
                      Math.abs(totalPointsAllTeams - expectedTotal) < 1e-6 
                         ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/5" 
                         : "border-amber-500/30 text-amber-400 bg-amber-500/5"
@@ -289,73 +286,65 @@ export default function Period() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="bg-white/5 border-b border-white/10">
-                    <th className="px-6 py-4 text-left w-16 text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">#</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">Franchise</th>
+            <ThemedTable bare>
+              <ThemedThead>
+                <ThemedTr>
+                  <ThemedTh className="px-6 w-16">#</ThemedTh>
+                  <ThemedTh className="px-6">Team</ThemedTh>
 
-                    {STANDINGS_KEYS.map((k) => (
-                      <th
-                        key={k}
-                        className="px-4 py-4 text-center text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]"
-                      >
-                        {STANDINGS_LABELS[k]}
-                      </th>
-                    ))}
+                  {STANDINGS_KEYS.map((k) => (
+                    <ThemedTh key={k} align="center" className="px-4">
+                      {STANDINGS_LABELS[k]}
+                    </ThemedTh>
+                  ))}
 
-                    <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-[var(--fbst-accent)]">
-                      TOTAL
-                    </th>
-                    <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">
-                      +/-
-                    </th>
-                  </tr>
-                </thead>
+                  <ThemedTh align="center" className="px-6">
+                    TOTAL
+                  </ThemedTh>
+                  <ThemedTh align="center" className="px-6">
+                    +/-
+                  </ThemedTh>
+                </ThemedTr>
+              </ThemedThead>
 
-                <tbody className="divide-y divide-white/5">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={2 + STANDINGS_KEYS.length + 2} className="px-6 py-12 text-center text-[var(--fbst-text-muted)] italic font-medium">
-                        Synchronizing performance data...
-                      </td>
-                    </tr>
-                  ) : standingsRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={2 + STANDINGS_KEYS.length + 2} className="px-6 py-12 text-center text-[var(--fbst-text-muted)] italic font-medium">
-                        No telemetry records found for this period.
-                      </td>
-                    </tr>
-                  ) : (
-                    standingsRows.map((r, idx) => (
-                      <tr
-                        key={r.teamCode}
-                        className="hover:bg-white/5 transition-colors duration-150"
-                      >
-                        <td className="px-6 py-4 text-xs font-bold text-[var(--fbst-text-muted)] opacity-50 tabular-nums">{idx + 1}</td>
+              <tbody>
+                {loading ? (
+                  <ThemedTr>
+                    <ThemedTd colSpan={2 + STANDINGS_KEYS.length + 2} align="center" className="px-6 py-12 italic">
+                      Loading stats...
+                    </ThemedTd>
+                  </ThemedTr>
+                ) : standingsRows.length === 0 ? (
+                  <ThemedTr>
+                    <ThemedTd colSpan={2 + STANDINGS_KEYS.length + 2} align="center" className="px-6 py-12 italic">
+                      No data found for this period.
+                    </ThemedTd>
+                  </ThemedTr>
+                ) : (
+                  standingsRows.map((r, idx) => (
+                    <ThemedTr key={r.teamCode}>
+                      <ThemedTd className="px-6 text-xs opacity-50">{idx + 1}</ThemedTd>
 
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-bold text-[var(--fbst-text-primary)]">{r.teamName}</div>
-                        </td>
+                      <ThemedTd className="px-6">
+                        <div className="font-bold">{r.teamName}</div>
+                      </ThemedTd>
 
-                        {STANDINGS_KEYS.map((k) => (
-                          <td key={k} className="px-4 py-4 text-center font-medium text-[var(--fbst-text-primary)] tabular-nums">
-                            {fmt1(r.pointsByKey[k])}
-                          </td>
-                        ))}
+                      {STANDINGS_KEYS.map((k) => (
+                        <ThemedTd key={k} align="center" className="px-4">
+                          {fmt1(r.pointsByKey[k])}
+                        </ThemedTd>
+                      ))}
 
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-black text-[var(--fbst-accent)] tabular-nums">{fmt1(r.total)}</span>
-                        </td>
+                      <ThemedTd align="center" className="px-6">
+                        <span className="font-bold text-[var(--lg-accent)]">{fmt1(r.total)}</span>
+                      </ThemedTd>
 
-                        <td className="px-6 py-4 text-center text-[var(--fbst-text-muted)] opacity-30">—</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      <ThemedTd align="center" className="px-6 opacity-30">—</ThemedTd>
+                    </ThemedTr>
+                  ))
+                )}
+              </tbody>
+            </ThemedTable>
           </div>
         </div>
 
@@ -364,15 +353,15 @@ export default function Period() {
           {/* Hitting */}
           <section>
             <div className="mb-6 flex items-end justify-between px-2">
-              <h2 className="text-2xl font-black tracking-tight text-[var(--fbst-text-heading)]">Hitting Categories</h2>
-              {teamCount && <div className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">Ranked {teamCount}..1</div>}
+              <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Hitting Categories</h2>
+              {teamCount && <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Ranked {teamCount}..1</div>}
             </div>
 
             <div className="space-y-8">
               {loading ? (
-                 <div className="text-sm font-medium text-[var(--fbst-text-muted)] animate-pulse">Scanning hitters...</div>
+                 <div className="text-sm font-medium text-[var(--lg-text-muted)] animate-pulse">Loading hitters...</div>
               ) : hittingCats.length === 0 ? (
-                 <div className="text-sm font-medium text-[var(--fbst-text-muted)] italic">No active hitting metrics.</div>
+                 <div className="text-sm font-medium text-[var(--lg-text-muted)] italic">No hitting data.</div>
               ) : (
                 hittingCats.map((cat) => <CategoryCard key={cat.key} cat={cat} />)
               )}
@@ -382,15 +371,15 @@ export default function Period() {
           {/* Pitching */}
           <section>
              <div className="mb-6 flex items-end justify-between px-2">
-              <h2 className="text-2xl font-black tracking-tight text-[var(--fbst-text-heading)]">Pitching Categories</h2>
-              {teamCount && <div className="text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">Ranked {teamCount}..1</div>}
+              <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Pitching Categories</h2>
+              {teamCount && <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Ranked {teamCount}..1</div>}
             </div>
 
             <div className="space-y-8">
               {loading ? (
-                 <div className="text-sm font-medium text-[var(--fbst-text-muted)] animate-pulse">Scanning pitchers...</div>
+                 <div className="text-sm font-medium text-[var(--lg-text-muted)] animate-pulse">Loading pitchers...</div>
               ) : pitchingCats.length === 0 ? (
-                <div className="text-sm font-medium text-[var(--fbst-text-muted)] italic">No active pitching metrics.</div>
+                <div className="text-sm font-medium text-[var(--lg-text-muted)] italic">No pitching data.</div>
               ) : (
                 pitchingCats.map((cat) => <CategoryCard key={cat.key} cat={cat} />)
               )}
@@ -404,10 +393,10 @@ export default function Period() {
 
 function CategoryCard({ cat }: { cat: PeriodCategoryStandingTable }) {
   return (
-    <div className="overflow-hidden rounded-3xl liquid-glass border border-white/10 shadow-lg">
-      <div className="flex items-center justify-between bg-white/5 border-b border-white/10 px-6 py-4">
-        <div className="text-base font-black tracking-tight text-[var(--fbst-text-heading)]">{cat.label}</div>
-        <div className="text-[9px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)] flex items-center gap-2">
+    <div className="overflow-hidden rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-lg">
+      <div className="flex items-center justify-between bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] px-6 py-4">
+        <div className="text-base font-semibold text-[var(--lg-text-heading)]">{cat.label}</div>
+        <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] flex items-center gap-2">
           {cat.higherIsBetter ? (
              <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ascending</span>
           ) : (
@@ -416,42 +405,39 @@ function CategoryCard({ cat }: { cat: PeriodCategoryStandingTable }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-white/5 border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-[var(--fbst-text-muted)]">
-              <th className="px-6 py-3 text-left w-16">Rank</th>
-              <th className="px-6 py-3 text-left">Franchise</th>
-              <th className="px-6 py-3 text-center w-28">Value</th>
-              <th className="px-6 py-3 text-right w-24 text-[var(--fbst-accent)]">Points</th>
-            </tr>
-          </thead>
+      <ThemedTable bare>
+        <ThemedThead>
+          <ThemedTr>
+            <ThemedTh className="px-6 w-16">Rank</ThemedTh>
+            <ThemedTh className="px-6">Team</ThemedTh>
+            <ThemedTh align="center" className="px-6 w-28">Value</ThemedTh>
+            <ThemedTh align="right" className="px-6 w-24">Points</ThemedTh>
+          </ThemedTr>
+        </ThemedThead>
 
-          <tbody className="divide-y divide-white/5 text-xs">
-            {(cat.rows ?? []).map((r: any, idx: number) => {
-              const code = String(r.teamCode ?? "").trim().toUpperCase();
-              const name = fullTeamName(code, r.teamName);
+        <tbody>
+          {(cat.rows ?? []).map((r: any, idx: number) => {
+            const code = String(r.teamCode ?? "").trim().toUpperCase();
+            const name = fullTeamName(code, r.teamName);
 
-              return (
-                <tr
-                  key={`${code || "—"}-${idx}`}
-                  className="hover:bg-white/5 transition-colors duration-150"
-                >
-                  <td className="px-6 py-3 font-bold text-[var(--fbst-text-muted)] opacity-50 tabular-nums">{r.rank ?? idx + 1}</td>
-                  <td className="px-6 py-3">
-                    <div className="font-bold text-[var(--fbst-text-primary)]">{name}</div>
-                  </td>
-                  <td className="px-6 py-3 text-center font-medium text-[var(--fbst-text-primary)] tabular-nums">{fmtValue(r.value)}</td>
-                  <td className="px-6 py-3 text-right font-black text-[var(--fbst-accent)] tabular-nums">{fmt1(r.points)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            return (
+              <ThemedTr key={`${code || "—"}-${idx}`}>
+                <ThemedTd className="px-6 text-xs opacity-50">{r.rank ?? idx + 1}</ThemedTd>
+                <ThemedTd className="px-6">
+                  <div className="font-bold">{name}</div>
+                </ThemedTd>
+                <ThemedTd align="center" className="px-6">{fmtValue(r.value)}</ThemedTd>
+                <ThemedTd align="right" className="px-6">
+                  <span className="font-bold text-[var(--lg-accent)]">{fmt1(r.points)}</span>
+                </ThemedTd>
+              </ThemedTr>
+            );
+          })}
+        </tbody>
+      </ThemedTable>
 
-      <div className="px-6 py-3 bg-white/5 text-[9px] font-bold uppercase tracking-widest text-[var(--fbst-text-muted)] opacity-40">
-        Aggregated from telemetry snapshots. 
+      <div className="px-6 py-3 bg-[var(--lg-tint)] text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-40">
+        Computed from player stats.
       </div>
     </div>
   );

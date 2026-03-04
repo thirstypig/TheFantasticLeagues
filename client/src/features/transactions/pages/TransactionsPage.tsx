@@ -132,11 +132,11 @@ export default function TransactionsPage() {
                   <div className="flex items-center gap-4">
                       {/* Team Selector for Testing/Admin */}
                                   <div className="flex items-center gap-2">
-                                      <label className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-text-muted)]">Acting As:</label>
+                                      <label className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Acting As:</label>
                                       <select 
                                           value={selectedTeamId || ''}
                                           onChange={(e) => setSelectedTeamId(Number(e.target.value))}
-                                          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-black text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
+                                          className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
                                       >
                                           {teams.map(t => (
                                               <option key={t.id} value={t.id} className="text-black">{t.name}</option>
@@ -179,7 +179,7 @@ export default function TransactionsPage() {
 
       <div className="mt-6">
           {activeTab === 'add_drop' && (
-              <div className="liquid-glass rounded-3xl p-1 bg-white/[0.02]">
+              <div className="liquid-glass rounded-3xl p-1 bg-[var(--lg-tint)]">
                 <AddDropTab players={players} onClaim={handleClaim} />
               </div>
           )}
@@ -187,33 +187,33 @@ export default function TransactionsPage() {
           {activeTab === 'waivers' && (
               <div className="max-w-xl mx-auto space-y-6">
                   <div className="text-center mb-12">
-                    <h3 className="text-4xl font-black uppercase tracking-tighter text-[var(--lg-text-heading)] mb-2">Waiver Priority</h3>
-                    <p className="text-[10px] text-[var(--lg-text-muted)] uppercase tracking-[0.3em] font-black opacity-40">Reverse Standings Algorithm</p>
+                    <h3 className="text-4xl font-semibold uppercase text-[var(--lg-text-heading)] mb-2">Waiver Priority</h3>
+                    <p className="text-xs text-[var(--lg-text-muted)] uppercase font-medium opacity-40">Based on Reverse Standings</p>
                   </div>
                   
-                  <div className="lg-card p-0 overflow-hidden divide-y divide-white/[0.03]">
+                  <div className="lg-card p-0 overflow-hidden divide-y divide-[var(--lg-divide)]">
                       {sortedWaiverOrder.map((t, idx) => (
-                          <div key={t.id} className="flex items-center justify-between p-8 hover:bg-white/[0.02] transition-colors group">
+                          <div key={t.id} className="flex items-center justify-between p-8 hover:bg-[var(--lg-tint)] transition-colors group">
                                <div className="flex items-center gap-8">
-                                  <span className="text-5xl font-black text-[var(--lg-text-muted)] opacity-10 w-12 tabular-nums group-hover:opacity-30 transition-opacity">{idx + 1}</span>
+                                  <span className="text-3xl font-bold text-[var(--lg-text-muted)] opacity-10 w-12 tabular-nums group-hover:opacity-30 transition-opacity">{idx + 1}</span>
                                   <div>
-                                      <div className="font-black text-2xl text-[var(--lg-text-primary)] tracking-tighter">{t.name}</div>
-                                      <div className="text-[10px] text-[var(--lg-text-muted)] font-black uppercase tracking-widest mt-1 opacity-60">{t.owner || 'Personnel Unassigned'}</div>
+                                      <div className="font-semibold text-2xl text-[var(--lg-text-primary)]">{t.name}</div>
+                                      <div className="text-xs text-[var(--lg-text-muted)] font-medium uppercase mt-1 opacity-60">{t.owner || 'No Owner'}</div>
                                   </div>
                               </div>
                               <div className="text-right">
-                                  <div className="text-xl font-black text-[var(--lg-accent)] tracking-tighter">
+                                  <div className="text-xl font-semibold text-[var(--lg-accent)]">
                                       {t.rank === 999 ? '—' : `POS ${t.rank}`}
                                   </div>
-                                  <div className="text-[10px] font-black text-[var(--lg-text-muted)] mt-1 tracking-widest uppercase opacity-40">
-                                      {t.points.toFixed(1)} Yield
+                                  <div className="text-xs font-medium text-[var(--lg-text-muted)] mt-1 uppercase opacity-40">
+                                      {t.points.toFixed(1)} Pts
                                   </div>
                               </div>
                           </div>
                       ))}
                   </div>
-                  <div className="text-center text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-[0.2em] mt-12 bg-white/5 p-6 rounded-3xl border border-white/10 opacity-60">
-                      Priority is synchronized via reverse standing metrics. Claims execute at designated maintenance windows.
+                  <div className="text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase mt-12 bg-[var(--lg-tint)] p-6 rounded-3xl border border-[var(--lg-border-subtle)] opacity-60">
+                      Waiver priority is based on reverse standings order. Claims are processed at scheduled times.
                   </div>
               </div>
           )}
@@ -224,33 +224,33 @@ export default function TransactionsPage() {
                 <ThemedTable bare>
                     <ThemedThead>
                       <ThemedTr>
-                        <ThemedTh className="pl-8 py-3">Date</ThemedTh>
-                        <ThemedTh>Franchise</ThemedTh>
-                        <ThemedTh>Personnel</ThemedTh>
-                        <ThemedTh className="pr-8">Classification</ThemedTh>
+                        <ThemedTh className="pl-8">Date</ThemedTh>
+                        <ThemedTh>Team</ThemedTh>
+                        <ThemedTh>Player</ThemedTh>
+                        <ThemedTh className="pr-8">Type</ThemedTh>
                       </ThemedTr>
                     </ThemedThead>
-                    <tbody className="divide-y divide-white/[0.03]">
+                    <tbody className="divide-y divide-[var(--lg-divide)]">
                       {transactions.map((tx) => (
-                        <ThemedTr key={tx.id} className="group hover:bg-white/[0.02]">
-                          <ThemedTd className="pl-8 py-3 whitespace-nowrap text-xs font-bold text-[var(--lg-text-muted)] opacity-60">
+                        <ThemedTr key={tx.id} className="group hover:bg-[var(--lg-tint)]">
+                          <ThemedTd className="pl-8">
                             {tx.effDate ? new Date(tx.effDate).toLocaleDateString() : tx.effDateRaw}
                           </ThemedTd>
-                          <ThemedTd className="font-bold text-[var(--lg-text-primary)] tracking-tight text-sm">
+                          <ThemedTd>
                             {tx.team?.name || tx.ogbaTeamName}
                           </ThemedTd>
-                          <ThemedTd className="font-bold text-[var(--lg-text-heading)]">
+                          <ThemedTd>
                             {tx.player?.name || tx.playerAliasRaw}
                           </ThemedTd>
-                          <ThemedTd className="pr-8 text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-widest group-hover:text-[var(--lg-accent)] transition-colors opacity-40 group-hover:opacity-100">
+                          <ThemedTd className="pr-8">
                             {tx.transactionRaw}
                           </ThemedTd>
                         </ThemedTr>
                       ))}
                       {transactions.length === 0 && (
                         <ThemedTr>
-                          <ThemedTd colSpan={4} className="py-32 text-center text-[10px] font-black text-[var(--lg-text-muted)] uppercase tracking-[0.3em] opacity-40">
-                            No records found in the historical log.
+                          <ThemedTd colSpan={4} className="py-32 text-center">
+                            No transactions found.
                           </ThemedTd>
                         </ThemedTr>
                       )}

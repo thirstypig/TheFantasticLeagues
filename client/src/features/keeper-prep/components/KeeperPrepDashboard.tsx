@@ -155,9 +155,9 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       )}
 
       {/* Status Table */}
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
+      <div className="overflow-hidden rounded-2xl border border-[var(--lg-border-subtle)] bg-slate-950/60">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-white/10 bg-white/5">
+          <thead className="border-b border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]">
             <tr>
               <th className="px-4 py-3 font-semibold text-white/70">Team</th>
               <th className="px-4 py-3 font-semibold text-white/70">Roster</th>
@@ -166,9 +166,9 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
               <th className="px-4 py-3 text-right font-semibold text-white/70">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-[var(--lg-divide)]">
             {statuses.map((s) => (
-              <tr key={s.teamId} className="hover:bg-white/5">
+              <tr key={s.teamId} className="hover:bg-[var(--lg-tint)]">
                 <td className="px-4 py-3">
                   <div className="font-semibold text-white">{s.teamName}</div>
                   <div className="text-xs text-white/40">{s.teamCode || "—"}</div>
@@ -185,7 +185,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
                   ) : s.keeperCount === s.keeperLimit ? (
                     <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-400">Ready</span>
                   ) : (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/50">In Progress</span>
+                    <span className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-white/50">In Progress</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -205,7 +205,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       {/* Edit Modal (Simple overlay for now) */}
       {editingTeamId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+          <div className="w-full max-w-2xl rounded-2xl border border-[var(--lg-border-subtle)] bg-slate-900 p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-white">
@@ -225,7 +225,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
 
             <div className="max-h-[60vh] overflow-y-auto pr-2">
               <table className="w-full text-left text-sm">
-                <thead className="sticky top-0 bg-slate-900 border-b border-white/10">
+                <thead className="sticky top-0 bg-slate-900 border-b border-[var(--lg-border-subtle)]">
                   <tr>
                     <th className="pb-2 text-white/50 font-medium">Keep?</th>
                     <th className="pb-2 text-white/50 font-medium">Player</th>
@@ -233,7 +233,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
                     <th className="pb-2 text-white/50 font-medium text-right">Price</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[var(--lg-divide)]">
                   {teamRoster.map((r) => (
                     <tr key={r.id}>
                       <td className="py-2">
@@ -241,7 +241,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
                           type="checkbox"
                           checked={selectedKeeperIds.has(r.id)}
                           onChange={() => toggleKeeper(r.id)}
-                          className="h-4 w-4 rounded border-white/10 bg-white/5 text-sky-500"
+                          className="h-4 w-4 rounded border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-sky-500"
                         />
                       </td>
                       <td className="py-2 text-white">{r.player.name}</td>
@@ -253,14 +253,14 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
               </table>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
+            <div className="mt-6 flex items-center justify-between border-t border-[var(--lg-border-subtle)] pt-4">
                <div className="text-sm text-white/60">
                  Selected: <span className="text-white font-bold">{selectedKeeperIds.size} / {keeperLimit}</span>
                </div>
                <div className="flex gap-3">
                  <button
                    onClick={() => setEditingTeamId(null)}
-                   className="rounded-xl px-4 py-2 text-sm text-white/60 hover:bg-white/5"
+                   className="rounded-xl px-4 py-2 text-sm text-white/60 hover:bg-[var(--lg-tint)]"
                  >
                    Cancel
                  </button>

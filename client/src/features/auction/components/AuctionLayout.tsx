@@ -11,9 +11,9 @@ interface AuctionLayoutProps {
 
 export default function AuctionLayout({ stage, context, title, subtitle }: AuctionLayoutProps) {
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-[var(--fbst-surface-primary)] text-[var(--fbst-text-primary)]">
+    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)]">
        {title && (
-         <PageHeader title={title} subtitle={subtitle} className="border-b border-[var(--fbst-table-border)] px-4" />
+         <PageHeader title={title} subtitle={subtitle} className="border-b border-[var(--lg-table-border)] px-4" />
        )}
       {/* Mobile: Top Section (Stage), Desktop: Left Column */}
       <div className="flex flex-col md:flex-row h-full overflow-hidden">
@@ -23,8 +23,8 @@ export default function AuctionLayout({ stage, context, title, subtitle }: Aucti
           shrink-0 
           md:w-[400px] lg:w-[450px] 
           border-b md:border-b-0 md:border-r 
-          border-[var(--fbst-table-border)]
-          bg-[var(--fbst-surface-secondary)]
+          border-[var(--lg-table-border)]
+          bg-[var(--lg-bg-secondary)]
           overflow-y-auto
         ">
           <div className="p-4 h-full flex flex-col">
@@ -33,7 +33,7 @@ export default function AuctionLayout({ stage, context, title, subtitle }: Aucti
         </section>
 
         {/* Context Deck (Tabs & Data) */}
-        <section className="flex-1 overflow-hidden relative flex flex-col bg-[var(--fbst-surface-primary)]">
+        <section className="flex-1 overflow-hidden relative flex flex-col bg-[var(--lg-glass-bg)]">
           {context}
         </section>
       </div>

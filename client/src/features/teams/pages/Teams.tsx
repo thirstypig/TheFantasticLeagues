@@ -126,7 +126,7 @@ export default function Teams() {
                   <td className="px-4 py-3 text-right">
                     <Link
                       to={`/teams/${encodeURIComponent(t.code)}`}
-                      className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-xs font-medium text-slate-100 hover:bg-white/15"
+                      className="inline-flex items-center rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-xs font-medium text-slate-100 hover:bg-[var(--lg-tint-hover)]"
                     >
                       View roster
                     </Link>

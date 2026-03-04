@@ -62,7 +62,7 @@ export default function Admin() {
         ) : (
           <div className="space-y-6">
             <div className="lg-card space-y-4">
-              <div className="text-xl font-black tracking-tight text-[var(--lg-text-heading)]">Platform Governance</div>
+              <div className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)]">Platform Governance</div>
               <ul className="list-disc space-y-3 pl-5 text-sm text-[var(--lg-text-secondary)] leading-relaxed">
                 <li>Global user controls (ban/disable, admin flag).</li>
                 <li>League creation + emergency repair tools.</li>
