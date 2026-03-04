@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { getArchiveSeasons, getArchivePeriods, getArchivePeriodStats, getArchiveDraftResults, updateArchiveTeamName, fmtRate } from '../../../api';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../../auth/AuthProvider';
 import EditPlayerNameModal from '../../players/components/EditPlayerNameModal';
 import EditTeamNameModal from '../../teams/components/EditTeamNameModal';
 
@@ -91,7 +91,7 @@ const KEEPER_MAP: Record<number, Record<string, string[]>> = {
 
 
 export default function ArchivePage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   const [seasons, setSeasons] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -128,7 +128,7 @@ export default function ArchivePage() {
   const [recalculating, setRecalculating] = useState(false);
   const [aiModalTeam, setAiModalTeam] = useState<{ code: string; name: string } | null>(null);
 
-  const canEdit = user?.isAdmin || user?.isCommissioner || false;
+  const canEdit = isAdmin;
 
   const handleRecalculate = async () => {
     if (!selectedYear || recalculating) return;

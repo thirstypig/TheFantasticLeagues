@@ -96,7 +96,8 @@ async function main() {
   app.use(rosterRouter);
   app.use('/api/roster', rosterImportRouter);
   app.use('/api', keeperPrepRouter);
-
+  app.use('/api/periods', periodsRouter);
+  app.use('/api/players', playersRouter);
 
 
   // Data Initialization

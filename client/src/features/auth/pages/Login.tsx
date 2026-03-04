@@ -4,13 +4,12 @@ import GoogleSignInButton from "../../../components/GoogleSignInButton";
 import { Link, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
-import { supabase } from "../../../lib/supabase";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
   
-  const { loginWithGoogle, loginWithYahoo } = useAuth();
+  const { loginWithGoogle, loginWithYahoo, loginWithPassword } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,18 +23,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      // AuthProvider listens for session change and redirects or updates state
-      // But we are on a route "/" ? 
-      // Supabase Auth change will update session in AuthProvider.
-      // We can redirect manually or wait for effect?
-      // Since Login page usually redirects after success:
+      await loginWithPassword(email, password);
       window.location.href = "/";
     } catch (err: any) {
       setError(err.message || "Login failed");

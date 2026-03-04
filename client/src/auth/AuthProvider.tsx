@@ -36,7 +36,8 @@ type AuthCtx = {
 
   loginWithGoogle: () => Promise<void>;
   loginWithYahoo: () => Promise<void>;
-  
+  loginWithPassword: (email: string, password: string) => Promise<void>;
+
   // Backwards compatibility shim
   loginWithGoogleCredential: (_credential: string) => Promise<void>;
 
@@ -129,6 +130,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }
   
+  async function loginWithPassword(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }
+
   async function loginWithGoogleCredential(_c: string) {
       await loginWithGoogle();
   }
@@ -149,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refresh,
       loginWithGoogle,
       loginWithYahoo,
+      loginWithPassword,
       loginWithGoogleCredential,
       logout,
       isAdmin,
