@@ -6,6 +6,7 @@ import {
 } from "../../data/playerSeasonStats.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
+import { DataService } from "./services/dataService.js";
 
 const router = Router();
 
@@ -56,5 +57,31 @@ router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
   res.json({ player });
 }));
 
+// --- Player data endpoints (served from in-memory CSV data) ---
+// These were previously inline in index.ts; moved here for modularity.
+
+const dataRouter = Router();
+
+/** GET /api/player-season-stats */
+dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (_req, res) => {
+  const dataService = DataService.getInstance();
+  const stats = await dataService.getNormalizedSeasonStats();
+  res.json({ stats });
+}));
+
+/** GET /api/player-period-stats */
+dataRouter.get("/player-period-stats", requireAuth, (_req, res) => {
+  const dataService = DataService.getInstance();
+  const stats = dataService.getNormalizedPeriodStats();
+  res.json({ stats });
+});
+
+/** GET /api/auction-values */
+dataRouter.get("/auction-values", requireAuth, (_req, res) => {
+  const dataService = DataService.getInstance();
+  res.json({ values: dataService.getAuctionValues() });
+});
+
 export const playersRouter = router;
+export const playerDataRouter = dataRouter;
 export default playersRouter;

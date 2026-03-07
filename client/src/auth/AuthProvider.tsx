@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    let lastAccessToken: string | undefined;
+    let lastAccessToken: string | null | undefined;
     let fetchInFlight = false;
 
     async function syncUser(newSession: Session | null) {

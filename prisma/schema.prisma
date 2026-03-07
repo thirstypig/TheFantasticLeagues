@@ -202,6 +202,8 @@ model Team {
 
   @@unique([leagueId, name])
   @@unique([leagueId, code])
+  @@index([leagueId])
+  @@index([ownerUserId])
 }
 
 model Player {
@@ -363,6 +365,10 @@ model Roster {
 
   team   Team   @relation(fields: [teamId], references: [id])
   player Player @relation(fields: [playerId], references: [id])
+
+  @@index([teamId])
+  @@index([playerId])
+  @@index([teamId, releasedAt])
 }
 
 model AuctionLot {

@@ -29,16 +29,13 @@ import { rosterRouter, rosterImportRouter } from "./features/roster/index.js";
 import { teamsRouter } from "./features/teams/index.js";
 import { keeperPrepRouter } from "./features/keeper-prep/index.js";
 import { periodsRouter } from "./features/periods/index.js";
-import { playersRouter } from "./features/players/index.js";
+import { playersRouter, playerDataRouter } from "./features/players/index.js";
 
 import rateLimit from "express-rate-limit";
-import { attachUser, requireAuth } from "./middleware/auth.js";
+import { attachUser } from "./middleware/auth.js";
 import { supabaseAdmin } from "./lib/supabase.js";
-import { toNum, toBool, normCode } from './lib/utils.js';
 import { DataService } from './features/players/services/dataService.js';
-import { warmMlbTeamCache } from './lib/mlbApi.js';
 import { logger } from './lib/logger.js';
-import { buildTeamNameMap } from './features/standings/services/standingsService.js';
 
 // Validate required env vars at startup
 const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET"];
@@ -118,7 +115,7 @@ async function main() {
 
     // Supabase check
     try {
-      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
+      const { error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
       checks.supabase = error ? "error" : "ok";
       if (error) healthy = false;
     } catch {
@@ -149,28 +146,11 @@ async function main() {
   app.use('/api', keeperPrepRouter);
   app.use('/api/periods', periodsRouter);
   app.use('/api/players', playersRouter);
+  app.use('/api', playerDataRouter);
 
-
-  // Data Initialization
+  // Data Initialization (must run before requests are served)
   const dataService = DataService.getInstance();
-  const seasonFile = "ogba_player_season_totals_2026.csv";
-  await dataService.loadAllData(seasonFile);
-
-  const normalizedSeasonStats = await dataService.getNormalizedSeasonStats();
-  const normalizedPeriodStats = dataService.getNormalizedPeriodStats();
-
-  // Endpoints using memory data
-  app.get("/api/player-season-stats", requireAuth, (req, res) => {
-    res.json({ stats: normalizedSeasonStats });
-  });
-
-  app.get("/api/player-period-stats", requireAuth, (req, res) => {
-      res.json({ stats: normalizedPeriodStats });
-  });
-
-  app.get("/api/auction-values", requireAuth, (req, res) => {
-    res.json({ values: dataService.getAuctionValues() });
-  });
+  await dataService.loadAllData("ogba_player_season_totals_2026.csv");
 
   // --- 1. Static Assets (Frontend) ---
   // Resolve path to client/dist relative to this file (server/src/index.ts -> server/src -> server -> root -> client/dist)

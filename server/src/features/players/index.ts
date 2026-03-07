@@ -1,1 +1,1 @@
-export { playersRouter } from "./routes.js";
+export { playersRouter, playerDataRouter } from "./routes.js";
