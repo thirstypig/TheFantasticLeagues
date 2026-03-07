@@ -10,3 +10,4 @@ export * from '../features/trades/api';
 export * from '../features/transactions/api';
 export * from '../features/standings/api';
 export * from '../features/keeper-prep/api';
+export * from '../features/commissioner/api';

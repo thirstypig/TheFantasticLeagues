@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fetchJsonApi } from '../api/base';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -27,13 +28,7 @@ export default function AIInsightsModal({ isOpen, onClose, year, teamCode, teamN
         ? `/api/archive/${year}/ai/trends/${teamCode}`
         : `/api/archive/${year}/ai/draft/${teamCode}`;
       
-      const response = await fetch(endpoint);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Analysis failed');
-      }
-
+      const data = await fetchJsonApi<{ analysis: string }>(endpoint);
       setAnalysis(data.analysis);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate analysis');

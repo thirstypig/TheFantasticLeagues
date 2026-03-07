@@ -7,7 +7,7 @@ import { writeAuditLog } from "../../lib/auditLog.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 
-const tradeItemSchema = z.object({
+export const tradeItemSchema = z.object({
   senderId: z.number().int().positive(),
   recipientId: z.number().int().positive(),
   assetType: z.enum(["PLAYER", "BUDGET", "PICK"]),
@@ -16,7 +16,7 @@ const tradeItemSchema = z.object({
   pickRound: z.number().int().positive().optional(),
 });
 
-const tradeProposalSchema = z.object({
+export const tradeProposalSchema = z.object({
   leagueId: z.number().int().positive(),
   proposerTeamId: z.number().int().positive(),
   items: z.array(tradeItemSchema).min(1),
@@ -27,6 +27,25 @@ const router = Router();
 // POST /api/trades - Propose a new trade
 router.post("/", requireAuth, validateBody(tradeProposalSchema), requireTeamOwner("proposerTeamId"), asyncHandler(async (req, res) => {
   const { leagueId, proposerTeamId, items } = req.body;
+
+  // Verify proposerTeamId belongs to the specified league
+  const proposerTeam = await prisma.team.findUnique({
+    where: { id: proposerTeamId },
+    select: { leagueId: true },
+  });
+  if (!proposerTeam || proposerTeam.leagueId !== leagueId) {
+    return res.status(403).json({ error: "Team does not belong to this league" });
+  }
+
+  // Verify all involved teams belong to the same league
+  const involvedTeamIds = [...new Set<number>(items.flatMap((i: any) => [i.senderId, i.recipientId]))];
+  const teams = await prisma.team.findMany({
+    where: { id: { in: involvedTeamIds } },
+    select: { id: true, leagueId: true },
+  });
+  if (teams.length !== involvedTeamIds.length || teams.some(t => t.leagueId !== leagueId)) {
+    return res.status(400).json({ error: "All teams must belong to the same league" });
+  }
 
   const trade = await prisma.trade.create({
     data: {
@@ -47,6 +66,14 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireTeamOwne
     include: { items: true },
   });
 
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TRADE_PROPOSE",
+    resourceType: "Trade",
+    resourceId: trade.id,
+    metadata: { leagueId, proposerTeamId, itemCount: trade.items.length },
+  });
+
   res.json(trade);
 }));
 
@@ -63,7 +90,7 @@ router.get("/", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async
     },
     orderBy: { createdAt: "desc" },
   });
-  res.json(trades);
+  res.json({ trades });
 }));
 
 // POST /api/trades/:id/accept - Accept a trade
@@ -97,6 +124,15 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
     where: { id },
     data: { status: "ACCEPTED" },
   });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TRADE_ACCEPT",
+    resourceType: "Trade",
+    resourceId: id,
+    metadata: { leagueId: trade.leagueId },
+  });
+
   res.json(updated);
 }));
 
@@ -131,11 +167,20 @@ router.post("/:id/reject", requireAuth, asyncHandler(async (req, res) => {
     where: { id },
     data: { status: "REJECTED" },
   });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TRADE_REJECT",
+    resourceType: "Trade",
+    resourceId: id,
+    metadata: { leagueId: trade.leagueId },
+  });
+
   res.json(updated);
 }));
 
 // POST /api/trades/:id/process - Execute (Commission/Admin)
-router.post("/:id/process", requireAdmin, asyncHandler(async (req, res) => {
+router.post("/:id/process", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   // 1. Verify status is ACCEPTED
@@ -149,7 +194,7 @@ router.post("/:id/process", requireAdmin, asyncHandler(async (req, res) => {
   }
 
   // 2. Transact
-  await prisma.$transaction(async (tx: any) => {
+  await prisma.$transaction(async (tx) => {
     for (const item of trade.items) {
       if (item.assetType === "PLAYER" && item.playerId) {
         const rosterEntry = await tx.roster.findFirst({

@@ -1,20 +1,9 @@
 import { prisma } from "../../../db/prisma.js";
+import { logger } from "../../../lib/logger.js";
+import { norm, slugify } from "../../../lib/utils.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 
 const auctionImportService = new AuctionImportService();
-
-function normStr(v: any) {
-  return String(v ?? "").trim();
-}
-
-function slugify(input: string) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/['"]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 // Default rule definitions
 const DEFAULT_RULES = [
@@ -131,9 +120,7 @@ export class CommissionerService {
     sourceLeagueId: number,
     creatorUserId: number,
   ) {
-    console.log(
-      `Copying league data from ${sourceLeagueId} to ${targetLeagueId}`,
-    );
+    logger.info({ sourceLeagueId, targetLeagueId }, "Copying league data");
 
     // 1. Copy Teams
     const sourceTeams = await prisma.team.findMany({
@@ -152,7 +139,7 @@ export class CommissionerService {
           },
         });
       } catch (e) {
-        console.warn("Failed to copy team", t.name, e);
+        logger.warn({ error: String(e), teamName: t.name }, "Failed to copy team");
       }
     }
 
@@ -171,7 +158,7 @@ export class CommissionerService {
           },
         });
       } catch (e) {
-        console.warn("Failed to copy member", m.userId, e);
+        logger.warn({ error: String(e), userId: m.userId }, "Failed to copy member");
       }
     }
 
@@ -260,9 +247,9 @@ export class CommissionerService {
     return await prisma.team.create({
       data: {
         leagueId,
-        name: normStr(name),
-        code: code ? normStr(code).toUpperCase() : undefined,
-        owner: owner ? normStr(owner) : undefined,
+        name: norm(name),
+        code: code ? norm(code).toUpperCase() : undefined,
+        owner: owner ? norm(owner) : undefined,
         budget: budget,
         priorTeamId: priorTeamId,
       },
@@ -459,7 +446,7 @@ export class CommissionerService {
       : null;
     if (!player) {
       player = await prisma.player.findFirst({
-        where: { name: normStr(name), posPrimary: normStr(posPrimary) },
+        where: { name: norm(name), posPrimary: norm(posPrimary) },
       });
     }
 
@@ -467,9 +454,9 @@ export class CommissionerService {
       player = await prisma.player.create({
         data: {
           mlbId,
-          name: normStr(name),
-          posPrimary: normStr(posPrimary),
-          posList: normStr(posList) || normStr(posPrimary),
+          name: norm(name),
+          posPrimary: norm(posPrimary),
+          posList: norm(posList) || norm(posPrimary),
         },
       });
     } else {
@@ -478,7 +465,7 @@ export class CommissionerService {
         where: { id: player.id },
         data: {
           mlbId: mlbId ?? player.mlbId ?? undefined,
-          posList: posList ? normStr(posList) : undefined,
+          posList: posList ? norm(posList) : undefined,
         },
       });
     }
@@ -582,6 +569,18 @@ export class CommissionerService {
 
       if (activePeriods) {
         throw new Error("Rules cannot be changed once the season has started.");
+      }
+
+      // Verify all rule IDs belong to this league (prevent IDOR)
+      const ruleIds = updates.map(u => u.id);
+      const ownedRules = await prisma.leagueRule.findMany({
+        where: { id: { in: ruleIds }, leagueId },
+        select: { id: true },
+      });
+      const ownedIds = new Set(ownedRules.map(r => r.id));
+      const unauthorized = ruleIds.filter(id => !ownedIds.has(id));
+      if (unauthorized.length > 0) {
+        throw new Error("One or more rule IDs do not belong to this league");
       }
 
       const results = await Promise.all(

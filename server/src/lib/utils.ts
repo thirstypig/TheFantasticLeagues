@@ -1,10 +1,10 @@
 
-export function toNum(v: any): number {
+export function toNum(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
-export function toBool(v: any): boolean {
+export function toBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   if (typeof v === "string") {
     const s = v.toLowerCase().trim();
@@ -13,24 +13,24 @@ export function toBool(v: any): boolean {
   return v === 1;
 }
 
-export function norm(v: any): string {
+export function norm(v: unknown): string {
   return String(v ?? "").trim();
 }
 
-export function normCode(v: any): string {
+export function normCode(v: unknown): string {
   return norm(v).toUpperCase();
 }
 
-export function parseCsv(text: string): Record<string, any>[] {
+export function parseCsv(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length === 0) return [];
 
   const headers = splitCsvLine(lines[0]);
-  const rows: Record<string, any>[] = [];
+  const rows: Record<string, string>[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const values = splitCsvLine(lines[i]);
-    const row: Record<string, any> = {};
+    const row: Record<string, string> = {};
     headers.forEach((h, idx) => {
       row[h] = values[idx] ?? "";
     });
@@ -65,4 +65,26 @@ export function chunk<T>(arr: T[], size: number): T[][] {
     results.push(arr.slice(i, i + size));
   }
   return results;
+}
+
+export function mustOneOf(v: string, allowed: string[], name: string): string {
+  if (!allowed.includes(v)) throw new Error(`Invalid ${name}. Allowed: ${allowed.join(", ")}`);
+  return v;
+}
+
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function parseIntParam(v: unknown): number | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isInteger(n) ? n : null;
 }

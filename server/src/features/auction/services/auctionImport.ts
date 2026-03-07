@@ -62,7 +62,7 @@ export class AuctionImportService {
     let importedCount = 0;
 
     // 3. Process Rows
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx) => {
         // Clear existing rosters? 
         // For now, let's assume this is an APPEND or UPDATE operation.
         // If the user wants to clear, they should probably do that separately or we add a flag.

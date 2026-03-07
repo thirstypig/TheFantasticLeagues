@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { fetchJsonApi } from '../../../api/base';
+import { getCommissionerRosters } from '../api';
 import RosterGrid from '../../roster/components/RosterGrid';
 import RosterControls from '../../roster/components/RosterControls';
 
@@ -41,8 +41,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const fetchRosters = async () => {
     setLoading(true);
     try {
-      const data = await fetchJsonApi<any>(`/api/commissioner/${leagueId}/rosters`);
-      setRosters(data.rosters);
+      const rosterData = await getCommissionerRosters(leagueId);
+      setRosters(rosterData);
     } catch (err: any) {
       setError(err.message);
     } finally {

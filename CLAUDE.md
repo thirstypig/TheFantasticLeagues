@@ -97,29 +97,34 @@ Some features import from other features' services or components.
 - `leagues/rules-routes.ts` imports `commissioner/services/CommissionerService`
 - `admin/routes.ts` imports `commissioner/services/CommissionerService`
 - `commissioner/services/CommissionerService` imports `auction/services/auctionImport`
+- `standings/routes.ts` imports `players/services/dataService`
+- `transactions/routes.ts` imports `players/services/dataService`
 
 **Client (component imports):**
 - `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
+- `commissioner/pages/Commissioner` imports `leagues/components/RulesEditor`
 - `commissioner/components/CommissionerRosterTool` imports `roster/components/`
 - `keeper-prep/pages/KeeperSelection` imports `leagues/api` (getMyRoster, saveKeepers)
 - `transactions/pages/TransactionsPage` imports `roster/components/AddDropTab`
 - `trades/pages/TradesPage` imports `teams/components/TeamRosterView`
-- `auction/pages/AuctionValues` imports `players/components/PlayerDetailModal`
-- `teams/pages/Team` imports `players/components/PlayerDetailModal`
-- `archive/pages/ArchivePage` imports `players/components/EditPlayerNameModal`, `teams/components/EditTeamNameModal`, `admin/components/ArchiveAdminPanel`, `standings/components/StatsTables`
-- `periods/pages/Season` imports `standings/components/StatsTables`
+- `auction/pages/AuctionValues` imports `components/PlayerDetailModal` (shared)
+- `teams/pages/Team` imports `components/PlayerDetailModal` (shared)
+- `archive/pages/ArchivePage` imports `players/components/EditPlayerNameModal`, `teams/components/EditTeamNameModal`, `admin/components/ArchiveAdminPanel`, `components/StatsTables` (shared)
+- `periods/pages/Season` imports `components/StatsTables` (shared)
 
 When adding cross-feature imports, document them here to maintain visibility.
 
 ## Shared Infrastructure (do NOT move into features)
 - `server/src/middleware/auth.ts` — global auth (attachUser, requireAuth, requireAdmin, requireLeagueRole)
-- `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts
+- `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts, auditLog.ts
 - `server/src/db/prisma.ts` — Prisma singleton
 - `client/src/auth/AuthProvider.tsx` — global React auth context
 - `client/src/api/base.ts` — fetchJsonApi, API_BASE config
 - `client/src/api/types.ts` — shared API response/request types
 - `client/src/components/ui/` — shadcn-style UI primitives
-- `client/src/components/AppShell.tsx`, `NavBar.tsx`, `Layout.tsx` — app shell
+- `client/src/components/AppShell.tsx` — app shell
+- `client/src/components/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players)
+- `client/src/components/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
 
 ## Conventions
 - TypeScript strict mode in both client and server
@@ -133,6 +138,7 @@ When adding cross-feature imports, document them here to maintain visibility.
 - Named exports preferred; default exports only for page components
 - **All write endpoints (POST, PATCH, DELETE) MUST use `requireAuth` middleware** — no exceptions
 - **Admin-only endpoints** (waiver processing, trade processing) use `requireAdmin`
+- **Middleware ordering**: `requireAuth → validateBody(schema) → requireTeamOwner/requireLeagueMember → asyncHandler(fn)`. Validation runs before authorization when auth reads from `req.body` (e.g., `requireTeamOwner("proposerTeamId")`), because body must be parsed first. For param-based auth (e.g., `requireCommissionerOrAdmin()`), auth runs before validation.
 - **Error responses MUST NOT leak internal details** — return `{ error: "Internal Server Error" }` for 500s; log details server-side via `logger`
 - **Required env vars** (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`) validated at startup — server exits if missing
 - **Dev-only endpoints** gated behind explicit env vars (e.g., `ENABLE_DEV_LOGIN=true`), never `NODE_ENV` checks
@@ -212,13 +218,29 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (103 tests)
-- `server/src/lib/__tests__/utils.test.ts` — 28 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk)
-- `server/src/features/standings/__tests__/standingsService.test.ts` — 21 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
+### Current Test Coverage (272 tests: 202 server + 70 client)
+
+**Server (202 tests):**
+- `server/src/lib/__tests__/utils.test.ts` — 35 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
+- `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
-- `server/src/middleware/__tests__/auth.test.ts` — 13 tests (requireAuth, requireAdmin, parseIntParam)
+- `server/src/middleware/__tests__/auth.test.ts` — 6 tests (requireAuth, requireAdmin)
+- `server/src/middleware/__tests__/authExtended.test.ts` — 29 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, etc.)
+- `server/src/middleware/__tests__/asyncHandler.test.ts` — 4 tests
+- `server/src/middleware/__tests__/validate.test.ts` — 7 tests
+- `server/src/features/auth/__tests__/routes.test.ts` — 12 tests (handleAuthHealth, handleGetMe, handleDevLogin)
+- `server/src/features/auction/__tests__/routes.test.ts` — 21 tests (bid, finish, reset, init)
+- `server/src/features/trades/__tests__/routes.test.ts` — 13 tests (propose, vote, process)
+- `server/src/features/waivers/__tests__/routes.test.ts` — 12 tests (submit, process, cancel)
+- `server/src/__tests__/integration/auction-roster.test.ts` — 9 tests (finish→roster, budget deduction, queue)
+- `server/src/__tests__/integration/trade-roster.test.ts` — 10 tests (player movement, budget, atomicity)
+- `server/src/__tests__/integration/waiver-roster.test.ts` — 11 tests (FAAB ordering, budget, drop player)
+
+**Client (70 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `client/src/lib/__tests__/baseballUtils.test.ts` — 17 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition)
+- `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats)
+- `client/src/features/standings/__tests__/StatsTables.test.tsx` — 22 tests (table rendering, sorting)
 
 ### Running Tests
 ```bash

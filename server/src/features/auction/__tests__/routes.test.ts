@@ -1,29 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockPrisma = {
-  team: { findMany: vi.fn() },
-  player: { findFirst: vi.fn(), create: vi.fn() },
-  roster: { create: vi.fn(), deleteMany: vi.fn() },
-};
-
-vi.mock("../../../db/prisma.js", () => ({ prisma: mockPrisma }));
+// All vi.mock calls are hoisted — must not reference top-level variables
+vi.mock("../../../db/prisma.js", () => ({
+  prisma: {
+    team: { findMany: vi.fn() },
+    player: { findFirst: vi.fn(), create: vi.fn() },
+    roster: { create: vi.fn(), deleteMany: vi.fn() },
+  },
+}));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
+vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
+vi.mock("../../../middleware/auth.js", () => ({
+  requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+  requireAdmin: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+  requireTeamOwner: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireLeagueMember: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
+vi.mock("../../../middleware/asyncHandler.js", () => ({
+  asyncHandler: (fn: Function) => fn,
+}));
 
-// Since the auction uses in-memory state, we test the helper logic and state transitions directly.
-// We re-implement the key functions to test them in isolation.
+import { calculateMaxBid } from "../routes.js";
+import type { AuctionState } from "../routes.js";
+import { prisma } from "../../../db/prisma.js";
+
+const mockPrisma = prisma as any;
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
-
-// -- calculateMaxBid logic --
-const calculateMaxBid = (budget: number, spots: number) => {
-  if (spots <= 0) return 0;
-  if (spots === 1) return budget;
-  return budget - (spots - 1);
-};
 
 describe("auction - calculateMaxBid", () => {
   it("returns full budget when only 1 spot left", () => {
@@ -51,50 +58,11 @@ describe("auction - calculateMaxBid", () => {
   });
 });
 
-// -- In-memory state management --
-type AuctionStatus = "not_started" | "nominating" | "bidding" | "paused" | "completed";
-
-interface AuctionTeam {
-  id: number;
-  name: string;
-  code: string;
-  budget: number;
-  maxBid: number;
-  rosterCount: number;
-  spotsLeft: number;
-  roster: any[];
-}
-
-interface NominationState {
-  playerId: string;
-  playerName: string;
-  playerTeam: string;
-  positions: string;
-  isPitcher: boolean;
-  nominatorTeamId: number;
-  currentBid: number;
-  highBidderTeamId: number;
-  endTime: string;
-  timerDuration: number;
-  status: "running" | "paused" | "ended";
-  pausedRemainingMs?: number;
-}
-
-interface AuctionState {
-  leagueId: number | null;
-  status: AuctionStatus;
-  nomination: NominationState | null;
-  teams: AuctionTeam[];
-  queue: number[];
-  queueIndex: number;
-  config: { bidTimer: number; nominationTimer: number };
-  log: any[];
-  lastUpdate: number;
-}
+// -- In-memory state management (using imported types) --
 
 function freshState(): AuctionState {
   return {
-    leagueId: null,
+    leagueId: 0,
     status: "not_started",
     nomination: null,
     teams: [],
@@ -110,7 +78,7 @@ describe("auction - state transitions", () => {
   it("starts in not_started state", () => {
     const state = freshState();
     expect(state.status).toBe("not_started");
-    expect(state.leagueId).toBeNull();
+    expect(state.leagueId).toBe(0);
   });
 
   it("init transitions to nominating", () => {
@@ -307,7 +275,7 @@ describe("auction - reset", () => {
   it("resets state to nominating with cleared log", () => {
     const state = freshState();
     state.status = "bidding";
-    state.log = [{ type: "BID", message: "test" }];
+    state.log = [{ type: "BID", message: "test", timestamp: Date.now() }];
 
     state.status = "nominating";
     state.nomination = null;

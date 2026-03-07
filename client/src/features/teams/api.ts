@@ -7,7 +7,8 @@ export async function getTeamDetails(teamId: number): Promise<TeamDetailResponse
 }
 
 export async function getTeams(): Promise<any[]> {
-  return fetchJsonApi<any[]>(`${API_BASE}/teams`);
+  const resp = await fetchJsonApi<{ teams: any[] }>(`${API_BASE}/teams`);
+  return resp.teams;
 }
 
 export async function updateRosterPosition(teamId: number, rosterId: number, position: string | null): Promise<any> {

@@ -103,8 +103,9 @@ function dedupeByRowId(rows: PlayerSeasonStat[], mode: "season" | "auction" = "s
 export async function getAuctionValues(): Promise<PlayerSeasonStat[]> {
   if (!_auctionCache) {
     _auctionCache = (async () => {
-      const raw = await fetchJsonApi<any[]>(`${API_BASE}/auction-values`);
-      return dedupeByRowId((raw ?? []).map(normalizeTwoWayRow), "auction");
+      const resp = await fetchJsonApi<{ values: unknown[] }>(`${API_BASE}/auction-values`);
+      const raw = resp?.values ?? [];
+      return dedupeByRowId(raw.map(normalizeTwoWayRow), "auction");
     })();
   }
   return _auctionCache;
@@ -113,8 +114,9 @@ export async function getAuctionValues(): Promise<PlayerSeasonStat[]> {
 export async function getPlayerSeasonStats(): Promise<PlayerSeasonStat[]> {
   if (!_seasonStatsCache) {
     _seasonStatsCache = (async () => {
-      const raw = await fetchJsonApi<any[]>(`${API_BASE}/player-season-stats`);
-      return dedupeByRowId((raw ?? []).map(normalizeTwoWayRow), "season");
+      const resp = await fetchJsonApi<{ stats: unknown[] }>(`${API_BASE}/player-season-stats`);
+      const raw = resp?.stats ?? [];
+      return dedupeByRowId(raw.map(normalizeTwoWayRow), "season");
     })();
   }
   return _seasonStatsCache;
@@ -122,7 +124,10 @@ export async function getPlayerSeasonStats(): Promise<PlayerSeasonStat[]> {
 
 export async function getPlayerPeriodStats(): Promise<PeriodStatRow[]> {
   if (!_periodStatsCache) {
-    _periodStatsCache = fetchJsonApi(`${API_BASE}/player-period-stats`);
+    _periodStatsCache = (async () => {
+      const resp = await fetchJsonApi<{ stats: PeriodStatRow[] }>(`${API_BASE}/player-period-stats`);
+      return resp?.stats ?? [];
+    })();
   }
   return _periodStatsCache;
 }

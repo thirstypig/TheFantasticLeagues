@@ -1,12 +1,87 @@
 
 import { normCode } from "../../../lib/utils.js";
+import type { PeriodStatRow } from "../../../types/stats.js";
 
+// --- Types ---
 
-export function buildTeamNameMap(seasonStandings: any, seasonStats: any[]): Record<string, string> {
+/** CSV player row extended with team/period fields used by aggregation */
+export type CsvPlayerRow = PeriodStatRow & {
+  team_code?: string;
+  team_name?: string;
+  ER?: number | string;
+  IP?: number | string;
+  BB_H?: number | string;
+  ogba_team_code?: string;
+};
+
+/** Team-level aggregated stat row — output of aggregation, input to ranking */
+export interface TeamStatRow {
+  team: { id: number; name: string; code: string };
+  R: number;
+  HR: number;
+  RBI: number;
+  SB: number;
+  AVG: number;
+  W: number;
+  S: number;
+  ERA: number;
+  WHIP: number;
+  K: number;
+  [key: string]: number | { id: number; name: string; code: string };
+}
+
+/** A single category ranking row */
+export interface CategoryRow {
+  teamId: number;
+  teamName: string;
+  teamCode: string;
+  value: number;
+  rank: number;
+  points: number;
+}
+
+/** Final standings row */
+export interface StandingsRow {
+  teamId: number;
+  teamName: string;
+  points: number;
+  rank: number;
+  delta: number;
+}
+
+/** Season standings data (per-team with period breakdowns) */
+export interface SeasonStandingsRow {
+  teamId: number;
+  teamName: string;
+  teamCode: string;
+  periodPoints: number[];
+  totalPoints: number;
+}
+
+/** Standings-related record with team info (for buildTeamNameMap input) */
+interface StandingsRecord {
+  teamCode?: string;
+  code?: string;
+  team?: string;
+  teamName?: string;
+  name?: string;
+}
+
+/** Season stat row (for buildTeamNameMap input) */
+interface SeasonStatInput {
+  ogba_team_code?: string;
+}
+
+export function buildTeamNameMap(
+  seasonStandings: StandingsRecord[] | { rows?: StandingsRecord[] } | null,
+  seasonStats: SeasonStatInput[]
+): Record<string, string> {
   const map: Record<string, string> = {};
 
   // 1. From seasonStandings
-  const rows = Array.isArray(seasonStandings) ? seasonStandings : seasonStandings?.rows || [];
+  const rows: StandingsRecord[] = Array.isArray(seasonStandings)
+    ? seasonStandings
+    : seasonStandings?.rows || [];
   for (const r of rows) {
     const code = normCode(r.teamCode || r.code || r.team || "");
     const name = r.teamName || r.name || r.team || "";
@@ -43,16 +118,16 @@ const KEY_TO_DB_FIELD: Partial<Record<CategoryKey, string>> = {
 };
 
 export function computeCategoryRows(
-  stats: any[],
+  stats: TeamStatRow[],
   key: CategoryKey,
   lowerIsBetter: boolean
-) {
+): CategoryRow[] {
   const dbField = KEY_TO_DB_FIELD[key] || key;
   const rows = stats.map((s) => ({
     teamId: s.team.id,
     teamName: s.team.name,
     teamCode: s.team.code || s.team.name.substring(0, 3).toUpperCase(),
-    value: s[dbField],
+    value: Number(s[dbField]),
   }));
 
   const n = rows.length;
@@ -85,7 +160,7 @@ export function computeCategoryRows(
   }));
 }
 
-export function computeStandingsFromStats(stats: any[]) {
+export function computeStandingsFromStats(stats: TeamStatRow[]): StandingsRow[] {
   if (stats.length === 0) {
     return [];
   }
@@ -109,7 +184,7 @@ export function computeStandingsFromStats(stats: any[]) {
 
   // For each category, rank and add points
   for (const cfg of CATEGORY_CONFIG) {
-    const rows = computeCategoryRows(stats, cfg.key as CategoryKey, cfg.lowerIsBetter);
+    const rows = computeCategoryRows(stats, cfg.key, cfg.lowerIsBetter);
     for (const r of rows) {
       const team = teamMap.get(r.teamId);
       if (!team) continue;
@@ -135,9 +210,9 @@ export function computeStandingsFromStats(stats: any[]) {
  * so they can be passed directly to computeCategoryRows.
  */
 export function aggregatePeriodStatsFromCsv(
-  periodStats: any[],
+  periodStats: CsvPlayerRow[],
   periodKey: string
-): any[] {
+): TeamStatRow[] {
   // Filter rows for the requested period (CSV uses "P1", "P2", etc.)
   const periodRows = periodStats.filter(
     (r) => String(r.period_id ?? "").trim().toUpperCase() === periodKey.toUpperCase()
@@ -178,7 +253,7 @@ export function aggregatePeriodStatsFromCsv(
     }
 
     const team = teamMap.get(code)!;
-    const n = (v: any) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+    const n = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
     team.R += n(r.R);
     team.HR += n(r.HR);
@@ -195,7 +270,7 @@ export function aggregatePeriodStatsFromCsv(
   }
 
   // Compute rate stats (AVG, ERA, WHIP) from components
-  const result: any[] = [];
+  const result: TeamStatRow[] = [];
   let idx = 0;
   for (const team of teamMap.values()) {
     const AVG = team.AB > 0 ? team.H / team.AB : 0;
@@ -229,9 +304,9 @@ export function aggregatePeriodStatsFromCsv(
  * Aggregate player-level CSV rows across ALL periods into team-level season totals.
  * Same shape as aggregatePeriodStatsFromCsv output.
  */
-export function aggregateSeasonStatsFromCsv(periodStats: any[]): any[] {
+export function aggregateSeasonStatsFromCsv(periodStats: CsvPlayerRow[]): TeamStatRow[] {
   return aggregatePeriodStatsFromCsv(
-    periodStats.map((r: any) => ({ ...r, period_id: "ALL" })),
+    periodStats.map((r) => ({ ...r, period_id: "ALL" })),
     "ALL"
   );
 }

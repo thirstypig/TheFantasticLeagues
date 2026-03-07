@@ -1,38 +1,86 @@
 // server/src/routes/commissioner.ts
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
-import { logger } from "../../lib/logger.js";
+import { norm, normCode, mustOneOf } from "../../lib/utils.js";
 import multer from "multer";
-import { parse } from "csv-parse";
-import { Readable } from "stream";
 import { CommissionerService } from "./services/CommissionerService.js";
 import { requireAuth, requireAdmin, requireCommissionerOrAdmin } from "../../middleware/auth.js";
+import { validateBody } from "../../middleware/validate.js";
+import { writeAuditLog } from "../../lib/auditLog.js";
+import { asyncHandler } from "../../middleware/asyncHandler.js";
+import { addMemberSchema } from "../../lib/schemas.js";
 
-const upload = multer({ storage: multer.memoryStorage() });
+// --- Zod Schemas ---
+
+const teamItemSchema = z.object({
+  name: z.string().min(1).max(100),
+  code: z.string().max(10).optional(),
+  owner: z.string().max(100).optional(),
+  budget: z.number().nonnegative().optional(),
+  priorTeamId: z.number().int().positive().optional(),
+});
+
+const createTeamsSchema = z.union([
+  teamItemSchema,
+  z.object({ teams: z.array(teamItemSchema).min(1) }),
+]);
+
+const addTeamOwnerSchema = z.object({
+  userId: z.number().int().positive().optional(),
+  email: z.string().email().optional(),
+  ownerName: z.string().max(100).optional(),
+}).refine(d => d.userId || d.email || d.ownerName, { message: "userId, email, or ownerName required" });
+
+const rosterAssignSchema = z.object({
+  teamId: z.number().int().positive(),
+  mlbId: z.union([z.number(), z.string()]).optional(),
+  name: z.string().min(1).max(200),
+  posPrimary: z.string().max(10).optional(),
+  posList: z.string().max(100).optional(),
+  price: z.number().nonnegative().optional(),
+  source: z.string().max(50).optional(),
+});
+
+const rosterReleaseSchema = z.object({
+  rosterId: z.number().int().positive().optional(),
+  teamId: z.number().int().positive().optional(),
+  playerId: z.number().int().positive().optional(),
+}).refine(d => d.rosterId || (d.teamId && d.playerId), { message: "rosterId or teamId+playerId required" });
+
+const periodSchema = z.object({
+  id: z.number().int().positive().optional(),
+  name: z.string().min(1).max(100),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  status: z.string().max(20).optional(),
+});
+
+const ruleSchema = z.object({
+  category: z.string().min(1).max(50),
+  key: z.string().min(1).max(50),
+  value: z.string().max(500),
+  label: z.string().max(100).optional(),
+});
+
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_SIZE },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['text/csv', 'text/plain'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 const router = Router();
 const commissionerService = new CommissionerService();
-
-function normStr(v: any) {
-  return String(v ?? "").trim();
-}
-
-function normCode(v: any) {
-  const s = normStr(v).toUpperCase();
-  return s || null;
-}
-
-function mustOneOf(v: string, allowed: string[], name: string) {
-  if (!allowed.includes(v)) throw new Error(`Invalid ${name}. Allowed: ${allowed.join(", ")}`);
-  return v;
-}
 
 /**
  * GET /api/commissioner/:leagueId
  * Returns league + teams + memberships (with user info)
  */
-router.get("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-  try {
+router.get("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
 
     const league = await prisma.league.findUnique({
@@ -77,36 +125,27 @@ router.get("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(),
     });
 
     return res.json({ league, teams, memberships });
-  } catch (err: any) {
-    logger.error({ error: String(err) }, "GET /commissioner/:leagueId error");
-    return res.status(500).json({ error: err?.message || "Commissioner overview error" });
-  }
-});
+}));
 
 /**
  * GET /api/commissioner/:leagueId/available-users
  * Returns all registered users for owner assignment dropdown
  */
-router.get("/commissioner/:leagueId/available-users", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-  try {
+router.get("/commissioner/:leagueId/available-users", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
     const users = await prisma.user.findMany({
       select: { id: true, email: true, name: true, avatarUrl: true },
       orderBy: [{ name: "asc" }, { email: "asc" }],
     });
     return res.json({ users });
-  } catch (err: any) {
-    return res.status(500).json({ error: err?.message || "Failed to fetch users" });
-  }
-});
+}));
 
 /**
  * GET /api/commissioner/:leagueId/prior-teams
  * Returns teams from the previous season for team history linking
  */
-router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-  try {
+router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
-    
+
     // Get current league to find its season
     const currentLeague = await prisma.league.findUnique({ where: { id: leagueId } });
     if (!currentLeague) return res.status(404).json({ error: "League not found" });
@@ -130,10 +169,7 @@ router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommission
     });
 
     return res.json({ priorTeams, priorLeagueId: priorLeague.id, priorSeason: priorLeague.season });
-  } catch (err: any) {
-    return res.status(500).json({ error: err?.message || "Failed to fetch prior teams" });
-  }
-});
+}));
 
 /**
  * POST /api/commissioner/:leagueId/teams
@@ -141,19 +177,18 @@ router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommission
  *  - { name, code?, owner?, budget?, priorTeamId? }
  *  - OR { teams: [{ name, code?, owner?, budget?, priorTeamId? }, ...] }
  */
-router.post("/commissioner/:leagueId/teams", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-  try {
+router.post("/commissioner/:leagueId/teams", requireAuth, requireCommissionerOrAdmin(), validateBody(createTeamsSchema), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
 
-    const items: any[] = Array.isArray(req.body?.teams) ? req.body.teams : [req.body];
+    const items = Array.isArray(req.body?.teams) ? req.body.teams : [req.body];
 
     if (!items.length) return res.status(400).json({ error: "Missing teams" });
 
-    const created: any[] = [];
+    const created: { id: number; name: string; code: string | null; leagueId: number }[] = [];
 
     for (const raw of items) {
-      const name = normStr(raw?.name);
-      if (!name) throw new Error("Missing team name");
+      const name = norm(raw?.name);
+      if (!name) return res.status(400).json({ error: "Missing team name" });
 
       const t = await commissionerService.createTeam(leagueId, {
           name,
@@ -166,19 +201,24 @@ router.post("/commissioner/:leagueId/teams", requireAuth, requireCommissionerOrA
       created.push(t);
     }
 
+    for (const t of created) {
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "TEAM_CREATE",
+        resourceType: "Team",
+        resourceId: String(t.id),
+        metadata: { leagueId, teamName: t.name },
+      });
+    }
+
     return res.json({ teams: created });
-  } catch (err: any) {
-    const msg = String(err?.message || "Create teams failed");
-    return res.status(400).json({ error: msg });
-  }
-});
+}));
 
 /**
  * DELETE /api/commissioner/:leagueId/teams/:teamId
  * Commissioner can delete a team (cleanup).
  */
-router.delete("/commissioner/:leagueId/teams/:teamId", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-  try {
+router.delete("/commissioner/:leagueId/teams/:teamId", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
     const teamId = Number(req.params.teamId);
 
@@ -186,22 +226,26 @@ router.delete("/commissioner/:leagueId/teams/:teamId", requireAuth, requireCommi
 
     await commissionerService.deleteTeam(leagueId, teamId);
 
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "TEAM_DELETE",
+      resourceType: "Team",
+      resourceId: String(teamId),
+      metadata: { leagueId },
+    });
+
     return res.json({ success: true });
-  } catch (err: any) {
-    return res.status(400).json({ error: String(err?.message || "Delete team failed") });
-  }
-});
+}));
 
 /**
  * POST /api/commissioner/:leagueId/members
  * Commissioner can add OWNER/VIEWER. Only admin can add COMMISSIONER.
  * Body: { userId?: number, email?: string, role: "OWNER" | "VIEWER" | "COMMISSIONER" }
  */
-router.post("/commissioner/:leagueId/members", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-  try {
+router.post("/commissioner/:leagueId/members", requireAuth, requireCommissionerOrAdmin(), validateBody(addMemberSchema), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
 
-    const role = mustOneOf(normStr(req.body?.role), ["COMMISSIONER", "OWNER", "VIEWER"], "role") as
+    const role = mustOneOf(norm(req.body?.role), ["COMMISSIONER", "OWNER", "VIEWER"], "role") as
       | "COMMISSIONER"
       | "OWNER"
       | "VIEWER";
@@ -216,11 +260,16 @@ router.post("/commissioner/:leagueId/members", requireAuth, requireCommissionerO
         role
     });
 
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "MEMBER_ADD",
+      resourceType: "LeagueMembership",
+      resourceId: String(membership.id),
+      metadata: { leagueId, targetUserId: membership.userId, role },
+    });
+
     return res.json({ membership });
-  } catch (err: any) {
-    return res.status(400).json({ error: String(err?.message || "Add member failed") });
-  }
-});
+}));
 
 /**
  * POST /api/commissioner/:leagueId/teams/:teamId/owner
@@ -231,8 +280,8 @@ router.post(
   "/commissioner/:leagueId/teams/:teamId/owner",
   requireAuth,
   requireCommissionerOrAdmin(),
-  async (req, res) => {
-    try {
+  validateBody(addTeamOwnerSchema),
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
       const teamId = Number(req.params.teamId);
 
@@ -244,11 +293,16 @@ router.post(
           ownerName: req.body?.ownerName
       });
 
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "TEAM_OWNER_ADD",
+        resourceType: "Team",
+        resourceId: String(teamId),
+        metadata: { leagueId, targetUserId: req.body?.userId, ownerName: req.body?.ownerName },
+      });
+
       return res.json({ team });
-    } catch (err: any) {
-      return res.status(400).json({ error: String(err?.message || "Assign owner failed") });
-    }
-  }
+  })
 );
 
 /**
@@ -259,8 +313,7 @@ router.delete(
   "/commissioner/:leagueId/teams/:teamId/owner/:userId",
   requireAuth,
   requireCommissionerOrAdmin(),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
       const teamId = Number(req.params.teamId);
       const userId = Number(req.params.userId);
@@ -271,11 +324,16 @@ router.delete(
 
       const team = await commissionerService.removeTeamOwner(leagueId, teamId, userId);
 
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "TEAM_OWNER_REMOVE",
+        resourceType: "Team",
+        resourceId: String(teamId),
+        metadata: { leagueId, removedUserId: userId },
+      });
+
       return res.json({ team });
-    } catch (err: any) {
-      return res.status(400).json({ error: String(err?.message || "Remove owner failed") });
-    }
-  }
+  })
 );
 
 /**
@@ -286,8 +344,7 @@ router.get(
   "/commissioner/:leagueId/teams/:teamId/roster",
   requireAuth,
   requireCommissionerOrAdmin(),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
       const teamId = Number(req.params.teamId);
 
@@ -312,10 +369,7 @@ router.get(
       });
 
       return res.json({ roster });
-    } catch (err: any) {
-      return res.status(500).json({ error: err?.message || "Roster fetch failed" });
-    }
-  }
+  })
 );
 
 /**
@@ -336,8 +390,8 @@ router.post(
   "/commissioner/:leagueId/roster/assign",
   requireAuth,
   requireCommissionerOrAdmin(),
-  async (req, res) => {
-    try {
+  validateBody(rosterAssignSchema),
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
       const teamId = Number(req.body?.teamId);
       if (!Number.isFinite(teamId)) return res.status(400).json({ error: "Invalid teamId" });
@@ -345,11 +399,11 @@ router.post(
       const mlbIdRaw = req.body?.mlbId;
       const mlbIdNum =
         mlbIdRaw != null && String(mlbIdRaw).trim() !== "" ? Number(String(mlbIdRaw).trim()) : undefined;
-      const mlbId = Number.isFinite(mlbIdNum as any) ? (mlbIdNum as number) : undefined;
+      const mlbId = typeof mlbIdNum === 'number' && Number.isFinite(mlbIdNum) ? mlbIdNum : undefined;
 
-      const name = normStr(req.body?.name);
+      const name = norm(req.body?.name);
       if (!name) return res.status(400).json({ error: "Missing name" });
-      
+
       const roster = await commissionerService.assignPlayer(leagueId, {
           teamId,
           mlbId,
@@ -360,11 +414,16 @@ router.post(
           source: req.body?.source
       });
 
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "ROSTER_ASSIGN",
+        resourceType: "Roster",
+        resourceId: String(roster.id),
+        metadata: { leagueId, teamId, playerName: name, mlbId },
+      });
+
       return res.json({ roster });
-    } catch (err: any) {
-      return res.status(400).json({ error: String(err?.message || "Roster assign failed") });
-    }
-  }
+  })
 );
 
 /**
@@ -375,8 +434,8 @@ router.post(
   "/commissioner/:leagueId/roster/release",
   requireAuth,
   requireCommissionerOrAdmin(),
-  async (req, res) => {
-    try {
+  validateBody(rosterReleaseSchema),
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
 
       const rosterIdRaw = req.body?.rosterId;
@@ -390,11 +449,16 @@ router.post(
           playerId
       });
 
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "ROSTER_RELEASE",
+        resourceType: "Roster",
+        resourceId: String(rosterId ?? ""),
+        metadata: { leagueId, teamId, playerId },
+      });
+
       return res.json({ success: true, ...result });
-    } catch (err: any) {
-      return res.status(400).json({ error: String(err?.message || "Roster release failed") });
-    }
-  }
+  })
 );
 
 /**
@@ -405,8 +469,7 @@ router.get(
   "/commissioner/:leagueId/rosters",
   requireAuth,
   requireCommissionerOrAdmin(),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
       const rosters = await prisma.roster.findMany({
         where: {
@@ -419,10 +482,7 @@ router.get(
         },
       });
       return res.json({ rosters });
-    } catch (err: any) {
-      return res.status(500).json({ error: err?.message || "Failed to load rosters" });
-    }
-  }
+  })
 );
 
 /**
@@ -434,21 +494,23 @@ router.post(
   requireAuth,
   requireCommissionerOrAdmin(),
   upload.single("file"),
-  async (req, res) => {
-    try {
+  asyncHandler(async (req, res) => {
       const leagueId = Number(req.params.leagueId);
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
       const csvContent = req.file.buffer.toString("utf-8"); // Convert buffer to string
-      
+
       const result = await commissionerService.importRosters(leagueId, csvContent);
 
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "ROSTER_IMPORT",
+        resourceType: "Roster",
+        metadata: { leagueId },
+      });
+
       return res.json(result);
-    } catch (err: any) {
-       logger.error({ error: String(err) }, "Roster import error");
-      return res.status(500).json({ error: "Import failed" });
-    }
-  }
+  })
 );
 
 
@@ -461,28 +523,23 @@ router.post(
 /**
  * GET /api/commissioner/periods
  */
-router.get("/commissioner/periods/list", requireAuth, async (req, res) => {
-  try {
-     // Allow any auth user to see periods? Or restrict? 
+router.get("/commissioner/periods/list", requireAuth, asyncHandler(async (req, res) => {
+     // Allow any auth user to see periods? Or restrict?
      // Usually public data, but editing is restricted.
      const periods = await prisma.period.findMany({ orderBy: { startDate: 'asc' } });
      return res.json({ periods });
-  } catch(e: any) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 /**
  * POST /api/commissioner/periods
  * Create or Update Period
  */
-router.post("/commissioner/periods", requireAuth, requireAdmin, async (req, res) => {
-  try {
+router.post("/commissioner/periods", requireAuth, requireAdmin, validateBody(periodSchema), asyncHandler(async (req, res) => {
     const id = Number(req.body.id);
-    const name = normStr(req.body.name);
+    const name = norm(req.body.name);
     const start = req.body.startDate ? new Date(req.body.startDate) : null;
     const end = req.body.endDate ? new Date(req.body.endDate) : null;
-    const status = normStr(req.body.status) || "upcoming";
+    const status = norm(req.body.status) || "upcoming";
 
     if (!name || !start || !end) return res.status(400).json({ error: "Missing fields" });
 
@@ -498,23 +555,16 @@ router.post("/commissioner/periods", requireAuth, requireAdmin, async (req, res)
       });
     }
     return res.json({ period });
-  } catch(e: any) {
-    return res.status(500).json({ error: e.message });
-  }
-});
+}));
 
 /**
  * DELETE /api/commissioner/periods/:id
  */
-router.delete("/commissioner/periods/:id", requireAuth, requireAdmin, async (req, res) => {
-   try {
+router.delete("/commissioner/periods/:id", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
      const id = Number(req.params.id);
      await prisma.period.delete({ where: { id } });
      return res.json({ success: true });
-   } catch(e: any) {
-     return res.status(500).json({ error: e.message });
-   }
-});
+}));
 
 /**
  * ==========================================
@@ -522,31 +572,32 @@ router.delete("/commissioner/periods/:id", requireAuth, requireAdmin, async (req
  * ==========================================
  */
 
-router.get("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-    try {
+router.get("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
         const leagueId = Number(req.params.leagueId);
         const rules = await prisma.leagueRule.findMany({ where: { leagueId } });
         return res.json({ rules });
-    } catch(e: any) {
-        return res.status(500).json({ error: e.message });
-    }
-});
+}));
 
-router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-    try {
+router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrAdmin(), validateBody(ruleSchema), asyncHandler(async (req, res) => {
         const leagueId = Number(req.params.leagueId);
         const { category, key, value, label } = req.body;
-        
+
         const rule = await prisma.leagueRule.upsert({
             where: { leagueId_category_key: { leagueId, category, key } },
             create: { leagueId, category, key, value, label: label || key },
             update: { value, label: label || undefined }
         });
+
+        writeAuditLog({
+          userId: req.user!.id,
+          action: "RULES_UPDATE",
+          resourceType: "LeagueRule",
+          resourceId: String(rule.id),
+          metadata: { leagueId, category, key, value },
+        });
+
         return res.json({ rule });
-    } catch(e: any) {
-        return res.status(500).json({ error: e.message });
-    }
-});
+}));
 
 /**
  * ==========================================
@@ -561,24 +612,25 @@ router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrA
  * 2. Creates initial RosterEntry snapshot for "Start of Season"
  * 3. Updates League status (if we had one) or Rule?
  */
-router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissionerOrAdmin(), async (req, res) => {
-    try {
+router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
         const leagueId = Number(req.params.leagueId);
-        
+
         // snapshot rosters
         const activeRosters = await prisma.roster.findMany({
             where: { team: { leagueId }, releasedAt: null },
             include: { team: true, player: true }
         });
 
+        // Look up league season
+        const currentLeague = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+        const leagueSeason = currentLeague?.season ?? new Date().getFullYear();
+
         // Create RosterEntry records for archive/period 1 start
         let count = 0;
         for (const r of activeRosters) {
-             // Basic idempotency check? or just append?
-             // Since RosterEntry is historical/logging, appending is safer than missing data.
              await prisma.rosterEntry.create({
                  data: {
-                     year: 2025, // TODO: fetch from League.season
+                     year: leagueSeason,
                      teamCode: r.team.code || r.team.name.substring(0,3).toUpperCase(),
                      playerName: r.player.name,
                      position: r.player.posPrimary,
@@ -597,13 +649,15 @@ router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissio
             update: { value: "true" }
         });
 
+        writeAuditLog({
+          userId: req.user!.id,
+          action: "AUCTION_END",
+          resourceType: "Auction",
+          metadata: { leagueId, snapshotted: count },
+        });
+
         return res.json({ success: true, snapshotted: count });
-    } catch(e: any) {
-        logger.error({ error: String(e) }, "End auction error");
-        return res.status(500).json({ error: e.message });
-    }
-});
+}));
 
 export const commissionerRouter = router;
 export default commissionerRouter;
-

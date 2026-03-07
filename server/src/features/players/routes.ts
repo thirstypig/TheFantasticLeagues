@@ -4,6 +4,8 @@ import {
   loadPlayerSeasonStats,
   SeasonStatRow,
 } from "../../data/playerSeasonStats.js";
+import { requireAuth } from "../../middleware/auth.js";
+import { asyncHandler } from "../../middleware/asyncHandler.js";
 
 const router = Router();
 
@@ -13,7 +15,7 @@ const router = Router();
  *   - availability: "all" | "available" | "owned"
  *   - type: "all" | "hitters" | "pitchers"
  */
-router.get("/", async (req, res) => {
+router.get("/", requireAuth, asyncHandler(async (req, res) => {
   const availability = String(req.query.availability ?? "all") as
     | "all"
     | "available"
@@ -39,20 +41,20 @@ router.get("/", async (req, res) => {
     players = players.filter((p) => p.is_pitcher);
   }
 
-  res.json(players);
-});
+  res.json({ players });
+}));
 
 /**
  * GET /players/:mlbId
  */
-router.get("/:mlbId", async (req, res) => {
+router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
   const allPlayers = await loadPlayerSeasonStats();
   const player = allPlayers.find((p) => p.mlb_id === req.params.mlbId);
   if (!player) {
     return res.status(404).json({ error: "Not found" });
   }
-  res.json(player);
-});
+  res.json({ player });
+}));
 
 export const playersRouter = router;
 export default playersRouter;

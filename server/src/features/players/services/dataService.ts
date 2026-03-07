@@ -9,16 +9,81 @@ import { normCode } from "../../../lib/utils.js";
 import { SeasonStatRow, PeriodStatRow } from '../../../types/stats.js';
 import { warmMlbTeamCache } from '../../../lib/mlbApi.js';
 
+/** A parsed CSV row used for auction values, keyed by column header. */
+type AuctionValueRow = Record<string, string> & {
+  mlbTeam?: string;
+  mlb_team?: string;
+  team?: string;
+  ogba_team_code?: string;
+};
+
+/** Shape returned by getNormalizedSeasonStats after normalization. */
+export interface NormalizedSeasonStat {
+  mlb_id: string;
+  player_name: string;
+  mlb_full_name: string;
+  ogba_team_code: string;
+  positions: string;
+  is_pitcher: boolean;
+  AB: number;
+  H: number;
+  R: number;
+  HR: number;
+  RBI: number;
+  SB: number;
+  AVG: number;
+  GS: number;
+  W: number;
+  SV: number;
+  K: number;
+  ERA: number;
+  WHIP: number;
+  SO: number;
+  mlb_team: string;
+  mlbTeam: string;
+  fantasy_value?: number;
+  [key: string]: unknown;
+}
+
+/** Shape returned by getNormalizedPeriodStats after normalization. */
+export interface NormalizedPeriodStat {
+  periodId: number;
+  mlbId: string;
+  AB: number;
+  H: number;
+  R: number;
+  HR: number;
+  RBI: number;
+  SB: number;
+  AVG: number;
+  W: number;
+  SV: number;
+  K: number;
+  ERA: number;
+  WHIP: number;
+  GS: number;
+  [key: string]: unknown;
+}
+
+/** Shape of the season standings JSON file. */
+interface SeasonStandingsData {
+  rows?: unknown[];
+  [key: string]: unknown;
+}
+
 export class DataService {
   private static instance: DataService;
-  private auctionValues: any[] = [];
+  private auctionValues: AuctionValueRow[] = [];
   private seasonStats: SeasonStatRow[] = [];
-  private seasonStandings: any = null;
+  private seasonStandings: SeasonStandingsData | null = null;
   private periodStats: PeriodStatRow[] = [];
-  
+
   // Cache normalized stats to avoid re-calculation
-  private normalizedSeasonStats: any[] | null = null;
-  private normalizedPeriodStats: any[] | null = null;
+  private normalizedSeasonStats: NormalizedSeasonStat[] | null = null;
+  private normalizedPeriodStats: NormalizedPeriodStat[] | null = null;
+
+  // Cache standings computations (static between data reloads)
+  private standingsCache = new Map<string, unknown>();
 
   private constructor() {}
 
@@ -42,7 +107,7 @@ export class DataService {
       // 1. Auction Values
       const auctionPath = this.resolveDataFile("ogba_auction_values_2025.csv");
       if (fs.existsSync(auctionPath)) {
-        this.auctionValues = parseCsv(fs.readFileSync(auctionPath, "utf-8"));
+        this.auctionValues = parseCsv(fs.readFileSync(auctionPath, "utf-8")) as AuctionValueRow[];
         
         // Merge with DB Player Data (for MLB Team)
         try {
@@ -57,7 +122,7 @@ export class DataService {
                 }
             }
             
-            this.auctionValues.forEach((av: any) => {
+            this.auctionValues.forEach((av) => {
                 const pid = String(av.mlb_id ?? av.mlbId ?? "");
                 if (teamMap.has(pid)) {
                     const tm = teamMap.get(pid) || "";
@@ -98,7 +163,7 @@ export class DataService {
       // 2. Season Stats
       const seasonPath = this.resolveDataFile(seasonFile);
       if (fs.existsSync(seasonPath)) {
-        this.seasonStats = parseCsv(fs.readFileSync(seasonPath, "utf-8")) as any;
+        this.seasonStats = parseCsv(fs.readFileSync(seasonPath, "utf-8")) as unknown as SeasonStatRow[];
         
         // Merge DB Roster Info (Fantasy Team + Price)
         this.seasonStats.forEach(p => {
@@ -124,20 +189,21 @@ export class DataService {
       // 3. Standings
       const standingsPath = this.resolveDataFile("ogba_season_standings_2025.json");
       if (fs.existsSync(standingsPath)) {
-        this.seasonStandings = JSON.parse(fs.readFileSync(standingsPath, "utf-8"));
+        this.seasonStandings = JSON.parse(fs.readFileSync(standingsPath, "utf-8")) as SeasonStandingsData;
         logger.info({ count: this.seasonStandings?.rows?.length || this.seasonStandings?.length }, 'Loaded season standings');
       }
 
       // 4. Period Stats
       const periodPath = this.resolveDataFile("ogba_player_period_totals_2025.csv");
       if (fs.existsSync(periodPath)) {
-        this.periodStats = parseCsv(fs.readFileSync(periodPath, "utf-8"));
+        this.periodStats = parseCsv(fs.readFileSync(periodPath, "utf-8")) as unknown as PeriodStatRow[];
         logger.info({ count: this.periodStats.length }, 'Loaded period stat rows');
       }
       
       // Clear cache on reload
       this.normalizedSeasonStats = null;
       this.normalizedPeriodStats = null;
+      this.standingsCache.clear();
 
     } catch (err) {
       logger.error({ error: String(err) }, 'Failed to load initial data');
@@ -215,4 +281,14 @@ export class DataService {
   public getSeasonStats() { return this.seasonStats; }
   public getSeasonStandings() { return this.seasonStandings; }
   public getPeriodStats() { return this.periodStats; }
+
+  /** Get or compute a cached standings result. Cache clears on data reload. */
+  public getCachedStandings<T>(key: string, compute: () => T): T {
+    if (this.standingsCache.has(key)) {
+      return this.standingsCache.get(key) as T;
+    }
+    const result = compute();
+    this.standingsCache.set(key, result);
+    return result;
+  }
 }

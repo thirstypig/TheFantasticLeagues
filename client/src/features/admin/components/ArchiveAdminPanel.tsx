@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { fetchWithAuth, fetchJsonApi } from '../../../api/base';
 
 
 interface ArchiveAdminPanelProps {
@@ -15,11 +15,6 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
   const [uploading, setUploading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  const getToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -40,16 +35,9 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     formData.append('file', file);
 
     try {
-      const token = await getToken(); // Simplistic auth
-      // In real app, use axios instance or fetch wrapper from api.ts
-      // But for file upload, fetch is easy.
-      
-      const response = await fetch(`/api/archive/${selectedYear}/import-excel`, {
+      const response = await fetchWithAuth(`/api/archive/${selectedYear}/import-excel`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+        body: formData,
       });
 
       const data = await response.json();
@@ -75,19 +63,9 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting full sync for ${selectedYear} (Auto-match + Stats)...`]);
 
     try {
-      const token = await getToken();
-      const response = await fetch(`/api/archive/${selectedYear}/sync`, {
+      const data = await fetchJsonApi<{ logs?: string[] }>(`/api/archive/${selectedYear}/sync`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Sync failed');
-      }
 
       setLogs(prev => [...prev, ...(data.logs || []), '✅ Season Sync Complete!']);
     } catch (err: unknown) {
@@ -105,23 +83,13 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting auto-match for ${all ? 'all seasons' : selectedYear}...`]);
 
     try {
-      const token = await getToken();
       const url = all ? '/api/archive/auto-match-all' : `/api/archive/${selectedYear}/auto-match`;
-      const response = await fetch(url, {
+      const data = await fetchJsonApi<{ results?: { year: number; matched: number; unmatched: number }[]; matched?: number; unmatched?: number }>(url, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Auto-match failed');
-      }
-
       if (all) {
-        const results = data.results.map((r: { year: number; matched: number; unmatched: number }) => `Year [${r.year}]: Matched ${r.matched}, Unmatched ${r.unmatched}`);
+        const results = (data.results || []).map((r) => `Year [${r.year}]: Matched ${r.matched}, Unmatched ${r.unmatched}`);
         setLogs(prev => [...prev, ...results, '✅ Global Auto-Match Complete!']);
       } else {
         setLogs(prev => [...prev, `Matched ${data.matched} players, ${data.unmatched} unmatched.`, '✅ Season Auto-Match Complete!']);
@@ -145,20 +113,9 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting live season archival...`]);
 
     try {
-      const token = await getToken();
-      const response = await fetch(`/api/archive/archive-current`, {
+      const data = await fetchJsonApi<{ logs?: string[] }>(`/api/archive/archive-current`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Archiving failed');
-      }
 
       setLogs(prev => [...prev, ...(data.logs || []), '✅ Archiving Complete!']);
     } catch (err: unknown) {
@@ -180,20 +137,9 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting global recalculation for all seasons...`]);
 
     try {
-      const token = await getToken();
-      const response = await fetch(`/api/archive/recalculate-all`, {
+      const data = await fetchJsonApi<{ totalUpdated: number }>(`/api/archive/recalculate-all`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Global recalculation failed');
-      }
 
       setLogs(prev => [...prev, `Updated ${data.totalUpdated} player records across all seasons.`, '✅ Global Recalculation Complete!']);
     } catch (err: unknown) {

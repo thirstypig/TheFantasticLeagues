@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 import { prisma } from "./db/prisma.js";
 import express from "express";
+import helmet from "helmet";
 import https from "https";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -31,7 +32,7 @@ import { periodsRouter } from "./features/periods/index.js";
 import { playersRouter } from "./features/players/index.js";
 
 import rateLimit from "express-rate-limit";
-import { attachUser } from "./middleware/auth.js";
+import { attachUser, requireAuth } from "./middleware/auth.js";
 import { supabaseAdmin } from "./lib/supabase.js";
 import { toNum, toBool, normCode } from './lib/utils.js';
 import { DataService } from './features/players/services/dataService.js';
@@ -55,32 +56,36 @@ async function main() {
 
   app.set("trust proxy", 1);
 
+  const corsOrigins: string[] = [
+    process.env.CLIENT_URL || "",
+  ];
+  if (process.env.NODE_ENV !== "production") {
+    corsOrigins.push("http://localhost:5173", "http://localhost:5174", "http://localhost:4173");
+  }
   app.use(
     cors({
-      origin: [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:4173",
-        process.env.CLIENT_URL || ""
-      ].filter(Boolean),
+      origin: corsOrigins.filter(Boolean),
       credentials: true,
     })
   );
 
+  app.use(helmet());
   app.use(cookieParser());
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
-  // Request ID tracking
+  // Request ID tracking (validate format: alphanumeric + dashes, max 64 chars)
   app.use((req, _res, next) => {
-    (req as any).requestId = req.headers["x-request-id"] || crypto.randomUUID();
+    const clientId = String(req.headers["x-request-id"] || "").slice(0, 64);
+    req.requestId = /^[a-zA-Z0-9_-]+$/.test(clientId) ? clientId : crypto.randomUUID();
     next();
   });
 
-  // Rate limiting
+  // Rate limiting (300/min per user to support auction polling at 2-3s intervals)
   const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 100,
+    max: 300,
+    keyGenerator: (req) => req.user?.id?.toString() || req.ip || "unknown",
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many requests, please try again later" },
@@ -92,10 +97,10 @@ async function main() {
     legacyHeaders: false,
     message: { error: "Too many auth attempts, please try again later" },
   });
+  app.use(attachUser);
+
   app.use("/api", globalLimiter);
   app.use("/api/auth", authLimiter);
-
-  app.use(attachUser);
 
   // Health check
   app.get("/api/health", async (req, res) => {
@@ -155,16 +160,16 @@ async function main() {
   const normalizedPeriodStats = dataService.getNormalizedPeriodStats();
 
   // Endpoints using memory data
-  app.get("/api/player-season-stats", (req, res) => {
-    res.json(normalizedSeasonStats);
-  });
-  
-  app.get("/api/player-period-stats", (req, res) => {
-      res.json(normalizedPeriodStats);
+  app.get("/api/player-season-stats", requireAuth, (req, res) => {
+    res.json({ stats: normalizedSeasonStats });
   });
 
-  app.get("/api/auction-values", (req, res) => {
-    res.json(dataService.getAuctionValues());
+  app.get("/api/player-period-stats", requireAuth, (req, res) => {
+      res.json({ stats: normalizedPeriodStats });
+  });
+
+  app.get("/api/auction-values", requireAuth, (req, res) => {
+    res.json({ values: dataService.getAuctionValues() });
   });
 
   // --- 1. Static Assets (Frontend) ---
@@ -191,7 +196,7 @@ async function main() {
 
   // --- 2. 404 Handler for API routes (Keep this Strict) ---
   app.use("/api/*", (req, res) => {
-    res.status(404).json({ error: "API endpoint not found", path: req.originalUrl });
+    res.status(404).json({ error: "API endpoint not found" });
   });
 
   // --- 4. Global Error Handler ---

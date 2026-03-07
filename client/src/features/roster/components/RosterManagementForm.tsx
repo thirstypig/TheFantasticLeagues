@@ -36,8 +36,8 @@ export default function RosterManagementForm({ year, teamCodes }: RosterManageme
     if (!selectedTeam) return;
     setLoading(true);
     try {
-      const data = await fetchJsonApi<RosterEntry[]>(`/api/roster/${selectedTeam}?year=${year}`);
-      setRoster(data);
+      const resp = await fetchJsonApi<{ roster: RosterEntry[] }>(`/api/roster/${selectedTeam}?year=${year}`);
+      setRoster(resp?.roster ?? []);
     } catch (e) {
       console.error('Failed to load roster:', e);
     } finally {

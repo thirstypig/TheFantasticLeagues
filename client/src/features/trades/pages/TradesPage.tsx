@@ -192,8 +192,8 @@ export function TradesPage() {
                       <button onClick={() => setContextTrade(null)} className="text-gray-400 hover:text-white">✕</button>
                   </div>
                   <div className="p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-950">
-                      <TeamRosterView teamId={contextTrade.proposingTeamId} teamName={contextTrade.proposingTeam.name} />
-                      <TeamRosterView teamId={contextTrade.acceptingTeamId} teamName={contextTrade.acceptingTeam.name} />
+                      <TeamRosterView teamId={contextTrade.proposingTeamId ?? contextTrade.proposerId} teamName={contextTrade.proposingTeam?.name ?? "Proposer"} />
+                      <TeamRosterView teamId={contextTrade.acceptingTeamId ?? 0} teamName={contextTrade.acceptingTeam?.name ?? "Counterparty"} />
                   </div>
               </div>
           </div>
@@ -214,14 +214,14 @@ function TradeCard({
   onViewContext?: () => void;
 }) {
   const isPending = trade.status === "PENDING";
-  const isProposer = trade.proposingTeam.ownerUserId === currentUserId;
+  const isProposer = trade.proposingTeam?.ownerUserId === currentUserId;
   
   return (
     <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <div className="flex justify-between items-start mb-4">
         <div>
           <div className="text-lg font-bold">
-            {trade.proposingTeam.name} <span className="text-gray-400 text-sm">offers to</span> {trade.acceptingTeam.name}
+            {trade.proposingTeam?.name ?? "Proposer"} <span className="text-gray-400 text-sm">offers to</span> {trade.acceptingTeam?.name ?? "Counterparty"}
           </div>
           <div className="text-xs text-gray-400">
             {new Date(trade.createdAt).toLocaleDateString()}
@@ -241,7 +241,7 @@ function TradeCard({
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-gray-900/50 p-3 rounded">
-          <div className="text-xs text-gray-500 uppercase font-bold mb-2">{trade.proposingTeam.name} Gives</div>
+          <div className="text-xs text-gray-500 uppercase font-bold mb-2">{trade.proposingTeam?.name ?? "Proposer"} Gives</div>
           <ul className="space-y-1 text-sm">
             {trade.items
               .filter((i) => i.senderTeamId === trade.proposingTeamId) 
@@ -258,7 +258,7 @@ function TradeCard({
           </ul>
         </div>
         <div className="bg-gray-900/50 p-3 rounded">
-          <div className="text-xs text-gray-500 uppercase font-bold mb-2">{trade.acceptingTeam.name} Gives</div>
+          <div className="text-xs text-gray-500 uppercase font-bold mb-2">{trade.acceptingTeam?.name ?? "Counterparty"} Gives</div>
           <ul className="space-y-1 text-sm">
             {trade.items
                .filter((i) => i.senderTeamId === trade.acceptingTeamId)
@@ -364,7 +364,7 @@ function LeagueTradeCard({
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-gray-900/50 p-3 rounded">
-          <div className="text-xs text-gray-500 uppercase font-bold mb-2">{trade.proposingTeam.name} Gives</div>
+          <div className="text-xs text-gray-500 uppercase font-bold mb-2">{trade.proposingTeam?.name ?? "Proposer"} Gives</div>
           <ul className="space-y-1 text-sm">
             {trade.items
               .filter((i: any) => i.senderTeamId === trade.proposingTeamId) 

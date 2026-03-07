@@ -1,23 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const mockPrisma = {
-  user: {
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
+vi.mock("../../../db/prisma.js", () => ({
+  prisma: {
+    user: { findUnique: vi.fn(), findFirst: vi.fn() },
   },
-};
-
-vi.mock("../../../db/prisma.js", () => ({ prisma: mockPrisma }));
+}));
 
 vi.mock("../../../lib/supabase.js", () => ({
   supabaseAdmin: {
     auth: {
       getUser: vi.fn(),
-      admin: {
-        listUsers: vi.fn(),
-        updateUserById: vi.fn(),
-        createUser: vi.fn(),
-      },
+      admin: { listUsers: vi.fn(), updateUserById: vi.fn(), createUser: vi.fn() },
     },
   },
 }));
@@ -25,159 +18,332 @@ vi.mock("../../../lib/supabase.js", () => ({
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
+vi.mock("../../../middleware/auth.js", () => ({
+  evictUserCache: vi.fn(),
+}));
+vi.mock("../../../middleware/asyncHandler.js", () => ({
+  asyncHandler: (fn: Function) => fn,
+}));
 
-// We can't easily test Express router registration, so we'll test the handler logic directly.
-// Import after mocks are set up.
+import { handleAuthHealth, handleGetMe, handleDevLogin, handleLogout } from "../routes.js";
+import { prisma } from "../../../db/prisma.js";
 import { supabaseAdmin } from "../../../lib/supabase.js";
+import { logger } from "../../../lib/logger.js";
+import { evictUserCache } from "../../../middleware/auth.js";
+
+const mockPrisma = prisma as any;
+const mockSupabase = supabaseAdmin as any;
+
+function mockReq(user?: any): any {
+  return { user: user ?? null };
+}
+
+function mockRes(): any {
+  const res: any = {
+    statusCode: 200,
+    body: null,
+  };
+  res.status = vi.fn((code: number) => {
+    res.statusCode = code;
+    return res;
+  });
+  res.json = vi.fn((data: any) => {
+    res.body = data;
+    return res;
+  });
+  return res;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-function mockReq(overrides: any = {}): any {
-  return { user: null, headers: {}, params: {}, body: {}, query: {}, ...overrides };
-}
+// ─── handleAuthHealth ────────────────────────────────────────────────
 
-function mockRes(): any {
-  const res: any = { statusCode: 200, body: null };
-  res.status = vi.fn((code: number) => { res.statusCode = code; return res; });
-  res.json = vi.fn((data: any) => { res.body = data; return res; });
-  return res;
-}
+describe("handleAuthHealth", () => {
+  const savedEnv = { ...process.env };
 
-describe("auth routes - /health handler logic", () => {
-  it("returns ok when Supabase env vars are set", () => {
-    const original = { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY };
-    process.env.SUPABASE_URL = "https://test.supabase.co";
-    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
+  afterEach(() => {
+    process.env = { ...savedEnv };
+  });
 
-    const status = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) ? "ok" : "degraded";
-    expect(status).toBe("ok");
+  it("returns status 'ok' when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set", () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "secret-key";
 
-    process.env.SUPABASE_URL = original.url;
-    process.env.SUPABASE_SERVICE_ROLE_KEY = original.key;
+    const req = mockReq();
+    const res = mockRes();
+
+    handleAuthHealth(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      status: "ok",
+      provider: "supabase",
+
+    });
+  });
+
+  it("returns status 'degraded' when SUPABASE_URL is missing", () => {
+    delete process.env.SUPABASE_URL;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "secret-key";
+
+    const req = mockReq();
+    const res = mockRes();
+
+    handleAuthHealth(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      status: "degraded",
+      provider: "supabase",
+
+    });
+  });
+
+  it("returns status 'degraded' when SUPABASE_SERVICE_ROLE_KEY is missing", () => {
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const req = mockReq();
+    const res = mockRes();
+
+    handleAuthHealth(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      status: "degraded",
+      provider: "supabase",
+
+    });
   });
 });
 
-describe("auth routes - /me handler logic", () => {
+// ─── handleGetMe ─────────────────────────────────────────────────────
+
+describe("handleGetMe", () => {
   it("returns { user: null } when no session user", async () => {
-    const req = mockReq({ user: null });
+    const req = mockReq(null);
     const res = mockRes();
 
-    // Simulate handler logic
-    const sessionUser = req.user ?? null;
-    const userId = sessionUser?.id ?? null;
-    if (!userId) {
-      res.json({ user: null });
-    }
+    await handleGetMe(req, res);
 
-    expect(res.body).toEqual({ user: null });
+    expect(res.json).toHaveBeenCalledWith({ user: null });
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns { user: null } when session user has no id", async () => {
+    const req = mockReq({});
+    const res = mockRes();
+
+    await handleGetMe(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({ user: null });
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns user with memberships when found in DB", async () => {
+    const dbUser = {
+      id: 1,
+      email: "test@example.com",
+      name: "Test User",
+      avatarUrl: "https://avatar.example.com/test.jpg",
+      isAdmin: false,
+      memberships: [
+        {
+          leagueId: 10,
+          role: "OWNER",
+          league: { id: 10, name: "Test League", season: 2025 },
+        },
+      ],
+    };
+    mockPrisma.user.findUnique.mockResolvedValue(dbUser);
+
+    const req = mockReq({ id: 1 });
+    const res = mockRes();
+
+    await handleGetMe(req, res);
+
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 1 },
+      include: {
+        memberships: {
+          select: {
+            leagueId: true,
+            role: true,
+            league: { select: { id: true, name: true, season: true } },
+          },
+        },
+      },
+    });
+
+    expect(res.json).toHaveBeenCalledWith({
+      user: {
+        id: 1,
+        email: "test@example.com",
+        name: "Test User",
+        avatarUrl: "https://avatar.example.com/test.jpg",
+        isAdmin: false,
+        memberships: [
+          {
+            leagueId: 10,
+            role: "OWNER",
+            league: { id: 10, name: "Test League", season: 2025 },
+          },
+        ],
+      },
+    });
   });
 
   it("returns { user: null } when user not found in DB", async () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
 
-    const req = mockReq({ user: { id: 999 } });
+    const req = mockReq({ id: 999 });
     const res = mockRes();
 
-    const sessionUser = req.user ?? null;
-    const userId = sessionUser?.id ?? null;
+    await handleGetMe(req, res);
 
-    const full = await mockPrisma.user.findUnique({
-      where: { id: userId },
-      include: { memberships: { select: { leagueId: true, role: true, league: { select: { id: true, name: true, season: true } } } } },
-    });
-
-    if (!full) {
-      res.json({ user: null });
-    }
-
-    expect(res.body).toEqual({ user: null });
+    expect(mockPrisma.user.findUnique).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ user: null });
   });
 
-  it("returns full user with memberships when found", async () => {
-    const dbUser = {
-      id: 1,
-      email: "test@test.com",
-      name: "Test User",
-      avatarUrl: null,
-      isAdmin: false,
-      memberships: [
-        { leagueId: 1, role: "OWNER", league: { id: 1, name: "Test League", season: 2025 } },
-      ],
-    };
-    mockPrisma.user.findUnique.mockResolvedValue(dbUser);
+  it("throws on DB error (caught by asyncHandler)", async () => {
+    mockPrisma.user.findUnique.mockRejectedValue(new Error("DB connection failed"));
 
-    const req = mockReq({ user: { id: 1 } });
+    const req = mockReq({ id: 1 });
     const res = mockRes();
 
-    const full = await mockPrisma.user.findUnique({
-      where: { id: 1 },
-      include: { memberships: { select: { leagueId: true, role: true, league: { select: { id: true, name: true, season: true } } } } },
-    });
-
-    const user = {
-      id: full.id,
-      email: full.email,
-      name: full.name,
-      avatarUrl: full.avatarUrl,
-      isAdmin: full.isAdmin,
-      memberships: full.memberships.map((m: any) => ({
-        leagueId: m.leagueId,
-        role: m.role,
-        league: m.league ? { id: m.league.id, name: m.league.name, season: m.league.season } : undefined,
-      })),
-    };
-
-    res.json({ user });
-
-    expect(res.body.user.id).toBe(1);
-    expect(res.body.user.email).toBe("test@test.com");
-    expect(res.body.user.memberships).toHaveLength(1);
-    expect(res.body.user.memberships[0].role).toBe("OWNER");
-  });
-
-  it("returns 500 on database error", async () => {
-    mockPrisma.user.findUnique.mockRejectedValue(new Error("DB down"));
-
-    const res = mockRes();
-    try {
-      await mockPrisma.user.findUnique({ where: { id: 1 } });
-    } catch {
-      res.status(500).json({ error: "Auth check failed" });
-    }
-
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "Auth check failed" });
+    await expect(handleGetMe(req, res)).rejects.toThrow("DB connection failed");
   });
 });
 
-describe("auth routes - /dev-login gating", () => {
-  it("dev-login endpoint is only available when ENABLE_DEV_LOGIN=true", () => {
-    // The route is conditionally registered at module load time
-    // We verify the gating logic
-    expect(process.env.ENABLE_DEV_LOGIN === "true").toBe(false);
+// ─── handleDevLogin ──────────────────────────────────────────────────
+
+describe("handleDevLogin", () => {
+  const savedEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...savedEnv };
   });
 
-  it("dev-login returns 404 when no admin user exists", async () => {
+  it("returns 500 when DEV_LOGIN_PASSWORD is not set", async () => {
+    delete process.env.DEV_LOGIN_PASSWORD;
+
+    const req = mockReq();
+    const res = mockRes();
+
+    await handleDevLogin(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.body).toEqual({ error: "DEV_LOGIN_PASSWORD env var is required" });
+  });
+
+  it("returns 404 when no admin user exists in DB", async () => {
+    process.env.DEV_LOGIN_PASSWORD = "TestPass!456";
     mockPrisma.user.findFirst.mockResolvedValue(null);
 
-    const result = await mockPrisma.user.findFirst({ where: { isAdmin: true } });
-    expect(result).toBeNull();
+    const req = mockReq();
+    const res = mockRes();
+
+    await handleDevLogin(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.body).toEqual({ error: "No admin user found in DB" });
   });
 
-  it("dev-login finds admin and returns credentials", async () => {
-    mockPrisma.user.findFirst.mockResolvedValue({ email: "admin@test.com" });
-    vi.mocked(supabaseAdmin.auth.admin.listUsers).mockResolvedValue({
-      data: { users: [{ id: "sb-1", email: "admin@test.com" }] },
-    } as any);
-    vi.mocked(supabaseAdmin.auth.admin.updateUserById).mockResolvedValue({} as any);
+  it("updates password for existing Supabase user", async () => {
+    process.env.DEV_LOGIN_PASSWORD = "TestPass!456";
+    mockPrisma.user.findFirst.mockResolvedValue({ email: "admin@example.com" });
+    mockSupabase.auth.admin.listUsers.mockResolvedValue({
+      data: {
+        users: [{ id: "sb-123", email: "admin@example.com" }],
+      },
+    });
+    mockSupabase.auth.admin.updateUserById.mockResolvedValue({});
 
-    const dbUser = await mockPrisma.user.findFirst({ where: { isAdmin: true } });
-    expect(dbUser!.email).toBe("admin@test.com");
+    const req = mockReq();
+    const res = mockRes();
 
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-    const sbUser = users.find((u: any) => u.email === dbUser!.email);
-    expect(sbUser).toBeDefined();
+    await handleDevLogin(req, res);
+
+    expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledWith("sb-123", {
+      password: "TestPass!456",
+    });
+    expect(mockSupabase.auth.admin.createUser).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Dev login ready. Use the password from DEV_LOGIN_PASSWORD env var.",
+    });
+    // Email must NOT be in response
+    expect(res.body.email).toBeUndefined();
+  });
+
+  it("creates Supabase user when not found in Supabase", async () => {
+    process.env.DEV_LOGIN_PASSWORD = "TestPass!456";
+    mockPrisma.user.findFirst.mockResolvedValue({ email: "admin@example.com" });
+    mockSupabase.auth.admin.listUsers.mockResolvedValue({
+      data: { users: [] },
+    });
+    mockSupabase.auth.admin.createUser.mockResolvedValue({});
+
+    const req = mockReq();
+    const res = mockRes();
+
+    await handleDevLogin(req, res);
+
+    expect(mockSupabase.auth.admin.createUser).toHaveBeenCalledWith({
+      email: "admin@example.com",
+      password: "TestPass!456",
+      email_confirm: true,
+    });
+    expect(mockSupabase.auth.admin.updateUserById).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Dev login ready. Use the password from DEV_LOGIN_PASSWORD env var.",
+    });
+    // Email must NOT be in response
+    expect(res.body.email).toBeUndefined();
+  });
+
+  it("throws on DB error (caught by asyncHandler)", async () => {
+    process.env.DEV_LOGIN_PASSWORD = "TestPass!456";
+    mockPrisma.user.findFirst.mockRejectedValue(new Error("DB exploded"));
+
+    const req = mockReq();
+    const res = mockRes();
+
+    await expect(handleDevLogin(req, res)).rejects.toThrow("DB exploded");
+  });
+});
+
+// ─── handleLogout ──────────────────────────────────────────────────
+
+describe("handleLogout", () => {
+  it("evicts cache when Bearer token is present", () => {
+    const req = mockReq();
+    req.headers = { authorization: "Bearer test-token-123" };
+    const res = mockRes();
+
+    handleLogout(req, res);
+
+    expect(evictUserCache).toHaveBeenCalledWith("test-token-123");
+    expect(res.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("returns success even without auth header", () => {
+    const req = mockReq();
+    req.headers = {};
+    const res = mockRes();
+
+    handleLogout(req, res);
+
+    expect(evictUserCache).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("handles empty Bearer token gracefully", () => {
+    const req = mockReq();
+    req.headers = { authorization: "Bearer " };
+    const res = mockRes();
+
+    handleLogout(req, res);
+
+    expect(evictUserCache).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ success: true });
   });
 });

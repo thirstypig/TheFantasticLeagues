@@ -12,8 +12,8 @@ import {
   type CareerPitchingRow,
   type RecentHittingRow,
   type RecentPitchingRow,
-} from "../../../api";
-import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+} from "../api";
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "./ui/ThemedTable";
 
 type Props = {
   player: PlayerSeasonStat | null;
@@ -117,7 +117,7 @@ function CloseButton({ onClick }: { onClick: () => void }) {
 
 export default function PlayerDetailModal({ player, onClose, open }: Props) {
   const isVisible = open !== undefined ? open : !!player;
-  
+
   const [tab, setTab] = useState<TabId>("stats");
 
   const mlbId = useMemo(() => norm(player?.mlb_id), [player]);
@@ -337,7 +337,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
             </div>
           )}
         </div>
-        
+
         <div className="px-8 py-4 border-t border-[var(--lg-glass-border)] bg-black/20 flex items-center justify-between">
            <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-40">
             Press <span className="text-[var(--lg-text-primary)]">ESC</span> to close

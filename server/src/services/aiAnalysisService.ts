@@ -20,7 +20,7 @@ export class AIAnalysisService {
    */
   async analyzeTeamTrends(year: number, teamCode: string): Promise<AnalysisResult> {
     if (!this.model) {
-      return { success: false, error: 'Gemini API key not configured. Add GEMINI_API_KEY to .env' };
+      return { success: false, error: 'AI analysis is not available' };
     }
 
     try {
@@ -112,8 +112,8 @@ Keep it conversational and insightful. Use specific numbers.`;
 
       return { success: true, analysis: text };
     } catch (err) {
-      logger.error({ error: String(err) }, "AI analysis error");
-      return { success: false, error: err instanceof Error ? err.message : 'Analysis failed' };
+      logger.error({ error: String(err) }, "AI analysis failed");
+      return { success: false, error: 'Analysis failed' };
     }
   }
 
@@ -122,7 +122,7 @@ Keep it conversational and insightful. Use specific numbers.`;
    */
   async analyzeDraft(year: number, teamCode: string): Promise<AnalysisResult> {
     if (!this.model) {
-      return { success: false, error: 'Gemini API key not configured. Add GEMINI_API_KEY to .env' };
+      return { success: false, error: 'AI analysis is not available' };
     }
 
     try {
@@ -205,8 +205,8 @@ Keep it conversational. Highlight specific players and prices.`;
 
       return { success: true, analysis: text };
     } catch (err) {
-      logger.error({ error: String(err) }, "AI draft analysis error");
-      return { success: false, error: err instanceof Error ? err.message : 'Analysis failed' };
+      logger.error({ error: String(err) }, "AI draft analysis failed");
+      return { success: false, error: 'Analysis failed' };
     }
   }
 }

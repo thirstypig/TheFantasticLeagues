@@ -4,8 +4,8 @@ const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     user: { findUnique: vi.fn(), create: vi.fn() },
     leagueMembership: { findUnique: vi.fn() },
-    team: { findUnique: vi.fn() },
-    teamOwnership: { findUnique: vi.fn() },
+    team: { findUnique: vi.fn(), findMany: vi.fn() },
+    teamOwnership: { findUnique: vi.fn(), findMany: vi.fn() },
   },
 }));
 
@@ -23,11 +23,12 @@ vi.mock("../../lib/logger.js", () => ({
 
 import {
   attachUser,
-  requireLeagueRole,
   requireCommissionerOrAdmin,
   requireLeagueMember,
   requireTeamOwner,
   isTeamOwner,
+  getOwnedTeamIds,
+  clearUserCache,
 } from "../auth.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
 
@@ -44,6 +45,7 @@ function mockRes(): any {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearUserCache();
 });
 
 describe("attachUser", () => {
@@ -128,61 +130,6 @@ describe("attachUser", () => {
 
     expect(req.user).toBeNull();
     expect(next).toHaveBeenCalled();
-  });
-});
-
-describe("requireLeagueRole", () => {
-  it("returns false with 401 when no user", async () => {
-    const req = mockReq({ user: null });
-    const res = mockRes();
-
-    const result = await requireLeagueRole(1, "OWNER", req, res);
-
-    expect(result).toBe(false);
-    expect(res.statusCode).toBe(401);
-  });
-
-  it("bypasses check for admins", async () => {
-    const req = mockReq({ user: { id: 1, isAdmin: true } });
-    const res = mockRes();
-
-    const result = await requireLeagueRole(1, "COMMISSIONER", req, res);
-
-    expect(result).toBe(true);
-  });
-
-  it("returns false with 403 when user has no membership", async () => {
-    mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
-    const req = mockReq({ user: { id: 1, isAdmin: false } });
-    const res = mockRes();
-
-    const result = await requireLeagueRole(1, "OWNER", req, res);
-
-    expect(result).toBe(false);
-    expect(res.statusCode).toBe(403);
-    expect(res.body).toEqual({ error: "No access to this league" });
-  });
-
-  it("returns false when user role is insufficient", async () => {
-    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "VIEWER" });
-    const req = mockReq({ user: { id: 1, isAdmin: false } });
-    const res = mockRes();
-
-    const result = await requireLeagueRole(1, "OWNER", req, res);
-
-    expect(result).toBe(false);
-    expect(res.statusCode).toBe(403);
-    expect(res.body).toEqual({ error: "Requires OWNER role" });
-  });
-
-  it("returns true when user role meets minimum", async () => {
-    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "COMMISSIONER" });
-    const req = mockReq({ user: { id: 1, isAdmin: false } });
-    const res = mockRes();
-
-    const result = await requireLeagueRole(1, "OWNER", req, res);
-
-    expect(result).toBe(true);
   });
 });
 
@@ -400,5 +347,35 @@ describe("requireTeamOwner", () => {
     await middleware(req, res, next);
 
     expect(next).toHaveBeenCalled();
+  });
+});
+
+describe("getOwnedTeamIds", () => {
+  it("returns team IDs from both direct ownership and TeamOwnership table", async () => {
+    mockPrisma.team.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    mockPrisma.teamOwnership.findMany.mockResolvedValue([{ teamId: 3 }, { teamId: 2 }]);
+
+    const ids = await getOwnedTeamIds(5);
+
+    expect(ids).toEqual(expect.arrayContaining([1, 2, 3]));
+    expect(ids).toHaveLength(3); // deduped: 1, 2, 3
+  });
+
+  it("returns empty array when user owns no teams", async () => {
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    mockPrisma.teamOwnership.findMany.mockResolvedValue([]);
+
+    const ids = await getOwnedTeamIds(99);
+
+    expect(ids).toEqual([]);
+  });
+
+  it("deduplicates teams owned via both mechanisms", async () => {
+    mockPrisma.team.findMany.mockResolvedValue([{ id: 5 }]);
+    mockPrisma.teamOwnership.findMany.mockResolvedValue([{ teamId: 5 }]);
+
+    const ids = await getOwnedTeamIds(1);
+
+    expect(ids).toEqual([5]);
   });
 });

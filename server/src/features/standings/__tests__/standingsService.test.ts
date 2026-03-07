@@ -36,7 +36,7 @@ describe("buildTeamNameMap", () => {
   });
 
   it("adds team codes from seasonStats if not in standings", () => {
-    const standings: any[] = [];
+    const standings: { teamCode?: string; code?: string; team?: string; teamName?: string; name?: string }[] = [];
     const stats = [
       { ogba_team_code: "LAD" },
       { ogba_team_code: "SF" },
@@ -81,10 +81,13 @@ describe("CATEGORY_CONFIG", () => {
   });
 });
 
-function makeStats(teams: Array<Record<string, any>>) {
+import type { TeamStatRow } from "../services/standingsService.js";
+
+function makeStats(teams: Array<Record<string, number | string>>): TeamStatRow[] {
   return teams.map((t) => ({
-    team: { id: t.id, name: t.name, code: t.code || t.name },
+    R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
     ...t,
+    team: { id: Number(t.id), name: String(t.name), code: String(t.code || t.name) },
   }));
 }
 
@@ -280,8 +283,8 @@ describe("aggregatePeriodStatsFromCsv", () => {
     const result = aggregatePeriodStatsFromCsv(csvRows, "P1");
     expect(result).toHaveLength(2);
 
-    const dmk = result.find((r: any) => r.team.code === "DMK")!;
-    const ldy = result.find((r: any) => r.team.code === "LDY")!;
+    const dmk = result.find((r) => r.team.code === "DMK")!;
+    const ldy = result.find((r) => r.team.code === "LDY")!;
 
     // Counting stats are summed
     expect(dmk.R).toBe(15);
@@ -298,7 +301,7 @@ describe("aggregatePeriodStatsFromCsv", () => {
 
   it("computes rate stats (AVG, ERA, WHIP) from components", () => {
     const result = aggregatePeriodStatsFromCsv(csvRows, "P1");
-    const dmk = result.find((r: any) => r.team.code === "DMK")!;
+    const dmk = result.find((r) => r.team.code === "DMK")!;
 
     // AVG = H/AB = 35/140 = 0.25
     expect(dmk.AVG).toBeCloseTo(35 / 140, 5);

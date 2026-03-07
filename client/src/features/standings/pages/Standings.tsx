@@ -1,12 +1,13 @@
 // client/src/pages/Standings.tsx
 import React, { useEffect, useState } from 'react';
+import { fetchJsonApi } from '../../../api/base';
 import {
   PeriodSummaryTable,
   CategoryPeriodTable,
   CategoryId,
   TeamPeriodSummaryRow,
   CategoryPeriodRow,
-} from "../components/StatsTables";
+} from "../../../components/StatsTables";
 import PageHeader from "../../../components/ui/PageHeader";
 import { getArchiveSeasons, getArchivePeriods } from '../../../api';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
@@ -62,8 +63,7 @@ const Standings = () => {
             url = `/api/archive/${selectedYear}/period/${selectedPeriod}/standings`;
         }
         
-        const res = await fetch(url);
-        const data = await res.json();
+        const data = await fetchJsonApi<{ standings?: any[] }>(url);
         const standings = data.standings || [];
 
         // Transform for tables

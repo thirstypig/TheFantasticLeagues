@@ -89,6 +89,29 @@ export async function fetchJsonPublic<T>(url: string): Promise<T> {
   return (maybeJson ?? ({} as T)) as T;
 }
 
+/**
+ * Fetch with auth token but without Content-Type (for multipart FormData uploads).
+ * Use fetchJsonApi for JSON requests instead.
+ */
+export async function fetchWithAuth(url: string, init?: RequestInit): Promise<Response> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const headers: Record<string, string> = {
+    ...init?.headers as Record<string, string>,
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return fetch(url, {
+    ...init,
+    headers,
+    credentials: "omit",
+  });
+}
+
 export function toNum(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;

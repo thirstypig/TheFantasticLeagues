@@ -1,13 +1,29 @@
 // server/src/middleware/auth.ts
 import type { Request, Response, NextFunction, RequestHandler } from "express";
-import jwt from "jsonwebtoken";
+import { createHash } from "node:crypto";
 import { prisma } from "../db/prisma.js";
 import { logger } from "../lib/logger.js";
-const COOKIE_NAME = "fbst_session";
+import { supabaseAdmin } from "../lib/supabase.js";
 
-export type SessionTokenPayload = {
-  userId: number;
-};
+// In-memory cache for Supabase user resolution (avoids hitting Supabase API on every request)
+const USER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 1000;
+const userCache = new Map<string, { user: AuthedUser; expiresAt: number }>();
+
+/** Hash a token for use as cache key (avoids storing raw JWTs in memory). */
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+/** Evict a specific token from the user cache (e.g. on logout). */
+export function evictUserCache(token: string): void {
+  userCache.delete(hashToken(token));
+}
+
+/** Clear all cached users (for testing). */
+export function clearUserCache(): void {
+  userCache.clear();
+}
 
 export type AuthedUser = {
   id: number;
@@ -17,25 +33,14 @@ export type AuthedUser = {
   isAdmin: boolean;
 };
 
-type LeagueRole = "COMMISSIONER" | "OWNER" | "VIEWER";
-
 declare global {
   namespace Express {
     interface Request {
       user?: AuthedUser | null;
+      requestId?: string;
     }
   }
 }
-
-function getJwtSecret(): string {
-  const s = process.env.SESSION_SECRET;
-  if (!s) throw new Error("Missing SESSION_SECRET in server/.env");
-  return s;
-}
-
-import { supabaseAdmin } from "../lib/supabase.js";
-
-// ... (keep types)
 
 export async function attachUser(req: Request, _res: Response, next: NextFunction) {
   try {
@@ -48,6 +53,14 @@ export async function attachUser(req: Request, _res: Response, next: NextFunctio
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) {
       req.user = null;
+      return next();
+    }
+
+    // Check cache first (keyed by hash, not raw token)
+    const tokenKey = hashToken(token);
+    const cached = userCache.get(tokenKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      req.user = cached.user;
       return next();
     }
 
@@ -93,6 +106,14 @@ export async function attachUser(req: Request, _res: Response, next: NextFunctio
     }
 
     req.user = u ?? null;
+    if (u) {
+      // Evict oldest entry if cache is full
+      if (userCache.size >= MAX_CACHE_SIZE) {
+        const oldestKey = userCache.keys().next().value;
+        if (oldestKey) userCache.delete(oldestKey);
+      }
+      userCache.set(tokenKey, { user: u, expiresAt: Date.now() + USER_CACHE_TTL_MS });
+    }
     return next();
   } catch (err) {
     logger.error({ error: String(err) }, "Auth middleware error");
@@ -110,45 +131,6 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.user) return res.status(401).json({ error: "Not authenticated" });
   if (!req.user.isAdmin) return res.status(403).json({ error: "Admin only" });
   return next();
-}
-
-function normalizeRole(r: LeagueRole): number {
-  if (r === "COMMISSIONER") return 3;
-  if (r === "OWNER") return 2;
-  return 1; // VIEWER
-}
-
-export async function requireLeagueRole(
-  leagueId: number,
-  minRole: LeagueRole,
-  req: Request,
-  res: Response
-): Promise<boolean> {
-  if (!req.user) {
-    res.status(401).json({ error: "Not authenticated" });
-    return false;
-  }
-
-  if (req.user.isAdmin) return true;
-
-  const m = await prisma.leagueMembership.findUnique({
-    where: { leagueId_userId: { leagueId, userId: req.user.id } },
-    select: { role: true },
-  });
-
-  if (!m) {
-    res.status(403).json({ error: "No access to this league" });
-    return false;
-  }
-
-  const role = String(m.role) as LeagueRole;
-
-  if (normalizeRole(role) < normalizeRole(minRole)) {
-    res.status(403).json({ error: `Requires ${minRole} role` });
-    return false;
-  }
-
-  return true;
 }
 
 /**
@@ -206,11 +188,6 @@ export function requireLeagueMember(leagueIdParam = "leagueId"): RequestHandler 
   };
 }
 
-export function parseIntParam(v: any): number | null {
-  const n = Number(String(v ?? "").trim());
-  return Number.isFinite(n) ? n : null;
-}
-
 /**
  * Check if a user owns a team (via legacy ownerUserId or TeamOwnership table).
  * Admins bypass ownership checks.
@@ -227,6 +204,27 @@ export async function isTeamOwner(teamId: number, userId: number): Promise<boole
     where: { teamId_userId: { teamId, userId } },
   });
   return !!ownership;
+}
+
+/**
+ * Returns all team IDs owned by a user (via legacy ownerUserId or TeamOwnership table).
+ * Queries run in parallel for efficiency.
+ */
+export async function getOwnedTeamIds(userId: number): Promise<number[]> {
+  const [directTeams, ownershipTeams] = await Promise.all([
+    prisma.team.findMany({
+      where: { ownerUserId: userId },
+      select: { id: true },
+    }),
+    prisma.teamOwnership.findMany({
+      where: { userId },
+      select: { teamId: true },
+    }),
+  ]);
+  return [...new Set([
+    ...directTeams.map(t => t.id),
+    ...ownershipTeams.map(t => t.teamId),
+  ])];
 }
 
 /**

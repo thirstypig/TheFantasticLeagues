@@ -25,7 +25,7 @@ export default function Auction() {
   const [activeLeagueId, setActiveLeagueId] = useState<number | null>(null);
 
   // Use the Hook
-  const { state: auctionState, actions } = useAuctionState();
+  const { state: auctionState, actions } = useAuctionState(activeLeagueId);
   const { queue: myQueue, add: addToQueue, remove: removeFromQueue, isQueued } = useNominationQueue(myTeamId);
 
   // Initialization: Fetch Data & Identify User

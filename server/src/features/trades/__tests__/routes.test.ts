@@ -1,57 +1,52 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockTx = {
-  roster: {
-    findFirst: vi.fn(),
-    update: vi.fn(),
-    create: vi.fn(),
-  },
-  team: { update: vi.fn() },
-  trade: { update: vi.fn() },
-};
-
-const mockPrisma = {
-  trade: {
-    create: vi.fn(),
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-    update: vi.fn(),
-  },
-  team: { findUnique: vi.fn() },
-  teamOwnership: { findUnique: vi.fn() },
-  $transaction: vi.fn(async (fn: any) => fn(mockTx)),
-};
-
-vi.mock("../../../db/prisma.js", () => ({ prisma: mockPrisma }));
-
+// All vi.mock calls are hoisted — must not reference top-level variables
+vi.mock("../../../db/prisma.js", () => {
+  const mockTx = {
+    roster: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+    team: { update: vi.fn() },
+    trade: { update: vi.fn() },
+  };
+  return {
+    prisma: {
+      trade: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+      team: { findUnique: vi.fn() },
+      teamOwnership: { findUnique: vi.fn() },
+      $transaction: vi.fn(async (fn: any) => fn(mockTx)),
+      __mockTx: mockTx,
+    },
+  };
+});
 vi.mock("../../../lib/supabase.js", () => ({
   supabaseAdmin: { auth: { getUser: vi.fn() } },
 }));
-
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
+vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
+vi.mock("../../../middleware/auth.js", () => ({
+  requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+  requireAdmin: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+  requireTeamOwner: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireLeagueMember: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  isTeamOwner: vi.fn(),
+}));
+vi.mock("../../../middleware/validate.js", () => ({
+  validateBody: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
+vi.mock("../../../middleware/asyncHandler.js", () => ({
+  asyncHandler: (fn: Function) => fn,
+}));
 
-import { z } from "zod";
+// Import schemas from the actual source (after mocks are set up)
+import { tradeItemSchema, tradeProposalSchema } from "../routes.js";
+import { prisma } from "../../../db/prisma.js";
+
+const mockPrisma = prisma as any;
+const mockTx = mockPrisma.__mockTx;
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-// Test the Zod schemas directly (they're the validation layer)
-const tradeItemSchema = z.object({
-  senderId: z.number().int().positive(),
-  recipientId: z.number().int().positive(),
-  assetType: z.enum(["PLAYER", "BUDGET", "PICK"]),
-  playerId: z.number().int().positive().optional(),
-  amount: z.number().nonnegative().optional(),
-  pickRound: z.number().int().positive().optional(),
-});
-
-const tradeProposalSchema = z.object({
-  leagueId: z.number().int().positive(),
-  proposerTeamId: z.number().int().positive(),
-  items: z.array(tradeItemSchema).min(1),
 });
 
 describe("trades - validation schemas", () => {

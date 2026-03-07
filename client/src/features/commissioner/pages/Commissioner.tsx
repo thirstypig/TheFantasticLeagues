@@ -2,13 +2,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { API_BASE, getLeagues, getMe, type LeagueListItem } from "../../../api";
-import { fetchJsonApi } from "../../../api/base";
+import { getLeagues, getMe, type LeagueListItem } from "../../../api";
+import {
+  getCommissionerOverview,
+  getAvailableUsers,
+  getPriorTeams,
+  createTeam as apiCreateTeam,
+  deleteTeam as apiDeleteTeam,
+  inviteMember as apiInviteMember,
+  assignTeamOwner as apiAssignTeamOwner,
+  removeTeamOwner as apiRemoveTeamOwner,
+} from "../api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import KeeperPrepDashboard from "../../keeper-prep/components/KeeperPrepDashboard";
 import { RulesEditor } from "../../leagues/components/RulesEditor";
 import PageHeader from "../../../components/ui/PageHeader";
+
+// Local types for normalizeOverview (server response has more fields than the api.ts types)
+type CommissionerOverviewResponse = {
+  league: any;
+  teams?: any[];
+  memberships?: any[];
+};
 
 type CommissionerUser = {
   id: number;
@@ -46,12 +62,6 @@ type CommissionerLeague = {
   draftOrder?: "SNAKE" | "LINEAR" | null;
   isPublic: boolean;
   publicSlug?: string | null;
-};
-
-type CommissionerOverviewResponse = {
-  league: any;
-  teams?: any[];
-  memberships?: any[];
 };
 
 function cls(...xs: Array<string | false | null | undefined>) {
@@ -190,19 +200,19 @@ export default function Commissioner() {
       setLeagues(leaguesResp.leagues ?? []);
 
       // commissioner overview (server enforces access)
-      const resp = await fetchJsonApi<CommissionerOverviewResponse>(`${API_BASE}/commissioner/${lid}`);
+      const resp = await getCommissionerOverview(lid);
       const norm = normalizeOverview(resp);
 
       setOverview({ league: norm.league, teams: norm.teams, memberships: norm.memberships });
       reconcileTeamSelections(norm.teams);
 
       // Fetch available users for dropdown
-      const usersResp = await fetchJsonApi<{ users: Array<{ id: number; email: string; name: string | null }> }>(`${API_BASE}/commissioner/${lid}/available-users`);
-      setAvailableUsers(usersResp.users ?? []);
+      const users = await getAvailableUsers(lid);
+      setAvailableUsers(users);
 
       // Fetch prior teams for team creation
-      const priorResp = await fetchJsonApi<{ priorTeams: Array<{ id: number; name: string; code: string | null }> }>(`${API_BASE}/commissioner/${lid}/prior-teams`);
-      setPriorTeams(priorResp.priorTeams ?? []);
+      const priorTeamsList = await getPriorTeams(lid);
+      setPriorTeams(priorTeamsList);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load commissioner data.");
     } finally {
@@ -223,7 +233,7 @@ export default function Commissioner() {
   }, [leagueId]);
 
   async function refreshOverviewOnly() {
-    const resp = await fetchJsonApi<CommissionerOverviewResponse>(`${API_BASE}/commissioner/${lid}`);
+    const resp = await getCommissionerOverview(lid);
     const norm = normalizeOverview(resp);
     setOverview({ league: norm.league, teams: norm.teams, memberships: norm.memberships });
     reconcileTeamSelections(norm.teams);
@@ -243,7 +253,7 @@ export default function Commissioner() {
       };
       if (!payload.name) throw new Error("Team name is required.");
 
-      await fetchJsonApi(`${API_BASE}/commissioner/${lid}/teams`, { method: "POST", body: JSON.stringify(payload) });
+      await apiCreateTeam(lid, payload);
 
       setTeamName("");
       setTeamCode("");
@@ -264,10 +274,7 @@ export default function Commissioner() {
       const email = String(inviteEmail || "").trim().toLowerCase();
       if (!email) throw new Error("Email is required.");
 
-      await fetchJsonApi(`${API_BASE}/commissioner/${lid}/members`, {
-        method: "POST",
-        body: JSON.stringify({ email, role: inviteRole }),
-      });
+      await apiInviteMember(lid, email, inviteRole);
 
       setInviteEmail("");
       await refreshOverviewOnly();
@@ -288,10 +295,7 @@ export default function Commissioner() {
       const userId = Number(ownerUserId);
       if (!Number.isFinite(userId) || userId <= 0) throw new Error("Select an owner.");
 
-      await fetchJsonApi(`${API_BASE}/commissioner/${lid}/teams/${teamId}/owner`, {
-        method: "POST",
-        body: JSON.stringify({ userId, ownerName: String(ownerName || "").trim() || undefined }),
-      });
+      await apiAssignTeamOwner(lid, teamId, userId, String(ownerName || "").trim() || undefined);
 
       setOwnerUserId("");
       setOwnerName("");
@@ -307,7 +311,7 @@ export default function Commissioner() {
     setBusy(true);
     setError(null);
     try {
-      await fetchJsonApi(`${API_BASE}/commissioner/${lid}/teams/${teamId}/owner/${userId}`, { method: "DELETE" });
+      await apiRemoveTeamOwner(lid, teamId, userId);
       await refreshOverviewOnly();
     } catch (err: any) {
       setError(err?.message ?? "Remove owner failed.");
@@ -323,7 +327,7 @@ export default function Commissioner() {
 
     setBusy(true);
     try {
-      await fetchJsonApi(`${API_BASE}/commissioner/${lid}/teams/${teamId}`, { method: "DELETE" });
+      await apiDeleteTeam(lid, teamId);
       await refreshOverviewOnly();
     } catch (e: any) {
       alert(e.message || "Failed to delete team.");
@@ -343,26 +347,26 @@ export default function Commissioner() {
 
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="flex items-center justify-between">
-          <Link to="/leagues" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+          <Link to="/leagues" className="text-sm text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">
             ← Back to Leagues
           </Link>
           <div className="flex items-center gap-2">
             <button
               onClick={loadAll}
               className={cls(
-                "rounded-xl border border-[var(--lg-border-subtle)] px-3 py-2 text-sm text-white/80 hover:bg-[var(--lg-tint)]",
+                "rounded-xl border border-[var(--lg-border-subtle)] px-3 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]",
                 busy && "opacity-60 cursor-not-allowed"
               )}
               disabled={busy}
             >
               Refresh
             </button>
-            <div className="text-xs text-white/50">leagueId: {leagueId ?? "—"}</div>
+            <div className="text-xs text-[var(--lg-text-muted)]">leagueId: {leagueId ?? "—"}</div>
           </div>
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/60">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-muted)]">
             Loading…
           </div>
         ) : error ? (
@@ -370,19 +374,19 @@ export default function Commissioner() {
             {error}
           </div>
         ) : !me ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
             You are not logged in.
           </div>
         ) : !leagueFromList ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
             League not found.
           </div>
         ) : !canCommissioner ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
             You are not a commissioner for this league.
           </div>
         ) : !league ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
             Commissioner data not available.
           </div>
         ) : (
@@ -391,10 +395,10 @@ export default function Commissioner() {
             <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-lg font-semibold text-white">
-                    {league.name} <span className="text-white/50">({league.season})</span>
+                  <div className="text-lg font-semibold text-[var(--lg-text-heading)]">
+                    {league.name} <span className="text-[var(--lg-text-muted)]">({league.season})</span>
                   </div>
-                  <div className="mt-1 text-sm text-white/60">
+                  <div className="mt-1 text-sm text-[var(--lg-text-muted)]">
                     draftMode: {league.draftMode}
                     {league.draftMode === "DRAFT" ? ` · draftOrder: ${league.draftOrder ?? "—"}` : null}
                     <span className="ml-2 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs">role: {accessRole ?? "—"}</span>
@@ -402,7 +406,7 @@ export default function Commissioner() {
                   </div>
                 </div>
 
-                <div className="text-right text-xs text-white/50">
+                <div className="text-right text-xs text-[var(--lg-text-muted)]">
                   <div>Public: {league.isPublic ? "Yes" : "No"}</div>
                   <div>Slug: {league.publicSlug ?? "—"}</div>
                 </div>
@@ -421,9 +425,9 @@ export default function Commissioner() {
                         }}
                         className={cls(
                             "px-4 py-2 text-sm font-semibold rounded-lg capitalize transition-colors",
-                            activeTab === tab 
-                                ? "bg-white text-slate-900" 
-                                : "text-white/60 hover:text-white hover:bg-[var(--lg-tint)]"
+                            activeTab === tab
+                                ? "bg-[var(--lg-accent)] text-white"
+                                : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]"
                         )}
                     >
                         {tab}
@@ -437,40 +441,40 @@ export default function Commissioner() {
                   {/* Members */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-white">Members</div>
-                      <div className="text-xs text-white/50">{overview.memberships.length} total</div>
+                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Members</div>
+                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
                     </div>
 
                     <div className="space-y-2">
                       {overview.memberships.map((m) => (
                         <div
                           key={m.id}
-                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2"
+                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
                         >
                           <div className="min-w-0">
-                            <div className="truncate text-sm text-white">
+                            <div className="truncate text-sm text-[var(--lg-text-primary)]">
                               {m.user?.name || m.user?.email || `User ${m.userId}`}
                             </div>
-                            <div className="truncate text-xs text-white/50">{m.user?.email}</div>
+                            <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
                           </div>
-                          <div className="shrink-0 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-white/80">
+                          <div className="shrink-0 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)]">
                             {m.role}
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 p-4">
-                      <div className="mb-2 text-sm font-semibold text-white">Add member (by email)</div>
+                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
                       <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
                         <input
-                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="owner@email.com"
                           value={inviteEmail}
                           onChange={(e) => setInviteEmail(e.target.value)}
                         />
                         <select
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           value={inviteRole}
                           onChange={(e) => setInviteRole(e.target.value as any)}
                           title={!me.isAdmin ? "Commissioner role requires Admin." : "Select role"}
@@ -486,7 +490,7 @@ export default function Commissioner() {
                           <button
                             type="submit"
                             className={cls(
-                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-white hover:bg-[var(--lg-tint-hover)]",
+                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
                               busy && "opacity-60 cursor-not-allowed"
                             )}
                             disabled={busy}
@@ -496,7 +500,7 @@ export default function Commissioner() {
                         </div>
                       </form>
 
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
                         Note: users must log in once before they can be added by email.
                       </div>
                     </div>
@@ -505,20 +509,20 @@ export default function Commissioner() {
                   {/* Teams */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-white">Teams</div>
-                      <div className="text-xs text-white/50">{overview.teams.length} total</div>
+                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Teams</div>
+                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.teams.length} total</div>
                     </div>
 
                     <div className="space-y-2">
                       {overview.teams.map((t) => (
                         <div
                           key={t.id}
-                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 group"
+                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group"
                         >
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-bold text-white">
+                            <div className="truncate text-sm font-bold text-[var(--lg-text-heading)]">
                               {t.name}{" "}
-                              <span className="text-white/50 font-normal">
+                              <span className="text-[var(--lg-text-muted)] font-normal">
                                 {t.code ? `(${t.code})` : ""}
                                 {t.budget != null ? ` · $${t.budget}` : ""}
                               </span>
@@ -526,7 +530,7 @@ export default function Commissioner() {
                             <div className="mt-1 space-y-1">
                               {t.ownerships && t.ownerships.length > 0 ? (
                                 t.ownerships.map((o: any) => (
-                                  <div key={o.id} className="flex items-center gap-2 text-xs text-white/60 group/owner">
+                                  <div key={o.id} className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)] group/owner">
                                     <span className="truncate max-w-[150px]">{o.user?.email || `User ${o.userId}`}</span>
                                     <button
                                       onClick={() => onRemoveOwner(t.id, o.userId)}
@@ -539,12 +543,12 @@ export default function Commissioner() {
                                   </div>
                                 ))
                               ) : (
-                                <div className="text-xs text-white/40 italic">No owners assigned</div>
+                                <div className="text-xs text-[var(--lg-text-muted)] italic">No owners assigned</div>
                               )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="text-xs text-white/40">id: {t.id}</div>
+                            <div className="text-xs text-[var(--lg-text-muted)]">id: {t.id}</div>
                             <button
                               onClick={() => onDeleteTeam(t.id)}
                               className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -560,14 +564,14 @@ export default function Commissioner() {
                       ))}
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 p-4">
-                      <div className="mb-2 text-sm font-semibold text-white">Create team</div>
+                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Create team</div>
                       <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
                         {priorTeams.length > 0 && (
                           <div className="md:col-span-3 mb-2">
-                            <label className="block text-xs text-white/60 mb-1">Link to prior year team (optional)</label>
+                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Link to prior year team (optional)</label>
                             <select
-                              className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                              className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                               value={selectedPriorTeamId}
                               onChange={(e) => {
                                 const id = e.target.value ? Number(e.target.value) : "";
@@ -591,22 +595,22 @@ export default function Commissioner() {
                           </div>
                         )}
                         <input
-                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="Team name"
                           value={teamName}
                           onChange={(e) => setTeamName(e.target.value)}
                         />
                         <input
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="Code (OGBA)"
                           value={teamCode}
                           onChange={(e) => setTeamCode(e.target.value)}
                         />
 
                         <div className="md:col-span-2">
-                          <label className="block text-xs text-white/60">Budget</label>
+                          <label className="block text-xs text-[var(--lg-text-muted)]">Budget</label>
                           <input
-                            className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                            className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                             type="number"
                             value={teamBudget}
                             onChange={(e) => setTeamBudget(Number(e.target.value))}
@@ -617,7 +621,7 @@ export default function Commissioner() {
                           <button
                             type="submit"
                             className={cls(
-                              "w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-white hover:bg-[var(--lg-tint-hover)]",
+                              "w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
                               busy && "opacity-60 cursor-not-allowed"
                             )}
                             disabled={busy}
@@ -628,12 +632,12 @@ export default function Commissioner() {
                       </form>
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 p-4">
-                      <div className="mb-2 text-sm font-semibold text-white">Assign team owner</div>
+                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Assign team owner</div>
 
                       <form onSubmit={onAssignOwner} className="grid gap-2 md:grid-cols-3">
                         <select
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           value={ownerTeamId}
                           onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}
                         >
@@ -646,7 +650,7 @@ export default function Commissioner() {
                         </select>
 
                         <select
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           value={ownerUserId}
                           onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}
                         >
@@ -659,7 +663,7 @@ export default function Commissioner() {
                         </select>
 
                         <input
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-[var(--lg-border-subtle)]"
+                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           placeholder="Owner display name (optional)"
                           value={ownerName}
                           onChange={(e) => setOwnerName(e.target.value)}
@@ -669,7 +673,7 @@ export default function Commissioner() {
                           <button
                             type="submit"
                             className={cls(
-                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-white hover:bg-[var(--lg-tint-hover)]",
+                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
                               busy && "opacity-60 cursor-not-allowed"
                             )}
                             disabled={busy}
@@ -679,7 +683,7 @@ export default function Commissioner() {
                         </div>
                       </form>
 
-                      <div className="mt-2 text-xs text-white/50">
+                      <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
                         Teams can have up to 2 owners. Select registered users from the dropdown.
                       </div>
                     </div>
@@ -691,7 +695,7 @@ export default function Commissioner() {
             {activeTab === 'rosters' && (
                 <div className="space-y-6">
                     <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                       <h2 className="text-xl font-bold mb-4 text-white">Manual Roster Management</h2>
+                       <h2 className="text-xl font-bold mb-4 text-[var(--lg-text-heading)]">Manual Roster Management</h2>
                        <CommissionerRosterTool
                           leagueId={lid}
                           teams={overview.teams}
@@ -705,7 +709,7 @@ export default function Commissioner() {
             {activeTab === 'keepers' && (
                 <div className="space-y-6">
                     <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                         <h2 className="text-xl font-bold mb-4 text-white">Keeper Selection Agent</h2>
+                         <h2 className="text-xl font-bold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
                          <KeeperPrepDashboard leagueId={lid} />
                     </div>
                 </div>

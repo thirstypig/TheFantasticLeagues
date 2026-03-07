@@ -2,12 +2,14 @@
 import crypto from "crypto";
 import { Router } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { DataService } from "../players/services/dataService.js";
 import { requireAuth, requireTeamOwner, requireLeagueMember } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
+import { writeAuditLog } from "../../lib/auditLog.js";
 
 const claimSchema = z.object({
   leagueId: z.number().int().positive(),
@@ -29,7 +31,7 @@ router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncH
   const skip = req.query.skip ? Number(req.query.skip) : 0;
   const take = req.query.take ? Number(req.query.take) : 50;
 
-  const where: any = { leagueId };
+  const where: Prisma.TransactionEventWhereInput = { leagueId };
   if (teamId) where.teamId = teamId;
 
   const [total, transactions] = await Promise.all([
@@ -150,6 +152,13 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       }
     }
   }, { timeout: 30_000 });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TRANSACTION_CLAIM",
+    resourceType: "Transaction",
+    metadata: { leagueId, teamId, playerId, dropPlayerId: dropPlayerId || null },
+  });
 
   return res.json({ success: true, playerId });
 }));

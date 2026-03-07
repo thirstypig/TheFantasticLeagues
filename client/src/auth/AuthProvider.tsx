@@ -1,6 +1,6 @@
 // client/src/auth/AuthProvider.tsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { API_BASE } from "../api";
+import { API_BASE, fetchJsonApi } from "../api/base";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 
@@ -50,17 +50,7 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null);
 
 async function fetchMe(): Promise<MeResponse> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  
-  const headers: HeadersInit = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_BASE}/auth/me`, { headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || "Failed to load /auth/me");
+  const data = await fetchJsonApi<{ user: User | null }>(`${API_BASE}/auth/me`);
   return { user: data?.user ?? null };
 }
 
@@ -83,13 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    let lastAccessToken: string | null = null;
+    let lastAccessToken: string | undefined;
     let fetchInFlight = false;
 
     async function syncUser(newSession: Session | null) {
-      // Skip if the access token hasn't actually changed
+      // Skip if the access token hasn't actually changed (dedup rapid auth events)
       const newToken = newSession?.access_token ?? null;
-      if (newToken === lastAccessToken) return;
+      if (lastAccessToken !== undefined && newToken === lastAccessToken) return;
       lastAccessToken = newToken;
 
       setSession(newSession);

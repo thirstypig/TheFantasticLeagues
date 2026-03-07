@@ -9,7 +9,7 @@ vi.mock("../../../api", () => ({
 }));
 
 import { getPlayerProfile, getPlayerRecentStats, getPlayerCareerStats } from "../../../api";
-import PlayerDetailModal from "../components/PlayerDetailModal";
+import PlayerDetailModal from "../../../components/PlayerDetailModal";
 
 const mockPlayer = {
   mlb_id: "545361",

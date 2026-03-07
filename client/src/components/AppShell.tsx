@@ -2,17 +2,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { API_BASE, getLeagues, getMe, type LeagueListItem, type AuthUser } from "../api";
-import { fetchJsonApi } from "../api/base";
+import { getLeagues, type LeagueListItem } from "../api";
+import { useAuth } from "../auth/AuthProvider";
 import { useTheme } from "../contexts/ThemeContext";
 
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/";
   return pathname === to || pathname.startsWith(to + "/");
-}
-
-async function postLogout(): Promise<void> {
-  await fetchJsonApi(`${API_BASE}/auth/logout`, { method: "POST" }).catch(() => {});
 }
 
 type NavItem = { to: string; label: string; show?: boolean };
@@ -22,41 +18,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   const nav = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { user, loading, logout } = useAuth();
 
-  const [me, setMe] = useState<AuthUser | null>(null);
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarVisible, setSidebarVisible] = useState(true);
 
-  async function refreshAuth() {
-    setLoading(true);
-    try {
-      const meResp = await getMe().catch(() => ({ user: null }));
-      setMe(meResp.user ?? null);
-
-      if (meResp.user) {
-        const leaguesResp = await getLeagues().catch(() => ({ leagues: [] }));
-        setLeagues(leaguesResp.leagues ?? []);
-      } else {
-        setLeagues([]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    refreshAuth();
-  }, []);
+    if (user) {
+      getLeagues()
+        .then((resp) => setLeagues(resp.leagues ?? []))
+        .catch(() => setLeagues([]));
+    } else {
+      setLeagues([]);
+    }
+  }, [user]);
 
   const commissionerLeagueId = useMemo(() => {
-    const isAdmin = Boolean(me?.isAdmin);
+    const isAdmin = Boolean(user?.isAdmin);
     const commissioner = (leagues ?? []).find((l: LeagueListItem) => l?.access?.type === "MEMBER" && l?.access?.role === "COMMISSIONER");
     if (commissioner) return commissioner.id;
     if (isAdmin && (leagues?.length ?? 0) > 0) return leagues[0].id;
     return null;
-  }, [leagues, me]);
+  }, [leagues, user]);
 
   const getNavIcon = (label: string) => {
     const icons: Record<string, JSX.Element> = {
@@ -116,14 +100,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           label: "Commissioner",
           show: Boolean(commissionerLeagueId),
         },
-        { to: "/admin", label: "Admin", show: Boolean(me?.isAdmin) },
+        { to: "/admin", label: "Admin", show: Boolean(user?.isAdmin) },
       ],
     },
   ];
 
   async function onLogout() {
-    await postLogout();
-    setMe(null);
+    await logout();
     setLeagues([]);
     nav("/", { replace: true });
   }
@@ -150,62 +133,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const [sidebarWidth, setSidebarWidth] = useState(240);
-  const [isResizing, setIsResizing] = useState(false);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const newWidth = Math.max(180, Math.min(400, e.clientX));
-      setSidebarWidth(newWidth);
-    };
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      document.body.style.cursor = 'default';
-    };
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
-
   return (
     <div className="min-h-screen scrollbar-hide">
       <div className="flex">
         {sidebarOpen && sidebarVisible && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-300"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        <aside 
+        <aside
             className={`
               fixed lg:sticky top-0 h-screen z-50
               shrink-0 transition-all duration-300 group
               lg-sidebar
               ${!sidebarVisible ? 'w-0 overflow-hidden border-none px-0' : ''}
               ${!sidebarOpen && sidebarVisible ? 'lg:w-20 -translate-x-full lg:translate-x-0' : ''}
+              ${sidebarOpen && sidebarVisible ? 'w-60' : ''}
             `}
-            style={sidebarOpen && sidebarVisible ? { width: sidebarWidth } : {}}
         >
-            {sidebarOpen && sidebarVisible && (
-                <div
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--lg-accent)]/50 z-50 transition-colors"
-                    onMouseDown={() => setIsResizing(true)}
-                />
-            )}
-            
           <div className="px-4 py-8 h-full flex flex-col min-w-[64px]">
             <div className={`mb-10 flex items-center justify-between ${!sidebarOpen && 'flex-col gap-6'}`}>
               {sidebarOpen && (
-                <Link 
-                  to={me ? "/" : "/login"}
+                <Link
+                  to={user ? "/" : "/login"}
                   className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-bold text-sm shadow-2xl shadow-blue-500/40 transform -rotate-3 hover:rotate-0 transition-transform duration-500">FBST</div>
@@ -215,7 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </Link>
               )}
-              
+
               <div className={`flex items-center gap-1 ${!sidebarOpen && 'flex-col mx-auto'}`}>
                 <button
                   onClick={toggleTheme}
@@ -240,7 +192,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               {NAV_SECTIONS.map((section) => {
                 const visibleItems = section.items.filter((item) => item.show);
                 if (visibleItems.length === 0) return null;
-                
+
                 return (
                   <div key={section.title}>
                     {sidebarOpen && (
@@ -259,21 +211,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className={`mt-8 pt-8 border-t border-[var(--lg-border-faint)] ${!sidebarOpen && 'flex flex-col items-center'}`}>
               {loading ? (
                 <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-              ) : me ? (
+              ) : user ? (
                 <div className={`flex items-center gap-3 ${!sidebarOpen && 'flex-col'}`}>
-                  {me.avatarUrl ? (
-                    <img src={me.avatarUrl} alt={me.name || 'User'} className="h-10 w-10 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name || 'User'} className="h-10 w-10 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
                   ) : (
                     <div className="h-10 w-10 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)]">
-                        {me.name?.[0] || 'U'}
+                        {user.name?.[0] || 'U'}
                     </div>
                   )}
-                  
+
                   {sidebarOpen && (
                     <>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-40 mb-0.5">Account</div>
-                        <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate uppercase tracking-tight">{me.name || me.email}</div>
+                        <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate uppercase tracking-tight">{user.name || user.email}</div>
                       </div>
                       <button
                         onClick={onLogout}
@@ -286,7 +238,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       </button>
                     </>
                   )}
-                  
+
                   {!sidebarOpen && (
                     <button
                         onClick={onLogout}
@@ -330,7 +282,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            
+
             <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded bg-[var(--lg-accent)] flex items-center justify-center text-xs text-white font-bold">FB</div>
                 <span className="text-xs font-bold tracking-wide uppercase text-[var(--lg-text-heading)]">FBST</span>

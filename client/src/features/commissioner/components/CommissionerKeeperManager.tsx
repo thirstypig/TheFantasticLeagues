@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { getLeague } from '../../../api';
+import { getCommissionerRosters, assignRosterKeeper, releaseRosterEntry } from '../api';
 import { fetchJsonApi } from '../../../api/base';
 
 interface KeeperManagerProps {
@@ -51,8 +52,8 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
             setTeams(lRes.league?.teams || []);
 
             // 2. Get Rosters
-            const rRes = await fetchJsonApi<any>(`/api/commissioner/${leagueId}/rosters`);
-            setRosters(rRes.rosters || []);
+            const rosterData = await getCommissionerRosters(leagueId);
+            setRosters(rosterData);
         } catch (e) {
             console.error(e);
         } finally {
@@ -81,16 +82,13 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
         if (!selectedTeamId) return alert("Select a team first.");
         setProcessing(true);
         try {
-             await fetchJsonApi(`/api/commissioner/${leagueId}/roster/assign`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    teamId: Number(selectedTeamId),
-                    mlbId: player.mlbId,
-                    name: player.name,
-                    posPrimary: player.position,
-                    price: bid,
-                    source: 'keeper'
-                })
+             await assignRosterKeeper(leagueId, {
+                teamId: Number(selectedTeamId),
+                mlbId: player.mlbId,
+                name: player.name,
+                posPrimary: player.position,
+                price: bid,
+                source: 'keeper',
              });
              setQuery('');
              setSearchResults([]);
@@ -106,10 +104,7 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
         if(!confirm("Remove this keeper?")) return;
         setProcessing(true);
          try {
-             await fetchJsonApi(`/api/commissioner/${leagueId}/roster/release`, {
-                method: 'POST',
-                body: JSON.stringify({ rosterId })
-             });
+             await releaseRosterEntry(leagueId, rosterId);
              refresh();
         } catch (e) {
             alert("Failed to remove");

@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchJsonApi } from '../../../api/base';
-import { supabase } from '../../../lib/supabase';
+import { fetchJsonApi, fetchWithAuth } from '../../../api/base';
 
 interface Team {
   id: number;
@@ -110,12 +109,9 @@ export default function RosterControls({ leagueId, teams, onUpdate }: RosterCont
     formData.append('file', importFile);
     
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const res = await fetch(`/api/commissioner/${leagueId}/roster/import`, {
+        const res = await fetchWithAuth(`/api/commissioner/${leagueId}/roster/import`, {
             method: 'POST',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-            body: formData
+            body: formData,
         });
         const data = await res.json();
         if (data.success) {

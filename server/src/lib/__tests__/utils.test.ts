@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk } from "../utils.js";
+import { toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam } from "../utils.js";
 
 describe("toNum", () => {
   it("converts numeric strings", () => {
@@ -168,5 +168,46 @@ describe("chunk", () => {
 
   it("handles chunk size of 1", () => {
     expect(chunk([1, 2, 3], 1)).toEqual([[1], [2], [3]]);
+  });
+});
+
+describe("parseIntParam", () => {
+  it("parses valid integer strings", () => {
+    expect(parseIntParam("42")).toBe(42);
+    expect(parseIntParam("0")).toBe(0);
+    expect(parseIntParam("-5")).toBe(-5);
+  });
+
+  it("parses integer numbers", () => {
+    expect(parseIntParam(42)).toBe(42);
+  });
+
+  it("returns null for floats", () => {
+    expect(parseIntParam(3.14)).toBeNull();
+    expect(parseIntParam("3.14")).toBeNull();
+  });
+
+  it("returns null for non-numeric values", () => {
+    expect(parseIntParam("abc")).toBeNull();
+  });
+
+  it("returns null for null/undefined", () => {
+    expect(parseIntParam(null)).toBeNull();
+    expect(parseIntParam(undefined)).toBeNull();
+  });
+
+  it("returns null for empty string", () => {
+    expect(parseIntParam("")).toBeNull();
+    expect(parseIntParam("  ")).toBeNull();
+  });
+
+  it("handles strings with whitespace around numbers", () => {
+    expect(parseIntParam("  42  ")).toBe(42);
+  });
+
+  it("returns null for Infinity and NaN", () => {
+    expect(parseIntParam(Infinity)).toBeNull();
+    expect(parseIntParam(-Infinity)).toBeNull();
+    expect(parseIntParam(NaN)).toBeNull();
   });
 });

@@ -2,7 +2,7 @@ import {
   SeasonTable,
   PeriodMeta,
   TeamSeasonRow,
-} from "../components/StatsTables";
+} from "../../../components/StatsTables";
 import PageHeader from "../../../components/ui/PageHeader";
 
 // 2025 OGBA meeting periods pulled from the Excel workbook

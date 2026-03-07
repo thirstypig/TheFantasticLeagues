@@ -15,7 +15,7 @@ import {
   SeasonTable, TeamSeasonRow, PeriodMeta,
   PeriodSummaryTable, TeamPeriodSummaryRow,
   CategoryPeriodTable, CategoryPeriodRow
-} from '../../standings/components/StatsTables';
+} from '../../../components/StatsTables';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
 
 interface PlayerStat {

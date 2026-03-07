@@ -1,42 +1,51 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockTx = {
-  waiverClaim: { update: vi.fn() },
-  team: { findUnique: vi.fn(), update: vi.fn() },
-  roster: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
-};
-
-const mockPrisma = {
-  waiverClaim: {
-    findMany: vi.fn(),
-    create: vi.fn(),
-    delete: vi.fn(),
-  },
-  team: { findUnique: vi.fn() },
-  teamOwnership: { findUnique: vi.fn() },
-  $transaction: vi.fn(async (fn: any) => fn(mockTx)),
-};
-
-vi.mock("../../../db/prisma.js", () => ({ prisma: mockPrisma }));
+// All vi.mock calls are hoisted — must not reference top-level variables
+vi.mock("../../../db/prisma.js", () => {
+  const mockTx = {
+    waiverClaim: { update: vi.fn() },
+    team: { findUnique: vi.fn(), update: vi.fn() },
+    roster: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+  };
+  return {
+    prisma: {
+      waiverClaim: { findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
+      team: { findUnique: vi.fn() },
+      teamOwnership: { findUnique: vi.fn() },
+      $transaction: vi.fn(async (fn: any) => fn(mockTx)),
+      __mockTx: mockTx,
+    },
+  };
+});
 vi.mock("../../../lib/supabase.js", () => ({
   supabaseAdmin: { auth: { getUser: vi.fn() } },
 }));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
+vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
+vi.mock("../../../middleware/auth.js", () => ({
+  requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+  requireAdmin: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
+  requireTeamOwner: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  isTeamOwner: vi.fn(),
+}));
+vi.mock("../../../middleware/validate.js", () => ({
+  validateBody: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
+vi.mock("../../../middleware/asyncHandler.js", () => ({
+  asyncHandler: (fn: Function) => fn,
+}));
 
-import { z } from "zod";
+// Import schema from actual source (after mocks are set up)
+import { waiverClaimSchema } from "../routes.js";
+import { prisma } from "../../../db/prisma.js";
+
+const mockPrisma = prisma as any;
+const mockTx = mockPrisma.__mockTx;
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-const waiverClaimSchema = z.object({
-  teamId: z.number().int().positive(),
-  playerId: z.number().int().positive(),
-  dropPlayerId: z.number().int().positive().optional(),
-  bidAmount: z.number().int().nonnegative(),
-  priority: z.number().int().positive().optional(),
 });
 
 describe("waivers - validation schema", () => {

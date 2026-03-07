@@ -14,12 +14,12 @@ vi.mock("../../lib/supabase.js", () => ({
   },
 }));
 
-import { requireAuth, requireAdmin, parseIntParam } from "../auth.js";
+import { requireAuth, requireAdmin } from "../auth.js";
 
 /**
  * Tests for the auth middleware functions.
- * These test the synchronous middleware functions (requireAuth, requireAdmin, parseIntParam).
- * attachUser and requireLeagueRole require Supabase/Prisma mocking and are tested separately.
+ * These test the synchronous middleware functions (requireAuth, requireAdmin).
+ * attachUser and middleware factories are tested in authExtended.test.ts.
  */
 
 function mockReq(user?: any): any {
@@ -115,41 +115,3 @@ describe("requireAdmin", () => {
   });
 });
 
-describe("parseIntParam", () => {
-  it("parses valid integer strings", () => {
-    expect(parseIntParam("42")).toBe(42);
-    expect(parseIntParam("0")).toBe(0);
-    expect(parseIntParam("-5")).toBe(-5);
-  });
-
-  it("parses numbers", () => {
-    expect(parseIntParam(42)).toBe(42);
-    expect(parseIntParam(3.14)).toBe(3.14);
-  });
-
-  it("returns null for non-numeric values", () => {
-    expect(parseIntParam("abc")).toBeNull();
-  });
-
-  it("returns 0 for null/undefined (nullish coalescing → empty string → 0)", () => {
-    // parseIntParam uses (v ?? "") so null/undefined become "", Number("") === 0
-    expect(parseIntParam(null)).toBe(0);
-    expect(parseIntParam(undefined)).toBe(0);
-  });
-
-  it("returns 0 for empty string (Number('') === 0)", () => {
-    // Note: Number("") returns 0 in JS, so parseIntParam treats it as finite
-    expect(parseIntParam("")).toBe(0);
-    expect(parseIntParam("  ")).toBe(0);
-  });
-
-  it("handles strings with whitespace around numbers", () => {
-    expect(parseIntParam("  42  ")).toBe(42);
-  });
-
-  it("returns null for Infinity", () => {
-    expect(parseIntParam(Infinity)).toBeNull();
-    expect(parseIntParam(-Infinity)).toBeNull();
-    expect(parseIntParam(NaN)).toBeNull();
-  });
-});

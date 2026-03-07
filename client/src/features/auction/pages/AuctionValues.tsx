@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { getAuctionValues, type PlayerSeasonStat } from "../../../api";
-import PlayerDetailModal from "../../players/components/PlayerDetailModal";
+import PlayerDetailModal from "../../../components/PlayerDetailModal";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
 function norm(v: any) {

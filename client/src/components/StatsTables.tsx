@@ -1,9 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { getPrimaryPosition } from "../../../lib/baseballUtils";
-import { fmtRate } from "../../../api/base";
-import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
-import { Badge } from "../../../components/ui/Badge";
+import { getPrimaryPosition } from "../lib/baseballUtils";
+import { fmtRate } from "../api/base";
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "./ui/ThemedTable";
+import { Badge } from "./ui/Badge";
 
 /**
  * SHARED TYPES

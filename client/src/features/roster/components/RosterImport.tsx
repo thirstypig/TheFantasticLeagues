@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../../contexts/ThemeContext';
-import { supabase } from '../../../lib/supabase';
+import { fetchWithAuth } from '../../../api/base';
 
 interface RosterImportProps {
   year: number;
@@ -34,11 +34,8 @@ export default function RosterImport({ year, onImportComplete }: RosterImportPro
     formData.append('year', String(year));
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const response = await fetch('/api/roster/import', {
+      const response = await fetchWithAuth('/api/roster/import', {
         method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
 

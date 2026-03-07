@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import { logger } from '../../lib/logger.js';
 import { requireAuth, requireAdmin } from '../../middleware/auth.js';
+import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { prisma } from '../../db/prisma.js';
@@ -19,79 +19,74 @@ interface RosterRow {
 }
 
 // POST /api/roster/import - Bulk import roster entries from CSV
-router.post('/import', requireAuth, requireAdmin, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+router.post('/import', requireAuth, requireAdmin, upload.single('file'), asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
-    const year = parseInt(req.body.year) || new Date().getFullYear();
-    const logs: string[] = [];
-    const records: RosterRow[] = [];
+  const year = parseInt(req.body.year) || new Date().getFullYear();
+  const logs: string[] = [];
+  const records: RosterRow[] = [];
 
-    // Parse CSV from buffer
-    const parser = Readable.from(req.file.buffer).pipe(
-      parse({
-        columns: true,
-        skip_empty_lines: true,
-        trim: true,
-      })
-    );
+  // Parse CSV from buffer
+  const parser = Readable.from(req.file.buffer).pipe(
+    parse({
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    })
+  );
 
-    for await (const record of parser) {
-      records.push(record as RosterRow);
-    }
+  for await (const record of parser) {
+    records.push(record as RosterRow);
+  }
 
-    logs.push(`Parsed ${records.length} rows from CSV.`);
+  logs.push(`Parsed ${records.length} rows from CSV.`);
 
-    let created = 0;
-    let updated = 0;
+  let created = 0;
+  let updated = 0;
 
-    for (const row of records) {
-      const cost = parseFloat(row.acquisitionCost) || 0;
+  for (const row of records) {
+    const cost = parseFloat(row.acquisitionCost) || 0;
 
-      // Upsert by unique constraint (year + teamCode + playerName)
-      const existing = await prisma.rosterEntry.findFirst({
-        where: {
+    // Upsert by unique constraint (year + teamCode + playerName)
+    const existing = await prisma.rosterEntry.findFirst({
+      where: {
+        year,
+        teamCode: row.teamCode,
+        playerName: row.playerName,
+      },
+    });
+
+    if (existing) {
+      await prisma.rosterEntry.update({
+        where: { id: existing.id },
+        data: {
+          position: row.position,
+          mlbTeam: row.mlbTeam,
+          acquisitionCost: cost,
+        },
+      });
+      updated++;
+    } else {
+      await prisma.rosterEntry.create({
+        data: {
           year,
           teamCode: row.teamCode,
           playerName: row.playerName,
+          position: row.position,
+          mlbTeam: row.mlbTeam,
+          acquisitionCost: cost,
         },
       });
-
-      if (existing) {
-        await prisma.rosterEntry.update({
-          where: { id: existing.id },
-          data: {
-            position: row.position,
-            mlbTeam: row.mlbTeam,
-            acquisitionCost: cost,
-          },
-        });
-        updated++;
-      } else {
-        await prisma.rosterEntry.create({
-          data: {
-            year,
-            teamCode: row.teamCode,
-            playerName: row.playerName,
-            position: row.position,
-            mlbTeam: row.mlbTeam,
-            acquisitionCost: cost,
-          },
-        });
-        created++;
-      }
+      created++;
     }
-
-    logs.push(`Created ${created} new entries, updated ${updated} existing.`);
-
-    res.json({ success: true, created, updated, logs });
-  } catch (err) {
-    logger.error({ error: String(err) }, "Roster import error");
-    res.status(500).json({ error: 'Failed to import roster CSV' });
   }
-});
+
+  logs.push(`Created ${created} new entries, updated ${updated} existing.`);
+
+  res.json({ success: true, created, updated, logs });
+}));
 
 // GET /api/roster/import/template - Download a sample CSV template
 router.get('/import/template', (_req, res) => {

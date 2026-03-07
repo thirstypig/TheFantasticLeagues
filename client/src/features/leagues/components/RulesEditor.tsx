@@ -94,12 +94,19 @@ const CATEGORY_ICONS: Record<string, string> = {
 export function RulesEditor({ leagueId }: { leagueId: number }) {
   const { user } = useAuth();
   const [rules, setRules] = useState<LeagueRule[]>([]);
-  const [grouped, setGrouped] = useState<GroupedRules>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  const grouped = useMemo(() => {
+    return rules.reduce((acc: GroupedRules, r) => {
+      if (!acc[r.category]) acc[r.category] = [];
+      acc[r.category].push(r);
+      return acc;
+    }, {});
+  }, [rules]);
 
   const ruleMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -121,7 +128,6 @@ export function RulesEditor({ leagueId }: { leagueId: number }) {
         );
         if (!mounted) return;
         setRules(rulesData.rules || []);
-        setGrouped(rulesData.grouped || {});
       } catch (e: unknown) {
         if (!mounted) return;
         setError(e instanceof Error ? e.message : "Error loading rules");
@@ -147,14 +153,6 @@ export function RulesEditor({ leagueId }: { leagueId: number }) {
 
       const updatedRules = rules.map(r => pendingChanges[r.id] ? { ...r, value: pendingChanges[r.id] } : r);
       setRules(updatedRules);
-
-      const newGrouped = updatedRules.reduce((acc: Record<string, LeagueRule[]>, r) => {
-        if (!acc[r.category]) acc[r.category] = [];
-        acc[r.category].push(r);
-        return acc;
-      }, {});
-      setGrouped(newGrouped);
-
       setPendingChanges({});
       setEditMode(false);
     } catch (e: unknown) {

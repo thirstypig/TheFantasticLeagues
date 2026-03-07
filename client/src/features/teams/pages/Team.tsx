@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
 import { getPlayerSeasonStats, type PlayerSeasonStat, getTeamDetails, getTeams } from "../../../api";
-import PlayerDetailModal from "../../players/components/PlayerDetailModal";
+import PlayerDetailModal from "../../../components/PlayerDetailModal";
 import TeamRosterManager from "../components/TeamRosterManager";
 
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
