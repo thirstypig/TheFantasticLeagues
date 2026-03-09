@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireAdmin, requireTeamOwner, isTeamOwner, getOwnedTeamIds } from "../../middleware/auth.js";
+import { requireAuth, requireAdmin, requireTeamOwner, requireCommissionerOrAdmin, isTeamOwner, getOwnedTeamIds } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
@@ -85,11 +85,13 @@ router.delete("/:id", requireAuth, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// POST /api/waivers/process - Execute FAAB (Admin/Cron)
-router.post("/process", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  // 1. Fetch all pending claims, sorted by Bid DESC, Priority ASC
+// POST /api/waivers/process/:leagueId - Execute FAAB (Commissioner or Admin)
+router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.leagueId);
+
+  // 1. Fetch pending claims for this league only, sorted by Bid DESC, Priority ASC
   const claims = await prisma.waiverClaim.findMany({
-    where: { status: "PENDING" },
+    where: { status: "PENDING", team: { leagueId } },
     include: { player: true, team: true },
     orderBy: [
       { bidAmount: "desc" },

@@ -46,8 +46,8 @@ export async function cancelWaiverClaim(id: number): Promise<{ success: boolean 
   });
 }
 
-export async function processWaiverClaims(): Promise<WaiverProcessResult> {
-  return fetchJsonApi<WaiverProcessResult>(`${API_BASE}/waivers/process`, {
+export async function processWaiverClaims(leagueId: number): Promise<WaiverProcessResult> {
+  return fetchJsonApi<WaiverProcessResult>(`${API_BASE}/waivers/process/${leagueId}`, {
     method: "POST",
   });
 }

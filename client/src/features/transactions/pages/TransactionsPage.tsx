@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { getTransactions, TransactionEvent, getPlayerSeasonStats, getLeagues, getLeague, PlayerSeasonStat, getSeasonStandings } from "../../../api";
 import { fetchJsonApi } from "../../../api/base";
+import { processWaiverClaims } from "../../waivers/api";
+import { useAuth } from "../../../auth/AuthProvider";
 import AddDropTab from "../../roster/components/AddDropTab";
 import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
@@ -10,7 +12,10 @@ import { Button } from "../../../components/ui/button";
   /* ... existing imports */
 
 export default function TransactionsPage() {
+  const { me } = useAuth();
+  const authUser = me?.user;
   const [activeTab, setActiveTab] = useState<'add_drop' | 'waivers' | 'history'>('add_drop');
+  const [processing, setProcessing] = useState(false);
   
   // Data
   const [transactions, setTransactions] = useState<TransactionEvent[]>([]);
@@ -208,6 +213,34 @@ export default function TransactionsPage() {
                   <div className="text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase mt-12 bg-[var(--lg-tint)] p-6 rounded-3xl border border-[var(--lg-border-subtle)] opacity-60">
                       Waiver priority is based on reverse standings order. Claims are processed at scheduled times.
                   </div>
+
+                  {/* Commissioner Process Button */}
+                  {leagueId && (authUser?.isAdmin || authUser?.memberships?.some(
+                    (m: any) => Number(m.leagueId) === leagueId && m.role === "COMMISSIONER"
+                  )) && (
+                    <div className="text-center mt-6">
+                      <Button
+                        onClick={async () => {
+                          if (!confirm("Process all pending waiver claims for this league?")) return;
+                          setProcessing(true);
+                          try {
+                            const result = await processWaiverClaims(leagueId);
+                            alert(`Waivers processed. ${result.logs.length} claims handled.`);
+                            window.location.reload();
+                          } catch (err: any) {
+                            alert(`Error: ${err?.message || "Failed to process waivers"}`);
+                          } finally {
+                            setProcessing(false);
+                          }
+                        }}
+                        disabled={processing}
+                        variant="default"
+                        className="px-8"
+                      >
+                        {processing ? "Processing..." : "Process Waivers"}
+                      </Button>
+                    </div>
+                  )}
               </div>
           )}
 
