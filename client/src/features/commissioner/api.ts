@@ -147,3 +147,22 @@ export async function releaseRosterEntry(leagueId: number, rosterId: number): Pr
     body: JSON.stringify({ rosterId }),
   });
 }
+
+export interface ExecuteTradeItem {
+  senderId: number;
+  recipientId: number;
+  assetType: "PLAYER" | "BUDGET" | "PICK";
+  playerId?: number;
+  amount?: number;
+  pickRound?: number;
+}
+
+export async function executeCommissionerTrade(
+  leagueId: number,
+  payload: { items: ExecuteTradeItem[]; note?: string }
+): Promise<{ success: boolean; trade: any }> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/execute-trade`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

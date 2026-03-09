@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember } from
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
+import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 
 const nominateSchema = z.object({
   leagueId: z.number().int().positive(),
@@ -331,6 +332,8 @@ router.post("/finish", requireAuth, requireAdmin, asyncHandler(async (req, res) 
              }
          });
      }
+
+     await assertPlayerAvailable(prisma, dbPlayer.id, leagueId);
 
      await prisma.roster.create({
          data: {

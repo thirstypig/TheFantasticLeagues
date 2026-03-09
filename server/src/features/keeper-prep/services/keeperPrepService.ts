@@ -3,6 +3,7 @@
 
 import { prisma } from "../../../db/prisma.js";
 import { ROSTERS_2025 } from "../../../data/ogba_rosters_2025.js";
+import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -142,6 +143,9 @@ export class KeeperPrepService {
               },
             });
           }
+
+          // Guard: ensure player isn't already on another team
+          await assertPlayerAvailable(prisma, dbPlayer.id, leagueId);
 
           // Create Roster entry
           await prisma.roster.create({

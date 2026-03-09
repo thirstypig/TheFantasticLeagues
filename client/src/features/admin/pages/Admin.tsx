@@ -1,39 +1,16 @@
 // client/src/pages/Admin.tsx
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 
-import { getMe, AuthUser } from "../../../api";
+import { useAuth } from "../../../auth/AuthProvider";
+import { useLeague } from "../../../contexts/LeagueContext";
 
 import PageHeader from "../../../components/ui/PageHeader";
+import AdminLeagueTools from "../components/AdminLeagueTools";
 
 export default function Admin() {
-  const [loading, setLoading] = useState(true);
-  const [me, setMe] = useState<AuthUser | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const resp = await getMe();
-        if (!mounted) return;
-        setMe(resp.user);
-      } catch (e: unknown) {
-        if (!mounted) return;
-        const errMsg = e instanceof Error ? e.message : "Failed to load /auth/me.";
-        setError(errMsg);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { user } = useAuth();
+  const { leagueId } = useLeague();
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
@@ -43,19 +20,7 @@ export default function Admin() {
        />
 
        <div className="mt-8">
-        {loading ? (
-          <div className="lg-card text-center text-sm text-[var(--lg-text-muted)] opacity-60">
-            Loading…
-          </div>
-        ) : error ? (
-          <div className="lg-card text-center text-sm text-[var(--lg-error)] bg-[var(--lg-error)]/5 border-[var(--lg-error)]/20">
-            {error}
-          </div>
-        ) : !me ? (
-          <div className="lg-card text-center text-sm text-[var(--lg-text-muted)]">
-            You are not logged in.
-          </div>
-        ) : !me.isAdmin ? (
+        {!user?.isAdmin ? (
           <div className="lg-card text-center text-sm text-[var(--lg-text-muted)]">
             Admin access required.
           </div>
@@ -73,12 +38,14 @@ export default function Admin() {
             <div className="lg-card bg-[var(--lg-accent)]/5 border-[var(--lg-accent)]/20">
               <div className="text-sm text-[var(--lg-text-primary)] font-medium">
                 Note: Standard league configuration is managed via the{" "}
-                <Link to="/leagues" className="text-[var(--lg-accent)] font-bold underline underline-offset-4 hover:brightness-110">
-                  Leagues Module
+                <Link to={`/commissioner/${leagueId}`} className="text-[var(--lg-accent)] font-bold underline underline-offset-4 hover:brightness-110">
+                  Commissioner
                 </Link>
-                .
+                {" "}page.
               </div>
             </div>
+
+            <AdminLeagueTools />
           </div>
         )}
       </div>

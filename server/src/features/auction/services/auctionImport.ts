@@ -1,5 +1,6 @@
 // server/src/services/auctionImport.ts
 import { prisma } from "../../../db/prisma.js";
+import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
 
 type ImportRow = {
   playerName: string;
@@ -121,6 +122,9 @@ export class AuctionImportService {
                     }
                 });
             } else {
+                // Guard: ensure player isn't already on another team in this league
+                await assertPlayerAvailable(tx, player.id, leagueId);
+
                 await tx.roster.create({
                     data: {
                         teamId,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getSeasonStandings, getPeriodCategoryStandings } from "../../../lib/api";
 import { OGBA_TEAM_NAMES } from "../../../lib/ogbaTeams";
 import { useTheme } from "../../../contexts/ThemeContext";
@@ -186,7 +186,6 @@ const SeasonPage: React.FC = () => {
           title={viewMode === 'season' ? "Season Standings" : `Period ${selectedPeriodId} Standings`}
           subtitle="Roto points distribution for the full season or specific periods. Higher totals indicate stronger performance across categories."
           rightElement={
-            <>
              <div className="lg-card p-1">
                 <Button
                     onClick={() => setViewMode('season')}
@@ -205,14 +204,6 @@ const SeasonPage: React.FC = () => {
                     Period
                 </Button>
               </div>
-              <Link 
-                to="/players" 
-                className="ml-2 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all text-xs font-medium uppercase shadow-lg shadow-blue-500/5 group"
-              >
-                <span>Final Rosters</span>
-                <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-              </Link>
-            </>
           }
         />
 

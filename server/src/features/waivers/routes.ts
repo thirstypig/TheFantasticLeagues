@@ -8,6 +8,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
+import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 
 export const waiverClaimSchema = z.object({
   teamId: z.number().int().positive(),
@@ -143,6 +144,9 @@ router.post("/process", requireAuth, requireAdmin, asyncHandler(async (req, res)
         where: { id: claim.teamId },
         data: { budget: { decrement: claim.bidAmount } },
       });
+
+      // Guard: ensure player isn't already on another team in this league
+      await assertPlayerAvailable(tx, claim.playerId, claim.team.leagueId);
 
       // Add Player to Roster
       await tx.roster.create({
