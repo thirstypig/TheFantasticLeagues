@@ -1,5 +1,6 @@
 
 import { normCode } from "../../../lib/utils.js";
+import { prisma } from "../../../db/prisma.js";
 import type { PeriodStatRow } from "../../../types/stats.js";
 
 // --- Types ---
@@ -348,4 +349,71 @@ export function rankPoints(
   }
 
   return { pointsByTeam, rankByTeam };
+}
+
+/**
+ * Compute team-level aggregated stats from PlayerStatsPeriod DB data.
+ * Joins player stats with active rosters for the given league and period.
+ * Returns TeamStatRow[] compatible with computeCategoryRows/computeStandingsFromStats.
+ */
+export async function computeTeamStatsFromDb(
+  leagueId: number,
+  periodId: number
+): Promise<TeamStatRow[]> {
+  // Get teams with their active rosters and player stats for this period
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    include: {
+      rosters: {
+        where: { releasedAt: null },
+        include: {
+          player: {
+            include: {
+              periodStats: {
+                where: { periodId },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { id: "asc" },
+  });
+
+  return teams.map((t) => {
+    let R = 0, HR = 0, RBI = 0, SB = 0, H = 0, AB = 0;
+    let W = 0, S = 0, K = 0, ER = 0, IP = 0, BB_H = 0;
+
+    for (const roster of t.rosters) {
+      const stats = roster.player.periodStats[0]; // at most one per period
+      if (!stats) continue;
+
+      R += stats.R;
+      HR += stats.HR;
+      RBI += stats.RBI;
+      SB += stats.SB;
+      H += stats.H;
+      AB += stats.AB;
+      W += stats.W;
+      S += stats.SV; // DB stores SV, TeamStatRow uses S
+      K += stats.K;
+      ER += stats.ER;
+      IP += stats.IP;
+      BB_H += stats.BB_H;
+    }
+
+    const AVG = AB > 0 ? H / AB : 0;
+    const ERA = IP > 0 ? (ER / IP) * 9 : 0;
+    const WHIP = IP > 0 ? BB_H / IP : 0;
+
+    return {
+      team: {
+        id: t.id,
+        name: t.name,
+        code: t.code ?? t.name.substring(0, 3).toUpperCase(),
+      },
+      R, HR, RBI, SB, AVG,
+      W, S, ERA, WHIP, K,
+    };
+  });
 }

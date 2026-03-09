@@ -38,6 +38,7 @@ import { DataService } from './features/players/services/dataService.js';
 import { logger } from './lib/logger.js';
 import cron from 'node-cron';
 import { syncNLPlayers } from './features/players/services/mlbSyncService.js';
+import { syncAllActivePeriods } from './features/players/services/mlbStatsSyncService.js';
 
 // Validate required env vars at startup
 const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET"];
@@ -169,6 +170,18 @@ async function main() {
     }
   });
   logger.info({}, "Scheduled daily MLB player sync at 12:00 UTC (~5 AM PT)");
+
+  // Daily player stats sync at 6:00 AM PT (13:00 UTC) — 1 hour after player roster sync
+  cron.schedule('0 13 * * *', async () => {
+    logger.info({}, "Starting scheduled player stats sync");
+    try {
+      await syncAllActivePeriods();
+      logger.info({}, "Scheduled player stats sync complete");
+    } catch (err) {
+      logger.error({ error: String(err) }, "Scheduled player stats sync failed");
+    }
+  });
+  logger.info({}, "Scheduled daily player stats sync at 13:00 UTC (~6 AM PT)");
 
   // --- 1. Static Assets (Frontend) ---
   // Resolve path to client/dist relative to this file (server/src/index.ts -> server/src -> server -> root -> client/dist)
