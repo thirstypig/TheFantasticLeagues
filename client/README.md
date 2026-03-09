@@ -57,10 +57,10 @@ features/<name>/
 npm install
 ```
 
-2. Set environment (optional, defaults to localhost:4002):
+2. Set environment (optional, defaults to localhost:4010):
 ```bash
 # client/.env.local
-VITE_API_BASE_URL=http://localhost:4002
+VITE_API_BASE_URL=http://localhost:4010
 ```
 
 3. Start the development server:
@@ -70,7 +70,7 @@ npm run dev
 
 ## Scripts
 
-- `npm run dev` — Start development server (Vite, port 5173)
+- `npm run dev` — Start development server (Vite, port 3010)
 - `npm run build` — TypeScript check + Vite production build
 - `npm run preview` — Preview production build
 - `npm run lint` — Run ESLint

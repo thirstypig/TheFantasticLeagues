@@ -29,6 +29,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "tsx": "^4.19.2",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
@@ -39,6 +40,7 @@
     "@types/express": "^4.17.21",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.2",
+    "@types/node-cron": "^3.0.11",
     "@vitest/coverage-v8": "^4.0.18",
     "prisma": "^6.19.1",
     "typescript": "^5.7.2",

@@ -86,6 +86,13 @@ export async function getCommissionerRosters(leagueId: number): Promise<RosterIt
   return resp.rosters ?? [];
 }
 
+export async function updateLeague(leagueId: number, data: { name?: string }): Promise<{ league: CommissionerLeague }> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function createTeam(leagueId: number, payload: {
   name: string;
   code?: string;

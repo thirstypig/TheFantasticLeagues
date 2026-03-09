@@ -5,7 +5,7 @@ import { prisma } from "../../db/prisma.js";
 import { norm, normCode, mustOneOf } from "../../lib/utils.js";
 import multer from "multer";
 import { CommissionerService } from "./services/CommissionerService.js";
-import { requireAuth, requireAdmin, requireCommissionerOrAdmin } from "../../middleware/auth.js";
+import { requireAuth, requireAdmin, requireCommissionerOrAdmin, evictMembershipCache } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
@@ -172,6 +172,31 @@ router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommission
 }));
 
 /**
+ * PATCH /api/commissioner/:leagueId
+ * Update league details (e.g., name)
+ */
+const updateLeagueSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+});
+
+router.patch("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(), validateBody(updateLeagueSchema), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const { name } = req.body;
+
+    const league = await commissionerService.updateLeague(leagueId, { name });
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "LEAGUE_UPDATE",
+      resourceType: "League",
+      resourceId: String(leagueId),
+      metadata: { leagueId, name },
+    });
+
+    return res.json({ league });
+}));
+
+/**
  * POST /api/commissioner/:leagueId/teams
  * Body:
  *  - { name, code?, owner?, budget?, priorTeamId? }
@@ -259,6 +284,8 @@ router.post("/commissioner/:leagueId/members", requireAuth, requireCommissionerO
         email: req.body?.email,
         role
     });
+
+    evictMembershipCache(membership.userId, leagueId);
 
     writeAuditLog({
       userId: req.user!.id,

@@ -6,15 +6,17 @@ import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
 import PageHeader from '../../../components/ui/PageHeader';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
 import { getMlbTeamAbbr } from '../../../lib/playerDisplay';
+import { useLeague } from '../../../contexts/LeagueContext';
 
 export default function Players() {
+  const { leagueId } = useLeague();
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
-  
+
   // View State
   const [viewGroup, setViewGroup] = useState<'hitters' | 'pitchers'>('hitters');
-  const [viewMode, setViewMode] = useState<'all' | 'remaining'>('all'); 
-  const [statsMode, setStatsMode] = useState<string>('season'); 
+  const [viewMode, setViewMode] = useState<'all' | 'remaining'>('all');
+  const [statsMode, setStatsMode] = useState<string>('season');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [periodStats, setPeriodStats] = useState<PeriodStatRow[]>([]);
@@ -32,17 +34,18 @@ export default function Players() {
   const [sortDesc, setSortDesc] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     (async () => {
       try {
         const [p, per] = await Promise.all([
-             getPlayerSeasonStats(),
-             getPlayerPeriodStats()
+             getPlayerSeasonStats(leagueId),
+             getPlayerPeriodStats(leagueId)
         ]);
         setPlayers(p);
         setPeriodStats(per);
-        
+
         const pSet = new Set(per.map(x => x.periodId).filter(n => typeof n === 'number'));
-        setPeriods(Array.from(pSet).sort((a,b) => b-a)); 
+        setPeriods(Array.from(pSet).sort((a,b) => b-a));
 
       } catch (e: any) {
         console.error(e);
@@ -50,7 +53,7 @@ export default function Players() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [leagueId]);
 
   const uniqueMLBTeams = useMemo(() => {
     const teams = new Set(players.map(p => p.mlb_team || 'FA'));
@@ -118,6 +121,10 @@ export default function Players() {
          if (sortKey === 'name') {
              valA = a.mlb_full_name || a.player_name || '';
              valB = b.mlb_full_name || b.player_name || '';
+             return sortDesc ? valB.toString().localeCompare(valA.toString()) : valA.toString().localeCompare(valB.toString());
+         } else if (sortKey === 'mlb_team') {
+             valA = a.mlb_team || a.mlbTeam || 'ZZZ';
+             valB = b.mlb_team || b.mlbTeam || 'ZZZ';
              return sortDesc ? valB.toString().localeCompare(valA.toString()) : valA.toString().localeCompare(valB.toString());
          } else if (sortKey === 'fantasy') {
              valA = a.ogba_team_code || 'ZZZ'; 
@@ -252,7 +259,14 @@ export default function Players() {
                                 }}>
                                     Name {sortKey === 'name' && (sortDesc ? '▼' : '▲')}
                                 </ThemedTh>
-                                
+
+                                <ThemedTh align="center" className="w-16" onClick={() => {
+                                    if (sortKey === 'mlb_team') setSortDesc(!sortDesc);
+                                    else { setSortKey('mlb_team'); setSortDesc(false); }
+                                }}>
+                                    MLB {sortKey === 'mlb_team' && (sortDesc ? '▼' : '▲')}
+                                </ThemedTh>
+
                                 {viewGroup === 'hitters' ? (
                                     <>
                                  <ThemedTh align="center" className="w-16" onClick={() => {
@@ -330,13 +344,16 @@ export default function Players() {
                                                         <span className={`px-1.5 py-0.5 rounded-[var(--lg-radius-sm)] text-xs font-bold uppercase tracking-wide ${p.is_pitcher ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
                                                             {pos}
                                                         </span>
-                                                        <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-40">
-                                                            {mlbTeam || 'FA'}
-                                                        </span>
                                                     </div>
                                                 </div>
                                             </ThemedTd>
-        
+
+                                            <ThemedTd align="center">
+                                                <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">
+                                                    {mlbTeam || 'FA'}
+                                                </span>
+                                            </ThemedTd>
+
                                            {viewGroup === 'hitters' ? (
                                                 <>
                                                     <ThemedTd align="center">{p.R}</ThemedTd>
@@ -373,7 +390,7 @@ export default function Players() {
                                                player={p}
                                                isTaken={isTaken}
                                                ownerName={teamLabel}
-                                               colSpan={9}
+                                               colSpan={10}
                                            />
                                        )}
                                    </React.Fragment>

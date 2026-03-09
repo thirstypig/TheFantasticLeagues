@@ -21,7 +21,7 @@ const DEFAULT_RULES = [
   // Draft
   { category: "draft", key: "draft_mode", value: "AUCTION", label: "Draft Mode" },
   { category: "draft", key: "draft_type", value: "SNAKE", label: "Draft Type" },
-  { category: "draft", key: "auction_budget", value: "260", label: "Auction Budget ($)" },
+  { category: "draft", key: "auction_budget", value: "400", label: "Auction Budget ($)" },
   { category: "draft", key: "min_bid", value: "1", label: "Minimum Bid ($)" },
   { category: "draft", key: "keeper_count", value: "4", label: "Keepers per Team" },
   // IL
@@ -528,6 +528,16 @@ export class CommissionerService {
 
   async importRosters(leagueId: number, csvContent: string) {
     return auctionImportService.importRostersFromCsv(leagueId, csvContent);
+  }
+
+  /**
+   * League Update
+   */
+  async updateLeague(leagueId: number, data: { name?: string }) {
+    return prisma.league.update({
+      where: { id: leagueId },
+      data: { name: data.name },
+    });
   }
 
   /**

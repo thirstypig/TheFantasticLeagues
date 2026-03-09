@@ -277,6 +277,53 @@ export class DataService {
       return this.normalizedPeriodStats;
   }
 
+  /**
+   * Query players from DB for a given league, returning NormalizedSeasonStat[] with zero stats.
+   * Used for leagues that don't have CSV data (e.g., League 2 / 2026 season).
+   */
+  public async getLeaguePlayersFromDb(leagueId: number): Promise<NormalizedSeasonStat[]> {
+    // Get all players from DB
+    const allPlayers = await prisma.player.findMany({
+      select: { id: true, mlbId: true, name: true, posPrimary: true, posList: true, mlbTeam: true },
+    });
+
+    // Get active rosters for this league
+    const rosters = await prisma.roster.findMany({
+      where: { team: { leagueId }, releasedAt: null },
+      include: { team: true },
+    });
+
+    // Build playerId → team info map
+    const rosterMap = new Map<number, { teamCode: string; price: number }>();
+    for (const r of rosters) {
+      rosterMap.set(r.playerId, {
+        teamCode: r.team.code ?? r.team.name.substring(0, 3).toUpperCase(),
+        price: Number(r.price),
+      });
+    }
+
+    return allPlayers.map((p) => {
+      const mlbId = String(p.mlbId ?? p.id);
+      const roster = rosterMap.get(p.id);
+      const isPitcher = (p.posPrimary ?? "").toUpperCase() === "P";
+      const mlbTeam = p.mlbTeam ?? "";
+
+      return {
+        mlb_id: mlbId,
+        player_name: p.name,
+        mlb_full_name: p.name,
+        ogba_team_code: roster?.teamCode ?? "",
+        positions: p.posList || p.posPrimary || "",
+        is_pitcher: isPitcher,
+        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0,
+        GS: 0, W: 0, SV: 0, K: 0, ERA: 0, WHIP: 0, SO: 0,
+        mlb_team: mlbTeam,
+        mlbTeam: mlbTeam,
+        fantasy_value: roster?.price,
+      };
+    });
+  }
+
   public getAuctionValues() { return this.auctionValues; }
   public getSeasonStats() { return this.seasonStats; }
   public getSeasonStandings() { return this.seasonStandings; }

@@ -10,6 +10,44 @@ const USER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_SIZE = 1000;
 const userCache = new Map<string, { user: AuthedUser; expiresAt: number }>();
 
+// In-memory cache for league membership lookups (avoids DB round-trip on every request)
+const MEMBERSHIP_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+type MembershipCacheEntry = { role: string | null; expiresAt: number };
+const membershipCache = new Map<string, MembershipCacheEntry>();
+
+function membershipKey(userId: number, leagueId: number): string {
+  return `${userId}:${leagueId}`;
+}
+
+function getCachedMembership(userId: number, leagueId: number): MembershipCacheEntry | null {
+  const key = membershipKey(userId, leagueId);
+  const cached = membershipCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  membershipCache.delete(key);
+  return null;
+}
+
+function setCachedMembership(userId: number, leagueId: number, role: string | null): void {
+  if (membershipCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = membershipCache.keys().next().value;
+    if (oldestKey) membershipCache.delete(oldestKey);
+  }
+  membershipCache.set(membershipKey(userId, leagueId), {
+    role,
+    expiresAt: Date.now() + MEMBERSHIP_CACHE_TTL_MS,
+  });
+}
+
+/** Evict membership cache for a user+league (call when roles change). */
+export function evictMembershipCache(userId: number, leagueId: number): void {
+  membershipCache.delete(membershipKey(userId, leagueId));
+}
+
+/** Clear all membership cache entries (for testing). */
+export function clearMembershipCache(): void {
+  membershipCache.clear();
+}
+
 /** Hash a token for use as cache key (avoids storing raw JWTs in memory). */
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -147,10 +185,21 @@ export function requireCommissionerOrAdmin(leagueIdParam = "leagueId"): RequestH
 
     if (req.user!.isAdmin) return next();
 
+    const userId = req.user!.id;
+    const cached = getCachedMembership(userId, leagueId);
+    if (cached) {
+      if (cached.role !== "COMMISSIONER") {
+        return res.status(403).json({ error: "Commissioner only" });
+      }
+      return next();
+    }
+
     const m = await prisma.leagueMembership.findUnique({
-      where: { leagueId_userId: { leagueId, userId: req.user!.id } },
+      where: { leagueId_userId: { leagueId, userId } },
       select: { role: true },
     });
+
+    setCachedMembership(userId, leagueId, m?.role ?? null);
 
     if (!m || m.role !== "COMMISSIONER") {
       return res.status(403).json({ error: "Commissioner only" });
@@ -176,9 +225,21 @@ export function requireLeagueMember(leagueIdParam = "leagueId"): RequestHandler 
 
     if (req.user!.isAdmin) return next();
 
+    const userId = req.user!.id;
+    const cached = getCachedMembership(userId, leagueId);
+    if (cached) {
+      if (!cached.role) {
+        return res.status(403).json({ error: "Not a member of this league" });
+      }
+      return next();
+    }
+
     const m = await prisma.leagueMembership.findUnique({
-      where: { leagueId_userId: { leagueId, userId: req.user!.id } },
+      where: { leagueId_userId: { leagueId, userId } },
+      select: { role: true },
     });
+
+    setCachedMembership(userId, leagueId, m?.role ?? null);
 
     if (!m) {
       return res.status(403).json({ error: "Not a member of this league" });

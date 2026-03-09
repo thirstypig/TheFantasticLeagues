@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { getSeasonStandings, getPeriodCategoryStandings } from "../../../lib/api";
 import { OGBA_TEAM_NAMES } from "../../../lib/ogbaTeams";
 import { useTheme } from "../../../contexts/ThemeContext";
+import { useLeague } from "../../../contexts/LeagueContext";
 import PageHeader from "../../../components/ui/PageHeader";
 import { PeriodSummaryTable, CategoryPeriodTable, TeamPeriodSummaryRow, CategoryPeriodRow } from "../../../components/StatsTables";
 import { Button } from "../../../components/ui/button";
@@ -66,7 +67,7 @@ function normalizeSeasonRow(row: SeasonStandingsApiRow, periodIds: number[]): No
   }
 
   const totalPoints = sumNums(periodPoints);
-  const teamCode = DISPLAY_TO_CODE[normName(row.teamName)] ?? undefined;
+  const teamCode = (row as any).teamCode ?? DISPLAY_TO_CODE[normName(row.teamName)] ?? undefined;
 
   return {
     teamId: row.teamId,
@@ -81,6 +82,7 @@ function normalizeSeasonRow(row: SeasonStandingsApiRow, periodIds: number[]): No
 const SeasonPage: React.FC = () => {
   const navigate = useNavigate();
   useTheme();
+  const { leagueId } = useLeague();
 
   const [viewMode, setViewMode] = useState<'season' | 'period'>('season');
   const [loading, setLoading] = useState(true);
@@ -107,9 +109,9 @@ const SeasonPage: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getSeasonStandings();
+        const data = await getSeasonStandings(leagueId);
         setPeriodIds(data.periodIds || []);
-        
+
         const normalized = (data.rows || []).map(r => normalizeSeasonRow(r as any, data.periodIds));
         setRows(normalized);
 
@@ -123,7 +125,7 @@ const SeasonPage: React.FC = () => {
       }
     }
     loadSeason();
-  }, []);
+  }, [leagueId]);
 
   // Load Period Details
   useEffect(() => {
@@ -132,7 +134,7 @@ const SeasonPage: React.FC = () => {
     async function loadPeriod() {
       try {
         setPeriodLoading(true);
-        const resp = await getPeriodCategoryStandings(selectedPeriodId!);
+        const resp = await getPeriodCategoryStandings(selectedPeriodId!, leagueId);
         
         // Transform for Category tables
         const catMap: Record<string, CategoryPeriodRow[]> = {};
@@ -149,7 +151,7 @@ const SeasonPage: React.FC = () => {
             if (!teamSummaryMap.has(code)) {
               teamSummaryMap.set(code, {
                 teamId: code,
-                teamName: OGBA_TEAM_NAMES[code] || code,
+                teamName: row.teamName || OGBA_TEAM_NAMES[code] || code,
                 gamesPlayed: 0,
                 totalPoints: 0,
                 totalPointsDelta: 0,
@@ -174,7 +176,7 @@ const SeasonPage: React.FC = () => {
       }
     }
     loadPeriod();
-  }, [viewMode, selectedPeriodId]);
+  }, [viewMode, selectedPeriodId, leagueId]);
 
 
   return (

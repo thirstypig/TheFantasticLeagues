@@ -1,10 +1,11 @@
 // client/src/components/AppShell.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { getLeagues, type LeagueListItem } from "../api";
+import type { LeagueListItem } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import { useTheme } from "../contexts/ThemeContext";
+import { useLeague } from "../contexts/LeagueContext";
 
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/";
@@ -19,20 +20,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, loading, logout } = useAuth();
+  const { leagueId, setLeagueId, leagues } = useLeague();
 
-  const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarVisible, setSidebarVisible] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      getLeagues()
-        .then((resp) => setLeagues(resp.leagues ?? []))
-        .catch(() => setLeagues([]));
-    } else {
-      setLeagues([]);
-    }
-  }, [user]);
 
   const commissionerLeagueId = useMemo(() => {
     const isAdmin = Boolean(user?.isAdmin);
@@ -107,7 +98,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   async function onLogout() {
     await logout();
-    setLeagues([]);
     nav("/", { replace: true });
   }
 
@@ -187,6 +177,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             </div>
+
+            {sidebarOpen && leagues.length > 1 && (
+              <div className="mb-6 px-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] opacity-40 mb-2 px-2">League</div>
+                <select
+                  value={leagueId}
+                  onChange={(e) => setLeagueId(Number(e.target.value))}
+                  className="lg-input w-full text-xs font-semibold py-2"
+                >
+                  {leagues.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <nav className="flex-1 overflow-y-auto custom-scrollbar space-y-6">
               {NAV_SECTIONS.map((section) => {

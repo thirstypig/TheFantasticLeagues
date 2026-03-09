@@ -62,22 +62,41 @@ router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
 
 const dataRouter = Router();
 
-/** GET /api/player-season-stats */
-dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (_req, res) => {
+/** GET /api/player-season-stats?leagueId=N */
+dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res) => {
   const dataService = DataService.getInstance();
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
+
+  if (leagueId && leagueId !== 1) {
+    const stats = await dataService.getLeaguePlayersFromDb(leagueId);
+    return res.json({ stats });
+  }
+
   const stats = await dataService.getNormalizedSeasonStats();
   res.json({ stats });
 }));
 
-/** GET /api/player-period-stats */
-dataRouter.get("/player-period-stats", requireAuth, (_req, res) => {
+/** GET /api/player-period-stats?leagueId=N */
+dataRouter.get("/player-period-stats", requireAuth, (req, res) => {
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
+
+  if (leagueId && leagueId !== 1) {
+    return res.json({ stats: [] });
+  }
+
   const dataService = DataService.getInstance();
   const stats = dataService.getNormalizedPeriodStats();
   res.json({ stats });
 });
 
-/** GET /api/auction-values */
-dataRouter.get("/auction-values", requireAuth, (_req, res) => {
+/** GET /api/auction-values?leagueId=N */
+dataRouter.get("/auction-values", requireAuth, (req, res) => {
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
+
+  if (leagueId && leagueId !== 1) {
+    return res.json({ values: [] });
+  }
+
   const dataService = DataService.getInstance();
   res.json({ values: dataService.getAuctionValues() });
 });

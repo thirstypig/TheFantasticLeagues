@@ -10,6 +10,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
+import { syncNLPlayers } from "../players/services/mlbSyncService.js";
 
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(200),
@@ -120,6 +121,95 @@ router.post("/admin/league/:leagueId/import-rosters", requireAuth, requireAdmin,
   });
 
   return res.json(result);
+}));
+
+/**
+ * POST /api/admin/league/:leagueId/reset-rosters
+ * Bulk-release all active roster entries for a league (clean slate).
+ */
+router.post("/admin/league/:leagueId/reset-rosters", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    include: { teams: { select: { id: true } } },
+  });
+  if (!league) return res.status(404).json({ error: "League not found" });
+
+  const teamIds = league.teams.map(t => t.id);
+  const result = await prisma.roster.updateMany({
+    where: { teamId: { in: teamIds }, releasedAt: null },
+    data: { releasedAt: new Date() },
+  });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "ROSTER_RESET",
+    resourceType: "Roster",
+    metadata: { leagueId, releasedCount: result.count },
+  });
+
+  return res.json({ success: true, releasedCount: result.count });
+}));
+
+/**
+ * PATCH /api/admin/league/:leagueId/team-codes
+ * Body: { codes: { teamId: code, ... } }  e.g. { "9": "DOY", "10": "HAM" }
+ */
+const teamCodesSchema = z.object({
+  codes: z.record(z.string(), z.string().min(1).max(10)),
+});
+
+router.patch("/admin/league/:leagueId/team-codes", requireAuth, requireAdmin, validateBody(teamCodesSchema), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
+
+  const { codes } = req.body as { codes: Record<string, string> };
+  const results: { teamId: number; code: string }[] = [];
+
+  for (const [teamIdStr, code] of Object.entries(codes)) {
+    const teamId = Number(teamIdStr);
+    if (!Number.isFinite(teamId)) continue;
+
+    const team = await prisma.team.findUnique({ where: { id: teamId } });
+    if (!team || team.leagueId !== leagueId) continue;
+
+    await prisma.team.update({
+      where: { id: teamId },
+      data: { code: norm(code).toUpperCase() },
+    });
+    results.push({ teamId, code: norm(code).toUpperCase() });
+  }
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TEAM_CODES_UPDATE",
+    resourceType: "Team",
+    metadata: { leagueId, codes: results },
+  });
+
+  return res.json({ success: true, updated: results });
+}));
+
+/**
+ * POST /api/admin/sync-mlb-players
+ * Fetches all NL team rosters from MLB Stats API and upserts into Player table.
+ * Body (optional): { season: 2026 }
+ */
+router.post("/admin/sync-mlb-players", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const season = Number(req.body?.season) || new Date().getFullYear();
+
+  const result = await syncNLPlayers(season);
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "MLB_PLAYER_SYNC",
+    resourceType: "Player",
+    metadata: { season, ...result },
+  });
+
+  return res.json({ success: true, season, ...result });
 }));
 
 /**

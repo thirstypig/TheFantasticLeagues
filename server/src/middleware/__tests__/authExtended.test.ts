@@ -29,6 +29,7 @@ import {
   isTeamOwner,
   getOwnedTeamIds,
   clearUserCache,
+  clearMembershipCache,
 } from "../auth.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
 
@@ -46,6 +47,7 @@ function mockRes(): any {
 beforeEach(() => {
   vi.clearAllMocks();
   clearUserCache();
+  clearMembershipCache();
 });
 
 describe("attachUser", () => {
@@ -245,6 +247,7 @@ describe("requireLeagueMember", () => {
     expect(next).toHaveBeenCalled();
     expect(mockPrisma.leagueMembership.findUnique).toHaveBeenCalledWith({
       where: { leagueId_userId: { leagueId: 2, userId: 1 } },
+      select: { role: true },
     });
   });
 

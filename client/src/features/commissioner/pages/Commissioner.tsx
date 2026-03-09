@@ -12,6 +12,7 @@ import {
   inviteMember as apiInviteMember,
   assignTeamOwner as apiAssignTeamOwner,
   removeTeamOwner as apiRemoveTeamOwner,
+  updateLeague as apiUpdateLeague,
 } from "../api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
@@ -152,6 +153,10 @@ export default function Commissioner() {
   // Prior teams for team creation
   const [priorTeams, setPriorTeams] = useState<Array<{ id: number; name: string; code: string | null }>>([]);
   const [selectedPriorTeamId, setSelectedPriorTeamId] = useState<number | "">("");
+
+  // League name edit
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState("");
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'rosters' | 'keepers' | 'controls' | 'settings'>('overview');
@@ -336,6 +341,24 @@ export default function Commissioner() {
     }
   }
 
+  async function onSaveLeagueName() {
+    const trimmed = draftName.trim();
+    if (!trimmed || trimmed === overview.league?.name) {
+      setEditingName(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiUpdateLeague(lid, { name: trimmed });
+      await refreshOverviewOnly();
+      setEditingName(false);
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to update league name.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const league = overview.league;
 
   return (
@@ -395,8 +418,36 @@ export default function Commissioner() {
             <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-lg font-semibold text-[var(--lg-text-heading)]">
-                    {league.name} <span className="text-[var(--lg-text-muted)]">({league.season})</span>
+                  <div className="text-lg font-semibold text-[var(--lg-text-heading)] flex items-center gap-2">
+                    {editingName ? (
+                      <input
+                        autoFocus
+                        className="bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-0.5 text-lg font-semibold text-[var(--lg-text-heading)] outline-none focus:border-[var(--lg-accent)]"
+                        value={draftName}
+                        onChange={(e) => setDraftName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") onSaveLeagueName();
+                          if (e.key === "Escape") setEditingName(false);
+                        }}
+                        onBlur={() => onSaveLeagueName()}
+                        disabled={busy}
+                      />
+                    ) : (
+                      <>
+                        {league.name}
+                        <button
+                          onClick={() => { setDraftName(league.name); setEditingName(true); }}
+                          className="text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
+                          title="Edit league name"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                            <path d="m15 5 4 4"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    <span className="text-[var(--lg-text-muted)]">({league.season})</span>
                   </div>
                   <div className="mt-1 text-sm text-[var(--lg-text-muted)]">
                     draftMode: {league.draftMode}

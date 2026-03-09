@@ -36,6 +36,8 @@ import { attachUser } from "./middleware/auth.js";
 import { supabaseAdmin } from "./lib/supabase.js";
 import { DataService } from './features/players/services/dataService.js';
 import { logger } from './lib/logger.js';
+import cron from 'node-cron';
+import { syncNLPlayers } from './features/players/services/mlbSyncService.js';
 
 // Validate required env vars at startup
 const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET"];
@@ -46,7 +48,7 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
-const PORT = Number(process.env.PORT || 4002);
+const PORT = Number(process.env.PORT || 4010);
 
 async function main() {
   const app = express();
@@ -57,7 +59,7 @@ async function main() {
     process.env.CLIENT_URL || "",
   ];
   if (process.env.NODE_ENV !== "production") {
-    corsOrigins.push("http://localhost:5173", "http://localhost:5174", "http://localhost:4173");
+    corsOrigins.push("http://localhost:3010", "http://localhost:3011", "http://localhost:4173");
   }
   app.use(
     cors({
@@ -151,6 +153,20 @@ async function main() {
   // Data Initialization (must run before requests are served)
   const dataService = DataService.getInstance();
   await dataService.loadAllData("ogba_player_season_totals_2026.csv");
+
+  // Daily MLB player sync at 5:00 AM PT (12:00 UTC during PDT, 13:00 UTC during PST)
+  // Using 12:00 UTC as a reasonable default for PT mornings
+  cron.schedule('0 12 * * *', async () => {
+    const season = new Date().getFullYear();
+    logger.info({ season }, "Starting scheduled MLB player sync");
+    try {
+      const result = await syncNLPlayers(season);
+      logger.info(result, "Scheduled MLB player sync complete");
+    } catch (err) {
+      logger.error({ error: String(err) }, "Scheduled MLB player sync failed");
+    }
+  });
+  logger.info({}, "Scheduled daily MLB player sync at 12:00 UTC (~5 AM PT)");
 
   // --- 1. Static Assets (Frontend) ---
   // Resolve path to client/dist relative to this file (server/src/index.ts -> server/src -> server -> root -> client/dist)

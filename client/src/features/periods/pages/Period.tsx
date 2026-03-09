@@ -18,6 +18,7 @@ import {
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { OGBA_TEAM_NAMES } from "../../../lib/ogbaTeams";
 import PageHeader from "../../../components/ui/PageHeader";
+import { useLeague } from "../../../contexts/LeagueContext";
 
 // If you have canonical labels/dates elsewhere, replace this list.
 // This is only a dropdown source.
@@ -151,6 +152,7 @@ function splitCats(categories: PeriodCategoryStandingTable[]) {
 }
 
 export default function Period() {
+  const { leagueId } = useLeague();
   const [periodId, setPeriodId] = useState<number>(1);
   const [resp, setResp] = useState<PeriodCategoryStandingsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -164,7 +166,7 @@ export default function Period() {
       setError(null);
 
       try {
-        const data = await getPeriodCategoryStandings(periodId);
+        const data = await getPeriodCategoryStandings(periodId, leagueId);
         if (cancelled) return;
         setResp(data);
       } catch (e: any) {
@@ -180,7 +182,7 @@ export default function Period() {
     return () => {
       cancelled = true;
     };
-  }, [periodId]);
+  }, [periodId, leagueId]);
 
   const standingsRows = useMemo(() => buildStandings(resp), [resp]);
 

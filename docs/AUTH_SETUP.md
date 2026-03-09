@@ -4,7 +4,7 @@
 
 | Provider | Local Redirect URI | Production Redirect URI |
 |----------|-------------------|------------------------|
-| **Google** | `http://localhost:5173/api/auth/google/callback` | `https://fbst-api.onrender.com/api/auth/google/callback` |
+| **Google** | `http://localhost:3010/api/auth/google/callback` | `https://fbst-api.onrender.com/api/auth/google/callback` |
 | **Yahoo** | `https://localhost:4000/api/auth/yahoo/callback` | `https://fbst-api.onrender.com/api/auth/yahoo/callback` |
 
 ## Protocol Rules (Do NOT Violate)
@@ -45,18 +45,18 @@ YAHOO_REDIRECT_URI=https://fbst-api.onrender.com/api/auth/yahoo/callback
 
 ```
 Google (local):
-  Browser → http://localhost:5173/login (click Google)
+  Browser → http://localhost:3010/login (click Google)
          → Vite proxies /api/auth/google → https://localhost:4000
-         → Server redirects to Google with redirect_uri=http://localhost:5173/...
-         → Google sends user back to http://localhost:5173/api/auth/google/callback
+         → Server redirects to Google with redirect_uri=http://localhost:3010/...
+         → Google sends user back to http://localhost:3010/api/auth/google/callback
          → Vite proxies callback → https://localhost:4000 (server processes token)
 
 Yahoo (local):
-  Browser → http://localhost:5173/login (click Yahoo)
+  Browser → http://localhost:3010/login (click Yahoo)
          → Vite proxies /api/auth/yahoo → https://localhost:4000
          → Server redirects to Yahoo with redirect_uri=https://localhost:4000/...
          → Yahoo sends user directly to https://localhost:4000/api/auth/yahoo/callback
-         → Server processes token, redirects to CLIENT_URL (http://localhost:5173)
+         → Server processes token, redirects to CLIENT_URL (http://localhost:3010)
 ```
 
 ## Debugging

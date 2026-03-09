@@ -11,6 +11,7 @@ import {
   getLeague,
 } from "../../../api";
 import { useAuth } from "../../../auth/AuthProvider";
+import { useLeague } from "../../../contexts/LeagueContext";
 import { TradeAssetSelector } from "../components/TradeAssetSelector";
 import TeamRosterView from "../../teams/components/TeamRosterView";
 import { Eye, Plus } from "lucide-react";
@@ -20,6 +21,10 @@ import { Button } from "../../../components/ui/button";
 export function TradesPage() {
   const { me } = useAuth();
   const user = me?.user;
+  const { leagueId: currentLeagueId } = useLeague();
+  const isCommissioner = user?.isAdmin || user?.memberships?.some(
+    (m: any) => Number(m.leagueId) === currentLeagueId && m.role === "COMMISSIONER"
+  );
   const [myTrades, setMyTrades] = useState<TradeProposal[]>([]);
   const [leagueTrades, setLeagueTrades] = useState<TradeProposal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +176,7 @@ export function TradesPage() {
               trade={t} 
               onRefresh={loadAllTrades} 
               currentUserId={Number(user?.id)} 
-              isAdmin={user?.isAdmin}
+              isAdmin={isCommissioner}
               onViewContext={() => setContextTrade(t)}
             />
           ))}
@@ -429,7 +434,33 @@ function LeagueTradeCard({
         </div>
       )}
 
-      {/* Commissioner Controls */}
+      {/* Commissioner Controls — accept/reject PROPOSED trades */}
+      {isAdmin && trade.status === "PROPOSED" && !isInvolved && (
+        <div className="flex justify-end space-x-2 border-t border-[var(--lg-border-subtle)] pt-3 mt-3">
+          <button
+            onClick={async () => {
+              if (!confirm("Reject this trade as commissioner?")) return;
+              await respondToTrade(trade.id, "REJECT");
+              onRefresh();
+            }}
+            className="px-3 py-1 bg-red-700 hover:bg-red-600 text-white rounded text-sm font-semibold"
+          >
+            Commissioner Reject
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm("Accept this trade as commissioner?")) return;
+              await respondToTrade(trade.id, "ACCEPT");
+              onRefresh();
+            }}
+            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-sm font-semibold"
+          >
+            Commissioner Accept
+          </button>
+        </div>
+      )}
+
+      {/* Commissioner Controls — process/veto ACCEPTED trades */}
       {isAdmin && trade.status === "ACCEPTED" && (
         <div className="flex justify-end space-x-2 border-t border-[var(--lg-border-subtle)] pt-3 mt-3">
           <button

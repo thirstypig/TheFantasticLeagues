@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { DataService } from "../players/services/dataService.js";
+import { prisma } from "../../db/prisma.js";
 
 const router = Router();
 
@@ -13,9 +14,24 @@ import {
   aggregateSeasonStatsFromCsv,
   type CsvPlayerRow,
   type CategoryKey,
+  type TeamStatRow,
   type StandingsRow,
   type SeasonStandingsRow,
 } from "./services/standingsService.js";
+
+/** Build zero-stat TeamStatRow[] for teams in a league (no CSV data yet) */
+async function getDbTeamStats(leagueId: number): Promise<TeamStatRow[]> {
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    select: { id: true, name: true, code: true },
+    orderBy: { id: "asc" },
+  });
+  return teams.map((t) => ({
+    team: { id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() },
+    R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0,
+    W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
+  }));
+}
 
 /** Get CSV rows typed as CsvPlayerRow (runtime fields beyond PeriodStatRow) */
 function getCsvRows(): CsvPlayerRow[] {
@@ -31,7 +47,15 @@ function getPeriodKeys(csvRows: CsvPlayerRow[]): string[] {
 
 // --- Period standings: /api/standings/period/current ---
 
-router.get("/period/current", requireAuth, asyncHandler(async (_req, res) => {
+router.get("/period/current", requireAuth, asyncHandler(async (req, res) => {
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
+
+  if (leagueId && leagueId !== 1) {
+    const stats = await getDbTeamStats(leagueId);
+    const standings = computeStandingsFromStats(stats);
+    return res.json({ periodId: 1, data: standings });
+  }
+
   const ds = DataService.getInstance();
   const csvRows = getCsvRows();
   const periodKeys = getPeriodKeys(csvRows);
@@ -61,8 +85,26 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     const periodIdRaw = req.query.periodId ? String(req.query.periodId) : "1";
     const m = periodIdRaw.match(/(\d+)/);
     const pid = m ? parseInt(m[1], 10) : 1;
-    const periodKey = `P${pid}`;
+    const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
 
+    if (leagueId && leagueId !== 1) {
+      const stats = await getDbTeamStats(leagueId);
+      const categories = CATEGORY_CONFIG.map((cfg) => {
+        const rows = computeCategoryRows(stats, cfg.key as CategoryKey, cfg.lowerIsBetter);
+        return {
+          id: cfg.key,
+          key: cfg.key,
+          label: cfg.label,
+          group: cfg.group,
+          higherIsBetter: !cfg.lowerIsBetter,
+          rows,
+        };
+      });
+      const teamCount = categories[0]?.rows.length ?? 0;
+      return res.json({ periodId: pid, categories, teamCount });
+    }
+
+    const periodKey = `P${pid}`;
     const ds = DataService.getInstance();
     const csvRows = getCsvRows();
 
@@ -96,7 +138,21 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
 
 // --- Season (cumulative) standings: /api/standings/season ---
 
-router.get("/season", requireAuth, asyncHandler(async (_req, res) => {
+router.get("/season", requireAuth, asyncHandler(async (req, res) => {
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
+
+  if (leagueId && leagueId !== 1) {
+    const stats = await getDbTeamStats(leagueId);
+    const rows: SeasonStandingsRow[] = stats.map((s) => ({
+      teamId: s.team.id,
+      teamName: s.team.name,
+      teamCode: s.team.code,
+      periodPoints: [],
+      totalPoints: 0,
+    }));
+    return res.json({ periodIds: [], rows });
+  }
+
   const ds = DataService.getInstance();
   const csvRows = getCsvRows();
   const periodKeys = getPeriodKeys(csvRows);

@@ -4,12 +4,30 @@
 Fantasy baseball league management tool. Client/server monorepo organized by **feature modules**.
 
 ## Tech Stack
-- **Client**: React 18 + Vite + TypeScript + Tailwind + React Router v6
-- **Server**: Node.js + Express + TypeScript + Prisma ORM
-- **Auth**: Supabase (Google/Yahoo OAuth, JWT)
-- **Database**: PostgreSQL via Prisma
-- **Testing**: Vitest (unit + integration)
-- **Deployment**: Render (HTTP, SSL termination at proxy)
+
+### Frontend
+- React 18 + React Router v6
+- Vite (dev server + bundler)
+- TypeScript (strict mode)
+- Tailwind CSS + shadcn-style UI primitives
+- Supabase JS client (auth sessions)
+
+### Backend
+- Node.js + Express
+- TypeScript (strict mode, ESM)
+- Prisma ORM (PostgreSQL)
+- Supabase Admin SDK (JWT verification)
+- Zod (request validation)
+
+### Shared
+- TypeScript across both client and server
+- Vitest (unit + integration tests)
+- 15 feature modules mirrored client/server
+
+### Infrastructure
+- PostgreSQL (Supabase)
+- Supabase Auth (Google/Yahoo OAuth, email/password)
+- Render (deployment, SSL termination at proxy)
 
 ## Project Structure
 ```
@@ -150,20 +168,21 @@ When adding cross-feature imports, document them here to maintain visibility.
 
 ## Development
 
-### Port Assignments (DO NOT CHANGE without updating all references)
+### Port Assignments (per MASTER-PORTS.md — DO NOT CHANGE without updating all references)
 | Project | Service | Port |
 |---------|---------|------|
-| **FBST** | Vite dev server | **5173** |
-| **FBST** | Express API server | **4002** |
-| **FSVP Pro** | (separate project) | **4001** — do NOT use for FBST |
+| **FBST** | Vite dev server | **3010** |
+| **FBST** | Express API server | **4010** |
+| **FBST** | PostgreSQL | **5442** |
+| **FBST** | Redis | **6381** |
 
 ### Starting the App (two terminals)
 ```bash
 # Terminal 1: Express API server
-npm run server        # Starts on :4002
+npm run server        # Starts on :4010
 
-# Terminal 2: Vite dev server (proxies /api → :4002)
-npm run dev           # Starts on :5173, open https://localhost:5173
+# Terminal 2: Vite dev server (proxies /api → :4010)
+npm run dev           # Starts on :3010, open http://localhost:3010
 ```
 
 ### Other Commands

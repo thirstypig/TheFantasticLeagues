@@ -152,8 +152,8 @@ const refreshTeams = async (state: AuctionState) => {
     orderBy: { id: 'asc' }
   });
 
-  const BUDGET_CAP = 260;
-  const ROSTER_SIZE = 25;
+  const BUDGET_CAP = 400;
+  const ROSTER_SIZE = 23;
 
   state.teams = teams.map(t => {
     const spent = t.rosters.reduce((sum, r) => sum + (Number(r.price) || 0), 0);

@@ -9,7 +9,7 @@ dependencies: []
 # CORS Localhost Origins Included Unconditionally
 
 ## Problem Statement
-Hardcoded `localhost:5173`, `localhost:5174`, `localhost:4173` in CORS origins are included even in production. Should be gated to development only.
+Hardcoded `localhost:3010`, `localhost:3011`, `localhost:4173` in CORS origins are included even in production. Should be gated to development only.
 
 ## Findings
 - **Security Sentinel**: L3 — unlikely to be exploitable but not best practice

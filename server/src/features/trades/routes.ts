@@ -7,6 +7,13 @@ import { writeAuditLog } from "../../lib/auditLog.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 
+async function isCommissionerOfLeague(userId: number, leagueId: number): Promise<boolean> {
+  const m = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId, userId } },
+  });
+  return m?.role === "COMMISSIONER";
+}
+
 export const tradeItemSchema = z.object({
   senderId: z.number().int().positive(),
   recipientId: z.number().int().positive(),
@@ -105,18 +112,21 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   if (!trade) return res.status(404).json({ error: "Trade not found" });
   if (trade.status !== "PROPOSED") return res.status(400).json({ error: "Trade is not in PROPOSED status" });
 
-  // Verify caller owns a counterparty team (not the proposer)
+  // Verify caller owns a counterparty team (not the proposer), or is commissioner/admin
   if (!req.user!.isAdmin) {
-    const counterpartyTeamIds = [...new Set(
-      trade.items
-        .map(i => i.recipientId)
-        .filter(id => id !== trade.proposerId)
-    )];
-    const ownsCounterparty = await Promise.all(
-      counterpartyTeamIds.map(tid => isTeamOwner(tid, req.user!.id))
-    );
-    if (!ownsCounterparty.some(Boolean)) {
-      return res.status(403).json({ error: "You are not a counterparty to this trade" });
+    const isCommish = await isCommissionerOfLeague(req.user!.id, trade.leagueId);
+    if (!isCommish) {
+      const counterpartyTeamIds = [...new Set(
+        trade.items
+          .map(i => i.recipientId)
+          .filter(id => id !== trade.proposerId)
+      )];
+      const ownsCounterparty = await Promise.all(
+        counterpartyTeamIds.map(tid => isTeamOwner(tid, req.user!.id))
+      );
+      if (!ownsCounterparty.some(Boolean)) {
+        return res.status(403).json({ error: "You are not a counterparty to this trade" });
+      }
     }
   }
 
@@ -148,18 +158,21 @@ router.post("/:id/reject", requireAuth, asyncHandler(async (req, res) => {
   if (!trade) return res.status(404).json({ error: "Trade not found" });
   if (trade.status !== "PROPOSED") return res.status(400).json({ error: "Trade is not in PROPOSED status" });
 
-  // Verify caller owns a counterparty team (not the proposer)
+  // Verify caller owns a counterparty team (not the proposer), or is commissioner/admin
   if (!req.user!.isAdmin) {
-    const counterpartyTeamIds = [...new Set(
-      trade.items
-        .map(i => i.recipientId)
-        .filter(id => id !== trade.proposerId)
-    )];
-    const ownsCounterparty = await Promise.all(
-      counterpartyTeamIds.map(tid => isTeamOwner(tid, req.user!.id))
-    );
-    if (!ownsCounterparty.some(Boolean)) {
-      return res.status(403).json({ error: "You are not a counterparty to this trade" });
+    const isCommish = await isCommissionerOfLeague(req.user!.id, trade.leagueId);
+    if (!isCommish) {
+      const counterpartyTeamIds = [...new Set(
+        trade.items
+          .map(i => i.recipientId)
+          .filter(id => id !== trade.proposerId)
+      )];
+      const ownsCounterparty = await Promise.all(
+        counterpartyTeamIds.map(tid => isTeamOwner(tid, req.user!.id))
+      );
+      if (!ownsCounterparty.some(Boolean)) {
+        return res.status(403).json({ error: "You are not a counterparty to this trade" });
+      }
     }
   }
 
@@ -179,8 +192,8 @@ router.post("/:id/reject", requireAuth, asyncHandler(async (req, res) => {
   res.json(updated);
 }));
 
-// POST /api/trades/:id/process - Execute (Commission/Admin)
-router.post("/:id/process", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+// POST /api/trades/:id/process - Execute (Commissioner/Admin)
+router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
   // 1. Verify status is ACCEPTED
@@ -191,6 +204,14 @@ router.post("/:id/process", requireAuth, requireAdmin, asyncHandler(async (req, 
 
   if (!trade || trade.status !== "ACCEPTED") {
     return res.status(400).json({ error: "Trade not found or not accepted" });
+  }
+
+  // 2. Verify caller is admin or commissioner of this league
+  if (!req.user!.isAdmin) {
+    const isCommish = await isCommissionerOfLeague(req.user!.id, trade.leagueId);
+    if (!isCommish) {
+      return res.status(403).json({ error: "Only commissioner or admin can process trades" });
+    }
   }
 
   // 2. Transact

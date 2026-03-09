@@ -8,13 +8,16 @@ import "./index.css";
 
 import { AuthProvider } from "./auth/AuthProvider";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { LeagueProvider } from "./contexts/LeagueContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <App />
+          <LeagueProvider>
+            <App />
+          </LeagueProvider>
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>

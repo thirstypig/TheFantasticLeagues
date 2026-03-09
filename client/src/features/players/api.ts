@@ -26,10 +26,10 @@ export function playerKey(p: any): string {
   return `${mlb}-${role}`;
 }
 
-let _seasonStatsCache: Promise<PlayerSeasonStat[]> | null = null;
-let _periodStatsCache: Promise<PeriodStatRow[]> | null = null;
+const _seasonStatsCache = new Map<number, Promise<PlayerSeasonStat[]>>();
+const _periodStatsCache = new Map<number, Promise<PeriodStatRow[]>>();
 let _auctionCache: Promise<PlayerSeasonStat[]> | null = null;
-let _seasonStandingsCache: Promise<SeasonStandingsApiResponse> | null = null;
+const _seasonStandingsCache = new Map<number, Promise<SeasonStandingsApiResponse>>();
 const _periodCategoryCache = new Map<string, Promise<PeriodCategoryStandingsResponse>>();
 const _mlbCache = new Map<string, Promise<any>>();
 
@@ -111,33 +111,44 @@ export async function getAuctionValues(): Promise<PlayerSeasonStat[]> {
   return _auctionCache;
 }
 
-export async function getPlayerSeasonStats(): Promise<PlayerSeasonStat[]> {
-  if (!_seasonStatsCache) {
-    _seasonStatsCache = (async () => {
-      const resp = await fetchJsonApi<{ stats: unknown[] }>(`${API_BASE}/player-season-stats`);
+export async function getPlayerSeasonStats(leagueId?: number): Promise<PlayerSeasonStat[]> {
+  const key = leagueId ?? 1;
+  if (!_seasonStatsCache.has(key)) {
+    _seasonStatsCache.set(key, (async () => {
+      const url = leagueId && leagueId !== 1
+        ? `${API_BASE}/player-season-stats?leagueId=${leagueId}`
+        : `${API_BASE}/player-season-stats`;
+      const resp = await fetchJsonApi<{ stats: unknown[] }>(url);
       const raw = resp?.stats ?? [];
       return dedupeByRowId(raw.map(normalizeTwoWayRow), "season");
-    })();
+    })());
   }
-  return _seasonStatsCache;
+  return _seasonStatsCache.get(key)!;
 }
 
-export async function getPlayerPeriodStats(): Promise<PeriodStatRow[]> {
-  if (!_periodStatsCache) {
-    _periodStatsCache = (async () => {
-      const resp = await fetchJsonApi<{ stats: PeriodStatRow[] }>(`${API_BASE}/player-period-stats`);
+export async function getPlayerPeriodStats(leagueId?: number): Promise<PeriodStatRow[]> {
+  const key = leagueId ?? 1;
+  if (!_periodStatsCache.has(key)) {
+    _periodStatsCache.set(key, (async () => {
+      const url = leagueId && leagueId !== 1
+        ? `${API_BASE}/player-period-stats?leagueId=${leagueId}`
+        : `${API_BASE}/player-period-stats`;
+      const resp = await fetchJsonApi<{ stats: PeriodStatRow[] }>(url);
       return resp?.stats ?? [];
-    })();
+    })());
   }
-  return _periodStatsCache;
+  return _periodStatsCache.get(key)!;
 }
 
-export async function getSeasonStandings(): Promise<SeasonStandingsApiResponse> {
-  if (!_seasonStandingsCache) {
-    _seasonStandingsCache = (async () => {
-      // Backend mounts standings at /api/season via standingsRouter mounted at /api
-      const raw = await fetchJsonApi<any>(`${API_BASE}/season`); 
-      
+export async function getSeasonStandings(leagueId?: number): Promise<SeasonStandingsApiResponse> {
+  const cacheKey = leagueId ?? 1;
+  if (!_seasonStandingsCache.has(cacheKey)) {
+    _seasonStandingsCache.set(cacheKey, (async () => {
+      const url = leagueId && leagueId !== 1
+        ? `${API_BASE}/season?leagueId=${leagueId}`
+        : `${API_BASE}/season`;
+      const raw = await fetchJsonApi<any>(url);
+
       // Backend returns { data: [...] }
       if (raw && Array.isArray(raw.data)) {
            return { periodIds: [], rows: raw.data as SeasonStandingRow[] };
@@ -149,17 +160,19 @@ export async function getSeasonStandings(): Promise<SeasonStandingsApiResponse> 
       }
       if (Array.isArray(raw)) return { periodIds: [], rows: raw as SeasonStandingRow[] };
       return { periodIds: [], rows: [] };
-    })();
+    })());
   }
-  return _seasonStandingsCache;
+  return _seasonStandingsCache.get(cacheKey)!;
 }
 
-export async function getPeriodCategoryStandings(periodId: string | number): Promise<PeriodCategoryStandingsResponse> {
-  const key = String(periodId ?? "").trim();
-  if (!key) throw new Error("Missing periodId");
+export async function getPeriodCategoryStandings(periodId: string | number, leagueId?: number): Promise<PeriodCategoryStandingsResponse> {
+  const pidKey = String(periodId ?? "").trim();
+  if (!pidKey) throw new Error("Missing periodId");
+  const key = leagueId && leagueId !== 1 ? `${pidKey}-L${leagueId}` : pidKey;
   const hit = _periodCategoryCache.get(key);
   if (hit) return hit;
-  const p = fetchJsonApi<PeriodCategoryStandingsResponse>(`${API_BASE}/period-category-standings?periodId=${encodeURIComponent(key)}`);
+  const leagueParam = leagueId && leagueId !== 1 ? `&leagueId=${leagueId}` : '';
+  const p = fetchJsonApi<PeriodCategoryStandingsResponse>(`${API_BASE}/period-category-standings?periodId=${encodeURIComponent(pidKey)}${leagueParam}`);
   _periodCategoryCache.set(key, p);
   return p;
 }
