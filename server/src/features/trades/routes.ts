@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, isTeamOwner } from "../../middleware/auth.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
+import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 
@@ -227,6 +228,8 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
              where: { id: rosterEntry.id },
              data: { releasedAt: new Date(), source: "TRADE_OUT" },
            });
+
+           await assertPlayerAvailable(tx, item.playerId, trade.leagueId);
 
            await tx.roster.create({
              data: {

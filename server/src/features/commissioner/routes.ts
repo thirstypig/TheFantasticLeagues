@@ -3,6 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { norm, normCode, mustOneOf } from "../../lib/utils.js";
+import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 import multer from "multer";
 import { CommissionerService } from "./services/CommissionerService.js";
 import { requireAuth, requireAdmin, requireCommissionerOrAdmin, evictMembershipCache } from "../../middleware/auth.js";
@@ -109,6 +110,13 @@ router.get("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(),
         code: true,
         ownerUserId: true,
         ownerUser: { select: { id: true, email: true, name: true, avatarUrl: true, isAdmin: true } },
+        ownerships: {
+          select: {
+            id: true,
+            userId: true,
+            user: { select: { id: true, email: true, name: true } },
+          },
+        },
       },
     });
 
@@ -314,11 +322,20 @@ router.post(
 
       if (!Number.isFinite(teamId)) return res.status(400).json({ error: "Invalid teamId" });
 
-      const team = await commissionerService.addTeamOwner(leagueId, teamId, {
-          userId: req.body?.userId != null && String(req.body.userId).trim() !== "" ? Number(req.body.userId) : undefined,
-          email: req.body?.email,
-          ownerName: req.body?.ownerName
-      });
+      let team;
+      try {
+        team = await commissionerService.addTeamOwner(leagueId, teamId, {
+            userId: req.body?.userId != null && String(req.body.userId).trim() !== "" ? Number(req.body.userId) : undefined,
+            email: req.body?.email,
+            ownerName: req.body?.ownerName
+        });
+      } catch (err: any) {
+        const msg = err?.message || "";
+        if (msg.includes("already an owner") || msg.includes("already has 2 owners") || msg.includes("not found")) {
+          return res.status(409).json({ error: msg });
+        }
+        throw err;
+      }
 
       writeAuditLog({
         userId: req.user!.id,
@@ -685,6 +702,120 @@ router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissio
 
         return res.json({ success: true, snapshotted: count });
 }));
+
+/**
+ * ==========================================
+ *  Commissioner Direct Trade Execution
+ * ==========================================
+ */
+
+import { tradeItemSchema } from "../trades/routes.js";
+
+const executeTradeSchema = z.object({
+  items: z.array(tradeItemSchema).min(1),
+  note: z.string().max(500).optional(),
+});
+
+/**
+ * POST /api/commissioner/:leagueId/execute-trade
+ * Commissioner directly records an offline trade (no proposal/accept flow).
+ */
+router.post(
+  "/commissioner/:leagueId/execute-trade",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  validateBody(executeTradeSchema),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const { items, note } = req.body;
+
+    // Verify all teams belong to this league
+    const involvedTeamIds = [...new Set<number>(items.flatMap((i: any) => [i.senderId, i.recipientId]))];
+    const teams = await prisma.team.findMany({
+      where: { id: { in: involvedTeamIds } },
+      select: { id: true, leagueId: true },
+    });
+    if (teams.length !== involvedTeamIds.length || teams.some((t) => t.leagueId !== leagueId)) {
+      return res.status(400).json({ error: "All teams must belong to this league" });
+    }
+
+    // Pick the first sender as proposer (arbitrary for commissioner trades)
+    const proposerId = items[0].senderId;
+
+    // Atomic: create Trade as PROCESSED + execute roster/budget moves
+    const trade = await prisma.$transaction(async (tx) => {
+      const trade = await tx.trade.create({
+        data: {
+          leagueId,
+          proposerId,
+          status: "PROCESSED",
+          processedAt: new Date(),
+          items: {
+            create: items.map((item: any) => ({
+              senderId: item.senderId,
+              recipientId: item.recipientId,
+              assetType: item.assetType,
+              playerId: item.playerId,
+              amount: item.amount,
+              pickRound: item.pickRound,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      // Execute roster/budget moves (same logic as trades/routes.ts process)
+      for (const item of trade.items) {
+        if (item.assetType === "PLAYER" && item.playerId) {
+          const rosterEntry = await tx.roster.findFirst({
+            where: { teamId: item.senderId, playerId: item.playerId, releasedAt: null },
+          });
+
+          if (rosterEntry) {
+            await tx.roster.update({
+              where: { id: rosterEntry.id },
+              data: { releasedAt: new Date(), source: "TRADE_OUT" },
+            });
+
+            await assertPlayerAvailable(tx, item.playerId, leagueId);
+
+            await tx.roster.create({
+              data: {
+                teamId: item.recipientId,
+                playerId: item.playerId,
+                source: "TRADE_IN",
+                acquiredAt: new Date(),
+                price: rosterEntry.price,
+                assignedPosition: null,
+              },
+            });
+          }
+        } else if (item.assetType === "BUDGET") {
+          await tx.team.update({
+            where: { id: item.senderId },
+            data: { budget: { decrement: item.amount || 0 } },
+          });
+          await tx.team.update({
+            where: { id: item.recipientId },
+            data: { budget: { increment: item.amount || 0 } },
+          });
+        }
+      }
+
+      return trade;
+    }, { timeout: 30_000 });
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "COMMISSIONER_TRADE_EXECUTE",
+      resourceType: "Trade",
+      resourceId: String(trade.id),
+      metadata: { leagueId, itemCount: trade.items.length, note },
+    });
+
+    return res.json({ success: true, trade });
+  })
+);
 
 export const commissionerRouter = router;
 export default commissionerRouter;

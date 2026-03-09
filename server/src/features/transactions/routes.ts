@@ -10,6 +10,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
+import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 
 const claimSchema = z.object({
   leagueId: z.number().int().positive(),
@@ -90,9 +91,9 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     return res.status(400).json({ error: "Missing playerId or mlbId" });
   }
 
-  // 2. Verify availability
+  // 2. Verify availability (active rosters only — releasedAt: null)
   const existingRoster = await prisma.roster.findFirst({
-    where: { playerId, team: { leagueId } },
+    where: { playerId, team: { leagueId }, releasedAt: null },
     include: { team: true }
   });
 
@@ -106,6 +107,8 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
 
   // 4. Perform Transaction (Atomic)
   await prisma.$transaction(async (tx) => {
+    await assertPlayerAvailable(tx, playerId, leagueId);
+
     await tx.roster.create({
       data: { teamId, playerId, source: 'waiver_claim', acquiredAt: new Date() }
     });

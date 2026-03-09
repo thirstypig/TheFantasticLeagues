@@ -1,6 +1,7 @@
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { norm, slugify } from "../../../lib/utils.js";
+import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 
 const auctionImportService = new AuctionImportService();
@@ -470,13 +471,16 @@ export class CommissionerService {
       });
     }
 
-    // 2. Release from any other active roster
+    // 2. Release from any other active roster in this league
     await prisma.roster.updateMany({
-      where: { playerId: player.id, releasedAt: null },
+      where: { playerId: player.id, releasedAt: null, team: { leagueId } },
       data: { releasedAt: new Date() },
     });
 
-    // 3. Create Roster Entry
+    // 3. Guard: ensure player isn't on another team in this league
+    await assertPlayerAvailable(prisma, player.id, leagueId);
+
+    // 4. Create Roster Entry
     return await prisma.roster.create({
       data: {
         teamId,

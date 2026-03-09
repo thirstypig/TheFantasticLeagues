@@ -80,6 +80,9 @@ async function main() {
     next();
   });
 
+  // Auth must run before rate limiter so globalLimiter can key by user ID
+  app.use(attachUser);
+
   // Rate limiting (300/min per user to support auction polling at 2-3s intervals)
   const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -91,12 +94,11 @@ async function main() {
   });
   const authLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 10,
+    max: 20,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many auth attempts, please try again later" },
   });
-  app.use(attachUser);
 
   app.use("/api", globalLimiter);
   app.use("/api/auth", authLimiter);
