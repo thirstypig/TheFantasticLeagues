@@ -226,6 +226,7 @@ model Player {
   tradeItems       TradeItem[]
   waiverClaimsAdd  WaiverClaim[]      @relation("ClaimAdd")
   waiverClaimsDrop WaiverClaim[]      @relation("ClaimDrop")
+  periodStats      PlayerStatsPeriod[]
 
   @@index([name])
 }
@@ -297,7 +298,8 @@ model Period {
   endDate   DateTime
   status    String
 
-  teamStats TeamStatsPeriod[]
+  teamStats   TeamStatsPeriod[]
+  playerStats PlayerStatsPeriod[]
 }
 
 model TeamStatsPeriod {
@@ -349,6 +351,34 @@ model TeamStatsSeason {
   gamesPlayed Int @default(0)
 
   team Team @relation(fields: [teamId], references: [id])
+}
+
+model PlayerStatsPeriod {
+  id       Int @id @default(autoincrement())
+  playerId Int
+  periodId Int
+
+  // Batting
+  AB  Int @default(0)
+  H   Int @default(0)
+  R   Int @default(0)
+  HR  Int @default(0)
+  RBI Int @default(0)
+  SB  Int @default(0)
+
+  // Pitching
+  W    Int   @default(0)
+  SV   Int   @default(0)
+  K    Int   @default(0)
+  IP   Float @default(0)
+  ER   Int   @default(0)
+  BB_H Int   @default(0) // walks + hits allowed (for WHIP)
+
+  player Player @relation(fields: [playerId], references: [id])
+  period Period @relation(fields: [periodId], references: [id])
+
+  @@unique([playerId, periodId])
+  @@index([periodId])
 }
 
 model Roster {
