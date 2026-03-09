@@ -114,8 +114,8 @@ export default function Home() {
              <div className="w-20 h-20 rounded-full bg-[var(--lg-tint)] flex items-center justify-center mx-auto mb-8 border border-[var(--lg-border-subtle)] text-4xl">🏳️</div>
              <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)] mb-4">No Team</h2>
              <p className="text-sm font-medium text-[var(--lg-text-secondary)] mb-10 leading-relaxed opacity-60">You are not currently on a team. Join a league to get started.</p>
-             <Link to="/leagues" className="lg-button lg-button-primary px-10 py-3 shadow-2xl shadow-blue-500/20">
-               Browse Leagues
+             <Link to="/guide" className="lg-button lg-button-primary px-10 py-3 shadow-2xl shadow-blue-500/20">
+               View Guide
              </Link>
           </div>
       ) : (

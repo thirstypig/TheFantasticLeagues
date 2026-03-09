@@ -16,6 +16,7 @@ import {
 } from "../api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
+import CommissionerTradeTool from "../components/CommissionerTradeTool";
 import KeeperPrepDashboard from "../../keeper-prep/components/KeeperPrepDashboard";
 import { RulesEditor } from "../../leagues/components/RulesEditor";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -159,12 +160,12 @@ export default function Commissioner() {
   const [draftName, setDraftName] = useState("");
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'rosters' | 'keepers' | 'controls' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'rosters' | 'trades' | 'keepers' | 'controls' | 'settings'>('overview');
 
   // Hash listener
   useEffect(() => {
      const hash = window.location.hash.replace('#', '');
-     if (['overview', 'rosters', 'keepers', 'controls', 'settings'].includes(hash)) {
+     if (['overview', 'rosters', 'trades', 'keepers', 'controls', 'settings'].includes(hash)) {
          setActiveTab(hash as any);
      }
   }, []);
@@ -370,8 +371,8 @@ export default function Commissioner() {
 
       <div className="space-y-5">
         <div className="flex items-center justify-between">
-          <Link to="/leagues" className="text-sm text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">
-            ← Back to Leagues
+          <Link to="/" className="text-sm text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">
+            ← Back to Home
           </Link>
           <div className="flex items-center gap-2">
             <button
@@ -466,7 +467,7 @@ export default function Commissioner() {
 
             {/* Navigation Tabs */}
             <div className="flex gap-2 border-b border-[var(--lg-border-subtle)] pb-4 mb-6 overflow-x-auto">
-                {['overview', 'rosters', 'keepers', 'controls', 'settings'].map((tab) => (
+                {['overview', 'rosters', 'trades', 'keepers', 'controls', 'settings'].map((tab) => (
                     <button
                         key={tab}
                         onClick={() => {
@@ -751,6 +752,19 @@ export default function Commissioner() {
                           leagueId={lid}
                           teams={overview.teams}
                           onUpdate={() => { /* no-op or refresh */ }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Tab: Trades */}
+            {activeTab === 'trades' && (
+                <div className="space-y-6">
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                       <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Record Trade</h2>
+                       <CommissionerTradeTool
+                          leagueId={lid}
+                          teams={overview.teams}
                         />
                     </div>
                 </div>

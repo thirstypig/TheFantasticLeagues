@@ -66,20 +66,20 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
 | `auth` | routes | 5 pages, api | Login, signup, password reset, landing |
-| `leagues` | routes, rules-routes | 2 pages, api | League CRUD, rules management |
+| `leagues` | routes, rules-routes | api only | League CRUD, rules management (pages removed; API used by admin, commissioner, keeper-prep) |
 | `teams` | routes, teamService | 2 pages, 4 components, api | Team management, roster views |
 | `players` | routes, dataService | 1 page, 2 components, api | Player search, stats, detail modals |
 | `roster` | routes, rosterImport-routes | 5 components | Roster grid, controls, import |
-| `standings` | routes, standingsService | 3 pages, 1 component, api | Standings, categories, season |
+| `standings` | routes, standingsService | api only | Standings computation (pages removed; StatsTables promoted to shared components) |
 | `trades` | routes | 1 page, 1 component, api | Trade proposals, voting |
 | `waivers` | routes | (minimal) | Waiver claims workflow |
 | `transactions` | routes | 1 page, api | Transaction history |
 | `auction` | routes, auctionImport | 2 pages, 10 components, 2 hooks | Live auction draft |
 | `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
-| `commissioner` | routes, CommissionerService | 1 page, 3 components | Commissioner admin tools |
-| `admin` | routes | 1 page, 1 component | System admin panel |
+| `commissioner` | routes, CommissionerService | 1 page, 4 components | Commissioner admin tools |
+| `admin` | routes | 1 page, 2 components | System admin panel (includes league creation + CSV import) |
 | `archive` | routes, 3 archive services | 1 page, api | Historical data import/export |
-| `periods` | routes | 3 pages | Stat periods, season views |
+| `periods` | routes | 1 page (Season) | Season/period standings with toggle |
 
 ### Feature Module Pattern
 ```
@@ -117,6 +117,7 @@ Some features import from other features' services or components.
 - `commissioner/services/CommissionerService` imports `auction/services/auctionImport`
 - `standings/routes.ts` imports `players/services/dataService`
 - `transactions/routes.ts` imports `players/services/dataService`
+- `commissioner/routes.ts` imports `trades/routes.ts` for `tradeItemSchema`
 
 **Client (component imports):**
 - `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
@@ -129,6 +130,8 @@ Some features import from other features' services or components.
 - `teams/pages/Team` imports `components/PlayerDetailModal` (shared)
 - `archive/pages/ArchivePage` imports `players/components/EditPlayerNameModal`, `teams/components/EditTeamNameModal`, `admin/components/ArchiveAdminPanel`, `components/StatsTables` (shared)
 - `periods/pages/Season` imports `components/StatsTables` (shared)
+- `commissioner/components/CommissionerTradeTool` imports `trades/components/TradeAssetSelector`
+- `admin/components/AdminLeagueTools` imports `leagues/api` (adminCreateLeague, adminImportRosters, getLeagues)
 
 When adding cross-feature imports, document them here to maintain visibility.
 
