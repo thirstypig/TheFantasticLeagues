@@ -128,8 +128,8 @@ function parsePlayerStats(person: any): {
       result.K = split.strikeOuts || 0;
       result.IP = split.inningsPitched ? parseFloat(split.inningsPitched) : 0;
       result.ER = split.earnedRuns || 0;
-      // BB_H = baseOnBalls + hits (for WHIP calculation)
-      result.BB_H = (split.baseOnBalls || 0) + (split.hitBatsmen || 0) + (split.hits || 0);
+      // BB_H = walks + hits allowed (for WHIP = BB_H / IP)
+      result.BB_H = (split.baseOnBalls || 0) + (split.hits || 0);
     }
   }
 

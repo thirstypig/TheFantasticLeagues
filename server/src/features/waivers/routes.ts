@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireAdmin, requireTeamOwner, requireCommissionerOrAdmin, isTeamOwner, getOwnedTeamIds } from "../../middleware/auth.js";
+import { requireAuth, requireTeamOwner, requireCommissionerOrAdmin, isTeamOwner, getOwnedTeamIds } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";

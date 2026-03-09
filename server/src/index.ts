@@ -90,6 +90,7 @@ async function main() {
     windowMs: 60 * 1000,
     max: 300,
     keyGenerator: (req) => req.user?.id?.toString() || req.ip || "unknown",
+    validate: { keyGeneratorIpFallback: false },
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many requests, please try again later" },
@@ -243,8 +244,10 @@ async function main() {
     logger.info({ port: PORT, protocol }, `🔥 FBST server listening on 0.0.0.0 (${protocol})`);
 
     // Attach Auction WebSocket server to the HTTP server
-    attachAuctionWs(server);
+    wss = attachAuctionWs(server);
   };
+
+  let wss: import("ws").WebSocketServer | null = null;
 
   const isDev = process.env.NODE_ENV === "development";
   const hasCerts = fs.existsSync(keyPath) && fs.existsSync(certPath);
@@ -276,6 +279,7 @@ async function main() {
   // Graceful shutdown
   function shutdown(signal: string) {
     logger.info({ signal }, "Shutdown signal received");
+    if (wss) wss.close();
     server.close(() => {
       prisma.$disconnect().then(() => process.exit(0));
     });

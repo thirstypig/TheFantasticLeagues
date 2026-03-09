@@ -69,6 +69,15 @@ export function attachAuctionWs(httpServer: HttpServer): WebSocketServer {
       return;
     }
 
+    // Verify league membership
+    const membership = await prisma.leagueMembership.findFirst({
+      where: { userId, league: { id: leagueId } },
+    });
+    if (!membership) {
+      ws.close(4003, "Not a league member");
+      return;
+    }
+
     // Join room
     if (!rooms.has(leagueId)) {
       rooms.set(leagueId, new Set());

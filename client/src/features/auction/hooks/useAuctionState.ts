@@ -100,7 +100,7 @@ export function useAuctionState(leagueId?: number | null) {
     // Start polling as fallback
     const startPolling = useCallback(() => {
         if (pollRef.current) return; // already polling
-        pollRef.current = setInterval(fetchState, 2000);
+        pollRef.current = setInterval(fetchState, 1000);
     }, [fetchState]);
 
     const stopPolling = useCallback(() => {
