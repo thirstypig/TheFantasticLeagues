@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { getPlayerSeasonStats, type PlayerSeasonStat, getTeamDetails, getTeams } from "../../../api";
 import PlayerDetailModal from "../../../components/PlayerDetailModal";
 import TeamRosterManager from "../components/TeamRosterManager";
+import { useLeague } from "../../../contexts/LeagueContext";
 
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
 import { isPitcher, normalizePosition, formatAvg, getMlbTeamAbbr } from "../../../lib/playerDisplay";
@@ -104,6 +105,7 @@ function gamesAtPos(p: any, pos: "DH" | "C" | "1B" | "2B" | "3B" | "SS" | "OF"):
 export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
+  const { leagueId } = useLeague();
 
   const loc = useLocation();
   const activeTab: "hitters" | "pitchers" = loc.hash === "#pitchers" ? "pitchers" : "hitters";
@@ -126,40 +128,79 @@ export default function Team() {
         setLoading(true);
         setError(null);
 
-        // 1. Load Scraper Stats
-        const rows = await getPlayerSeasonStats();
+        // 1. Find the DB team by code or name (scoped to active league)
+        const allTeams = await getTeams(leagueId);
+        const ogbaName = getOgbaTeamName(code);
+        const team = allTeams.find((t: any) => normCode(t.code) === code)
+          || allTeams.find((t: any) => normCode(t.name) === code)
+          || allTeams.find((t: any) => t.name.trim() === ogbaName);
+
         if (!ok) return;
 
-        const filtered = (rows ?? []).filter(
-          (p: any) => normCode(p?.ogba_team_code ?? p?.team ?? p?.ogbaTeamCode) === code
-        );
-        setPlayers(filtered);
+        const foundId = team?.id || 0;
 
-        // 2. Load DB Team ID & Roster
-        // We need to find the team ID from the code
-        const allTeams = await getTeams();
-        const team = allTeams.find((t: any) => normCode(t.name) === code || normCode(t.secondary_code) === code || t.name.toLowerCase().includes(code.toLowerCase())); 
-        // Note: teamCode param might be 'KAN' but name is 'Kansai'. 
-        // existing logic uses `getOgbaTeamName(code)` which maps 'KAN' -> 'Kansai ...'
-        // Let's rely on standard code match if possible.
-        // The `getOgbaTeamName` utility suggests 'KAN' is the standard key.
-        // Let's assume the DB `Team` model might not have 'KAN' code populated?
-        // Let's try to match loosely or use `getOgbaTeamName` to find the full name then match?
-        
-        let foundId = 0;
-        if (team) {
-             foundId = team.id;
-        } else {
-            // Fallback: Try to match by name
-            const fullName = getOgbaTeamName(code);
-            const teamByName = allTeams.find((t: any) => t.name === fullName);
-            if (teamByName) foundId = teamByName.id;
-        }
+        // 2. Load CSV stats (for stat merging)
+        const csvRows = await getPlayerSeasonStats();
+        if (!ok) return;
 
         if (foundId) {
-            setDbTeamId(foundId);
-            const details = await getTeamDetails(foundId);
-            setCurrentRoster(details.currentRoster || []);
+          setDbTeamId(foundId);
+
+          // 3. Load DB roster (source of truth for who is on the team)
+          const details = await getTeamDetails(foundId);
+          if (!ok) return;
+          setCurrentRoster(details.currentRoster || []);
+
+          // 4. Build player list from DB roster, merge in CSV stats
+          const dbRoster: any[] = details.currentRoster || [];
+          const merged: PlayerSeasonStat[] = dbRoster.map((r: any) => {
+            // teamService returns flat objects (not nested under .player)
+            const mlbId = r.mlbId || r.mlb_id || r.player?.mlbId;
+            const playerName = r.name || r.player?.name || "";
+            const posPrimary = r.posPrimary || r.player?.posPrimary || "";
+            const mlbTeam = r.mlbTeam || r.player?.mlbTeam || "";
+            const posList = r.posList || r.player?.posList || "";
+            const price = r.price ?? 0;
+
+            // Find matching CSV row by mlb_id
+            const csvMatch = mlbId
+              ? (csvRows ?? []).find((s: any) => Number(s.mlb_id || s.mlbId) === Number(mlbId))
+              : null;
+
+            if (csvMatch) {
+              // Use CSV stats, overlay DB fields for consistency
+              return {
+                ...csvMatch,
+                ogba_team_code: code,
+                mlb_team_abbr: mlbTeam || csvMatch.mlb_team_abbr || csvMatch.mlb_team || "",
+                player_name: csvMatch.player_name || playerName,
+                price,
+              };
+            }
+
+            // No CSV match — build a minimal row from DB data
+            const pitcherPos = ["P", "SP", "RP"];
+            return {
+              mlb_id: String(mlbId || ""),
+              player_name: playerName,
+              ogba_team_code: code,
+              positions: posList || posPrimary || "UT",
+              posPrimary,
+              is_pitcher: pitcherPos.includes(posPrimary),
+              R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0,
+              W: 0, SV: 0, K: 0, IP: 0, ERA: 0, WHIP: 0, BB_H: 0,
+              mlb_team_abbr: mlbTeam,
+              price,
+            } as unknown as PlayerSeasonStat;
+          });
+
+          setPlayers(merged);
+        } else {
+          // Fallback: filter CSV data by team code (legacy behavior)
+          const filtered = (csvRows ?? []).filter(
+            (p: any) => normCode(p?.ogba_team_code ?? p?.team ?? p?.ogbaTeamCode) === code
+          );
+          setPlayers(filtered);
         }
 
       } catch (e: any) {
@@ -175,7 +216,7 @@ export default function Team() {
     return () => {
       ok = false;
     };
-  }, [code]);
+  }, [code, leagueId]);
 
   const teamName = useMemo(() => getOgbaTeamName(code) || code, [code]);
 

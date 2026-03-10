@@ -179,21 +179,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {sidebarOpen && leagues.length > 1 && (
-              <div className="mb-6 px-1">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] opacity-40 mb-2 px-2">League</div>
-                <select
-                  value={leagueId}
-                  onChange={(e) => setLeagueId(Number(e.target.value))}
-                  className="lg-input w-full text-xs font-semibold py-2"
-                >
-                  {leagues.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             <nav className="flex-1 overflow-y-auto custom-scrollbar space-y-6">
               {NAV_SECTIONS.map((section) => {
                 const visibleItems = section.items.filter((item) => item.show);

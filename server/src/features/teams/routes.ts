@@ -45,6 +45,7 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
     select: {
       id: true,
       name: true,
+      code: true,
       owner: true,
       budget: true,
       leagueId: true,

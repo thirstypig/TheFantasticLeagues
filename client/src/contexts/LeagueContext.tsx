@@ -17,9 +17,22 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
   const [leagueId, setLeagueIdState] = useState<number>(() => {
+    // Default to user's first membership league, falling back to stored or 1
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? Number(stored) : 1;
   });
+
+  // Sync leagueId with user's primary membership
+  useEffect(() => {
+    if (user?.memberships?.length) {
+      const ownerMembership = user.memberships.find(m => m.role === 'OWNER');
+      const primaryLeagueId = Number(ownerMembership?.leagueId ?? user.memberships[0].leagueId);
+      if (primaryLeagueId && Number.isFinite(primaryLeagueId)) {
+        setLeagueIdState(primaryLeagueId);
+        localStorage.setItem(STORAGE_KEY, String(primaryLeagueId));
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user) {

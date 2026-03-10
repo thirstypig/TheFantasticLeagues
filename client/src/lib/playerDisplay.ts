@@ -1,16 +1,20 @@
 // client/src/lib/playerDisplay.ts
 export function isPitcher(v: any): boolean {
-  if (typeof v === "string") return v.trim().toUpperCase() === "P";
+  if (typeof v === "string") {
+    const s = v.trim().toUpperCase();
+    return s === "P" || s === "SP" || s === "RP";
+  }
   if (v && typeof v === "object") {
-    if (typeof v.is_pitcher === "boolean") return v.is_pitcher;
-    if (typeof v.isPitcher === "boolean") return v.isPitcher;
+    // Handle both boolean and numeric (1/0) is_pitcher values
+    if (v.is_pitcher != null) return !!v.is_pitcher;
+    if (v.isPitcher != null) return !!v.isPitcher;
 
     const group = String(v.group ?? "").trim().toUpperCase();
     if (group === "P") return true;
     if (group === "H") return false;
 
-    const pos = String(v.positions ?? v.pos ?? "").trim().toUpperCase();
-    if (pos === "P") return true;
+    const pos = String(v.positions ?? v.pos ?? v.posPrimary ?? "").trim().toUpperCase();
+    if (pos === "P" || pos === "SP" || pos === "RP") return true;
   }
   return false;
 }

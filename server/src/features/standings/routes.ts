@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
+import { DataService } from "../players/services/dataService.js";
 
 const router = Router();
 
@@ -9,10 +10,10 @@ import {
   CATEGORY_CONFIG,
   computeCategoryRows,
   computeStandingsFromStats,
-  computeTeamStatsFromDb,
+  aggregatePeriodStatsFromCsv,
   type CategoryKey,
-  type StandingsRow,
   type SeasonStandingsRow,
+  type CsvPlayerRow,
 } from "./services/standingsService.js";
 
 // --- Period standings: /api/standings/period/current ---
@@ -31,7 +32,10 @@ router.get("/period/current", requireAuth, asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "No active period found" });
   }
 
-  const stats = await computeTeamStatsFromDb(leagueId, period.id);
+  const ds = DataService.getInstance();
+  const periodStats = ds.getPeriodStats() as CsvPlayerRow[];
+  const periodKey = `P${period.id}`;
+  const stats = aggregatePeriodStatsFromCsv(periodStats, periodKey);
   const standings = computeStandingsFromStats(stats);
 
   res.json({ periodId: period.id, data: standings });
@@ -58,7 +62,10 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     return res.status(404).json({ error: "No active period found" });
   }
 
-  const stats = await computeTeamStatsFromDb(leagueId, pid);
+  const ds = DataService.getInstance();
+  const periodStats = ds.getPeriodStats() as CsvPlayerRow[];
+  const periodKey = `P${pid}`;
+  const stats = aggregatePeriodStatsFromCsv(periodStats, periodKey);
 
   const categories = CATEGORY_CONFIG.map((cfg) => {
     const rows = computeCategoryRows(stats, cfg.key as CategoryKey, cfg.lowerIsBetter);
@@ -94,14 +101,19 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
 
   const periodIds = periods.map((p) => p.id);
 
-  // Compute standings per period
-  const periodStandings = new Map<number, Map<number, number>>(); // periodId -> teamId -> points
+  // Compute standings per period using CSV data
+  const ds = DataService.getInstance();
+  const allPeriodStats = ds.getPeriodStats() as CsvPlayerRow[];
+
+  // Map by team code since CSV uses synthetic IDs
+  const periodStandings = new Map<number, Map<string, number>>(); // periodId -> teamCode -> points
   for (const period of periods) {
-    const stats = await computeTeamStatsFromDb(leagueId, period.id);
+    const periodKey = `P${period.id}`;
+    const stats = aggregatePeriodStatsFromCsv(allPeriodStats, periodKey);
     const standings = computeStandingsFromStats(stats);
-    const pointsMap = new Map<number, number>();
+    const pointsMap = new Map<string, number>();
     for (const s of standings) {
-      pointsMap.set(s.teamId, s.points);
+      pointsMap.set(s.teamName.trim().toUpperCase(), s.points);
     }
     periodStandings.set(period.id, pointsMap);
   }
@@ -114,8 +126,9 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
   });
 
   const rows: SeasonStandingsRow[] = teams.map((t) => {
+    const teamKey = t.name.trim().toUpperCase();
     const periodPoints = periods.map((p) => {
-      return periodStandings.get(p.id)?.get(t.id) ?? 0;
+      return periodStandings.get(p.id)?.get(teamKey) ?? 0;
     });
     const totalPoints = periodPoints.reduce((a, b) => a + b, 0);
     return {

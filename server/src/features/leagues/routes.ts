@@ -129,7 +129,7 @@ router.get("/leagues/:id/rosters", asyncHandler(async (req, res) => {
     where: { team: { leagueId }, releasedAt: null },
     include: {
       team: { select: { id: true, code: true, name: true, budget: true } },
-      player: { select: { id: true, name: true, posPrimary: true, mlbId: true } },
+      player: { select: { id: true, name: true, posPrimary: true, mlbId: true, mlbTeam: true } },
     },
     orderBy: { teamId: "asc" },
   });

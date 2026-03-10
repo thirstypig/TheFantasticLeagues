@@ -151,6 +151,7 @@ export default function Home() {
                             <Tr>
                                 <Th align="left">Role</Th>
                                 <Th align="left">Player</Th>
+                                <Th align="center">MLB</Th>
                                 <Th align="center">R</Th>
                                 <Th align="center">HR</Th>
                                 <Th align="center">RBI</Th>
@@ -160,7 +161,7 @@ export default function Home() {
                             </Tr>
                         </THead>
                         <tbody className="divide-y divide-[var(--lg-divide)]">
-                            {hitters.length === 0 && <Tr><td colSpan={8} className="p-16 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase opacity-30">No hitters on roster</td></Tr>}
+                            {hitters.length === 0 && <Tr><td colSpan={9} className="p-16 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase opacity-30">No hitters on roster</td></Tr>}
                             {hitters.map(r => {
                                 const s = (r.stat || {}) as PlayerSeasonStat;
                                 return (
@@ -171,6 +172,7 @@ export default function Home() {
                                           </span>
                                         </Td>
                                         <Td>{r.player.name}</Td>
+                                        <Td align="center"><span className="text-xs text-[var(--lg-text-muted)]">{(r.player as any).mlbTeam || "—"}</span></Td>
                                         <Td align="center">{num(s.R)}</Td>
                                         <Td align="center"><span className="text-blue-500">{num(s.HR)}</span></Td>
                                         <Td align="center">{num(s.RBI)}</Td>
@@ -199,6 +201,7 @@ export default function Home() {
                             <Tr>
                                 <Th align="left">Role</Th>
                                 <Th align="left">Player</Th>
+                                <Th align="center">MLB</Th>
                                 <Th align="center">W</Th>
                                 <Th align="center">SV</Th>
                                 <Th align="center">K</Th>
@@ -207,7 +210,7 @@ export default function Home() {
                             </Tr>
                         </THead>
                         <tbody className="divide-y divide-[var(--lg-divide)]">
-                            {pitchers.length === 0 && <Tr><td colSpan={7} className="p-16 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase opacity-30">No pitchers on roster</td></Tr>}
+                            {pitchers.length === 0 && <Tr><td colSpan={8} className="p-16 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase opacity-30">No pitchers on roster</td></Tr>}
                             {pitchers.map(r => {
                                 const s = (r.stat || {}) as PlayerSeasonStat;
                                 return (
@@ -218,6 +221,7 @@ export default function Home() {
                                           </span>
                                         </Td>
                                         <Td>{r.player.name}</Td>
+                                        <Td align="center"><span className="text-xs text-[var(--lg-text-muted)]">{(r.player as any).mlbTeam || "—"}</span></Td>
                                         <Td align="center"><span className="text-emerald-500">{num(s.W)}</span></Td>
                                         <Td align="center"><span className="text-amber-500">{num(s.SV)}</span></Td>
                                         <Td align="center"><span className="text-blue-500">{num(s.K)}</span></Td>
