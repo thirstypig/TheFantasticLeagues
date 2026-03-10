@@ -385,7 +385,7 @@ export default function Commissioner() {
             >
               Refresh
             </button>
-            <div className="text-xs text-[var(--lg-text-muted)]">leagueId: {leagueId ?? "—"}</div>
+            {/* leagueId used internally only */}
           </div>
         </div>
 
@@ -574,8 +574,7 @@ export default function Commissioner() {
                             <div className="truncate text-sm font-bold text-[var(--lg-text-heading)]">
                               {t.name}{" "}
                               <span className="text-[var(--lg-text-muted)] font-normal">
-                                {t.code ? `(${t.code})` : ""}
-                                {t.budget != null ? ` · $${t.budget}` : ""}
+                                {t.budget != null ? `$${t.budget}` : ""}
                               </span>
                             </div>
                             <div className="mt-1 space-y-1">
@@ -639,7 +638,7 @@ export default function Commissioner() {
                               <option value="">Create new team…</option>
                               {priorTeams.map((pt) => (
                                 <option key={pt.id} value={pt.id}>
-                                  {pt.name} {pt.code ? `(${pt.code})` : ""} — from last year
+                                  {pt.name} — from last year
                                 </option>
                               ))}
                             </select>
@@ -695,7 +694,7 @@ export default function Commissioner() {
                           <option value="">Select team…</option>
                           {overview.teams.map((t) => (
                             <option key={t.id} value={t.id}>
-                              {t.name} {t.code ? `(${t.code})` : ""}
+                              {t.name}
                             </option>
                           ))}
                         </select>

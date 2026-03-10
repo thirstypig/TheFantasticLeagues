@@ -517,7 +517,7 @@ function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void; onSucc
         >
           <option value="">Select a team...</option>
           {partners.map((t: any) => (
-            <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
+            <option key={t.id} value={t.id}>{t.name}</option>
           ))}
         </select>
       </div>

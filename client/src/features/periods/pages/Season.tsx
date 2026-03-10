@@ -261,7 +261,7 @@ const SeasonPage: React.FC = () => {
                         <ThemedTd align="center">{idx + 1}</ThemedTd>
                         <ThemedTd>
                           <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{row.teamName}</div>
-                          <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] mt-1 opacity-60">{row.teamCode || '-'}</div>
+                          {/* teamCode used internally for navigation only */}
                         </ThemedTd>
                         
                         {periodIds.map((_pid, pIdx) => (

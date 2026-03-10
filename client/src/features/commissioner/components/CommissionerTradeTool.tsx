@@ -93,7 +93,7 @@ export default function CommissionerTradeTool({ leagueId, teams }: Props) {
             <option value="">Select team…</option>
             {teams.map((t) => (
               <option key={t.id} value={t.id} disabled={t.id === teamBId}>
-                {t.name} {t.code ? `(${t.code})` : ""}
+                {t.name}
               </option>
             ))}
           </select>
@@ -109,7 +109,7 @@ export default function CommissionerTradeTool({ leagueId, teams }: Props) {
             <option value="">Select team…</option>
             {teams.map((t) => (
               <option key={t.id} value={t.id} disabled={t.id === teamAId}>
-                {t.name} {t.code ? `(${t.code})` : ""}
+                {t.name}
               </option>
             ))}
           </select>

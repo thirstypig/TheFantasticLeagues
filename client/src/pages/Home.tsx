@@ -127,7 +127,7 @@ export default function Home() {
                         <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)] leading-none">{myTeam.name}</h2>
                         <div className="mt-4 flex items-center gap-3">
                            <span className="text-xs font-medium uppercase text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-md">Active</span>
-                           <span className="text-xs font-mono text-[var(--lg-text-muted)] opacity-40">{myTeam.code || myTeam.id}</span>
+                           <span className="text-xs font-mono text-[var(--lg-text-muted)] opacity-40">#{myTeam.id}</span>
                         </div>
                      </div>
                      <div className="flex items-center">

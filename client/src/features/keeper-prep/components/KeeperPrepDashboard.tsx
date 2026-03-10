@@ -171,7 +171,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
               <tr key={s.teamId} className="hover:bg-[var(--lg-tint)]">
                 <td className="px-4 py-3">
                   <div className="font-semibold text-[var(--lg-text-primary)]">{s.teamName}</div>
-                  <div className="text-xs text-[var(--lg-text-muted)]">{s.teamCode || "—"}</div>
+                  {/* teamCode hidden from display */}
                 </td>
                 <td className="px-4 py-3 text-[var(--lg-text-secondary)]">{s.rosterCount} players</td>
                 <td className="px-4 py-3">
