@@ -151,6 +151,16 @@ router.get("/debug-auth", asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
+  // Test DB connection directly
+  let dbTest: any = null;
+  try {
+    const userCount = await prisma.user.count();
+    const dbUser = await prisma.user.findUnique({ where: { email: "jimmychang316@gmail.com" }, select: { id: true, email: true } });
+    dbTest = { userCount, dbUser, dbUrl: (process.env.DATABASE_URL || "").substring(0, 40) };
+  } catch (e: any) {
+    dbTest = { error: e.message };
+  }
+
   res.json({
     hasSupabaseUrl: hasUrl,
     hasServiceKey: hasKey,
@@ -158,6 +168,7 @@ router.get("/debug-auth", asyncHandler(async (req: Request, res: Response) => {
     hasToken: !!token,
     sbResult,
     dbUser: req.user || null,
+    dbTest,
   });
 }));
 router.post("/logout", handleLogout);
