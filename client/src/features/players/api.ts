@@ -31,7 +31,8 @@ const _periodStatsCache = new Map<number, Promise<PeriodStatRow[]>>();
 let _auctionCache: Promise<PlayerSeasonStat[]> | null = null;
 const _seasonStandingsCache = new Map<number, Promise<SeasonStandingsApiResponse>>();
 const _periodCategoryCache = new Map<string, Promise<PeriodCategoryStandingsResponse>>();
-const _mlbCache = new Map<string, Promise<any>>();
+const MLB_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const _mlbCache = new Map<string, { promise: Promise<any>; ts: number }>();
 
 function roleFromRow(row: Record<string, unknown>): "H" | "P" {
   const g = String(row?.group ?? "").trim().toUpperCase();
@@ -186,9 +187,9 @@ export async function getPeriodCategoryStandings(periodId: string | number, leag
 
 function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const hit = _mlbCache.get(key);
-  if (hit) return hit as Promise<T>;
+  if (hit && Date.now() - hit.ts < MLB_CACHE_TTL) return hit.promise as Promise<T>;
   const p = fn();
-  _mlbCache.set(key, p as any);
+  _mlbCache.set(key, { promise: p as Promise<any>, ts: Date.now() });
   return p;
 }
 

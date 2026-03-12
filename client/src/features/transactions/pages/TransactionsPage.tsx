@@ -216,8 +216,8 @@ export default function TransactionsPage() {
                             const result = await processWaiverClaims(leagueId);
                             alert(`Waivers processed. ${result.logs.length} claims handled.`);
                             window.location.reload();
-                          } catch (err: any) {
-                            alert(`Error: ${err?.message || "Failed to process waivers"}`);
+                          } catch (err: unknown) {
+                            alert(`Error: ${err instanceof Error ? err.message : "Failed to process waivers"}`);
                           } finally {
                             setProcessing(false);
                           }

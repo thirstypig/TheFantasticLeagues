@@ -61,6 +61,10 @@ export async function handleGetMe(req: Request, res: Response) {
 }
 
 export async function handleDevLogin(_req: Request, res: Response) {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ error: "Dev login is not available in production" });
+  }
+
   const DEV_PASSWORD = process.env.DEV_LOGIN_PASSWORD;
   if (!DEV_PASSWORD) {
     return res.status(500).json({ error: "DEV_LOGIN_PASSWORD env var is required" });
@@ -90,7 +94,7 @@ export async function handleDevLogin(_req: Request, res: Response) {
   }
 
   logger.info({ email: dbUser.email }, "Dev login ready");
-  return res.json({ email: dbUser.email, password: DEV_PASSWORD });
+  return res.json({ email: dbUser.email });
 }
 
 export function handleLogout(req: Request, res: Response) {
@@ -102,11 +106,13 @@ export function handleLogout(req: Request, res: Response) {
   return res.json({ success: true });
 }
 
+const paymentHandlePattern = /^[@a-zA-Z0-9._+\- ]*$/;
+
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  venmoHandle: z.string().max(100).optional().nullable(),
-  zelleHandle: z.string().max(100).optional().nullable(),
-  paypalHandle: z.string().max(100).optional().nullable(),
+  venmoHandle: z.string().max(50).regex(paymentHandlePattern, "Invalid characters in handle").optional().nullable(),
+  zelleHandle: z.string().max(100).regex(paymentHandlePattern, "Invalid characters in handle").optional().nullable(),
+  paypalHandle: z.string().max(100).regex(paymentHandlePattern, "Invalid characters in handle").optional().nullable(),
 });
 
 export async function handleUpdateProfile(req: Request, res: Response) {
@@ -136,7 +142,7 @@ router.get("/me", asyncHandler(handleGetMe));
 router.post("/logout", handleLogout);
 router.patch("/profile", requireAuth, validateBody(updateProfileSchema), asyncHandler(handleUpdateProfile));
 
-if (process.env.ENABLE_DEV_LOGIN === "true") {
+if (process.env.ENABLE_DEV_LOGIN === "true" && process.env.NODE_ENV !== "production") {
   if (!process.env.DEV_LOGIN_PASSWORD) {
     logger.warn({}, "ENABLE_DEV_LOGIN is true but DEV_LOGIN_PASSWORD is not set — dev-login will fail");
   }

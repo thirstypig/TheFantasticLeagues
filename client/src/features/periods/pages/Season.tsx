@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSeasonStandings, getPeriodCategoryStandings } from "../../../lib/api";
+import { getSeasonStandings, getPeriodCategoryStandings } from "../../../api";
+import { toNum } from "../../../api/base";
 import { OGBA_TEAM_NAMES } from "../../../lib/ogbaTeams";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useLeague } from "../../../contexts/LeagueContext";
@@ -37,11 +38,6 @@ type NormalizedSeasonRow = {
   totalPoints: number;
 };
 
-
-function toNum(v: unknown): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
 
 function sumNums(arr: unknown[]): number {
   return (arr ?? []).reduce((sum: number, v: unknown) => sum + toNum(v), 0);
@@ -144,8 +140,8 @@ const SeasonPage: React.FC = () => {
         if (data.periodIds?.length > 0) {
           setSelectedPeriodId(data.periodIds[data.periodIds.length - 1]);
         }
-      } catch (err: any) {
-        setError(err?.message || "Failed to load season standings");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load season standings");
       } finally {
         setLoading(false);
       }
@@ -195,7 +191,7 @@ const SeasonPage: React.FC = () => {
 
         setPeriodCategoryRows(catMap);
         setPeriodSummaryRows(Array.from(teamSummaryMap.values()).sort((a, b) => b.totalPoints - a.totalPoints));
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load period standings", err);
       } finally {
         setPeriodLoading(false);

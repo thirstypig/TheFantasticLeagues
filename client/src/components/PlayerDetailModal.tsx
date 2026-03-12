@@ -13,6 +13,7 @@ import {
   type RecentHittingRow,
   type RecentPitchingRow,
 } from "../api";
+import { toNum } from "../api/base";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "./ui/ThemedTable";
 
 type Props = {
@@ -36,11 +37,6 @@ function isPitcherRow(p: PlayerSeasonStat): boolean {
   return Boolean((p as any).isPitcher);
 }
 
-function toNum(v: any): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function fmt3(x: number): string {
   if (!Number.isFinite(x)) return "—";
   const s = x.toFixed(3);
@@ -50,24 +46,6 @@ function fmt3(x: number): string {
 function fmt2(x: number): string {
   if (!Number.isFinite(x)) return "—";
   return x.toFixed(2);
-}
-
-// keep for future use
-function fmt1(x: number): string {
-  if (!Number.isFinite(x)) return "—";
-  return x.toFixed(1);
-}
-
-function parseIp(ip: any): number {
-  const s = String(ip ?? "").trim();
-  if (!s) return 0;
-  const parts = s.split(".");
-  const whole = Number(parts[0] ?? 0) || 0;
-  const frac = Number(parts[1] ?? 0) || 0;
-  if (frac === 1) return whole + 1 / 3;
-  if (frac === 2) return whole + 2 / 3;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : whole;
 }
 
 function deriveMode(p: PlayerSeasonStat): HOrP {
@@ -161,9 +139,9 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
         setProfile(p);
         setRecentRows(recent.rows ?? []);
         setCareerRows(career.rows ?? []);
-      } catch (e: any) {
+      } catch (err: unknown) {
         if (cancelled) return;
-        setErr(String(e?.message ?? e ?? "Failed to load player details"));
+        setErr(err instanceof Error ? err.message : "Failed to load player details");
       } finally {
         if (!cancelled) setLoading(false);
       }

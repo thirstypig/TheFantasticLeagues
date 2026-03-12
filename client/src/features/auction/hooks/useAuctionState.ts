@@ -89,9 +89,9 @@ export function useAuctionState(leagueId?: number | null) {
             const data = await fetchJsonApi<ClientAuctionState>(`/api/auction/state?leagueId=${lid}`);
             setState(data);
             setError(null);
-        } catch (e: any) {
-            console.error(e);
-            setError(e.message);
+        } catch (err: unknown) {
+            console.error(err);
+            setError(err instanceof Error ? err.message : "Unknown error");
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
 
 const router = Router();
@@ -98,7 +98,7 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
 
 // --- Settlement data: /api/standings/settlement/:leagueId ---
 
-router.get("/standings/settlement/:leagueId", requireAuth, asyncHandler(async (req, res) => {
+router.get("/standings/settlement/:leagueId", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 

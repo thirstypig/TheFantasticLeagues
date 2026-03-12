@@ -37,8 +37,8 @@ export default function Profile() {
       await refresh();
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (err: any) {
-      alert(`Error: ${err?.message || "Failed to save profile"}`);
+    } catch (err: unknown) {
+      alert(`Error: ${err instanceof Error ? err.message : "Failed to save profile"}`);
     } finally {
       setSaving(false);
     }

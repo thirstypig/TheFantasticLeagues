@@ -65,8 +65,8 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
         const teamsList = teamsRes.teams || []; 
         setTeams(teamsList);
         setRosters(rostersRes.rosters || []);
-      } catch (err: any) {
-        setError(err.message || "Failed to load grid data");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load grid data");
       } finally {
         setLoading(false);
       }

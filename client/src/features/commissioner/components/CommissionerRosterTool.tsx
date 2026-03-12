@@ -44,8 +44,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     try {
       const rosterData = await getCommissionerRosters(leagueId);
       setRosters(rosterData);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }

@@ -26,8 +26,8 @@ export default function Login() {
     try {
       await loginWithPassword(email, password);
       window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -152,8 +152,8 @@ export default function Login() {
                       if (apiErr) throw new Error(apiErr);
                       await loginWithPassword(devEmail, devPwd);
                       window.location.href = "/";
-                    } catch (err: any) {
-                      setError(err.message || "Dev login failed");
+                    } catch (err: unknown) {
+                      setError(err instanceof Error ? err.message : "Dev login failed");
                     } finally {
                       setDevLoading(false);
                     }

@@ -49,8 +49,8 @@ export default function Players() {
         const pSet = new Set(per.map(x => x.periodId).filter(n => typeof n === 'number'));
         setPeriods(Array.from(pSet).sort((a,b) => b-a));
 
-      } catch (e: any) {
-        console.error(e);
+      } catch (err: unknown) {
+        console.error(err);
       } finally {
         setLoading(false);
       }

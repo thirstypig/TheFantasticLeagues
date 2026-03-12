@@ -41,9 +41,9 @@ export default function Teams() {
         if (!mounted) return;
         setPlayers(rows);
         setError(null);
-      } catch (e: any) {
+      } catch (err: unknown) {
         if (!mounted) return;
-        setError(e?.message ?? "Failed to load players for teams");
+        setError(err instanceof Error ? err.message : "Failed to load players for teams");
       } finally {
         if (mounted) setLoading(false);
       }

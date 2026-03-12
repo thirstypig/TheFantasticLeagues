@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { getAuctionValues, getLeague, type PlayerSeasonStat } from "../../../api";
+import { toNum } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import PlayerDetailModal from "../../../components/PlayerDetailModal";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -30,11 +31,6 @@ function rowIsPitcher(p: PlayerSeasonStat) {
   if (g === "P") return true;
   if (g === "H") return false;
   return Boolean((p as any).isPitcher);
-}
-
-function toNum(v: any): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
 }
 
 // Canonical “auction value” getter (handles multiple field names)
@@ -80,9 +76,9 @@ export default function AuctionValues() {
           for (const t of league.league.teams) map[t.code?.toUpperCase() ?? ""] = t.name;
           setTeamNameMap(map);
         }
-      } catch (e: any) {
+      } catch (err: unknown) {
         if (!mounted) return;
-        setError(e?.message ?? "Failed to load auction values.");
+        setError(err instanceof Error ? err.message : "Failed to load auction values.");
       } finally {
         if (!mounted) return;
         setLoading(false);

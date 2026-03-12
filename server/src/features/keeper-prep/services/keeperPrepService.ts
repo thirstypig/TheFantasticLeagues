@@ -160,8 +160,8 @@ export class KeeperPrepService {
 
           result.playersAdded++;
           teamsPopulatedSet.add(team.id);
-        } catch (e: any) {
-          result.errors.push(`Player "${p.name}" for ${tr.teamName}: ${e.message}`);
+        } catch (e: unknown) {
+          result.errors.push(`Player "${p.name}" for ${tr.teamName}: ${e instanceof Error ? e.message : "unknown error"}`);
         }
       }
     }

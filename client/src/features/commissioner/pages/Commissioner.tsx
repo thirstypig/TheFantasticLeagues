@@ -219,8 +219,8 @@ export default function Commissioner() {
       // Fetch prior teams for team creation
       const priorTeamsList = await getPriorTeams(lid);
       setPriorTeams(priorTeamsList);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load commissioner data.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load commissioner data.");
     } finally {
       setLoading(false);
     }
@@ -265,8 +265,8 @@ export default function Commissioner() {
       setTeamCode("");
       setSelectedPriorTeamId("");
       await refreshOverviewOnly();
-    } catch (err: any) {
-      setError(err?.message ?? "Create team failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Create team failed.");
     } finally {
       setBusy(false);
     }
@@ -284,8 +284,8 @@ export default function Commissioner() {
 
       setInviteEmail("");
       await refreshOverviewOnly();
-    } catch (err: any) {
-      setError(err?.message ?? "Add member failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Add member failed.");
     } finally {
       setBusy(false);
     }
@@ -306,8 +306,8 @@ export default function Commissioner() {
       setOwnerUserId("");
       setOwnerName("");
       await refreshOverviewOnly();
-    } catch (err: any) {
-      setError(err?.message ?? "Assign owner failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Assign owner failed.");
     } finally {
       setBusy(false);
     }
@@ -319,8 +319,8 @@ export default function Commissioner() {
     try {
       await apiRemoveTeamOwner(lid, teamId, userId);
       await refreshOverviewOnly();
-    } catch (err: any) {
-      setError(err?.message ?? "Remove owner failed.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Remove owner failed.");
     } finally {
       setBusy(false);
     }
@@ -335,8 +335,8 @@ export default function Commissioner() {
     try {
       await apiDeleteTeam(lid, teamId);
       await refreshOverviewOnly();
-    } catch (e: any) {
-      alert(e.message || "Failed to delete team.");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete team.");
     } finally {
       setBusy(false);
     }
@@ -353,8 +353,8 @@ export default function Commissioner() {
       await apiUpdateLeague(lid, { name: trimmed });
       await refreshOverviewOnly();
       setEditingName(false);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to update league name.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update league name.");
     } finally {
       setBusy(false);
     }

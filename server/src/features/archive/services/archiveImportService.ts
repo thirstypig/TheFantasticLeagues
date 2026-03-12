@@ -397,8 +397,8 @@ export class ArchiveImportService {
               fs.writeFileSync(path.join(this.archiveDir, `draft_${this.year}_auction.csv`), csv);
               log(`  Generated draft_${this.year}_auction.csv (standard export)`);
           }
-        } catch (err: any) {
-          log(`  Error parsing Draft sheet: ${err.message}. Fallback to standard.`);
+        } catch (err: unknown) {
+          log(`  Error parsing Draft sheet: ${err instanceof Error ? err.message : "unknown error"}. Fallback to standard.`);
           const csv = utils.sheet_to_csv(workbook.Sheets[draftSheet]);
           fs.writeFileSync(path.join(this.archiveDir, `draft_${this.year}_auction.csv`), csv);
         }
@@ -456,8 +456,8 @@ export class ArchiveImportService {
           } else {
             fs.writeFileSync(path.join(this.archiveDir, `season_standings_${this.year}.csv`), utils.sheet_to_csv(sheet));
           }
-        } catch (err: any) {
-          log(`  Error parsing Standings: ${err.message}. Fallback.`);
+        } catch (err: unknown) {
+          log(`  Error parsing Standings: ${err instanceof Error ? err.message : "unknown error"}. Fallback.`);
           fs.writeFileSync(path.join(this.archiveDir, `season_standings_${this.year}.csv`), utils.sheet_to_csv(workbook.Sheets[standingsSheet]));
         }
         log(`Generated season_standings_${this.year}.csv`);
@@ -670,8 +670,8 @@ export class ArchiveImportService {
       log('Import complete successfully.');
       return { success: true, messages: logs };
 
-    } catch (err: any) {
-      log(`CRITICAL ERROR: ${err.message}`);
+    } catch (err: unknown) {
+      log(`CRITICAL ERROR: ${err instanceof Error ? err.message : "unknown error"}`);
       return { success: false, messages: logs };
     }
   }

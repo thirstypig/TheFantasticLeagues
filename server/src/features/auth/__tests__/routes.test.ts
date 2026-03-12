@@ -275,10 +275,8 @@ describe("handleDevLogin", () => {
     });
     expect(mockSupabase.auth.admin.createUser).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
-      message: "Dev login ready. Use the password from DEV_LOGIN_PASSWORD env var.",
+      email: "admin@example.com",
     });
-    // Email must NOT be in response
-    expect(res.body.email).toBeUndefined();
   });
 
   it("creates Supabase user when not found in Supabase", async () => {
@@ -301,10 +299,8 @@ describe("handleDevLogin", () => {
     });
     expect(mockSupabase.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
-      message: "Dev login ready. Use the password from DEV_LOGIN_PASSWORD env var.",
+      email: "admin@example.com",
     });
-    // Email must NOT be in response
-    expect(res.body.email).toBeUndefined();
   });
 
   it("throws on DB error (caught by asyncHandler)", async () => {

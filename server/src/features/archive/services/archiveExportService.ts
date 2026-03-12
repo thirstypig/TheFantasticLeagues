@@ -121,9 +121,10 @@ export class ArchiveExportService {
 
       log(`✅ Season ${year} Successfully Archived.`);
       return { success: true, message: `Successfully archived season ${year}`, logs };
-    } catch (err: any) {
-      log(`❌ Archiving Failed: ${err.message}`);
-      return { success: false, message: err.message, logs };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "unknown error";
+      log(`❌ Archiving Failed: ${errMsg}`);
+      return { success: false, message: errMsg, logs };
     }
   }
 }

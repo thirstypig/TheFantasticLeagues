@@ -158,8 +158,8 @@ export default function ArchivePage() {
       } else {
         alert(`Recalculation failed: ${result.error}`);
       }
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setRecalculating(false);
     }
@@ -179,8 +179,8 @@ export default function ArchivePage() {
           const selected = has2024 ? 2024 : data.seasons[0];
           setSelectedYear(typeof selected === 'number' ? selected : (selected as any).year);
         }
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load archive');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load archive');
       } finally {
         setLoading(false);
       }
@@ -208,8 +208,8 @@ export default function ArchivePage() {
 
         // Default to Full Season (0) instead of P1
         setSelectedPeriod(0);
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load periods');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load periods');
         setPeriods([]);
       } finally {
         setLoading(false);
@@ -231,8 +231,8 @@ export default function ArchivePage() {
         // Expand all teams by default
         const teams = new Set<string>(data.stats?.map((s: PlayerStat) => s.teamCode) || []);
         setExpandedTeams(teams);
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load stats');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load stats');
         setStats([]);
       } finally {
         setLoading(false);
@@ -443,8 +443,8 @@ export default function ArchivePage() {
     try {
       await updateArchiveTeamName(selectedYear, editingTeam.teamCode, newName);
       window.location.reload();
-    } catch (err: any) {
-      alert(`Error updating team name: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error updating team name: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   };
 

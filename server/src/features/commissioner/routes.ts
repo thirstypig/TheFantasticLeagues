@@ -328,8 +328,8 @@ router.post(
             email: req.body?.email,
             ownerName: req.body?.ownerName
         });
-      } catch (err: any) {
-        const msg = err?.message || "";
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "";
         if (msg.includes("already an owner") || msg.includes("already has 2 owners") || msg.includes("not found")) {
           return res.status(409).json({ error: msg });
         }

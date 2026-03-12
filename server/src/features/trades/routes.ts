@@ -15,6 +15,33 @@ async function isCommissionerOfLeague(userId: number, leagueId: number): Promise
   return m?.role === "COMMISSIONER";
 }
 
+/**
+ * Verify caller is admin, commissioner of the trade's league, or owns a counterparty team.
+ * Returns an error response string if unauthorized, or null if authorized.
+ */
+async function assertCounterpartyAccess(
+  user: { id: number; isAdmin: boolean },
+  trade: { leagueId: number; proposerId: number; items: { recipientId: number }[] },
+): Promise<string | null> {
+  if (user.isAdmin) return null;
+
+  const isCommish = await isCommissionerOfLeague(user.id, trade.leagueId);
+  if (isCommish) return null;
+
+  const counterpartyTeamIds = [...new Set(
+    trade.items
+      .map(i => i.recipientId)
+      .filter(id => id !== trade.proposerId)
+  )];
+  const ownsCounterparty = await Promise.all(
+    counterpartyTeamIds.map(tid => isTeamOwner(tid, user.id))
+  );
+  if (!ownsCounterparty.some(Boolean)) {
+    return "You are not a counterparty to this trade";
+  }
+  return null;
+}
+
 export const tradeItemSchema = z.object({
   senderId: z.number().int().positive(),
   recipientId: z.number().int().positive(),
@@ -114,22 +141,8 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   if (trade.status !== "PROPOSED") return res.status(400).json({ error: "Trade is not in PROPOSED status" });
 
   // Verify caller owns a counterparty team (not the proposer), or is commissioner/admin
-  if (!req.user!.isAdmin) {
-    const isCommish = await isCommissionerOfLeague(req.user!.id, trade.leagueId);
-    if (!isCommish) {
-      const counterpartyTeamIds = [...new Set(
-        trade.items
-          .map(i => i.recipientId)
-          .filter(id => id !== trade.proposerId)
-      )];
-      const ownsCounterparty = await Promise.all(
-        counterpartyTeamIds.map(tid => isTeamOwner(tid, req.user!.id))
-      );
-      if (!ownsCounterparty.some(Boolean)) {
-        return res.status(403).json({ error: "You are not a counterparty to this trade" });
-      }
-    }
-  }
+  const acceptErr = await assertCounterpartyAccess(req.user!, trade);
+  if (acceptErr) return res.status(403).json({ error: acceptErr });
 
   const updated = await prisma.trade.update({
     where: { id },
@@ -160,22 +173,8 @@ router.post("/:id/reject", requireAuth, asyncHandler(async (req, res) => {
   if (trade.status !== "PROPOSED") return res.status(400).json({ error: "Trade is not in PROPOSED status" });
 
   // Verify caller owns a counterparty team (not the proposer), or is commissioner/admin
-  if (!req.user!.isAdmin) {
-    const isCommish = await isCommissionerOfLeague(req.user!.id, trade.leagueId);
-    if (!isCommish) {
-      const counterpartyTeamIds = [...new Set(
-        trade.items
-          .map(i => i.recipientId)
-          .filter(id => id !== trade.proposerId)
-      )];
-      const ownsCounterparty = await Promise.all(
-        counterpartyTeamIds.map(tid => isTeamOwner(tid, req.user!.id))
-      );
-      if (!ownsCounterparty.some(Boolean)) {
-        return res.status(403).json({ error: "You are not a counterparty to this trade" });
-      }
-    }
-  }
+  const rejectErr = await assertCounterpartyAccess(req.user!, trade);
+  if (rejectErr) return res.status(403).json({ error: rejectErr });
 
   const updated = await prisma.trade.update({
     where: { id },

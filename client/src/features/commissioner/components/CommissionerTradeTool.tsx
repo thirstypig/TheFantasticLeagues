@@ -68,8 +68,8 @@ export default function CommissionerTradeTool({ leagueId, teams }: Props) {
       setAssetsA([]);
       setAssetsB([]);
       setNote("");
-    } catch (err: any) {
-      setResult({ type: "error", message: err?.message ?? "Trade execution failed." });
+    } catch (err: unknown) {
+      setResult({ type: "error", message: err instanceof Error ? err.message : "Trade execution failed." });
     } finally {
       setBusy(false);
     }

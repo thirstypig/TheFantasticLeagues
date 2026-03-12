@@ -29,7 +29,7 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
         setSearching(true);
         const result = searchMode === "mlb" ? await searchMLBPlayers(searchQuery) : await searchArchivePlayers(searchQuery);
         setSearchResults(result.players || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Search error:', err);
       } finally {
         setSearching(false);
@@ -58,8 +58,8 @@ export default function EditPlayerNameModal({ stat, onClose, onSave }: EditPlaye
 
       onSave(result.stat);
       onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to update player');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update player');
     } finally {
       setSaving(false);
     }

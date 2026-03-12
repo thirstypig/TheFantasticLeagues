@@ -104,8 +104,8 @@ export function loadTeamCache(cachePath = defaultCachePath()): Map<string, strin
       if (id) m.set(id, abbr);
     }
     return m;
-  } catch (err: any) {
-    console.warn(`[mlb_team_cache] Load failed (${err.message}). Defaulting to empty map.`);
+  } catch (err: unknown) {
+    console.warn(`[mlb_team_cache] Load failed (${err instanceof Error ? err.message : "unknown error"}). Defaulting to empty map.`);
     return new Map();
   }
 }
@@ -117,7 +117,7 @@ export function saveTeamCache(map: Map<string, string>, cachePath = defaultCache
       map: Object.fromEntries(map.entries()),
     };
     fs.writeFileSync(cachePath, JSON.stringify(obj, null, 2), "utf-8");
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error({ error: String(err) }, `[mlb_team_cache] Save failed to ${cachePath}`);
   }
 }
@@ -157,8 +157,8 @@ export async function warmTeamCacheOnce(
       console.log(`[mlb_team_cache] Batch ${i + 1}/${batches.length} done.`);
       // gentle spacing between batches
       await sleep(150);
-    } catch (e: any) {
-      console.warn(`[mlb_team_cache] Batch ${i + 1}/${batches.length} failed: ${e?.message ?? e}`);
+    } catch (e: unknown) {
+      console.warn(`[mlb_team_cache] Batch ${i + 1}/${batches.length} failed: ${e instanceof Error ? e.message : String(e)}`);
       // continue; worst case, some ids remain blank
     }
   }

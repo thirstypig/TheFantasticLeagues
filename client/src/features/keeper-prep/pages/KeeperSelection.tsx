@@ -87,8 +87,8 @@ export default function KeeperSelection() {
           await saveKeepers(leagueId, Array.from(selectedIds));
           alert("Keepers saved successfully!");
           // Optional: navigate back or reload?
-      } catch (e: any) {
-          alert("Error saving: " + e.message);
+      } catch (err: unknown) {
+          alert("Error saving: " + (err instanceof Error ? err.message : "Unknown error"));
       } finally {
           setLoading(false);
       }

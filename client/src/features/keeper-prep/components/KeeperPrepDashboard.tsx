@@ -33,8 +33,8 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       const data = await getKeeperPrepStatus(leagueId);
       setStatuses(data.statuses);
       setIsLocked(data.isLocked);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -51,8 +51,8 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       const res = await populateRosters(leagueId);
       alert(`Success! Populated ${res.teamsPopulated} teams and added ${res.playersAdded} players.`);
       fetchStatus();
-    } catch (e: any) {
-      alert(e.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setBusy(false);
     }
@@ -67,8 +67,8 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
         await lockKeepers(leagueId);
       }
       fetchStatus();
-    } catch (e: any) {
-      alert(e.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setBusy(false);
     }
@@ -82,8 +82,8 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       setKeeperLimit(data.keeperLimit);
       setSelectedKeeperIds(new Set(data.roster.filter((r: any) => r.isKeeper).map((r: any) => r.id)));
       setEditingTeamId(teamId);
-    } catch (e: any) {
-      alert(e.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setBusy(false);
     }
@@ -110,8 +110,8 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       await saveKeepersCommish(leagueId, editingTeamId, Array.from(selectedKeeperIds));
       setEditingTeamId(null);
       fetchStatus();
-    } catch (e: any) {
-      alert(e.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setBusy(false);
     }

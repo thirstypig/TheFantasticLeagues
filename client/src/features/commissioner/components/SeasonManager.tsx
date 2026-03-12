@@ -71,8 +71,8 @@ export default function SeasonManager({ leagueId }: Props) {
       ]);
       setSeasons(allSeasons);
       setCurrentSeason(current);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load seasons");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load seasons");
     } finally {
       setLoading(false);
     }
@@ -88,8 +88,8 @@ export default function SeasonManager({ leagueId }: Props) {
     try {
       await createSeason(leagueId, newYear);
       await load();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to create season");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create season");
     } finally {
       setBusy(false);
     }
@@ -104,8 +104,8 @@ export default function SeasonManager({ leagueId }: Props) {
     try {
       await transitionSeason(seasonId, nextStatus);
       await load();
-    } catch (e: any) {
-      setError(e?.message ?? "Transition failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Transition failed");
     } finally {
       setBusy(false);
     }
@@ -128,8 +128,8 @@ export default function SeasonManager({ leagueId }: Props) {
       setPeriodEnd("");
       setShowPeriodForm(false);
       await load();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to create period");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create period");
     } finally {
       setBusy(false);
     }
@@ -141,8 +141,8 @@ export default function SeasonManager({ leagueId }: Props) {
     try {
       await deletePeriod(periodId);
       await load();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to delete period");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete period");
     } finally {
       setBusy(false);
     }
@@ -153,8 +153,8 @@ export default function SeasonManager({ leagueId }: Props) {
     try {
       await updatePeriod(periodId, { status });
       await load();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to update period");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update period");
     } finally {
       setBusy(false);
     }

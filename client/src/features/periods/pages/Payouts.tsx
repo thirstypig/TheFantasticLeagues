@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { getSeasonStandings } from "../../../lib/api";
+import { getSeasonStandings } from "../../../api";
+import { toNum } from "../../../api/base";
 import { getSettlement, SettlementData } from "../../standings/api";
 import { useLeague } from "../../../contexts/LeagueContext";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -10,11 +11,6 @@ import {
   ThemedTr,
   ThemedTd,
 } from "../../../components/ui/ThemedTable";
-
-function toNum(v: unknown): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
 
 export default function Payouts() {
   const { leagueId } = useLeague();
@@ -42,8 +38,8 @@ export default function Payouts() {
           return { teamId: r.teamId, teamName: r.teamName, totalPoints };
         });
         setStandingsRows(rows);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load payouts data");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load payouts data");
       } finally {
         setLoading(false);
       }

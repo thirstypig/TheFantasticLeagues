@@ -163,9 +163,9 @@ export default function Team() {
           setPlayers(filtered);
         }
 
-      } catch (e: any) {
+      } catch (err: unknown) {
         if (!ok) return;
-        setError(e?.message ?? "Failed to load team roster");
+        setError(err instanceof Error ? err.message : "Failed to load team roster");
         setPlayers([]);
       } finally {
         if (ok) setLoading(false);

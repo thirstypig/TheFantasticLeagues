@@ -17,7 +17,7 @@ const transitionSchema = z.object({
 });
 
 // GET /api/seasons?leagueId=N — list all seasons for a league
-router.get("/", requireAuth, asyncHandler(async (req, res) => {
+router.get("/", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   if (!Number.isFinite(leagueId)) {
     return res.status(400).json({ error: "Missing or invalid leagueId" });
@@ -28,7 +28,7 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/seasons/current?leagueId=N — get the current (non-completed) season
-router.get("/current", requireAuth, asyncHandler(async (req, res) => {
+router.get("/current", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   if (!Number.isFinite(leagueId)) {
     return res.status(400).json({ error: "Missing or invalid leagueId" });
