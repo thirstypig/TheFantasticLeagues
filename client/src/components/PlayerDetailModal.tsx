@@ -3,8 +3,10 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import {
   getPlayerCareerStats,
+  getPlayerFieldingStats,
   getPlayerProfile,
   getPlayerRecentStats,
+  type FieldingStatRow,
   type HOrP,
   type PlayerProfile,
   type PlayerSeasonStat,
@@ -111,12 +113,14 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
   const [careerRows, setCareerRows] = useState<
     Array<CareerHittingRow | CareerPitchingRow>
   >([]);
+  const [fieldingRows, setFieldingRows] = useState<FieldingStatRow[]>([]);
   useEffect(() => {
     setTab("stats");
     setErr("");
     setProfile(null);
     setRecentRows([]);
     setCareerRows([]);
+    setFieldingRows([]);
   }, [mlbId]);
 
   useEffect(() => {
@@ -128,10 +132,11 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
 
     (async () => {
       try {
-        const [p, recent, career] = await Promise.all([
+        const [p, recent, career, fielding] = await Promise.all([
           getPlayerProfile(mlbId),
           getPlayerRecentStats(mlbId, mode),
           getPlayerCareerStats(mlbId, mode),
+          getPlayerFieldingStats(mlbId),
         ]);
 
         if (cancelled) return;
@@ -139,6 +144,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
         setProfile(p);
         setRecentRows(recent.rows ?? []);
         setCareerRows(career.rows ?? []);
+        setFieldingRows(fielding ?? []);
       } catch (err: unknown) {
         if (cancelled) return;
         setErr(err instanceof Error ? err.message : "Failed to load player details");
@@ -300,6 +306,27 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                   )}
                 </div>
               </div>
+
+              {/* Fielding — Games by Position */}
+              {fieldingRows.length > 0 && (
+                <div className={sectionCls}>
+                  <div className={sectionHeadCls}>
+                    <div className={sectionTitleCls}>Fielding — Games by Position</div>
+                  </div>
+                  <div className={sectionBodyCls}>
+                    <div className="p-6">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                        {fieldingRows.map(f => (
+                          <div key={f.position} className="flex items-center gap-2 px-3 py-2 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-faint)]">
+                            <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{f.position}</span>
+                            <span className="text-xs text-[var(--lg-text-muted)]">{f.games}G</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

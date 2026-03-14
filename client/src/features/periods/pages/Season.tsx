@@ -347,7 +347,6 @@ const SeasonPage: React.FC = () => {
                                       <div key={p.id} className="flex items-center gap-2 text-xs py-0.5">
                                         <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{p.posPrimary}</span>
                                         <span className="text-[var(--lg-text-primary)] truncate">{p.name}</span>
-                                        <span className="text-amber-500 font-semibold ml-auto">${p.price}</span>
                                       </div>
                                     ))}
                                   </div>

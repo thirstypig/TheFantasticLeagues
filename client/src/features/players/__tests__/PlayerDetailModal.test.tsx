@@ -6,9 +6,10 @@ vi.mock("../../../api", () => ({
   getPlayerProfile: vi.fn(),
   getPlayerRecentStats: vi.fn(),
   getPlayerCareerStats: vi.fn(),
+  getPlayerFieldingStats: vi.fn(),
 }));
 
-import { getPlayerProfile, getPlayerRecentStats, getPlayerCareerStats } from "../../../api";
+import { getPlayerProfile, getPlayerRecentStats, getPlayerCareerStats, getPlayerFieldingStats } from "../../../api";
 import PlayerDetailModal from "../../../components/PlayerDetailModal";
 
 const mockPlayer = {
@@ -52,6 +53,7 @@ beforeEach(() => {
   vi.mocked(getPlayerProfile).mockResolvedValue(mockProfile as any);
   vi.mocked(getPlayerRecentStats).mockResolvedValue(mockRecentHitting as any);
   vi.mocked(getPlayerCareerStats).mockResolvedValue(mockCareerHitting as any);
+  vi.mocked(getPlayerFieldingStats).mockResolvedValue([]);
 });
 
 describe("PlayerDetailModal", () => {

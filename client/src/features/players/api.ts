@@ -401,20 +401,30 @@ export interface FieldingStatRow {
   innings: number;
 }
 
-export async function getPlayerFieldingStats(mlbId: string, season: number = 2024): Promise<FieldingStatRow[]> {
+/** Returns the most recent completed MLB season (before ~April, use prior year) */
+function lastCompletedSeason(): number {
+  const now = new Date();
+  const year = now.getFullYear();
+  // MLB season runs April–October; before April, last completed is year - 1
+  return now.getMonth() < 3 ? year - 1 : year;
+}
+
+export async function getPlayerFieldingStats(mlbId: string, season?: number): Promise<FieldingStatRow[]> {
+  const effectiveSeason = season ?? lastCompletedSeason();
   const id = String(mlbId ?? "").trim();
   if (!id) return [];
 
-  return cached(`fielding:${id}:${season}`, async () => {
-    const url = `${MLB_API_BASE}/people/${id}/stats?stats=statsSingleSeason&group=fielding&season=${season}`;
+  return cached(`fielding:${id}:${effectiveSeason}`, async () => {
+    const url = `${MLB_API_BASE}/people/${id}/stats?stats=statsSingleSeason&group=fielding&season=${effectiveSeason}`;
     const data = await fetchJsonPublic<any>(url);
     const splits = data?.stats?.[0]?.splits ?? [];
 
-    return splits.map((s: any) => ({
+    const result = splits.map((s: any) => ({
       position: s.position?.abbreviation ?? s.position?.name ?? "??",
       games: toNum(s.stat?.games),
       gamesStarted: toNum(s.stat?.gamesStarted),
       innings: toNum(s.stat?.innings),
     })).sort((a: FieldingStatRow, b: FieldingStatRow) => b.games - a.games);
+    return result;
   });
 }

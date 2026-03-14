@@ -36,7 +36,7 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
             const mode = player.is_pitcher ? 'pitching' : 'hitting';
             const [cRes, fRes] = await Promise.all([
                 getPlayerCareerStats(player.mlb_id, mode),
-                getPlayerFieldingStats(player.mlb_id, new Date().getFullYear())
+                getPlayerFieldingStats(player.mlb_id)
             ]);
             
             // Sort Career: Years ASC, then TOT last

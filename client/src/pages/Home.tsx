@@ -45,17 +45,22 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [leagueName, setLeagueName] = useState("");
+  const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
+
+  const memberships = user?.memberships || [];
+  const currentLeagueId = selectedLeagueId ?? (memberships[0]?.leagueId ? Number(memberships[0].leagueId) : null);
 
   useEffect(() => {
     if (!user) return;
+
+    const lid = currentLeagueId;
+    if (!lid) return;
 
     let mounted = true;
     (async () => {
        try {
          setLoading(true);
-
-         const lid = user.memberships?.[0]?.leagueId;
-         if (!lid) return;
 
          // Parallel fetch: league detail + rosters + player stats
          const [leagueRes, rostersRes, statsData] = await Promise.all([
@@ -65,6 +70,7 @@ export default function Home() {
          ]);
          if (!mounted) return;
 
+         setLeagueName(leagueRes.league?.name || "");
          const teams = leagueRes.league?.teams || [];
          const uid = Number(user.id);
          const mine = teams.find((t: { ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }) =>
@@ -76,6 +82,10 @@ export default function Home() {
             const myRoster = (rostersRes.rosters || []).filter((r: { teamId: number }) => r.teamId === mine.id);
             setRoster(myRoster);
             setStats(statsData || []);
+         } else {
+            setMyTeam(null);
+            setRoster([]);
+            setStats([]);
          }
 
        } catch (err) {
@@ -85,7 +95,7 @@ export default function Home() {
        }
     })();
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, currentLeagueId]);
 
    const rosterWithStats = useMemo(() => {
        const statsMap = new Map(stats.map(s => [Number(s.mlb_id), s]));
@@ -107,10 +117,25 @@ export default function Home() {
   return (
     <div className="relative min-h-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10 scrollbar-hide">
       <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
-        <PageHeader 
-          title="Dashboard"
-          subtitle={<span>Welcome, <span className="text-[var(--lg-accent)] font-semibold uppercase">{user.name || user.email}</span>. Data loaded.</span>}
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <PageHeader
+            title="Dashboard"
+            subtitle={<span>Welcome, <span className="text-[var(--lg-accent)] font-semibold uppercase">{user.name || user.email}</span>.</span>}
+          />
+          {memberships.length > 1 && (
+            <select
+              value={currentLeagueId ?? ""}
+              onChange={(e) => setSelectedLeagueId(Number(e.target.value))}
+              className="h-10 px-3 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-sm text-[var(--lg-text-primary)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none"
+            >
+              {memberships.map((m) => (
+                <option key={m.leagueId} value={Number(m.leagueId)}>
+                  {m.league?.name || `League ${m.leagueId}`}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {loading ? (
