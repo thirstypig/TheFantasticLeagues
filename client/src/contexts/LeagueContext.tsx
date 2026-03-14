@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getLeagues } from '../api';
+import { fetchJsonApi, API_BASE } from '../api/base';
 import { useAuth } from '../auth/AuthProvider';
 import type { LeagueListItem } from '../api/types';
 
@@ -7,6 +8,7 @@ interface LeagueContextType {
   leagueId: number;
   setLeagueId: (id: number) => void;
   leagues: LeagueListItem[];
+  outfieldMode: string;
 }
 
 const LeagueContext = createContext<LeagueContextType | undefined>(undefined);
@@ -16,8 +18,8 @@ const STORAGE_KEY = 'fbst-league-id';
 export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
+  const [outfieldMode, setOutfieldMode] = useState("OF");
   const [leagueId, setLeagueIdState] = useState<number>(() => {
-    // Default to user's first membership league, falling back to stored or 1
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? Number(stored) : 1;
   });
@@ -44,13 +46,21 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  // Fetch outfield mode when league changes
+  useEffect(() => {
+    if (!user || !leagueId) return;
+    fetchJsonApi<{ league: { outfieldMode?: string } }>(`${API_BASE}/leagues/${leagueId}`)
+      .then((res) => setOutfieldMode(res?.league?.outfieldMode || "OF"))
+      .catch(() => setOutfieldMode("OF"));
+  }, [user, leagueId]);
+
   const setLeagueId = (id: number) => {
     setLeagueIdState(id);
     localStorage.setItem(STORAGE_KEY, String(id));
   };
 
   return (
-    <LeagueContext.Provider value={{ leagueId, setLeagueId, leagues }}>
+    <LeagueContext.Provider value={{ leagueId, setLeagueId, leagues, outfieldMode }}>
       {children}
     </LeagueContext.Provider>
   );

@@ -90,6 +90,22 @@ export function sortByPosition<T extends { positions?: string }>(a: T, b: T): nu
   return sa - sb;
 }
 
+// ─── Outfield Position Mapping ───
+
+const OF_POSITIONS = new Set(["LF", "CF", "RF"]);
+
+/**
+ * Maps a position for display based on the league's outfield mode.
+ * When mode is "OF" (default), LF/CF/RF are all displayed as "OF".
+ * When mode is "LF/CF/RF", positions are shown as-is.
+ */
+export function mapPosition(pos: string, outfieldMode: string = "OF"): string {
+  if (outfieldMode === "OF" && OF_POSITIONS.has(pos.toUpperCase())) {
+    return "OF";
+  }
+  return pos;
+}
+
 // ─── Stat Formatting ───
 
 /** Format a number to 2 decimal places (e.g. ERA, WHIP). */

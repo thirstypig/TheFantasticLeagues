@@ -12,6 +12,7 @@ import { ThemedTable, ThemedThead, ThemedTr, ThemedTh, ThemedTd } from "../../..
 import { getCurrentSeason, type Season } from "../../seasons/api";
 import { getTeamDetails } from "../../teams/api";
 import { POS_ORDER } from "../../../lib/baseballUtils";
+import { mapPosition } from "../../../lib/sportConfig";
 
 type SeasonStandingsApiRow = {
   teamId: number;
@@ -72,7 +73,7 @@ function normalizeSeasonRow(row: SeasonStandingsApiRow, periodIds: number[]): No
 const SeasonPage: React.FC = () => {
   const navigate = useNavigate();
   useTheme();
-  const { leagueId } = useLeague();
+  const { leagueId, outfieldMode } = useLeague();
 
   const [viewMode, setViewMode] = useState<'season' | 'period'>('season');
   const [loading, setLoading] = useState(true);
@@ -345,7 +346,7 @@ const SeasonPage: React.FC = () => {
                                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-1">
                                     {teamRosters[row.teamId].map(p => (
                                       <div key={p.id} className="flex items-center gap-2 text-xs py-0.5">
-                                        <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{p.posPrimary}</span>
+                                        <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{mapPosition(p.posPrimary, outfieldMode)}</span>
                                         <span className="text-[var(--lg-text-primary)] truncate">{p.name}</span>
                                       </div>
                                     ))}

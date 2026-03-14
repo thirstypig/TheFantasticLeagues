@@ -43,6 +43,7 @@ export const DEFAULT_RULES = [
   { category: "roster", key: "pitcher_count", value: "9", label: "Pitchers per Team" },
   { category: "roster", key: "batter_count", value: "14", label: "Batters per Team" },
   { category: "roster", key: "roster_positions", value: JSON.stringify({ "C": 2, "1B": 1, "2B": 1, "3B": 1, "SS": 1, "MI": 1, "CI": 1, "OF": 5, "DH": 1 }), label: "Batter Positions" },
+  { category: "roster", key: "outfield_mode", value: "OF", label: "Outfield Position Display" },
   { category: "roster", key: "dh_games_threshold", value: "20", label: "DH Games Threshold" },
   // Scoring
   { category: "scoring", key: "hitting_stats", value: JSON.stringify(["R", "HR", "RBI", "SB", "AVG", "OPS", "H", "2B", "3B", "BB"]), label: "Hitting Categories" },

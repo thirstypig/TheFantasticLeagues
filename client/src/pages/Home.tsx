@@ -7,6 +7,7 @@ import { fetchJsonApi, API_BASE } from "../api/base";
 import { TableCard, Table, THead, Tr, Th, Td } from "../components/ui/TableCard";
 import PageHeader from "../components/ui/PageHeader";
 import { formatAvg } from "../lib/playerDisplay";
+import { mapPosition } from "../lib/sportConfig";
 import { joinLeague } from "../features/leagues/api";
 import { useToast } from "../contexts/ToastContext";
 
@@ -46,6 +47,7 @@ export default function Home() {
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
   const [leagueName, setLeagueName] = useState("");
+  const [outfieldMode, setOutfieldMode] = useState("OF");
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
 
   const memberships = user?.memberships || [];
@@ -71,6 +73,7 @@ export default function Home() {
          if (!mounted) return;
 
          setLeagueName(leagueRes.league?.name || "");
+         setOutfieldMode(leagueRes.league?.outfieldMode || "OF");
          const teams = leagueRes.league?.teams || [];
          const uid = Number(user.id);
          const mine = teams.find((t: { ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }) =>
@@ -246,7 +249,7 @@ export default function Home() {
                                     <Tr key={r.id} className="hover:bg-[var(--lg-tint)]">
                                         <Td className="py-4">
                                           <span className="text-xs font-medium uppercase text-blue-400 bg-blue-400/10 border border-blue-400/20 px-2 py-0.5 rounded-md">
-                                            {r.player.posPrimary}
+                                            {mapPosition(r.player.posPrimary, outfieldMode)}
                                           </span>
                                         </Td>
                                         <Td>{r.player.name}</Td>

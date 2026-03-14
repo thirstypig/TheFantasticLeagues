@@ -102,7 +102,13 @@ router.get("/leagues/:id", asyncHandler(async (req, res) => {
     return res.status(403).json({ error: "Access denied" });
   }
 
-  return res.json({ league: { ...league, access: membership ? { type: "MEMBER", role: membership.role } : { type: "PUBLIC_VIEWER" } } });
+  // Fetch outfield mode setting
+  const outfieldRule = await prisma.leagueRule.findUnique({
+    where: { leagueId_category_key: { leagueId, category: "roster", key: "outfield_mode" } },
+  });
+  const outfieldMode = outfieldRule?.value || "OF";
+
+  return res.json({ league: { ...league, outfieldMode, access: membership ? { type: "MEMBER", role: membership.role } : { type: "PUBLIC_VIEWER" } } });
 }));
 
 /**

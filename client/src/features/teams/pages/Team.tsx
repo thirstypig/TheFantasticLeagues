@@ -9,6 +9,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
 import { isPitcher, normalizePosition, formatAvg, getMlbTeamAbbr } from "../../../lib/playerDisplay";
+import { mapPosition } from "../../../lib/sportConfig";
 import { TableCard, Table, THead, Tr, Th, Td } from "../../../components/ui/TableCard";
 import { Button } from "../../../components/ui/button";
 
@@ -32,7 +33,7 @@ function rowKey(p: any): string {
   return String(p?.row_id ?? p?.id ?? `${p?.mlb_id ?? p?.mlbId ?? ""}-${isPitcher(p) ? "P" : "H"}`);
 }
 
-function normalizePosList(raw: any): string {
+function normalizePosList(raw: any, ofMode: string = "OF"): string {
   const s = String(raw ?? "").trim();
   if (!s) return "";
 
@@ -45,7 +46,7 @@ function normalizePosList(raw: any): string {
   const seen = new Set<string>();
 
   for (const part of parts) {
-    const n = normalizePosition(part);
+    const n = mapPosition(normalizePosition(part), ofMode);
     if (!n) continue;
     if (seen.has(n)) continue;
     seen.add(n);
@@ -55,16 +56,16 @@ function normalizePosList(raw: any): string {
   return out.join("/");
 }
 
-function posEligible(p: any): string {
+function posEligible(p: any, ofMode: string = "OF"): string {
   const raw = p?.positions ?? p?.pos ?? p?.position ?? p?.positionEligible ?? p?.position_eligible ?? "";
-  return normalizePosList(raw);
+  return normalizePosList(raw, ofMode);
 }
 
 
 export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
-  const { leagueId } = useLeague();
+  const { leagueId, outfieldMode } = useLeague();
 
   const loc = useLocation();
   const activeTab: "hitters" | "pitchers" = loc.hash === "#pitchers" ? "pitchers" : "hitters";
@@ -272,7 +273,7 @@ export default function Team() {
                     hitters.map((p: any) => {
                       const key = rowKey(p);
                       const tm = getMlbTeamAbbr(p);
-                      const elig = posEligible(p);
+                      const elig = posEligible(p, outfieldMode);
                       const isExpanded = expandedId === key;
 
                       // Grand Slams (supports multiple common key names)
@@ -364,7 +365,7 @@ export default function Team() {
                     pitchers.map((p: any) => {
                       const key = rowKey(p);
                       const tm = getMlbTeamAbbr(p);
-                      const elig = posEligible(p) || "P";
+                      const elig = posEligible(p, outfieldMode) || "P";
                       const isExpanded = expandedId === key;
 
                       // Shutouts (commonly "SHO"; sometimes "SO" in custom datasets)
