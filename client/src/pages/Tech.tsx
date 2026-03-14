@@ -15,18 +15,18 @@ import {
 } from "lucide-react";
 
 const stats = [
-  { label: "Total Lines of Code", value: "44,800+", icon: FileCode },
-  { label: "Client (React/TS)", value: "19,450", icon: Monitor },
-  { label: "Server (Node/TS)", value: "25,400", icon: Server },
-  { label: "Test Coverage", value: "7,850 lines", icon: TestTube },
+  { label: "Total Lines of Code", value: "45,200+", icon: FileCode },
+  { label: "Client (React/TS)", value: "19,840", icon: Monitor },
+  { label: "Server (Node/TS)", value: "25,420", icon: Server },
+  { label: "Test Coverage", value: "6,990 lines", icon: TestTube },
   { label: "Database Models", value: "27", icon: Database },
   { label: "API Endpoints", value: "116", icon: Plug },
   { label: "Feature Modules", value: "16", icon: Layers },
-  { label: "Git Commits", value: "116", icon: GitCommit },
-  { label: "Tests Passing", value: "359", icon: TestTube },
+  { label: "Git Commits", value: "122", icon: GitCommit },
+  { label: "Tests Passing", value: "374", icon: TestTube },
   { label: "DB Schema Lines", value: "677", icon: Braces },
   { label: "DB Migrations", value: "9", icon: Database },
-  { label: "Est. Tokens Used", value: "~50M+", icon: Bot },
+  { label: "Est. Tokens Used", value: "~55M+", icon: Bot },
 ];
 
 const techStack = [
@@ -84,7 +84,7 @@ const techStack = [
       { name: "Vitest", desc: "Fast unit & integration test framework" },
       { name: "React Testing Library", desc: "Component testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "359 tests", desc: "289 server + 70 client tests" },
+      { name: "374 tests", desc: "289 server + 85 client tests" },
     ],
   },
   {
@@ -118,7 +118,7 @@ const featureModules = [
 
 const tools = [
   { name: "Claude Code", desc: "AI pair programming — authored ~95% of the codebase" },
-  { name: "VS Code", desc: "Primary IDE" },
+  { name: "Claude Code CLI", desc: "Primary development interface — terminal-based" },
   { name: "GitHub", desc: "Source control & pull requests" },
   { name: "Supabase Dashboard", desc: "Database management & auth config" },
   { name: "Render Dashboard", desc: "Deployment & monitoring" },
@@ -137,8 +137,8 @@ export default function Tech() {
         </h1>
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at the technology, tools, and effort behind The Fantastic Leagues.
-          Built from November 2025 to present — 116 commits, 44,800+ lines of
-          TypeScript, and an estimated 50 million+ AI tokens.
+          Built from November 2025 to present — 122 commits, 45,200+ lines of
+          TypeScript, and an estimated 55 million+ AI tokens.
         </p>
       </div>
 
@@ -264,14 +264,14 @@ export default function Tech() {
           </div>
           <div className="flex gap-3">
             <span className="font-medium text-[var(--lg-text-primary)] w-24 shrink-0">Mar 2026</span>
-            <span className="text-[var(--lg-text-secondary)]">Season lifecycle, keeper prep, 359 tests, production hardening</span>
+            <span className="text-[var(--lg-text-secondary)]">Season lifecycle, keeper prep, fielding stats, 374 tests, production hardening</span>
           </div>
         </div>
       </div>
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 50M+ tokens across 100+ sessions
+        Built with Claude Code — estimated 55M+ tokens across 15 sessions
       </p>
     </div>
   );

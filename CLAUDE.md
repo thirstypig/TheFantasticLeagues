@@ -138,6 +138,9 @@ Some features import from other features' services or components.
 - `periods/pages/Season` imports `components/StatsTables` (shared)
 - `commissioner/components/CommissionerTradeTool` imports `trades/components/TradeAssetSelector`
 - `admin/components/AdminLeagueTools` imports `leagues/api` (adminCreateLeague, adminImportRosters, getLeagues)
+- `periods/pages/Season` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
+- `teams/pages/Team` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
+- `pages/Home` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 
 When adding cross-feature imports, document them here to maintain visibility.
 
@@ -150,8 +153,11 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/api/types.ts` — shared API response/request types
 - `client/src/components/ui/` — shadcn-style UI primitives
 - `client/src/components/AppShell.tsx` — app shell
-- `client/src/components/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players)
+- `client/src/components/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players); includes fielding stats (games by position)
 - `client/src/components/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
+- `client/src/contexts/LeagueContext.tsx` — app-wide league context (leagueId, outfieldMode, leagues list)
+- `client/src/lib/sportConfig.ts` — baseball constants, position utilities, `isPitcher()`, `mapPosition()`, stat formatting
+- `server/src/lib/sportConfig.ts` — server-side baseball constants, position config, default league rules
 
 ## Conventions
 - TypeScript strict mode in both client and server
@@ -246,7 +252,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (289 server + 70 client = 359 tests)
+### Current Test Coverage (289 server + 85 client = 374 tests)
 
 **Server (289 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 35 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
@@ -266,11 +272,12 @@ server/src/__tests__/integration/
 - `server/src/features/seasons/__tests__/seasonService.test.ts` — 14 tests (transitions, auto-lock, validation)
 - `server/src/features/seasons/__tests__/routes.test.ts` — 5 tests (router export, service integration)
 
-**Client (70 tests):**
+**Client (85 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `client/src/lib/__tests__/baseballUtils.test.ts` — 17 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition)
-- `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats)
+- `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)
 - `client/src/features/standings/__tests__/StatsTables.test.tsx` — 22 tests (table rendering, sorting)
+- Additional 15 tests across component test files
 
 ### Running Tests
 ```bash

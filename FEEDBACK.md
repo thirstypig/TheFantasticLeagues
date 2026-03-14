@@ -4,6 +4,40 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-14 (Session 15) — Home Page Fix, Fielding Stats, OF Position Mapping
+
+### Completed
+- **PR #22 — Home page + Season tab fixes**:
+  - Fixed Home page showing empty roster (was defaulting to league 2 which has no 2025 roster data)
+  - Added league selector dropdown for users with multiple memberships
+  - Removed `$` cost display from Season standings expanded roster (only needed for auction/archive)
+- **PR #23 — Fielding stats in PlayerDetailModal**:
+  - Added "Fielding — Games by Position" section to PlayerDetailModal
+  - Created `getPlayerFieldingStats()` in `players/api.ts` using MLB Stats API fielding endpoint
+  - Added `lastCompletedSeason()` helper — returns prior year before April (fixes season=2026 bug)
+  - Added `cached()` wrapper with 5-minute TTL for MLB API calls
+  - Fixed 5 failing PlayerDetailModal tests (added `getPlayerFieldingStats` mock)
+- **PR #24 — Outfield position mapping (league setting)**:
+  - Added `outfield_mode` league rule (`"OF"` or `"LF/CF/RF"`)
+  - Created `LeagueContext` (`client/src/contexts/LeagueContext.tsx`) for app-wide league settings
+  - Created `mapPosition()` utility in `client/src/lib/sportConfig.ts` — display-time RF/CF/LF → OF mapping
+  - Added outfield mode select to `RulesEditor` (commissioner settings)
+  - Server: league detail endpoint returns `outfieldMode` from league rules
+  - Applied position mapping to: Home page roster, Season standings, Team page roster
+  - Updated `server/src/lib/sportConfig.ts` DEFAULT_RULES with `outfield_mode`
+- **Documentation**: Updated CLAUDE.md (test counts, shared infrastructure, cross-feature deps)
+
+### Pending / Next Steps
+- (none identified)
+
+### Test Results
+- Server: 20 files, 289 tests passing
+- Client: 4 files, 85 tests passing
+- Total: 374 tests, all green
+- TypeScript: clean (both client and server)
+
+---
+
 ## Session 2026-03-13 (Session 14) — Data Fixes & Migration Sync
 
 ### Completed
