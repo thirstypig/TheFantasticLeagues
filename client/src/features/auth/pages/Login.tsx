@@ -4,12 +4,13 @@ import GoogleSignInButton from "../../../components/GoogleSignInButton";
 import { Link, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
+import { Logo } from "../../../components/ui/Logo";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
   
-  const { loginWithGoogle, loginWithYahoo, loginWithPassword } = useAuth();
+  const { loginWithGoogle, loginWithPassword } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,10 +39,10 @@ export default function Login() {
       
       <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
         <Link to="/" className="flex items-center gap-3 mb-12 justify-center group">
-          <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-bold text-sm shadow-2xl shadow-blue-500/40 transform group-hover:-rotate-6 transition-transform">FBST</div>
+          <Logo size={40} />
           <div className="flex flex-col">
-            <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">FBST</span>
-            <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">Fantasy Baseball Stat Tool</span>
+            <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
+            <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
           </div>
         </Link>
 
@@ -54,16 +55,8 @@ export default function Login() {
           </div>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <GoogleSignInButton label="Google" onClick={loginWithGoogle} />
-              <button
-                type="button"
-                onClick={loginWithYahoo}
-                className="flex items-center justify-center gap-2 w-full h-11 px-4 rounded-xl bg-[#6001d2]/10 border border-[#6001d2]/20 hover:bg-[#6001d2]/20 hover:border-[#6001d2]/30 text-white font-medium transition-all duration-200"
-              >
-                <span className="w-5 h-5 flex items-center justify-center bg-[#6001d2] rounded-full text-xs font-bold">Y</span>
-                Yahoo
-              </button>
+            <div>
+              <GoogleSignInButton label="Continue with Google" onClick={loginWithGoogle} />
             </div>
 
             <div className="relative py-2">

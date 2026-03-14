@@ -1,28 +1,10 @@
 // client/src/lib/playerDisplay.ts
-export function isPitcher(v: any): boolean {
-  if (typeof v === "string") {
-    const s = v.trim().toUpperCase();
-    return s === "P" || s === "SP" || s === "RP";
-  }
-  if (v && typeof v === "object") {
-    // Handle both boolean and numeric (1/0) is_pitcher values
-    if (v.is_pitcher != null) return !!v.is_pitcher;
-    if (v.isPitcher != null) return !!v.isPitcher;
-
-    const group = String(v.group ?? "").trim().toUpperCase();
-    if (group === "P") return true;
-    if (group === "H") return false;
-
-    const pos = String(v.positions ?? v.pos ?? v.posPrimary ?? "").trim().toUpperCase();
-    if (pos === "P" || pos === "SP" || pos === "RP") return true;
-  }
-  return false;
-}
+// Re-export isPitcher from centralized sportConfig
+export { isPitcher } from "./sportConfig";
 
 export function normalizePosition(pos: any): string {
   const s = String(pos ?? "").trim();
   if (!s) return "";
-  // If multiple, keep as-is but uppercase
   return s.toUpperCase();
 }
 
@@ -30,7 +12,6 @@ export function formatAvg(v: any): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return "";
   const s = n.toFixed(3);
-  // show .289 instead of 0.289
   return s.startsWith("0") ? s.slice(1) : s;
 }
 

@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { useToast } from "../../../contexts/ToastContext";
 import { 
     getPeriods, savePeriod, deletePeriod, type PeriodDef, 
     getLeagueRules, saveLeagueRule, type LeagueRule,
@@ -11,6 +12,7 @@ interface CommissionerControlsProps {
 }
 
 export default function CommissionerControls({ leagueId }: CommissionerControlsProps) {
+    const { toast } = useToast();
     // --- State ---
     const [periods, setPeriods] = useState<PeriodDef[]>([]);
     const [rules, setRules] = useState<LeagueRule[]>([]);
@@ -42,7 +44,7 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
             if (tRule) setTimerDuration(tRule.value);
         } catch (e) {
             console.error(e);
-            alert('Failed to load settings');
+            toast('Failed to load settings', 'error');
         } finally {
             setLoading(false);
         }
@@ -54,7 +56,7 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
 
     // Period Save
     const handleSavePeriod = async () => {
-        if (!pName || !pStart || !pEnd) return alert('Fill all period fields');
+        if (!pName || !pStart || !pEnd) return toast('Fill all period fields', 'error');
         try {
             await savePeriod({ 
                 id: pId || undefined, 
@@ -67,7 +69,7 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
             setPId(null); setPName(''); setPStart(''); setPEnd('');
         } catch (e) {
             console.error(e);
-            alert('Failed to save period');
+            toast('Failed to save period', 'error');
         }
     };
 
@@ -90,10 +92,10 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
                 value: timerDuration,
                 label: 'Auction Time Limit (sec)'
             });
-            alert('Saved timer settings');
+            toast('Saved timer settings', 'success');
         } catch (e) {
             console.error(e);
-            alert('Failed to save rule');
+            toast('Failed to save rule', 'error');
         }
     };
 
@@ -102,10 +104,10 @@ export default function CommissionerControls({ leagueId }: CommissionerControlsP
         if (!confirm('Are you sure you want to END the auction? This will snapshot current rosters for Period 1.')) return;
         try {
             const res = await endAuction(leagueId);
-            alert(`Auction Ended. ${res.snapshotted} roster entries archived.`);
+            toast(`Auction Ended. ${res.snapshotted} roster entries archived.`, 'success');
         } catch (e) {
             console.error(e);
-            alert('Failed to end auction');
+            toast('Failed to end auction', 'error');
         }
     };
 

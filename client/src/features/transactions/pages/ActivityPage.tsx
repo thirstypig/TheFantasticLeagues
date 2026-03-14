@@ -15,6 +15,7 @@ import {
 } from "../../trades/api";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
+import { useToast } from "../../../contexts/ToastContext";
 import AddDropTab from "../../roster/components/AddDropTab";
 import { TradeCard, LeagueTradeCard, CreateTradeForm } from "../../trades/pages/TradesPage";
 import TeamRosterView from "../../teams/components/TeamRosterView";
@@ -30,6 +31,7 @@ export default function ActivityPage() {
   const { me } = useAuth();
   const authUser = me?.user;
   const { leagueId: currentLeagueId } = useLeague();
+  const { toast } = useToast();
 
   const isCommissioner =
     authUser?.isAdmin ||
@@ -65,54 +67,56 @@ export default function ActivityPage() {
     }
   }, [currentLeagueId]);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [txResp, playersResp, leaguesResp, standingsResp] = await Promise.all([
-          getTransactions({ take: 100 }),
-          getPlayerSeasonStats(),
-          getLeagues(),
-          getSeasonStandings(),
+  const loadData = useCallback(async () => {
+    try {
+      const [txResp, playersResp, leaguesResp, standingsResp] = await Promise.all([
+        getTransactions({ take: 100 }),
+        getPlayerSeasonStats(),
+        getLeagues(),
+        getSeasonStandings(),
+      ]);
+      setTransactions(txResp.transactions);
+      setPlayers(playersResp || []);
+      setStandings(standingsResp.rows || []);
+
+      if (leaguesResp.leagues && leaguesResp.leagues.length > 0) {
+        const league = leaguesResp.leagues[0];
+
+        // Parallelize getLeague and loadTrades (they are independent)
+        const [lDetail] = await Promise.all([
+          getLeague(league.id),
+          loadTrades(league.id),
         ]);
-        setTransactions(txResp.transactions);
-        setPlayers(playersResp || []);
-        setStandings(standingsResp.rows || []);
+        const loadedTeams = lDetail.league.teams || [];
 
-        if (leaguesResp.leagues && leaguesResp.leagues.length > 0) {
-          const league = leaguesResp.leagues[0];
+        setLeagueId(league.id);
+        setTeams(loadedTeams);
 
-          // Parallelize getLeague and loadTrades (they are independent)
-          const [lDetail] = await Promise.all([
-            getLeague(league.id),
-            loadTrades(league.id),
-          ]);
-          const loadedTeams = lDetail.league.teams || [];
-
-          setLeagueId(league.id);
-          setTeams(loadedTeams);
-
-          // Auto-detect user's team
-          const myTeam = loadedTeams.find(
-            (t: any) => t.ownerUserId === Number(authUser?.id)
-          );
-          if (myTeam) {
-            setSelectedTeamId(myTeam.id);
-          } else if (loadedTeams.length > 0) {
-            setSelectedTeamId(loadedTeams[0].id);
-          }
+        // Auto-detect user's team
+        const uid = Number(authUser?.id);
+        const myTeam = loadedTeams.find(
+          (t: any) => t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid)
+        );
+        if (myTeam) {
+          setSelectedTeamId(myTeam.id);
+        } else if (loadedTeams.length > 0) {
+          setSelectedTeamId(loadedTeams[0].id);
         }
-      } catch (err: unknown) {
-        console.error(err);
-      } finally {
-        setLoading(false);
       }
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, []);
+  }, [authUser?.id, loadTrades]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleClaim = async (player: PlayerSeasonStat) => {
     if (!selectedTeamId || !leagueId) {
-      alert("Please select a team to claim for.");
+      toast("Please select a team to claim for.", "warning");
       return;
     }
 
@@ -129,11 +133,12 @@ export default function ActivityPage() {
           mlbId: player.mlb_id || (player as any).mlbId,
         }),
       });
-      alert(`Successfully claimed ${player.player_name}!`);
-      window.location.reload();
+      toast(`Successfully claimed ${player.player_name}!`, "success");
+      await loadData();
     } catch (err: unknown) {
       console.error("Claim error:", err);
-      alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      toast(errMsg, "error");
     }
   };
 

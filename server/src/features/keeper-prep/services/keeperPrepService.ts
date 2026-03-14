@@ -2,7 +2,6 @@
 // Keeper Selection Agent — Pre-Auction Preparation Service
 
 import { prisma } from "../../../db/prisma.js";
-import { ROSTERS_2025 } from "../../../data/ogba_rosters_2025.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -75,93 +74,113 @@ export class KeeperPrepService {
   // ─── Roster Population ──────────────────────────────────────────────────────
 
   /**
-   * Populate the current-season Roster table from ROSTERS_2025 static data.
-   * Standardizes to 14 hitters and 9 pitchers.
+   * Populate the current-season Roster table from the prior season's DB data.
+   * Finds the prior league by name + (season - 1), copies rosters and owner info.
    */
   async populateRostersFromPriorSeason(leagueId: number): Promise<PopulateResult> {
     const result: PopulateResult = { teamsPopulated: 0, playersAdded: 0, skipped: [], errors: [] };
 
-    // 1. Get current-season teams
+    // 1. Get current league
+    const currentLeague = await prisma.league.findUnique({ where: { id: leagueId } });
+    if (!currentLeague) throw new Error("League not found.");
+
+    // 2. Find prior-season league (same name, season - 1)
+    const priorLeague = await prisma.league.findFirst({
+      where: { name: currentLeague.name, season: currentLeague.season - 1 },
+    });
+    if (!priorLeague) throw new Error(`No prior season found for "${currentLeague.name}" season ${currentLeague.season - 1}.`);
+
+    // 3. Get current-season teams
     const teams = await prisma.team.findMany({ where: { leagueId } });
     if (teams.length === 0) throw new Error("No teams found for this league.");
 
-    // 2. Build maps for resolution
+    // 4. Get prior-season teams with rosters and ownership
+    const priorTeams = await prisma.team.findMany({
+      where: { leagueId: priorLeague.id },
+      include: {
+        rosters: {
+          where: { releasedAt: null },
+          include: { player: true },
+        },
+        ownerships: { select: { userId: true } },
+      },
+    });
+
+    // 5. Build maps for matching current teams
     const codeToTeam = new Map<string, typeof teams[0]>();
     const nameToTeam = new Map<string, typeof teams[0]>();
-
     for (const t of teams) {
       if (t.code) codeToTeam.set(t.code.toUpperCase(), t);
       nameToTeam.set(t.name.toLowerCase().trim(), t);
-      // Remove spaces/special for looser matching
       nameToTeam.set(t.name.toLowerCase().replace(/[^a-z0-9]/g, ''), t);
     }
 
-    // 3. Check for existing rosters
+    // 6. Check for existing rosters
     const existingRosterCount = await prisma.roster.count({
       where: { team: { leagueId }, releasedAt: null },
     });
-
     if (existingRosterCount > 0) {
       throw new Error(`League already has ${existingRosterCount} active roster entries. Clear existing rosters before re-populating.`);
     }
 
-    // 4. Process each team in ROSTERS_2025
+    // 7. Process each prior-season team
     const teamsPopulatedSet = new Set<number>();
 
-    for (const tr of ROSTERS_2025) {
-      // Resolve to current team
-      let team = codeToTeam.get(tr.teamId.toUpperCase());
-      if (!team) team = nameToTeam.get(tr.teamName.toLowerCase().trim());
-      if (!team) team = nameToTeam.get(tr.teamName.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    for (const priorTeam of priorTeams) {
+      // Match to current team by code, then name
+      let currentTeam = priorTeam.code ? codeToTeam.get(priorTeam.code.toUpperCase()) : undefined;
+      if (!currentTeam) currentTeam = nameToTeam.get(priorTeam.name.toLowerCase().trim());
+      if (!currentTeam) currentTeam = nameToTeam.get(priorTeam.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
 
-      if (!team) {
-        result.skipped.push(`Team "${tr.teamName}" (${tr.teamId}) — no matching current-season team`);
+      if (!currentTeam) {
+        result.skipped.push(`Prior team "${priorTeam.name}" (${priorTeam.code}) — no matching current-season team`);
         continue;
       }
 
-      // Merge hitters and pitchers
-      const allPlayers = [...tr.hitters, ...tr.pitchers];
+      // Copy owner info if current team doesn't have it
+      const ownerUpdates: Record<string, unknown> = {};
+      if (!currentTeam.owner && priorTeam.owner) ownerUpdates.owner = priorTeam.owner;
+      if (!currentTeam.ownerUserId && priorTeam.ownerUserId) ownerUpdates.ownerUserId = priorTeam.ownerUserId;
+      if (!currentTeam.priorTeamId) ownerUpdates.priorTeamId = priorTeam.id;
 
-      // Standardize counts? The user said "We need 14 hitters and 9 pitchers".
-      // Let's check the counts in the source.
-      // If the source has more/less, we just import what we have for now, or pad?
-      // Usually "populate" means "copy over last year's end state".
-      
-      for (const p of allPlayers) {
-        try {
-          // Find or create Player
-          let dbPlayer = await prisma.player.findFirst({
-            where: { name: p.name },
-          });
+      if (Object.keys(ownerUpdates).length > 0) {
+        await prisma.team.update({ where: { id: currentTeam.id }, data: ownerUpdates });
+      }
 
-          if (!dbPlayer) {
-            dbPlayer = await prisma.player.create({
-              data: {
-                name: p.name,
-                posPrimary: p.pos,
-                posList: p.pos,
-              },
-            });
+      // Copy TeamOwnership entries if current team has none
+      if (priorTeam.ownerships.length > 0) {
+        const existingOwnerships = await prisma.teamOwnership.count({ where: { teamId: currentTeam.id } });
+        if (existingOwnerships === 0) {
+          for (const o of priorTeam.ownerships) {
+            try {
+              await prisma.teamOwnership.create({ data: { teamId: currentTeam.id, userId: o.userId } });
+            } catch {
+              // Ignore duplicates or FK issues
+            }
           }
+        }
+      }
 
-          // Guard: ensure player isn't already on another team
-          await assertPlayerAvailable(prisma, dbPlayer.id, leagueId);
+      // Copy roster entries
+      for (const roster of priorTeam.rosters) {
+        try {
+          // Guard: ensure player isn't already on another team in the target league
+          await assertPlayerAvailable(prisma, roster.playerId, leagueId);
 
-          // Create Roster entry
           await prisma.roster.create({
             data: {
-              teamId: team.id,
-              playerId: dbPlayer.id,
+              teamId: currentTeam.id,
+              playerId: roster.playerId,
               source: "prior_season",
-              price: 1, // Ignore cost for now as per user instruction
+              price: roster.price,
               isKeeper: false,
             },
           });
 
           result.playersAdded++;
-          teamsPopulatedSet.add(team.id);
+          teamsPopulatedSet.add(currentTeam.id);
         } catch (e: unknown) {
-          result.errors.push(`Player "${p.name}" for ${tr.teamName}: ${e instanceof Error ? e.message : "unknown error"}`);
+          result.errors.push(`Player "${roster.player.name}" for ${priorTeam.name}: ${e instanceof Error ? e.message : "unknown error"}`);
         }
       }
     }

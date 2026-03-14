@@ -126,7 +126,7 @@ router.post("/admin/league/:leagueId/import-rosters", requireAuth, requireAdmin,
  * POST /api/admin/league/:leagueId/reset-rosters
  * Bulk-release all active roster entries for a league (clean slate).
  */
-router.post("/admin/league/:leagueId/reset-rosters", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post("/admin/league/:leagueId/reset-rosters", requireAuth, requireAdmin, validateBody(z.object({})), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
@@ -196,7 +196,11 @@ router.patch("/admin/league/:leagueId/team-codes", requireAuth, requireAdmin, va
  * Fetches all NL team rosters from MLB Stats API and upserts into Player table.
  * Body (optional): { season: 2026 }
  */
-router.post("/admin/sync-mlb-players", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+const syncMlbSchema = z.object({
+  season: z.number().int().min(1900).max(2100).optional(),
+});
+
+router.post("/admin/sync-mlb-players", requireAuth, requireAdmin, validateBody(syncMlbSchema), asyncHandler(async (req, res) => {
   const season = Number(req.body?.season) || new Date().getFullYear();
 
   const result = await syncNLPlayers(season);

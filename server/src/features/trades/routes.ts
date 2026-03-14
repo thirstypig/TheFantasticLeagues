@@ -28,6 +28,7 @@ async function assertCounterpartyAccess(
   const isCommish = await isCommissionerOfLeague(user.id, trade.leagueId);
   if (isCommish) return null;
 
+  // Check if user owns a counterparty team (not the proposer)
   const counterpartyTeamIds = [...new Set(
     trade.items
       .map(i => i.recipientId)
@@ -39,6 +40,14 @@ async function assertCounterpartyAccess(
   if (!ownsCounterparty.some(Boolean)) {
     return "You are not a counterparty to this trade";
   }
+
+  // Prevent proposer from accepting/rejecting their own trade
+  // (edge case: user owns both proposer team and a counterparty team)
+  const ownsProposer = await isTeamOwner(trade.proposerId, user.id);
+  if (ownsProposer) {
+    return "Proposer cannot accept or reject their own trade";
+  }
+
   return null;
 }
 

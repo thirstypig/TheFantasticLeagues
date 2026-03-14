@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { updateRosterPosition } from "../api";
 import { normalizePosition } from "../../../lib/playerDisplay";
+import { useToast } from "../../../contexts/ToastContext";
 
 // --- Types ---
 interface RosterPlayer {
@@ -138,6 +139,7 @@ function DroppableArea({ id, children }: { id: string, children: React.ReactNode
 }
 
 export default function TeamRosterManager({ teamId, roster, onUpdate }: TeamRosterManagerProps) {
+  const { toast, confirm } = useToast();
   const [items, setItems] = useState<RosterPlayer[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
 
@@ -180,11 +182,11 @@ export default function TeamRosterManager({ teamId, roster, onUpdate }: TeamRost
         // Pitcher Logic
         if (newPos === 'P') {
             if (normalizePosition(player.posPrimary) !== 'P') {
-                alert("Only pitchers can be placed in P slots.");
+                toast("Only pitchers can be placed in P slots.", "error");
                 return;
             }
         } else if (normalizePosition(player.posPrimary) === 'P') {
-            alert("Pitchers cannot be placed in hitting slots.");
+            toast("Pitchers cannot be placed in hitting slots.", "error");
             return;
         }
 
@@ -193,7 +195,7 @@ export default function TeamRosterManager({ teamId, roster, onUpdate }: TeamRost
             const eligible = (player.posList || player.posPrimary).split(/[,/]/).map(s => normalizePosition(s.trim()));
             eligible.push(normalizePosition(player.posPrimary));
             if (!eligible.includes(newPos)) {
-                 if (!confirm(`Warning: ${player.name} is primarily ${player.posPrimary}. Move to ${newPos} anyway?`)) {
+                 if (!await confirm(`Warning: ${player.name} is primarily ${player.posPrimary}. Move to ${newPos} anyway?`)) {
                      return;
                  }
             }
@@ -238,7 +240,7 @@ export default function TeamRosterManager({ teamId, roster, onUpdate }: TeamRost
     } catch (e) {
         console.error(e);
         setItems(oldItems); // Revert
-        alert("Failed to save move");
+        toast("Failed to save move", "error");
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { fetchWithAuth, fetchJsonApi } from '../../../api/base';
+import { useToast } from "../../../contexts/ToastContext";
 
 
 interface ArchiveAdminPanelProps {
@@ -9,6 +10,7 @@ interface ArchiveAdminPanelProps {
 type AdminTab = 'archive' | 'roster';
 
 export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
+  const { confirm } = useToast();
   const [activeTab, setActiveTab] = useState<AdminTab>('archive');
   const [selectedYear, setSelectedYear] = useState<number>(year);
   const [file, setFile] = useState<File | null>(null);
@@ -104,7 +106,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
   };
 
   const handleArchiveSeason = async () => {
-    if (!window.confirm("Are you sure you want to archive the current live season? This will overwrite any existing archive for that year.")) {
+    if (!await confirm("Are you sure you want to archive the current live season? This will overwrite any existing archive for that year.")) {
       return;
     }
 
@@ -128,7 +130,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
   };
 
   const handleRecalculateAll = async () => {
-    if (!window.confirm("Are you sure you want to recalculate stats and teams for ALL historical seasons? This will take several minutes.")) {
+    if (!await confirm("Are you sure you want to recalculate stats and teams for ALL historical seasons? This will take several minutes.")) {
       return;
     }
 

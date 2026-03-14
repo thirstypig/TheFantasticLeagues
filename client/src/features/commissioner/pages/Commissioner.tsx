@@ -1,6 +1,7 @@
 // client/src/pages/Commissioner.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useToast } from "../../../contexts/ToastContext";
 
 import { getLeagues, getMe, type LeagueListItem } from "../../../api";
 import {
@@ -14,6 +15,7 @@ import {
   removeTeamOwner as apiRemoveTeamOwner,
   updateLeague as apiUpdateLeague,
 } from "../api";
+import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
@@ -120,6 +122,7 @@ function teamExists(teams: CommissionerTeam[], teamId: number) {
 export default function Commissioner() {
   const { leagueId } = useParams();
   const lid = Number(leagueId);
+  const { toast, confirm } = useToast();
 
   const [me, setMe] = useState<any>(null);
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
@@ -158,6 +161,10 @@ export default function Commissioner() {
   // League name edit
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
+
+  // Invite code
+  const [inviteCodeValue, setInviteCodeValue] = useState<string | null>(null);
+  const [inviteCodeLoading, setInviteCodeLoading] = useState(false);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'season' | 'rosters' | 'trades' | 'keepers' | 'controls'>('overview');
@@ -219,6 +226,12 @@ export default function Commissioner() {
       // Fetch prior teams for team creation
       const priorTeamsList = await getPriorTeams(lid);
       setPriorTeams(priorTeamsList);
+
+      // Fetch invite code
+      try {
+        const ic = await getInviteCode(lid);
+        setInviteCodeValue(ic.inviteCode);
+      } catch { /* ignore if no permission */ }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load commissioner data.");
     } finally {
@@ -327,7 +340,7 @@ export default function Commissioner() {
   }
 
   async function onDeleteTeam(teamId: number) {
-    if (!window.confirm("Are you sure you want to delete this team? All associated data will be removed.")) {
+    if (!(await confirm("Are you sure you want to delete this team? All associated data will be removed."))) {
       return;
     }
 
@@ -336,7 +349,7 @@ export default function Commissioner() {
       await apiDeleteTeam(lid, teamId);
       await refreshOverviewOnly();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete team.");
+      toast(err instanceof Error ? err.message : "Failed to delete team.", "error");
     } finally {
       setBusy(false);
     }
@@ -490,6 +503,72 @@ export default function Commissioner() {
             {/* Tab: Overview */}
             {activeTab === 'overview' && (
                 <div className="grid gap-5 lg:grid-cols-2">
+                  {/* Invite Code */}
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 lg:col-span-2">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Invite Code</div>
+                    </div>
+                    {inviteCodeValue ? (
+                      <div className="flex items-center gap-3">
+                        <code className="flex-1 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-2.5 text-sm font-mono tracking-widest text-[var(--lg-text-primary)]">
+                          {inviteCodeValue}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(inviteCodeValue);
+                            toast("Invite code copied!", "success");
+                          }}
+                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-bg-surface)] transition-all"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setInviteCodeLoading(true);
+                            try {
+                              const res = await regenerateInviteCode(lid);
+                              setInviteCodeValue(res.inviteCode);
+                              toast("Invite code regenerated", "success");
+                            } catch {
+                              toast("Failed to regenerate code", "error");
+                            } finally {
+                              setInviteCodeLoading(false);
+                            }
+                          }}
+                          disabled={inviteCodeLoading}
+                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/20 transition-all disabled:opacity-50"
+                        >
+                          {inviteCodeLoading ? "..." : "Regenerate"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-[var(--lg-text-muted)]">No invite code set.</span>
+                        <button
+                          onClick={async () => {
+                            setInviteCodeLoading(true);
+                            try {
+                              const res = await regenerateInviteCode(lid);
+                              setInviteCodeValue(res.inviteCode);
+                              toast("Invite code generated!", "success");
+                            } catch {
+                              toast("Failed to generate code", "error");
+                            } finally {
+                              setInviteCodeLoading(false);
+                            }
+                          }}
+                          disabled={inviteCodeLoading}
+                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-all disabled:opacity-50"
+                        >
+                          {inviteCodeLoading ? "Generating..." : "Generate Code"}
+                        </button>
+                      </div>
+                    )}
+                    <p className="mt-2 text-xs text-[var(--lg-text-muted)]">
+                      Share this code with users so they can join your league.
+                    </p>
+                  </div>
+
                   {/* Members */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">

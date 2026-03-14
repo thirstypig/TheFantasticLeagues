@@ -6,6 +6,7 @@ import type { LeagueListItem } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLeague } from "../contexts/LeagueContext";
+import { Logo } from "./ui/Logo";
 
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/";
@@ -51,31 +52,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const NAV_SECTIONS: NavSection[] = [
     {
-      title: "Overview",
+      title: "My Team",
       items: [
         { to: "/", label: "Home", show: true },
       ],
     },
     {
-      title: "Standings",
+      title: "League",
       items: [
         { to: "/season", label: "Season", show: true },
         { to: "/players", label: "Players", show: true },
-      ],
-    },
-    {
-      title: "Activity",
-      items: [
-        { to: "/auction", label: "Auction", show: true },
-        { to: "/activity", label: "Activity", show: true },
-        { to: "/payouts", label: "Payouts", show: true },
-      ],
-    },
-    {
-      title: "Reference",
-      items: [
         { to: "/rules", label: "Rules", show: true },
+      ],
+    },
+    {
+      title: "Transactions",
+      items: [
+        { to: "/activity", label: "Activity", show: true },
+        { to: "/auction", label: "Auction", show: true },
+      ],
+    },
+    {
+      title: "History",
+      items: [
         { to: "/archive", label: "Archive", show: true },
+        { to: "/payouts", label: "Payouts", show: true },
       ],
     },
     {
@@ -145,10 +146,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   to={user ? "/" : "/login"}
                   className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[var(--lg-accent)] flex items-center justify-center text-white font-bold text-sm shadow-2xl shadow-blue-500/40 transform -rotate-3 hover:rotate-0 transition-transform duration-500">FBST</div>
+                  <Logo size={40} />
                   <div className="flex flex-col">
-                    <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">FBST</span>
-                    <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">Fantasy Baseball Stat Tool</span>
+                    <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
+                    <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
                   </div>
                 </Link>
               )}
@@ -158,6 +159,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={toggleTheme}
                   className="p-2 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
                   title="Toggle Theme"
+                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
                   {theme === 'dark' ? '☀️' : '🌙'}
                 </button>
@@ -165,6 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setSidebarVisible(false)}
                   className="p-2 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
                   title="Minimize Sidebar"
+                  aria-label="Minimize sidebar"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -173,7 +176,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="flex-1 overflow-y-auto custom-scrollbar space-y-6">
+            {/* League Switcher */}
+            {sidebarOpen && leagues && leagues.length > 1 && (
+              <div className="mb-6">
+                <div className="lg-sidebar-section-label">League</div>
+                <select
+                  value={leagueId ?? ""}
+                  onChange={(e) => setLeagueId(Number(e.target.value))}
+                  className="w-full h-9 px-3 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-xs font-semibold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all cursor-pointer"
+                >
+                  {leagues.map((l: LeagueListItem) => (
+                    <option key={l.id} value={l.id}>{l.name} ({l.season})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <nav className="flex-1 overflow-y-auto custom-scrollbar space-y-6" aria-label="Main navigation">
               {NAV_SECTIONS.map((section) => {
                 const visibleItems = section.items.filter((item) => item.show);
                 if (visibleItems.length === 0) return null;
@@ -279,6 +298,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg-button lg-button-secondary p-2.5"
+              aria-label="Open navigation menu"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -286,8 +306,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
 
             <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-[var(--lg-accent)] flex items-center justify-center text-xs text-white font-bold">FB</div>
-                <span className="text-xs font-bold tracking-wide uppercase text-[var(--lg-text-heading)]">FBST</span>
+                <Logo size={24} />
+                <span className="text-xs font-bold tracking-wide uppercase text-[var(--lg-text-heading)]">TFL</span>
             </div>
 
             <button
@@ -304,6 +324,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setSidebarVisible(true)}
                 className="fixed bottom-8 left-8 z-50 p-4 rounded-2xl bg-[var(--lg-accent)] text-white shadow-2xl shadow-blue-500/40 hover:scale-110 active:scale-95 transition-all animate-in slide-in-from-left-4"
                 title="Restore Navigation"
+                aria-label="Restore navigation sidebar"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />

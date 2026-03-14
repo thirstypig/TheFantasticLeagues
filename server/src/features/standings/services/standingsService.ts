@@ -98,25 +98,10 @@ export function buildTeamNameMap(
   return map;
 }
 
-export const CATEGORY_CONFIG = [
-  { key: "R", label: "Runs", lowerIsBetter: false, group: "H" },
-  { key: "HR", label: "Home Runs", lowerIsBetter: false, group: "H" },
-  { key: "RBI", label: "RBI", lowerIsBetter: false, group: "H" },
-  { key: "SB", label: "Stolen Bases", lowerIsBetter: false, group: "H" },
-  { key: "AVG", label: "Average", lowerIsBetter: false, group: "H" },
-  { key: "W", label: "Wins", lowerIsBetter: false, group: "P" },
-  { key: "SV", label: "Saves", lowerIsBetter: false, group: "P" },
-  { key: "ERA", label: "ERA", lowerIsBetter: true, group: "P" },
-  { key: "WHIP", label: "WHIP", lowerIsBetter: true, group: "P" },
-  { key: "K", label: "Strikeouts", lowerIsBetter: false, group: "P" },
-] as const;
-
-export type CategoryKey = (typeof CATEGORY_CONFIG)[number]["key"];
-
-// Map config keys to DB column names where they differ
-const KEY_TO_DB_FIELD: Partial<Record<CategoryKey, string>> = {
-  SV: "S",
-};
+// Re-export from centralized sportConfig
+export { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../../../lib/sportConfig.js";
+export type { CategoryKey } from "../../../lib/sportConfig.js";
+import { CATEGORY_CONFIG, KEY_TO_DB_FIELD, type CategoryKey } from "../../../lib/sportConfig.js";
 
 export function computeCategoryRows(
   stats: TeamStatRow[],

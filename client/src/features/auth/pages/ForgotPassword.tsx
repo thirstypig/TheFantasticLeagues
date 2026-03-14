@@ -43,7 +43,7 @@ export default function ForgotPassword() {
              <div className="w-10 h-10 rounded-xl bg-[var(--lg-tint-hover)] border border-[var(--lg-border-subtle)] flex items-center justify-center backdrop-blur-sm">
                <span className="font-bold text-white text-lg">F</span>
              </div>
-             <div className="text-xl font-bold tracking-tight text-white">FBST</div>
+             <div className="text-xl font-bold tracking-tight text-white">TFL</div>
            </div>
            <h1 className="text-4xl md:text-3xl font-extrabold tracking-tight mb-6 text-white leading-tight">
              Recover <br/> Access.

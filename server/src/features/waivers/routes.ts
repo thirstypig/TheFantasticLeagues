@@ -68,20 +68,49 @@ router.post("/", requireAuth, validateBody(waiverClaimSchema), requireTeamOwner(
   res.json(claim);
 }));
 
-// DELETE /api/waivers/:id - Cancel claim
+// DELETE /api/waivers/:id - Cancel claim (soft-cancel)
 router.delete("/:id", requireAuth, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
-  const claim = await prisma.waiverClaim.findUnique({ where: { id } });
+  const claim = await prisma.waiverClaim.findUnique({
+    where: { id },
+    include: { team: { select: { leagueId: true } } },
+  });
   if (!claim) return res.status(404).json({ error: "Claim not found" });
 
-  // Verify ownership (admins bypass)
-  if (!req.user!.isAdmin) {
-    const owns = await isTeamOwner(claim.teamId, req.user!.id);
-    if (!owns) return res.status(403).json({ error: "You do not own this team" });
+  // Only PENDING claims can be cancelled
+  if (claim.status !== "PENDING") {
+    return res.status(400).json({ error: "Only pending claims can be cancelled" });
   }
 
-  await prisma.waiverClaim.delete({ where: { id } });
+  // Verify ownership, commissioner of league, or admin
+  if (!req.user!.isAdmin) {
+    const owns = await isTeamOwner(claim.teamId, req.user!.id);
+    if (!owns) {
+      // Check if commissioner of the league
+      const membership = await prisma.leagueMembership.findUnique({
+        where: { leagueId_userId: { leagueId: claim.team.leagueId, userId: req.user!.id } },
+      });
+      if (membership?.role !== "COMMISSIONER") {
+        return res.status(403).json({ error: "You do not own this team" });
+      }
+    }
+  }
+
+  // Soft-cancel instead of hard delete
+  await prisma.waiverClaim.update({
+    where: { id },
+    data: { status: "CANCELLED", processedAt: new Date() },
+  });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "WAIVER_CANCEL",
+    resourceType: "WaiverClaim",
+    resourceId: String(id),
+    metadata: { teamId: claim.teamId, playerId: claim.playerId, leagueId: claim.team.leagueId },
+  });
+
   res.json({ success: true });
 }));
 

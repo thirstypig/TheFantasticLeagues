@@ -47,8 +47,10 @@ export default function ContextDeck({ tabs }: ContextDeckProps) {
       </div>
 
       {/* Tab Content Area */}
-      <div className="flex-1 overflow-hidden relative">
-        {activeTab.content}
+      <div className="flex-1 overflow-hidden relative" key={activeTab.key}>
+        <div className="animate-in fade-in duration-300 h-full">
+          {activeTab.content}
+        </div>
       </div>
     </div>
   );

@@ -94,7 +94,7 @@ export async function handleDevLogin(_req: Request, res: Response) {
   }
 
   logger.info({ email: dbUser.email }, "Dev login ready");
-  return res.json({ email: dbUser.email });
+  return res.json({ email: dbUser.email, password: DEV_PASSWORD });
 }
 
 export function handleLogout(req: Request, res: Response) {

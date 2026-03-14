@@ -434,8 +434,8 @@ export default function Team() {
                  <div className="w-full max-w-7xl h-[90vh] bg-[#0c0c0c] rounded-3xl border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden flex flex-col liquid-glass">
                       <div className="p-6 border-b border-[var(--lg-border-subtle)] flex justify-between items-center bg-[var(--lg-tint)]">
                           <h2 className="text-xl font-semibold uppercase text-[var(--lg-text-heading)]">Roster Management</h2>
-                          <Button 
-                             onClick={() => { setIsManaging(false); window.location.reload(); }}
+                          <Button
+                             onClick={() => { setIsManaging(false); }}
                              variant="ghost"
                              size="icon"
                           >

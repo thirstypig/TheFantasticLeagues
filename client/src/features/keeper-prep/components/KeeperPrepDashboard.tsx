@@ -1,20 +1,22 @@
 // client/src/components/KeeperPrepDashboard.tsx
 import React, { useEffect, useState, useCallback } from "react";
-import { 
-  getKeeperPrepStatus, 
-  populateRosters, 
-  lockKeepers, 
-  unlockKeepers, 
-  getTeamRosterForKeeperPrep, 
+import {
+  getKeeperPrepStatus,
+  populateRosters,
+  lockKeepers,
+  unlockKeepers,
+  getTeamRosterForKeeperPrep,
   saveKeepersCommish,
-  type TeamKeeperStatus 
+  type TeamKeeperStatus
 } from "../api";
+import { useToast } from "../../../contexts/ToastContext";
 
 interface KeeperPrepDashboardProps {
   leagueId: number;
 }
 
 export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardProps) {
+  const { toast, confirm } = useToast();
   const [statuses, setStatuses] = useState<TeamKeeperStatus[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -45,14 +47,14 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
   }, [fetchStatus]);
 
   const handlePopulate = async () => {
-    if (!confirm("This will clear all rosters and re-populate from the 2025 end-of-season data. Proceed?")) return;
+    if (!await confirm("This will clear all rosters and re-populate from the 2025 end-of-season data. Proceed?")) return;
     try {
       setBusy(true);
       const res = await populateRosters(leagueId);
-      alert(`Success! Populated ${res.teamsPopulated} teams and added ${res.playersAdded} players.`);
+      toast(`Success! Populated ${res.teamsPopulated} teams and added ${res.playersAdded} players.`, "success");
       fetchStatus();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Unknown error");
+      toast(err instanceof Error ? err.message : "Unknown error", "error");
     } finally {
       setBusy(false);
     }
@@ -68,7 +70,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       }
       fetchStatus();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Unknown error");
+      toast(err instanceof Error ? err.message : "Unknown error", "error");
     } finally {
       setBusy(false);
     }
@@ -83,7 +85,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       setSelectedKeeperIds(new Set(data.roster.filter((r: any) => r.isKeeper).map((r: any) => r.id)));
       setEditingTeamId(teamId);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Unknown error");
+      toast(err instanceof Error ? err.message : "Unknown error", "error");
     } finally {
       setBusy(false);
     }
@@ -95,7 +97,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       next.delete(id);
     } else {
       if (next.size >= keeperLimit) {
-        alert(`Keeper limit reached (${keeperLimit}).`);
+        toast(`Keeper limit reached (${keeperLimit}).`, "warning");
         return;
       }
       next.add(id);
@@ -111,7 +113,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
       setEditingTeamId(null);
       fetchStatus();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Unknown error");
+      toast(err instanceof Error ? err.message : "Unknown error", "error");
     } finally {
       setBusy(false);
     }

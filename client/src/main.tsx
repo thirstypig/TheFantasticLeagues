@@ -8,6 +8,7 @@ import "./index.css";
 
 import { AuthProvider } from "./auth/AuthProvider";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import { LeagueProvider } from "./contexts/LeagueContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -15,9 +16,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <LeagueProvider>
-            <App />
-          </LeagueProvider>
+          <ToastProvider>
+            <LeagueProvider>
+              <App />
+            </LeagueProvider>
+          </ToastProvider>
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>

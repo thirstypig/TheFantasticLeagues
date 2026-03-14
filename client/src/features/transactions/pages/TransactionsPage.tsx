@@ -4,6 +4,7 @@ import { getTransactions, TransactionEvent, getPlayerSeasonStats, getLeagues, ge
 import { fetchJsonApi } from "../../../api/base";
 import { processWaiverClaims } from "../../waivers/api";
 import { useAuth } from "../../../auth/AuthProvider";
+import { useToast } from "../../../contexts/ToastContext";
 import AddDropTab from "../../roster/components/AddDropTab";
 import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
@@ -14,6 +15,7 @@ import { Button } from "../../../components/ui/button";
 export default function TransactionsPage() {
   const { me } = useAuth();
   const authUser = me?.user;
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'add_drop' | 'waivers' | 'history'>('add_drop');
   const [processing, setProcessing] = useState(false);
   
@@ -28,50 +30,52 @@ export default function TransactionsPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [leagueId, setLeagueId] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [txResp, playersResp, leaguesResp, standingsResp] = await Promise.all([
-             getTransactions({ take: 100 }),
-             getPlayerSeasonStats(), // Current Season
-             getLeagues(),
-             getSeasonStandings()
-        ]);
-        setTransactions(txResp.transactions);
-        setPlayers(playersResp || []);
-        
-        // standingsResp returns { periodIds, rows }
-        setStandings(standingsResp.rows || []);
-        
-        if (leaguesResp.leagues && leaguesResp.leagues.length > 0) {
-            const league = leaguesResp.leagues[0];
-            const lDetail = await getLeague(league.id);
-            const loadedTeams = lDetail.league.teams || [];
-            
-            setLeagueId(league.id);
-            setTeams(loadedTeams);
+  async function loadData() {
+    try {
+      const [txResp, playersResp, leaguesResp, standingsResp] = await Promise.all([
+           getTransactions({ take: 100 }),
+           getPlayerSeasonStats(), // Current Season
+           getLeagues(),
+           getSeasonStandings()
+      ]);
+      setTransactions(txResp.transactions);
+      setPlayers(playersResp || []);
 
-            // Default to first owned team (or first team for admins)
-            const userTeams = authUser?.isAdmin
-              ? loadedTeams
-              : loadedTeams.filter((t: any) => t.ownerUserId === authUser?.id);
-            if (userTeams.length > 0) {
-                setSelectedTeamId(userTeams[0].id);
-            }
-        }
+      // standingsResp returns { periodIds, rows }
+      setStandings(standingsResp.rows || []);
 
-      } catch (err: unknown) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+      if (leaguesResp.leagues && leaguesResp.leagues.length > 0) {
+          const league = leaguesResp.leagues[0];
+          const lDetail = await getLeague(league.id);
+          const loadedTeams = lDetail.league.teams || [];
+
+          setLeagueId(league.id);
+          setTeams(loadedTeams);
+
+          // Default to first owned team (or first team for admins)
+          const uid = Number(authUser?.id);
+          const userTeams = authUser?.isAdmin
+            ? loadedTeams
+            : loadedTeams.filter((t: any) => t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid));
+          if (userTeams.length > 0) {
+              setSelectedTeamId(userTeams[0].id);
+          }
       }
+
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    load();
+  }
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleClaim = async (player: PlayerSeasonStat) => {
       if (!selectedTeamId || !leagueId) {
-          alert("Please select a team to claim for.");
+          toast("Please select a team to claim for.", "warning");
           return;
       }
 
@@ -89,12 +93,13 @@ export default function TransactionsPage() {
               })
           });
 
-          alert(`Successfully claimed ${player.player_name}!`);
-          window.location.reload(); // Simple refresh to show new state
+          toast(`Successfully claimed ${player.player_name}!`, "success");
+          await loadData();
 
       } catch (err: unknown) {
           console.error("Claim error:", err);
-          alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+          const errMsg = err instanceof Error ? err.message : "Unknown error";
+          toast(errMsg, "error");
       }
   };
 
@@ -214,10 +219,11 @@ export default function TransactionsPage() {
                           setProcessing(true);
                           try {
                             const result = await processWaiverClaims(leagueId);
-                            alert(`Waivers processed. ${result.logs.length} claims handled.`);
-                            window.location.reload();
+                            toast(`Waivers processed. ${result.logs.length} claims handled.`, "success");
+                            await loadData();
                           } catch (err: unknown) {
-                            alert(`Error: ${err instanceof Error ? err.message : "Failed to process waivers"}`);
+                            const errMsg = err instanceof Error ? err.message : "Failed to process waivers";
+                            toast(errMsg, "error");
                           } finally {
                             setProcessing(false);
                           }

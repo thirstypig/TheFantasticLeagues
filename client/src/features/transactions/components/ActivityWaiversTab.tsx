@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { processWaiverClaims } from "../../waivers/api";
 import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../contexts/ToastContext";
 
 interface WaiverTeam {
   id: number;
@@ -14,9 +15,11 @@ interface Props {
   sortedWaiverOrder: WaiverTeam[];
   leagueId: number | null;
   isCommissioner: boolean | undefined;
+  onRefresh?: () => void;
 }
 
-export default function ActivityWaiversTab({ sortedWaiverOrder, leagueId, isCommissioner }: Props) {
+export default function ActivityWaiversTab({ sortedWaiverOrder, leagueId, isCommissioner, onRefresh }: Props) {
+  const { toast, confirm } = useToast();
   const [processing, setProcessing] = useState(false);
 
   return (
@@ -71,14 +74,14 @@ export default function ActivityWaiversTab({ sortedWaiverOrder, leagueId, isComm
         <div className="text-center mt-6">
           <Button
             onClick={async () => {
-              if (!confirm("Process all pending waiver claims for this league?")) return;
+              if (!await confirm("Process all pending waiver claims for this league?")) return;
               setProcessing(true);
               try {
                 const result = await processWaiverClaims(leagueId);
-                alert(`Waivers processed. ${result.logs.length} claims handled.`);
-                window.location.reload();
+                toast(`Waivers processed. ${result.logs.length} claims handled.`, "success");
+                onRefresh?.();
               } catch (err: unknown) {
-                alert(`Error: ${err instanceof Error ? err.message : "Failed to process waivers"}`);
+                toast(err instanceof Error ? err.message : "Failed to process waivers", "error");
               } finally {
                 setProcessing(false);
               }

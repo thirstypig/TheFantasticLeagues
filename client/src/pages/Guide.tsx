@@ -212,7 +212,7 @@ export default function Guide() {
 
         <section className="text-center pt-8">
           <p className="text-[var(--lg-text-muted)] text-xs font-bold uppercase tracking-wide opacity-40">
-            Official Rules Document &copy; 2026 FBST
+            Official Rules Document &copy; 2026 The Fantastic Leagues
           </p>
         </section>
       </div>

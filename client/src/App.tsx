@@ -24,6 +24,7 @@ import ForgotPassword from "./features/auth/pages/ForgotPassword";
 import ResetPassword from "./features/auth/pages/ResetPassword";
 
 import Landing from "./features/auth/pages/Landing";
+import Tech from "./pages/Tech";
 import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
@@ -71,6 +72,7 @@ export default function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/payouts" element={<Payouts />} />
                 <Route path="/rules" element={<Rules />} />
+                <Route path="/tech" element={<Tech />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>

@@ -4,6 +4,7 @@ import { Users, MonitorStop, Pause, Play, RotateCcw } from 'lucide-react';
 import { ClientAuctionState } from '../hooks/useAuctionState';
 import NominationQueue from './NominationQueue';
 import { Button } from '../../../components/ui/button';
+import { useToast } from "../../../contexts/ToastContext";
 
 interface Team {
   id: number;
@@ -26,7 +27,8 @@ interface AuctionStageProps {
 }
 
 export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, onPause, onResume, onReset }: AuctionStageProps) {
-  
+  const { confirm } = useToast();
+
   // Computed helpers
   const nomination = serverState?.nomination;
   const teams = serverState?.teams as Team[] || [];
@@ -57,6 +59,19 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
     return () => clearInterval(interval);
   }, [nomination, onFinish]);
 
+
+  // Skeleton while connecting to auction server
+  if (!serverState) {
+      return (
+          <div className="h-full flex flex-col gap-6 p-6 animate-pulse">
+              <div className="h-64 rounded-2xl bg-[var(--lg-tint)]" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="h-48 rounded-2xl bg-[var(--lg-tint)]" />
+                  <div className="h-48 rounded-2xl bg-[var(--lg-tint)]" />
+              </div>
+          </div>
+      );
+  }
 
   if (!nomination) {
       // Waiting State
@@ -174,10 +189,10 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                     <Play size={14} /> RESUME AUCTION
                 </Button>
             )}
-             <Button 
+             <Button
                 variant="red"
-                onClick={() => {
-                    if (window.confirm('Reset auction? This clears ALL records.')) {
+                onClick={async () => {
+                    if (await confirm('Reset auction? This clears ALL records.')) {
                         onReset && onReset();
                     }
                 }}

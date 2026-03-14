@@ -1,6 +1,6 @@
-# FBST API Schema (2025 OGBA)
+# The Fantastic Leagues — API Schema (2025 OGBA)
 
-This document defines the JSON shapes returned by the FBST API.  
+This document defines the JSON shapes returned by the API.  
 All endpoints are prefixed with `/api`.
 
 ---

@@ -17,6 +17,7 @@ import TeamRosterView from "../../teams/components/TeamRosterView";
 import { Eye, Plus } from "lucide-react";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../contexts/ToastContext";
 
 export function TradesPage() {
   const { me } = useAuth();
@@ -68,7 +69,17 @@ export function TradesPage() {
   const myHistory = myTrades.filter((t) => !["PROPOSED", "ACCEPTED"].includes(t.status));
 
   if (!user && !loading) return <div className="p-4">Please log in to trade.</div>;
-  if (loading && !myTrades.length) return <div className="p-4">Loading trades...</div>;
+  if (loading && !myTrades.length)
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10 space-y-6 md:space-y-12">
+        <PageHeader title="Trade Negotiation Hub" subtitle="View current proposals, history, and league trading activity." />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl bg-[var(--lg-tint)] animate-pulse h-24" />
+          ))}
+        </div>
+      </div>
+    );
   if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
 
   return (
@@ -219,7 +230,8 @@ export function TradeCard({
   onViewContext?: () => void;
 }) {
   const isPending = trade.status === "PROPOSED";
-  const isProposer = trade.proposingTeam?.ownerUserId === currentUserId;
+  const isProposer = trade.proposingTeam?.ownerUserId === currentUserId
+    || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
   
   return (
     <div className="lg-card p-4">
@@ -337,7 +349,10 @@ export function LeagueTradeCard({
   isAdmin?: boolean;
   onViewContext?: () => void;
 }) {
-  const isInvolved = trade.proposingTeam?.ownerUserId === currentUserId || trade.acceptingTeam?.ownerUserId === currentUserId;
+  const isInvolved = trade.proposingTeam?.ownerUserId === currentUserId
+    || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId)
+    || trade.acceptingTeam?.ownerUserId === currentUserId
+    || (trade.acceptingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
 
   return (
     <div className="lg-card p-4">
@@ -453,6 +468,7 @@ export function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void;
   const [myTeam, setMyTeam] = useState<any>(null);
   const [partners, setPartners] = useState<any[]>([]);
   
+  const { toast } = useToast();
   const [myAssets, setMyAssets] = useState<any[]>([]);
   const [partnerAssets, setPartnerAssets] = useState<any[]>([]);
 
@@ -463,7 +479,8 @@ export function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void;
           try {
              const detail = await getLeague(ls.id);
              const l = detail.league;
-             const my = l.teams.find((t) => t.owner === user?.email || (user?.id && t.ownerUserId === Number(user.id)));
+             const uid = user?.id ? Number(user.id) : undefined;
+             const my = l.teams.find((t: any) => t.owner === user?.email || (uid && (t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid))));
              
              if (my) {
                setMyTeam(my);
@@ -481,10 +498,17 @@ export function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void;
   const handlePropose = async () => {
     if (!myTeam || !selectedPartnerId) return;
     if (myAssets.length === 0 && partnerAssets.length === 0) {
-      alert("Please select at least one item to trade.");
+      toast("Please select at least one item to trade.", "warning");
       return;
     }
-    
+
+    const allAssets = [...myAssets, ...partnerAssets];
+    const badBudget = allAssets.find(a => a.assetType === "BUDGET" && (!a.amount || a.amount <= 0));
+    if (badBudget) {
+      toast("Budget amounts must be greater than zero.", "warning");
+      return;
+    }
+
     const items = [
       ...myAssets.map(a => ({ senderTeamId: myTeam.id, assetType: a.assetType, playerId: a.playerId, amount: a.amount })),
       ...partnerAssets.map(a => ({ senderTeamId: selectedPartnerId, assetType: a.assetType, playerId: a.playerId, amount: a.amount })),
@@ -496,10 +520,10 @@ export function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void;
          acceptingTeamId: selectedPartnerId,
          items,
        });
-       alert("Trade proposed successfully!");
+       toast("Trade proposed successfully!", "success");
        onSuccess();
     } catch(e: any) {
-      alert("Error: " + e.message);
+      toast(e.message, "error");
     }
   };
 

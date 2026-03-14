@@ -1,6 +1,6 @@
-# FBST API Schema (v0.1)
+# The Fantastic Leagues — API Schema (v0.1)
 
-_Source of truth for JSON shapes returned by the FBST server._
+_Source of truth for JSON shapes returned by the server._
 
 ---
 

@@ -1,5 +1,6 @@
 
-import { fetchJsonApi, fetchJsonPublic, toNum, fmt2, fmt3Avg, API_BASE, MLB_API_BASE } from '../../api/base';
+import { fetchJsonApi, fetchJsonPublic, toNum, API_BASE, MLB_API_BASE } from '../../api/base';
+import { fmt2, fmt3Avg, OHTANI_MLB_ID } from '../../lib/sportConfig';
 import {
   PlayerSeasonStat,
   PlayerProfile,
@@ -42,7 +43,6 @@ function roleFromRow(row: Record<string, unknown>): "H" | "P" {
 }
 
 /** Ohtani special case: mlb_id 660271 should be DH (hitter) + P (pitcher), never TWP */
-const OHTANI_MLB_ID = "660271";
 
 function normalizeTwoWayRow(row: any): PlayerSeasonStat {
   const mlb_id = String(row?.mlb_id ?? row?.mlbId ?? "").trim();

@@ -3,6 +3,7 @@ import { PlayerSeasonStat } from '../../../api';
 import { fetchJsonApi } from '../../../api/base';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+import { useToast } from "../../../contexts/ToastContext";
 
 interface Team {
   id: number;
@@ -34,6 +35,7 @@ interface TeamListTabProps {
 }
 
 export default function TeamListTab({ teams = [], players = [] }: TeamListTabProps) {
+  const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailedRoster, setDetailedRoster] = useState<RosterEntry[] | null>(null);
   const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set());
@@ -89,7 +91,7 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
 
       } catch(err) {
           console.error("Failed to swap pos", err);
-          alert("Failed to update position. Reverting...");
+          toast("Failed to update position. Reverting...", "error");
           try {
               const data = await fetchJsonApi<any>(`/api/teams/${teamId}/summary`);
               setDetailedRoster(data.currentRoster);

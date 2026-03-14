@@ -1,11 +1,13 @@
 // server/src/routes/leagues.ts
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import { prisma } from "../../db/prisma.js";
 import { KeeperPrepService } from "../keeper-prep/services/keeperPrepService.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, requireCommissionerOrAdmin } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
+import { logger } from "../../lib/logger.js";
 import { z } from "zod";
 
 const keepersSchema = z.object({
@@ -253,6 +255,96 @@ router.post("/leagues/:id/my-roster/keepers", requireAuth, validateBody(keepersS
   });
 
   return res.json({ success: true, count: keeperIds.length });
+}));
+
+// ─── Invite Code Endpoints ───
+
+const joinLeagueSchema = z.object({
+  inviteCode: z.string().min(1).max(32),
+});
+
+/**
+ * POST /api/leagues/join
+ * Join a league using an invite code.
+ */
+router.post("/leagues/join", requireAuth, validateBody(joinLeagueSchema), asyncHandler(async (req, res) => {
+  const userId = Number(req.user!.id);
+  const { inviteCode } = req.body;
+
+  const league = await prisma.league.findUnique({
+    where: { inviteCode },
+    select: { id: true, name: true, season: true },
+  });
+
+  if (!league) {
+    return res.status(404).json({ error: "Invalid invite code." });
+  }
+
+  // Check if already a member
+  const existing = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: league.id, userId } },
+  });
+
+  if (existing) {
+    return res.status(409).json({ error: "You are already a member of this league." });
+  }
+
+  await prisma.leagueMembership.create({
+    data: { leagueId: league.id, userId, role: "OWNER" },
+  });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "LEAGUE_JOIN",
+    resourceType: "League",
+    metadata: { leagueId: league.id, inviteCode },
+  });
+
+  return res.json({ league });
+}));
+
+/**
+ * GET /api/leagues/:id/invite-code
+ * Get the current invite code for a league (commissioner/admin only).
+ */
+router.get("/leagues/:id/invite-code", requireAuth, requireCommissionerOrAdmin("id"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.id);
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { inviteCode: true },
+  });
+
+  if (!league) return res.status(404).json({ error: "League not found" });
+
+  return res.json({ inviteCode: league.inviteCode });
+}));
+
+/**
+ * POST /api/leagues/:id/invite-code/regenerate
+ * Generate a new invite code (commissioner/admin only).
+ */
+router.post("/leagues/:id/invite-code/regenerate", requireAuth, requireCommissionerOrAdmin("id"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.id);
+
+  const newCode = randomBytes(4).toString("hex").toUpperCase();
+
+  const league = await prisma.league.update({
+    where: { id: leagueId },
+    data: { inviteCode: newCode },
+    select: { inviteCode: true },
+  });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "INVITE_CODE_REGENERATE",
+    resourceType: "League",
+    metadata: { leagueId },
+  });
+
+  logger.info({ leagueId }, "Invite code regenerated");
+
+  return res.json({ inviteCode: league.inviteCode });
 }));
 
 export const leaguesRouter = router;

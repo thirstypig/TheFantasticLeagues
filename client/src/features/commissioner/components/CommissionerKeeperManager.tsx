@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getLeague } from '../../../api';
 import { getCommissionerRosters, assignRosterKeeper, releaseRosterEntry } from '../api';
 import { fetchJsonApi } from '../../../api/base';
+import { useToast } from "../../../contexts/ToastContext";
 
 interface KeeperManagerProps {
     leagueId: number;
@@ -34,6 +35,7 @@ interface RosterItem {
 }
 
 export default function CommissionerKeeperManager({ leagueId }: KeeperManagerProps) {
+    const { toast, confirm } = useToast();
     const [teams, setTeams] = useState<Team[]>([]);
     const [rosters, setRosters] = useState<RosterItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
     }, [query]);
 
     const handleAddKeeper = async (player: Player) => {
-        if (!selectedTeamId) return alert("Select a team first.");
+        if (!selectedTeamId) { toast("Select a team first.", "error"); return; }
         setProcessing(true);
         try {
              await assignRosterKeeper(leagueId, {
@@ -94,20 +96,20 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
              setSearchResults([]);
              refresh();
         } catch (e) {
-            alert("Failed to add keeper");
+            toast("Failed to add keeper", "error");
         } finally {
             setProcessing(false);
         }
     };
 
     const handleRemove = async (rosterId: number) => {
-        if(!confirm("Remove this keeper?")) return;
+        if(!await confirm("Remove this keeper?")) return;
         setProcessing(true);
          try {
              await releaseRosterEntry(leagueId, rosterId);
              refresh();
         } catch (e) {
-            alert("Failed to remove");
+            toast("Failed to remove", "error");
         } finally {
             setProcessing(false);
         }

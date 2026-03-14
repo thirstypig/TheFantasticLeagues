@@ -1,4 +1,4 @@
-# FBST - Fantasy Baseball Stat Tracker
+# The Fantastic Leagues (FBST)
 
 ## Project Overview
 Fantasy baseball league management tool. Client/server monorepo organized by **feature modules**.

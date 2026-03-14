@@ -7,6 +7,8 @@ import { fetchJsonApi, API_BASE } from "../api/base";
 import { TableCard, Table, THead, Tr, Th, Td } from "../components/ui/TableCard";
 import PageHeader from "../components/ui/PageHeader";
 import { formatAvg } from "../lib/playerDisplay";
+import { joinLeague } from "../features/leagues/api";
+import { useToast } from "../contexts/ToastContext";
 
 function num(v: string | number | null | undefined): number {
   return Number(v) || 0;
@@ -34,12 +36,15 @@ interface Team {
 }
 
 export default function Home() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
+  const { toast } = useToast();
 
   const [myTeam, setMyTeam] = useState<Team | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [stats, setStats] = useState<PlayerSeasonStat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -114,13 +119,57 @@ export default function Home() {
             <div className="text-xs font-medium uppercase">Loading...</div>
           </div>
       ) : !myTeam ? (
-          <div className="lg-card p-16 text-center max-w-2xl mx-auto shadow-2xl animate-in fade-in zoom-in-95 duration-700">
-             <div className="w-20 h-20 rounded-full bg-[var(--lg-tint)] flex items-center justify-center mx-auto mb-8 border border-[var(--lg-border-subtle)] text-4xl">🏳️</div>
-             <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)] mb-4">No Team</h2>
-             <p className="text-sm font-medium text-[var(--lg-text-secondary)] mb-10 leading-relaxed opacity-60">You are not currently on a team. Join a league to get started.</p>
-             <Link to="/guide" className="lg-button lg-button-primary px-10 py-3 shadow-2xl shadow-blue-500/20">
-               View Guide
-             </Link>
+          <div className="lg-card p-8 md:p-16 text-center max-w-2xl mx-auto shadow-2xl animate-in fade-in zoom-in-95 duration-700">
+             <div className="w-20 h-20 rounded-full bg-[var(--lg-tint)] flex items-center justify-center mx-auto mb-8 border border-[var(--lg-border-subtle)] text-4xl">
+               <svg className="w-10 h-10 text-[var(--lg-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+               </svg>
+             </div>
+             <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)] mb-2">Welcome, {user.name || user.email}</h2>
+             <p className="text-sm font-medium text-[var(--lg-text-secondary)] mb-8 leading-relaxed opacity-60">
+               You're not on a team yet. Enter an invite code from your league commissioner to join.
+             </p>
+
+             <form
+               onSubmit={async (e) => {
+                 e.preventDefault();
+                 const code = inviteCode.trim();
+                 if (!code) return;
+                 setJoining(true);
+                 try {
+                   const res = await joinLeague(code);
+                   toast(`Joined ${res.league.name}!`, "success");
+                   setInviteCode("");
+                   await refresh();
+                 } catch (err) {
+                   toast(err instanceof Error ? err.message : "Failed to join league", "error");
+                 } finally {
+                   setJoining(false);
+                 }
+               }}
+               className="flex items-center gap-3 max-w-sm mx-auto mb-8"
+             >
+               <input
+                 type="text"
+                 value={inviteCode}
+                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                 placeholder="Enter invite code"
+                 className="flex-1 h-12 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-mono tracking-widest text-center uppercase"
+               />
+               <button
+                 type="submit"
+                 disabled={joining || !inviteCode.trim()}
+                 className="h-12 px-6 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
+               >
+                 {joining ? "Joining..." : "Join"}
+               </button>
+             </form>
+
+             <p className="text-xs text-[var(--lg-text-muted)] opacity-50">
+               Ask your league commissioner for an invite code, or{" "}
+               <Link to="/guide" className="text-[var(--lg-accent)] hover:underline">view the guide</Link>{" "}
+               to learn more.
+             </p>
           </div>
       ) : (
           <div className="space-y-6 md:space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -252,7 +301,7 @@ function BuildInfoPanel() {
   return (
     <div className="fixed bottom-4 right-6 pointer-events-none z-50">
       <div className="text-xs font-medium uppercase tracking-[0.5em] text-[var(--lg-text-muted)] opacity-20 select-none">
-        FBST // {__COMMIT_HASH__}
+        TFL // {__COMMIT_HASH__}
       </div>
     </div>
   );

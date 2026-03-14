@@ -75,6 +75,7 @@ describe("PlayerDetailModal", () => {
     );
 
     expect(screen.getByText("Mike Trout")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
   });
 
   it("shows Hitting badge for hitter", async () => {
@@ -83,6 +84,7 @@ describe("PlayerDetailModal", () => {
     );
 
     expect(screen.getByText("Hitting")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
   });
 
   it("shows position info", async () => {
@@ -91,6 +93,7 @@ describe("PlayerDetailModal", () => {
     );
 
     expect(screen.getByText("CF")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
   });
 
   it("fetches player data on mount", async () => {
@@ -146,6 +149,8 @@ describe("PlayerDetailModal", () => {
       <PlayerDetailModal player={mockPlayer} onClose={onClose} open={true} />
     );
 
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
+
     // Click the overlay (the outermost div with role="dialog")
     const dialog = screen.getByRole("dialog");
     fireEvent.mouseDown(dialog);
@@ -158,6 +163,8 @@ describe("PlayerDetailModal", () => {
     render(
       <PlayerDetailModal player={mockPlayer} onClose={onClose} open={true} />
     );
+
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
 
     fireEvent.keyDown(window, { key: "Escape" });
 
@@ -214,5 +221,6 @@ describe("PlayerDetailModal", () => {
     );
 
     expect(screen.getByText("Pitching")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Loading...")).not.toBeInTheDocument());
   });
 });

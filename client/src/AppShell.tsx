@@ -15,8 +15,8 @@ export default function AppShell() {
       {/* Sidebar */}
       <aside className="w-56 shrink-0 border-r border-[var(--lg-border-faint)] px-4 py-6">
         <div className="mb-8">
-          <div className="text-lg font-semibold">FBST</div>
-          <div className="text-xs text-[var(--lg-text-muted)]">Fantasy Baseball Stat Tool</div>
+          <div className="text-lg font-semibold">TFL</div>
+          <div className="text-xs text-[var(--lg-text-muted)]">The Fantastic Leagues</div>
         </div>
 
         <nav className="space-y-2">

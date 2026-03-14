@@ -1,6 +1,63 @@
-# FBST Development Feedback Log
+# The Fantastic Leagues — Development Feedback Log
 
 This file tracks session-over-session progress, pending work, and concerns. Review at the start of each session.
+
+---
+
+## Session 2026-03-13 (Session 14) — Data Fixes & Migration Sync
+
+### Completed
+- **Unmatched players resolved**: Ran `scripts/fix-unmatched-2025.ts` — only 1 player remaining ("J. Deyer"), identified as Jack Dreyer (MLB ID 676263) via typo correction. Updated script. All 1,305 2025 archive player-stat rows now matched (0 unmatched).
+- **Archive sync re-run**: `POST /api/archive/2025/sync` — updated 1,252 player records with MLB stats.
+- **Prisma migration drift fixed**:
+  - 2 migrations already applied to DB but untracked (`remove_viewer_role`, `add_player_stats_period`) — marked as applied via `prisma migrate resolve`
+  - 2 migrations not yet applied (`add_cancelled_claim_status`, `add_league_invite_code`) — deployed via `prisma migrate deploy`
+  - `prisma migrate status` now reports "Database schema is up to date!"
+- **PlayerDetailModal act() warnings fixed**:
+  - Added `isVisible` guard to data-fetch useEffect in `PlayerDetailModal.tsx` — prevents API calls when modal is hidden
+  - Added `await waitFor` in 6 test cases to properly await async state updates
+  - Zero act() warnings in test output now
+
+### Pending / Next Steps
+- (none identified)
+
+### Test Results
+- Server: 20 files, 289 tests passing
+- Client: 4 files, 85 tests passing
+- Total: 374 tests, all green
+- TypeScript: clean (both client and server)
+- Zero act() warnings
+
+---
+
+## Session 2026-03-12 (Session 13) — Cleanup & Hardening
+
+### Completed
+- **Zod validation gaps**: Added `validateBody` schemas to `POST /commissioner/:leagueId/end-auction` (empty schema), `POST /admin/sync-mlb-players` (season schema), `POST /admin/league/:leagueId/reset-rosters` (empty schema). Import-rosters uses `express.text()` with existing string validation — left as-is.
+- **Trade ownership hardening**: Added self-accept prevention in `assertCounterpartyAccess()` — proposers who co-own a counterparty team can no longer accept/reject their own trades.
+- **Waiver DELETE hardening** (5 fixes):
+  1. Added `CANCELLED` to `ClaimStatus` enum (migration `20260312000000_add_cancelled_claim_status`)
+  2. Status guard: only `PENDING` claims can be cancelled
+  3. Soft-cancel: changed from `prisma.waiverClaim.delete()` to `.update({ status: "CANCELLED" })`
+  4. Commissioner bypass: commissioners of the claim's league can cancel claims
+  5. Audit trail: added `writeAuditLog("WAIVER_CANCEL", ...)` call
+- **Unmatched players script**: Created `scripts/fix-unmatched-2025.ts` with smarter name parsing (reversed formats, multi-word last names, no-dot names) and broader MLB API search. Script ready to run.
+- **Stale worktrees**: Already clean (only `.DS_Store` in `.claude/worktrees/`)
+
+### Pending / Next Steps
+- Run `scripts/fix-unmatched-2025.ts` to resolve 46 unmatched 2025 archive players
+- After script, re-run sync: `POST /api/archive/2025/sync`
+- Address Prisma migration drift (DB schema is ahead of migration history)
+
+### Concerns / Tech Debt
+- Prisma migration history is significantly drifted from the actual DB — many tables/columns were added directly. Consider a baseline migration reset.
+- PlayerDetailModal tests have `act(...)` warnings (pre-existing)
+
+### Test Results
+- Server: 20 files, 289 tests passing
+- Client: 4 files, 85 tests passing
+- Total: 374 tests, all green
+- TypeScript: clean (both client and server)
 
 ---
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../../../auth/AuthProvider";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../contexts/ToastContext";
 
 import overviewIcon from '../../../assets/icons/overview.svg';
 import rosterIcon from '../../../assets/icons/roster.svg';
@@ -39,10 +40,8 @@ interface RuleConfig {
   dependsOn?: { key: string; value: string };
 }
 
-// --- Constants ---
-const HITTING_CATS = ["R", "HR", "RBI", "SB", "AVG", "OPS", "OPS+", "WAR", "H", "2B", "3B", "BB", "K", "TB", "OBP", "SLG"];
-const PITCHING_CATS = ["W", "SV", "K", "ERA", "ERA+", "WHIP", "WAR", "QS", "HLD", "IP", "CG", "SHO", "L", "BB", "HR"];
-const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "DH", "P", "SP", "RP", "BN", "IL"];
+// --- Constants (from centralized sportConfig) ---
+import { HITTING_CATS, PITCHING_CATS, POSITIONS } from "../../../lib/sportConfig";
 
 const RULE_CONFIGS: Record<string, RuleConfig> = {
   team_count: { type: 'slider', min: 4, max: 16, step: 1 },
@@ -94,6 +93,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 // --- Component ---
 export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagueId: number; canEdit?: boolean; onSaved?: () => void }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [rules, setRules] = useState<LeagueRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +158,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
       setEditMode(false);
       onSaved?.();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed to save");
+      toast(e instanceof Error ? e.message : "Failed to save", "error");
     } finally {
       setSaving(false);
     }

@@ -10,6 +10,7 @@ import MyNominationQueue from '../components/MyNominationQueue';
 import { getPlayerSeasonStats, type PlayerSeasonStat, getLeagues, getLeague, getMe } from '../../../api';
 import { useAuctionState } from '../hooks/useAuctionState';
 import { useNominationQueue } from '../hooks/useNominationQueue';
+import { useToast } from "../../../contexts/ToastContext";
 
 // MOCK for verify
 const MOCK_LOG = [
@@ -17,6 +18,7 @@ const MOCK_LOG = [
     { type: 'WIN', amount: 45, playerName: 'Star Player', teamName: 'Big Spender', timestamp: Date.now() }
 ];
 export default function Auction() {
+  const { toast } = useToast();
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
   const [initLoading, setInitLoading] = useState(true);
   
@@ -51,7 +53,9 @@ export default function Auction() {
                 setActiveLeagueId(firstLeague.id);
                 const detail = await getLeague(firstLeague.id);
                 if (!mounted) return;
-                const myTeam = detail.league.teams.find((t: any) => t.ownerUserId === myUserId);
+                const myTeam = detail.league.teams.find((t: any) =>
+                  t.ownerUserId === myUserId || (t.ownerships || []).some((o: any) => o.userId === myUserId)
+                );
                 if (myTeam) {
                     setMyTeamId(myTeam.id);
                 }
@@ -83,7 +87,7 @@ export default function Auction() {
   // Handler: Nominate
   const handleNominate = (player: PlayerSeasonStat) => {
       if (!myTeamId) {
-          alert("You are not part of this league/auction.");
+          toast("You are not part of this league/auction.", "error");
           return;
       }
       if (!activeLeagueId) return;
@@ -122,7 +126,26 @@ export default function Auction() {
       }));
   }, [auctionState?.teams, myTeamId]);
   
-  if (initLoading) return <div className="p-8 text-center text-[var(--lg-text-muted)]">Loading auction room...</div>;
+  if (initLoading) return (
+    <div className="p-4 md:p-8 space-y-6 animate-pulse">
+      {/* Header skeleton */}
+      <div className="h-8 w-48 rounded-2xl bg-[var(--lg-tint)]" />
+      <div className="h-4 w-72 rounded-2xl bg-[var(--lg-tint)]" />
+      {/* Two-column layout skeleton */}
+      <div className="flex flex-col lg:flex-row gap-6 mt-6">
+        {/* Left panel ~60% */}
+        <div className="flex-[3] space-y-4">
+          <div className="h-64 rounded-2xl bg-[var(--lg-tint)]" />
+          <div className="h-40 rounded-2xl bg-[var(--lg-tint)]" />
+        </div>
+        {/* Right panel ~40% */}
+        <div className="flex-[2] space-y-4">
+          <div className="h-10 rounded-2xl bg-[var(--lg-tint)]" />
+          <div className="h-80 rounded-2xl bg-[var(--lg-tint)]" />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <AuctionLayout

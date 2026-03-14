@@ -120,7 +120,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
   }, [mlbId]);
 
   useEffect(() => {
-    if (!player || !mlbId) return;
+    if (!player || !mlbId || !isVisible) return;
 
     let cancelled = false;
     setLoading(true);
@@ -150,7 +150,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [player, mlbId, mode]);
+  }, [player, mlbId, mode, isVisible]);
 
   useEffect(() => {
     if (!player) return;
@@ -309,7 +309,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
             Press <span className="text-[var(--lg-text-primary)]">ESC</span> to close
           </div>
           <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-40">
-            FBST
+            TFL
           </div>
         </div>
       </div>

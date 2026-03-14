@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchJsonApi } from '../../../api/base';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+import { useToast } from "../../../contexts/ToastContext";
 
 interface RosterEntry {
   id: number;
@@ -18,6 +19,7 @@ interface RosterManagementFormProps {
 }
 
 export default function RosterManagementForm({ year, teamCodes }: RosterManagementFormProps) {
+  const { confirm } = useToast();
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<string>(teamCodes[0] || '');
@@ -76,7 +78,7 @@ export default function RosterManagementForm({ year, teamCodes }: RosterManageme
   };
 
   const handleDelete = async (id: number, playerName: string) => {
-    if (!window.confirm(`Delete ${playerName} from roster?`)) return;
+    if (!await confirm(`Delete ${playerName} from roster?`)) return;
 
     try {
       await fetchJsonApi(`/api/roster/${id}`, { method: 'DELETE' });

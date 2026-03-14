@@ -1,4 +1,4 @@
-# FBST - Fantasy Baseball Stat Tracker
+# The Fantastic Leagues (FBST)
 
 Fantasy baseball league management tool for the OGBA league. Full-stack monorepo with React client and Express API server, organized by domain feature modules.
 

@@ -276,6 +276,7 @@ describe("handleDevLogin", () => {
     expect(mockSupabase.auth.admin.createUser).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
       email: "admin@example.com",
+      password: "TestPass!456",
     });
   });
 
@@ -300,6 +301,7 @@ describe("handleDevLogin", () => {
     expect(mockSupabase.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
       email: "admin@example.com",
+      password: "TestPass!456",
     });
   });
 

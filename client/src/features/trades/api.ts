@@ -29,8 +29,8 @@ export interface TradeProposal {
   // Compat fields used by TradesPage (mapped from proposer/items)
   proposingTeamId?: number;
   acceptingTeamId?: number;
-  proposingTeam?: { id: number; name: string; code: string; ownerUserId?: number };
-  acceptingTeam?: { id: number; name: string; code: string; ownerUserId?: number };
+  proposingTeam?: { id: number; name: string; code: string; ownerUserId?: number; ownerships?: { userId: number }[] };
+  acceptingTeam?: { id: number; name: string; code: string; ownerUserId?: number; ownerships?: { userId: number }[] };
 }
 
 export async function getTrades(leagueId: number, _view?: "all" | "my"): Promise<{ trades: TradeProposal[] }> {

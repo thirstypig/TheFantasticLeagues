@@ -54,6 +54,7 @@ enum ClaimStatus {
   SUCCESS
   FAILED_OUTBID
   FAILED_INVALID
+  CANCELLED
 }
 
 enum SeasonStatus {
@@ -104,6 +105,7 @@ model League {
 
   isPublic   Boolean @default(false)
   publicSlug String? @unique
+  inviteCode String? @unique
 
   // Trade Settings
   tradeReviewPolicy String @default("COMMISSIONER") // COMMISSIONER, LEAGUE_VOTE

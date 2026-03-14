@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getMyRoster, saveKeepers } from "../../leagues/api";
 import PageHeader from "../../../components/ui/PageHeader";
+import { useToast } from "../../../contexts/ToastContext";
 
 // Helper to format currency
 const fmtMoney = (n: number) => {
@@ -11,6 +12,7 @@ const fmtMoney = (n: number) => {
 export default function KeeperSelection() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast, confirm } = useToast();
   const leagueId = Number(id);
 
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,7 @@ export default function KeeperSelection() {
           next.delete(rosterId);
       } else {
           if (next.size >= keeperLimit) {
-              alert(`Keeper limit is ${keeperLimit}.`);
+              toast(`Keeper limit is ${keeperLimit}.`, "warning");
               return;
           }
           next.add(rosterId);
@@ -80,15 +82,14 @@ export default function KeeperSelection() {
   };
 
   const handleSave = async () => {
-      if (!confirm(`Confirm ${count} keepers for ${fmtMoney(totalCost)}?`)) return;
-      
+      if (!await confirm(`Confirm ${count} keepers for ${fmtMoney(totalCost)}?`)) return;
+
       try {
           setLoading(true);
           await saveKeepers(leagueId, Array.from(selectedIds));
-          alert("Keepers saved successfully!");
-          // Optional: navigate back or reload?
+          toast("Keepers saved successfully!", "success");
       } catch (err: unknown) {
-          alert("Error saving: " + (err instanceof Error ? err.message : "Unknown error"));
+          toast("Error saving: " + (err instanceof Error ? err.message : "Unknown error"), "error");
       } finally {
           setLoading(false);
       }

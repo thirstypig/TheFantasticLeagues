@@ -73,3 +73,22 @@ export async function saveKeepers(leagueId: number, keeperIds: number[]): Promis
         body: JSON.stringify({ keeperIds })
     });
 }
+
+// ─── Invite Code ───
+
+export async function joinLeague(inviteCode: string): Promise<{ league: { id: number; name: string; season: number } }> {
+    return fetchJsonApi(`${API_BASE}/leagues/join`, {
+        method: "POST",
+        body: JSON.stringify({ inviteCode }),
+    });
+}
+
+export async function getInviteCode(leagueId: number): Promise<{ inviteCode: string | null }> {
+    return fetchJsonApi(`${API_BASE}/leagues/${leagueId}/invite-code`);
+}
+
+export async function regenerateInviteCode(leagueId: number): Promise<{ inviteCode: string }> {
+    return fetchJsonApi(`${API_BASE}/leagues/${leagueId}/invite-code/regenerate`, {
+        method: "POST",
+    });
+}

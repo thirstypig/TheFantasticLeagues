@@ -10,6 +10,7 @@ import {
   type Season,
   type SeasonStatus,
 } from "../../seasons/api";
+import { useToast } from "../../../contexts/ToastContext";
 
 function cls(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export default function SeasonManager({ leagueId }: Props) {
+  const { confirm } = useToast();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function SeasonManager({ leagueId }: Props) {
 
   async function onTransition(seasonId: number, nextStatus: SeasonStatus) {
     const warning = TRANSITION_WARNINGS[nextStatus];
-    if (warning && !window.confirm(warning)) return;
+    if (warning && !await confirm(warning)) return;
 
     setBusy(true);
     setError(null);
@@ -136,7 +138,7 @@ export default function SeasonManager({ leagueId }: Props) {
   }
 
   async function onDeletePeriod(periodId: number) {
-    if (!window.confirm("Delete this period?")) return;
+    if (!await confirm("Delete this period?")) return;
     setBusy(true);
     try {
       await deletePeriod(periodId);

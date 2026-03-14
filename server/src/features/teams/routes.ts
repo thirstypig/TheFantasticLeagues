@@ -47,8 +47,10 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
       name: true,
       code: true,
       owner: true,
+      ownerUserId: true,
       budget: true,
       leagueId: true,
+      ownerships: { select: { userId: true } },
     },
   });
   res.json({ teams });

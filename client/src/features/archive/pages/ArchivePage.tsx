@@ -1,5 +1,5 @@
 // client/src/pages/ArchivePage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getArchiveSeasons, getArchivePeriods, getArchivePeriodStats, getArchiveDraftResults, updateArchiveTeamName, fmtRate } from '../../../api';
 import { fetchJsonApi } from '../../../api/base';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
@@ -11,6 +11,7 @@ import ArchiveAdminPanel from '../../admin/components/ArchiveAdminPanel';
 import { Button } from "../../../components/ui/button";
 import AIInsightsModal from '../../../components/AIInsightsModal';
 import PageHeader from '../../../components/ui/PageHeader';
+import { useToast } from "../../../contexts/ToastContext";
 import {
   SeasonTable, TeamSeasonRow, PeriodMeta,
   PeriodSummaryTable, TeamPeriodSummaryRow,
@@ -93,7 +94,8 @@ const KEEPER_MAP: Record<number, Record<string, string[]>> = {
 
 export default function ArchivePage() {
   const { user, isAdmin } = useAuth();
-  
+  const { toast, confirm } = useToast();
+
   const [seasons, setSeasons] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [periods, setPeriods] = useState<any[]>([]);
@@ -131,6 +133,28 @@ export default function ArchivePage() {
 
   const canEdit = isAdmin;
 
+  // Re-fetch data for the currently selected year/period without a full page reload
+  const reloadData = useCallback(async () => {
+    if (!selectedYear) return;
+    try {
+      setLoading(true);
+      const [periodsData, statsData] = await Promise.all([
+        getArchivePeriods(selectedYear),
+        selectedPeriod ? getArchivePeriodStats(selectedYear, selectedPeriod) : Promise.resolve({ stats: [] }),
+      ]);
+      setPeriods(periodsData.periods || []);
+      setStats(statsData.stats || []);
+      if (statsData.stats) {
+        const teams = new Set<string>(statsData.stats.map((s: PlayerStat) => s.teamCode));
+        setExpandedTeams(teams);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to reload data");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear, selectedPeriod]);
+
   const handleRecalculate = async () => {
     if (!selectedYear || recalculating) return;
     
@@ -144,8 +168,8 @@ export default function ArchivePage() {
         ? `Period ${period} start date`
         : 'all periods';
     
-    if (!confirm(`Recalculate MLB team data using ${contextMsg}?`)) return;
-    
+    if (!await confirm(`Recalculate MLB team data using ${contextMsg}?`)) return;
+
     try {
       setRecalculating(true);
       const result = await fetchJsonApi<any>(`/api/archive/${selectedYear}/recalculate`, {
@@ -153,13 +177,13 @@ export default function ArchivePage() {
         body: JSON.stringify({ tab, periodNumber: period }),
       });
       if (result.success) {
-        alert(`Recalculation complete! Updated ${result.updated} player records for ${result.tab === 'draft' ? 'Auction Draft' : result.periodNumber ? `Period ${result.periodNumber}` : 'all periods'}.`);
-        window.location.reload();
+        toast(`Recalculation complete! Updated ${result.updated} player records for ${result.tab === 'draft' ? 'Auction Draft' : result.periodNumber ? `Period ${result.periodNumber}` : 'all periods'}.`, "success");
+        await reloadData();
       } else {
-        alert(`Recalculation failed: ${result.error}`);
+        toast(`Recalculation failed: ${result.error}`, "error");
       }
     } catch (err: unknown) {
-      alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
+      toast(`Error: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
     } finally {
       setRecalculating(false);
     }
@@ -442,9 +466,10 @@ export default function ArchivePage() {
 
     try {
       await updateArchiveTeamName(selectedYear, editingTeam.teamCode, newName);
-      window.location.reload();
+      toast("Team name updated.", "success");
+      await reloadData();
     } catch (err: unknown) {
-      alert(`Error updating team name: ${err instanceof Error ? err.message : "Unknown error"}`);
+      toast(`Error updating team name: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
     }
   };
 

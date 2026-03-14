@@ -655,7 +655,7 @@ router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrA
  * 2. Creates initial RosterEntry snapshot for "Start of Season"
  * 3. Updates League status (if we had one) or Rule?
  */
-router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissionerOrAdmin(), validateBody(z.object({})), asyncHandler(async (req, res) => {
         const leagueId = Number(req.params.leagueId);
 
         // snapshot rosters

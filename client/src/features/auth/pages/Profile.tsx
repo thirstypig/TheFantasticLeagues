@@ -3,9 +3,11 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { updateProfile } from "../api";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/button";
+import { useToast } from "../../../contexts/ToastContext";
 
 export default function Profile() {
   const { me, refresh } = useAuth();
+  const { toast } = useToast();
   const user = me?.user;
 
   const [name, setName] = useState(user?.name || "");
@@ -38,7 +40,7 @@ export default function Profile() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: unknown) {
-      alert(`Error: ${err instanceof Error ? err.message : "Failed to save profile"}`);
+      toast(err instanceof Error ? err.message : "Failed to save profile", "error");
     } finally {
       setSaving(false);
     }

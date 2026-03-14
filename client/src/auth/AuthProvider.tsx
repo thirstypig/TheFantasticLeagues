@@ -38,7 +38,6 @@ type AuthCtx = {
   refresh: () => Promise<void>;
 
   loginWithGoogle: () => Promise<void>;
-  loginWithYahoo: () => Promise<void>;
   loginWithPassword: (email: string, password: string) => Promise<void>;
 
   // Backwards compatibility shim
@@ -132,15 +131,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
-  async function loginWithYahoo() {
-     await supabase.auth.signInWithOAuth({
-      provider: "yahoo" as any,
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-  }
-  
   async function loginWithPassword(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -165,7 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       refresh,
       loginWithGoogle,
-      loginWithYahoo,
       loginWithPassword,
       loginWithGoogleCredential,
       logout,
