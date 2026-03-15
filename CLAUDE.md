@@ -252,32 +252,37 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (289 server + 85 client = 374 tests)
+### Current Test Coverage (302 server + 85 client = 387 tests)
 
-**Server (289 tests):**
-- `server/src/lib/__tests__/utils.test.ts` — 35 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
+**Server (302 tests):**
+- `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
 - `server/src/middleware/__tests__/auth.test.ts` — 6 tests (requireAuth, requireAdmin)
-- `server/src/middleware/__tests__/authExtended.test.ts` — 29 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, etc.)
+- `server/src/middleware/__tests__/authExtended.test.ts` — 27 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, etc.)
 - `server/src/middleware/__tests__/asyncHandler.test.ts` — 4 tests
 - `server/src/middleware/__tests__/validate.test.ts` — 7 tests
-- `server/src/features/auth/__tests__/routes.test.ts` — 12 tests (handleAuthHealth, handleGetMe, handleDevLogin)
-- `server/src/features/auction/__tests__/routes.test.ts` — 21 tests (bid, finish, reset, init)
+- `server/src/features/auth/__tests__/routes.test.ts` — 16 tests (handleAuthHealth, handleGetMe, handleDevLogin)
+- `server/src/features/auction/__tests__/routes.test.ts` — 23 tests (bid, finish, reset, init, position limits)
+- `server/src/features/auction/__tests__/auctionPersistence.test.ts` — 8 tests (save/load/clear round-trip)
+- `server/src/features/auction/__tests__/autoFinish.test.ts` — 3 tests (timer fire, cancel on pause, reset on bid)
 - `server/src/features/trades/__tests__/routes.test.ts` — 13 tests (propose, vote, process)
 - `server/src/features/waivers/__tests__/routes.test.ts` — 12 tests (submit, process, cancel)
 - `server/src/__tests__/integration/auction-roster.test.ts` — 9 tests (finish→roster, budget deduction, queue)
+- `server/src/__tests__/integration/auction-simulation.test.ts` — 29 tests (full auction lifecycle, queue rotation, completion)
 - `server/src/__tests__/integration/trade-roster.test.ts` — 10 tests (player movement, budget, atomicity)
 - `server/src/__tests__/integration/waiver-roster.test.ts` — 11 tests (FAAB ordering, budget, drop player)
 - `server/src/features/seasons/__tests__/seasonService.test.ts` — 14 tests (transitions, auto-lock, validation)
 - `server/src/features/seasons/__tests__/routes.test.ts` — 5 tests (router export, service integration)
+- `server/src/features/commissioner/__tests__/CommissionerService.test.ts` — 7 tests
+- `server/src/features/teams/__tests__/routes.test.ts` — 4 tests
+- `server/src/__tests__/integration/transaction-claims.test.ts` — 25 tests
 
 **Client (85 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
-- `client/src/lib/__tests__/baseballUtils.test.ts` — 17 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition)
+- `client/src/lib/__tests__/baseballUtils.test.ts` — 32 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition, positionToSlots)
 - `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)
 - `client/src/features/standings/__tests__/StatsTables.test.tsx` — 22 tests (table rendering, sorting)
-- Additional 15 tests across component test files
 
 ### Running Tests
 ```bash

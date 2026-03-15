@@ -119,6 +119,7 @@ model League {
   trades            Trade[]
   seasons           Season[]
   periods           Period[]
+  auctionSession    AuctionSession?
 
   @@unique([name, season])
 }
@@ -647,6 +648,15 @@ model HistoricalStanding {
 
   @@unique([seasonId, teamCode])
   @@index([seasonId])
+}
+
+model AuctionSession {
+  id        Int      @id @default(autoincrement())
+  leagueId  Int      @unique
+  state     Json
+  updatedAt DateTime @default(now()) @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {

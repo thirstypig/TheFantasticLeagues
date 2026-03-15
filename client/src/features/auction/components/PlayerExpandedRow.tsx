@@ -145,19 +145,11 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                         </button>
                     )}
                     {!isTaken && onQueue && (
-                        <button 
+                        <button
                             onClick={() => onQueue(player.mlb_id || '')}
                             className={`text-sm font-semibold bg-[var(--lg-bg-secondary)] border border-[var(--lg-table-border)] text-[var(--lg-text-primary)] px-4 py-2 rounded shadow hover:bg-[var(--lg-glass-bg-hover)] active:scale-95 transition-all ${isQueued?.(player.mlb_id || '') ? 'text-[var(--lg-success)] border-[var(--lg-success)]' : ''}`}
                         >
                             {isQueued?.(player.mlb_id || '') ? '✓ Queued' : '+ Queue'}
-                        </button>
-                    )}
-                    {!isTaken && onNominate && (
-                        <button 
-                            onClick={() => onNominate(player)}
-                            className="text-sm font-semibold bg-[var(--lg-text-primary)] text-[var(--lg-glass-bg)] px-4 py-2 rounded shadow hover:opacity-90 active:scale-95 transition-all"
-                        >
-                            Nominate
                         </button>
                     )}
                     {isTaken && (

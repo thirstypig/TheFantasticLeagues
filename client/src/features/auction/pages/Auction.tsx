@@ -12,11 +12,6 @@ import { useAuctionState } from '../hooks/useAuctionState';
 import { useNominationQueue } from '../hooks/useNominationQueue';
 import { useToast } from "../../../contexts/ToastContext";
 
-// MOCK for verify
-const MOCK_LOG = [
-    { type: 'WIN', amount: 3, playerName: 'Test Player', teamName: 'Test Team', timestamp: Date.now() },
-    { type: 'WIN', amount: 45, playerName: 'Star Player', teamName: 'Big Spender', timestamp: Date.now() }
-];
 export default function Auction() {
   const { toast } = useToast();
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
@@ -25,6 +20,7 @@ export default function Auction() {
   // Auth / Context State
   const [myTeamId, setMyTeamId] = useState<number | undefined>(undefined);
   const [activeLeagueId, setActiveLeagueId] = useState<number | null>(null);
+  const [isCommissioner, setIsCommissioner] = useState(false);
 
   // Use the Hook
   const { state: auctionState, actions } = useAuctionState(activeLeagueId);
@@ -51,6 +47,13 @@ export default function Auction() {
 
             if (firstLeague) {
                 setActiveLeagueId(firstLeague.id);
+
+                // Check commissioner role from memberships
+                const membership = meRes.user?.memberships?.find((m: any) => m.leagueId === firstLeague.id);
+                if (membership?.role === 'COMMISSIONER' || meRes.user?.isAdmin) {
+                    setIsCommissioner(true);
+                }
+
                 const detail = await getLeague(firstLeague.id);
                 if (!mounted) return;
                 const myTeam = detail.league.teams.find((t: any) =>
@@ -71,21 +74,35 @@ export default function Auction() {
     return () => { mounted = false; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ensure Auction Server is Initialized for this League
-  useEffect(() => {
-      // One-time check: if we have a league ID but server says null, trying initing.
-      // This is a convenience for now.
-      if (activeLeagueId && auctionState && auctionState.leagueId !== activeLeagueId && auctionState.status === 'not_started') {
-           // We only auto-init if we are confident? Or maybe providing a "Start Auction" button is better.
-           // For audit "continue", let's leave it to manual or existing state.
-           // But wait, if server is fresh restart, state is empty. We need to init.
-           actions.initAuction(activeLeagueId);
-      }
-  }, [activeLeagueId, auctionState?.leagueId, auctionState?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Show "Start Auction" button instead of auto-init — commissioner explicitly starts
+  const needsInit = activeLeagueId && auctionState && auctionState.status === 'not_started' && isCommissioner;
 
+  // Detect if it's my turn to nominate
+  const isMyTurnToNominate = auctionState?.status === 'nominating'
+    && myTeamId
+    && auctionState.queue?.[auctionState.queueIndex] === myTeamId;
+
+  // Auto-nominate from personal queue when it's my turn
+  useEffect(() => {
+    if (!isMyTurnToNominate || myQueue.length === 0 || players.length === 0) return;
+
+    // Find the first queued player that's still available
+    const candidate = myQueue
+      .map(id => players.find(p => String(p.mlb_id) === id))
+      .find(p => p && !p.ogba_team_code && !p.team);
+
+    if (candidate) {
+      // Small delay so the UI shows "Your turn" before auto-nominating
+      const timer = setTimeout(() => {
+        handleNominate(candidate);
+        removeFromQueue(String(candidate.mlb_id));
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isMyTurnToNominate, myQueue, players]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handler: Nominate
-  const handleNominate = (player: PlayerSeasonStat) => {
+  const handleNominate = async (player: PlayerSeasonStat) => {
       if (!myTeamId) {
           toast("You are not part of this league/auction.", "error");
           return;
@@ -93,25 +110,38 @@ export default function Auction() {
       if (!activeLeagueId) return;
 
       // Ask for opening bid? Default $1
-      const startBid = 1; 
+      const startBid = 1;
 
-      actions.nominate({
-          nominatorTeamId: myTeamId,
-          playerId: player.mlb_id || '',
-          playerName: player.player_name || 'Unknown',
-          startBid: startBid,
-          positions: player.positions || (player.is_pitcher ? 'P' : 'UT'),
-          team: player.mlb_team || 'FA',
-          isPitcher: Boolean(player.is_pitcher)
-      });
+      try {
+          await actions.nominate({
+              nominatorTeamId: myTeamId,
+              playerId: player.mlb_id || '',
+              playerName: player.player_name || 'Unknown',
+              startBid: startBid,
+              positions: player.positions || (player.is_pitcher ? 'P' : 'UT'),
+              team: player.mlb_team || 'FA',
+              isPitcher: Boolean(player.is_pitcher)
+          });
+      } catch (e: any) {
+          const msg = e?.message || "Nomination failed";
+          toast(msg, "error");
+      }
   };
 
-  const handleBid = (amount: number) => {
-      if (!myTeamId) return;
-      actions.bid({
-          bidderTeamId: myTeamId,
-          amount
-      });
+  const handleBid = async (amount: number) => {
+      if (!myTeamId) {
+          toast("You are not part of this league/auction.", "error");
+          return;
+      }
+      try {
+          await actions.bid({
+              bidderTeamId: myTeamId,
+              amount
+          });
+      } catch (e: any) {
+          const msg = e?.message || "Bid failed";
+          toast(msg, "error");
+      }
   };
 
   // Adapter for TeamListTab (it expects local TeamData, we have server AuctionTeam)
@@ -147,34 +177,53 @@ export default function Auction() {
     </div>
   );
 
+  // Non-commissioner sees waiting screen before auction starts
+  if (activeLeagueId && auctionState && auctionState.status === 'not_started' && !isCommissioner) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Auction Draft</h2>
+      <p className="text-sm text-[var(--lg-text-muted)]">Waiting for the commissioner to start the auction...</p>
+    </div>
+  );
+
+  if (needsInit) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+      <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)]">Auction Draft</h2>
+      <p className="text-sm text-[var(--lg-text-muted)]">Initialize the auction to begin the live draft.</p>
+      <button
+        onClick={() => actions.initAuction(activeLeagueId!)}
+        className="px-8 py-4 bg-[var(--lg-accent)] text-white font-semibold rounded-[var(--lg-radius-lg)] text-lg hover:opacity-90 transition-opacity"
+      >
+        Start Auction
+      </button>
+    </div>
+  );
+
   return (
     <AuctionLayout
         title="Auction"
         subtitle="Real-time auction draft room. Nominate players and manage bids."
         stage={
-            <div className="flex flex-col h-full gap-4">
-                <div className="flex-1 overflow-auto">
-                    <AuctionStage 
-                        serverState={auctionState}
-                        myTeamId={myTeamId}
-                        onBid={handleBid}
-                        onFinish={actions.finishAuction}
-                        onPause={actions.pause}
-                        onResume={actions.resume}
-                        onReset={actions.reset}
-                    />
-                </div>
-                {/* Personal Queue */}
-                <div className="shrink-0 max-h-[250px] flex flex-col">
-                    <MyNominationQueue 
+            <div className="flex flex-col h-full gap-2">
+                <AuctionStage
+                    serverState={auctionState}
+                    myTeamId={myTeamId}
+                    onBid={handleBid}
+                    onFinish={actions.finishAuction}
+                    onPause={isCommissioner ? actions.pause : undefined}
+                    onResume={isCommissioner ? actions.resume : undefined}
+                    onReset={isCommissioner ? actions.reset : undefined}
+                    onUndoFinish={isCommissioner ? actions.undoFinish : undefined}
+                />
+                {myQueue.length > 0 && (
+                    <MyNominationQueue
                         players={players}
                         queueIds={myQueue}
                         onRemove={removeFromQueue}
                         onNominate={auctionState?.status === 'nominating' ? handleNominate : undefined}
-                        isMyTurn={displayTeams.find(t => t.id === myTeamId)?.isMe && auctionState?.queue?.[auctionState.queueIndex] === myTeamId /* Approximation, AuctionStage handles logic actually */}
+                        isMyTurn={!!isMyTurnToNominate}
                         myTeamId={myTeamId}
                     />
-                </div>
+                )}
             </div>
         }
         context={
@@ -183,12 +232,14 @@ export default function Auction() {
                     { 
                         key: 'pool', 
                         label: 'Player Pool', 
-                        content: <PlayerPoolTab 
-                                    players={players} 
-                                    teams={displayTeams} 
+                        content: <PlayerPoolTab
+                                    players={players}
+                                    teams={displayTeams}
                                     onNominate={auctionState?.status === 'nominating' ? handleNominate : undefined}
                                     onQueue={addToQueue}
                                     isQueued={isQueued}
+                                    myTeamId={myTeamId}
+                                    auctionConfig={auctionState?.config}
                                  /> 
                     },
                     { 
@@ -200,7 +251,7 @@ export default function Auction() {
                     { 
                         key: 'analysis', 
                         label: 'AI Analysis', 
-                        content: <AIAnalysisTab log={auctionState?.log?.length ? auctionState.log : (MOCK_LOG as any)} teams={displayTeams} /> 
+                        content: <AIAnalysisTab log={auctionState?.log || []} teams={displayTeams} />
                     },
                     { 
                         key: 'log', 

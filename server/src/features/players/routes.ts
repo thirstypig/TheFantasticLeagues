@@ -6,7 +6,52 @@ import { prisma } from "../../db/prisma.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import { mlbGetJson } from "../../lib/mlbApi.js";
 import { logger } from "../../lib/logger.js";
+import { DataService } from "./services/dataService.js";
+import fs from "fs";
+import path from "path";
+import { parseCsv } from "../../lib/utils.js";
+
 const router = Router();
+
+// --- Player Values Cache (from 2026 Player Values CSV) ---
+type PlayerValueEntry = { name: string; team: string; pos: string; value: number };
+let playerValuesCache: Map<string, PlayerValueEntry> | null = null;
+
+/** Normalize name for fuzzy matching: strip accents, standardize apostrophes/punctuation */
+function normalizeName(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/['']/g, "'").replace(/\./g, "").toLowerCase();
+}
+
+function loadPlayerValues(): Map<string, PlayerValueEntry> {
+  if (playerValuesCache) return playerValuesCache;
+  playerValuesCache = new Map();
+
+  const filePath = path.join(process.cwd(), "src", "data", "player_values_2026.csv");
+  if (!fs.existsSync(filePath)) {
+    logger.warn({}, "player_values_2026.csv not found");
+    return playerValuesCache;
+  }
+
+  const rows = parseCsv(fs.readFileSync(filePath, "utf-8"));
+  for (const row of rows) {
+    const r = row as Record<string, string>;
+    const name = (r["Name"] ?? "").trim();
+    if (!name) continue;
+    const valStr = (r["$"] ?? "0").replace("$", "").replace(",", "").trim();
+    const value = Number(valStr) || 0;
+    const entry: PlayerValueEntry = {
+      name,
+      team: (r["Team"] ?? "").trim(),
+      pos: (r["Pos"] ?? "").trim(),
+      value,
+    };
+    // Store under both exact and normalized keys for matching
+    playerValuesCache.set(name.toLowerCase(), entry);
+    playerValuesCache.set(normalizeName(name), entry);
+  }
+  logger.info({ count: rows.length }, "Loaded player values from 2026 CSV");
+  return playerValuesCache;
+}
 
 /**
  * GET /players
@@ -200,6 +245,9 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
   // Filter by league stats_source (NL/AL/MLB)
   const allowedTeams = getTeamsForSource(await getLeagueStatsSource(leagueId));
 
+  // Load player values from 2026 CSV (name → dollar value + position)
+  const valuesMap = loadPlayerValues();
+
   const stats = allPlayers
     .filter((p) => {
       if (!allowedTeams) return true;
@@ -211,19 +259,23 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
       const roster = rosterMap.get(p.id);
       const isPitcher = (p.posPrimary ?? "").toUpperCase() === "P";
       const mlbTeam = p.mlbTeam ?? "";
+      const nameKey = p.name.toLowerCase();
+      const pv = valuesMap.get(nameKey) ?? valuesMap.get(normalizeName(p.name));
 
       return {
         mlb_id: mlbId,
         player_name: p.name,
         mlb_full_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",
-        positions: p.posList || p.posPrimary || "",
+        positions: pv?.pos || p.posList || p.posPrimary || "",
         is_pitcher: isPitcher,
         AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0,
         GS: 0, W: 0, SV: 0, K: 0, ERA: 0, WHIP: 0, SO: 0,
         mlb_team: mlbTeam,
         mlbTeam: mlbTeam,
         fantasy_value: roster?.price,
+        dollar_value: pv?.value ?? 0,
+        value: pv?.value ?? 0,
       };
     });
 
@@ -235,9 +287,11 @@ dataRouter.get("/player-period-stats", requireAuth, (_req, res) => {
   res.json({ stats: [] });
 });
 
-/** GET /api/auction-values?leagueId=N — no auction values yet for 2026 */
+/** GET /api/auction-values?leagueId=N */
 dataRouter.get("/auction-values", requireAuth, (_req, res) => {
-  res.json({ values: [] });
+  const ds = DataService.getInstance();
+  const values = ds.getAuctionValues();
+  res.json({ values });
 });
 
 export const playersRouter = router;

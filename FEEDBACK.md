@@ -4,6 +4,42 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-15 (Session 16) — Auction Production Hardening & E2E Testing
+
+### Completed
+- **Auction production readiness** (Phase 1-3 from plan):
+  - **DB persistence**: `AuctionSession` model + `auctionPersistence.ts` service — state survives server restart
+  - **Server-side auto-finish timer**: `setTimeout` on server replaces client-side timer dependency
+  - **Nomination guard**: prevents nominating already-rostered players
+  - **Concurrent finish protection**: per-league lock flag prevents double-finish races
+  - **League rules integration**: budget/roster config read from `LeagueRule` instead of hardcoded
+  - **Undo-finish**: commissioner can reverse last pick (admin-only)
+  - **Auction completion detection**: auto-detects when all rosters full
+  - **Nomination timer auto-skip**: 30s timer advances queue if team doesn't nominate
+- **Bug fixes found via E2E testing**:
+  - **Position limit enforcement moved from nomination to bid** — nominations are now unrestricted (any team can nominate any player for others to bid on); per-position limits (C:2, OF:5, etc.) not enforced during auction (only pitcher/hitter totals: 9P/14H)
+  - **Queue skipping for full teams** — added `advanceQueue()` helper that skips full teams during queue rotation; prevents auction from stalling when teams fill at different rates
+  - **Client Nom button always visible** — changed from blocking ("Full") to visual hint (dimmed button with tooltip) when position is full for your team
+- **E2E auction test** (168 assertions, all pass):
+  - `setup-auction-test.ts` — automated test data setup (owners, memberships, rosters, keepers, season)
+  - `auction-e2e-test.ts` — full 152-pick auction simulation via API (init, nominate, bid, finish, pause/resume, undo, reset, completion)
+- **Player values data**: Added 2026 player values CSV
+- **Documentation**: Updated CLAUDE.md (test counts, auction tests), Tech.tsx stats, FEEDBACK.md
+
+### Pending / Next Steps
+- Manual browser testing before 3/22 auction (multi-tab, WS sync)
+- Deploy to Render and test on production
+- Verify 2026 player values loaded for auction player pool
+
+### Test Results
+- Server: 22 files, 302 tests passing
+- Client: 4 files, 85 tests passing
+- Total: 387 tests, all green
+- TypeScript: clean (both client and server)
+- E2E auction: 168 assertions, all green
+
+---
+
 ## Session 2026-03-14 (Session 15) — Home Page Fix, Fielding Stats, OF Position Mapping
 
 ### Completed

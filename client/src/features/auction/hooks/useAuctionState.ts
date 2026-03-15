@@ -56,13 +56,16 @@ export interface ClientAuctionState {
   config: {
     bidTimer: number;
     nominationTimer: number;
+    pitcherCount?: number;
+    batterCount?: number;
+    positionLimits?: Record<string, number> | null;
   };
   log: AuctionLogEvent[];
   lastUpdate: number;
 }
 
 export interface AuctionLogEvent {
-  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME';
+  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO';
   teamId?: number;
   teamName?: string;
   playerId?: string;
@@ -227,7 +230,8 @@ export function useAuctionState(leagueId?: number | null) {
             finishAuction,
             pause: async () => { await fetchJsonApi('/api/auction/pause', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             resume: async () => { await fetchJsonApi('/api/auction/resume', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
-            reset: async () => { await fetchJsonApi('/api/auction/reset', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); }
+            reset: async () => { await fetchJsonApi('/api/auction/reset', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            undoFinish: async () => { await fetchJsonApi('/api/auction/undo-finish', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); }
         }
     };
 }

@@ -10,9 +10,9 @@ import {
 } from "../baseballUtils";
 
 describe("POS_ORDER", () => {
-  it("has 12 positions in canonical order", () => {
+  it("has 10 positions in canonical order", () => {
     expect(POS_ORDER).toEqual([
-      "C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "SP", "RP", "P", "DH",
+      "C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "P", "DH",
     ]);
   });
 });
@@ -23,15 +23,16 @@ describe("POS_SCORE", () => {
     expect(POS_SCORE["1B"]).toBe(1);
     expect(POS_SCORE["MI"]).toBe(5);
     expect(POS_SCORE["CI"]).toBe(6);
-    expect(POS_SCORE["DH"]).toBe(11);
+    expect(POS_SCORE["P"]).toBe(8);
+    expect(POS_SCORE["DH"]).toBe(9);
   });
 
   it("C sorts before SS", () => {
     expect(POS_SCORE["C"]).toBeLessThan(POS_SCORE["SS"]);
   });
 
-  it("SP sorts before RP", () => {
-    expect(POS_SCORE["SP"]).toBeLessThan(POS_SCORE["RP"]);
+  it("P sorts before DH", () => {
+    expect(POS_SCORE["P"]).toBeLessThan(POS_SCORE["DH"]);
   });
 });
 
@@ -41,9 +42,13 @@ describe("getPrimaryPosition", () => {
     expect(getPrimaryPosition("OF,1B,DH")).toBe("OF");
   });
 
-  it("returns single position as-is", () => {
+  it("returns single position (normalizes SP→P)", () => {
     expect(getPrimaryPosition("C")).toBe("C");
-    expect(getPrimaryPosition("SP")).toBe("SP");
+    expect(getPrimaryPosition("SP")).toBe("P");
+    expect(getPrimaryPosition("RP")).toBe("P");
+    expect(getPrimaryPosition("CF")).toBe("OF");
+    expect(getPrimaryPosition("LF")).toBe("OF");
+    expect(getPrimaryPosition("RF")).toBe("OF");
   });
 
   it("defaults to DH for undefined/empty", () => {
@@ -59,8 +64,8 @@ describe("getPrimaryPosition", () => {
     expect(getPrimaryPosition("MI")).toBe("2B/SS");
   });
 
-  it("trims whitespace", () => {
-    expect(getPrimaryPosition(" SP , RP ")).toBe("SP");
+  it("trims whitespace and normalizes", () => {
+    expect(getPrimaryPosition(" SP , RP ")).toBe("P");
   });
 });
 
@@ -71,8 +76,8 @@ describe("sortByPosition", () => {
     expect(sortByPosition(a, b)).toBeLessThan(0);
   });
 
-  it("sorts SP before DH", () => {
-    const a = { positions: "SP" };
+  it("sorts P (SP) before DH", () => {
+    const a = { positions: "SP" }; // normalizes to P
     const b = { positions: "DH" };
     expect(sortByPosition(a, b)).toBeLessThan(0);
   });
@@ -98,14 +103,14 @@ describe("sortByPosition", () => {
   it("sorts a full roster correctly", () => {
     const roster = [
       { positions: "DH" },
-      { positions: "SP" },
+      { positions: "P" },
       { positions: "C" },
       { positions: "OF" },
       { positions: "SS" },
     ];
     const sorted = [...roster].sort(sortByPosition);
     expect(sorted.map((p) => p.positions)).toEqual([
-      "C", "SS", "OF", "SP", "DH",
+      "C", "SS", "OF", "P", "DH",
     ]);
   });
 

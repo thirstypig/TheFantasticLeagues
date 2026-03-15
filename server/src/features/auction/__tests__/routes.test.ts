@@ -24,6 +24,11 @@ vi.mock("../../../middleware/asyncHandler.js", () => ({
 vi.mock("../services/auctionWsService.js", () => ({
   broadcastState: vi.fn(),
 }));
+vi.mock("../services/auctionPersistence.js", () => ({
+  saveState: vi.fn().mockResolvedValue(undefined),
+  loadState: vi.fn().mockResolvedValue(null),
+  clearState: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { calculateMaxBid } from "../routes.js";
 import type { AuctionState } from "../routes.js";
@@ -56,6 +61,15 @@ describe("auction - calculateMaxBid", () => {
     expect(calculateMaxBid(1, 1)).toBe(1);
   });
 
+  it("returns 0 when budget is less than spots minus 1 (no negative maxBid)", () => {
+    // Previously returned -4, now clamped to 0
+    expect(calculateMaxBid(5, 10)).toBe(0);
+  });
+
+  it("returns 1 when budget exactly equals spots", () => {
+    expect(calculateMaxBid(10, 10)).toBe(1);
+  });
+
   it("handles full roster scenario (25 spots, 260 budget)", () => {
     expect(calculateMaxBid(260, 25)).toBe(236); // 260 - 24
   });
@@ -71,7 +85,7 @@ function freshState(): AuctionState {
     teams: [],
     queue: [],
     queueIndex: 0,
-    config: { bidTimer: 15, nominationTimer: 30 },
+    config: { bidTimer: 15, nominationTimer: 30, budgetCap: 400, rosterSize: 23, pitcherCount: 9, batterCount: 14, positionLimits: null },
     log: [],
     lastUpdate: Date.now(),
   };
@@ -96,8 +110,8 @@ describe("auction - state transitions", () => {
     const state = freshState();
     state.status = "nominating";
     state.teams = [
-      { id: 1, name: "Team A", code: "A", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, roster: [] },
-      { id: 2, name: "Team B", code: "B", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, roster: [] },
+      { id: 1, name: "Team A", code: "A", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, pitcherCount: 0, hitterCount: 0, positionCounts: {}, roster: [] },
+      { id: 2, name: "Team B", code: "B", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, pitcherCount: 0, hitterCount: 0, positionCounts: {}, roster: [] },
     ];
     state.queue = [1, 2];
 
@@ -131,8 +145,8 @@ describe("auction - bidding", () => {
     const state = freshState();
     state.status = "bidding";
     state.teams = [
-      { id: 1, name: "Team A", code: "A", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, roster: [] },
-      { id: 2, name: "Team B", code: "B", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, roster: [] },
+      { id: 1, name: "Team A", code: "A", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, pitcherCount: 0, hitterCount: 0, positionCounts: {}, roster: [] },
+      { id: 2, name: "Team B", code: "B", budget: 260, maxBid: 236, rosterCount: 0, spotsLeft: 25, pitcherCount: 0, hitterCount: 0, positionCounts: {}, roster: [] },
     ];
     state.nomination = {
       playerId: "12345",

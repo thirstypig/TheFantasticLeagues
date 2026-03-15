@@ -44,6 +44,11 @@ vi.mock("../../middleware/asyncHandler.js", () => ({
 vi.mock("../../features/auction/services/auctionWsService.js", () => ({
   broadcastState: vi.fn(),
 }));
+vi.mock("../../features/auction/services/auctionPersistence.js", () => ({
+  saveState: vi.fn().mockResolvedValue(undefined),
+  loadState: vi.fn().mockResolvedValue(null),
+  clearState: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("../../lib/rosterGuard.js", () => ({
   assertPlayerAvailable: vi.fn(),
 }));
@@ -77,6 +82,9 @@ function makeTeam(id: number, name: string, code: string): AuctionTeam {
     maxBid: calculateMaxBid(BUDGET_CAP, ROSTER_SIZE),
     rosterCount: 0,
     spotsLeft: ROSTER_SIZE,
+    pitcherCount: 0,
+    hitterCount: 0,
+    positionCounts: {},
     roster: [],
   };
 }
@@ -101,7 +109,7 @@ function initState(): AuctionState {
     teams,
     queue: teams.map(t => t.id),
     queueIndex: 0,
-    config: { bidTimer: BID_TIMER, nominationTimer: NOMINATION_TIMER },
+    config: { bidTimer: BID_TIMER, nominationTimer: NOMINATION_TIMER, budgetCap: BUDGET_CAP, rosterSize: ROSTER_SIZE, pitcherCount: 9, batterCount: 14, positionLimits: null },
     log: [],
     lastUpdate: Date.now(),
   };
@@ -457,13 +465,12 @@ describe("auction simulation: bid validation", () => {
     // Artificially reduce budget so maxBid is low
     team.budget = 5;
     team.spotsLeft = 10;
-    team.maxBid = calculateMaxBid(5, 10); // 5 - 9 = negative → 0 if clamped, but actually -4
+    team.maxBid = calculateMaxBid(5, 10); // 5 - 9 = negative → clamped to 0
 
-    // calculateMaxBid(5, 10) = 5 - 9 = -4 — but the function returns budget - (spots-1)
-    // Let's verify:
-    expect(calculateMaxBid(5, 10)).toBe(-4);
+    // calculateMaxBid(5, 10) = max(0, 5 - 9) = 0
+    expect(calculateMaxBid(5, 10)).toBe(0);
 
-    // Team cannot afford startBid of 1 since maxBid is negative
+    // Team cannot afford startBid of 1 since maxBid is 0
     const p = nextPlayer();
     const result = nominate(state, 1, p.id, p.name, 1, p.positions, false);
     expect(result.success).toBe(false);

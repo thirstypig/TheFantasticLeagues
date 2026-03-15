@@ -6,8 +6,8 @@
 
 // ─── Position Configuration ───
 
-/** Canonical position order for sorting and display. */
-export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "SP", "RP", "P", "DH"];
+/** Canonical position order for sorting and display (auction/league view). */
+export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "P", "DH"];
 
 /** Score mapping for position sorting (lower = earlier in lineup). */
 export const POS_SCORE: Record<string, number> = Object.fromEntries(
@@ -71,9 +71,13 @@ export function isPitcher(v: any): boolean {
  */
 export function getPrimaryPosition(posString: string | undefined): string {
   if (!posString) return "DH";
-  const primary = posString.split(",")[0].trim();
+  const primary = posString.split(",")[0].trim().toUpperCase();
   if (primary === "CM") return "1B/3B";
   if (primary === "MI") return "2B/SS";
+  // Normalize outfield positions to OF
+  if (primary === "LF" || primary === "CF" || primary === "RF") return "OF";
+  // Normalize pitcher positions to P
+  if (primary === "SP" || primary === "RP") return "P";
   return primary;
 }
 
