@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 
-import { adminCreateLeague, adminImportRosters, getLeagues, type LeagueListItem } from "../../../api";
+import { adminCreateLeague, adminDeleteLeague, adminImportRosters, getLeagues, type LeagueListItem } from "../../../api";
 import { Button } from "../../../components/ui/button";
 
 export default function AdminLeagueTools() {
@@ -66,7 +66,7 @@ export default function AdminLeagueTools() {
 
       {/* Create League */}
       <div className="lg-card p-4 md:p-8 bg-[var(--lg-accent)]/5 border-[var(--lg-accent)]/20">
-        <div className="mb-6 text-xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">Create League</div>
+        <div className="mb-6 text-xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">New Season</div>
 
         <form onSubmit={onCreateLeague} className="grid gap-6 md:grid-cols-4">
           <div className="md:col-span-2">
@@ -105,11 +105,21 @@ export default function AdminLeagueTools() {
             <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Copy From (Optional)</label>
             <select
               className="w-full rounded-2xl border border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] px-4 py-3 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all font-bold"
-              onChange={(e) => setCopyFromId(Number(e.target.value) || null)}
+              onChange={(e) => {
+                const id = Number(e.target.value) || null;
+                setCopyFromId(id);
+                if (id) {
+                  const source = sorted.find(l => l.id === id);
+                  if (source) {
+                    setName(source.name);
+                    setSeason(source.season + 1);
+                  }
+                }
+              }}
             >
               <option value="">Start Fresh (Default)</option>
               {sorted.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.season})</option>
+                <option key={l.id} value={l.id}>{l.name} {l.season}</option>
               ))}
             </select>
             {copyFromId && <div className="mt-2 text-xs text-sky-400 font-bold uppercase tracking-wider">Settings, Members, and Rules will be cloned.</div>}
@@ -130,10 +140,44 @@ export default function AdminLeagueTools() {
 
           <div className="md:col-span-4 flex justify-end mt-4">
             <Button type="submit">
-              Create League
+              Create Season
             </Button>
           </div>
         </form>
+      </div>
+
+      {/* Existing Leagues */}
+      <div className="lg-card p-4 md:p-8">
+        <div className="mb-6 text-xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">Seasons</div>
+        <div className="space-y-2">
+          {sorted.map(l => (
+            <div key={l.id} className="flex items-center justify-between rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] px-4 py-3">
+              <div>
+                <span className="text-sm font-medium text-[var(--lg-text-primary)]">{l.name}</span>
+                <span className="ml-2 text-xs text-[var(--lg-text-muted)]">{l.season}</span>
+                <span className="ml-2 text-xs text-[var(--lg-text-muted)]">ID: {l.id}</span>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!confirm(`Delete "${l.name} ${l.season}" season? This permanently removes all teams, rosters, and data. This cannot be undone.`)) return;
+                  try {
+                    setError(null);
+                    await adminDeleteLeague(l.id);
+                    await refresh();
+                  } catch (err: unknown) {
+                    setError(err instanceof Error ? err.message : "Failed to delete league.");
+                  }
+                }}
+                className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-error)] hover:text-[var(--lg-error)]/80 px-3 py-1.5 rounded-lg border border-[var(--lg-error)]/20 hover:bg-[var(--lg-error)]/10 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+          {sorted.length === 0 && (
+            <p className="text-sm text-[var(--lg-text-muted)]">No seasons found.</p>
+          )}
+        </div>
       </div>
 
       {/* CSV Import */}
@@ -188,16 +232,16 @@ function CsvUploader({ leagues, onRefresh }: { leagues: LeagueListItem[]; onRefr
   return (
     <form onSubmit={handleUpload} className="space-y-6 max-w-xl">
       <div>
-        <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Target League</label>
+        <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Target Season</label>
         <select
           className="w-full rounded-2xl border border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] px-4 py-3 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all font-bold"
           value={leagueId}
           onChange={e => setLeagueId(Number(e.target.value) || "")}
           required
         >
-          <option value="">Select league...</option>
+          <option value="">Select season...</option>
           {leagues.map(l => (
-            <option key={l.id} value={l.id}>{l.name} ({l.season})</option>
+            <option key={l.id} value={l.id}>{l.name} {l.season}</option>
           ))}
         </select>
       </div>

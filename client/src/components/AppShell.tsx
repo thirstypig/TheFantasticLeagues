@@ -26,13 +26,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarVisible, setSidebarVisible] = useState(true);
 
-  const commissionerLeagueId = useMemo(() => {
-    const isAdmin = Boolean(user?.isAdmin);
-    const commissioner = (leagues ?? []).find((l: LeagueListItem) => l?.access?.type === "MEMBER" && l?.access?.role === "COMMISSIONER");
-    if (commissioner) return commissioner.id;
-    if (isAdmin && (leagues?.length ?? 0) > 0) return leagues[0].id;
-    return null;
-  }, [leagues, user]);
+  const canAccessCommissioner = useMemo(() => {
+    if (Boolean(user?.isAdmin)) return true;
+    const selected = (leagues ?? []).find((l: LeagueListItem) => l.id === leagueId);
+    return selected?.access?.type === "MEMBER" && selected?.access?.role === "COMMISSIONER";
+  }, [leagues, user, leagueId]);
 
   const getNavIcon = (label: string) => {
     const icons: Record<string, JSX.Element> = {
@@ -58,7 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ],
     },
     {
-      title: "League",
+      title: "Season",
       items: [
         { to: "/season", label: "Season", show: true },
         { to: "/players", label: "Players", show: true },
@@ -83,9 +81,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       title: "Management",
       items: [
         {
-          to: commissionerLeagueId ? `/commissioner/${commissionerLeagueId}` : "/",
+          to: `/commissioner/${leagueId}`,
           label: "Commissioner",
-          show: Boolean(commissionerLeagueId),
+          show: canAccessCommissioner,
         },
         { to: "/admin", label: "Admin", show: Boolean(user?.isAdmin) },
       ],
@@ -176,18 +174,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {/* League Switcher */}
+            {/* Season Switcher */}
             {sidebarOpen && leagues && leagues.length > 1 && (
               <div className="mb-6">
-                <div className="lg-sidebar-section-label">League</div>
+                <div className="lg-sidebar-section-label">Season</div>
                 <select
                   value={leagueId ?? ""}
                   onChange={(e) => setLeagueId(Number(e.target.value))}
                   className="w-full h-9 px-3 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-xs font-semibold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all cursor-pointer"
                 >
-                  {leagues.map((l: LeagueListItem) => (
-                    <option key={l.id} value={l.id}>{l.name} ({l.season})</option>
-                  ))}
+                  {(() => {
+                    const grouped = new Map<string, LeagueListItem[]>();
+                    for (const l of leagues) {
+                      const arr = grouped.get(l.name) ?? [];
+                      arr.push(l);
+                      grouped.set(l.name, arr);
+                    }
+                    // Sort seasons DESC within each group
+                    for (const arr of grouped.values()) arr.sort((a, b) => b.season - a.season);
+
+                    if (grouped.size === 1) {
+                      const [, items] = [...grouped.entries()][0];
+                      return items.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name} {l.season}</option>
+                      ));
+                    }
+                    return [...grouped.entries()].map(([name, items]) => (
+                      <optgroup key={name} label={name}>
+                        {items.map((l) => (
+                          <option key={l.id} value={l.id}>{l.season} Season</option>
+                        ))}
+                      </optgroup>
+                    ));
+                  })()}
                 </select>
               </div>
             )}
@@ -218,11 +237,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide border ${
                   user.isAdmin
                     ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                    : commissionerLeagueId && commissionerLeagueId === leagueId
+                    : canAccessCommissioner
                       ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                       : 'bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border-[var(--lg-border-faint)]'
                 }`}>
-                  {user.isAdmin ? 'Admin' : commissionerLeagueId && commissionerLeagueId === leagueId ? 'Commissioner' : 'Team Owner'}
+                  {user.isAdmin ? 'Admin' : canAccessCommissioner ? 'Commissioner' : 'Team Owner'}
                 </span>
               </div>
             )}

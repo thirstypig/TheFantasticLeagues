@@ -133,7 +133,7 @@ export default function Home() {
             >
               {memberships.map((m) => (
                 <option key={m.leagueId} value={Number(m.leagueId)}>
-                  {m.league?.name || `League ${m.leagueId}`}
+                  {m.league?.name ? `${m.league.name} ${m.league.seasonYear ?? ''}`.trim() : `Season ${m.leagueId}`}
                 </option>
               ))}
             </select>
@@ -166,7 +166,7 @@ export default function Home() {
                  setJoining(true);
                  try {
                    const res = await joinLeague(code);
-                   toast(`Joined ${res.league.name}!`, "success");
+                   toast(`Joined ${res.league.name} ${res.league.season ?? ''}!`.trim(), "success");
                    setInviteCode("");
                    await refresh();
                  } catch (err) {

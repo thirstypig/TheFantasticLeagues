@@ -35,7 +35,7 @@ router.get("/leagues", requireAuth, asyncHandler(async (req, res) => {
         select: { id: true, name: true, season: true, draftMode: true, draftOrder: true, isPublic: true, publicSlug: true },
       },
     },
-    orderBy: [{ leagueId: "asc" }],
+    orderBy: [{ league: { name: "asc" } }, { league: { season: "desc" } }],
   });
 
   const memberLeagues = memberships.map((m) => ({

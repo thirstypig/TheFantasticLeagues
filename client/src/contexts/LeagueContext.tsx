@@ -9,6 +9,9 @@ interface LeagueContextType {
   setLeagueId: (id: number) => void;
   leagues: LeagueListItem[];
   outfieldMode: string;
+  currentLeagueName: string;
+  currentSeason: number;
+  leagueSeasons: LeagueListItem[];
 }
 
 const LeagueContext = createContext<LeagueContextType | undefined>(undefined);
@@ -59,8 +62,13 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, String(id));
   };
 
+  const currentLeague = leagues.find(l => l.id === leagueId);
+  const currentLeagueName = currentLeague?.name ?? "";
+  const currentSeason = currentLeague?.season ?? 0;
+  const leagueSeasons = leagues.filter(l => l.name === currentLeagueName);
+
   return (
-    <LeagueContext.Provider value={{ leagueId, setLeagueId, leagues, outfieldMode }}>
+    <LeagueContext.Provider value={{ leagueId, setLeagueId, leagues, outfieldMode, currentLeagueName, currentSeason, leagueSeasons }}>
       {children}
     </LeagueContext.Provider>
   );

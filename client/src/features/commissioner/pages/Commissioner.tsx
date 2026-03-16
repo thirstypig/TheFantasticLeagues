@@ -379,7 +379,7 @@ export default function Commissioner() {
     <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
       <PageHeader
         title="Commissioner"
-        subtitle="League setup and manual season tools."
+        subtitle="Season setup and management tools."
       />
 
       <div className="space-y-5">
@@ -461,7 +461,7 @@ export default function Commissioner() {
                         </button>
                       </>
                     )}
-                    <span className="text-[var(--lg-text-muted)]">({league.season})</span>
+                    <span className="text-[var(--lg-text-muted)]">— {league.season} Season</span>
                   </div>
                   <div className="mt-1 text-sm text-[var(--lg-text-muted)]">
                     draftMode: {league.draftMode}
