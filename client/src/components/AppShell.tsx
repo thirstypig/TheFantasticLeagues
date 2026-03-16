@@ -192,25 +192,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             `}
             style={sidebarVisible ? { '--sidebar-w': `${sidebarWidth}px` } as React.CSSProperties : undefined}
         >
-          <div className="px-4 py-8 h-full flex flex-col min-w-[64px]">
-            <div className={`mb-10 flex items-center justify-between ${!sidebarOpen && 'flex-col gap-6'}`}>
+          <div className="px-3 py-5 h-full flex flex-col min-w-[64px]">
+            <div className={`mb-5 flex items-center justify-between ${!sidebarOpen && 'flex-col gap-3'}`}>
               {sidebarOpen && (
                 <Link
                   to={user ? "/" : "/login"}
-                  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
                 >
-                  <Logo size={40} />
+                  <Logo size={32} />
                   <div className="flex flex-col">
-                    <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
-                    <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
+                    <span className="text-lg font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
+                    <span className="text-[10px] font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
                   </div>
                 </Link>
               )}
 
-              <div className={`flex items-center gap-1 ${!sidebarOpen && 'flex-col mx-auto'}`}>
+              <div className={`flex items-center gap-0.5 ${!sidebarOpen && 'flex-col mx-auto'}`}>
                 <button
                   onClick={toggleTheme}
-                  className="p-2 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
+                  className="p-1.5 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
                   title="Toggle Theme"
                   aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 >
@@ -218,28 +218,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
                 <button
                   onClick={() => setSidebarVisible(false)}
-                  className="p-2 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
+                  className="p-1.5 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
                   title="Minimize Sidebar"
                   aria-label="Minimize sidebar"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            {/* Season Switcher */}
-            {sidebarOpen && leagues && leagues.length > 1 && (
-              <div className="mb-6">
-                <div className="lg-sidebar-section-label">Season</div>
+            {/* Season Switcher — Commissioner / Admin only */}
+            {sidebarOpen && canAccessCommissioner && leagues && leagues.length > 1 && (
+              <div className="mb-4">
                 <select
                   value={leagueId ?? ""}
                   onChange={(e) => setLeagueId(Number(e.target.value))}
-                  className="w-full h-9 px-3 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-xs font-semibold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all cursor-pointer"
+                  className="w-full h-8 px-2.5 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-xs font-semibold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all cursor-pointer"
                 >
                   {(() => {
-                    // Group by franchiseId when available, fall back to name
                     const grouped = new Map<string, LeagueListItem[]>();
                     for (const l of leagues) {
                       const key = l.franchiseId ? `fid:${l.franchiseId}` : `name:${l.name}`;
@@ -247,7 +245,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       arr.push(l);
                       grouped.set(key, arr);
                     }
-                    // Sort seasons DESC within each group
                     for (const arr of grouped.values()) arr.sort((a, b) => b.season - a.season);
 
                     if (grouped.size === 1) {
@@ -257,7 +254,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       ));
                     }
                     return [...grouped.entries()].map(([key, items]) => {
-                      const label = items[0].name.replace(/\s+\d{4}$/, '');
+                      const label = items[0].name;
                       return (
                         <optgroup key={key} label={label}>
                           {items.map((l) => (
@@ -271,7 +268,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            <nav className="flex-1 overflow-y-auto custom-scrollbar space-y-6" aria-label="Main navigation">
+            <nav className="flex-1 space-y-3 overflow-y-auto" aria-label="Main navigation">
               {NAV_SECTIONS.map((section) => {
                 const visibleItems = section.items.filter((item) => item.show);
                 if (visibleItems.length === 0) return null;
@@ -283,7 +280,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         {section.title}
                       </div>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       {visibleItems.map(renderNavLink)}
                     </div>
                   </div>
@@ -291,31 +288,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            {/* Role Badge */}
-            {sidebarOpen && user && (
-              <div className="mt-4 px-1">
-                <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide border ${
-                  user.isAdmin
-                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                    : canAccessCommissioner
-                      ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                      : 'bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border-[var(--lg-border-faint)]'
-                }`}>
-                  {user.isAdmin ? 'Admin' : canAccessCommissioner ? 'Commissioner' : 'Team Owner'}
-                </span>
-              </div>
-            )}
-
-            <div className={`mt-4 pt-8 border-t border-[var(--lg-border-faint)] ${!sidebarOpen && 'flex flex-col items-center'}`}>
+            <div className={`mt-3 pt-4 border-t border-[var(--lg-border-faint)] ${!sidebarOpen && 'flex flex-col items-center'}`}>
               {loading ? (
                 <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
               ) : user ? (
-                <div className={`flex items-center gap-3 ${!sidebarOpen && 'flex-col'}`}>
+                <div className={`flex items-center gap-2.5 ${!sidebarOpen && 'flex-col'}`}>
                   <Link to="/profile" className="shrink-0">
                     {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={user.name || 'User'} className="h-10 w-10 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
+                      <img src={user.avatarUrl} alt={user.name || 'User'} className="h-8 w-8 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
                     ) : (
-                      <div className="h-10 w-10 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)]">
+                      <div className="h-8 w-8 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)]">
                           {user.name?.[0] || 'U'}
                       </div>
                     )}
@@ -324,8 +306,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   {sidebarOpen && (
                     <>
                       <Link to="/profile" className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                        <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] opacity-40 mb-0.5">Account</div>
-                        <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate uppercase tracking-tight">{user.name || user.email}</div>
+                        <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate tracking-tight">{user.name || user.email}</div>
                       </Link>
                       <button
                         onClick={onLogout}
@@ -418,7 +399,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </svg>
               </button>
             )}
-            {children}
+            <div key={leagueId}>{children}</div>
           </main>
         </div>
       </div>
