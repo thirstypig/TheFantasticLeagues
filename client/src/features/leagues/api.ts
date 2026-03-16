@@ -24,6 +24,10 @@ export async function adminCreateLeague(input: AdminCreateLeagueInput): Promise<
   });
 }
 
+export async function adminDeleteLeague(leagueId: number): Promise<{ success: boolean }> {
+  return fetchJsonApi(`${API_BASE}/admin/league/${leagueId}`, { method: "DELETE" });
+}
+
 export async function getPeriods(): Promise<{ periods: PeriodDef[] }> {
   return fetchJsonApi<{ periods: PeriodDef[] }>(`${API_BASE}/commissioner/periods/list`);
 }

@@ -33,3 +33,7 @@ server/.env
 
 # Generated MLB cache
 server/src/data/mlb_team_cache.json
+
+# Data files
+*.csv
+*.xlsx

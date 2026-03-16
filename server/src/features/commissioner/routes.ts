@@ -158,10 +158,10 @@ router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommission
     const currentLeague = await prisma.league.findUnique({ where: { id: leagueId } });
     if (!currentLeague) return res.status(404).json({ error: "League not found" });
 
-    // Find the prior season's league with the same name
+    // Find the prior season's league within the same franchise
     const priorLeague = await prisma.league.findFirst({
       where: {
-        name: currentLeague.name,
+        franchiseId: currentLeague.franchiseId,
         season: currentLeague.season - 1,
       },
     });

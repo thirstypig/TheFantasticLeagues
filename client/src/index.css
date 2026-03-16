@@ -389,6 +389,13 @@
     box-shadow:
       10px 0 50px rgba(0, 0, 0, 0.1),
       inset -1px 0 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+  }
+
+  @media (min-width: 1024px) {
+    .lg-sidebar[style] {
+      width: var(--sidebar-w) !important;
+    }
   }
 
   .lg-sidebar-item {

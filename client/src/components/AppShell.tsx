@@ -1,5 +1,5 @@
 // client/src/components/AppShell.tsx
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import type { LeagueListItem } from "../api";
@@ -7,6 +7,12 @@ import { useAuth } from "../auth/AuthProvider";
 import { useTheme } from "../contexts/ThemeContext";
 import { useLeague } from "../contexts/LeagueContext";
 import { Logo } from "./ui/Logo";
+
+const SIDEBAR_MIN = 64;
+const SIDEBAR_COLLAPSED = 80;
+const SIDEBAR_DEFAULT = 240;
+const SIDEBAR_MAX = 320;
+const SIDEBAR_SNAP_THRESHOLD = 100; // below this, snap to icon-only
 
 function isActive(pathname: string, to: string) {
   if (to === "/") return pathname === "/";
@@ -23,8 +29,56 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const { leagueId, setLeagueId, leagues } = useLeague();
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Persisted sidebar width
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = localStorage.getItem("fbst-sidebar-width");
+    return stored ? Number(stored) : SIDEBAR_DEFAULT;
+  });
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  const sidebarOpen = sidebarWidth > SIDEBAR_SNAP_THRESHOLD;
+
+  const setSidebarOpen = useCallback((open: boolean) => {
+    const w = open ? SIDEBAR_DEFAULT : SIDEBAR_COLLAPSED;
+    setSidebarWidth(w);
+    localStorage.setItem("fbst-sidebar-width", String(w));
+  }, []);
+
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startW: sidebarWidth };
+    setIsDragging(true);
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    function onMove(e: MouseEvent) {
+      if (!dragRef.current) return;
+      const delta = e.clientX - dragRef.current.startX;
+      const raw = dragRef.current.startW + delta;
+      const clamped = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, raw));
+      setSidebarWidth(clamped);
+    }
+    function onUp() {
+      setIsDragging(false);
+      // Snap to collapsed or expanded
+      setSidebarWidth((w) => {
+        const snapped = w < SIDEBAR_SNAP_THRESHOLD ? SIDEBAR_COLLAPSED : Math.max(SIDEBAR_SNAP_THRESHOLD, w);
+        localStorage.setItem("fbst-sidebar-width", String(snapped));
+        return snapped;
+      });
+      dragRef.current = null;
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  }, [isDragging]);
 
   const canAccessCommissioner = useMemo(() => {
     if (Boolean(user?.isAdmin)) return true;
@@ -103,7 +157,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         to={item.to}
         onClick={() => {
           if (window.innerWidth < 1024) {
-            setSidebarOpen(false);
+            setMobileOpen(false);
           }
         }}
         className={`lg-sidebar-item ${active ? 'active' : ''} ${!sidebarOpen ? 'justify-center' : ''}`}
@@ -118,24 +172,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen scrollbar-hide">
+    <div className={`min-h-screen scrollbar-hide ${isDragging ? 'cursor-col-resize select-none' : ''}`}>
       <div className="flex">
-        {sidebarOpen && sidebarVisible && (
+        {mobileOpen && sidebarVisible && (
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-300"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setMobileOpen(false)}
           />
         )}
 
         <aside
             className={`
               fixed lg:sticky top-0 h-screen z-50
-              shrink-0 transition-all duration-300 group
+              shrink-0 group
               lg-sidebar
+              ${isDragging ? '' : 'transition-all duration-300'}
               ${!sidebarVisible ? 'w-0 overflow-hidden border-none px-0' : ''}
-              ${!sidebarOpen && sidebarVisible ? 'lg:w-20 -translate-x-full lg:translate-x-0' : ''}
-              ${sidebarOpen && sidebarVisible ? 'w-60' : ''}
+              ${!sidebarVisible ? '' : mobileOpen ? 'w-60' : '-translate-x-full lg:translate-x-0'}
             `}
+            style={sidebarVisible ? { '--sidebar-w': `${sidebarWidth}px` } as React.CSSProperties : undefined}
         >
           <div className="px-4 py-8 h-full flex flex-col min-w-[64px]">
             <div className={`mb-10 flex items-center justify-between ${!sidebarOpen && 'flex-col gap-6'}`}>
@@ -315,12 +370,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
           </div>
+
+          {/* Drag handle */}
+          {sidebarVisible && (
+            <div
+              onMouseDown={onDragStart}
+              className="hidden lg:block absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-[var(--lg-accent)]/30 active:bg-[var(--lg-accent)]/50 transition-colors z-10"
+            />
+          )}
         </aside>
 
         <div className="flex-1 flex flex-col min-h-screen transition-all duration-300">
           <header className={`sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--lg-border-faint)] px-6 py-5 lg:hidden bg-[var(--lg-bg-page)]/80 backdrop-blur-3xl`}>
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => setMobileOpen(true)}
               className="lg-button lg-button-secondary p-2.5"
               aria-label="Open navigation menu"
             >
