@@ -3,13 +3,16 @@ import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import GoogleSignInButton from "../../../components/GoogleSignInButton";
 import { Logo } from "../../../components/ui/Logo";
+import { useAuth } from "../../../auth/AuthProvider";
 
 export default function Signup() {
+  const { loginWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -18,18 +21,18 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
+      const { supabase } = await import("../../../lib/supabase");
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name },
+        },
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Signup failed");
-      }
+      if (signUpError) throw signUpError;
 
-      window.location.href = "/";
+      setSuccess(true);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -62,8 +65,18 @@ export default function Signup() {
           </div>
 
           <div className="space-y-6">
+            {success ? (
+              <div className="text-center space-y-4">
+                <div className="p-4 rounded-xl bg-[var(--lg-success)]/10 border border-[var(--lg-success)]/20 text-[var(--lg-success)] text-sm font-medium">
+                  Check your email for a confirmation link to activate your account.
+                </div>
+                <Link to="/login" className="text-sm font-bold text-[var(--lg-accent)] hover:underline">
+                  Back to Login
+                </Link>
+              </div>
+            ) : (<>
             <div>
-              <GoogleSignInButton label="Continue with Google" />
+              <GoogleSignInButton label="Continue with Google" onClick={loginWithGoogle} />
             </div>
 
             <div className="relative py-2">
@@ -138,6 +151,7 @@ export default function Signup() {
                 {loading ? "Creating account..." : "Create Account"}
               </button>
             </form>
+            </>)}
           </div>
         </div>
 

@@ -107,7 +107,7 @@ async function main() {
   console.log(`  FranchiseMemberships created/verified: ${membershipsCreated}`);
 
   // Verify all leagues have franchiseId
-  const orphaned = await prisma.league.count({ where: { franchiseId: null } });
+  const orphaned = await prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) as count FROM "League" WHERE "franchiseId" IS NULL`.then(r => Number(r[0].count));
   if (orphaned > 0) {
     console.warn(`\n⚠️  ${orphaned} league(s) still have NULL franchiseId!`);
   } else {

@@ -153,6 +153,49 @@ router.post("/admin/league/:leagueId/reset-rosters", requireAuth, requireAdmin, 
 }));
 
 /**
+ * DELETE /api/admin/league/:leagueId
+ * Permanently deletes a league and all associated data (teams, rosters, memberships, etc.)
+ */
+router.delete("/admin/league/:leagueId", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
+
+  const league = await prisma.league.findUnique({ where: { id: leagueId } });
+  if (!league) return res.status(404).json({ error: "League not found" });
+
+  // Delete in dependency order
+  const teamIds = (await prisma.team.findMany({ where: { leagueId }, select: { id: true } })).map(t => t.id);
+
+  await prisma.$transaction([
+    prisma.auctionBid.deleteMany({ where: { team: { leagueId } } }),
+    prisma.auctionLot.deleteMany({ where: { player: { rosters: { some: { team: { leagueId } } } } } }),
+    prisma.auctionSession.deleteMany({ where: { leagueId } }),
+    prisma.roster.deleteMany({ where: { teamId: { in: teamIds } } }),
+    prisma.tradeItem.deleteMany({ where: { trade: { leagueId } } }),
+    prisma.trade.deleteMany({ where: { leagueId } }),
+    prisma.waiverClaim.deleteMany({ where: { teamId: { in: teamIds } } }),
+    prisma.transactionEvent.deleteMany({ where: { leagueId } }),
+    prisma.teamStatsPeriod.deleteMany({ where: { teamId: { in: teamIds } } }),
+    prisma.teamStatsSeason.deleteMany({ where: { teamId: { in: teamIds } } }),
+    prisma.team.deleteMany({ where: { leagueId } }),
+    prisma.leagueMembership.deleteMany({ where: { leagueId } }),
+    prisma.leagueRule.deleteMany({ where: { leagueId } }),
+    prisma.period.deleteMany({ where: { leagueId } }),
+    prisma.league.delete({ where: { id: leagueId } }),
+  ]);
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "LEAGUE_DELETE",
+    resourceType: "League",
+    resourceId: String(leagueId),
+    metadata: { name: league.name, season: league.season },
+  });
+
+  return res.json({ success: true });
+}));
+
+/**
  * PATCH /api/admin/league/:leagueId/team-codes
  * Body: { codes: { teamId: code, ... } }  e.g. { "9": "DOY", "10": "HAM" }
  */
