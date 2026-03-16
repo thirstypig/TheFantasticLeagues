@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import PageHeader from '../components/ui/PageHeader';
 import { Button } from '../components/ui/button';
 import { fetchJsonApi } from '../api/base';
-import { getLeagues } from '../features/leagues/api';
+import { useLeague } from '../contexts/LeagueContext';
 import type { LeagueRule } from '../api/types';
 
 interface RulesData {
@@ -18,16 +18,13 @@ function ruleValue(rules: LeagueRule[], key: string): string {
 export default function Guide() {
   const [rules, setRules] = useState<LeagueRule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [leagueId, setLeagueId] = useState<number | null>(null);
+  const { leagueId } = useLeague();
 
   useEffect(() => {
     async function load() {
+      if (!leagueId) return;
       try {
-        const resp = await getLeagues();
-        const lid = resp.leagues?.[0]?.id;
-        if (!lid) return;
-        setLeagueId(lid);
-        const data = await fetchJsonApi<RulesData>(`/api/leagues/${lid}/rules`);
+        const data = await fetchJsonApi<RulesData>(`/api/leagues/${leagueId}/rules`);
         setRules(data.rules ?? []);
       } catch (e) {
         console.error('Failed to load rules for guide:', e);
@@ -36,7 +33,7 @@ export default function Guide() {
       }
     }
     load();
-  }, []);
+  }, [leagueId]);
 
   const teamCount = parseInt(ruleValue(rules, 'team_count')) || 8;
   const draftMode = ruleValue(rules, 'draft_mode') || 'Auction';

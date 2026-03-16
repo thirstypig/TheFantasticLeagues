@@ -7,16 +7,18 @@ import PlayerPoolTab from '../components/PlayerPoolTab';
 import TeamListTab from '../components/TeamListTab';
 import AIAnalysisTab from '../components/AIAnalysisTab';
 import MyNominationQueue from '../components/MyNominationQueue';
-import { getPlayerSeasonStats, type PlayerSeasonStat, getLeagues, getLeague, getMe } from '../../../api';
+import { getPlayerSeasonStats, type PlayerSeasonStat, getLeague, getMe } from '../../../api';
 import { useAuctionState } from '../hooks/useAuctionState';
 import { useNominationQueue } from '../hooks/useNominationQueue';
 import { useToast } from "../../../contexts/ToastContext";
+import { useLeague } from "../../../contexts/LeagueContext";
 
 export default function Auction() {
   const { toast } = useToast();
+  const { leagueId: currentLeagueId } = useLeague();
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
   const [initLoading, setInitLoading] = useState(true);
-  
+
   // Auth / Context State
   const [myTeamId, setMyTeamId] = useState<number | undefined>(undefined);
   const [activeLeagueId, setActiveLeagueId] = useState<number | null>(null);
@@ -33,28 +35,26 @@ export default function Auction() {
         try {
             setInitLoading(true);
 
-            // Parallel fetch: players + leagues + me
-            const [stats, leaguesRes, meRes] = await Promise.all([
+            // Parallel fetch: players + me
+            const [stats, meRes] = await Promise.all([
                 getPlayerSeasonStats(),
-                getLeagues(),
                 getMe(),
             ]);
             if (!mounted) return;
             setPlayers(stats);
 
-            const firstLeague = leaguesRes.leagues[0];
             const myUserId = meRes.user?.id;
 
-            if (firstLeague) {
-                setActiveLeagueId(firstLeague.id);
+            if (currentLeagueId) {
+                setActiveLeagueId(currentLeagueId);
 
                 // Check commissioner role from memberships
-                const membership = meRes.user?.memberships?.find((m: any) => m.leagueId === firstLeague.id);
+                const membership = meRes.user?.memberships?.find((m: any) => m.leagueId === currentLeagueId);
                 if (membership?.role === 'COMMISSIONER' || meRes.user?.isAdmin) {
                     setIsCommissioner(true);
                 }
 
-                const detail = await getLeague(firstLeague.id);
+                const detail = await getLeague(currentLeagueId);
                 if (!mounted) return;
                 const myTeam = detail.league.teams.find((t: any) =>
                   t.ownerUserId === myUserId || (t.ownerships || []).some((o: any) => o.userId === myUserId)
@@ -72,7 +72,7 @@ export default function Auction() {
     };
     init();
     return () => { mounted = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentLeagueId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show "Start Auction" button instead of auto-init — commissioner explicitly starts
   const needsInit = activeLeagueId && auctionState && auctionState.status === 'not_started' && isCommissioner;

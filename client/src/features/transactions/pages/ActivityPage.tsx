@@ -3,7 +3,6 @@ import {
   getTransactions,
   TransactionEvent,
   getPlayerSeasonStats,
-  getLeagues,
   getLeague,
   PlayerSeasonStat,
   getSeasonStandings,
@@ -48,7 +47,6 @@ export default function ActivityPage() {
   const [teams, setTeams] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [leagueId, setLeagueId] = useState<number | null>(null);
 
   // Trade data
   const [trades, setTrades] = useState<TradeProposal[]>([]);
@@ -69,27 +67,19 @@ export default function ActivityPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [txResp, playersResp, leaguesResp, standingsResp] = await Promise.all([
+      const [txResp, playersResp, lDetail, standingsResp] = await Promise.all([
         getTransactions({ take: 100 }),
         getPlayerSeasonStats(),
-        getLeagues(),
+        getLeague(currentLeagueId),
         getSeasonStandings(),
       ]);
       setTransactions(txResp.transactions);
       setPlayers(playersResp || []);
       setStandings(standingsResp.rows || []);
+      await loadTrades(currentLeagueId);
 
-      if (leaguesResp.leagues && leaguesResp.leagues.length > 0) {
-        const league = leaguesResp.leagues[0];
-
-        // Parallelize getLeague and loadTrades (they are independent)
-        const [lDetail] = await Promise.all([
-          getLeague(league.id),
-          loadTrades(league.id),
-        ]);
+      {
         const loadedTeams = lDetail.league.teams || [];
-
-        setLeagueId(league.id);
         setTeams(loadedTeams);
 
         // Auto-detect user's team
@@ -115,7 +105,7 @@ export default function ActivityPage() {
   }, [loadData]);
 
   const handleClaim = async (player: PlayerSeasonStat) => {
-    if (!selectedTeamId || !leagueId) {
+    if (!selectedTeamId || !currentLeagueId) {
       toast("Please select a team to claim for.", "warning");
       return;
     }
@@ -127,7 +117,7 @@ export default function ActivityPage() {
       await fetchJsonApi("/api/transactions/claim", {
         method: "POST",
         body: JSON.stringify({
-          leagueId,
+          leagueId: currentLeagueId,
           teamId: selectedTeamId,
           playerId: (player as any).player_id || (player as any).id,
           mlbId: player.mlb_id || (player as any).mlbId,
@@ -317,7 +307,7 @@ export default function ActivityPage() {
         {activeTab === "waivers" && (
           <ActivityWaiversTab
             sortedWaiverOrder={sortedWaiverOrder}
-            leagueId={leagueId}
+            leagueId={currentLeagueId}
             isCommissioner={isCommissioner}
           />
         )}

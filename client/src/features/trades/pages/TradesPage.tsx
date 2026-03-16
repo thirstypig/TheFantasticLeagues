@@ -7,7 +7,6 @@ import {
   vetoTrade,
   processTrade,
   TradeProposal,
-  getLeagues,
   getLeague,
 } from "../../../api";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -464,36 +463,33 @@ export function LeagueTradeCard({
 export function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void; onSuccess: () => void }) {
   const { me } = useAuth();
   const user = me?.user;
+  const { leagueId: currentLeagueId } = useLeague();
   const [selectedPartnerId, setSelectedPartnerId] = useState<number | null>(null);
   const [myTeam, setMyTeam] = useState<any>(null);
   const [partners, setPartners] = useState<any[]>([]);
-  
+
   const { toast } = useToast();
   const [myAssets, setMyAssets] = useState<any[]>([]);
   const [partnerAssets, setPartnerAssets] = useState<any[]>([]);
 
   useEffect(() => {
-    getLeagues().then(async (res) => {
-      if (res.leagues.length > 0) {
-        for (const ls of res.leagues) {
-          try {
-             const detail = await getLeague(ls.id);
-             const l = detail.league;
-             const uid = user?.id ? Number(user.id) : undefined;
-             const my = l.teams.find((t: any) => t.owner === user?.email || (uid && (t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid))));
-             
-             if (my) {
-               setMyTeam(my);
-               setPartners(l.teams.filter(t => t.id !== my.id));
-               break; 
-             }
-          } catch (e) {
-            console.error("Failed to load league details", e);
-          }
+    if (!currentLeagueId) return;
+    (async () => {
+      try {
+        const detail = await getLeague(currentLeagueId);
+        const l = detail.league;
+        const uid = user?.id ? Number(user.id) : undefined;
+        const my = l.teams.find((t: any) => t.owner === user?.email || (uid && (t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid))));
+
+        if (my) {
+          setMyTeam(my);
+          setPartners(l.teams.filter((t: any) => t.id !== my.id));
         }
+      } catch (e) {
+        console.error("Failed to load league details", e);
       }
-    });
-  }, [user]);
+    })();
+  }, [user, currentLeagueId]);
 
   const handlePropose = async () => {
     if (!myTeam || !selectedPartnerId) return;

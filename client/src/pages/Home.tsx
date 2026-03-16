@@ -10,6 +10,7 @@ import { formatAvg } from "../lib/playerDisplay";
 import { mapPosition } from "../lib/sportConfig";
 import { joinLeague } from "../features/leagues/api";
 import { useToast } from "../contexts/ToastContext";
+import { useLeague } from "../contexts/LeagueContext";
 
 function num(v: string | number | null | undefined): number {
   return Number(v) || 0;
@@ -46,12 +47,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joining, setJoining] = useState(false);
-  const [leagueName, setLeagueName] = useState("");
   const [outfieldMode, setOutfieldMode] = useState("OF");
-  const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
-
-  const memberships = user?.memberships || [];
-  const currentLeagueId = selectedLeagueId ?? (memberships[0]?.leagueId ? Number(memberships[0].leagueId) : null);
+  const { leagueId: currentLeagueId } = useLeague();
 
   useEffect(() => {
     if (!user) return;
@@ -72,7 +69,6 @@ export default function Home() {
          ]);
          if (!mounted) return;
 
-         setLeagueName(leagueRes.league?.name || "");
          setOutfieldMode(leagueRes.league?.outfieldMode || "OF");
          const teams = leagueRes.league?.teams || [];
          const uid = Number(user.id);
@@ -120,25 +116,10 @@ export default function Home() {
   return (
     <div className="relative min-h-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10 scrollbar-hide">
       <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <PageHeader
-            title="Dashboard"
-            subtitle={<span>Welcome, <span className="text-[var(--lg-accent)] font-semibold uppercase">{user.name || user.email}</span>.</span>}
-          />
-          {memberships.length > 1 && (
-            <select
-              value={currentLeagueId ?? ""}
-              onChange={(e) => setSelectedLeagueId(Number(e.target.value))}
-              className="h-10 px-3 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-sm text-[var(--lg-text-primary)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none"
-            >
-              {memberships.map((m) => (
-                <option key={m.leagueId} value={Number(m.leagueId)}>
-                  {m.league?.name ? `${m.league.name} ${m.league.seasonYear ?? ''}`.trim() : `Season ${m.leagueId}`}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        <PageHeader
+          title="Dashboard"
+          subtitle={<span>Welcome, <span className="text-[var(--lg-accent)] font-semibold uppercase">{user.name || user.email}</span>.</span>}
+        />
       </div>
 
       {loading ? (

@@ -1,9 +1,10 @@
 // client/src/pages/TransactionsPage.tsx
 import React, { useEffect, useState } from "react";
-import { getTransactions, TransactionEvent, getPlayerSeasonStats, getLeagues, getLeague, PlayerSeasonStat, getSeasonStandings } from "../../../api";
+import { getTransactions, TransactionEvent, getPlayerSeasonStats, getLeague, PlayerSeasonStat, getSeasonStandings } from "../../../api";
 import { fetchJsonApi } from "../../../api/base";
 import { processWaiverClaims } from "../../waivers/api";
 import { useAuth } from "../../../auth/AuthProvider";
+import { useLeague } from "../../../contexts/LeagueContext";
 import { useToast } from "../../../contexts/ToastContext";
 import AddDropTab from "../../roster/components/AddDropTab";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -15,41 +16,35 @@ import { Button } from "../../../components/ui/button";
 export default function TransactionsPage() {
   const { me } = useAuth();
   const authUser = me?.user;
+  const { leagueId } = useLeague();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'add_drop' | 'waivers' | 'history'>('add_drop');
   const [processing, setProcessing] = useState(false);
-  
+
   // Data
   const [transactions, setTransactions] = useState<TransactionEvent[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
-  const [standings, setStandings] = useState<any[]>([]); 
-  
+  const [standings, setStandings] = useState<any[]>([]);
+
   // State
   const [loading, setLoading] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [leagueId, setLeagueId] = useState<number | null>(null);
 
   async function loadData() {
     try {
-      const [txResp, playersResp, leaguesResp, standingsResp] = await Promise.all([
+      const [txResp, playersResp, lDetail, standingsResp] = await Promise.all([
            getTransactions({ take: 100 }),
-           getPlayerSeasonStats(), // Current Season
-           getLeagues(),
+           getPlayerSeasonStats(),
+           getLeague(leagueId),
            getSeasonStandings()
       ]);
       setTransactions(txResp.transactions);
       setPlayers(playersResp || []);
-
-      // standingsResp returns { periodIds, rows }
       setStandings(standingsResp.rows || []);
 
-      if (leaguesResp.leagues && leaguesResp.leagues.length > 0) {
-          const league = leaguesResp.leagues[0];
-          const lDetail = await getLeague(league.id);
+      {
           const loadedTeams = lDetail.league.teams || [];
-
-          setLeagueId(league.id);
           setTeams(loadedTeams);
 
           // Default to first owned team (or first team for admins)
