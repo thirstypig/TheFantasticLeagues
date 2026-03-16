@@ -401,8 +401,8 @@
   .lg-sidebar-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 6px 10px;
+    gap: 8px;
+    padding: 5px 8px;
     border-radius: var(--lg-radius-md);
     color: var(--lg-text-secondary);
     font-size: 13px;
@@ -429,12 +429,12 @@
   }
 
   .lg-sidebar-section-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--lg-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    padding: 12px 10px 6px;
+    padding: 4px 8px 2px;
     opacity: 0.6;
   }
 
