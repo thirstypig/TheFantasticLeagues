@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { logger } from "../lib/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,8 +35,9 @@ function loadAllSeasonStandings(): SeasonStandingRow[] {
   }
 
   cachedRows = rows;
-  console.log(
-    `Loaded ${rows.length} season standings rows from ${SEASON_STANDINGS_FILE}`
+  logger.info(
+    { rowCount: rows.length, file: SEASON_STANDINGS_FILE },
+    "Loaded season standings rows"
   );
   return rows;
 }

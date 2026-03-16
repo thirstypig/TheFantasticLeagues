@@ -656,4 +656,133 @@ export class CommissionerService {
       });
       return true;
   }
+
+  /**
+   * End Auction — snapshot rosters into RosterEntry archive + flag auction complete
+   */
+  async endAuction(leagueId: number) {
+    const activeRosters = await prisma.roster.findMany({
+      where: { team: { leagueId }, releasedAt: null },
+      include: { team: true, player: true },
+    });
+
+    const currentLeague = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { season: true },
+    });
+    const leagueSeason = currentLeague?.season ?? new Date().getFullYear();
+
+    let count = 0;
+    for (const r of activeRosters) {
+      await prisma.rosterEntry.create({
+        data: {
+          year: leagueSeason,
+          teamCode: r.team.code || r.team.name.substring(0, 3).toUpperCase(),
+          playerName: r.player.name,
+          position: r.player.posPrimary,
+          mlbTeam: null,
+          acquisitionCost: r.price,
+        },
+      });
+      count++;
+    }
+
+    await prisma.leagueRule.upsert({
+      where: { leagueId_category_key: { leagueId, category: "status", key: "auction_complete" } },
+      create: { leagueId, category: "status", key: "auction_complete", value: "true", label: "Auction Complete" },
+      update: { value: "true" },
+    });
+
+    return { snapshotted: count };
+  }
+
+  /**
+   * Execute Trade — commissioner direct trade (no proposal/accept flow)
+   */
+  async executeTrade(
+    leagueId: number,
+    items: Array<{
+      senderId: number;
+      recipientId: number;
+      assetType: string;
+      playerId?: number | null;
+      amount?: number | null;
+      pickRound?: number | null;
+    }>,
+  ) {
+    // Verify all teams belong to this league
+    const involvedTeamIds = [...new Set<number>(items.flatMap((i) => [i.senderId, i.recipientId]))];
+    const teams = await prisma.team.findMany({
+      where: { id: { in: involvedTeamIds } },
+      select: { id: true, leagueId: true },
+    });
+    if (teams.length !== involvedTeamIds.length || teams.some((t) => t.leagueId !== leagueId)) {
+      throw new Error("All teams must belong to this league");
+    }
+
+    const proposerId = items[0].senderId;
+
+    const trade = await prisma.$transaction(async (tx) => {
+      const trade = await tx.trade.create({
+        data: {
+          leagueId,
+          proposerId,
+          status: "PROCESSED",
+          processedAt: new Date(),
+          items: {
+            create: items.map((item) => ({
+              senderId: item.senderId,
+              recipientId: item.recipientId,
+              assetType: item.assetType,
+              playerId: item.playerId ?? undefined,
+              amount: item.amount ?? undefined,
+              pickRound: item.pickRound ?? undefined,
+            })),
+          },
+        } as any,
+        include: { items: true },
+      });
+
+      for (const item of (trade as any).items) {
+        if (item.assetType === "PLAYER" && item.playerId) {
+          const rosterEntry = await tx.roster.findFirst({
+            where: { teamId: item.senderId, playerId: item.playerId, releasedAt: null },
+          });
+
+          if (rosterEntry) {
+            await tx.roster.update({
+              where: { id: rosterEntry.id },
+              data: { releasedAt: new Date(), source: "TRADE_OUT" },
+            });
+
+            await assertPlayerAvailable(tx, item.playerId, leagueId);
+
+            await tx.roster.create({
+              data: {
+                teamId: item.recipientId,
+                playerId: item.playerId,
+                source: "TRADE_IN",
+                acquiredAt: new Date(),
+                price: rosterEntry.price,
+                assignedPosition: null,
+              },
+            });
+          }
+        } else if (item.assetType === "BUDGET") {
+          await tx.team.update({
+            where: { id: item.senderId },
+            data: { budget: { decrement: item.amount || 0 } },
+          });
+          await tx.team.update({
+            where: { id: item.recipientId },
+            data: { budget: { increment: item.amount || 0 } },
+          });
+        }
+      }
+
+      return trade;
+    }, { timeout: 30_000 });
+
+    return trade;
+  }
 }

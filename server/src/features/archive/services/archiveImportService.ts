@@ -71,6 +71,39 @@ interface PeriodDefinition {
   tabName: string;
 }
 
+/** Standardized draft/period row extracted from Excel grids */
+interface StandardizedPlayerRow {
+  player_name: string;
+  team_code: string;
+  mlb_team?: string;
+  position: string;
+  is_pitcher: boolean;
+  is_keeper: boolean;
+  draft_dollars?: number;
+}
+
+/** Row shape for side-by-side standings tables */
+interface StandingsRowObj {
+  [header: string]: unknown;
+}
+
+/** Player knowledge-base entry for fuzzy matching */
+interface PlayerKnowledge {
+  playerName: string;
+  fullName: string | null;
+  mlbId: string | null;
+  position: string | null;
+  mlbTeam: string | null;
+  isPitcher: boolean;
+}
+
+interface FuzzyEntry {
+  last: string;
+  firstInitial: string;
+  isPitcher: boolean;
+  full: PlayerKnowledge;
+}
+
 export class ArchiveImportService {
   private year: number;
   private archiveDir: string;
@@ -290,9 +323,9 @@ export class ArchiveImportService {
 
           if (teamRowIdx !== -1 && colToTeam.size >= 4) {
               log(`  Unrolling Draft Grid (${colToTeam.size} teams)...`);
-              const standardizedRows: any[] = [];
+              const standardizedRows: StandardizedPlayerRow[] = [];
               let sectionIsPitchers = false;
-              
+
               // Find the position column (usually leftmost column with position values)
               let posColIdx = -1;
               for (let i = teamRowIdx + 1; i < Math.min(teamRowIdx + 30, rows.length); i++) {
@@ -432,7 +465,7 @@ export class ArchiveImportService {
 
             if (tableStarts.length > 1) {
                 log(`  Unrolling side-by-side Standings (${tableStarts.length} tables)...`);
-                const standardizedRows: any[] = [];
+                const standardizedRows: StandingsRowObj[] = [];
                 const standardHeaders = headerRow.slice(tableStarts[0], tableStarts[1]).filter(h => h);
 
                 for (let i = headerRowIdx + 1; i < rows.length; i++) {
@@ -442,7 +475,7 @@ export class ArchiveImportService {
                          if (startCol >= row.length) return;
                          const chunk = row.slice(startCol, nextStart);
                          if (chunk.length > 0 && chunk[0] && !isNaN(Number(chunk[0]))) {
-                              const rowObj: any = {};
+                              const rowObj: StandingsRowObj = {};
                               standardHeaders.forEach((h, hIdx) => { if (hIdx < chunk.length) rowObj[h] = chunk[hIdx]; });
                               standardizedRows.push(rowObj);
                          }
@@ -527,7 +560,7 @@ export class ArchiveImportService {
               if (teamRowIdx !== -1 && colToTeam.size >= 2) {
                   // ROSTER GRID MODE
                   log(`  Entering Roster Grid Parsing Mode for Period ${p.p}`);
-                  const standardizedRows: any[] = [];
+                  const standardizedRows: StandardizedPlayerRow[] = [];
                   const teamCounts = new Map<string, number>();
                   const maxPlayers = this.year <= 2022 ? 23 : 30;
                   let sectionIsPitchers = false;
@@ -615,7 +648,7 @@ export class ArchiveImportService {
                      }
                   });
 
-                  const standardizedRows: any[] = [];
+                  const standardizedRows: StandingsRowObj[] = [];
                   const standardHeaders = headerRow.slice(tableStarts[0], tableStarts.length > 1 ? tableStarts[1] : undefined).filter(h => h);
                   let sectionIsPitchers = false;
 
@@ -638,7 +671,7 @@ export class ArchiveImportService {
 
                         const nextStart = tableStarts[loopIdx + 1] || row.length;
                         const chunk = row.slice(startCol, nextStart);
-                        const rowObj: any = {};
+                        const rowObj: StandingsRowObj = {};
                         standardHeaders.forEach((h, hIdx) => { if (hIdx < chunk.length) rowObj[h] = chunk[hIdx]; });
                         
                         rowObj.is_keeper = cell?.s?.font?.bold === true;
@@ -657,8 +690,8 @@ export class ArchiveImportService {
                   log(`  Generated period_${p.p}.csv (vertical unroll ${standardizedRows.length} rows)`);
               }
 
-          } catch (unrollErr: any) {
-              log(`ERROR unrolling Period ${p.p}: ${unrollErr.message}. Falling back to standard CSV.`);
+          } catch (unrollErr: unknown) {
+              log(`ERROR unrolling Period ${p.p}: ${unrollErr instanceof Error ? unrollErr.message : "unknown error"}. Falling back to standard CSV.`);
               const csv = utils.sheet_to_csv(sheet);
               fs.writeFileSync(path.join(this.archiveDir, `period_${p.p}.csv`), csv);
           }
@@ -689,8 +722,8 @@ export class ArchiveImportService {
       distinct: ['playerName'] 
     });
     
-    const exactLookup = new Map<string, any>();
-    const fuzzyLookup: { last: string; firstInitial: string; isPitcher: boolean; full: any }[] = [];
+    const exactLookup = new Map<string, PlayerKnowledge>();
+    const fuzzyLookup: FuzzyEntry[] = [];
 
     allStats.forEach(s => {
       if (!exactLookup.has(s.playerName)) exactLookup.set(s.playerName, s);
@@ -702,8 +735,8 @@ export class ArchiveImportService {
       }
     });
 
-    const findMatch = (rawName: string, isPitcherGuess: boolean): { match: any; note?: string } => {
-      if (exactLookup.has(rawName)) return { match: exactLookup.get(rawName) };
+    const findMatch = (rawName: string, isPitcherGuess: boolean): { match: PlayerKnowledge | null; note?: string } => {
+      if (exactLookup.has(rawName)) return { match: exactLookup.get(rawName)! };
       let last = '';
       let firstInit = '';
       const cleanName = rawName.toLowerCase().replace('.', '').replace(',', '');
@@ -749,7 +782,7 @@ export class ArchiveImportService {
       const teamValidation: Record<string, { hitters: number; pitchers: number; total: number }> = {};
 
       for (const rowItem of records) {
-        const row = rowItem as any;
+        const row = rowItem as Record<string, string>;
         const pName = row.player_name || row.player || row.name || row['player name'];
         const team = row.team_code || row.team || row.user || row['fantasy team'];
         if (!pName || !team) continue;
@@ -788,7 +821,7 @@ export class ArchiveImportService {
             position: match?.position || position,
             mlbTeam: match?.mlbTeam || null,
             draftDollars: this.toNum(row.draft_dollars || row.price || row.dollars),
-            isKeeper: row.is_keeper === 'true' || row.is_keeper === true,
+            isKeeper: row.is_keeper === 'true',
             AB: this.toNum(row.ab),
             H: this.toNum(row.h),
             R: this.toNum(row.r),
@@ -845,7 +878,7 @@ export class ArchiveImportService {
         });
         await prisma.historicalStanding.deleteMany({ where: { seasonId: season.id } });
         for (const rowItem of records) {
-            const row = rowItem as any;
+            const row = rowItem as Record<string, string>;
             const teamName = row.team_name || row.team || row.user || row['fantasy team'] || row['name'];
             if (!teamName) continue;
             let teamCode = row.team_code || this.identifyTeam(String(teamName)) || '';
@@ -865,8 +898,8 @@ export class ArchiveImportService {
     }
   }
 
-  private toNum(val: any): number {
-    return parseInt(val) || 0;
+  private toNum(val: string | number | undefined | null): number {
+    return parseInt(String(val)) || 0;
   }
 
   private identifyTeam(val: string): string | null {

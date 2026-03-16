@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { logger } from "../lib/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,7 +38,7 @@ function loadCsvPlayers(): Player[] {
     .filter((l) => l.length > 0);
 
   if (lines.length === 0) {
-    console.warn("loadCsvPlayers: CSV file was empty");
+    logger.warn({}, "loadCsvPlayers: CSV file was empty");
     return [];
   }
 

@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { warmTeamCacheOnce, defaultCachePath } from "./mlbTeamCache.js";
+import { logger } from "../lib/logger.js";
 
 type AnyRow = Record<string, any>;
 
@@ -169,7 +170,7 @@ export async function loadPlayerSeasonStats(): Promise<SeasonStatRow[]> {
       }
     }
 
-    console.log(`Loaded ${rows.length} season stat rows from ${path.basename(seasonPath)} (mlb_team warmed)`);
+    logger.info({ rowCount: rows.length, file: path.basename(seasonPath) }, "Loaded season stat rows (mlb_team warmed)");
     return rows;
   })();
 

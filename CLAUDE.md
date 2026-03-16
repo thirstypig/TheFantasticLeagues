@@ -259,9 +259,9 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (312 server + 85 client = 397 tests)
+### Current Test Coverage (414 server + 85 client = 499 tests)
 
-**Server (312 tests):**
+**Server (414 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
@@ -285,6 +285,13 @@ server/src/__tests__/integration/
 - `server/src/features/commissioner/__tests__/CommissionerService.test.ts` — 7 tests
 - `server/src/features/teams/__tests__/routes.test.ts` — 4 tests
 - `server/src/__tests__/integration/transaction-claims.test.ts` — 25 tests
+- `server/src/features/archive/__tests__/routes.test.ts` — 38 tests (seasons, standings, periods, stats, team update, stat update, sync, recalculate, search, AI, archive-current)
+- `server/src/features/admin/__tests__/routes.test.ts` — 19 tests (league CRUD, members, import-rosters, reset, delete, team-codes, sync-mlb, audit-log)
+- `server/src/features/keeper-prep/__tests__/routes.test.ts` — 8 tests (populate, status, roster, save, lock/unlock)
+- `server/src/features/players/__tests__/routes.test.ts` — 13 tests (list/filter, detail, fielding, season-stats, period-stats, auction-values)
+- `server/src/features/periods/__tests__/routes.test.ts` — 10 tests (list, create, update, delete with auth checks)
+- `server/src/features/transactions/__tests__/routes.test.ts` — 8 tests (list, filter, paginate, claim by playerId/mlbId, drop)
+- `server/src/features/franchises/__tests__/routes.test.ts` — 6 tests (list, detail, update settings)
 
 **Client (85 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)

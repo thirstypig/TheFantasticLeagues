@@ -86,7 +86,7 @@ export function defaultCachePath(): string {
     return primaryPath;
   } catch (e) {
     // If not writable, use /tmp (common across systems)
-    console.warn(`[mlb_team_cache] Primary data directory is not writable. Using fallback /tmp/mlb_team_cache.json`);
+    logger.warn({}, "[mlb_team_cache] Primary data directory is not writable. Using fallback /tmp/mlb_team_cache.json");
     return "/tmp/mlb_team_cache.json";
   }
 }
@@ -105,7 +105,7 @@ export function loadTeamCache(cachePath = defaultCachePath()): Map<string, strin
     }
     return m;
   } catch (err: unknown) {
-    console.warn(`[mlb_team_cache] Load failed (${err instanceof Error ? err.message : "unknown error"}). Defaulting to empty map.`);
+    logger.warn({ error: err instanceof Error ? err.message : "unknown error" }, "[mlb_team_cache] Load failed. Defaulting to empty map.");
     return new Map();
   }
 }
@@ -141,7 +141,7 @@ export async function warmTeamCacheOnce(
     return cache;
   }
 
-  console.log(`[mlb_team_cache] Missing ${missing.length} ids. Warming cache...`);
+  logger.info({ missingCount: missing.length }, "[mlb_team_cache] Warming cache for missing ids");
 
   const teamIdToAbbr = await getTeamIdToAbbr();
 
@@ -154,17 +154,17 @@ export async function warmTeamCacheOnce(
       const map = await fetchPeopleTeamAbbrBatch(batch, teamIdToAbbr);
       for (const [id, abbr] of Object.entries(map)) cache.set(id, String(abbr ?? "").trim());
 
-      console.log(`[mlb_team_cache] Batch ${i + 1}/${batches.length} done.`);
+      logger.info({ batch: i + 1, total: batches.length }, "[mlb_team_cache] Batch done");
       // gentle spacing between batches
       await sleep(150);
     } catch (e: unknown) {
-      console.warn(`[mlb_team_cache] Batch ${i + 1}/${batches.length} failed: ${e instanceof Error ? e.message : String(e)}`);
+      logger.warn({ batch: i + 1, total: batches.length, error: e instanceof Error ? e.message : String(e) }, "[mlb_team_cache] Batch failed");
       // continue; worst case, some ids remain blank
     }
   }
 
   saveTeamCache(cache, cachePath);
-  console.log(`[mlb_team_cache] Saved cache to ${cachePath}`);
+  logger.info({ cachePath }, "[mlb_team_cache] Saved cache");
 
   return cache;
 }
