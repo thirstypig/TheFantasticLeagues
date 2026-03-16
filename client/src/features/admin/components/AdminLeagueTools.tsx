@@ -1,18 +1,11 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 
-import { adminCreateLeague, adminDeleteLeague, adminImportRosters, getLeagues, type LeagueListItem } from "../../../api";
+import { adminDeleteLeague, adminImportRosters, getLeagues, type LeagueListItem } from "../../../api";
 import { Button } from "../../../components/ui/button";
 
 export default function AdminLeagueTools() {
   const [error, setError] = useState<string | null>(null);
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
-
-  // Create league form
-  const [name, setName] = useState("OGBA");
-  const [season, setSeason] = useState<number>(2025);
-  const [draftMode, setDraftMode] = useState<"AUCTION" | "DRAFT">("AUCTION");
-  const [isPublic, setIsPublic] = useState(false);
-  const [copyFromId, setCopyFromId] = useState<number | null>(null);
 
   async function refresh() {
     setError(null);
@@ -26,7 +19,6 @@ export default function AdminLeagueTools() {
 
   useEffect(() => {
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sorted = useMemo(() => {
@@ -39,23 +31,6 @@ export default function AdminLeagueTools() {
     return xs;
   }, [leagues]);
 
-  async function onCreateLeague(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      setError(null);
-      await adminCreateLeague({
-        name: String(name || "").trim(),
-        season: Number(season),
-        draftMode,
-        isPublic,
-        copyFromLeagueId: copyFromId || undefined,
-      });
-      await refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create league.");
-    }
-  }
-
   return (
     <div className="space-y-8">
       {error && (
@@ -64,91 +39,12 @@ export default function AdminLeagueTools() {
         </div>
       )}
 
-      {/* Create League */}
-      <div className="lg-card p-4 md:p-8 bg-[var(--lg-accent)]/5 border-[var(--lg-accent)]/20">
-        <div className="mb-6 text-xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">New Season</div>
-
-        <form onSubmit={onCreateLeague} className="grid gap-6 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">League Name</label>
-            <input
-              className="w-full rounded-2xl border border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] px-4 py-3 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all font-bold"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. OGBA 2025"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Season</label>
-            <input
-              className="w-full rounded-2xl border border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] px-4 py-3 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all font-bold font-mono"
-              value={season}
-              type="number"
-              onChange={(e) => setSeason(Number(e.target.value))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Draft Type</label>
-            <select
-              className="w-full rounded-2xl border border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] px-4 py-3 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all font-bold"
-              value={draftMode}
-              onChange={(e) => setDraftMode(e.target.value as "AUCTION" | "DRAFT")}
-            >
-              <option value="AUCTION">AUCTION</option>
-              <option value="DRAFT">DRAFT</option>
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Copy From (Optional)</label>
-            <select
-              className="w-full rounded-2xl border border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] px-4 py-3 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all font-bold"
-              onChange={(e) => {
-                const id = Number(e.target.value) || null;
-                setCopyFromId(id);
-                if (id) {
-                  const source = sorted.find(l => l.id === id);
-                  if (source) {
-                    setName(source.name);
-                    setSeason(source.season + 1);
-                  }
-                }
-              }}
-            >
-              <option value="">Start Fresh (Default)</option>
-              {sorted.map(l => (
-                <option key={l.id} value={l.id}>{l.name} {l.season}</option>
-              ))}
-            </select>
-            {copyFromId && <div className="mt-2 text-xs text-sky-400 font-bold uppercase tracking-wider">Settings, Members, and Rules will be cloned.</div>}
-          </div>
-
-          <div className="md:col-span-2 flex items-center gap-3 pt-4">
-            <input
-              id="isPublic"
-              type="checkbox"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="w-5 h-5 rounded-lg border-[var(--lg-glass-border)] bg-[var(--lg-glass-bg)] text-[var(--lg-accent)] focus:ring-0"
-            />
-            <label htmlFor="isPublic" className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">
-              Public
-            </label>
-          </div>
-
-          <div className="md:col-span-4 flex justify-end mt-4">
-            <Button type="submit">
-              Create Season
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* Existing Leagues */}
+      {/* All Seasons (admin overview + delete) */}
       <div className="lg-card p-4 md:p-8">
-        <div className="mb-6 text-xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">Seasons</div>
+        <div className="mb-6 text-xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">All Seasons</div>
+        <p className="text-xs text-[var(--lg-text-muted)] mb-4">
+          Admin-only view. To create new seasons, use the Commissioner page.
+        </p>
         <div className="space-y-2">
           {sorted.map(l => (
             <div key={l.id} className="flex items-center justify-between rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] px-4 py-3">

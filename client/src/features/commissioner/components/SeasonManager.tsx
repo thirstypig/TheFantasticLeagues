@@ -10,6 +10,8 @@ import {
   type Season,
   type SeasonStatus,
 } from "../../seasons/api";
+import { getLeagues, type LeagueListItem } from "../../../api";
+import { createLeagueSeason } from "../api";
 import { useToast } from "../../../contexts/ToastContext";
 
 function cls(...xs: Array<string | false | null | undefined>) {
@@ -47,7 +49,7 @@ interface Props {
 }
 
 export default function SeasonManager({ leagueId }: Props) {
-  const { confirm } = useToast();
+  const { confirm, toast } = useToast();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,14 @@ export default function SeasonManager({ leagueId }: Props) {
 
   // Create season form
   const [newYear, setNewYear] = useState(new Date().getFullYear());
+
+  // Create new league/season form
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [allLeagues, setAllLeagues] = useState<LeagueListItem[]>([]);
+  const [newLeagueName, setNewLeagueName] = useState("");
+  const [newLeagueYear, setNewLeagueYear] = useState(new Date().getFullYear() + 1);
+  const [newDraftMode, setNewDraftMode] = useState<"AUCTION" | "DRAFT">("AUCTION");
+  const [copyFromId, setCopyFromId] = useState<number | null>(null);
 
   // Create period form
   const [showPeriodForm, setShowPeriodForm] = useState(false);
@@ -67,12 +77,15 @@ export default function SeasonManager({ leagueId }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const [allSeasons, current] = await Promise.all([
+      const [allSeasons, current, leaguesResp] = await Promise.all([
         getSeasons(leagueId),
         getCurrentSeason(leagueId),
+        getLeagues(),
       ]);
       setSeasons(allSeasons);
       setCurrentSeason(current);
+      const sorted = [...(leaguesResp.leagues ?? [])].sort((a, b) => b.season - a.season);
+      setAllLeagues(sorted);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load seasons");
     } finally {
@@ -392,6 +405,127 @@ export default function SeasonManager({ leagueId }: Props) {
           </div>
         </div>
       )}
+
+      {/* Create New League Season */}
+      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-semibold text-[var(--lg-text-heading)]">Create New Season</h4>
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="text-xs text-[var(--lg-accent)] hover:underline"
+          >
+            {showCreateForm ? "Cancel" : "+ New Season"}
+          </button>
+        </div>
+
+        {!showCreateForm ? (
+          <p className="text-xs text-[var(--lg-text-muted)]">
+            Create a new league season with fresh teams and settings. Optionally clone from an existing season.
+          </p>
+        ) : (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setBusy(true);
+              setError(null);
+              try {
+                const result = await createLeagueSeason({
+                  name: newLeagueName.trim(),
+                  season: newLeagueYear,
+                  draftMode: newDraftMode,
+                  copyFromLeagueId: copyFromId || undefined,
+                });
+                toast(`Created ${result.league.name} ${result.league.season}!`, "success");
+                setShowCreateForm(false);
+                setNewLeagueName("");
+                setCopyFromId(null);
+                await load();
+              } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : "Failed to create season");
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Copy From (Optional)</label>
+                <select
+                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
+                  value={copyFromId ?? ""}
+                  onChange={(e) => {
+                    const id = Number(e.target.value) || null;
+                    setCopyFromId(id);
+                    if (id) {
+                      const source = allLeagues.find(l => l.id === id);
+                      if (source) {
+                        setNewLeagueName(source.name);
+                        setNewLeagueYear(source.season + 1);
+                      }
+                    }
+                  }}
+                >
+                  <option value="">Start Fresh</option>
+                  {allLeagues.map(l => (
+                    <option key={l.id} value={l.id}>{l.name} {l.season}</option>
+                  ))}
+                </select>
+                {copyFromId && <p className="mt-1 text-xs text-[var(--lg-accent)]">Settings, members, and rules will be cloned.</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">League Name</label>
+                <input
+                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
+                  value={newLeagueName}
+                  onChange={(e) => setNewLeagueName(e.target.value)}
+                  placeholder="e.g. OGBA"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Season Year</label>
+                <input
+                  type="number"
+                  min={2020}
+                  max={2100}
+                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none font-mono"
+                  value={newLeagueYear}
+                  onChange={(e) => setNewLeagueYear(Number(e.target.value))}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Draft Type</label>
+                <select
+                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
+                  value={newDraftMode}
+                  onChange={(e) => setNewDraftMode(e.target.value as "AUCTION" | "DRAFT")}
+                >
+                  <option value="AUCTION">Auction</option>
+                  <option value="DRAFT">Draft</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={busy || !newLeagueName.trim()}
+                className={cls(
+                  "rounded-lg bg-[var(--lg-accent)] px-4 py-2 text-sm font-semibold text-white",
+                  (busy || !newLeagueName.trim()) && "opacity-60 cursor-not-allowed"
+                )}
+              >
+                Create Season
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

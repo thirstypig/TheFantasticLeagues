@@ -74,8 +74,65 @@ const upload = multer({
   },
 });
 
+const createSeasonSchema = z.object({
+  name: z.string().min(1).max(200),
+  season: z.number().int().min(1900).max(2100),
+  draftMode: z.enum(["AUCTION", "DRAFT"]).optional().default("AUCTION"),
+  draftOrder: z.enum(["SNAKE", "LINEAR"]).optional(),
+  isPublic: z.boolean().optional().default(false),
+  copyFromLeagueId: z.number().int().positive().optional(),
+});
+
 const router = Router();
 const commissionerService = new CommissionerService();
+
+/**
+ * POST /api/commissioner/create-season
+ * Commissioner or Admin can create a new league/season.
+ * Body: { name, season, draftMode?, draftOrder?, isPublic?, copyFromLeagueId? }
+ */
+router.post("/commissioner/create-season", requireAuth, asyncHandler(async (req, res) => {
+    // Must be admin or commissioner of at least one league
+    const user = req.user!;
+    const isAdmin = user.isAdmin;
+    if (!isAdmin) {
+      const commMembership = await prisma.leagueMembership.findFirst({
+        where: { userId: user.id, role: "COMMISSIONER" },
+      });
+      if (!commMembership) {
+        return res.status(403).json({ error: "Commissioner or Admin access required" });
+      }
+    }
+
+    const parsed = createSeasonSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+    const body = parsed.data;
+
+    const data = {
+        name: norm(body.name),
+        season: body.season,
+        draftMode: body.draftMode as "AUCTION" | "DRAFT",
+        draftOrder: body.draftMode === "DRAFT" ? (body.draftOrder as "SNAKE" | "LINEAR" | undefined) : undefined,
+        isPublic: body.isPublic ?? false,
+        publicSlug: "",
+        copyFromLeagueId: body.copyFromLeagueId,
+        creatorUserId: user.id,
+    };
+
+    if (!data.name) return res.status(400).json({ error: "Missing name" });
+
+    const league = await commissionerService.createLeague(data);
+
+    writeAuditLog({
+      userId: user.id,
+      action: "LEAGUE_CREATE",
+      resourceType: "League",
+      resourceId: String(league.id),
+      metadata: { name: league.name, season: league.season },
+    });
+
+    return res.json({ league });
+}));
 
 /**
  * GET /api/commissioner/:leagueId
