@@ -24,7 +24,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-async function fetchJson(url: string): Promise<any> {
+async function fetchJson(url: string): Promise<unknown> {
   const resp = await fetch(url, { headers: { Accept: "application/json" } });
   if (!resp.ok) throw new Error(`MLB API ${resp.status} for ${url}`);
   return resp.json();
@@ -39,7 +39,8 @@ async function getTeamIdToAbbr(): Promise<Map<number, string>> {
   const data = await fetchJson(url);
 
   const m = new Map<number, string>();
-  const teams: any[] = data?.teams ?? [];
+  const obj = data as Record<string, unknown>;
+  const teams = (Array.isArray(obj?.teams) ? obj.teams : []) as Array<Record<string, unknown>>;
   for (const t of teams) {
     const id = Number(t?.id);
     const abbr = String(t?.abbreviation ?? "").trim();
@@ -61,13 +62,14 @@ async function fetchPeopleTeamAbbrBatch(
 
   // hydrate=currentTeam ensures currentTeam is included
   const url = `${MLB_BASE}/people?personIds=${encodeURIComponent(ids.join(","))}&hydrate=currentTeam`;
-  const data = await fetchJson(url);
-  const people: any[] = data?.people ?? [];
+  const data = await fetchJson(url) as Record<string, unknown>;
+  const people = (Array.isArray(data?.people) ? data.people : []) as Array<Record<string, unknown>>;
 
   const out: Record<string, string> = {};
   for (const p of people) {
     const mlbId = String(p?.id ?? "").trim();
-    const teamId = Number(p?.currentTeam?.id);
+    const ct = p?.currentTeam as Record<string, unknown> | undefined;
+    const teamId = Number(ct?.id);
     const abbr = Number.isFinite(teamId) ? (teamIdToAbbr.get(teamId) ?? "") : "";
     if (mlbId) out[mlbId] = abbr;
   }

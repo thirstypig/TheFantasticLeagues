@@ -18,7 +18,7 @@ import {
 } from '../../api/types';
 
 /**Stable React key helper */
-export function playerKey(p: any): string {
+export function playerKey(p: PlayerSeasonStat | null | undefined): string {
   if (!p) return "—";
   if (typeof p.row_id === "string" && p.row_id.trim()) return p.row_id.trim();
   const mlb = String(p.mlb_id ?? "").trim();
@@ -33,18 +33,19 @@ let _auctionCache: Promise<PlayerSeasonStat[]> | null = null;
 const _seasonStandingsCache = new Map<number, Promise<SeasonStandingsApiResponse>>();
 const _periodCategoryCache = new Map<string, Promise<PeriodCategoryStandingsResponse>>();
 const MLB_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const _mlbCache = new Map<string, { promise: Promise<any>; ts: number }>();
+const _mlbCache = new Map<string, { promise: Promise<unknown>; ts: number }>();
 
 function roleFromRow(row: Record<string, unknown>): "H" | "P" {
-  const g = String(row?.group ?? "").trim().toUpperCase();
+  const g = String(row.group ?? "").trim().toUpperCase();
   if (g === "P") return "P";
   if (g === "H") return "H";
-  return (row?.is_pitcher ?? row?.isPitcher) ? "P" : "H";
+  return (row.is_pitcher ?? row.isPitcher) ? "P" : "H";
 }
 
 /** Ohtani special case: mlb_id 660271 should be DH (hitter) + P (pitcher), never TWP */
 
-function normalizeTwoWayRow(row: any): PlayerSeasonStat {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- external API row with arbitrary stat fields
+function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
   const mlb_id = String(row?.mlb_id ?? row?.mlbId ?? "").trim();
   const role = roleFromRow(row);
   const is_pitcher = role === "P";
@@ -112,7 +113,7 @@ function dedupeByRowId(rows: PlayerSeasonStat[], mode: "season" | "auction" = "s
 export async function getAuctionValues(): Promise<PlayerSeasonStat[]> {
   if (!_auctionCache) {
     _auctionCache = (async () => {
-      const resp = await fetchJsonApi<{ values: unknown[] }>(`${API_BASE}/auction-values`);
+      const resp = await fetchJsonApi<{ values: Record<string, any>[] }>(`${API_BASE}/auction-values`); // eslint-disable-line @typescript-eslint/no-explicit-any
       const raw = resp?.values ?? [];
       return dedupeByRowId(raw.map(normalizeTwoWayRow), "auction");
     })();
@@ -127,7 +128,7 @@ export async function getPlayerSeasonStats(leagueId?: number): Promise<PlayerSea
       const url = leagueId && leagueId !== 1
         ? `${API_BASE}/player-season-stats?leagueId=${leagueId}`
         : `${API_BASE}/player-season-stats`;
-      const resp = await fetchJsonApi<{ stats: unknown[] }>(url);
+      const resp = await fetchJsonApi<{ stats: Record<string, any>[] }>(url); // eslint-disable-line @typescript-eslint/no-explicit-any
       const raw = resp?.stats ?? [];
       return dedupeByRowId(raw.map(normalizeTwoWayRow), "season");
     })());
@@ -155,7 +156,7 @@ export async function getSeasonStandings(leagueId?: number): Promise<SeasonStand
     _seasonStandingsCache.set(cacheKey, (async () => {
       const lid = leagueId || 1;
       const url = `${API_BASE}/season?leagueId=${lid}`;
-      const raw = await fetchJsonApi<any>(url);
+      const raw = await fetchJsonApi<Record<string, unknown>>(url);
 
       // Backend returns { data: [...] }
       if (raw && Array.isArray(raw.data)) {
@@ -163,7 +164,7 @@ export async function getSeasonStandings(leagueId?: number): Promise<SeasonStand
       }
 
       if (raw && Array.isArray(raw.rows)) {
-        const periodIds = Array.isArray(raw.periodIds) ? raw.periodIds.map((x: any) => Number(x)).filter(Number.isFinite) : [];
+        const periodIds = Array.isArray(raw.periodIds) ? (raw.periodIds as unknown[]).map((x) => Number(x)).filter(Number.isFinite) : [];
         return { periodIds, rows: raw.rows as SeasonStandingRow[] };
       }
       if (Array.isArray(raw)) return { periodIds: [], rows: raw as SeasonStandingRow[] };
@@ -189,7 +190,7 @@ function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const hit = _mlbCache.get(key);
   if (hit && Date.now() - hit.ts < MLB_CACHE_TTL) return hit.promise as Promise<T>;
   const p = fn();
-  _mlbCache.set(key, { promise: p as Promise<any>, ts: Date.now() });
+  _mlbCache.set(key, { promise: p as Promise<unknown>, ts: Date.now() });
   return p;
 }
 
@@ -230,9 +231,10 @@ export async function getPlayerCareerStats(mlbId: string, group: HOrP): Promise<
     return cached(`career:${group}:${id}`, async () => {
         const url = `${MLB_API_BASE}/people/${id}/stats?stats=yearByYear&group=${group}`;
         const data = await fetchJsonPublic<any>(url);
-        const splits = (data?.stats?.[0]?.splits ?? []) as any[];
-        
-        const rows: any[] = splits.filter((s:any) => s.sport?.id === 1 && s.league?.id).map((s:any) => {
+        // MLB Stats API response shape is deeply nested and untyped
+        const splits = (data?.stats?.[0]?.splits ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        const rows: (CareerHittingRow | CareerPitchingRow)[] = splits.filter((s) => s.sport?.id === 1 && s.league?.id).map((s) => {
             const st = s.stat;
             if (group === "hitting") {
                 const AB = toNum(st.atBats);
@@ -344,7 +346,8 @@ export async function getPlayerRecentStats(mlbId: string, group: HOrP): Promise<
     const data = await fetchJsonPublic<any>(url);
     
     const rows: (RecentHittingRow | RecentPitchingRow)[] = [];
-    const allSplits = data?.stats?.flatMap((g: any) => g.splits ?? []) ?? [];
+    // MLB Stats API returns deeply nested untyped JSON
+    const allSplits = (data?.stats?.flatMap((g: Record<string, any>) => g.splits ?? []) ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
     for (const split of allSplits) {
       const type = split.type?.displayName; // "season", "last 7 days", ...
@@ -417,9 +420,9 @@ export async function getPlayerFieldingStats(mlbId: string, season?: number): Pr
   return cached(`fielding:${id}:${effectiveSeason}`, async () => {
     const url = `${MLB_API_BASE}/people/${id}/stats?stats=statsSingleSeason&group=fielding&season=${effectiveSeason}`;
     const data = await fetchJsonPublic<any>(url);
-    const splits = data?.stats?.[0]?.splits ?? [];
+    const splits = (data?.stats?.[0]?.splits ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    const result = splits.map((s: any) => ({
+    const result = splits.map((s) => ({
       position: s.position?.abbreviation ?? s.position?.name ?? "??",
       games: toNum(s.stat?.games),
       gamesStarted: toNum(s.stat?.gamesStarted),

@@ -153,7 +153,7 @@ export default function Profile() {
               League Memberships
             </h2>
             <div className="space-y-2">
-              {user.memberships.map((m: any) => (
+              {user.memberships.map((m) => (
                 <div
                   key={m.leagueId}
                   className="flex items-center justify-between bg-[var(--lg-tint)] rounded-xl px-4 py-3"

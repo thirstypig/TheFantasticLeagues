@@ -17,7 +17,7 @@ export default function Payouts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settlement, setSettlement] = useState<SettlementData | null>(null);
-  const [standingsRows, setStandingsRows] = useState<any[]>([]);
+  const [standingsRows, setStandingsRows] = useState<{ teamId: number; teamName: string; totalPoints: number }[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -30,12 +30,12 @@ export default function Payouts() {
         setSettlement(settlementData);
 
         // Normalize standings rows
-        const rows = (standingsData.rows || []).map((r: any) => {
+        const rows = (standingsData.rows || []).map((r: Record<string, unknown>) => {
           let totalPoints = toNum(r.totalPoints);
           if (!totalPoints && Array.isArray(r.periodPoints)) {
             totalPoints = r.periodPoints.reduce((s: number, v: unknown) => s + toNum(v), 0);
           }
-          return { teamId: r.teamId, teamName: r.teamName, totalPoints };
+          return { teamId: r.teamId as number, teamName: r.teamName as string, totalPoints };
         });
         setStandingsRows(rows);
       } catch (err: unknown) {

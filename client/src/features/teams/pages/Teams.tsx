@@ -14,7 +14,7 @@ import { isPitcher } from "../../../lib/playerDisplay";
 import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
-function normCode(v: any): string {
+function normCode(v: unknown): string {
   return String(v ?? "").trim().toUpperCase();
 }
 
@@ -60,7 +60,7 @@ export default function Teams() {
     // group roster by OGBA team code
     const map = new Map<string, { hitters: number; pitchers: number }>();
 
-    for (const p of players as any[]) {
+    for (const p of players) {
       const code = normCode(p.team ?? p.ogba_team_code ?? "");
       if (!code) continue;
       if (code === "FA" || code.startsWith("FA")) continue;

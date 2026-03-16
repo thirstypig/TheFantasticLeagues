@@ -752,7 +752,7 @@ router.post(
     const leagueId = Number(req.params.leagueId);
     const { items, note } = req.body;
 
-    let trade: any;
+    let trade: { id: number; items: { id: number }[] };
     try {
       trade = await commissionerService.executeTrade(leagueId, items);
     } catch (err: unknown) {

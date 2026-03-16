@@ -52,9 +52,9 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 
 ### Client (10 modules with zero tests)
 
-- [ ] **TD-T09**: `auction/` — 10 components, 2 hooks, 2 pages. Server tested but client UI untested
+- [x] **TD-T09**: `auction/` — 10 tests (AuctionValues page: rendering, tabs, search, sorting, modal)
 - [ ] **TD-T10**: `trades/pages/TradesPage.tsx` — complex multi-team trade UI
-- [ ] **TD-T11**: `teams/` — 2 pages, 4 components
+- [x] **TD-T11**: `teams/` — 17 tests (Teams page: 8 tests; Team page: 9 tests)
 - [ ] **TD-T12**: `archive/pages/ArchivePage.tsx` — heavy data display + import
 - [ ] **TD-T13**: Remaining modules (keeper-prep, leagues, periods, roster, transactions, waivers) — lower priority
 
@@ -73,7 +73,7 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 - [x] **TD-Q04**: `playerDisplay.ts` functions typed — `isPitcher` accepts union type, `normalizePosition` typed, `getMlbTeamAbbr` accepts `Record<string, unknown>`
 - [x] **TD-Q05**: `TradesPage.tsx` `LeagueTradeCard` — `trade: any` → `trade: TradeProposal` (type already existed)
 - [x] **TD-Q06**: `archiveImportService.ts` — typed output interfaces (StandardizedPlayerRow, StandingsRowObj, PlayerKnowledge, FuzzyEntry), replaced `any` accumulators, typed CSV records as `Record<string, string>`, fixed `catch (err: any)` → `unknown`
-- [ ] **TD-Q07**: Audit remaining 80+ files with `: any` annotations — prioritize high-traffic paths
+- [x] **TD-Q07**: Audited `: any` annotations — fixed 8 high-priority files (commissioner routes, teamService, mlbTeamCache, index.ts, Payouts, Teams, Profile, players/api). ~60 fixable → ~40 remaining (mostly justified: Prisma JSON, MLB API, XLSX parsing)
 
 ### Duplicate Code
 
@@ -91,7 +91,7 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 
 ### Scripts Cleanup
 
-- [ ] **TD-M01**: Archive or delete completed one-off scripts in `server/src/scripts/` (67 files). Many are duplicates: 4 import variants (2020-2023), multiple fix scripts
+- [x] **TD-M01**: Deleted 29 completed one-off scripts from `server/src/scripts/` (67→39 files). Removed year-specific imports (2020-2025), permission fix scripts, duplicate period imports.
 - [ ] **TD-M02**: Consolidate import logic into parameterized functions instead of per-year scripts
 
 ### Console Logging

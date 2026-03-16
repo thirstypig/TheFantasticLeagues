@@ -226,7 +226,7 @@ async function main() {
   });
 
   // --- 4. Global Error Handler ---
-  app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error({ error: String(err?.message), path: req.path }, "Unhandled error");
     res.status(500).json({ error: "Internal Server Error" });
   });
@@ -280,8 +280,8 @@ async function main() {
     server = app.listen(PORT, "0.0.0.0", onListen);
   }
 
-  server.on("error", (err: any) => {
-    if (err?.code === "EADDRINUSE") {
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
       logger.error({ port: PORT }, 'Port already in use');
       process.exit(1);
     }

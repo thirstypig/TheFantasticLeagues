@@ -6,7 +6,7 @@ export class TeamService {
   /**
    * Helper to pull a numeric "points" value out of any stats object
    */
-  static calculatePoints(obj: any): number {
+  static calculatePoints(obj: Record<string, unknown> | null | undefined): number {
     if (!obj) return 0;
 
     // 1) Try exact names from our constants
@@ -109,18 +109,18 @@ export class TeamService {
     });
 
     let runningTotal = 0;
-    const periodSummaries = periodRows.map((row: any) => {
+    const periodSummaries = periodRows.map((row) => {
       // row contains id, teamId, periodId, and *some* points-like field
-      const periodPoints = TeamService.calculatePoints(row);
+      const periodPoints = TeamService.calculatePoints(row as unknown as Record<string, unknown>);
       runningTotal += periodPoints;
 
-      const p = row.period as any;
+      const p = row.period;
 
       const label =
-        p?.label ||
+        (p as Record<string, unknown>)?.["label"] as string ||
         p?.name ||
-        p?.code ||
-        p?.displayName ||
+        (p as Record<string, unknown>)?.["code"] as string ||
+        (p as Record<string, unknown>)?.["displayName"] as string ||
         (p?.startDate
           ? new Date(p.startDate).toLocaleDateString("en-US", {
               month: "short",
@@ -148,7 +148,7 @@ export class TeamService {
       orderBy: { acquiredAt: "asc" },
     });
 
-    const currentRoster = rosterRows.map((r: any) => ({
+    const currentRoster = rosterRows.map((r) => ({
       id: r.id,
       playerId: r.playerId,
       mlbId: r.player.mlbId,
@@ -171,7 +171,7 @@ export class TeamService {
       orderBy: { releasedAt: "desc" },
     });
 
-    const droppedPlayers = droppedRows.map((r: any) => ({
+    const droppedPlayers = droppedRows.map((r) => ({
       id: r.id,
       playerId: r.playerId,
       name: r.player.name,
