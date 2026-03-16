@@ -166,3 +166,16 @@ export async function executeCommissionerTrade(
     body: JSON.stringify(payload),
   });
 }
+
+export async function createLeagueSeason(input: {
+  name: string;
+  season: number;
+  draftMode?: "AUCTION" | "DRAFT";
+  isPublic?: boolean;
+  copyFromLeagueId?: number;
+}): Promise<{ league: CommissionerLeague }> {
+  return fetchJsonApi(`${API_BASE}/commissioner/create-season`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
