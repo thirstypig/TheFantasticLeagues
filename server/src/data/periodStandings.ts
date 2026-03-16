@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { logger } from "../lib/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,7 +45,8 @@ function loadAllSnapshots(): PeriodStandingsSnapshot[] {
     return (json as any).periods;
   }
 
-  console.warn(
+  logger.warn(
+    {},
     "loadAllSnapshots: JSON did not look like a snapshot array; returning []"
   );
   return [];

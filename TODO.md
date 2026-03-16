@@ -41,14 +41,14 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 
 ### Server (8 modules with zero tests)
 
-- [ ] **TD-T01**: `archive/routes.ts` — 992 LOC, 20 endpoints, 0 tests. Highest risk: CSV import parsing, stat aggregation, player matching
-- [ ] **TD-T02**: `admin/routes.ts` — 292 LOC, 8 endpoints, 0 tests. Covers league CRUD, CSV import, player sync
-- [ ] **TD-T03**: `roster/routes.ts` + `rosterImport-routes.ts` — 3895 LOC combined, 6 endpoints, 0 tests. Complex roster validation logic
-- [ ] **TD-T04**: `keeper-prep/routes.ts` + `keeperPrepService.ts` — 282 LOC service, 6 endpoints, 0 tests
-- [ ] **TD-T05**: `players/routes.ts` + `dataService.ts` — 299+341 LOC, 3 endpoints, 0 tests
-- [ ] **TD-T06**: `periods/routes.ts` — 4 endpoints, 0 tests
-- [ ] **TD-T07**: `transactions/routes.ts` — 2 endpoints, 0 tests
-- [ ] **TD-T08**: `franchises/routes.ts` — 3 endpoints, 0 tests (new module)
+- [x] **TD-T01**: `archive/routes.ts` — 38 tests (GET seasons/standings/periods/stats, PUT team, PATCH stat, POST sync/recalculate, AI endpoints, archive-current)
+- [x] **TD-T02**: `admin/routes.ts` — 19 tests (league CRUD, members, import-rosters, reset-rosters, delete, team-codes, sync-mlb, audit-log)
+- [x] **TD-T03**: `roster/routes.ts` + `rosterImport-routes.ts` — 14 tests (add-player, delete, get roster, ownership checks, admin bypass, CSV import, template)
+- [x] **TD-T04**: `keeper-prep/routes.ts` — 8 tests (populate, status, roster, save, lock/unlock)
+- [x] **TD-T05**: `players/routes.ts` — 13 tests (list/filter/detail, fielding, season-stats, period-stats, auction-values)
+- [x] **TD-T06**: `periods/routes.ts` — 10 tests (list, create, update, delete with auth checks)
+- [x] **TD-T07**: `transactions/routes.ts` — 8 tests (list/filter/paginate, claim by playerId/mlbId, drop, errors)
+- [x] **TD-T08**: `franchises/routes.ts` — 6 tests (list, detail, update settings)
 
 ### Client (10 modules with zero tests)
 
@@ -64,15 +64,15 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 
 ### Oversized Route Files (extract to services)
 
-- [ ] **TD-Q01**: `archive/routes.ts` (992 LOC) → extract import, sync, stat aggregation into `archiveService.ts`
-- [ ] **TD-Q02**: `commissioner/routes.ts` (877 LOC) → extract more logic into `CommissionerService.ts`
-- [ ] **TD-Q03**: `auction/routes.ts` (843 LOC) → extract bidding, queue, completion logic into `auctionService.ts`
+- [x] **TD-Q01**: `archive/routes.ts` (992→~800 LOC) — extracted `autoMatchPlayersForYear` + `calculateCumulativePeriodResults` into `archiveStatsService.ts`
+- [x] **TD-Q02**: `commissioner/routes.ts` (877→779 LOC) — extracted `endAuction` + `executeTrade` into `CommissionerService.ts`
+- [ ] **TD-Q03**: `auction/routes.ts` (844 LOC) — deferred: real-time stateful system with in-memory state + timers; 72 tests pass; extraction risk outweighs benefit
 
 ### Type Safety
 
 - [x] **TD-Q04**: `playerDisplay.ts` functions typed — `isPitcher` accepts union type, `normalizePosition` typed, `getMlbTeamAbbr` accepts `Record<string, unknown>`
 - [x] **TD-Q05**: `TradesPage.tsx` `LeagueTradeCard` — `trade: any` → `trade: TradeProposal` (type already existed)
-- [ ] **TD-Q06**: `server/src/features/archive/services/archiveImportService.ts` — 927 LOC with `any[]` for Excel data. Add Zod schemas for imported data
+- [x] **TD-Q06**: `archiveImportService.ts` — typed output interfaces (StandardizedPlayerRow, StandingsRowObj, PlayerKnowledge, FuzzyEntry), replaced `any` accumulators, typed CSV records as `Record<string, string>`, fixed `catch (err: any)` → `unknown`
 - [ ] **TD-Q07**: Audit remaining 80+ files with `: any` annotations — prioritize high-traffic paths
 
 ### Duplicate Code
@@ -96,7 +96,7 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 
 ### Console Logging
 
-- [ ] **TD-M03**: Audit 129 files with `console.log/error/warn` — server files should use `logger` from `lib/logger.ts`
+- [x] **TD-M03**: Migrated 8 production files from `console.*` to structured `logger` — data/, archive services, supabase.ts. Scripts (67 files) left as-is (one-off tools)
 
 ### Open TODOs in Code
 
@@ -108,8 +108,8 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 ## Tech Debt: Infrastructure
 
 - [x] **TD-I01**: Pre-existing TypeScript error in client (`adminDeleteLeague` type mismatch) — already resolved
-- [ ] **TD-I02**: Route handler error handling inconsistencies — some routes use `asyncHandler()`, verify 100% coverage
-- [ ] **TD-I03**: Cross-feature service coupling monitor — CommissionerService→AuctionImport, leagues→keeper-prep, leagues→commissioner. Watch for circular deps
+- [x] **TD-I02**: Route handler error handling — audited all 17 feature modules, all async handlers wrapped with `asyncHandler()`. Sync-only handlers (template download, static data) correctly omit it
+- [x] **TD-I03**: Zero circular deps — extracted auction types to `types.ts` (was routes↔services cycle), verified with madge
 
 ---
 

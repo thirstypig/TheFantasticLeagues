@@ -1,6 +1,6 @@
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
-import type { AuctionState } from "../routes.js";
+import type { AuctionState } from "../types.js";
 
 /**
  * Save auction state to DB (upsert). Fire-and-forget — caller should not await.

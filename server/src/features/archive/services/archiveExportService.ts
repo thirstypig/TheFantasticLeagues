@@ -1,4 +1,5 @@
 import { prisma } from '../../../db/prisma.js';
+import { logger } from '../../../lib/logger.js';
 import { getSeasonEnd } from './archiveImportService.js';
 
 export class ArchiveExportService {
@@ -7,7 +8,7 @@ export class ArchiveExportService {
    */
   async archiveLeague(leagueId: number): Promise<{ success: boolean; message: string; logs: string[] }> {
     const logs: string[] = [];
-    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+    const log = (msg: string) => { logger.info({}, msg); logs.push(msg); };
 
     try {
       const league = await prisma.league.findUnique({

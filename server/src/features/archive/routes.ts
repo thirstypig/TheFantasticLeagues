@@ -9,21 +9,6 @@ import { writeAuditLog } from '../../lib/auditLog.js';
 import { Prisma } from '@prisma/client';
 import type { HistoricalPlayerStat } from '@prisma/client';
 
-/** Shape of a player returned from the MLB Stats API people/search endpoint. */
-interface MlbSearchPerson {
-  id: number;
-  fullName: string;
-  firstName?: string;
-  active?: boolean;
-  primaryPosition?: { abbreviation?: string };
-  currentTeam?: { name?: string };
-}
-
-/** Shape of the MLB Stats API search response. */
-interface MlbSearchResponse {
-  people?: MlbSearchPerson[];
-}
-
 /** Draft result entry returned to the client. */
 interface DraftResultPlayer {
   id?: number;
@@ -70,7 +55,7 @@ const __dirname = path.dirname(__filename);
 import multer from 'multer';
 import { ArchiveImportService } from './services/archiveImportService.js';
 import { ArchiveExportService } from './services/archiveExportService.js';
-import { ArchiveStatsService } from './services/archiveStatsService.js';
+import { ArchiveStatsService, type MlbSearchPerson, type MlbSearchResponse } from './services/archiveStatsService.js';
 
 const archiver = new ArchiveExportService();
 const statsService = new ArchiveStatsService();
@@ -354,32 +339,6 @@ router.post('/archive/recalculate-all', requireAuth, requireAdmin, asyncHandler(
 }));
 
 /**
- * POST /api/archive/:year/recalculate
- * Re-fetches MLB team data AND stats for players based on context
- */
-const OPENING_DAYS: Record<number, string> = {
-  2008: '2008-03-25',
-  2009: '2009-04-05',
-  2010: '2010-04-04',
-  2011: '2011-03-31',
-  2012: '2012-03-28',
-  2013: '2013-03-31',
-  2014: '2014-03-22',
-  2015: '2015-04-05',
-  2016: '2016-04-03',
-  2017: '2017-04-02',
-  2018: '2018-03-29',
-  2019: '2019-03-20',
-  2020: '2020-07-23',
-  2021: '2021-04-01',
-  2022: '2022-04-07',
-  2023: '2023-03-30',
-  2024: '2024-03-20',
-  2025: '2025-03-18',
-  2026: '2026-03-25',
-};
-
-/**
  * POST /api/archive/:year/sync
  * Performs both auto-matching AND stat recalculation for a season.
  */
@@ -391,7 +350,7 @@ router.post('/archive/:year/sync', requireAuth, requireAdmin, asyncHandler(async
 
   const logs: string[] = [];
   logs.push(`[Sync] Starting auto-match for ${year}...`);
-  const matchResult = await autoMatchPlayersForYear(year);
+  const matchResult = await statsService.autoMatchPlayersForYear(year);
   logs.push(`[Sync] Auto-matched ${matchResult.matched} players (${matchResult.unmatched} unmatched).`);
 
   logs.push(`[Sync] Starting stat recalculation for ${year}...`);
@@ -493,95 +452,9 @@ router.get('/archive/search-mlb', requireAuth, asyncHandler(async (req, res) => 
  */
 router.get('/archive/:year/period-results', requireAuth, asyncHandler(async (req, res) => {
   const year = parseInt(req.params.year);
-  const season = await prisma.historicalSeason.findFirst({
-    where: { year },
-    include: {
-      periods: {
-        include: { stats: true },
-        orderBy: { periodNumber: 'asc' }
-      }
-    }
-  });
-
-  if (!season) return res.status(404).json({ error: 'Season not found' });
-
-  // Calculate cumulative standings per period
-  const results = [];
-  const teamStats: Record<string, {
-    R: number, HR: number, RBI: number, SB: number,
-    W: number, SV: number, K: number,
-    total_ab: number, total_h: number, total_er: number, total_ip: number, total_whip_comp: number
-  }> = {};
-
-  for (const period of season.periods) {
-    // Accumulate stats
-    for (const stat of period.stats) {
-      if (!teamStats[stat.teamCode]) {
-        teamStats[stat.teamCode] = {
-          R: 0, HR: 0, RBI: 0, SB: 0,
-          W: 0, SV: 0, K: 0,
-          total_ab: 0, total_h: 0, total_er: 0, total_ip: 0, total_whip_comp: 0
-        };
-      }
-      const ts = teamStats[stat.teamCode];
-      ts.R += stat.R || 0;
-      ts.HR += stat.HR || 0;
-      ts.RBI += stat.RBI || 0;
-      ts.SB += stat.SB || 0;
-      ts.total_ab += stat.AB || 0;
-      ts.total_h += stat.H || 0;
-
-      ts.W += stat.W || 0;
-      ts.SV += stat.SV || 0;
-      ts.K += stat.K || 0;
-      ts.total_ip += stat.IP || 0;
-      ts.total_er += stat.ER || 0;
-      // WHIP component: HA + BB = WHIP * IP
-      ts.total_whip_comp += ((stat.WHIP || 0) * (stat.IP || 0));
-    }
-
-    // Calculate ratios
-    const teams = Object.keys(teamStats).map(code => {
-      const ts = teamStats[code];
-      return {
-        teamCode: code,
-        R: ts.R, HR: ts.HR, RBI: ts.RBI, SB: ts.SB,
-        AVG: ts.total_ab > 0 ? ts.total_h / ts.total_ab : 0,
-        W: ts.W, SV: ts.SV, K: ts.K,
-        ERA: ts.total_ip > 0 ? (ts.total_er * 9) / ts.total_ip : 0,
-        WHIP: ts.total_ip > 0 ? ts.total_whip_comp / ts.total_ip : 0
-      };
-    });
-
-    // Rank and score
-    const categories = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP'];
-    const teamScores: Record<string, number> = {};
-    teams.forEach(t => teamScores[t.teamCode] = 0);
-
-    categories.forEach(cat => {
-      const sorted = [...teams].sort((a, b) => {
-        const valA = a[cat as keyof typeof a] as number;
-        const valB = b[cat as keyof typeof b] as number;
-        if (cat === 'ERA' || cat === 'WHIP') return valA - valB;
-        return valB - valA;
-      });
-
-      // Handle ties (simplified: just use index)
-      sorted.forEach((t, i) => {
-        teamScores[t.teamCode] += (teams.length - i);
-      });
-    });
-
-    results.push({
-      periodNumber: period.periodNumber,
-      standings: teams.length > 0 ? teams.map(t => ({
-        teamCode: t.teamCode,
-        totalScore: teamScores[t.teamCode]
-      })).sort((a, b) => b.totalScore - a.totalScore) : []
-    });
-  }
-
-  return res.json({ year, results });
+  const result = await statsService.calculateCumulativePeriodResults(year);
+  if (!result) return res.status(404).json({ error: 'Season not found' });
+  return res.json(result);
 }));
 
 // POST /api/archive/auto-match-all
@@ -590,7 +463,7 @@ router.post('/archive/auto-match-all', requireAuth, requireAdmin, asyncHandler(a
   const years = await prisma.historicalSeason.findMany({ select: { year: true } });
   const results: { year: number; matched: number; unmatched: number }[] = [];
   for (const { year } of years) {
-    const matchResult = await autoMatchPlayersForYear(year);
+    const matchResult = await statsService.autoMatchPlayersForYear(year);
     results.push({ year, matched: matchResult.matched, unmatched: matchResult.unmatched });
   }
   writeAuditLog({
@@ -759,113 +632,6 @@ router.post('/archive/archive-current', requireAuth, requireAdmin, asyncHandler(
   return res.json(result);
 }));
 
-// Helper function for auto-matching players
-async function autoMatchPlayersForYear(year: number): Promise<{ matched: number; unmatched: number }> {
-  const players = await prisma.historicalPlayerStat.findMany({
-    where: {
-      period: { season: { year } },
-      OR: [
-        { mlbId: null },
-        { mlbId: '' }
-      ]
-    },
-    select: {
-      id: true,
-      playerName: true,
-      position: true,
-      isPitcher: true,
-    },
-    distinct: ['playerName']
-  });
-
-  const cache = new Map<string, MlbSearchPerson[]>();
-  let matched = 0;
-  let unmatched = 0;
-
-  for (const player of players) {
-    // Parse abbreviated name: "A. Riley" -> firstInitial, lastName
-    const match = player.playerName.match(/^([A-Za-z]+)\.?\s+(.+)$/);
-    if (!match) {
-      unmatched++;
-      continue;
-    }
-    const firstInitial = match[1].charAt(0).toUpperCase();
-    const lastName = match[2].trim();
-
-    // Check cache or query MLB API
-    let candidates: MlbSearchPerson[] | undefined = cache.get(lastName);
-    if (!candidates) {
-      try {
-        const url = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(lastName)}&sportIds=1&seasons=${year}`;
-        const response = await fetch(url);
-        const data = await response.json() as MlbSearchResponse;
-        const peopleList: MlbSearchPerson[] = data.people || [];
-        candidates = peopleList;
-        cache.set(lastName, peopleList);
-        await new Promise(resolve => setTimeout(resolve, 50));
-      } catch {
-        candidates = [];
-        cache.set(lastName, []);
-      }
-    }
-
-    // Filter by first initial
-    const candidateList = candidates || [];
-    let matches = candidateList.filter((c) =>
-      c.firstName?.charAt(0).toUpperCase() === firstInitial
-    );
-
-    // Filter by pitcher status
-    if (matches.length > 1 && player.isPitcher !== null) {
-      const pitcherCodes = ['P', 'SP', 'RP', 'TWP'];
-      const pitcherMatches = matches.filter((c) => {
-        const isPitcher = pitcherCodes.includes(c.primaryPosition?.abbreviation?.toUpperCase() || '');
-        return isPitcher === player.isPitcher;
-      });
-      if (pitcherMatches.length > 0) matches = pitcherMatches;
-    }
-
-    // If exactly one match, update database with fullName and mlbId
-    if (matches.length === 1) {
-      const m = matches[0];
-      await prisma.historicalPlayerStat.updateMany({
-        where: {
-          playerName: player.playerName,
-          period: { season: { year } }
-        },
-        data: {
-          fullName: m.fullName,
-          mlbId: String(m.id)
-        }
-      });
-      matched++;
-      logger.info({ playerName: player.playerName, fullName: m.fullName, mlbId: m.id }, "Auto-matched player");
-    } else {
-      unmatched++;
-    }
-
-    // NEW: Always try to fix isPitcher if it's currently false but they have pitcher stats
-    // or if they match a known pitcher position.
-    await prisma.historicalPlayerStat.updateMany({
-      where: {
-        playerName: player.playerName,
-        period: { season: { year } },
-        isPitcher: false,
-        OR: [
-          { W: { gt: 0 } },
-          { SV: { gt: 0 } },
-          { IP: { gt: 0 } },
-          { position: { in: ['P', 'SP', 'RP', 'PITCHER', 'STAFF'] } }
-        ]
-      },
-      data: {
-        isPitcher: true
-      }
-    });
-  }
-
-  return { matched, unmatched };
-}
 
 /**
  * POST /api/archive/:year/import-excel
@@ -897,7 +663,7 @@ router.post('/archive/:year/import-excel', requireAuth, requireAdmin, upload.sin
 
   // Auto-match players after successful import
   logger.info({ year }, "Running auto-match after import");
-  const matchResult = await autoMatchPlayersForYear(year);
+  const matchResult = await statsService.autoMatchPlayersForYear(year);
   result.messages.push(`Auto-matched ${matchResult.matched} players (${matchResult.unmatched} unmatched)`);
 
   writeAuditLog({
@@ -921,7 +687,7 @@ router.post('/archive/:year/auto-match', requireAuth, requireAdmin, asyncHandler
   }
 
   logger.info({ year }, "Manual auto-match trigger");
-  const result = await autoMatchPlayersForYear(year);
+  const result = await statsService.autoMatchPlayersForYear(year);
 
   writeAuditLog({
     userId: req.user!.id,

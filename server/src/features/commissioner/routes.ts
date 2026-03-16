@@ -3,7 +3,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { norm, normCode, mustOneOf } from "../../lib/utils.js";
-import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 import multer from "multer";
 import { CommissionerService } from "./services/CommissionerService.js";
 import { requireAuth, requireAdmin, requireCommissionerOrAdmin, evictMembershipCache } from "../../middleware/auth.js";
@@ -715,48 +714,16 @@ router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrA
 router.post("/commissioner/:leagueId/end-auction", requireAuth, requireCommissionerOrAdmin(), validateBody(z.object({})), asyncHandler(async (req, res) => {
         const leagueId = Number(req.params.leagueId);
 
-        // snapshot rosters
-        const activeRosters = await prisma.roster.findMany({
-            where: { team: { leagueId }, releasedAt: null },
-            include: { team: true, player: true }
-        });
-
-        // Look up league season
-        const currentLeague = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
-        const leagueSeason = currentLeague?.season ?? new Date().getFullYear();
-
-        // Create RosterEntry records for archive/period 1 start
-        let count = 0;
-        for (const r of activeRosters) {
-             await prisma.rosterEntry.create({
-                 data: {
-                     year: leagueSeason,
-                     teamCode: r.team.code || r.team.name.substring(0,3).toUpperCase(),
-                     playerName: r.player.name,
-                     position: r.player.posPrimary,
-                     mlbTeam: null, // could fetch if we had it easily
-                     acquisitionCost: r.price
-                 }
-             });
-             count++;
-        }
-
-        // Set a flag that auction is done?
-        // We'll use a LeagueRule for this state
-        await prisma.leagueRule.upsert({
-            where: { leagueId_category_key: { leagueId, category: "status", key: "auction_complete" } },
-            create: { leagueId, category: "status", key: "auction_complete", value: "true", label: "Auction Complete" },
-            update: { value: "true" }
-        });
+        const result = await commissionerService.endAuction(leagueId);
 
         writeAuditLog({
           userId: req.user!.id,
           action: "AUCTION_END",
           resourceType: "Auction",
-          metadata: { leagueId, snapshotted: count },
+          metadata: { leagueId, snapshotted: result.snapshotted },
         });
 
-        return res.json({ success: true, snapshotted: count });
+        return res.json({ success: true, ...result });
 }));
 
 /**
@@ -785,88 +752,23 @@ router.post(
     const leagueId = Number(req.params.leagueId);
     const { items, note } = req.body;
 
-    // Verify all teams belong to this league
-    const involvedTeamIds = [...new Set<number>(items.flatMap((i: any) => [i.senderId, i.recipientId]))];
-    const teams = await prisma.team.findMany({
-      where: { id: { in: involvedTeamIds } },
-      select: { id: true, leagueId: true },
-    });
-    if (teams.length !== involvedTeamIds.length || teams.some((t) => t.leagueId !== leagueId)) {
-      return res.status(400).json({ error: "All teams must belong to this league" });
-    }
-
-    // Pick the first sender as proposer (arbitrary for commissioner trades)
-    const proposerId = items[0].senderId;
-
-    // Atomic: create Trade as PROCESSED + execute roster/budget moves
-    const trade = await prisma.$transaction(async (tx) => {
-      const trade = await tx.trade.create({
-        data: {
-          leagueId,
-          proposerId,
-          status: "PROCESSED",
-          processedAt: new Date(),
-          items: {
-            create: items.map((item: any) => ({
-              senderId: item.senderId,
-              recipientId: item.recipientId,
-              assetType: item.assetType,
-              playerId: item.playerId,
-              amount: item.amount,
-              pickRound: item.pickRound,
-            })),
-          },
-        },
-        include: { items: true },
-      });
-
-      // Execute roster/budget moves (same logic as trades/routes.ts process)
-      for (const item of trade.items) {
-        if (item.assetType === "PLAYER" && item.playerId) {
-          const rosterEntry = await tx.roster.findFirst({
-            where: { teamId: item.senderId, playerId: item.playerId, releasedAt: null },
-          });
-
-          if (rosterEntry) {
-            await tx.roster.update({
-              where: { id: rosterEntry.id },
-              data: { releasedAt: new Date(), source: "TRADE_OUT" },
-            });
-
-            await assertPlayerAvailable(tx, item.playerId, leagueId);
-
-            await tx.roster.create({
-              data: {
-                teamId: item.recipientId,
-                playerId: item.playerId,
-                source: "TRADE_IN",
-                acquiredAt: new Date(),
-                price: rosterEntry.price,
-                assignedPosition: null,
-              },
-            });
-          }
-        } else if (item.assetType === "BUDGET") {
-          await tx.team.update({
-            where: { id: item.senderId },
-            data: { budget: { decrement: item.amount || 0 } },
-          });
-          await tx.team.update({
-            where: { id: item.recipientId },
-            data: { budget: { increment: item.amount || 0 } },
-          });
-        }
+    let trade: any;
+    try {
+      trade = await commissionerService.executeTrade(leagueId, items);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("All teams must belong")) {
+        return res.status(400).json({ error: msg });
       }
-
-      return trade;
-    }, { timeout: 30_000 });
+      throw err;
+    }
 
     writeAuditLog({
       userId: req.user!.id,
       action: "COMMISSIONER_TRADE_EXECUTE",
       resourceType: "Trade",
       resourceId: String(trade.id),
-      metadata: { leagueId, itemCount: trade.items.length, note },
+      metadata: { leagueId, itemCount: trade.items?.length, note },
     });
 
     return res.json({ success: true, trade });

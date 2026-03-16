@@ -4,6 +4,52 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-16 (Session 20) — Tech Debt Cleanup, Tech Page Expansion, Test Coverage
+
+### Completed
+- **Service extraction**:
+  - TD-Q01: Extracted `autoMatchPlayersForYear` + `calculateCumulativePeriodResults` from `archive/routes.ts` into `archiveStatsService.ts` (992→~800 LOC)
+  - TD-Q02: Extracted `endAuction` + `executeTrade` from `commissioner/routes.ts` into `CommissionerService.ts` (877→779 LOC)
+  - TD-Q03: Deferred — auction/routes.ts (844 LOC) is tightly coupled stateful system with 72 tests; extraction risk outweighs benefit
+- **Type safety**:
+  - TD-Q06: Typed `archiveImportService.ts` — added `StandardizedPlayerRow`, `StandingsRowObj`, `PlayerKnowledge`, `FuzzyEntry` interfaces; replaced `any` accumulators with typed maps; CSV records typed as `Record<string, string>`; fixed `catch (err: any)` → `unknown`
+- **Infrastructure**:
+  - TD-I02: Audited all 17 feature modules — all async handlers wrapped with `asyncHandler()`. Sync-only handlers correctly omit it.
+  - TD-I03: Zero circular deps — extracted auction types (`AuctionStatus`, `AuctionTeam`, `NominationState`, `AuctionLogEvent`, `AuctionState`) to `auction/types.ts`, breaking routes↔services cycle. Verified with madge.
+  - TD-M03: Migrated 8 production files from `console.*` to structured `logger` — `data/` modules, archive services, `supabase.ts`. Scripts (67 files) left as-is.
+- **Test coverage** (116 new server tests):
+  - TD-T01: `archive/routes.ts` — 38 tests
+  - TD-T02: `admin/routes.ts` — 19 tests
+  - TD-T03: `roster/routes.ts` + `rosterImport-routes.ts` — 14 tests
+  - TD-T04: `keeper-prep/routes.ts` — 8 tests
+  - TD-T05: `players/routes.ts` — 13 tests
+  - TD-T06: `periods/routes.ts` — 10 tests
+  - TD-T07: `transactions/routes.ts` — 8 tests
+  - TD-T08: `franchises/routes.ts` — 6 tests
+- **Tech page expansion** (`client/src/pages/Tech.tsx`):
+  - Added Genesis section (origin story of the 2004 fantasy league)
+  - Added AI Development Workflow section (5 cards: CLAUDE.md, session structure, FEEDBACK.md, directing vs delegating, terminal-only)
+  - Architecture Overview with Mermaid.js flowchart (Browser → Express → PostgreSQL with Supabase Auth, WebSocket, MLB Stats API, Google Gemini)
+  - Expanded Build Journal timeline with visual dot indicators
+  - Lessons Learned section (5 insights about AI-assisted development)
+  - Created reusable `MermaidDiagram.tsx` component (dark/light theme aware)
+  - ERD section with Mermaid entity-relationship diagrams (collapsible by domain)
+  - Updated stats: tests 397→513, tokens 60M→65M, feature modules 16→17
+
+### Pending / Next Steps
+- TD-Q07: Audit remaining 80+ files with `: any` annotations
+- TD-T09–T13: Client-side test coverage (auction, trades, teams, archive, etc.)
+- TD-M01/M02: Scripts cleanup/consolidation (67 files)
+- TD-M04: Archive backend optimization TODO
+
+### Test Results
+- Server: 32 files, 428 tests passing
+- Client: 4 files, 85 tests passing
+- Total: 513 tests, all green
+- TypeScript: clean compile (both client and server)
+
+---
+
 ## Session 2026-03-16 (Session 19) — Season-Aware Feature Gating & Code Quality
 
 ### Completed
@@ -23,11 +69,7 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
   - TD-I01: `adminDeleteLeague` type mismatch confirmed already resolved
 
 ### Pending / Next Steps
-- TD-Q06: Type `archiveImportService.ts` (927 LOC, `any[]` for Excel data)
-- TD-Q01–Q03: Extract oversized route files into services
-- TD-Q07: Audit remaining 80+ files with `: any` annotations
-- TD-T01–T13: Test coverage for untested modules (8 server, 10 client)
-- TD-I02: asyncHandler coverage audit
+- (Addressed in Session 20)
 
 ### Test Results
 - Server: 23 files, 312 tests passing

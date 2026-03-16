@@ -3,7 +3,7 @@ import type { IncomingMessage, Server as HttpServer } from "http";
 import { supabaseAdmin } from "../../../lib/supabase.js";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
-import type { AuctionState } from "../routes.js";
+import type { AuctionState } from "../types.js";
 
 // Per-league rooms: leagueId -> Set of connected WebSockets
 const rooms = new Map<number, Set<WebSocket>>();

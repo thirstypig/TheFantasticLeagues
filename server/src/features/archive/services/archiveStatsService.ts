@@ -1,6 +1,21 @@
 import { prisma } from '../../../db/prisma.js';
 import { logger } from '../../../lib/logger.js';
 
+/** Shape of a player returned from the MLB Stats API people/search endpoint. */
+export interface MlbSearchPerson {
+  id: number;
+  fullName: string;
+  firstName?: string;
+  active?: boolean;
+  primaryPosition?: { abbreviation?: string };
+  currentTeam?: { name?: string };
+}
+
+/** Shape of the MLB Stats API search response. */
+export interface MlbSearchResponse {
+  people?: MlbSearchPerson[];
+}
+
 export class ArchiveStatsService {
   private OPENING_DAYS: Record<number, string> = {
     2008: '2008-03-25', 2009: '2009-04-05', 2010: '2010-04-04',
@@ -30,7 +45,7 @@ export class ArchiveStatsService {
     const periods = await prisma.historicalPeriod.findMany({ where: { seasonId: season.id } });
     const rosterEntries = await prisma.rosterEntry.findMany({ where: { year } });
 
-    console.log(`Syncing ${rosterEntries.length} roster entries for ${year}...`);
+    logger.info({ count: rosterEntries.length, year }, "Syncing roster entries");
 
     for (const entry of rosterEntries) {
       let mlbId = await this.lookupMlbId(entry.playerName);
@@ -177,6 +192,160 @@ export class ArchiveStatsService {
     }
 
     return { updated };
+  }
+
+  /**
+   * Auto-match abbreviated player names (e.g. "A. Riley") to full MLB names
+   * by searching the MLB Stats API and filtering by first initial + pitcher status.
+   */
+  async autoMatchPlayersForYear(year: number): Promise<{ matched: number; unmatched: number }> {
+    const players = await prisma.historicalPlayerStat.findMany({
+      where: {
+        period: { season: { year } },
+        OR: [{ mlbId: null }, { mlbId: '' }],
+      },
+      select: { id: true, playerName: true, position: true, isPitcher: true },
+      distinct: ['playerName'],
+    });
+
+    const cache = new Map<string, MlbSearchPerson[]>();
+    let matched = 0;
+    let unmatched = 0;
+
+    for (const player of players) {
+      const match = player.playerName.match(/^([A-Za-z]+)\.?\s+(.+)$/);
+      if (!match) { unmatched++; continue; }
+      const firstInitial = match[1].charAt(0).toUpperCase();
+      const lastName = match[2].trim();
+
+      let candidates: MlbSearchPerson[] | undefined = cache.get(lastName);
+      if (!candidates) {
+        try {
+          const url = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(lastName)}&sportIds=1&seasons=${year}`;
+          const response = await fetch(url);
+          const data = await response.json() as MlbSearchResponse;
+          candidates = data.people || [];
+          cache.set(lastName, candidates);
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } catch {
+          candidates = [];
+          cache.set(lastName, []);
+        }
+      }
+
+      let matches = (candidates || []).filter(c => c.firstName?.charAt(0).toUpperCase() === firstInitial);
+
+      if (matches.length > 1 && player.isPitcher !== null) {
+        const pitcherCodes = ['P', 'SP', 'RP', 'TWP'];
+        const pitcherMatches = matches.filter(c => {
+          const isPitcher = pitcherCodes.includes(c.primaryPosition?.abbreviation?.toUpperCase() || '');
+          return isPitcher === player.isPitcher;
+        });
+        if (pitcherMatches.length > 0) matches = pitcherMatches;
+      }
+
+      if (matches.length === 1) {
+        const m = matches[0];
+        await prisma.historicalPlayerStat.updateMany({
+          where: { playerName: player.playerName, period: { season: { year } } },
+          data: { fullName: m.fullName, mlbId: String(m.id) },
+        });
+        matched++;
+        logger.info({ playerName: player.playerName, fullName: m.fullName, mlbId: m.id }, "Auto-matched player");
+      } else {
+        unmatched++;
+      }
+
+      // Fix isPitcher for players with pitcher stats
+      await prisma.historicalPlayerStat.updateMany({
+        where: {
+          playerName: player.playerName,
+          period: { season: { year } },
+          isPitcher: false,
+          OR: [
+            { W: { gt: 0 } }, { SV: { gt: 0 } }, { IP: { gt: 0 } },
+            { position: { in: ['P', 'SP', 'RP', 'PITCHER', 'STAFF'] } },
+          ],
+        },
+        data: { isPitcher: true },
+      });
+    }
+
+    return { matched, unmatched };
+  }
+
+  /**
+   * Calculate cumulative standings across all periods for a year.
+   * Stats accumulate period-over-period, with roto scoring at each snapshot.
+   */
+  async calculateCumulativePeriodResults(year: number) {
+    const season = await prisma.historicalSeason.findFirst({
+      where: { year },
+      include: {
+        periods: { include: { stats: true }, orderBy: { periodNumber: 'asc' } },
+      },
+    });
+
+    if (!season) return null;
+
+    const results: { periodNumber: number; standings: { teamCode: string; totalScore: number }[] }[] = [];
+    const teamStats: Record<string, {
+      R: number; HR: number; RBI: number; SB: number;
+      W: number; SV: number; K: number;
+      total_ab: number; total_h: number; total_er: number; total_ip: number; total_whip_comp: number;
+    }> = {};
+
+    for (const period of season.periods) {
+      for (const stat of period.stats) {
+        if (!teamStats[stat.teamCode]) {
+          teamStats[stat.teamCode] = {
+            R: 0, HR: 0, RBI: 0, SB: 0, W: 0, SV: 0, K: 0,
+            total_ab: 0, total_h: 0, total_er: 0, total_ip: 0, total_whip_comp: 0,
+          };
+        }
+        const ts = teamStats[stat.teamCode];
+        ts.R += stat.R || 0; ts.HR += stat.HR || 0; ts.RBI += stat.RBI || 0; ts.SB += stat.SB || 0;
+        ts.total_ab += stat.AB || 0; ts.total_h += stat.H || 0;
+        ts.W += stat.W || 0; ts.SV += stat.SV || 0; ts.K += stat.K || 0;
+        ts.total_ip += stat.IP || 0; ts.total_er += stat.ER || 0;
+        ts.total_whip_comp += (stat.WHIP || 0) * (stat.IP || 0);
+      }
+
+      const teams = Object.keys(teamStats).map(code => {
+        const ts = teamStats[code];
+        return {
+          teamCode: code,
+          R: ts.R, HR: ts.HR, RBI: ts.RBI, SB: ts.SB,
+          AVG: ts.total_ab > 0 ? ts.total_h / ts.total_ab : 0,
+          W: ts.W, SV: ts.SV, K: ts.K,
+          ERA: ts.total_ip > 0 ? (ts.total_er * 9) / ts.total_ip : 0,
+          WHIP: ts.total_ip > 0 ? ts.total_whip_comp / ts.total_ip : 0,
+        };
+      });
+
+      const categories = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP'];
+      const teamScores: Record<string, number> = {};
+      teams.forEach(t => (teamScores[t.teamCode] = 0));
+
+      categories.forEach(cat => {
+        const sorted = [...teams].sort((a, b) => {
+          const valA = a[cat as keyof typeof a] as number;
+          const valB = b[cat as keyof typeof b] as number;
+          return cat === 'ERA' || cat === 'WHIP' ? valA - valB : valB - valA;
+        });
+        sorted.forEach((t, i) => { teamScores[t.teamCode] += teams.length - i; });
+      });
+
+      results.push({
+        periodNumber: period.periodNumber,
+        standings: teams.length > 0
+          ? teams.map(t => ({ teamCode: t.teamCode, totalScore: teamScores[t.teamCode] }))
+              .sort((a, b) => b.totalScore - a.totalScore)
+          : [],
+      });
+    }
+
+    return { year, results };
   }
 
   /*
