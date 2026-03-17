@@ -163,7 +163,8 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/hooks/useSeasonGating.ts` — `useSeasonGating()` hook returning feature availability flags based on season status
 - `client/src/lib/sportConfig.ts` — baseball constants, position utilities, `isPitcher()`, `mapPosition()`, `normalizePosition()`, `getMlbTeamAbbr()`, stat formatting
 - `client/src/lib/playerDisplay.ts` — thin re-export layer over `sportConfig.ts` (kept for backwards compatibility)
-- `server/src/lib/sportConfig.ts` — server-side baseball constants, position config, default league rules
+- `server/src/lib/sportConfig.ts` — server-side baseball constants, position config, default league rules, `OPENING_DAYS` by year
+- `server/src/scripts/lib/cli.ts` — shared CLI utilities for scripts (`parseYear`)
 
 ## Conventions
 - TypeScript strict mode in both client and server
@@ -261,7 +262,7 @@ server/src/__tests__/integration/
 
 ### Current Test Coverage (428 server + 187 client = 615 tests)
 
-**Server (414 tests):**
+**Server (428 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
@@ -293,7 +294,7 @@ server/src/__tests__/integration/
 - `server/src/features/transactions/__tests__/routes.test.ts` — 8 tests (list, filter, paginate, claim by playerId/mlbId, drop)
 - `server/src/features/franchises/__tests__/routes.test.ts` — 6 tests (list, detail, update settings)
 
-**Client (112 tests):**
+**Client (187 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `client/src/lib/__tests__/baseballUtils.test.ts` — 32 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition, positionToSlots)
 - `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)

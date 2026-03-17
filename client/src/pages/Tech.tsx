@@ -32,7 +32,7 @@ const stats = [
   { label: "API Endpoints", value: "116", icon: Plug },
   { label: "Feature Modules", value: "17", icon: Layers },
   { label: "Git Commits", value: "138", icon: GitCommit },
-  { label: "Tests Passing", value: "513", icon: TestTube },
+  { label: "Tests Passing", value: "615", icon: TestTube },
   { label: "DB Schema Lines", value: "723", icon: Braces },
   { label: "DB Migrations", value: "9", icon: Database },
   { label: "Est. Tokens Used", value: "~65M+", icon: Bot },

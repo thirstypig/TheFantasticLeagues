@@ -4,6 +4,37 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-17 (Session 21) — Complete Tech Debt, Client Tests, 6-Agent Code Review
+
+### Completed
+- **All remaining TODO items completed** (TD-Q07, TD-T09–T13, TD-M01, TD-M02, TD-M04):
+  - TD-Q07: Audited `: any` annotations — fixed 8 high-priority files
+  - TD-T09: AuctionValues client tests (10 tests)
+  - TD-T10: TradesPage client tests (23 tests)
+  - TD-T11: Teams/Team client tests (17 tests)
+  - TD-T12: ArchivePage client tests (16 tests)
+  - TD-T13: Remaining modules — KeeperSelection (8), Season (8), Commissioner (8), ActivityPage (6), Admin (6)
+  - TD-M01: Deleted 29 one-off scripts (67→39 files)
+  - TD-M02: Consolidated 15 scripts into 6 parameterized utilities (39→30 files)
+  - TD-M04: Archive matrix optimization — new standings-matrix endpoint (N+1 → 1 query)
+- **6-agent code review** (PR #37 — 15 findings, all resolved):
+  - Security: Mermaid `securityLevel` hardened, `endAuction` wrapped in `$transaction`, budget floor check added
+  - DRY: Deduplicated roto scoring in archiveStatsService (3 copies → 1, -100 LOC)
+  - Type safety: Fixed double-casts in teamService, `as any` in new code, error handler typed as `unknown`
+  - Cleanup: Shared `parseYear()`, `OPENING_DAYS` to sportConfig, dead test code removed, MLB naming standardized
+
+### Pending / Next Steps
+- TD-Q03: auction/routes.ts extraction (intentionally deferred — 844 LOC stateful system, 72 tests)
+- No other tech debt items remain
+
+### Test Results
+- Server: 32 files, 428 tests passing
+- Client: 14 files, 187 tests passing
+- Total: 615 tests, all green
+- TypeScript: clean compile (both client and server)
+
+---
+
 ## Session 2026-03-16 (Session 20) — Tech Debt Cleanup, Tech Page Expansion, Test Coverage
 
 ### Completed
