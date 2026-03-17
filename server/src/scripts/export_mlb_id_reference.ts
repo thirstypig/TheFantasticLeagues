@@ -81,14 +81,34 @@ async function exportMlbIdReference(year: number) {
 
 async function main() {
   console.log('=== MLB ID Reference Export ===');
-  
-  const years = [2023, 2024, 2025];
-  
+
+  // Accept optional year argument: npx tsx src/scripts/export_mlb_id_reference.ts [year]
+  const yearArg = process.argv[2];
+  let years: number[];
+
+  if (yearArg) {
+    const y = parseInt(yearArg);
+    if (!Number.isFinite(y)) {
+      console.error('Usage: npx tsx src/scripts/export_mlb_id_reference.ts [year]');
+      process.exit(1);
+    }
+    years = [y];
+  } else {
+    // Export all years in database
+    const seasons = await prisma.historicalSeason.findMany({
+      select: { year: true },
+      orderBy: { year: 'asc' },
+    });
+    years = seasons.map(s => s.year);
+  }
+
+  console.log(`Exporting years: ${years.join(', ')}\n`);
+
   for (const year of years) {
     try {
       await exportMlbIdReference(year);
     } catch (error: any) {
-      console.log(`⚠️  Skipping ${year}: ${error.message}\n`);
+      console.log(`Warning: Skipping ${year}: ${error.message}\n`);
     }
   }
   

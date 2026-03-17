@@ -447,6 +447,22 @@ router.get('/archive/search-mlb', requireAuth, asyncHandler(async (req, res) => 
 }));
 
 /**
+ * GET /api/archive/:year/standings-matrix
+ * Returns per-period standings for ALL periods in a single call.
+ * Avoids N separate requests to /period/:num/standings.
+ */
+router.get('/archive/:year/standings-matrix', requireAuth, asyncHandler(async (req, res) => {
+  const year = parseInt(req.params.year);
+  if (!Number.isFinite(year)) {
+    return res.status(400).json({ error: 'Invalid year' });
+  }
+
+  const result = await statsService.calculateAllPeriodStandings(year);
+  if (!result) return res.status(404).json({ error: `No archive found for year ${year}` });
+  return res.json(result);
+}));
+
+/**
  * GET /api/archive/:year/period-results
  * Returns cumulative standings for all periods
  */

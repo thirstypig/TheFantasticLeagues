@@ -259,7 +259,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (428 server + 112 client = 540 tests)
+### Current Test Coverage (428 server + 187 client = 615 tests)
 
 **Server (414 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
@@ -301,6 +301,13 @@ server/src/__tests__/integration/
 - `client/src/features/auction/__tests__/AuctionValues.test.tsx` — 10 tests (rendering, tabs, search, sorting, modal)
 - `client/src/features/teams/__tests__/Teams.test.tsx` — 8 tests (team list, roster counts, links, empty/error states)
 - `client/src/features/teams/__tests__/Team.test.tsx` — 9 tests (roster display, tabs, manage button, loading/error)
+- `client/src/features/trades/__tests__/TradesPage.test.tsx` — 23 tests (trade list, actions, commissioner controls)
+- `client/src/features/archive/__tests__/ArchivePage.test.tsx` — 16 tests (seasons, tabs, standings, draft results)
+- `client/src/features/keeper-prep/__tests__/KeeperSelection.test.tsx` — 8 tests (rendering, budget, locked state)
+- `client/src/features/periods/__tests__/Season.test.tsx` — 8 tests (standings matrix, period toggle)
+- `client/src/features/commissioner/__tests__/Commissioner.test.tsx` — 8 tests (tabs, overview, phase badge)
+- `client/src/features/transactions/__tests__/ActivityPage.test.tsx` — 6 tests (tabs, add/drop)
+- `client/src/features/admin/__tests__/Admin.test.tsx` — 6 tests (admin access, non-admin denied)
 
 ### Running Tests
 ```bash

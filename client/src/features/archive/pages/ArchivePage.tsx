@@ -339,49 +339,29 @@ export default function ArchivePage() {
             setCategoryRows(catMap);
 
         } else {
-            // Full Season Matrix
-            // Need P1..Pn scores
+            // Full Season Matrix — single request returns all periods
             if (periods.length === 0) return;
 
-            // Fetch ALL periods
-            // TODO: Optimize backend to return matrix
-            const promises = periods.map(p =>
-                fetchJsonApi<any>(`/api/archive/${year}/period/${p.periodNumber}/standings`)
-            );
-            
-            const results = await Promise.all(promises);
-            // results[i] = { standings: [...] } for period i+1
+            const matrix = await fetchJsonApi<{
+                year: number;
+                periods: { periodNumber: number; standings: any[] }[];
+            }>(`/api/archive/${year}/standings-matrix`);
 
             const teamMap: Record<string, TeamSeasonRow> = {};
-            
-            // Initialize teams
-            // Use 1st period result to get teams? Or periods might vary? Teams usually constant.
-            if (results[0]?.standings) {
-                results[0].standings.forEach((s: any) => {
-                    teamMap[s.teamCode] = {
-                        teamId: s.teamCode,
-                        teamName: OGBA_TEAM_NAMES[s.teamCode] || s.teamCode,
-                        periodPoints: {},
-                        seasonTotalPoints: 0
-                    };
-                });
-            }
 
-            // Fill Data
-            results.forEach((res, idx) => {
-                const pid = periods[idx].periodNumber;
-                (res.standings || []).forEach((s: any) => {
+            for (const p of matrix.periods) {
+                for (const s of p.standings) {
                     if (!teamMap[s.teamCode]) {
-                         teamMap[s.teamCode] = {
+                        teamMap[s.teamCode] = {
                             teamId: s.teamCode,
                             teamName: OGBA_TEAM_NAMES[s.teamCode] || s.teamCode,
                             periodPoints: {},
                             seasonTotalPoints: 0
                         };
                     }
-                    teamMap[s.teamCode].periodPoints[String(pid)] = s.totalScore;
-                });
-            });
+                    teamMap[s.teamCode].periodPoints[String(p.periodNumber)] = s.totalScore;
+                }
+            }
 
             // Compute Totals
             Object.values(teamMap).forEach(row => {

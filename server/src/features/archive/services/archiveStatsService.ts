@@ -444,4 +444,95 @@ export class ArchiveStatsService {
         totalScore: points[t.teamCode]
     })).sort((a, b) => b.totalScore - a.totalScore);
   }
+
+  /**
+   * Calculate standings for ALL periods of a season in a single call.
+   * Returns a matrix: { year, periods: [{ periodNumber, standings }] }
+   * This avoids the client making N separate requests.
+   */
+  async calculateAllPeriodStandings(year: number) {
+    const season = await prisma.historicalSeason.findFirst({
+      where: { year },
+      include: {
+        periods: { include: { stats: true }, orderBy: { periodNumber: 'asc' } },
+      },
+    });
+
+    if (!season) return null;
+
+    const periodsResult: {
+      periodNumber: number;
+      standings: { teamCode: string; totalScore: number; stats: Record<string, number>; [key: string]: unknown }[];
+    }[] = [];
+
+    for (const period of season.periods) {
+      const standings = this.computeStandingsFromStats(period.stats);
+      periodsResult.push({ periodNumber: period.periodNumber, standings });
+    }
+
+    return { year, periods: periodsResult };
+  }
+
+  /**
+   * Compute roto standings from a list of player stats (shared logic).
+   */
+  private computeStandingsFromStats(stats: { teamCode: string; R: number | null; HR: number | null; RBI: number | null; SB: number | null; H: number | null; AB: number | null; W: number | null; SV: number | null; K: number | null; ER: number | null; IP: number | null; WHIP: number | null; AVG: number | null; ERA: number | null; isPitcher: boolean }[]) {
+    const teamStats: Record<string, {
+      teamCode: string;
+      R: number; HR: number; RBI: number; SB: number;
+      total_h: number; total_ab: number;
+      W: number; SV: number; K: number;
+      total_er: number; total_ip: number; total_whip_comp: number;
+    }> = {};
+
+    for (const stat of stats) {
+      if (!teamStats[stat.teamCode]) {
+        teamStats[stat.teamCode] = {
+          teamCode: stat.teamCode,
+          R: 0, HR: 0, RBI: 0, SB: 0, total_h: 0, total_ab: 0,
+          W: 0, SV: 0, K: 0, total_er: 0, total_ip: 0, total_whip_comp: 0
+        };
+      }
+      const t = teamStats[stat.teamCode];
+      t.R += (stat.R || 0);
+      t.HR += (stat.HR || 0);
+      t.RBI += (stat.RBI || 0);
+      t.SB += (stat.SB || 0);
+      t.total_h += (stat.H || 0);
+      t.total_ab += (stat.AB || 0);
+      t.W += (stat.W || 0);
+      t.SV += (stat.SV || 0);
+      t.K += (stat.K || 0);
+      t.total_er += (stat.ER || 0);
+      t.total_ip += (stat.IP || 0);
+      t.total_whip_comp += ((stat.WHIP || 0) * (stat.IP || 0));
+    }
+
+    const teams = Object.values(teamStats).map(t => ({
+      teamCode: t.teamCode,
+      R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB,
+      AVG: t.total_ab > 0 ? t.total_h / t.total_ab : 0,
+      W: t.W, SV: t.SV, K: t.K,
+      ERA: t.total_ip > 0 ? (t.total_er * 9) / t.total_ip : 0,
+      WHIP: t.total_ip > 0 ? t.total_whip_comp / t.total_ip : 0,
+    }));
+
+    const points: Record<string, number> = {};
+    teams.forEach(t => points[t.teamCode] = 0);
+
+    const categories = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP'];
+    categories.forEach(cat => {
+      const sorted = [...teams].sort((a: any, b: any) => {
+        if (cat === 'ERA' || cat === 'WHIP') return a[cat] - b[cat];
+        return b[cat] - a[cat];
+      });
+      sorted.forEach((t: any, i) => { points[t.teamCode] += (teams.length - i); });
+    });
+
+    return teams.map(t => ({
+      ...t,
+      stats: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, SV: t.SV, K: t.K, ERA: t.ERA, WHIP: t.WHIP },
+      totalScore: points[t.teamCode]
+    })).sort((a, b) => b.totalScore - a.totalScore);
+  }
 }

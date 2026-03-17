@@ -53,10 +53,10 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 ### Client (10 modules with zero tests)
 
 - [x] **TD-T09**: `auction/` — 10 tests (AuctionValues page: rendering, tabs, search, sorting, modal)
-- [ ] **TD-T10**: `trades/pages/TradesPage.tsx` — complex multi-team trade UI
+- [x] **TD-T10**: `trades/pages/TradesPage.tsx` — 23 tests (trade list, status badges, accept/reject/cancel, commissioner controls, veto/process)
 - [x] **TD-T11**: `teams/` — 17 tests (Teams page: 8 tests; Team page: 9 tests)
-- [ ] **TD-T12**: `archive/pages/ArchivePage.tsx` — heavy data display + import
-- [ ] **TD-T13**: Remaining modules (keeper-prep, leagues, periods, roster, transactions, waivers) — lower priority
+- [x] **TD-T12**: `archive/pages/ArchivePage.tsx` — 16 tests (season selector, tabs, standings, player stats, draft results, admin controls)
+- [x] **TD-T13**: Remaining modules — 36 tests (KeeperSelection: 8, Season: 8, Commissioner: 8, ActivityPage: 6, Admin: 6)
 
 ---
 
@@ -92,7 +92,7 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 ### Scripts Cleanup
 
 - [x] **TD-M01**: Deleted 29 completed one-off scripts from `server/src/scripts/` (67→39 files). Removed year-specific imports (2020-2025), permission fix scripts, duplicate period imports.
-- [ ] **TD-M02**: Consolidate import logic into parameterized functions instead of per-year scripts
+- [x] **TD-M02**: Consolidated 15 scripts into 6 parameterized utilities (39→30 files). DB diagnostics (6→1), MLB propagation (2→1), team fetching (2→1), player info (2→1), name matching (2→1), archive export (1→1 parameterized)
 
 ### Console Logging
 
@@ -100,7 +100,7 @@ Commissioner tabs and owner-facing features should be enabled/disabled based on 
 
 ### Open TODOs in Code
 
-- [ ] **TD-M04**: `archive/pages/ArchivePage.tsx:347` — "TODO: Optimize backend to return matrix" (currently fetches each period separately)
+- [x] **TD-M04**: Archive matrix optimization — new `GET /api/archive/:year/standings-matrix` endpoint returns all period standings in one request (was N+1 queries). Client updated to use single fetch.
 - [x] **TD-M05**: `trades/pages/TradesPage.tsx:345` — `trade: any` TODO resolved (typed as `TradeProposal`)
 
 ---
