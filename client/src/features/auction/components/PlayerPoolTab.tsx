@@ -44,6 +44,10 @@ function positionToSlots(pos: string): string[] {
 
 const PITCHER_POS = new Set(["P", "SP", "RP", "TWP"]);
 
+// MLB league team sets for NL/AL/All filter
+const NL_TEAMS = new Set(["ARI", "AZ", "ATL", "CHC", "CIN", "COL", "LAD", "MIA", "MIL", "NYM", "PHI", "PIT", "SD", "SF", "STL", "WSH"]);
+const AL_TEAMS = new Set(["BAL", "BOS", "CLE", "DET", "HOU", "KC", "LAA", "MIN", "NYY", "ATH", "OAK", "SEA", "TB", "TEX", "TOR", "CWS"]);
+
 export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -59,6 +63,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterLeague, setFilterLeague] = useState<'ALL' | 'NL' | 'AL'>('ALL');
   const [filterTeam, setFilterTeam] = useState<string>('ALL'); // Real MLB Team
   const [filterPos, setFilterPos] = useState<string>('ALL');
 
@@ -131,7 +136,13 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
          res = res.filter(p => !p.ogba_team_code && !p.team);
      }
 
-     // 2. Search & Filters
+     // 2. League filter (NL/AL/All)
+     if (filterLeague !== 'ALL') {
+       const leagueTeams = filterLeague === 'NL' ? NL_TEAMS : AL_TEAMS;
+       res = res.filter(p => leagueTeams.has(p.mlb_team || ''));
+     }
+
+     // 3. Search & Filters
      res = res.filter(p => {
         if (searchQuery && !p.player_name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         if (filterTeam !== 'ALL' && (p.mlb_team || 'FA') !== filterTeam) return false;
@@ -163,7 +174,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
          return sortDesc ? valB - valA : valA - valB;
      });
-  }, [players, viewGroup, viewMode, searchQuery, filterTeam, filterPos, sortKey, sortDesc]);
+  }, [players, viewGroup, viewMode, searchQuery, filterLeague, filterTeam, filterPos, sortKey, sortDesc]);
 
 
   const toggleExpand = (id: string) => {
@@ -227,6 +238,28 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                 className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewMode === 'remaining' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 Avail
+            </button>
+        </div>
+
+        {/* NL / AL / All toggle */}
+        <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
+            <button
+                onClick={() => setFilterLeague('ALL')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'ALL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                All
+            </button>
+            <button
+                onClick={() => setFilterLeague('NL')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'NL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                NL
+            </button>
+            <button
+                onClick={() => setFilterLeague('AL')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'AL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                AL
             </button>
         </div>
 

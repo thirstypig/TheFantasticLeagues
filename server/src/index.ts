@@ -38,7 +38,7 @@ import { attachUser } from "./middleware/auth.js";
 import { supabaseAdmin } from "./lib/supabase.js";
 import { logger } from './lib/logger.js';
 import cron from 'node-cron';
-import { syncNLPlayers } from './features/players/services/mlbSyncService.js';
+import { syncAllPlayers } from './features/players/services/mlbSyncService.js';
 import { attachAuctionWs } from './features/auction/services/auctionWsService.js';
 import { syncAllActivePeriods } from './features/players/services/mlbStatsSyncService.js';
 
@@ -178,8 +178,8 @@ async function main() {
     const season = new Date().getFullYear();
     logger.info({ season }, "Starting scheduled MLB player sync");
     try {
-      const result = await syncNLPlayers(season);
-      logger.info(result, "Scheduled MLB player sync complete");
+      const result = await syncAllPlayers(season);
+      logger.info({ created: result.created, updated: result.updated, teams: result.teams, teamChanges: result.teamChanges.length }, "Scheduled MLB player sync complete");
     } catch (err) {
       logger.error({ error: String(err) }, "Scheduled MLB player sync failed");
     }

@@ -4,13 +4,13 @@
 import { prisma } from "../db/prisma.js";
 
 const NL_TEAMS = new Set([
-  "ARI", "ATL", "CHC", "CIN", "COL", "LAD", "MIA", "MIL",
+  "ARI", "AZ", "ATL", "CHC", "CIN", "COL", "LAD", "MIA", "MIL",
   "NYM", "PHI", "PIT", "SD", "SF", "STL", "WSH",
 ]);
 
 const AL_TEAMS = new Set([
   "BAL", "BOS", "CLE", "DET", "HOU", "KC", "LAA", "MIN",
-  "NYY", "OAK", "SEA", "TB", "TEX", "TOR", "CWS",
+  "NYY", "ATH", "OAK", "SEA", "TB", "TEX", "TOR", "CWS",
 ]);
 
 /** Returns the set of team abbreviations for a stats_source, or null if no filtering needed. */

@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
-import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember } from "../../middleware/auth.js";
+import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, requireCommissionerOrAdmin } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
@@ -92,6 +92,16 @@ function readLeagueId(req: Request): number | null {
   const raw = req.body?.leagueId ?? req.query.leagueId;
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+/** Check if user is admin or commissioner for the given league. */
+async function isAdminOrCommissioner(req: Request, leagueId: number): Promise<boolean> {
+  if (req.user!.isAdmin) return true;
+  const m = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId, userId: req.user!.id } },
+    select: { role: true },
+  });
+  return m?.role === "COMMISSIONER";
 }
 
 // --- Helpers ---
@@ -680,9 +690,10 @@ router.post("/undo-finish", requireAuth, requireAdmin, asyncHandler(async (req, 
 }));
 
 // POST /api/auction/pause
-router.post("/pause", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post("/pause", requireAuth, asyncHandler(async (req, res) => {
     const leagueId = readLeagueId(req);
     if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+    if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
     const state = await getState(leagueId);
 
     if (state.nomination && state.nomination.status === 'running') {
@@ -699,9 +710,10 @@ router.post("/pause", requireAuth, requireAdmin, asyncHandler(async (req, res) =
 }));
 
 // POST /api/auction/resume
-router.post("/resume", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
     const leagueId = readLeagueId(req);
     if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+    if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
     const state = await getState(leagueId);
 
     if (state.nomination && state.nomination.status === 'paused') {

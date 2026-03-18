@@ -54,13 +54,19 @@ vi.mock("../../commissioner/services/CommissionerService.js", () => {
 });
 vi.mock("../../players/services/mlbSyncService.js", () => ({
   syncNLPlayers: vi.fn().mockResolvedValue({ created: 10, updated: 5, total: 15 }),
+  syncAllPlayers: vi.fn().mockResolvedValue({ created: 10, updated: 5, teams: 30, teamChanges: [] }),
+}));
+vi.mock("../../players/services/mlbStatsSyncService.js", () => ({
+  syncPeriodStats: vi.fn().mockResolvedValue({ synced: 20, skipped: 2, errors: 0 }),
+  syncAllActivePeriods: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("../../../lib/schemas.js", () => ({
   addMemberSchema: { parse: vi.fn() },
 }));
 
 import { prisma } from "../../../db/prisma.js";
-import { syncNLPlayers } from "../../players/services/mlbSyncService.js";
+import { syncAllPlayers } from "../../players/services/mlbSyncService.js";
+import { syncPeriodStats, syncAllActivePeriods } from "../../players/services/mlbStatsSyncService.js";
 import { __mockFns } from "../../commissioner/services/CommissionerService.js";
 
 const mockPrisma = prisma as any;
@@ -262,7 +268,7 @@ describe("PATCH /admin/league/:leagueId/team-codes", () => {
 // ── POST /admin/sync-mlb-players ─────────────────────────────────
 
 describe("POST /admin/sync-mlb-players", () => {
-  it("syncs MLB players for current year", async () => {
+  it("syncs all MLB players for current year", async () => {
     const res = await supertest(app)
       .post("/admin/sync-mlb-players")
       .send({});
@@ -270,7 +276,8 @@ describe("POST /admin/sync-mlb-players", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.created).toBe(10);
-    expect(syncNLPlayers).toHaveBeenCalledOnce();
+    expect(res.body.teams).toBe(30);
+    expect(syncAllPlayers).toHaveBeenCalledOnce();
   });
 
   it("accepts custom season", async () => {
@@ -279,7 +286,34 @@ describe("POST /admin/sync-mlb-players", () => {
       .send({ season: 2025 });
 
     expect(res.status).toBe(200);
-    expect(syncNLPlayers).toHaveBeenCalledWith(2025);
+    expect(syncAllPlayers).toHaveBeenCalledWith(2025);
+  });
+});
+
+// ── POST /admin/sync-stats ────────────────────────────────────────
+
+describe("POST /admin/sync-stats", () => {
+  it("syncs a specific period", async () => {
+    const res = await supertest(app)
+      .post("/admin/sync-stats")
+      .send({ periodId: 5 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.periodId).toBe(5);
+    expect(res.body.synced).toBe(20);
+    expect(syncPeriodStats).toHaveBeenCalledWith(5);
+  });
+
+  it("syncs all active periods when no periodId given", async () => {
+    const res = await supertest(app)
+      .post("/admin/sync-stats")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.scope).toBe("all_active");
+    expect(syncAllActivePeriods).toHaveBeenCalledOnce();
   });
 });
 

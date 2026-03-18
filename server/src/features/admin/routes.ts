@@ -10,7 +10,8 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
-import { syncNLPlayers } from "../players/services/mlbSyncService.js";
+import { syncNLPlayers, syncAllPlayers } from "../players/services/mlbSyncService.js";
+import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
 
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(200),
@@ -249,16 +250,55 @@ const syncMlbSchema = z.object({
 router.post("/admin/sync-mlb-players", requireAuth, requireAdmin, validateBody(syncMlbSchema), asyncHandler(async (req, res) => {
   const season = Number(req.body?.season) || new Date().getFullYear();
 
-  const result = await syncNLPlayers(season);
+  const result = await syncAllPlayers(season);
 
   writeAuditLog({
     userId: req.user!.id,
     action: "MLB_PLAYER_SYNC",
     resourceType: "Player",
-    metadata: { season, ...result },
+    metadata: { season, created: result.created, updated: result.updated, teams: result.teams, teamChanges: result.teamChanges.length },
   });
 
   return res.json({ success: true, season, ...result });
+}));
+
+/**
+ * POST /api/admin/sync-stats
+ * Manually trigger stats sync for a specific period or all active periods.
+ * Body (optional): { periodId?: number }
+ */
+const syncStatsSchema = z.object({
+  periodId: z.number().int().positive().optional(),
+});
+
+router.post("/admin/sync-stats", requireAuth, requireAdmin, validateBody(syncStatsSchema), asyncHandler(async (req, res) => {
+  const periodId = req.body?.periodId ? Number(req.body.periodId) : null;
+
+  if (periodId) {
+    const result = await syncPeriodStats(periodId);
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "STATS_SYNC",
+      resourceType: "Period",
+      resourceId: String(periodId),
+      metadata: result,
+    });
+
+    return res.json({ success: true, periodId, ...result });
+  }
+
+  // Sync all active periods
+  await syncAllActivePeriods();
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "STATS_SYNC",
+    resourceType: "Period",
+    metadata: { scope: "all_active" },
+  });
+
+  return res.json({ success: true, scope: "all_active" });
 }));
 
 /**

@@ -2,11 +2,16 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
+import {
+  computeTeamStatsFromDb,
+  computeStandingsFromStats,
+  computeCategoryRows,
+  CATEGORY_CONFIG,
+} from "./services/standingsService.js";
 
 const router = Router();
 
 // --- Period standings: /api/standings/period/current ---
-// No stats yet for 2026 season — return empty standings with team info
 
 router.get("/period/current", requireAuth, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
@@ -21,21 +26,17 @@ router.get("/period/current", requireAuth, asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "No active period found" });
   }
 
-  // Return teams with zero points
-  const teams = await prisma.team.findMany({
-    where: { leagueId },
-    select: { id: true, name: true, code: true },
-    orderBy: { id: "asc" },
-  });
+  const teamStats = await computeTeamStatsFromDb(leagueId, period.id);
+  const standings = computeStandingsFromStats(teamStats);
 
-  const standings = teams.map((t) => ({
-    teamId: t.id,
-    teamName: t.name,
-    teamCode: t.code ?? t.name.substring(0, 3).toUpperCase(),
-    points: 0,
+  const data = standings.map((s) => ({
+    teamId: s.teamId,
+    teamName: s.teamName,
+    teamCode: teamStats.find((t) => t.team.id === s.teamId)?.team.code ?? s.teamName.substring(0, 3).toUpperCase(),
+    points: s.points,
   }));
 
-  res.json({ periodId: period.id, data: standings });
+  res.json({ periodId: period.id, data });
 }));
 
 // --- Period category standings: /api/period-category-standings ---
@@ -59,8 +60,16 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     return res.status(404).json({ error: "No active period found" });
   }
 
-  // Return empty categories — no stats data yet
-  res.json({ periodId: pid, categories: [], teamCount: 0 });
+  const teamStats = await computeTeamStatsFromDb(leagueId, pid);
+
+  const categories = CATEGORY_CONFIG.map((cfg) => ({
+    key: cfg.key,
+    label: cfg.label,
+    lowerIsBetter: cfg.lowerIsBetter,
+    rows: computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter),
+  }));
+
+  res.json({ periodId: pid, categories, teamCount: teamStats.length });
 }));
 
 // --- Season (cumulative) standings: /api/standings/season ---
@@ -77,21 +86,39 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
 
   const periodIds = periods.map((p) => p.id);
 
-  // Get team info from DB
+  // Compute standings per period
+  const periodStandings = await Promise.all(
+    periodIds.map(async (pid) => {
+      const teamStats = await computeTeamStatsFromDb(leagueId, pid);
+      return computeStandingsFromStats(teamStats);
+    })
+  );
+
+  // Build per-team rows with period point breakdowns
   const teams = await prisma.team.findMany({
     where: { leagueId },
     select: { id: true, name: true, code: true },
     orderBy: { id: "asc" },
   });
 
-  // Return teams with zero points across all periods
-  const rows = teams.map((t) => ({
-    teamId: t.id,
-    teamName: t.name,
-    teamCode: t.code ?? t.name.substring(0, 3).toUpperCase(),
-    periodPoints: periodIds.map(() => 0),
-    totalPoints: 0,
-  }));
+  const rows = teams.map((t) => {
+    const periodPoints = periodStandings.map((standings) => {
+      const entry = standings.find((s) => s.teamId === t.id);
+      return entry?.points ?? 0;
+    });
+    const totalPoints = periodPoints.reduce((sum, p) => sum + p, 0);
+
+    return {
+      teamId: t.id,
+      teamName: t.name,
+      teamCode: t.code ?? t.name.substring(0, 3).toUpperCase(),
+      periodPoints,
+      totalPoints,
+    };
+  });
+
+  // Sort by totalPoints descending
+  rows.sort((a, b) => b.totalPoints - a.totalPoints);
 
   res.json({ periodIds, rows });
 }));
