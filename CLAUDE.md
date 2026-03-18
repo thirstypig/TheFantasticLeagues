@@ -54,7 +54,9 @@ fbst/
 │       └── types/           # Server-side types
 ├── prisma/                  # Schema + migrations
 ├── scripts/                 # One-off data processing scripts
-└── docs/                    # Documentation
+├── docs/                    # Documentation
+└── .claude/
+    └── commands/            # Custom slash commands (check, db, feature-test, etc.)
 ```
 
 ## Feature Modules
@@ -374,6 +376,28 @@ Track these metrics across sessions:
 - **Cross-feature dependencies** — are they growing? Should modules be refactored?
 - **Import path consistency** — all Prisma imports from `db/prisma.ts`, all routers named exports
 - **Feature module completeness** — does each module have tests, proper index.ts, types?
+
+## Custom Slash Commands
+
+Located in `.claude/commands/`. Run from Claude Code with `/<name>`:
+
+| Command | Description |
+|---------|-------------|
+| `/check` | Run all tests + TypeScript checks in parallel |
+| `/db <query>` | Run a Prisma database query (natural language) |
+| `/feature-test <name>` | Run server + client tests for a feature module |
+| `/feature-overview <name>` | Show files, routes, imports, tests for a feature |
+| `/smoke-test` | Hit all API endpoints and report status codes |
+
+## Planned: MCP MLB Data Proxy
+
+Detailed plan at `docs/MCP-MLB-API-PLAN.md`. Will create a local MCP server (`mcp-servers/mlb-data/`) that:
+- Acts as caching proxy between FBST and `statsapi.mlb.com`
+- Provides 8 tools (get-player-stats, search-players, sync-player-teams, etc.)
+- Uses SQLite for persistent cache with endpoint-specific TTLs
+- Adds centralized rate limiting (token bucket) and circuit breaker
+- Replaces current ad-hoc `server/src/lib/mlbApi.ts` fetch-and-cache pattern
+- Exposes tools to Claude Code for direct MLB data queries in conversation
 
 ## Coding Guidelines
 - **SOLID Principles**: Single Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion

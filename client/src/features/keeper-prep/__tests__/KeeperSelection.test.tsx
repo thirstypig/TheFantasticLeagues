@@ -16,6 +16,16 @@ vi.mock("../../../contexts/ToastContext", () => ({
   }),
 }));
 
+// Mock LeagueContext
+vi.mock("../../../contexts/LeagueContext", () => ({
+  useLeague: () => ({
+    leagueId: 1,
+    outfieldMode: "OF",
+    seasonStatus: "SETUP",
+    leagues: [],
+  }),
+}));
+
 import { getMyRoster, saveKeepers } from "../../leagues/api";
 import KeeperSelection from "../pages/KeeperSelection";
 

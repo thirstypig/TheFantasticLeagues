@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getMyRoster, saveKeepers } from "../../leagues/api";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useToast } from "../../../contexts/ToastContext";
+import { useLeague } from "../../../contexts/LeagueContext";
+import { mapPosition } from "../../../lib/sportConfig";
 
 // Helper to format currency
 const fmtMoney = (n: number) => {
@@ -13,6 +15,7 @@ export default function KeeperSelection() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast, confirm } = useToast();
+  const { outfieldMode } = useLeague();
   const leagueId = Number(id);
 
   const [loading, setLoading] = useState(true);
@@ -157,7 +160,7 @@ export default function KeeperSelection() {
                                 className={`transition-colors hover:bg-[var(--lg-tint)] ${isSelected ? "bg-sky-900/10" : ""}`}
                                 onClick={() => toggleKeeper(r.id)}
                               >
-                                  <td className="px-6 py-4 font-mono text-[var(--lg-text-muted)] opacity-60">{r.player?.posPrimary || r.assignedPosition}</td>
+                                  <td className="px-6 py-4 font-mono text-[var(--lg-text-muted)] opacity-60">{mapPosition(r.player?.posPrimary || r.assignedPosition || "", outfieldMode)}</td>
                                   <td className="px-6 py-4 font-medium text-[var(--lg-text-primary)]">{r.player?.name || "Unknown"}</td>
                                   <td className="px-6 py-4 text-[var(--lg-text-muted)] opacity-60">{r.player?.mlbTeam || (r.player as any)?.mlb_team}</td>
                                   <td className="px-6 py-4 text-right font-mono text-[var(--lg-text-primary)]">{fmtMoney(r.price)}</td>

@@ -58,7 +58,7 @@ export default function NominationQueue({ teams, queue, queueIndex, myTeamId }: 
                   }`}>
                       {idx + 1}
                   </span>
-                  <span className="truncate">{team.code || team.name}</span>
+                  <span className="truncate">{team.name}</span>
                   {idx === 0 && team.id !== myTeamId && (
                      <span className="text-[var(--lg-accent)] animate-pulse ml-auto shrink-0">●</span>
                   )}

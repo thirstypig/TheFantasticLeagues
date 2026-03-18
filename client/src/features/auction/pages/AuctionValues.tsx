@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { getAuctionValues, getLeague, type PlayerSeasonStat } from "../../../api";
 import { toNum } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
+import { mapPosition } from "../../../lib/sportConfig";
 import PlayerDetailModal from "../../../components/PlayerDetailModal";
 import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
@@ -48,7 +49,7 @@ function fmt1(v: number): string {
 }
 
 export default function AuctionValues() {
-  const { leagueId } = useLeague();
+  const { leagueId, outfieldMode } = useLeague();
   const [rows, setRows] = useState<PlayerSeasonStat[]>([]);
   const [teamNameMap, setTeamNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -201,7 +202,7 @@ export default function AuctionValues() {
                   >
                     <ThemedTd>{playerName(p)}</ThemedTd>
                     <ThemedTd>{teamNameMap[ogbaTeam(p).toUpperCase()] || ogbaTeam(p) || "FA"}</ThemedTd>
-                    <ThemedTd>{posStr(p) || (rowIsPitcher(p) ? "P" : "—")}</ThemedTd>
+                    <ThemedTd>{mapPosition(posStr(p) || (rowIsPitcher(p) ? "P" : "—"), outfieldMode)}</ThemedTd>
                     <ThemedTd align="right">{value > 0 ? fmt1(value) : "-"}</ThemedTd>
                     <ThemedTd>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--lg-tint-hover)]">

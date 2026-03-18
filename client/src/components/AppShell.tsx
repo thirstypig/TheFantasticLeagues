@@ -257,10 +257,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     }
                     return [...grouped.entries()].map(([key, items]) => {
                       const label = items[0].name;
+                      // Check for duplicate season years within this group
+                      const seasonCounts = new Map<number, number>();
+                      for (const l of items) seasonCounts.set(l.season, (seasonCounts.get(l.season) ?? 0) + 1);
+                      const hasDupes = [...seasonCounts.values()].some((c) => c > 1);
                       return (
                         <optgroup key={key} label={label}>
                           {items.map((l) => (
-                            <option key={l.id} value={l.id}>{l.season} Season</option>
+                            <option key={l.id} value={l.id}>
+                              {hasDupes ? `${l.name} ${l.season}` : `${l.season} Season`}
+                            </option>
                           ))}
                         </optgroup>
                       );

@@ -25,6 +25,8 @@ interface PlayerPoolTabProps {
 }
 
 import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
+import { mapPosition } from '../../../lib/sportConfig';
+import { useLeague } from '../../../contexts/LeagueContext';
 
 /** Map a player's MLB position to the roster slot(s) it can fill. */
 function positionToSlots(pos: string): string[] {
@@ -43,6 +45,7 @@ function positionToSlots(pos: string): string[] {
 const PITCHER_POS = new Set(["P", "SP", "RP", "TWP"]);
 
 export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig }: PlayerPoolTabProps) {
+  const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -292,7 +295,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                         {p.mlb_full_name || p.player_name}
                                     </div>
                                     <div className="text-[10px] text-[var(--lg-text-muted)] flex gap-1 items-center font-medium uppercase">
-                                        <span className="text-[var(--lg-accent)]">{getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT')}</span>
+                                        <span className="text-[var(--lg-accent)]">{mapPosition(getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT'), outfieldMode)}</span>
                                         <span className="opacity-30">·</span>
                                         <span>{p.mlb_team || 'FA'}</span>
                                         {isTaken && (

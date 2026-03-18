@@ -10,6 +10,8 @@ import {
   type TeamKeeperStatus
 } from "../api";
 import { useToast } from "../../../contexts/ToastContext";
+import { useLeague } from "../../../contexts/LeagueContext";
+import { mapPosition } from "../../../lib/sportConfig";
 
 interface KeeperPrepDashboardProps {
   leagueId: number;
@@ -17,6 +19,7 @@ interface KeeperPrepDashboardProps {
 
 export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardProps) {
   const { toast, confirm } = useToast();
+  const { outfieldMode } = useLeague();
   const [statuses, setStatuses] = useState<TeamKeeperStatus[]>([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -247,7 +250,7 @@ export default function KeeperPrepDashboard({ leagueId }: KeeperPrepDashboardPro
                         />
                       </td>
                       <td className="py-2 text-[var(--lg-text-primary)]">{r.player.name}</td>
-                      <td className="py-2 text-[var(--lg-text-muted)]">{r.player.posPrimary}</td>
+                      <td className="py-2 text-[var(--lg-text-muted)]">{mapPosition(r.player.posPrimary, outfieldMode)}</td>
                       <td className="py-2 text-right font-mono text-amber-400">${r.price}</td>
                     </tr>
                   ))}
