@@ -3,6 +3,7 @@
 
 import { prisma } from "../../../db/prisma.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
+import { logger } from "../../../lib/logger.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,18 +51,37 @@ export class KeeperPrepService {
   }
 
   /**
-   * Lock keeper selections.
+   * Lock keeper selections and release all non-keeper players back to the free agent pool.
+   * Non-keepers get `releasedAt` set so they no longer appear on active rosters,
+   * making them available for the upcoming auction draft.
    */
-  async lockKeepers(leagueId: number): Promise<void> {
+  async lockKeepers(leagueId: number): Promise<{ releasedCount: number }> {
+    // Release all non-keeper active roster entries for this league
+    const released = await prisma.roster.updateMany({
+      where: {
+        team: { leagueId },
+        releasedAt: null,
+        isKeeper: false,
+      },
+      data: { releasedAt: new Date() },
+    });
+
+    // Set the lock flag
     await prisma.leagueRule.upsert({
       where: { leagueId_category_key: { leagueId, category: "status", key: "keepers_locked" } },
       create: { leagueId, category: "status", key: "keepers_locked", value: "true", label: "Keepers Locked" },
       update: { value: "true" },
     });
+
+    logger.info({ leagueId, releasedCount: released.count }, "Keepers locked — non-keepers released to free agent pool");
+
+    return { releasedCount: released.count };
   }
 
   /**
    * Unlock keeper selections.
+   * Note: This does NOT restore previously released non-keepers.
+   * Commissioner must re-populate rosters if they want to redo keeper selection.
    */
   async unlockKeepers(leagueId: number): Promise<void> {
     await prisma.leagueRule.upsert({
@@ -69,6 +89,7 @@ export class KeeperPrepService {
       create: { leagueId, category: "status", key: "keepers_locked", value: "false", label: "Keepers Locked" },
       update: { value: "false" },
     });
+    logger.info({ leagueId }, "Keepers unlocked — non-keepers were NOT restored; re-populate if needed");
   }
 
   // ─── Roster Population ──────────────────────────────────────────────────────

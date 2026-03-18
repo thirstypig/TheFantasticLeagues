@@ -4,6 +4,39 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-17 (Session 22) — Keeper Lock E2E, Performance Fix, 2026 Values, MCP Plan
+
+### Completed
+- **Keeper lock E2E testing** — Extended `scripts/setup-keeper-tests.js` with 3 phases:
+  - Phase 1: Setup (create leagues, populate rosters, select keepers, execute trades)
+  - Phase 2: Lock & Verify (release non-keepers, verify only keepers remain active)
+  - Phase 3: Auction Readiness (verify budget math, spots, maxBid per team)
+  - All 3 scenarios pass: Test1 (32 keepers baseline), Test2 (budget trade), Test3 (mixed + player trade)
+- **keeperPrepService.lockKeepers()** — Now releases non-keeper players (`releasedAt` set), returns `{ releasedCount }`
+- **2026 Player Values** — Imported `2026 Player Values v2.xlsx` → `ogba_auction_values_2026.csv` (843 players, rounded $ values)
+- **OF position mapping** — Applied `mapPosition(pos, outfieldMode)` everywhere:
+  - KeeperSelection, KeeperPrepDashboard, CommissionerKeeperManager, PlayerPoolTab, AuctionValues, RosterGrid
+- **Team page performance** — Parallelized:
+  - Client: `getTeams()` + `getPlayerSeasonStats()` now run via `Promise.all()`
+  - Server: `teamService.getTeamSummary()` — 5 independent DB queries now run in parallel
+- **Fantasy team code removed** — NominationQueue no longer shows team codes
+- **Custom slash commands** — Created 5 commands in `.claude/commands/`:
+  - `check.md`, `db.md`, `feature-test.md`, `feature-overview.md`, `smoke-test.md`
+- **MCP MLB API Plan** — Detailed plan at `docs/MCP-MLB-API-PLAN.md` with 8 phases, 8 tools, cache/rate-limit strategy
+
+### Pending / Next Steps
+- Build MCP MLB Data Proxy server (see `docs/MCP-MLB-API-PLAN.md`)
+- Live app testing of keeper lock flow (through UI)
+- Edge case testing: 0-keeper lock, double-lock, save-after-lock
+
+### Test Results
+- Server: 32 files, 428 tests passing
+- Client: 14 files, 187 tests passing
+- Total: 615 tests, all green
+- TypeScript: clean compile (both client and server; 2 pre-existing test mock export warnings)
+
+---
+
 ## Session 2026-03-17 (Session 21) — Complete Tech Debt, Client Tests, 6-Agent Code Review
 
 ### Completed

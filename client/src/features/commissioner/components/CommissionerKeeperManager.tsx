@@ -4,6 +4,8 @@ import { getLeague } from '../../../api';
 import { getCommissionerRosters, assignRosterKeeper, releaseRosterEntry } from '../api';
 import { fetchJsonApi } from '../../../api/base';
 import { useToast } from "../../../contexts/ToastContext";
+import { useLeague } from "../../../contexts/LeagueContext";
+import { mapPosition } from "../../../lib/sportConfig";
 
 interface KeeperManagerProps {
     leagueId: number;
@@ -36,6 +38,7 @@ interface RosterItem {
 
 export default function CommissionerKeeperManager({ leagueId }: KeeperManagerProps) {
     const { toast, confirm } = useToast();
+    const { outfieldMode } = useLeague();
     const [teams, setTeams] = useState<Team[]>([]);
     const [rosters, setRosters] = useState<RosterItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -148,7 +151,7 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
                                         className="p-2 hover:bg-[var(--lg-tint-hover)] cursor-pointer flex justify-between text-sm text-[var(--lg-text-primary)] border-b border-[var(--lg-border-faint)] last:border-0"
                                         onClick={() => handleAddKeeper(p)}
                                      >
-                                         <span>{p.name} <span className="text-[var(--lg-text-muted)]">({p.position})</span></span>
+                                         <span>{p.name} <span className="text-[var(--lg-text-muted)]">({mapPosition(p.position, outfieldMode)})</span></span>
                                          <span className="text-xs text-[var(--lg-text-muted)]">{p.team}</span>
                                      </div>
                                  ))}

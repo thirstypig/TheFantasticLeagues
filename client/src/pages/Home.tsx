@@ -25,6 +25,7 @@ interface Player {
 interface RosterEntry {
   id: number;
   teamId: number;
+  isKeeper?: boolean;
   player: Player;
   stat?: PlayerSeasonStat;
 }
@@ -199,6 +200,18 @@ export default function Home() {
                      </div>
                  </div>
 
+                 {/* Keepers Summary */}
+                 {roster.some(r => r.isKeeper) && (
+                   <div className="px-4 md:px-10 pt-4 md:pt-6 flex items-center gap-4">
+                     <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">K</span>
+                     <span className="text-xs font-medium text-[var(--lg-text-secondary)]">
+                       Keepers: {roster.filter(r => r.isKeeper).length} selected
+                       {" · "}
+                       Cost: ${roster.filter(r => r.isKeeper).reduce((sum, r) => sum + ((r as any).price ?? 0), 0)}
+                     </span>
+                   </div>
+                 )}
+
                  <div className="p-4 md:p-10 grid grid-cols-1 gap-14">
                    {/* Hitters */}
                    <div>
@@ -233,7 +246,12 @@ export default function Home() {
                                             {mapPosition(r.player.posPrimary, outfieldMode)}
                                           </span>
                                         </Td>
-                                        <Td>{r.player.name}</Td>
+                                        <Td>
+                                          <span className="inline-flex items-center gap-1.5">
+                                            {r.player.name}
+                                            {r.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                                          </span>
+                                        </Td>
                                         <Td align="center"><span className="text-xs text-[var(--lg-text-muted)]">{(r.player as any).mlbTeam || "—"}</span></Td>
                                         <Td align="center">{num(s.R)}</Td>
                                         <Td align="center"><span className="text-blue-500">{num(s.HR)}</span></Td>
@@ -282,7 +300,12 @@ export default function Home() {
                                             {r.player.posPrimary}
                                           </span>
                                         </Td>
-                                        <Td>{r.player.name}</Td>
+                                        <Td>
+                                          <span className="inline-flex items-center gap-1.5">
+                                            {r.player.name}
+                                            {r.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                                          </span>
+                                        </Td>
                                         <Td align="center"><span className="text-xs text-[var(--lg-text-muted)]">{(r.player as any).mlbTeam || "—"}</span></Td>
                                         <Td align="center"><span className="text-emerald-500">{num(s.W)}</span></Td>
                                         <Td align="center"><span className="text-amber-500">{num(s.SV)}</span></Td>

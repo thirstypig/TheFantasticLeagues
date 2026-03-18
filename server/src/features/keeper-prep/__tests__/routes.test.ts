@@ -29,7 +29,7 @@ vi.mock("../services/keeperPrepService.js", () => {
   const isKeepersLocked = vi.fn().mockResolvedValue(false);
   const getKeeperLimit = vi.fn().mockResolvedValue(8);
   const saveKeepersForTeam = vi.fn().mockResolvedValue({ kept: 5, released: 18 });
-  const lockKeepers = vi.fn().mockResolvedValue(undefined);
+  const lockKeepers = vi.fn().mockResolvedValue({ releasedCount: 19 });
   const unlockKeepers = vi.fn().mockResolvedValue(undefined);
   return {
     KeeperPrepService: class {

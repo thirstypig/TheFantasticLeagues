@@ -105,7 +105,7 @@ export class DataService {
   public async loadAllData(seasonFile: string) {
     try {
       // 1. Auction Values
-      const auctionPath = this.resolveDataFile("ogba_auction_values_2025.csv");
+      const auctionPath = this.resolveDataFile("ogba_auction_values_2026.csv");
       if (fs.existsSync(auctionPath)) {
         this.auctionValues = parseCsv(fs.readFileSync(auctionPath, "utf-8")) as AuctionValueRow[];
         

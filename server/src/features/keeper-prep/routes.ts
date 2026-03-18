@@ -131,16 +131,16 @@ router.post(
   requireCommissionerOrAdmin(),
   asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
-    await keeperPrepService.lockKeepers(leagueId);
+    const { releasedCount } = await keeperPrepService.lockKeepers(leagueId);
 
     writeAuditLog({
       userId: req.user!.id,
       action: "KEEPER_LOCK",
       resourceType: "KeeperPrep",
-      metadata: { leagueId },
+      metadata: { leagueId, releasedCount },
     });
 
-    return res.json({ success: true, locked: true });
+    return res.json({ success: true, locked: true, releasedCount });
   })
 );
 

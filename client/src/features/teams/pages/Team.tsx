@@ -89,20 +89,19 @@ export default function Team() {
         setLoading(true);
         setError(null);
 
-        // 1. Find the DB team by code or name (scoped to active league)
-        const allTeams = await getTeams(leagueId);
+        // 1. Load teams + CSV stats in parallel (independent calls)
+        const [allTeams, csvRows] = await Promise.all([
+          getTeams(leagueId),
+          getPlayerSeasonStats(),
+        ]);
+        if (!ok) return;
+
         const ogbaName = getOgbaTeamName(code);
         const team = allTeams.find((t: any) => normCode(t.code) === code)
           || allTeams.find((t: any) => normCode(t.name) === code)
           || allTeams.find((t: any) => t.name.trim() === ogbaName);
 
-        if (!ok) return;
-
         const foundId = team?.id || 0;
-
-        // 2. Load CSV stats (for stat merging)
-        const csvRows = await getPlayerSeasonStats();
-        if (!ok) return;
 
         if (foundId) {
           setDbTeamId(foundId);
@@ -128,6 +127,8 @@ export default function Team() {
               ? (csvRows ?? []).find((s: any) => Number(s.mlb_id || s.mlbId) === Number(mlbId))
               : null;
 
+            const isKeeper = r.isKeeper ?? false;
+
             if (csvMatch) {
               // Use CSV stats, overlay DB fields for consistency
               return {
@@ -136,6 +137,7 @@ export default function Team() {
                 mlb_team_abbr: mlbTeam || csvMatch.mlb_team_abbr || csvMatch.mlb_team || "",
                 player_name: csvMatch.player_name || playerName,
                 price,
+                isKeeper,
               };
             }
 
@@ -152,6 +154,7 @@ export default function Team() {
               W: 0, SV: 0, K: 0, IP: 0, ERA: 0, WHIP: 0, BB_H: 0,
               mlb_team_abbr: mlbTeam,
               price,
+              isKeeper,
             } as unknown as PlayerSeasonStat;
           });
 
@@ -181,8 +184,16 @@ export default function Team() {
 
   const teamName = useMemo(() => getOgbaTeamName(code) || code, [code]);
 
-  const hitters = useMemo(() => players.filter((p) => !isPitcher(p)), [players]);
-  const pitchers = useMemo(() => players.filter((p) => isPitcher(p)), [players]);
+  const hitters = useMemo(() => {
+    const list = players.filter((p) => !isPitcher(p));
+    list.sort((a, b) => ((b as any).isKeeper ? 1 : 0) - ((a as any).isKeeper ? 1 : 0));
+    return list;
+  }, [players]);
+  const pitchers = useMemo(() => {
+    const list = players.filter((p) => isPitcher(p));
+    list.sort((a, b) => ((b as any).isKeeper ? 1 : 0) - ((a as any).isKeeper ? 1 : 0));
+    return list;
+  }, [players]);
 
   return (
     <div className="flex-1 min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
@@ -191,6 +202,11 @@ export default function Team() {
           <h1 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)] mb-4">{teamName}</h1>
           <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
             Roster: {hitters.length} Hitters • {pitchers.length} Pitchers
+            {players.some((p: any) => p.isKeeper) && (
+              <span className="ml-3 text-amber-500">
+                • {players.filter((p: any) => p.isKeeper).length} Keepers
+              </span>
+            )}
           </div>
           
           <div className="mt-8 flex justify-center gap-6">
@@ -289,7 +305,12 @@ export default function Team() {
                             <Td align="center">
                               {tm || "—"}
                             </Td>
-                            <Td align="center">{p?.player_name ?? p?.name ?? p?.playerName ?? ""}</Td>
+                            <Td align="center">
+                              <span className="inline-flex items-center gap-1.5">
+                                {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
+                                {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                              </span>
+                            </Td>
                             <Td align="center">
                               {elig || "—"}
                             </Td>
@@ -381,7 +402,12 @@ export default function Team() {
                             <Td align="center">
                               {tm || "—"}
                             </Td>
-                            <Td align="center">{p?.player_name ?? p?.name ?? p?.playerName ?? ""}</Td>
+                            <Td align="center">
+                              <span className="inline-flex items-center gap-1.5">
+                                {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
+                                {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                              </span>
+                            </Td>
                             <Td align="center">
                               {elig}
                             </Td>

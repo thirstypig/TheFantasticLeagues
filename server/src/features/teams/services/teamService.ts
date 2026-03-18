@@ -77,14 +77,41 @@ export class TeamService {
         throw new Error("Team not found");
     }
 
-    // active period (first active, else id=1 fallback)
-    const period =
-      (await prisma.period.findFirst({
+    // Run independent DB queries in parallel
+    const [period, seasonStats, periodRows, rosterRows, droppedRows] = await Promise.all([
+      // active period (first active, else id=1 fallback)
+      prisma.period.findFirst({
         where: { status: "active" },
         orderBy: { startDate: "asc" },
-      })) ||
-      (await prisma.period.findFirst({ where: { id: 1 } }));
+      }).then((p) => p || prisma.period.findFirst({ where: { id: 1 } })),
 
+      prisma.teamStatsSeason.findUnique({
+        where: { teamId: team.id },
+      }),
+
+      prisma.teamStatsPeriod.findMany({
+        where: { teamId: team.id },
+        include: { period: true },
+        orderBy: { periodId: "asc" },
+      }),
+
+      prisma.roster.findMany({
+        where: { teamId: team.id, releasedAt: null },
+        include: { player: true },
+        orderBy: { acquiredAt: "asc" },
+      }),
+
+      prisma.roster.findMany({
+        where: {
+          teamId: team.id,
+          NOT: { releasedAt: null },
+        },
+        include: { player: true },
+        orderBy: { releasedAt: "desc" },
+      }),
+    ]);
+
+    // Period stats for the active period (depends on period lookup above)
     let periodStats = null;
     if (period) {
       periodStats = await prisma.teamStatsPeriod.findUnique({
@@ -97,20 +124,9 @@ export class TeamService {
       });
     }
 
-    const seasonStats = await prisma.teamStatsSeason.findUnique({
-      where: { teamId: team.id },
-    });
-
     // ---------- period-by-period summary ----------
-    const periodRows = await prisma.teamStatsPeriod.findMany({
-      where: { teamId: team.id },
-      include: { period: true },
-      orderBy: { periodId: "asc" },
-    });
-
     let runningTotal = 0;
     const periodSummaries = periodRows.map((row) => {
-      // row contains id, teamId, periodId, and *some* points-like field
       const periodPoints = TeamService.calculatePoints({ ...row } as Record<string, unknown>);
       runningTotal += periodPoints;
 
@@ -142,12 +158,6 @@ export class TeamService {
         : 0);
 
     // ---------- Roster ----------
-    const rosterRows = await prisma.roster.findMany({
-      where: { teamId: team.id, releasedAt: null },
-      include: { player: true },
-      orderBy: { acquiredAt: "asc" },
-    });
-
     const currentRoster = rosterRows.map((r) => ({
       id: r.id,
       playerId: r.playerId,
@@ -159,17 +169,9 @@ export class TeamService {
       acquiredAt: r.acquiredAt,
       price: r.price,
       assignedPosition: r.assignedPosition,
+      isKeeper: r.isKeeper,
       gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList),
     }));
-
-    const droppedRows = await prisma.roster.findMany({
-      where: {
-        teamId: team.id,
-        NOT: { releasedAt: null },
-      },
-      include: { player: true },
-      orderBy: { releasedAt: "desc" },
-    });
 
     const droppedPlayers = droppedRows.map((r) => ({
       id: r.id,

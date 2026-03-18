@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { fetchJsonApi } from '../../../api/base';
 import { POS_ORDER } from '../../../lib/baseballUtils';
+import { mapPosition } from '../../../lib/sportConfig';
+import { useLeague } from '../../../contexts/LeagueContext';
 
 interface Team {
   id: number;
@@ -30,6 +32,7 @@ interface RosterGridProps {
 }
 
 export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className }: RosterGridProps) {
+  const { outfieldMode } = useLeague();
   const [teams, setTeams] = useState<Team[]>(initialTeams || []);
   const [rosters, setRosters] = useState<RosterItem[]>(initialRosters || []);
   const [loading, setLoading] = useState(!initialTeams || !initialRosters);
@@ -116,7 +119,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                            }).map(r => (
                                <div key={r.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-[var(--lg-tint)] rounded group">
                                    <div className="flex items-center gap-2 overflow-hidden">
-                                       <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{r.player.posPrimary}</span>
+                                       <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{mapPosition(r.player.posPrimary, outfieldMode)}</span>
                                        <span className="text-[var(--lg-text-primary)] truncate group-hover:text-sky-300 transition-colors">{r.player.name}</span>
                                    </div>
                                    <div className="flex items-center gap-2">
