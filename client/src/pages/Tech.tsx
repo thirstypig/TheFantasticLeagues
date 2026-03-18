@@ -32,9 +32,9 @@ const stats = [
   { label: "API Endpoints", value: "116", icon: Plug },
   { label: "Feature Modules", value: "17", icon: Layers },
   { label: "Git Commits", value: "138", icon: GitCommit },
-  { label: "Tests Passing", value: "615", icon: TestTube },
+  { label: "Tests Passing", value: "644", icon: TestTube },
   { label: "DB Schema Lines", value: "723", icon: Braces },
-  { label: "DB Migrations", value: "9", icon: Database },
+  { label: "DB Migrations", value: "10", icon: Database },
   { label: "Est. Tokens Used", value: "~65M+", icon: Bot },
 ];
 
@@ -82,9 +82,12 @@ const techStack = [
     category: "Data & Integrations",
     items: [
       { name: "MLB Stats API", desc: "Live player data & statistics" },
+      { name: "MCP MLB Data Proxy", desc: "Local MCP server with SQLite cache, rate limiter, circuit breaker (8 tools)" },
       { name: "Google Gemini AI", desc: "AI-powered player analysis" },
+      { name: "Resend", desc: "Transactional email for league invites" },
       { name: "xlsx", desc: "Excel file parsing for archive imports" },
       { name: "csv-parse", desc: "CSV data processing for stats" },
+      { name: "better-sqlite3", desc: "Persistent MLB API cache (WAL mode)" },
     ],
   },
   {
@@ -94,7 +97,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "513 tests", desc: "428 server + 85 client tests" },
+      { name: "644 tests", desc: "428 server + 187 client + 29 MCP tests" },
     ],
   },
   {
@@ -103,6 +106,7 @@ const techStack = [
       { name: "Render", desc: "Hosting with SSL termination" },
       { name: "Supabase", desc: "Managed PostgreSQL + Auth + Storage" },
       { name: "Git / GitHub", desc: "Version control, PRs, CI" },
+      { name: "MCP (Model Context Protocol)", desc: "Tool server for Claude Code CLI integration" },
     ],
   },
 ];
@@ -428,6 +432,8 @@ const tools = [
   { name: "Prisma Studio", desc: "Database GUI for development and data inspection" },
   { name: "Postman", desc: "API testing and debugging" },
   { name: "Chrome DevTools", desc: "Frontend debugging, network inspection, responsive testing" },
+  { name: "MCP Servers", desc: "MLB Data Proxy — 8 tools for player lookup, stats, standings, roster sync via Claude Code" },
+  { name: "Resend Dashboard", desc: "Transactional email monitoring and API key management" },
 ];
 
 const architectureChart = `flowchart LR
@@ -438,6 +444,8 @@ const architectureChart = `flowchart LR
     WS["WebSocket<br/>(ws)"]
     MLB["MLB Stats API"]
     AI["Google Gemini"]
+    MCP["MCP MLB Proxy<br/>(SQLite cache)"]
+    Email["Resend<br/>(Email)"]
 
     Browser -->|"REST /api/*"| API
     Browser -->|"ws://auction"| WS
@@ -445,7 +453,10 @@ const architectureChart = `flowchart LR
     API -->|"Prisma ORM"| DB
     API -->|"JWT verify"| Auth
     API -->|"Player data"| MLB
+    API -->|"Shared cache"| MCP
     API -->|"AI analysis"| AI
+    API -->|"Invite emails"| Email
+    MCP -->|"Cached requests"| MLB
     WS -->|"Auction state"| API
 `;
 
@@ -474,6 +485,11 @@ const buildJournal = [
     date: "Mar 2026",
     title: "Sessions 15-20: Hardening",
     detail: "Season lifecycle (SETUP > DRAFT > IN_SEASON > COMPLETED) with server-side guards and client-side gating. Franchise schema refactor for multi-season leagues. Keeper prep workflows. 116 new server tests added in one session. Service extraction from oversized route files. Console-to-structured-logger migration. Zero circular dependencies.",
+  },
+  {
+    date: "Mar 2026",
+    title: "Sessions 21-23: Polish & Auth",
+    detail: "6-agent code review resolved 15 findings. Auth system overhaul: password reset, pre-signup email invites with auto-accept on first login, Google OAuth verification. Custom SMTP via Resend for transactional emails. MCP MLB Data Proxy server with SQLite cache and rate limiter. Keeper lock E2E testing. 644 tests passing.",
   },
 ];
 
@@ -507,7 +523,7 @@ const lessons = [
   },
   {
     label: "Tests are non-negotiable with AI-generated code",
-    detail: "AI can write plausible-looking code that's subtly wrong. The only reliable safety net is tests. Going from 0 to 513 tests wasn't optional — it was the mechanism that let me trust the output and move fast. Every major session now starts and ends with a full test run.",
+    detail: "AI can write plausible-looking code that's subtly wrong. The only reliable safety net is tests. Going from 0 to 644 tests wasn't optional — it was the mechanism that let me trust the output and move fast. Every major session now starts and ends with a full test run.",
   },
   {
     label: "The hardest problems were data, not logic",
@@ -585,7 +601,7 @@ export default function Tech() {
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at what it took to build The Fantastic Leagues — the tools, the process,
           the decisions, and the numbers. Built from November 2025 to present across
-          20 sessions, 46,870+ lines of TypeScript, and an estimated 65 million+ AI tokens.
+          23 sessions, 46,870+ lines of TypeScript, and an estimated 65 million+ AI tokens.
         </p>
       </div>
 
@@ -623,7 +639,7 @@ export default function Tech() {
         </h2>
         <p className="text-sm text-[var(--lg-text-secondary)] mb-4">
           Building a 47K-line full-stack app through conversational AI requires structure.
-          Here's the system that made it work across 20 sessions.
+          Here's the system that made it work across 23 sessions.
         </p>
         <div className="space-y-3">
           {workflowSteps.map((step) => (
@@ -830,7 +846,7 @@ export default function Tech() {
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 65M+ tokens across 20 sessions
+        Built with Claude Code — estimated 65M+ tokens across 23 sessions
       </p>
     </div>
   );

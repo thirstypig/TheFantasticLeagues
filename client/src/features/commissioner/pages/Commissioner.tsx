@@ -14,7 +14,12 @@ import {
   assignTeamOwner as apiAssignTeamOwner,
   removeTeamOwner as apiRemoveTeamOwner,
   updateLeague as apiUpdateLeague,
+  getInvites as apiGetInvites,
+  cancelInvite as apiCancelInvite,
+  changeMemberRole as apiChangeMemberRole,
+  removeMember as apiRemoveMember,
 } from "../api";
+import type { PendingInvite } from "../api";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
@@ -167,6 +172,9 @@ export default function Commissioner() {
   const [inviteCodeValue, setInviteCodeValue] = useState<string | null>(null);
   const [inviteCodeLoading, setInviteCodeLoading] = useState(false);
 
+  // Pending invites
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+
   // Season gating
   const gating = useSeasonGating();
 
@@ -244,10 +252,14 @@ export default function Commissioner() {
       const priorTeamsList = await getPriorTeams(lid);
       setPriorTeams(priorTeamsList);
 
-      // Fetch invite code
+      // Fetch invite code + pending invites
       try {
         const ic = await getInviteCode(lid);
         setInviteCodeValue(ic.inviteCode);
+      } catch { /* ignore if no permission */ }
+      try {
+        const invites = await apiGetInvites(lid);
+        setPendingInvites(invites.filter(i => i.status === "PENDING"));
       } catch { /* ignore if no permission */ }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load commissioner data.");
@@ -310,12 +322,68 @@ export default function Commissioner() {
       const email = String(inviteEmail || "").trim().toLowerCase();
       if (!email) throw new Error("Email is required.");
 
-      await apiInviteMember(lid, email, inviteRole);
+      const result = await apiInviteMember(lid, email, inviteRole);
 
       setInviteEmail("");
+      if (result.status === "invited") {
+        toast(`Invite sent to ${email}. They'll be added when they sign up and log in.`, "success");
+        // Refresh pending invites
+        try {
+          const invites = await apiGetInvites(lid);
+          setPendingInvites(invites.filter(i => i.status === "PENDING"));
+        } catch { /* ignore */ }
+      } else {
+        toast(`${email} added to the league.`, "success");
+      }
       await refreshOverviewOnly();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Add member failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onCancelInvite(inviteId: number) {
+    setBusy(true);
+    try {
+      await apiCancelInvite(lid, inviteId);
+      setPendingInvites(prev => prev.filter(i => i.id !== inviteId));
+      toast("Invite cancelled.", "success");
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : "Failed to cancel invite.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onChangeMemberRole(membershipId: number, currentRole: string) {
+    const newRole = currentRole === "COMMISSIONER" ? "OWNER" : "COMMISSIONER";
+    if (newRole === "COMMISSIONER" && !(await confirm(`Promote this member to Commissioner? They will have full league management access.`))) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiChangeMemberRole(lid, membershipId, newRole as "COMMISSIONER" | "OWNER");
+      toast(`Role changed to ${newRole}.`, "success");
+      await refreshOverviewOnly();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : "Failed to change role.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onRemoveMember(membershipId: number, memberName: string) {
+    if (!(await confirm(`Remove ${memberName} from the league? Their team ownerships will also be removed.`))) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiRemoveMember(lid, membershipId);
+      toast("Member removed.", "success");
+      await refreshOverviewOnly();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : "Failed to remove member.", "error");
     } finally {
       setBusy(false);
     }
@@ -389,6 +457,28 @@ export default function Commissioner() {
       setBusy(false);
     }
   }
+
+  // Build userId → team name(s) map from overview.teams ownerships
+  const userTeamMap = useMemo(() => {
+    const map = new Map<number, string[]>();
+    for (const team of overview.teams) {
+      for (const o of team.ownerships ?? []) {
+        const uid = o.userId ?? o.user?.id;
+        if (uid) {
+          const names = map.get(uid) ?? [];
+          names.push(team.name);
+          map.set(uid, names);
+        }
+      }
+      // Also check legacy ownerUserId
+      if (team.ownerUserId && !(team.ownerships?.length)) {
+        const names = map.get(team.ownerUserId) ?? [];
+        names.push(team.name);
+        map.set(team.ownerUserId, names);
+      }
+    }
+    return map;
+  }, [overview.teams]);
 
   const league = overview.league;
 
@@ -614,22 +704,51 @@ export default function Commissioner() {
                     </div>
 
                     <div className="space-y-2">
-                      {overview.memberships.map((m) => (
-                        <div
-                          key={m.id}
-                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <div className="truncate text-sm text-[var(--lg-text-primary)]">
-                              {m.user?.name || m.user?.email || `User ${m.userId}`}
+                      {overview.memberships.map((m) => {
+                        const isMe = m.userId === me?.id;
+                        const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
+                        return (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm text-[var(--lg-text-primary)]">
+                                {memberName}
+                              </div>
+                              <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
+                              {userTeamMap.get(m.userId)?.map((tName) => (
+                                <span
+                                  key={tName}
+                                  className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]"
+                                >
+                                  {tName}
+                                </span>
+                              ))}
                             </div>
-                            <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => onChangeMemberRole(m.id, m.role)}
+                                className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors"
+                                title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`}
+                                disabled={busy || isMe}
+                              >
+                                {m.role}
+                              </button>
+                              {!isMe && (
+                                <button
+                                  onClick={() => onRemoveMember(m.id, memberName)}
+                                  className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  title="Remove member"
+                                  disabled={busy}
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="shrink-0 rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)]">
-                            {m.role}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
@@ -645,12 +764,10 @@ export default function Commissioner() {
                           className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
                           value={inviteRole}
                           onChange={(e) => setInviteRole(e.target.value as any)}
-                          title={!me.isAdmin ? "Commissioner role requires Admin." : "Select role"}
+                          title="Select role"
                         >
                           <option value="OWNER">OWNER</option>
-                          <option value="COMMISSIONER" disabled={!me.isAdmin}>
-                            COMMISSIONER (admin only)
-                          </option>
+                          <option value="COMMISSIONER">COMMISSIONER</option>
                         </select>
 
                         <div className="md:col-span-3 flex justify-end">
@@ -668,9 +785,42 @@ export default function Commissioner() {
                       </form>
 
                       <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
-                        Note: users must log in once before they can be added by email.
+                        If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.
                       </div>
                     </div>
+
+                    {/* Pending Invites */}
+                    {pendingInvites.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
+                          Pending Invites
+                          <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {pendingInvites.map((inv) => (
+                            <div
+                              key={inv.id}
+                              className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
+                                <div className="text-xs text-[var(--lg-text-muted)]">
+                                  {inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}
+                                  {inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => onCancelInvite(inv.id)}
+                                className="shrink-0 text-xs text-red-400 hover:text-red-300"
+                                disabled={busy}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Teams */}

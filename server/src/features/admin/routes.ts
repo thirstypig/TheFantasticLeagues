@@ -81,21 +81,24 @@ router.post("/admin/league/:leagueId/members", requireAuth, requireAdmin, valida
       | "COMMISSIONER"
       | "OWNER";
 
-    const membership = await commissionerService.addMember(leagueId, {
+    const result = await commissionerService.addMember(leagueId, {
         userId: req.body?.userId ? Number(req.body.userId) : undefined,
         email: req.body?.email,
-        role
+        role,
+        invitedBy: req.user!.id,
     });
 
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "MEMBER_ADD",
-      resourceType: "LeagueMembership",
-      resourceId: String(membership.id),
-      metadata: { leagueId, targetUserId: membership.userId, role },
-    });
+    if (result.status === "added" && result.membership) {
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "MEMBER_ADD",
+        resourceType: "LeagueMembership",
+        resourceId: String(result.membership.id),
+        metadata: { leagueId, targetUserId: result.membership.userId, role },
+      });
+    }
 
-    return res.json({ membership });
+    return res.json(result);
 }));
 
 /**

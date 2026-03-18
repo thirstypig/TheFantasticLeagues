@@ -27,6 +27,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Infrastructure
 - PostgreSQL (Supabase)
 - Supabase Auth (Google/Yahoo OAuth, email/password)
+- Resend (transactional email for league invites)
 - Render (deployment, SSL termination at proxy)
 
 ## Project Structure
@@ -119,6 +120,7 @@ Some features import from other features' services or components.
 - `leagues/rules-routes.ts` imports `commissioner/services/CommissionerService`
 - `admin/routes.ts` imports `commissioner/services/CommissionerService`
 - `commissioner/services/CommissionerService` imports `auction/services/auctionImport`
+- `auth/routes.ts` imports `commissioner/services/CommissionerService` (auto-accept invites on login)
 - `standings/routes.ts` imports `players/services/dataService`
 - `transactions/routes.ts` imports `players/services/dataService`
 - `commissioner/routes.ts` imports `trades/routes.ts` for `tradeItemSchema`
@@ -152,7 +154,7 @@ When adding cross-feature imports, document them here to maintain visibility.
 ## Shared Infrastructure (do NOT move into features)
 - `server/src/middleware/auth.ts` — global auth (attachUser, requireAuth, requireAdmin, requireLeagueRole, requireFranchiseCommissioner)
 - `server/src/middleware/seasonGuard.ts` — `requireSeasonStatus(allowedStatuses, leagueIdSource)` — enforces season-phase constraints on write endpoints
-- `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts, auditLog.ts
+- `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts, auditLog.ts, emailService.ts
 - `server/src/db/prisma.ts` — Prisma singleton
 - `client/src/auth/AuthProvider.tsx` — global React auth context
 - `client/src/api/base.ts` — fetchJsonApi, API_BASE config
@@ -189,7 +191,7 @@ When adding cross-feature imports, document them here to maintain visibility.
 ## Database
 - Schema at `prisma/schema.prisma`
 - Never run migrations without explicit confirmation
-- Key models: Franchise, FranchiseMembership, User, League, LeagueMembership, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, AuctionLot, AuctionBid, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat
+- Key models: Franchise, FranchiseMembership, User, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, AuctionLot, AuctionBid, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat
 
 ## Development
 
@@ -262,7 +264,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (428 server + 187 client = 615 tests)
+### Current Test Coverage (428 server + 187 client + 29 MCP = 644 tests)
 
 **Server (428 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
@@ -311,6 +313,11 @@ server/src/__tests__/integration/
 - `client/src/features/commissioner/__tests__/Commissioner.test.tsx` — 8 tests (tabs, overview, phase badge)
 - `client/src/features/transactions/__tests__/ActivityPage.test.tsx` — 6 tests (tabs, add/drop)
 - `client/src/features/admin/__tests__/Admin.test.tsx` — 6 tests (admin access, non-admin denied)
+
+**MCP (29 tests):**
+- `mcp-servers/mlb-data/__tests__/cache.test.ts` — 8 tests (get/set/invalidate/TTL expiry/stats)
+- `mcp-servers/mlb-data/__tests__/rateLimiter.test.ts` — 5 tests (token bucket, queue, rejection, metrics)
+- `mcp-servers/mlb-data/__tests__/tools.test.ts` — 16 tests (all 8 tools with mocked MLB API responses)
 
 ### Running Tests
 ```bash
@@ -389,15 +396,44 @@ Located in `.claude/commands/`. Run from Claude Code with `/<name>`:
 | `/feature-overview <name>` | Show files, routes, imports, tests for a feature |
 | `/smoke-test` | Hit all API endpoints and report status codes |
 
-## Planned: MCP MLB Data Proxy
+## MCP Servers
 
-Detailed plan at `docs/MCP-MLB-API-PLAN.md`. Will create a local MCP server (`mcp-servers/mlb-data/`) that:
-- Acts as caching proxy between FBST and `statsapi.mlb.com`
-- Provides 8 tools (get-player-stats, search-players, sync-player-teams, etc.)
-- Uses SQLite for persistent cache with endpoint-specific TTLs
-- Adds centralized rate limiting (token bucket) and circuit breaker
-- Replaces current ad-hoc `server/src/lib/mlbApi.ts` fetch-and-cache pattern
-- Exposes tools to Claude Code for direct MLB data queries in conversation
+### MLB Data Proxy (`mcp-servers/mlb-data/`)
+
+Local MCP server that acts as an intelligent caching proxy between FBST and the MLB Stats API (`statsapi.mlb.com`). Configured in `.mcp.json` at project root.
+
+**Tools (8):**
+| Tool | Description | Cache TTL |
+|------|-------------|-----------|
+| `get-player-info` | Player lookup by MLB ID | 24h |
+| `get-player-stats` | Season hitting/pitching stats | 1h |
+| `search-players` | Fuzzy name search | 1h |
+| `get-team-roster` | 40-man or active roster | 6h |
+| `get-mlb-standings` | Division standings | 15min |
+| `get-mlb-schedule` | Game schedule by date | 5min |
+| `sync-player-teams` | Batch player ID → team abbr mapping | 24h |
+| `cache-status` | View/clear cache stats | — |
+
+**Resources:** `mlb://teams` (all 30 MLB teams), `mlb://cache-stats`
+
+**Architecture:**
+- SQLite persistent cache via `better-sqlite3` (WAL mode)
+- Token bucket rate limiter (10 req/s, burst 20, queue 50)
+- Circuit breaker (opens after 5 failures, resets in 60s)
+- **Shared cache**: Both MCP server and Express server read/write the same `mcp-servers/mlb-data/cache/mlb-data.db` via `server/src/lib/mlbCache.ts`
+- Configurable DB path via `MLB_CACHE_PATH` env var
+
+**Running:** Spawned automatically by Claude Code CLI via `.mcp.json`. For manual testing:
+```bash
+cd mcp-servers/mlb-data && npm run build && node dist/index.js
+```
+
+**Tests:** 29 tests (8 cache + 5 rate limiter + 16 tool tests)
+```bash
+cd mcp-servers/mlb-data && npx vitest run
+```
+
+**Detailed plan:** `docs/MCP-MLB-API-PLAN.md`
 
 ## Coding Guidelines
 - **SOLID Principles**: Single Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion

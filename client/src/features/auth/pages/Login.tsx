@@ -5,32 +5,59 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
 import { Logo } from "../../../components/ui/Logo";
+import { supabase } from "../../../lib/supabase";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
-  
+
   const { loginWithGoogle, loginWithPassword } = useAuth();
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(urlError === "not_approved" ? "not_approved" : "");
   const [loading, setLoading] = useState(false);
   const [devLoading, setDevLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setResendSuccess(false);
     setLoading(true);
 
     try {
       await loginWithPassword(email, password);
       window.location.href = "/";
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const msg = err instanceof Error ? err.message : "Login failed";
+      // Detect "email not confirmed" from Supabase error
+      if (msg.includes("not confirmed") || msg.includes("email_not_confirmed"))
+        setError("email_not_confirmed");
+      else if (msg.includes("Invalid login credentials"))
+        setError("Invalid email or password. Please check your credentials.");
+      else
+        setError(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    setResendLoading(true);
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+      if (resendError) throw resendError;
+      setResendSuccess(true);
+    } catch {
+      setError("Failed to resend confirmation email. Try again in a few minutes.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -116,7 +143,25 @@ export default function Login() {
                 </div>
               )}
 
-              {error && error !== 'not_approved' && (
+              {error === 'email_not_confirmed' && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300">
+                  <p className="mb-2">Please check your email for a confirmation link before logging in.</p>
+                  {resendSuccess ? (
+                    <p className="text-xs text-green-400">Confirmation email sent! Check your inbox.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendConfirmation}
+                      disabled={resendLoading || !email}
+                      className="text-xs font-bold text-[var(--lg-accent)] hover:underline disabled:opacity-50"
+                    >
+                      {resendLoading ? "Sending..." : "Resend confirmation email"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {error && error !== 'not_approved' && error !== 'email_not_confirmed' && (
                 <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
                   {error}
                 </div>

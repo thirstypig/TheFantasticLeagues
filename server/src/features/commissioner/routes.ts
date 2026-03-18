@@ -328,7 +328,8 @@ router.delete("/commissioner/:leagueId/teams/:teamId", requireAuth, requireCommi
 
 /**
  * POST /api/commissioner/:leagueId/members
- * Commissioner can add OWNER. Only admin can add COMMISSIONER.
+ * Commissioner or Admin can add members with any role.
+ * If the user hasn't signed up yet, creates a pending invite.
  * Body: { userId?: number, email?: string, role: "OWNER" | "COMMISSIONER" }
  */
 router.post("/commissioner/:leagueId/members", requireAuth, requireCommissionerOrAdmin(), validateBody(addMemberSchema), asyncHandler(async (req, res) => {
@@ -338,27 +339,120 @@ router.post("/commissioner/:leagueId/members", requireAuth, requireCommissionerO
       | "COMMISSIONER"
       | "OWNER";
 
-    if (role === "COMMISSIONER" && !req.user?.isAdmin) {
-      return res.status(403).json({ error: "Only admin can assign COMMISSIONER" });
-    }
-
-    const membership = await commissionerService.addMember(leagueId, {
+    const result = await commissionerService.addMember(leagueId, {
         userId: req.body?.userId != null && String(req.body.userId).trim() !== "" ? Number(req.body.userId) : undefined,
         email: req.body?.email,
-        role
+        role,
+        invitedBy: req.user!.id,
     });
+
+    if (result.status === "added" && result.membership) {
+      evictMembershipCache(result.membership.userId, leagueId);
+
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "MEMBER_ADD",
+        resourceType: "LeagueMembership",
+        resourceId: String(result.membership.id),
+        metadata: { leagueId, targetUserId: result.membership.userId, role },
+      });
+    } else if (result.status === "invited" && result.invite) {
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "MEMBER_INVITE",
+        resourceType: "LeagueInvite",
+        resourceId: String(result.invite.id),
+        metadata: { leagueId, email: req.body?.email, role },
+      });
+    }
+
+    return res.json(result);
+}));
+
+/**
+ * PATCH /api/commissioner/:leagueId/members/:membershipId
+ * Change a member's role.
+ * Body: { role: "COMMISSIONER" | "OWNER" }
+ */
+const changeMemberRoleSchema = z.object({
+  role: z.enum(["COMMISSIONER", "OWNER"]),
+});
+
+router.patch("/commissioner/:leagueId/members/:membershipId", requireAuth, requireCommissionerOrAdmin(), validateBody(changeMemberRoleSchema), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const membershipId = Number(req.params.membershipId);
+
+    if (!Number.isFinite(membershipId)) return res.status(400).json({ error: "Invalid membershipId" });
+
+    const membership = await commissionerService.changeMemberRole(leagueId, membershipId, req.body.role);
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "MEMBER_ROLE_CHANGE",
+      resourceType: "LeagueMembership",
+      resourceId: String(membershipId),
+      metadata: { leagueId, targetUserId: membership.userId, newRole: req.body.role },
+    });
+
+    return res.json({ membership });
+}));
+
+/**
+ * DELETE /api/commissioner/:leagueId/members/:membershipId
+ * Remove a member from the league.
+ */
+router.delete("/commissioner/:leagueId/members/:membershipId", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const membershipId = Number(req.params.membershipId);
+
+    if (!Number.isFinite(membershipId)) return res.status(400).json({ error: "Invalid membershipId" });
+
+    const membership = await commissionerService.removeMember(leagueId, membershipId);
 
     evictMembershipCache(membership.userId, leagueId);
 
     writeAuditLog({
       userId: req.user!.id,
-      action: "MEMBER_ADD",
+      action: "MEMBER_REMOVE",
       resourceType: "LeagueMembership",
-      resourceId: String(membership.id),
-      metadata: { leagueId, targetUserId: membership.userId, role },
+      resourceId: String(membershipId),
+      metadata: { leagueId, removedUserId: membership.userId },
     });
 
-    return res.json({ membership });
+    return res.json({ success: true });
+}));
+
+/**
+ * GET /api/commissioner/:leagueId/invites
+ * List pending and recent invites for this league.
+ */
+router.get("/commissioner/:leagueId/invites", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const invites = await commissionerService.getInvites(leagueId);
+    return res.json({ invites });
+}));
+
+/**
+ * DELETE /api/commissioner/:leagueId/invites/:inviteId
+ * Cancel a pending invite.
+ */
+router.delete("/commissioner/:leagueId/invites/:inviteId", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const inviteId = Number(req.params.inviteId);
+
+    if (!Number.isFinite(inviteId)) return res.status(400).json({ error: "Invalid inviteId" });
+
+    const invite = await commissionerService.cancelInvite(leagueId, inviteId);
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "INVITE_CANCEL",
+      resourceType: "LeagueInvite",
+      resourceId: String(inviteId),
+      metadata: { leagueId, email: invite.email },
+    });
+
+    return res.json({ success: true, invite });
 }));
 
 /**

@@ -4,6 +4,32 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-17 (Session 23) — Auth Phase 1, Email Invites, Member List Enhancement
+
+### Completed
+- **Resend email service** — `server/src/lib/emailService.ts` with fire-and-forget `sendInviteEmail()`
+  - Graceful degradation: skips silently if `RESEND_API_KEY` not set
+  - HTML email with signup CTA, league name, inviter name, role
+- **CommissionerService.createInvite()** — now sends invite email after upsert (fire-and-forget)
+- **Member list team badges** — Commissioner overview shows team assignment badges per member
+  - Client-side `useMemo` cross-references `overview.teams` ownerships with member userIds
+- **Tech.tsx updates** — test count 644, session count 23, Resend in DB & Auth stack, build journal entry for Sessions 21-23
+- **PLAN-AUTH-MEMBERS.md** — Phase 2.3 and Phase 3 items marked done
+- **CLAUDE.md** — Added `emailService.ts` to shared infra, Resend to tech stack
+
+### Pending / Next Steps
+- Add `RESEND_API_KEY` to Render production env vars
+- Production Google OAuth test via browser (Phase 1)
+- Manual test: invite email delivery via Resend dashboard
+- Send email when user is added to league (low priority)
+
+### Test Results
+- Server: 428 passing
+- Client: 187 passing
+- MCP: 29 passing
+
+---
+
 ## Session 2026-03-17 (Session 22) — Keeper Lock E2E, Performance Fix, 2026 Values, MCP Plan
 
 ### Completed

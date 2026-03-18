@@ -156,6 +156,7 @@ model League {
   seasons           Season[]
   periods           Period[]
   auctionSession    AuctionSession?
+  invites           LeagueInvite[]
 
   @@unique([name, season])
 }
@@ -684,6 +685,34 @@ model HistoricalStanding {
 
   @@unique([seasonId, teamCode])
   @@index([seasonId])
+}
+
+// ======================
+//  League Invite System
+// ======================
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+model LeagueInvite {
+  id        Int          @id @default(autoincrement())
+  leagueId  Int
+  email     String
+  role      LeagueRole   @default(OWNER)
+  invitedBy Int          // userId of commissioner who invited
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  expiresAt DateTime
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, email])
+  @@index([email])
+  @@index([status])
 }
 
 model AuctionSession {

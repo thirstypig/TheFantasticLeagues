@@ -34,11 +34,18 @@ export default function Signup() {
 
       setSuccess(true);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
+      const msg = err instanceof Error ? err.message : "An unknown error occurred";
+      // Map Supabase error messages to user-friendly text
+      if (msg.includes("already registered") || msg.includes("already_exists"))
+        setError("An account with this email already exists. Try logging in.");
+      else if (msg.includes("weak_password") || msg.includes("at least"))
+        setError("Password must be at least 6 characters.");
+      else if (msg.includes("rate_limit") || msg.includes("over_email_send_rate_limit"))
+        setError("Too many attempts. Please try again in a few minutes.");
+      else if (msg.includes("valid email") || msg.includes("invalid"))
+        setError("Please enter a valid email address.");
+      else
+        setError(msg);
     } finally {
       setLoading(false);
     }

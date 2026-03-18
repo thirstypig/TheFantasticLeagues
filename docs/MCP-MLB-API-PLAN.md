@@ -59,75 +59,78 @@ Build a local MCP (Model Context Protocol) server that acts as an intelligent ca
 ## Detailed To-Do List
 
 ### Phase 1: Project Setup
-- [ ] Create `mcp-servers/mlb-data/` directory in the monorepo
-- [ ] Initialize with `package.json` (TypeScript, `@modelcontextprotocol/sdk`)
-- [ ] Set up `tsconfig.json` (ESM, strict mode)
-- [ ] Create entry point `src/index.ts` with MCP server scaffold
-- [ ] Add build script (`tsc`) and dev script (`tsx watch`)
+- [x] Create `mcp-servers/mlb-data/` directory in the monorepo
+- [x] Initialize with `package.json` (TypeScript, `@modelcontextprotocol/sdk`)
+- [x] Set up `tsconfig.json` (ESM, strict mode)
+- [x] Create entry point `src/index.ts` with MCP server scaffold
+- [x] Add build script (`tsc`) and dev script (`tsx watch`)
 
 ### Phase 2: Core Infrastructure
-- [ ] **Cache layer** (`src/cache.ts`)
+- [x] **Cache layer** (`src/cache.ts`)
   - SQLite via `better-sqlite3` (zero-config, file-based, no Redis dependency needed)
   - Tables: `cache_entries (url TEXT PK, data JSON, fetched_at INT, ttl_seconds INT)`
   - Methods: `get(url)`, `set(url, data, ttl)`, `invalidate(pattern)`, `stats()`
   - Configurable TTL per endpoint type (teams=24h, rosters=1h, stats=15min, schedule=5min)
-- [ ] **Rate limiter** (`src/rateLimiter.ts`)
+- [x] **Rate limiter** (`src/rateLimiter.ts`)
   - Token bucket algorithm (e.g., 10 requests/second, burst of 20)
   - Queue overflow requests instead of rejecting
   - Expose metrics: requests/min, queue depth, throttle count
-- [ ] **MLB API client** (`src/mlbClient.ts`)
+- [x] **MLB API client** (`src/mlbClient.ts`)
   - Migrate `fetchWithRetry` + circuit breaker logic from `server/src/lib/mlbApi.ts`
   - Add response normalization (consistent field names across endpoints)
   - Structured logging (pino)
 
 ### Phase 3: MCP Tools
-- [ ] **`get-player-info`** — Look up player by MLB ID or name
+- [x] **`get-player-info`** — Look up player by MLB ID or name
   - Input: `{ playerId?: number, name?: string }`
   - Returns: name, team, position, jersey number, batting/throwing hand
   - Cache TTL: 24 hours
-- [ ] **`get-player-stats`** — Season stats for a player
+- [x] **`get-player-stats`** — Season stats for a player
   - Input: `{ playerId: number, season?: number, group?: "hitting" | "pitching" }`
   - Returns: season batting or pitching stats
   - Cache TTL: 1 hour (during season), 24 hours (offseason)
-- [ ] **`search-players`** — Search by name (fuzzy)
+- [x] **`search-players`** — Search by name (fuzzy)
   - Input: `{ query: string, limit?: number }`
   - Returns: array of matching players with basic info
   - Cache TTL: 1 hour
-- [ ] **`get-team-roster`** — 40-man roster for an MLB team
+- [x] **`get-team-roster`** — 40-man roster for an MLB team
   - Input: `{ teamId: number, rosterType?: "40Man" | "active" }`
   - Returns: array of players on the roster
   - Cache TTL: 6 hours
-- [ ] **`get-mlb-standings`** — Current MLB standings
+- [x] **`get-mlb-standings`** — Current MLB standings
   - Input: `{ season?: number, leagueId?: number }`
   - Returns: division standings with W/L/PCT/GB
   - Cache TTL: 15 minutes
-- [ ] **`get-mlb-schedule`** — Game schedule
+- [x] **`get-mlb-schedule`** — Game schedule
   - Input: `{ date?: string, teamId?: number }`
   - Returns: games with scores, status, venues
   - Cache TTL: 5 minutes (during games), 1 hour otherwise
-- [ ] **`sync-player-teams`** — Batch update MLB team abbreviations for player IDs
+- [x] **`sync-player-teams`** — Batch update MLB team abbreviations for player IDs
   - Input: `{ playerIds: number[] }`
   - Returns: `{ [playerId]: teamAbbr }` mapping
   - This replaces `warmMlbTeamCache()` from the current codebase
   - Cache TTL: 24 hours
-- [ ] **`cache-status`** — View cache stats and optionally clear
+- [x] **`cache-status`** — View cache stats and optionally clear
   - Input: `{ clear?: boolean }`
   - Returns: entry count, hit rate, oldest entry, total size
 
 ### Phase 4: MCP Resources
-- [ ] **`mlb://teams`** — Static resource listing all 30 MLB teams (ID, name, abbreviation, division)
-- [ ] **`mlb://cache-stats`** — Dynamic resource showing cache health
+- [x] **`mlb://teams`** — Static resource listing all 30 MLB teams (ID, name, abbreviation, division)
+- [x] **`mlb://cache-stats`** — Dynamic resource showing cache health
 
 ### Phase 5: Integration with FBST Server
-- [ ] Update `server/src/lib/mlbApi.ts` to optionally call MCP server instead of direct API
-  - Keep direct API as fallback if MCP server is not running
-  - Environment variable: `MLB_MCP_ENABLED=true`
-- [ ] Update `dataService.ts` `warmMlbTeamCache()` to use `sync-player-teams` tool
-- [ ] Update `mlbSyncService.ts` to use MCP tools for roster/stats sync
-- [ ] Update `players/routes.ts` player detail endpoint to use MCP
+- [x] Added `better-sqlite3` to server dependencies
+- [x] Created `server/src/lib/mlbCache.ts` — shared SQLite cache layer (same DB file as MCP server)
+- [x] Updated `server/src/lib/mlbApi.ts` — replaced in-memory `Map` cache with persistent SQLite cache
+  - Both MCP server and Express server now share the same `mcp-servers/mlb-data/cache/mlb-data.db`
+  - Configurable path via `MLB_CACHE_PATH` env var
+- [x] Simplified `warmMlbTeamCache()` — removed JSON file cache, now uses SQLite cache via `mlbGetJson()` with 24h TTL
+  - Removed `readTeamCache()`, `writeTeamCache()`, `TEAM_CACHE_FILE`, `fs`/`path` imports
+  - `mlbSyncService.ts` already uses `mlbGetJson()` which goes through SQLite cache — no changes needed
+  - `players/routes.ts` fielding endpoint already uses `mlbGetJson()` — no changes needed
 
 ### Phase 6: Claude Code Configuration
-- [ ] Add MCP server config to `.claude/settings.json`:
+- [x] Add MCP server config to `.mcp.json`:
   ```json
   {
     "mcpServers": {
@@ -143,9 +146,9 @@ Build a local MCP (Model Context Protocol) server that acts as an intelligent ca
 - [ ] Add to CLAUDE.md under a new "MCP Servers" section
 
 ### Phase 7: Testing
-- [ ] Unit tests for cache layer (get/set/invalidate/TTL expiry)
-- [ ] Unit tests for rate limiter (token bucket, queue behavior)
-- [ ] Unit tests for each MCP tool (mock MLB API responses)
+- [x] Unit tests for cache layer (8 tests: get/set/invalidate/TTL expiry/stats)
+- [x] Unit tests for rate limiter (5 tests: token bucket, queue behavior, rejection, metrics)
+- [x] Unit tests for MCP tools (16 tests: all 8 tools + cache stats, mocked MLB API responses)
 - [ ] Integration test: MCP server startup → tool call → cached response → cache hit
 - [ ] Verify FBST server works with MCP enabled and disabled
 

@@ -109,11 +109,48 @@ export async function deleteTeam(leagueId: number, teamId: number): Promise<void
   await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/teams/${teamId}`, { method: "DELETE" });
 }
 
-export async function inviteMember(leagueId: number, email: string, role: string): Promise<void> {
-  await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/members`, {
+export interface InviteMemberResult {
+  status: "added" | "invited";
+  membership?: CommissionerMembership;
+  invite?: PendingInvite;
+}
+
+export interface PendingInvite {
+  id: number;
+  leagueId: number;
+  email: string;
+  role: "COMMISSIONER" | "OWNER";
+  status: "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
+  createdAt: string;
+  expiresAt: string;
+}
+
+export async function inviteMember(leagueId: number, email: string, role: string): Promise<InviteMemberResult> {
+  return fetchJsonApi<InviteMemberResult>(`${API_BASE}/commissioner/${leagueId}/members`, {
     method: "POST",
     body: JSON.stringify({ email, role }),
   });
+}
+
+export async function getInvites(leagueId: number): Promise<PendingInvite[]> {
+  const resp = await fetchJsonApi<{ invites: PendingInvite[] }>(`${API_BASE}/commissioner/${leagueId}/invites`);
+  return resp.invites ?? [];
+}
+
+export async function cancelInvite(leagueId: number, inviteId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/invites/${inviteId}`, { method: "DELETE" });
+}
+
+export async function changeMemberRole(leagueId: number, membershipId: number, role: "COMMISSIONER" | "OWNER"): Promise<CommissionerMembership> {
+  const resp = await fetchJsonApi<{ membership: CommissionerMembership }>(`${API_BASE}/commissioner/${leagueId}/members/${membershipId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  });
+  return resp.membership;
+}
+
+export async function removeMember(leagueId: number, membershipId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/members/${membershipId}`, { method: "DELETE" });
 }
 
 export async function assignTeamOwner(leagueId: number, teamId: number, userId: number, ownerName?: string): Promise<void> {

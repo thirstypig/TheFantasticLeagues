@@ -125,13 +125,17 @@ describe("POST /admin/league", () => {
 
 describe("POST /admin/league/:leagueId/members", () => {
   it("adds a member to a league", async () => {
-    mockAddMember.mockResolvedValue({ id: 5, userId: 2, leagueId: 1, role: "OWNER" });
+    mockAddMember.mockResolvedValue({
+      status: "added",
+      membership: { id: 5, userId: 2, leagueId: 1, role: "OWNER" },
+    });
 
     const res = await supertest(app)
       .post("/admin/league/1/members")
       .send({ userId: 2, role: "OWNER" });
 
     expect(res.status).toBe(200);
+    expect(res.body.status).toBe("added");
     expect(res.body.membership.role).toBe("OWNER");
   });
 

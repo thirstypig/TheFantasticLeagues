@@ -1,5 +1,14 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "../../../lib/supabase";
+
+function mapSupabaseError(msg: string): string {
+  if (msg.includes("rate_limit") || msg.includes("over_email_send_rate_limit"))
+    return "Too many attempts. Please try again in a few minutes.";
+  if (msg.includes("not found") || msg.includes("invalid"))
+    return "If an account exists for this email, a reset link has been sent.";
+  return msg;
+}
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -14,19 +23,16 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Request failed");
+      if (resetError) throw resetError;
 
-      setMessage(data.message);
+      setMessage("Check your email for a password reset link. It may take a minute to arrive.");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(mapSupabaseError(err.message));
       } else {
         setError("An unknown error occurred");
       }

@@ -4,6 +4,7 @@ import { norm, slugify } from "../../../lib/utils.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
+import { sendInviteEmail } from "../../../lib/emailService.js";
 
 const auctionImportService = new AuctionImportService();
 
@@ -189,22 +190,22 @@ export class CommissionerService {
       userId?: number;
       email?: string;
       role: "COMMISSIONER" | "OWNER";
+      invitedBy: number;
     },
-  ) {
-    const { userId: userIdRaw, email: emailRaw, role } = data;
+  ): Promise<{ status: "added" | "invited"; membership?: any; invite?: any }> {
+    const { userId: userIdRaw, email: emailRaw, role, invitedBy } = data;
 
     let userId: number | null = null;
 
     if (userIdRaw != null) {
       userId = userIdRaw;
     } else if (emailRaw) {
-      const u = await prisma.user.findUnique({
-        where: { email: emailRaw.toLowerCase().trim() },
-      });
+      const email = emailRaw.toLowerCase().trim();
+      const u = await prisma.user.findUnique({ where: { email } });
       if (!u) {
-        throw new Error(
-          "User not found by email. That user must log in once first.",
-        );
+        // User hasn't signed up yet — create a pending invite
+        const invite = await this.createInvite(leagueId, email, role, invitedBy);
+        return { status: "invited", invite };
       }
       userId = u.id;
     } else {
@@ -227,7 +228,7 @@ export class CommissionerService {
       update: {},
     });
 
-    return await prisma.leagueMembership.upsert({
+    const membership = await prisma.leagueMembership.upsert({
       where: { leagueId_userId: { leagueId, userId } },
       create: { leagueId, userId, role },
       update: { role },
@@ -242,6 +243,171 @@ export class CommissionerService {
           },
         },
       },
+    });
+
+    return { status: "added", membership };
+  }
+
+  /**
+   * Create a pending invite for an email that hasn't signed up yet.
+   */
+  private async createInvite(
+    leagueId: number,
+    email: string,
+    role: "COMMISSIONER" | "OWNER",
+    invitedBy: number,
+  ) {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30-day expiry
+
+    const invite = await prisma.leagueInvite.upsert({
+      where: { leagueId_email: { leagueId, email } },
+      create: {
+        leagueId,
+        email,
+        role,
+        invitedBy,
+        status: "PENDING",
+        expiresAt,
+      },
+      update: {
+        role,
+        invitedBy,
+        status: "PENDING",
+        expiresAt,
+      },
+    });
+
+    // Fire-and-forget: send invite email
+    const [league, inviter] = await Promise.all([
+      prisma.league.findUnique({ where: { id: leagueId }, select: { name: true } }),
+      prisma.user.findUnique({ where: { id: invitedBy }, select: { name: true, email: true } }),
+    ]);
+    sendInviteEmail({
+      to: email,
+      leagueName: league?.name ?? "a fantasy league",
+      role,
+      inviterName: inviter?.name ?? inviter?.email ?? "A commissioner",
+    }).catch(() => {}); // swallow — already logged inside sendInviteEmail
+
+    return invite;
+  }
+
+  /**
+   * Accept all pending invites for a user (called on first login).
+   */
+  async acceptPendingInvites(userId: number, email: string): Promise<number> {
+    const pendingInvites = await prisma.leagueInvite.findMany({
+      where: {
+        email: email.toLowerCase().trim(),
+        status: "PENDING",
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        league: { select: { franchiseId: true } },
+      },
+    });
+
+    if (pendingInvites.length === 0) return 0;
+
+    let accepted = 0;
+    for (const invite of pendingInvites) {
+      // Create LeagueMembership
+      await prisma.leagueMembership.upsert({
+        where: { leagueId_userId: { leagueId: invite.leagueId, userId } },
+        create: { leagueId: invite.leagueId, userId, role: invite.role },
+        update: { role: invite.role },
+      });
+
+      // Create FranchiseMembership
+      await prisma.franchiseMembership.upsert({
+        where: {
+          franchiseId_userId: {
+            franchiseId: invite.league.franchiseId,
+            userId,
+          },
+        },
+        create: {
+          franchiseId: invite.league.franchiseId,
+          userId,
+          role: invite.role,
+        },
+        update: {},
+      });
+
+      // Mark invite as accepted
+      await prisma.leagueInvite.update({
+        where: { id: invite.id },
+        data: { status: "ACCEPTED" },
+      });
+
+      accepted++;
+    }
+
+    logger.info({ userId, email, accepted }, "Auto-accepted pending invites");
+    return accepted;
+  }
+
+  /**
+   * Get pending invites for a league.
+   */
+  async getInvites(leagueId: number) {
+    return prisma.leagueInvite.findMany({
+      where: { leagueId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /**
+   * Cancel a pending invite.
+   */
+  async changeMemberRole(leagueId: number, membershipId: number, role: "COMMISSIONER" | "OWNER") {
+    const membership = await prisma.leagueMembership.findUnique({
+      where: { id: membershipId },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+    if (!membership || membership.leagueId !== leagueId) {
+      throw new Error("Membership not found");
+    }
+    return prisma.leagueMembership.update({
+      where: { id: membershipId },
+      data: { role },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+  }
+
+  async removeMember(leagueId: number, membershipId: number) {
+    const membership = await prisma.leagueMembership.findUnique({
+      where: { id: membershipId },
+    });
+    if (!membership || membership.leagueId !== leagueId) {
+      throw new Error("Membership not found");
+    }
+    // Also remove any team ownerships for this user in this league
+    await prisma.teamOwnership.deleteMany({
+      where: {
+        userId: membership.userId,
+        team: { leagueId },
+      },
+    });
+    return prisma.leagueMembership.delete({
+      where: { id: membershipId },
+    });
+  }
+
+  async cancelInvite(leagueId: number, inviteId: number) {
+    const invite = await prisma.leagueInvite.findUnique({
+      where: { id: inviteId },
+    });
+    if (!invite || invite.leagueId !== leagueId) {
+      throw new Error("Invite not found");
+    }
+    if (invite.status !== "PENDING") {
+      throw new Error("Can only cancel pending invites");
+    }
+    return prisma.leagueInvite.update({
+      where: { id: inviteId },
+      data: { status: "CANCELLED" },
     });
   }
 

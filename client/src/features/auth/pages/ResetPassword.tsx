@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -12,29 +11,44 @@ export default function ResetPassword() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Supabase puts tokens in the URL hash fragment (#access_token=...).
+  // The Supabase JS client auto-detects them and fires PASSWORD_RECOVERY.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setReady(true);
+      }
+    });
+
+    // Also check if we already have a session (e.g., page was refreshed after Supabase processed the hash)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
+      const { error: updateError } = await supabase.auth.updateUser({ password });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Reset failed");
-      }
+      if (updateError) throw updateError;
 
-      setMessage("Password reset successful!");
+      setMessage("Password updated successfully!");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -46,12 +60,20 @@ export default function ResetPassword() {
     }
   };
 
-  if (!token) {
+  if (!ready) {
     return (
       <div className="lg-auth-container flex items-center justify-center">
         <div className="lg-auth-form-card text-center">
-          <p className="text-red-400 mb-4">Invalid or missing reset token.</p>
-          <Link to="/login" className="text-[var(--lg-accent)] hover:underline">Return to Login</Link>
+          <div className="mb-4 text-[var(--lg-text-muted)]">
+            <div className="animate-spin h-8 w-8 border-2 border-[var(--lg-accent)] border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-sm">Verifying your reset link...</p>
+          </div>
+          <p className="text-xs text-[var(--lg-text-muted)] mt-4">
+            If this takes too long, the link may have expired.{" "}
+            <Link to="/forgot-password" className="text-[var(--lg-accent)] hover:underline">
+              Request a new one
+            </Link>
+          </p>
         </div>
       </div>
     );
@@ -88,7 +110,7 @@ export default function ResetPassword() {
                 <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
                   {message}
                 </div>
-                <Link 
+                <Link
                   to="/login"
                   className="w-full h-11 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white font-semibold rounded-xl transition-all text-center flex items-center justify-center"
                 >

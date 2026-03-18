@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mlb-data": {
+      "command": "node",
+      "args": ["mcp-servers/mlb-data/dist/index.js"],
+      "cwd": "/Users/jameschang/Projects/fbst",
+      "env": {
+        "CACHE_PATH": "/Users/jameschang/Projects/fbst/mcp-servers/mlb-data/cache/mlb-data.db"
+      }
+    }
+  }
+}

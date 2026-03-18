@@ -6,6 +6,7 @@ import { logger } from "../../lib/logger.js";
 import { evictUserCache, requireAuth } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
+import { CommissionerService } from "../commissioner/services/CommissionerService.js";
 
 const router = Router();
 
@@ -48,21 +49,52 @@ export async function handleGetMe(req: Request, res: Response) {
 
   if (!full) return res.json({ user: null });
 
+  // Auto-accept pending league invites for this user
+  try {
+    const commissionerService = new CommissionerService();
+    await commissionerService.acceptPendingInvites(full.id, full.email);
+  } catch (err) {
+    logger.warn({ error: String(err), userId: full.id }, "Failed to auto-accept invites");
+  }
+
+  // Re-fetch to include any newly accepted memberships
+  const refreshed = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      memberships: {
+        select: {
+          leagueId: true,
+          role: true,
+          league: { select: { id: true, name: true, season: true } },
+        },
+      },
+      franchiseMemberships: {
+        select: {
+          franchiseId: true,
+          role: true,
+          franchise: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+
+  const src = refreshed ?? full;
+
   const user = {
-    id: full.id,
-    email: full.email,
-    name: full.name,
-    avatarUrl: full.avatarUrl,
-    isAdmin: full.isAdmin,
-    venmoHandle: full.venmoHandle,
-    zelleHandle: full.zelleHandle,
-    paypalHandle: full.paypalHandle,
-    memberships: full.memberships.map((m) => ({
+    id: src.id,
+    email: src.email,
+    name: src.name,
+    avatarUrl: src.avatarUrl,
+    isAdmin: src.isAdmin,
+    venmoHandle: src.venmoHandle,
+    zelleHandle: src.zelleHandle,
+    paypalHandle: src.paypalHandle,
+    memberships: src.memberships.map((m) => ({
       leagueId: m.leagueId,
       role: m.role,
       league: m.league ? { id: m.league.id, name: m.league.name, season: m.league.season } : undefined,
     })),
-    franchiseMemberships: full.franchiseMemberships.map((m) => ({
+    franchiseMemberships: src.franchiseMemberships.map((m) => ({
       franchiseId: m.franchiseId,
       role: m.role,
       franchise: m.franchise ? { id: m.franchise.id, name: m.franchise.name } : undefined,
