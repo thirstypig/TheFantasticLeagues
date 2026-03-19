@@ -356,7 +356,7 @@ async function finishCurrentLot(leagueId: number, userId?: number): Promise<Auct
 
     clearAutoFinishTimer(leagueId);
 
-    const { playerId, currentBid, highBidderTeamId, playerName, positions } = state.nomination;
+    const { playerId, currentBid, highBidderTeamId, playerName, positions, lotId } = state.nomination;
 
     // Look up league season for the source tag
     const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
@@ -385,6 +385,14 @@ async function finishCurrentLot(leagueId: number, userId?: number): Promise<Auct
         source: auctionSource,
       }
     });
+
+    // Update AuctionLot with final results
+    if (lotId) {
+      prisma.auctionLot.update({
+        where: { id: lotId },
+        data: { status: "completed", endTs: new Date(), finalPrice: currentBid, winnerTeamId: highBidderTeamId },
+      }).catch((err) => logger.error({ error: String(err) }, "Failed to update auction lot"));
+    }
 
     await refreshTeams(state);
 
@@ -520,6 +528,24 @@ router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeaso
   // Clear nomination timer (team is nominating)
   clearNominationTimer(leagueId);
 
+  // Persist AuctionLot to DB for bid history tracking
+  let lotId: number | undefined;
+  if (dbPlayer) {
+    const lot = await prisma.auctionLot.create({
+      data: {
+        playerId: dbPlayer.id,
+        nominatingTeamId: nominatorTeamId,
+        status: "active",
+      },
+    });
+    lotId = lot.id;
+
+    // Record the nominator's opening bid
+    await prisma.auctionBid.create({
+      data: { lotId: lot.id, teamId: nominatorTeamId, amount: Number(startBid) },
+    });
+  }
+
   const now = Date.now();
   state.nomination = {
     playerId,
@@ -532,7 +558,8 @@ router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeaso
     highBidderTeamId: nominatorTeamId,
     endTime: new Date(now + state.config.bidTimer * 1000).toISOString(),
     timerDuration: state.config.bidTimer,
-    status: 'running'
+    status: 'running',
+    lotId,
   };
 
   state.log.unshift({
@@ -591,6 +618,13 @@ router.post("/bid", requireAuth, validateBody(bidSchema), requireSeasonStatus(["
 
   state.nomination.currentBid = amount;
   state.nomination.highBidderTeamId = bidderTeamId;
+
+  // Persist bid to DB for bid history tracking
+  if (state.nomination.lotId) {
+    prisma.auctionBid.create({
+      data: { lotId: state.nomination.lotId, teamId: bidderTeamId, amount },
+    }).catch((err) => logger.error({ error: String(err) }, "Failed to persist auction bid"));
+  }
 
   state.log.unshift({
     type: 'BID',
@@ -751,6 +785,17 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
         where: { source: auctionSource, team: { leagueId } }
     });
 
+    // Delete auction lot/bid records for this league
+    const leagueTeamIds = (await prisma.team.findMany({ where: { leagueId }, select: { id: true } })).map(t => t.id);
+    if (leagueTeamIds.length > 0) {
+      const lots = await prisma.auctionLot.findMany({ where: { nominatingTeamId: { in: leagueTeamIds } }, select: { id: true } });
+      const lotIds = lots.map(l => l.id);
+      if (lotIds.length > 0) {
+        await prisma.auctionBid.deleteMany({ where: { lotId: { in: lotIds } } });
+        await prisma.auctionLot.deleteMany({ where: { id: { in: lotIds } } });
+      }
+    }
+
     // Load budget/roster config from league rules
     const { budgetCap, rosterSize, pitcherCount, batterCount } = await loadLeagueConfig(leagueId);
     const positionLimits = await loadPositionLimits(leagueId);
@@ -779,6 +824,50 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
     });
 
     res.json(state);
+}));
+
+// GET /api/auction/bid-history?leagueId=N
+// Returns all completed auction lots with their bid history, ordered by nomination time.
+router.get("/bid-history", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+
+  const leagueTeamIds = (await prisma.team.findMany({ where: { leagueId }, select: { id: true } })).map(t => t.id);
+  if (leagueTeamIds.length === 0) return res.json({ lots: [] });
+
+  const lots = await prisma.auctionLot.findMany({
+    where: { nominatingTeamId: { in: leagueTeamIds } },
+    include: {
+      player: { select: { name: true, mlbId: true, posPrimary: true, mlbTeam: true } },
+      bids: {
+        include: { team: { select: { id: true, name: true, code: true } } },
+        orderBy: { ts: "asc" },
+      },
+    },
+    orderBy: { startTs: "asc" },
+  });
+
+  res.json({
+    lots: lots.map((lot, idx) => ({
+      lotNumber: idx + 1,
+      playerName: lot.player.name,
+      mlbId: lot.player.mlbId,
+      position: lot.player.posPrimary,
+      mlbTeam: lot.player.mlbTeam,
+      status: lot.status,
+      finalPrice: lot.finalPrice,
+      winnerTeamId: lot.winnerTeamId,
+      nominatingTeamId: lot.nominatingTeamId,
+      startTs: lot.startTs,
+      bids: lot.bids.map(b => ({
+        teamId: b.team.id,
+        teamName: b.team.name,
+        teamCode: b.team.code,
+        amount: b.amount,
+        ts: b.ts,
+      })),
+    })),
+  });
 }));
 
 export const auctionRouter = router;

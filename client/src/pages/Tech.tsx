@@ -496,6 +496,11 @@ const buildJournal = [
     title: "Sessions 24-25: Live Data & Auction Prep",
     detail: "Wired live standings from PlayerStatsPeriod data. All-team MLB sync (30 teams). Admin stats sync endpoint. Full team names replacing 3-letter codes throughout. OF position mapping controlled by league rule. Player detail modal enriched with transactions, fielding stats, profile fallbacks. Season lifecycle documented. 4 test leagues with 8 teams each prepped for live auction. 670 tests passing.",
   },
+  {
+    date: "Mar 2026",
+    title: "Session 26: 2025 Stats & Auction Bid Tracking",
+    detail: "Players page and auction Player Pool now show real 2025 season stats fetched from MLB Stats API (batched requests for all 1,652 players, 30-day SQLite cache, CSV fallback). All stat columns sortable. Auction bid history tracked via AuctionLot/AuctionBid models — Draft Board log shows completed auctions in nomination order with expandable per-lot bid history for owner tendency analysis.",
+  },
 ];
 
 const workflowSteps = [
@@ -851,7 +856,7 @@ export default function Tech() {
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 65M+ tokens across 25 sessions
+        Built with Claude Code — estimated 68M+ tokens across 26 sessions
       </p>
     </div>
   );

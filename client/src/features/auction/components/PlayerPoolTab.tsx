@@ -58,8 +58,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
   const [viewMode, setViewMode] = useState<'all' | 'remaining'>('remaining');
 
   // Sort State
-  const [sortKey, setSortKey] = useState<string>('value');
-  const [sortDesc, setSortDesc] = useState(true);
+  const [sortKey, setSortKey] = useState<string>('name');
+  const [sortDesc, setSortDesc] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,7 +116,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
   // Helper to get stat value
   const getStat = (p: PlayerSeasonStat, key: string) => {
       // @ts-expect-error key access
-      const val = p[key] ?? p.dollar_value ?? 0;
+      const val = p[key] ?? 0;
       return Number(val) || 0;
   };
 
@@ -157,21 +157,14 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
      // 3. Sort
      return res.sort((a, b) => {
-         let valA = 0;
-         let valB = 0;
-
-         if (sortKey === 'value') {
-             valA = Number(a.value || a.dollar_value || 0);
-             valB = Number(b.value || b.dollar_value || 0);
-         } else if (sortKey === 'name') {
+         if (sortKey === 'name') {
              return sortDesc
                 ? getLastName(b.player_name).localeCompare(getLastName(a.player_name))
                 : getLastName(a.player_name).localeCompare(getLastName(b.player_name));
-         } else {
-             valA = getStat(a, sortKey);
-             valB = getStat(b, sortKey);
          }
 
+         const valA = getStat(a, sortKey);
+         const valB = getStat(b, sortKey);
          return sortDesc ? valB - valA : valA - valB;
      });
   }, [players, viewGroup, viewMode, searchQuery, filterLeague, filterTeam, filterPos, sortKey, sortDesc]);
@@ -186,9 +179,14 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
           setSortDesc(!sortDesc);
       } else {
           setSortKey(key);
-          setSortDesc(true);
+          // Default to descending for stats (higher is better), ascending for name
+          setSortDesc(key !== 'name');
       }
   };
+
+  /** Sort indicator arrow */
+  const sortArrow = (key: string) =>
+    sortKey === key ? (sortDesc ? ' ▾' : ' ▴') : '';
 
   // Column count for expanded row colspan
   const colCount = viewGroup === 'hitters' ? 9 : 9;
@@ -289,25 +287,24 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
         <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[var(--lg-glass-bg-hover)] border-b border-[var(--lg-table-border)]">
                 <tr>
-                    <th className="text-left px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] cursor-pointer" onClick={() => handleHeaderClick('name')}>Player</th>
+                    <th className="text-left px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] cursor-pointer" onClick={() => handleHeaderClick('name')}>Player{sortArrow('name')}</th>
                     {viewGroup === 'hitters' ? (
                         <>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('R')}>R</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('HR')}>HR</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('RBI')}>RBI</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('SB')}>SB</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-10" onClick={() => handleHeaderClick('AVG')}>AVG</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('R')}>R{sortArrow('R')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('HR')}>HR{sortArrow('HR')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('RBI')}>RBI{sortArrow('RBI')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('SB')}>SB{sortArrow('SB')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-10" onClick={() => handleHeaderClick('AVG')}>AVG{sortArrow('AVG')}</th>
                         </>
                     ) : (
                         <>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('W')}>W</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('SV')}>SV</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('K')}>K</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-10" onClick={() => handleHeaderClick('ERA')}>ERA</th>
-                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-10" onClick={() => handleHeaderClick('WHIP')}>WHIP</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('W')}>W{sortArrow('W')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('SV')}>SV{sortArrow('SV')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('K')}>K{sortArrow('K')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-10" onClick={() => handleHeaderClick('ERA')}>ERA{sortArrow('ERA')}</th>
+                             <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-10" onClick={() => handleHeaderClick('WHIP')}>WHIP{sortArrow('WHIP')}</th>
                         </>
                     )}
-                    <th className="text-center px-1 py-1.5 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] cursor-pointer w-8" onClick={() => handleHeaderClick('value')}>$</th>
                     <th className="w-14 px-1 py-1.5"></th>
                 </tr>
             </thead>
@@ -358,9 +355,6 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     </>
                                 )}
 
-                                <td className="text-center text-xs font-semibold text-[var(--lg-accent)] tabular-nums px-1">
-                                    ${p.value || p.dollar_value || '0'}
-                                </td>
                                 <td className="px-1 text-center">
                                     {!isTaken && onNominate && (
                                         <button
