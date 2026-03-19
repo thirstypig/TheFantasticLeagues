@@ -109,10 +109,10 @@ describe("ActivityPage", () => {
     });
   });
 
-  it("shows AddDropTab by default", async () => {
+  it("shows commissioner-only message for Add/Drop when user is OWNER", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId("add-drop-tab")).toBeInTheDocument();
+      expect(screen.getByText(/commissioner-only/i)).toBeInTheDocument();
     });
   });
 

@@ -167,4 +167,51 @@ describe("syncAllPlayers", () => {
     expect(result.updated).toBe(0);
     expect(result.teams).toBe(1);
   });
+
+  it("resolves TWP position to DH for two-way players (Ohtani)", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          { person: { id: 660271, fullName: "Shohei Ohtani" }, position: { abbreviation: "TWP", type: "Two-Way Player" } },
+        ],
+      });
+
+    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.create.mockResolvedValue({ id: 1 });
+
+    await syncAllPlayers(2026);
+
+    // Should store "DH" (from TWO_WAY_PLAYERS hitterPos), not "TWP"
+    expect(mockPrisma.player.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        mlbId: 660271,
+        posPrimary: "DH",
+        posList: "DH",
+      }),
+    });
+  });
+
+  it("resolves TWP position on update for two-way players", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          { person: { id: 660271, fullName: "Shohei Ohtani" }, position: { abbreviation: "TWP", type: "Two-Way Player" } },
+        ],
+      });
+
+    mockPrisma.player.findFirst.mockResolvedValue({ id: 3, mlbId: 660271, mlbTeam: "LAD" });
+    mockPrisma.player.update.mockResolvedValue({ id: 3 });
+
+    await syncAllPlayers(2026);
+
+    // Should update to "DH", not "TWP"
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 3 },
+      data: expect.objectContaining({
+        posPrimary: "DH",
+      }),
+    });
+  });
 });

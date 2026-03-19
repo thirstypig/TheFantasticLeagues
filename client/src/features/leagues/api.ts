@@ -1,5 +1,6 @@
 
 import { API_BASE, fetchJsonApi } from '../../api/base';
+import { track } from '../../lib/posthog';
 import {
   LeaguesListResponse,
   LeagueDetail,
@@ -57,10 +58,12 @@ export async function getMyRoster(leagueId: number): Promise<{ team: any; roster
 }
 
 export async function saveKeepers(leagueId: number, keeperIds: number[]): Promise<{ success: boolean; count: number }> {
-    return fetchJsonApi(`${API_BASE}/leagues/${leagueId}/my-roster/keepers`, {
+    const result = await fetchJsonApi<{ success: boolean; count: number }>(`${API_BASE}/leagues/${leagueId}/my-roster/keepers`, {
         method: "POST",
         body: JSON.stringify({ keeperIds })
     });
+    track("keepers_save", { keeper_count: keeperIds.length });
+    return result;
 }
 
 // ─── Invite Code ───

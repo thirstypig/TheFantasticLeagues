@@ -32,7 +32,7 @@ const stats = [
   { label: "API Endpoints", value: "116", icon: Plug },
   { label: "Feature Modules", value: "17", icon: Layers },
   { label: "Git Commits", value: "138", icon: GitCommit },
-  { label: "Tests Passing", value: "644", icon: TestTube },
+  { label: "Tests Passing", value: "670", icon: TestTube },
   { label: "DB Schema Lines", value: "723", icon: Braces },
   { label: "DB Migrations", value: "10", icon: Database },
   { label: "Est. Tokens Used", value: "~65M+", icon: Bot },
@@ -97,7 +97,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "644 tests", desc: "428 server + 187 client + 29 MCP tests" },
+      { name: "670 tests", desc: "454 server + 187 client + 29 MCP tests" },
     ],
   },
   {
@@ -491,6 +491,11 @@ const buildJournal = [
     title: "Sessions 21-23: Polish & Auth",
     detail: "6-agent code review resolved 15 findings. Auth system overhaul: password reset, pre-signup email invites with auto-accept on first login, Google OAuth verification. Custom SMTP via Resend for transactional emails. MCP MLB Data Proxy server with SQLite cache and rate limiter. Keeper lock E2E testing. 644 tests passing.",
   },
+  {
+    date: "Mar 2026",
+    title: "Sessions 24-25: Live Data & Auction Prep",
+    detail: "Wired live standings from PlayerStatsPeriod data. All-team MLB sync (30 teams). Admin stats sync endpoint. Full team names replacing 3-letter codes throughout. OF position mapping controlled by league rule. Player detail modal enriched with transactions, fielding stats, profile fallbacks. Season lifecycle documented. 4 test leagues with 8 teams each prepped for live auction. 670 tests passing.",
+  },
 ];
 
 const workflowSteps = [
@@ -601,7 +606,7 @@ export default function Tech() {
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at what it took to build The Fantastic Leagues — the tools, the process,
           the decisions, and the numbers. Built from November 2025 to present across
-          23 sessions, 46,870+ lines of TypeScript, and an estimated 65 million+ AI tokens.
+          25 sessions, 46,870+ lines of TypeScript, and an estimated 65 million+ AI tokens.
         </p>
       </div>
 
@@ -639,7 +644,7 @@ export default function Tech() {
         </h2>
         <p className="text-sm text-[var(--lg-text-secondary)] mb-4">
           Building a 47K-line full-stack app through conversational AI requires structure.
-          Here's the system that made it work across 23 sessions.
+          Here's the system that made it work across 25 sessions.
         </p>
         <div className="space-y-3">
           {workflowSteps.map((step) => (
@@ -846,7 +851,7 @@ export default function Tech() {
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 65M+ tokens across 23 sessions
+        Built with Claude Code — estimated 65M+ tokens across 25 sessions
       </p>
     </div>
   );

@@ -624,6 +624,33 @@ async function testReset() {
 
 // --- Main ---
 
+async function cleanupFillerPlayers() {
+  console.log("\n═══ CLEANUP: Removing filler players (mlbId >= 900000) ═══");
+
+  // First remove any roster entries referencing filler players
+  const fillerPlayers = await prisma.player.findMany({
+    where: { mlbId: { gte: 900000 } },
+    select: { id: true, mlbId: true, name: true },
+  });
+
+  if (fillerPlayers.length === 0) {
+    console.log("  No filler players found — nothing to clean up");
+    return;
+  }
+
+  const fillerIds = fillerPlayers.map((p) => p.id);
+
+  const deletedRosters = await prisma.roster.deleteMany({
+    where: { playerId: { in: fillerIds } },
+  });
+  console.log(`  Deleted ${deletedRosters.count} roster entries for filler players`);
+
+  const deletedPlayers = await prisma.player.deleteMany({
+    where: { mlbId: { gte: 900000 } },
+  });
+  console.log(`  Deleted ${deletedPlayers.count} filler player(s)`);
+}
+
 async function main() {
   console.log("╔════════════════════════════════════════════════════╗");
   console.log("║   AUCTION END-TO-END TEST — League 2 (OGBA 2026) ║");
@@ -633,15 +660,20 @@ async function main() {
   adminToken = await login();
   console.log("✓ Admin login successful");
 
-  // Run test suites
-  const initState = await testInit();
-  const afterValidation = await testBidValidation(initState);
-  const afterCommissioner = await testPauseResumeUndo(afterValidation);
-  await testDuplicateNomination(afterCommissioner);
-  const finalState = await testFullAuction(afterCommissioner);
-  await testFinalState(finalState);
-  await testCrashRecovery();
-  await testReset();
+  try {
+    // Run test suites
+    const initState = await testInit();
+    const afterValidation = await testBidValidation(initState);
+    const afterCommissioner = await testPauseResumeUndo(afterValidation);
+    await testDuplicateNomination(afterCommissioner);
+    const finalState = await testFullAuction(afterCommissioner);
+    await testFinalState(finalState);
+    await testCrashRecovery();
+    await testReset();
+  } finally {
+    // Always clean up filler players, even if tests fail
+    await cleanupFillerPlayers();
+  }
 
   // Summary
   console.log("\n╔════════════════════════════════════════════════════╗");
@@ -659,7 +691,9 @@ async function main() {
   process.exit(failures.length > 0 ? 1 : 0);
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
   console.error("Fatal error:", e);
+  await cleanupFillerPlayers().catch(() => {});
+  await prisma.$disconnect();
   process.exit(1);
 });

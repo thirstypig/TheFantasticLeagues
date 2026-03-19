@@ -15,6 +15,7 @@ import Commissioner from "./features/commissioner/pages/Commissioner";
 import Admin from "./features/admin/pages/Admin";
 import ArchivePage from "./features/archive/pages/ArchivePage";
 import Auction from "./features/auction/pages/Auction";
+import AuctionResults from "./features/auction/pages/AuctionResults";
 import KeeperSelection from "./features/keeper-prep/pages/KeeperSelection";
 import Rules from "./features/leagues/pages/Rules";
 import Profile from "./features/auth/pages/Profile";
@@ -62,6 +63,7 @@ export default function App() {
                 <Route path="/trades" element={<Navigate to="/activity" replace />} />
                 <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
                 <Route path="/auction" element={<Auction />} />
+                <Route path="/auction-results" element={<AuctionResults />} />
                 <Route path="/commissioner/:leagueId" element={<Commissioner />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/guide" element={<Navigate to="/rules" replace />} />

@@ -10,6 +10,14 @@ import { DataService } from "./services/dataService.js";
 import fs from "fs";
 import path from "path";
 import { parseCsv } from "../../lib/utils.js";
+import { TWO_WAY_PLAYERS } from "../../lib/sportConfig.js";
+
+/** Exclude synthetic filler players created by auction E2E tests */
+function isFillerPlayer(p: { mlbId?: number | null; name?: string }): boolean {
+  if (p.mlbId !== null && p.mlbId !== undefined && p.mlbId >= 900000) return true;
+  if (p.name?.startsWith("Filler Hitter")) return true;
+  return false;
+}
 
 const router = Router();
 
@@ -39,18 +47,55 @@ function loadPlayerValues(): Map<string, PlayerValueEntry> {
     if (!name) continue;
     const valStr = (r["$"] ?? "0").replace("$", "").replace(",", "").trim();
     const value = Number(valStr) || 0;
+    const pos = (r["Pos"] ?? "").trim();
     const entry: PlayerValueEntry = {
       name,
       team: (r["Team"] ?? "").trim(),
-      pos: (r["Pos"] ?? "").trim(),
+      pos,
       value,
     };
-    // Store under both exact and normalized keys for matching
-    playerValuesCache.set(name.toLowerCase(), entry);
-    playerValuesCache.set(normalizeName(name), entry);
+    const lowerKey = name.toLowerCase();
+    const normKey = normalizeName(name);
+    // For two-way players (e.g. Ohtani appears as DH and SP), keep hitter entry
+    // as the primary lookup and store pitcher entry under a separate key.
+    if (playerValuesCache.has(lowerKey)) {
+      // Store pitcher variant under "name::P" for potential future use
+      playerValuesCache.set(`${lowerKey}::P`, entry);
+      playerValuesCache.set(`${normKey}::P`, entry);
+    } else {
+      playerValuesCache.set(lowerKey, entry);
+      playerValuesCache.set(normKey, entry);
+    }
   }
   logger.info({ count: rows.length }, "Loaded player values from 2026 CSV");
   return playerValuesCache;
+}
+
+/**
+ * Expand two-way players (e.g. Ohtani) into both a hitter row and a pitcher row.
+ * The DB only stores one entry per player (typically with posPrimary: "DH"),
+ * so we duplicate the row with pitcher-specific fields.
+ */
+function expandTwoWayPlayers<T extends { mlb_id: string; is_pitcher: boolean; positions: string }>(
+  players: T[]
+): T[] {
+  const result: T[] = [];
+  for (const p of players) {
+    const mlbId = Number(p.mlb_id);
+    const twoWay = TWO_WAY_PLAYERS.get(mlbId);
+    if (twoWay && !p.is_pitcher) {
+      // Emit hitter row with correct position
+      result.push({ ...p, positions: twoWay.hitterPos });
+      // Emit pitcher row
+      result.push({ ...p, is_pitcher: true, positions: "P" });
+    } else if (twoWay && p.is_pitcher) {
+      // Already a pitcher row (should not happen from DB, but guard against it)
+      result.push({ ...p, positions: "P" });
+    } else {
+      result.push(p);
+    }
+  }
+  return result;
 }
 
 /**
@@ -88,10 +133,11 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
     : [];
 
   const rosteredPlayerIds = new Set(rosters.map((r) => r.playerId));
-  const rosterMap = new Map<number, { teamCode: string; price: number }>();
+  const rosterMap = new Map<number, { teamCode: string; teamName: string; price: number }>();
   for (const r of rosters) {
     rosterMap.set(r.playerId, {
       teamCode: r.team.code ?? r.team.name.substring(0, 3).toUpperCase(),
+      teamName: r.team.name,
       price: Number(r.price),
     });
   }
@@ -103,6 +149,7 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
 
   let players = allPlayers
     .filter((p) => {
+      if (isFillerPlayer(p)) return false;
       if (!allowedTeams) return true;
       const team = p.mlbTeam ?? "";
       return !team || team === "FA" || allowedTeams.has(team) || rosterMap.has(p.id);
@@ -114,6 +161,7 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
         mlb_id: String(p.mlbId ?? p.id),
         player_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",
+        ogba_team_name: roster?.teamName ?? "",
         positions: p.posList || p.posPrimary || "",
         is_pitcher: isPitcher,
         mlb_team: p.mlbTeam ?? "",
@@ -121,6 +169,9 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
         fantasy_value: roster?.price,
       };
     });
+
+  // Expand two-way players (e.g. Ohtani → DH hitter row + P pitcher row)
+  players = expandTwoWayPlayers(players);
 
   // availability filter
   if (availability === "available") {
@@ -137,6 +188,50 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
   }
 
   res.json({ players });
+}));
+
+/**
+ * GET /players/news/transactions
+ * Returns recent MLB-wide transactions (last 7 days).
+ * Filtered to MLB-level only. Cached for 15 minutes.
+ * NOTE: Must be defined before /:mlbId to avoid param capture.
+ */
+router.get("/news/transactions", requireAuth, asyncHandler(async (_req, res) => {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const startDate = sevenDaysAgo.toISOString().slice(0, 10);
+    const endDate = now.toISOString().slice(0, 10);
+
+    const url = `https://statsapi.mlb.com/api/v1/transactions?startDate=${startDate}&endDate=${endDate}`;
+    const data = await mlbGetJson(url, 900); // 15 min cache
+
+    const transactions = (data?.transactions ?? [])
+      .filter((t: any) => {
+        // Filter to MLB-level transactions only (exclude minor league)
+        const player = t.player;
+        if (!player) return false;
+        // If the transaction involves a to/from team at the major league level
+        const toLeague = t.toTeam?.league?.id;
+        const fromLeague = t.fromTeam?.league?.id;
+        // MLB American League = 103, National League = 104
+        return toLeague === 103 || toLeague === 104 || fromLeague === 103 || fromLeague === 104;
+      })
+      .map((t: any) => ({
+        date: t.date ?? null,
+        typeDesc: t.typeDesc ?? t.typeCode ?? "",
+        description: t.description ?? "",
+        playerName: t.player?.fullName ?? t.player?.lastName ?? "",
+        playerMlbId: t.player?.id ?? null,
+      }));
+
+    res.json({ transactions });
+  } catch (err) {
+    logger.error({ error: String(err) }, "Failed to fetch MLB transactions");
+    res.status(502).json({ error: "Unable to fetch MLB transactions" });
+  }
 }));
 
 /**
@@ -195,23 +290,64 @@ router.get("/:mlbId/fielding", requireAuth, asyncHandler(async (req, res) => {
     const data = await mlbGetJson(url);
 
     const splits = data?.stats?.[0]?.splits ?? [];
-    const positions: { position: string; games: number }[] = [];
 
+    // Aggregate by position — traded players have separate rows per team
+    const posMap = new Map<string, number>();
     for (const split of splits) {
       const pos = split.stat?.position?.abbreviation ?? split.position?.abbreviation;
       const games = Number(split.stat?.games ?? split.stat?.gamesPlayed ?? 0);
       if (pos && games > 0) {
-        positions.push({ position: pos, games });
+        posMap.set(pos, (posMap.get(pos) ?? 0) + games);
       }
     }
 
-    // Sort by games descending
-    positions.sort((a, b) => b.games - a.games);
+    const positions = Array.from(posMap.entries())
+      .map(([position, games]) => ({ position, games }))
+      .sort((a, b) => b.games - a.games);
 
     res.json({ mlbId, season, positions });
   } catch (err) {
     logger.error({ mlbId, season, error: String(err) }, "Failed to fetch fielding stats");
     res.status(502).json({ error: "Unable to fetch fielding stats" });
+  }
+}));
+
+/**
+ * GET /players/:mlbId/news
+ * Returns recent MLB transactions for a specific player (last 30 days).
+ * Cached for 30 minutes via mlbGetJson.
+ */
+router.get("/:mlbId/news", requireAuth, asyncHandler(async (req, res) => {
+  const mlbId = Number(req.params.mlbId);
+  if (!Number.isFinite(mlbId) || mlbId <= 0) {
+    return res.status(400).json({ error: "Invalid MLB ID" });
+  }
+
+  try {
+    // Fetch last 2 years of transactions to ensure we find at least 3
+    const now = new Date();
+    const twoYearsAgo = new Date(now);
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+    const startDate = twoYearsAgo.toISOString().slice(0, 10);
+    const endDate = now.toISOString().slice(0, 10);
+
+    const url = `https://statsapi.mlb.com/api/v1/transactions?startDate=${startDate}&endDate=${endDate}&playerId=${mlbId}`;
+    const data = await mlbGetJson(url, 1800); // 30 min cache
+
+    const transactions = (data?.transactions ?? [])
+      .map((t: any) => ({
+        date: t.date ?? null,
+        typeDesc: t.typeDesc ?? t.typeCode ?? "",
+        description: t.description ?? "",
+      }))
+      .sort((a: any, b: any) => (b.date ?? "").localeCompare(a.date ?? ""))
+      .slice(0, 3);
+
+    res.json({ mlbId, transactions });
+  } catch (err) {
+    logger.error({ mlbId, error: String(err) }, "Failed to fetch player transactions");
+    res.status(502).json({ error: "Unable to fetch player transactions" });
   }
 }));
 
@@ -234,10 +370,11 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
     include: { team: true },
   });
 
-  const rosterMap = new Map<number, { teamCode: string; price: number }>();
+  const rosterMap = new Map<number, { teamCode: string; teamName: string; price: number }>();
   for (const r of rosters) {
     rosterMap.set(r.playerId, {
       teamCode: r.team.code ?? r.team.name.substring(0, 3).toUpperCase(),
+      teamName: r.team.name,
       price: Number(r.price),
     });
   }
@@ -250,6 +387,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
 
   const stats = allPlayers
     .filter((p) => {
+      if (isFillerPlayer(p)) return false;
       if (!allowedTeams) return true;
       const team = p.mlbTeam ?? "";
       return !team || team === "FA" || allowedTeams.has(team) || rosterMap.has(p.id);
@@ -267,6 +405,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         player_name: p.name,
         mlb_full_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",
+        ogba_team_name: roster?.teamName ?? "",
         positions: pv?.pos || p.posList || p.posPrimary || "",
         is_pitcher: isPitcher,
         AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0,
@@ -279,7 +418,22 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
       };
     });
 
-  res.json({ stats });
+  // Expand two-way players (e.g. Ohtani → DH hitter row + P pitcher row)
+  const expandedStats = expandTwoWayPlayers(stats);
+
+  // For expanded pitcher rows, look up pitcher-specific dollar value
+  for (const s of expandedStats) {
+    if (s.is_pitcher && TWO_WAY_PLAYERS.has(Number(s.mlb_id))) {
+      const nameKey = s.player_name.toLowerCase();
+      const pitcherPv = valuesMap.get(`${nameKey}::P`) ?? valuesMap.get(`${normalizeName(s.player_name)}::P`);
+      if (pitcherPv) {
+        s.dollar_value = pitcherPv.value;
+        s.value = pitcherPv.value;
+      }
+    }
+  }
+
+  res.json({ stats: expandedStats });
 }));
 
 /** GET /api/player-period-stats?leagueId=N — no period stats yet for 2026 */

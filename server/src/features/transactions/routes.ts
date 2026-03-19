@@ -4,12 +4,18 @@ import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireTeamOwner, requireLeagueMember } from "../../middleware/auth.js";
+import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
+
+const dropSchema = z.object({
+  leagueId: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  playerId: z.number().int().positive(),
+});
 
 const claimSchema = z.object({
   leagueId: z.number().int().positive(),
@@ -53,10 +59,21 @@ router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncH
 
 /**
  * POST /api/transactions/claim
- * Claims a player for a team.
+ * Claims a player for a team. Commissioner-only per league rules.
  */
-router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requireTeamOwner("teamId"), asyncHandler(async (req, res) => {
+router.post("/transactions/claim", requireAuth, validateBody(claimSchema), asyncHandler(async (req, res) => {
   const { leagueId, teamId, dropPlayerId } = req.body;
+
+  // Commissioner-only: verify user is commissioner of this league or site admin
+  if (!req.user!.isAdmin) {
+    const membership = await prisma.leagueMembership.findUnique({
+      where: { leagueId_userId: { leagueId, userId: req.user!.id } },
+      select: { role: true },
+    });
+    if (!membership || membership.role !== "COMMISSIONER") {
+      return res.status(403).json({ error: "Add/Drop is commissioner-only" });
+    }
+  }
   let { playerId } = req.body;
   const { mlbId } = req.body;
 
@@ -145,6 +162,64 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     action: "TRANSACTION_CLAIM",
     resourceType: "Transaction",
     metadata: { leagueId, teamId, playerId, dropPlayerId: dropPlayerId || null },
+  });
+
+  return res.json({ success: true, playerId });
+}));
+
+/**
+ * POST /api/transactions/drop
+ * Drops a player from a team roster. Commissioner-only.
+ */
+router.post("/transactions/drop", requireAuth, validateBody(dropSchema), asyncHandler(async (req, res) => {
+  const { leagueId, teamId, playerId } = req.body;
+
+  // Commissioner-only check
+  if (!req.user!.isAdmin) {
+    const membership = await prisma.leagueMembership.findUnique({
+      where: { leagueId_userId: { leagueId, userId: req.user!.id } },
+      select: { role: true },
+    });
+    if (!membership || membership.role !== "COMMISSIONER") {
+      return res.status(403).json({ error: "Drop is commissioner-only" });
+    }
+  }
+
+  // Verify player is on team roster
+  const rosterEntry = await prisma.roster.findFirst({
+    where: { teamId, playerId, releasedAt: null },
+  });
+  if (!rosterEntry) {
+    return res.status(400).json({ error: "Player is not on this team's active roster" });
+  }
+
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+  const season = league?.season ?? new Date().getFullYear();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.roster.delete({ where: { id: rosterEntry.id } });
+
+    const player = await tx.player.findUnique({ where: { id: playerId } });
+    await tx.transactionEvent.create({
+      data: {
+        rowHash: `DROP-${crypto.randomUUID()}-${playerId}`,
+        leagueId,
+        season,
+        effDate: new Date(),
+        submittedAt: new Date(),
+        teamId,
+        playerId,
+        transactionRaw: `Dropped ${player?.name}`,
+        transactionType: 'DROP'
+      }
+    });
+  }, { timeout: 30_000 });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TRANSACTION_DROP",
+    resourceType: "Transaction",
+    metadata: { leagueId, teamId, playerId },
   });
 
   return res.json({ success: true, playerId });

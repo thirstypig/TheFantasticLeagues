@@ -4,6 +4,34 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-19 (Session 25) — Player Data Polish, Full Team Names, OF Mapping
+
+### Completed
+- **Full team names everywhere** — Replaced 3-letter fantasy team codes with full names throughout: PlayerDetailModal header, PlayerExpandedRow, AuctionValues modal, Team page modal. Server now returns `ogba_team_name` in both `/players` and `/player-season-stats` endpoints
+- **OF position mapping** — CF/RF/LF now merge to "OF" when `outfieldMode` is "OF" (controlled by league rule). Applied in PlayerDetailModal fielding section and PlayerExpandedRow positions display via `mapPosition()` from `sportConfig.ts`
+- **Transaction section: "last 3"** — Changed from 30-day window to 2-year window, returns last 3 transactions sorted by date (not limited to recent ones)
+- **Profile tab team fallback** — Falls back to `mlbTeam` from player data when MLB API returns no `currentTeam`
+- **Season lifecycle documentation** — Full sequence diagram added to `docs/howto.md` (SETUP → DRAFT → IN_SEASON → COMPLETED with keeper prep details)
+- **stats_source fix** — League 1 `stats_source` rule updated from `NL` to `ALL` (was filtering out AL teams from dropdown)
+- **UNK team cleanup** — Scott Manea (mlbId 900009) updated from `UNK` to `FA`
+- **Keeper reset** — 32 roster entries in league 1 reset `isKeeper` from true to false
+- **PlayerDetailModal tests fixed** — Added `useLeague()` context mock after component started importing `LeagueContext`
+- **6 new server tests** — Player routes (fielding, transactions) and mlbSyncService (all-team sync)
+- **Player data API enrichment** — `ogba_team_name` added to `PlayerSeasonStat` type, server rosterMap includes `teamName`
+
+### Pending / Next Steps
+- Auction nomination order: user reports seeing 3-letter codes (code audit shows `team.name` used everywhere — may be stale state or different UI area)
+- Season lifecycle in Rules page (documented in howto.md but not yet surfaced in client-side rules UI)
+- Sunday March 22 live auction — all infrastructure ready
+
+### Test Results
+- Server: 454 passing (+6 from Session 24)
+- Client: 187 passing
+- MCP: 29 passing
+- **Total: 670 tests**
+
+---
+
 ## Session 2026-03-18 (Session 24) — Live Data Integration, Auction Readiness
 
 ### Completed

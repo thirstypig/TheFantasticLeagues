@@ -129,6 +129,12 @@ export type PlayerProfile = {
   pronunciation?: string;
 };
 
+export type PlayerTransaction = {
+  date: string | null;
+  typeDesc: string;
+  description: string;
+};
+
 export type RecentHittingRow = {
   label: string;
   AB: number;
@@ -185,6 +191,7 @@ export type PlayerSeasonStat = {
   player_name?: string;
   mlb_full_name?: string;
   ogba_team_code?: string;
+  ogba_team_name?: string;
   group?: "H" | "P";
   is_pitcher?: boolean | number;
   positions?: string;

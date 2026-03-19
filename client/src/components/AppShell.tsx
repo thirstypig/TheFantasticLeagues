@@ -123,7 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       title: "Transactions",
       items: [
         { to: "/activity", label: "Activity", show: true },
-        { to: "/auction", label: "Auction", show: gating.canAuction },
+        { to: "/auction", label: "Auction", show: true },
       ],
     },
     {

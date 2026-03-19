@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchJsonApi } from '../../../api/base';
 import { supabase } from '../../../lib/supabase';
+import { track } from '../../../lib/posthog';
 
 // Types redefined locally to avoid build issues importing from server
 export type AuctionStatus = "not_started" | "nominating" | "bidding" | "paused" | "completed";
@@ -194,6 +195,7 @@ export function useAuctionState(leagueId?: number | null) {
             method: 'POST',
             body: withLeagueId(payload)
         });
+        track("auction_nominate", { player_name: payload.playerName, start_bid: payload.startBid, is_pitcher: payload.isPitcher });
         // State will arrive via WebSocket broadcast; fetch as backup
         if (!wsRef.current) fetchState();
     };
@@ -203,6 +205,7 @@ export function useAuctionState(leagueId?: number | null) {
             method: 'POST',
             body: withLeagueId(payload)
         });
+        track("auction_bid", { amount: payload.amount });
         if (!wsRef.current) fetchState();
     };
 
@@ -216,6 +219,7 @@ export function useAuctionState(leagueId?: number | null) {
 
     const finishAuction = async () => {
         await fetchJsonApi('/api/auction/finish', { method: 'POST', body: withLeagueId() });
+        track("auction_finish");
         if (!wsRef.current) fetchState();
     };
 

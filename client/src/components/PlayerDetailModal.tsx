@@ -6,16 +6,20 @@ import {
   getPlayerFieldingStats,
   getPlayerProfile,
   getPlayerRecentStats,
+  getPlayerNews,
   type FieldingStatRow,
   type HOrP,
   type PlayerProfile,
   type PlayerSeasonStat,
+  type PlayerTransaction,
   type CareerHittingRow,
   type CareerPitchingRow,
   type RecentHittingRow,
   type RecentPitchingRow,
 } from "../api";
 import { toNum } from "../api/base";
+import { useLeague } from "../contexts/LeagueContext";
+import { mapPosition } from "../lib/sportConfig";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "./ui/ThemedTable";
 
 type Props = {
@@ -52,6 +56,25 @@ function fmt2(x: number): string {
 
 function deriveMode(p: PlayerSeasonStat): HOrP {
   return isPitcherRow(p) ? "pitching" : "hitting";
+}
+
+function transactionBadgeClass(typeDesc: string): string {
+  const t = typeDesc.toLowerCase();
+  if (t.includes("trade")) return "bg-orange-500/10 text-orange-400 border border-orange-500/20";
+  if (t.includes("injured") || t.includes("il") || t.includes("disabled")) return "bg-red-500/10 text-red-400 border border-red-500/20";
+  if (t.includes("recalled") || t.includes("selected") || t.includes("call")) return "bg-green-500/10 text-green-400 border border-green-500/20";
+  if (t.includes("option") || t.includes("assign") || t.includes("designat") || t.includes("dfa")) return "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
+  if (t.includes("sign") || t.includes("free agent")) return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+  return "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)]";
+}
+
+function formatTransactionDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return dateStr;
+  }
 }
 
 /**
@@ -114,6 +137,10 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
     Array<CareerHittingRow | CareerPitchingRow>
   >([]);
   const [fieldingRows, setFieldingRows] = useState<FieldingStatRow[]>([]);
+  const [newsRows, setNewsRows] = useState<PlayerTransaction[]>([]);
+  const [profileFailed, setProfileFailed] = useState(false);
+  const [recentFailed, setRecentFailed] = useState(false);
+  const [careerFailed, setCareerFailed] = useState(false);
   useEffect(() => {
     setTab("stats");
     setErr("");
@@ -121,6 +148,10 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
     setRecentRows([]);
     setCareerRows([]);
     setFieldingRows([]);
+    setNewsRows([]);
+    setProfileFailed(false);
+    setRecentFailed(false);
+    setCareerFailed(false);
   }, [mlbId]);
 
   useEffect(() => {
@@ -132,22 +163,48 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
 
     (async () => {
       try {
-        const [p, recent, career, fielding] = await Promise.all([
+        const results = await Promise.allSettled([
           getPlayerProfile(mlbId),
           getPlayerRecentStats(mlbId, mode),
           getPlayerCareerStats(mlbId, mode),
           getPlayerFieldingStats(mlbId),
+          getPlayerNews(mlbId),
         ]);
 
         if (cancelled) return;
 
-        setProfile(p);
-        setRecentRows(recent.rows ?? []);
-        setCareerRows(career.rows ?? []);
-        setFieldingRows(fielding ?? []);
+        const [profileResult, recentResult, careerResult, fieldingResult, newsResult] = results;
+
+        if (profileResult.status === "fulfilled") {
+          setProfile(profileResult.value);
+        } else {
+          setProfileFailed(true);
+        }
+        if (recentResult.status === "fulfilled") {
+          setRecentRows(recentResult.value.rows ?? []);
+        } else {
+          setRecentFailed(true);
+        }
+        if (careerResult.status === "fulfilled") {
+          setCareerRows(careerResult.value.rows ?? []);
+        } else {
+          setCareerFailed(true);
+        }
+        if (fieldingResult.status === "fulfilled") {
+          setFieldingRows(fieldingResult.value ?? []);
+        }
+        if (newsResult.status === "fulfilled") {
+          setNewsRows(newsResult.value ?? []);
+        }
+
+        // Show a friendly error only if ALL fetches failed
+        const allFailed = results.every(r => r.status === "rejected");
+        if (allFailed) {
+          setErr("Unable to load player data from MLB. Please try again later.");
+        }
       } catch (err: unknown) {
         if (cancelled) return;
-        setErr(err instanceof Error ? err.message : "Failed to load player details");
+        setErr("Unable to load player data. Please try again later.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -169,11 +226,28 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
 
   if (!isVisible || !player) return null;
 
+  const { outfieldMode } = useLeague();
   const title = norm(player.player_name ?? (player as any).name ?? "Player");
   const pos = norm(player.positions ?? (player as any).pos ?? "");
-  const ogba = norm(player.ogba_team_code ?? (player as any).team ?? "");
+  const fantasyTeam = norm((player as any).ogba_team_name ?? "");
+  const fantasyTeamCode = norm(player.ogba_team_code ?? (player as any).team ?? "");
   const mlbTeam = norm((player as any).mlbTeam ?? (player as any).mlb_team_abbr ?? player.mlb_team ?? "");
   const roleLabel = mode === "pitching" ? "Pitching" : "Hitting";
+
+  // Merge fielding positions based on outfieldMode (CF/RF/LF → OF when mode is "OF")
+  const mappedFieldingRows = useMemo(() => {
+    if (!fieldingRows.length) return fieldingRows;
+    const merged = new Map<string, { position: string; games: number; gamesStarted: number; innings: number }>();
+    for (const f of fieldingRows) {
+      const mapped = mapPosition(f.position, outfieldMode);
+      const prev = merged.get(mapped) ?? { position: mapped, games: 0, gamesStarted: 0, innings: 0 };
+      prev.games += f.games;
+      prev.gamesStarted += f.gamesStarted;
+      prev.innings += f.innings;
+      merged.set(mapped, prev);
+    }
+    return Array.from(merged.values()).sort((a, b) => b.games - a.games);
+  }, [fieldingRows, outfieldMode]);
 
   return (
     <div
@@ -198,7 +272,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
 
             <div className="mt-3 text-xs font-medium uppercase text-[var(--lg-text-muted)] flex flex-wrap gap-x-6 gap-y-1">
               {pos ? <div className="flex gap-2"><span>POS:</span> <span className="text-[var(--lg-text-primary)]">{pos}</span></div> : null}
-              {ogba ? <div className="flex gap-2"><span>OGBA:</span> <span className="text-[var(--lg-text-primary)]">{ogba}</span></div> : null}
+              {fantasyTeam ? <div className="flex gap-2"><span>Team:</span> <span className="text-[var(--lg-text-primary)]">{fantasyTeam}</span></div> : null}
               {mlbTeam ? <div className="flex gap-2"><span>MLB:</span> <span className="text-[var(--lg-text-primary)]">{mlbTeam}</span></div> : null}
               {mlbId ? <div className="flex gap-2 opacity-60"><span>ID:</span> <span>{mlbId}</span></div> : null}
             </div>
@@ -225,9 +299,8 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
 
         <div className={bodyCls}>
           {err ? (
-            <div className="lg-alert lg-alert-error mb-6">
-              <div className="font-bold">Error:</div>
-              <div>{err}</div>
+            <div className="mb-6 px-4 py-3 rounded-[var(--lg-radius-lg)] border border-red-500/20 bg-red-500/5 text-sm text-[var(--lg-text-muted)]">
+              {err}
             </div>
           ) : null}
 
@@ -252,7 +325,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                   {profile ? (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                       <ProfileField label="Full Name" value={profile.fullName} />
-                      <ProfileField label="Team" value={profile.currentTeam} />
+                      <ProfileField label="Team" value={profile.currentTeam || mlbTeam || undefined} />
                       <ProfileField label="Position" value={profile.primaryPosition} />
                       <ProfileField label="Jersey #" value={profile.jerseyNumber ? `#${profile.jerseyNumber}` : undefined} />
                       <ProfileField label="Bats / Throws" value={`${profile.bats ?? "—"} / ${profile.throws ?? "—"}`} />
@@ -265,11 +338,74 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                       {profile.nickName ? <ProfileField label="Nickname" value={`"${profile.nickName}"`} /> : null}
                       {profile.pronunciation ? <ProfileField label="Pronunciation" value={profile.pronunciation} /> : null}
                     </div>
+                  ) : profileFailed ? (
+                    <div>
+                      <div className="text-sm text-[var(--lg-text-muted)] italic mb-6">Unable to load full profile from MLB.</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <ProfileField label="Name" value={title} />
+                        {pos ? <ProfileField label="Position" value={pos} /> : null}
+                        {mlbTeam ? <ProfileField label="MLB Team" value={mlbTeam} /> : null}
+                        {fantasyTeam ? <ProfileField label="Fantasy Team" value={fantasyTeam} /> : null}
+                      </div>
+                    </div>
                   ) : (
                     <div className="text-sm text-[var(--lg-text-muted)] italic">No profile data available.</div>
                   )}
                 </div>
               </div>
+
+              {/* Recent Transactions / News */}
+              <div className={sectionCls}>
+                <div className={sectionHeadCls}>
+                  <div className={sectionTitleCls}>Recent Transactions</div>
+                  <span className="text-xs text-[var(--lg-text-muted)] opacity-60">Last 3</span>
+                </div>
+                <div className="p-6">
+                  {newsRows.length > 0 ? (
+                    <div className="space-y-3">
+                      {newsRows.map((t, i) => (
+                        <div key={i} className="flex items-start gap-3 px-3 py-2.5 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-faint)]">
+                          <div className="shrink-0 mt-0.5">
+                            <span className={`inline-block px-2 py-0.5 rounded-[var(--lg-radius-sm)] text-[10px] font-medium uppercase ${transactionBadgeClass(t.typeDesc)}`}>
+                              {t.typeDesc}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm text-[var(--lg-text-primary)] leading-relaxed">{t.description}</div>
+                            {t.date && (
+                              <div className="text-xs text-[var(--lg-text-muted)] mt-1">{formatTransactionDate(t.date)}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-[var(--lg-text-muted)] italic">No recent transactions</div>
+                  )}
+                </div>
+              </div>
+
+              {/* External Links */}
+              {mlbId && (
+                <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 px-2">
+                  <a
+                    href={`https://www.mlb.com/player/${mlbId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors underline underline-offset-2"
+                  >
+                    View on MLB.com
+                  </a>
+                  <a
+                    href={`https://www.baseball-reference.com/redirect.fcgi?player=1&mlb_ID=${mlbId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors underline underline-offset-2"
+                  >
+                    View on Baseball Reference
+                  </a>
+                </div>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-8">
@@ -285,7 +421,9 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                       mode={mode}
                     />
                   ) : (
-                    <div className="p-8 text-sm text-[var(--lg-text-muted)] italic">No recent stats available.</div>
+                    <div className="p-8 text-sm text-[var(--lg-text-muted)] italic">
+                      {recentFailed ? "Unable to load recent stats." : "No recent stats available."}
+                    </div>
                   )}
                 </div>
               </div>
@@ -302,13 +440,15 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                       mode={mode}
                     />
                   ) : (
-                    <div className="p-8 text-sm text-[var(--lg-text-muted)] italic">No career stats available.</div>
+                    <div className="p-8 text-sm text-[var(--lg-text-muted)] italic">
+                      {careerFailed ? "Unable to load career stats." : "No career stats available."}
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Fielding — Games by Position */}
-              {fieldingRows.length > 0 && (
+              {mappedFieldingRows.length > 0 && (
                 <div className={sectionCls}>
                   <div className={sectionHeadCls}>
                     <div className={sectionTitleCls}>Fielding — Games by Position</div>
@@ -316,7 +456,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                   <div className={sectionBodyCls}>
                     <div className="p-6">
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                        {fieldingRows.map(f => (
+                        {mappedFieldingRows.map(f => (
                           <div key={f.position} className="flex items-center gap-2 px-3 py-2 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-faint)]">
                             <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{f.position}</span>
                             <span className="text-xs text-[var(--lg-text-muted)]">{f.games}G</span>

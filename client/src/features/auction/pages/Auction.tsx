@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import AuctionLayout from '../components/AuctionLayout';
 import AuctionStage from '../components/AuctionStage';
+import AuctionComplete from '../components/AuctionComplete';
 import ContextDeck from '../components/ContextDeck';
 import PlayerPoolTab from '../components/PlayerPoolTab';
 import TeamListTab from '../components/TeamListTab';
@@ -12,10 +13,13 @@ import { useAuctionState } from '../hooks/useAuctionState';
 import { useNominationQueue } from '../hooks/useNominationQueue';
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
+import { useSeasonGating } from "../../../hooks/useSeasonGating";
+import AuctionResults from "./AuctionResults";
 
 export default function Auction() {
   const { toast } = useToast();
   const { leagueId: currentLeagueId } = useLeague();
+  const gating = useSeasonGating();
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
   const [initLoading, setInitLoading] = useState(true);
 
@@ -155,7 +159,12 @@ export default function Auction() {
           rosterCount: t.rosterCount || 0 // Ensure field exists
       }));
   }, [auctionState?.teams, myTeamId]);
-  
+
+  // If not in DRAFT, show read-only auction results instead of the live auction
+  if (!gating.canAuction) {
+    return <AuctionResults />;
+  }
+
   if (initLoading) return (
     <div className="p-4 md:p-8 space-y-6 animate-pulse">
       {/* Header skeleton */}
@@ -197,6 +206,11 @@ export default function Auction() {
       </button>
     </div>
   );
+
+  // Auction completed — show results screen
+  if (auctionState && auctionState.status === 'completed') {
+    return <AuctionComplete auctionState={auctionState} myTeamId={myTeamId} />;
+  }
 
   return (
     <AuctionLayout

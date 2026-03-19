@@ -198,7 +198,7 @@ export default function AuctionValues() {
                 return (
                   <ThemedTr
                     key={(p as any).row_id ?? `${p.mlb_id}-${rowIsPitcher(p) ? "P" : "H"}`}
-                    onClick={() => setSelected(p)}
+                    onClick={() => setSelected({ ...p, ogba_team_name: teamNameMap[ogbaTeam(p).toUpperCase()] || "" } as PlayerSeasonStat)}
                   >
                     <ThemedTd>{playerName(p)}</ThemedTd>
                     <ThemedTd>{teamNameMap[ogbaTeam(p).toUpperCase()] || ogbaTeam(p) || "FA"}</ThemedTd>

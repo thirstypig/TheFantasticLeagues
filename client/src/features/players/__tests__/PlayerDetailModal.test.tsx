@@ -7,9 +7,15 @@ vi.mock("../../../api", () => ({
   getPlayerRecentStats: vi.fn(),
   getPlayerCareerStats: vi.fn(),
   getPlayerFieldingStats: vi.fn(),
+  getPlayerNews: vi.fn(),
 }));
 
-import { getPlayerProfile, getPlayerRecentStats, getPlayerCareerStats, getPlayerFieldingStats } from "../../../api";
+// Mock LeagueContext
+vi.mock("../../../contexts/LeagueContext", () => ({
+  useLeague: () => ({ leagueId: 1, outfieldMode: "OF" }),
+}));
+
+import { getPlayerProfile, getPlayerRecentStats, getPlayerCareerStats, getPlayerFieldingStats, getPlayerNews } from "../../../api";
 import PlayerDetailModal from "../../../components/PlayerDetailModal";
 
 const mockPlayer = {
@@ -54,6 +60,7 @@ beforeEach(() => {
   vi.mocked(getPlayerRecentStats).mockResolvedValue(mockRecentHitting as any);
   vi.mocked(getPlayerCareerStats).mockResolvedValue(mockCareerHitting as any);
   vi.mocked(getPlayerFieldingStats).mockResolvedValue([]);
+  vi.mocked(getPlayerNews).mockResolvedValue([]);
 });
 
 describe("PlayerDetailModal", () => {
@@ -115,6 +122,8 @@ describe("PlayerDetailModal", () => {
     vi.mocked(getPlayerProfile).mockReturnValue(new Promise(() => {}));
     vi.mocked(getPlayerRecentStats).mockReturnValue(new Promise(() => {}));
     vi.mocked(getPlayerCareerStats).mockReturnValue(new Promise(() => {}));
+    vi.mocked(getPlayerFieldingStats).mockReturnValue(new Promise(() => {}));
+    vi.mocked(getPlayerNews).mockReturnValue(new Promise(() => {}));
 
     render(
       <PlayerDetailModal player={mockPlayer} onClose={vi.fn()} open={true} />
@@ -193,17 +202,19 @@ describe("PlayerDetailModal", () => {
     });
   });
 
-  it("shows error message when API fails", async () => {
+  it("shows error message when all API calls fail", async () => {
     vi.mocked(getPlayerProfile).mockRejectedValue(new Error("Network error"));
     vi.mocked(getPlayerRecentStats).mockRejectedValue(new Error("Network error"));
     vi.mocked(getPlayerCareerStats).mockRejectedValue(new Error("Network error"));
+    vi.mocked(getPlayerFieldingStats).mockRejectedValue(new Error("Network error"));
+    vi.mocked(getPlayerNews).mockRejectedValue(new Error("Network error"));
 
     render(
       <PlayerDetailModal player={mockPlayer} onClose={vi.fn()} open={true} />
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Network error")).toBeInTheDocument();
+      expect(screen.getByText("Unable to load player data from MLB. Please try again later.")).toBeInTheDocument();
     });
   });
 

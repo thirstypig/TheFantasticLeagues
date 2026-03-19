@@ -1,5 +1,6 @@
 
 import { fetchJsonApi, API_BASE } from '../../api/base';
+import { track } from '../../lib/posthog';
 
 export type TradeAssetType = "PLAYER" | "BUDGET" | "PICK";
 
@@ -79,17 +80,21 @@ export async function proposeTrade(payload: {
         pickRound: i.pickRound,
       })),
     };
-    return fetchJsonApi(`${API_BASE}/trades`, {
+    const result = await fetchJsonApi<TradeProposal>(`${API_BASE}/trades`, {
         method: 'POST',
         body: JSON.stringify(serverPayload)
     });
+    track("trade_propose", { item_count: serverPayload.items.length });
+    return result;
 }
 
 export async function respondToTrade(tradeId: number, action: "ACCEPT" | "REJECT"): Promise<TradeProposal> {
     const endpoint = action === "ACCEPT" ? "accept" : "reject";
-    return fetchJsonApi(`${API_BASE}/trades/${tradeId}/${endpoint}`, {
+    const result = await fetchJsonApi<TradeProposal>(`${API_BASE}/trades/${tradeId}/${endpoint}`, {
         method: 'POST',
     });
+    track("trade_respond", { action: action.toLowerCase(), trade_id: tradeId });
+    return result;
 }
 
 export async function acceptTrade(tradeId: number): Promise<TradeProposal> {

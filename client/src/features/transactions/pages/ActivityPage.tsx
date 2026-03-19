@@ -66,20 +66,24 @@ export default function ActivityPage() {
   }, [currentLeagueId]);
 
   const loadData = useCallback(async () => {
+    if (!currentLeagueId) { setLoading(false); return; }
     try {
-      const [txResp, playersResp, lDetail, standingsResp] = await Promise.all([
-        getTransactions({ take: 100 }),
-        getPlayerSeasonStats(),
+      const results = await Promise.allSettled([
+        getTransactions({ leagueId: currentLeagueId, take: 100 }),
+        getPlayerSeasonStats(currentLeagueId),
         getLeague(currentLeagueId),
         getSeasonStandings(),
       ]);
-      setTransactions(txResp.transactions);
-      setPlayers(playersResp || []);
-      setStandings(standingsResp.rows || []);
+
+      const [txResult, playersResult, leagueResult, standingsResult] = results;
+
+      if (txResult.status === "fulfilled") setTransactions(txResult.value.transactions);
+      if (playersResult.status === "fulfilled") setPlayers(playersResult.value || []);
+      if (standingsResult.status === "fulfilled") setStandings(standingsResult.value.rows || []);
       await loadTrades(currentLeagueId);
 
-      {
-        const loadedTeams = lDetail.league.teams || [];
+      if (leagueResult.status === "fulfilled") {
+        const loadedTeams = leagueResult.value.league.teams || [];
         setTeams(loadedTeams);
 
         // Auto-detect user's team
@@ -98,7 +102,7 @@ export default function ActivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [authUser?.id, loadTrades]);
+  }, [authUser?.id, currentLeagueId, loadTrades]);
 
   useEffect(() => {
     loadData();
@@ -110,7 +114,7 @@ export default function ActivityPage() {
       return;
     }
 
-    const confirmed = confirm(`Submit waiver claim for ${player.player_name}?`);
+    const confirmed = confirm(`Add ${player.player_name} to your roster?`);
     if (!confirmed) return;
 
     try {
@@ -123,10 +127,37 @@ export default function ActivityPage() {
           mlbId: player.mlb_id || (player as any).mlbId,
         }),
       });
-      toast(`Successfully claimed ${player.player_name}!`, "success");
+      toast(`Successfully added ${player.player_name}!`, "success");
       await loadData();
     } catch (err: unknown) {
       console.error("Claim error:", err);
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      toast(errMsg, "error");
+    }
+  };
+
+  const handleDrop = async (player: PlayerSeasonStat) => {
+    if (!selectedTeamId || !currentLeagueId) {
+      toast("Please select a team first.", "warning");
+      return;
+    }
+
+    const confirmed = confirm(`Drop ${player.player_name} from the roster?`);
+    if (!confirmed) return;
+
+    try {
+      await fetchJsonApi("/api/transactions/drop", {
+        method: "POST",
+        body: JSON.stringify({
+          leagueId: currentLeagueId,
+          teamId: selectedTeamId,
+          playerId: (player as any).player_id || (player as any).id,
+        }),
+      });
+      toast(`Successfully dropped ${player.player_name}.`, "success");
+      await loadData();
+    } catch (err: unknown) {
+      console.error("Drop error:", err);
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       toast(errMsg, "error");
     }
@@ -210,7 +241,13 @@ export default function ActivityPage() {
         {/* Add/Drop Tab */}
         {activeTab === "add_drop" && (
           <div className="liquid-glass rounded-3xl p-1 bg-[var(--lg-tint)]">
-            <AddDropTab players={players} onClaim={handleClaim} />
+            {isCommissioner ? (
+              <AddDropTab players={players} onClaim={handleClaim} onDrop={handleDrop} />
+            ) : (
+              <div className="p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
+                Add/Drop is commissioner-only. Contact your league commissioner for roster changes.
+              </div>
+            )}
           </div>
         )}
 

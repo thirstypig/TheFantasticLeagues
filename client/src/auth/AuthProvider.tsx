@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { API_BASE, fetchJsonApi } from "../api/base";
 import { supabase } from "../lib/supabase";
+import { track } from "../lib/posthog";
 import { Session } from "@supabase/supabase-js";
 
 type User = {
@@ -142,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     await supabase.auth.signOut();
+    track("logout");
     // State update handled by onAuthStateChange
   }
 

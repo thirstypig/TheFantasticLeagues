@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getPrimaryPosition } from '../../../lib/baseballUtils';
 import {
   PlayerSeasonStat,
@@ -8,6 +8,8 @@ import {
   CareerPitchingRow,
   FieldingStatRow
 } from '../../../api';
+import { useLeague } from "../../../contexts/LeagueContext";
+import { mapPosition } from "../../../lib/sportConfig";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
 interface PlayerExpandedRowProps {
@@ -60,17 +62,31 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
   }, [player.mlb_id, player.is_pitcher]);
 
   const isPitcher = player.is_pitcher;
+  const { outfieldMode } = useLeague();
+
+  // Merge fielding positions based on outfieldMode (CF/RF/LF → OF when mode is "OF")
+  const mappedFielding = useMemo(() => {
+    if (!fieldingStats.length) return fieldingStats;
+    const merged = new Map<string, { position: string; games: number }>();
+    for (const f of fieldingStats) {
+      const mapped = mapPosition(f.position, outfieldMode);
+      const prev = merged.get(mapped) ?? { position: mapped, games: 0 };
+      prev.games += f.games;
+      merged.set(mapped, prev);
+    }
+    return Array.from(merged.values()).sort((a, b) => b.games - a.games);
+  }, [fieldingStats, outfieldMode]);
 
   return (
     <tr className="bg-[var(--lg-bg-secondary)]/20 cursor-default" onClick={e => e.stopPropagation()}>
         <ThemedTd colSpan={colSpan} className="px-3 py-3">
             <div className="flex flex-col gap-3">
-                
+
                 {/* Positional Usage */}
                 <div className="flex items-center gap-2 text-xs flex-wrap">
                     <span className="font-semibold text-[var(--lg-text-muted)]">POSITIONS:</span>
-                    {fieldingStats.length > 0 ? (
-                        fieldingStats.map((f, i) => (
+                    {mappedFielding.length > 0 ? (
+                        mappedFielding.map((f, i) => (
                             <span key={i} className="font-mono bg-[var(--lg-glass-bg-hover)] px-2 py-0.5 rounded border border-[var(--lg-table-border)] text-[var(--lg-text-primary)]">
                                 {f.position} <span className="text-[var(--lg-text-muted)]">{f.games} GP</span>
                             </span>

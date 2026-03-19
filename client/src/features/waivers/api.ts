@@ -1,4 +1,5 @@
 import { fetchJsonApi, API_BASE } from "../../api/base";
+import { track } from "../../lib/posthog";
 
 // --- Types ---
 
@@ -34,10 +35,12 @@ export async function submitWaiverClaim(data: {
   bidAmount: number;
   priority?: number;
 }): Promise<WaiverClaim> {
-  return fetchJsonApi<WaiverClaim>(`${API_BASE}/waivers`, {
+  const result = await fetchJsonApi<WaiverClaim>(`${API_BASE}/waivers`, {
     method: "POST",
     body: JSON.stringify(data),
   });
+  track("waiver_claim_submit", { bid_amount: data.bidAmount });
+  return result;
 }
 
 export async function cancelWaiverClaim(id: number): Promise<{ success: boolean }> {

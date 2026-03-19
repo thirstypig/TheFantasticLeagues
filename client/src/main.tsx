@@ -10,6 +10,11 @@ import { AuthProvider } from "./auth/AuthProvider";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { LeagueProvider } from "./contexts/LeagueContext";
+import { PostHogTracker } from "./components/PostHogTracker";
+import { initPostHog } from "./lib/posthog";
+
+// Initialize PostHog before render
+initPostHog();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -18,6 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <ThemeProvider>
           <ToastProvider>
             <LeagueProvider>
+              <PostHogTracker />
               <App />
             </LeagueProvider>
           </ToastProvider>

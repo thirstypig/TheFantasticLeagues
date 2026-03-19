@@ -7,6 +7,8 @@ export interface SeasonGating {
   seasonStatus: SeasonStatus | null;
   /** Can run the auction draft (DRAFT only) */
   canAuction: boolean;
+  /** Can view auction results (IN_SEASON or COMPLETED) */
+  canViewAuctionResults: boolean;
   /** Can propose/process trades (IN_SEASON only) */
   canTrade: boolean;
   /** Can submit/process waivers (IN_SEASON only) */
@@ -38,6 +40,7 @@ export function useSeasonGating(): SeasonGating {
     return {
       seasonStatus: s,
       canAuction: s === "DRAFT",
+      canViewAuctionResults: s === "IN_SEASON" || s === "COMPLETED",
       canTrade: s === "IN_SEASON",
       canWaiver: s === "IN_SEASON",
       canEditRules: s === "SETUP",

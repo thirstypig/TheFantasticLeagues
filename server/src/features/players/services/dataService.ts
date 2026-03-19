@@ -8,6 +8,7 @@ import { chunk } from '../../../lib/utils.js';
 import { normCode } from "../../../lib/utils.js";
 import { SeasonStatRow, PeriodStatRow } from '../../../types/stats.js';
 import { warmMlbTeamCache } from '../../../lib/mlbApi.js';
+import { TWO_WAY_PLAYERS } from '../../../lib/sportConfig.js';
 
 /** A parsed CSV row used for auction values, keyed by column header. */
 type AuctionValueRow = Record<string, string> & {
@@ -302,7 +303,14 @@ export class DataService {
       });
     }
 
-    return allPlayers.map((p) => {
+    const rows = allPlayers
+    .filter((p) => {
+      // Exclude synthetic filler players created by auction E2E tests
+      if (p.mlbId !== null && p.mlbId !== undefined && p.mlbId >= 900000) return false;
+      if (p.name?.startsWith("Filler Hitter")) return false;
+      return true;
+    })
+    .map((p) => {
       const mlbId = String(p.mlbId ?? p.id);
       const roster = rosterMap.get(p.id);
       const isPitcher = (p.posPrimary ?? "").toUpperCase() === "P";
@@ -322,6 +330,20 @@ export class DataService {
         fantasy_value: roster?.price,
       };
     });
+
+    // Expand two-way players (e.g. Ohtani → DH hitter row + P pitcher row)
+    const result: NormalizedSeasonStat[] = [];
+    for (const r of rows) {
+      const mlbId = Number(r.mlb_id);
+      const twoWay = TWO_WAY_PLAYERS.get(mlbId);
+      if (twoWay && !r.is_pitcher) {
+        result.push({ ...r, positions: twoWay.hitterPos });
+        result.push({ ...r, is_pitcher: true, positions: "P" });
+      } else {
+        result.push(r);
+      }
+    }
+    return result;
   }
 
   public getAuctionValues() { return this.auctionValues; }

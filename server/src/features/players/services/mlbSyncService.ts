@@ -2,6 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk } from "../../../lib/utils.js";
+import { TWO_WAY_PLAYERS } from "../../../lib/sportConfig.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -17,6 +18,18 @@ interface MlbRosterPerson {
   person: { id: number; fullName: string };
   position: { abbreviation: string; type: string };
   jerseyNumber?: string;
+}
+
+/**
+ * Resolve position for a player. Two-way players (e.g. Ohtani) get their
+ * hitter position from TWO_WAY_PLAYERS instead of the MLB API's "TWP".
+ */
+function resolvePosition(mlbId: number, posAbbr: string): string {
+  const twoWay = TWO_WAY_PLAYERS.get(mlbId);
+  if (twoWay && (posAbbr === "TWP" || posAbbr === "Y")) {
+    return twoWay.hitterPos;
+  }
+  return posAbbr;
 }
 
 /**
@@ -82,8 +95,8 @@ export async function syncNLPlayers(season: number): Promise<{
     for (const entry of roster) {
       const mlbId = entry.person.id;
       const name = entry.person.fullName;
-      const posAbbr = entry.position.abbreviation || "UT";
-      const isPitcher = entry.position.type === "Pitcher";
+      const rawPos = entry.position.abbreviation || "UT";
+      const posAbbr = resolvePosition(mlbId, rawPos);
 
       const existing = await prisma.player.findFirst({
         where: { mlbId },
@@ -174,7 +187,8 @@ export async function syncAllPlayers(season: number): Promise<{
     for (const entry of roster) {
       const mlbId = entry.person.id;
       const name = entry.person.fullName;
-      const posAbbr = entry.position.abbreviation || "UT";
+      const rawPos = entry.position.abbreviation || "UT";
+      const posAbbr = resolvePosition(mlbId, rawPos);
 
       const existing = await prisma.player.findFirst({
         where: { mlbId },

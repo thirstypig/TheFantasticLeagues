@@ -4,6 +4,7 @@ import { fmt2, fmt3Avg, OHTANI_MLB_ID } from '../../lib/sportConfig';
 import {
   PlayerSeasonStat,
   PlayerProfile,
+  PlayerTransaction,
   CareerHittingRow,
   CareerPitchingRow,
   CareerStatsResponse,
@@ -340,58 +341,117 @@ export async function getPlayerRecentStats(mlbId: string, group: HOrP): Promise<
   if (!id) throw new Error("Missing mlbId");
 
   return cached(`recent:${group}:${id}`, async () => {
-    // Fetch Season (YTD) + standard recent splits
-    // Note: 'last15Days' and 'last30Days' are standard. UI asks for 14/21 but we'll provide closest standard or all.
-    const url = `${MLB_API_BASE}/people/${id}/stats?stats=season,last7Days,last15Days,last30Days&group=${group}`;
-    const data = await fetchJsonPublic<any>(url);
-    
+    // MLB API no longer supports comma-separated stat types — make separate calls
+    const statTypes = ["season", "last7Days", "last15Days", "last30Days"] as const;
+    const currentYear = new Date().getFullYear();
+
+    const results = await Promise.allSettled(
+      statTypes.map((statType) =>
+        fetchJsonPublic<any>(
+          `${MLB_API_BASE}/people/${id}/stats?stats=${statType}&group=${group}`
+        )
+      )
+    );
+
     const rows: (RecentHittingRow | RecentPitchingRow)[] = [];
-    // MLB Stats API returns deeply nested untyped JSON
-    const allSplits = (data?.stats?.flatMap((g: Record<string, any>) => g.splits ?? []) ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    for (const split of allSplits) {
-      const type = split.type?.displayName; // "season", "last 7 days", ...
-      let label = "";
+    const extractSplits = (result: PromiseSettledResult<any>): Array<Record<string, any>> => {
+      if (result.status !== "fulfilled") return [];
+      return (result.value?.stats?.flatMap((g: Record<string, any>) => g.splits ?? []) ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    };
 
-      if (type === "season") label = "YTD";
-      else if (type === "last 7 days") label = "7d";
-      else if (type === "last 15 days") label = "15d";
-      else if (type === "last 30 days") label = "30d";
-      else continue;
+    // Collect splits from all successful responses
+    for (const result of results) {
+      const splits = extractSplits(result);
+      for (const split of splits) {
+        const type = split.type?.displayName; // "season", "last 7 days", ...
+        let label = "";
 
-      const st = split.stat;
-      if (!st) continue;
+        if (type === "season") label = "YTD";
+        else if (type === "last 7 days") label = "7d";
+        else if (type === "last 15 days") label = "15d";
+        else if (type === "last 30 days") label = "30d";
+        else continue;
 
-      if (group === "hitting") {
-         const AB = toNum(st.atBats);
-         const H = toNum(st.hits);
-         rows.push({
-           label,
-           AB, 
-           H,
-           R: toNum(st.runs),
-           HR: toNum(st.homeRuns),
-           RBI: toNum(st.rbi),
-           SB: toNum(st.stolenBases),
-           AVG: fmt3Avg(H, AB),
-         } satisfies RecentHittingRow);
-      } else {
-         // pitching
-         rows.push({
-           label,
-           IP: st.inningsPitched ?? "0.0",
-           W: toNum(st.wins),
-           SV: toNum(st.saves),
-           K: toNum(st.strikeOuts),
-           ERA: st.era ?? "0.00",
-           WHIP: st.whip ?? "0.00",
-         } satisfies RecentPitchingRow);
+        const st = split.stat;
+        if (!st) continue;
+
+        if (group === "hitting") {
+           const AB = toNum(st.atBats);
+           const H = toNum(st.hits);
+           rows.push({
+             label,
+             AB,
+             H,
+             R: toNum(st.runs),
+             HR: toNum(st.homeRuns),
+             RBI: toNum(st.rbi),
+             SB: toNum(st.stolenBases),
+             AVG: fmt3Avg(H, AB),
+           } satisfies RecentHittingRow);
+        } else {
+           // pitching
+           rows.push({
+             label,
+             IP: st.inningsPitched ?? "0.0",
+             W: toNum(st.wins),
+             SV: toNum(st.saves),
+             K: toNum(st.strikeOuts),
+             ERA: st.era ?? "0.00",
+             WHIP: st.whip ?? "0.00",
+           } satisfies RecentPitchingRow);
+        }
       }
     }
-    
-    // Sort rows: 7d, 15d, 30d, YTD
+
+    // Off-season fallback: if no splits returned for current season, try previous season
+    if (rows.length === 0) {
+      const prevYear = currentYear - 1;
+      const fallbackResult = await fetchJsonPublic<any>(
+        `${MLB_API_BASE}/people/${id}/stats?stats=statsSingleSeason&group=${group}&season=${prevYear}`
+      ).catch(() => null);
+
+      const fallbackSplits = (fallbackResult?.stats?.flatMap((g: Record<string, any>) => g.splits ?? []) ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+      for (const split of fallbackSplits) {
+        const st = split.stat;
+        if (!st) continue;
+
+        const label = `${prevYear} Season`;
+        if (group === "hitting") {
+          const AB = toNum(st.atBats);
+          const H = toNum(st.hits);
+          rows.push({
+            label,
+            AB,
+            H,
+            R: toNum(st.runs),
+            HR: toNum(st.homeRuns),
+            RBI: toNum(st.rbi),
+            SB: toNum(st.stolenBases),
+            AVG: fmt3Avg(H, AB),
+          } satisfies RecentHittingRow);
+        } else {
+          rows.push({
+            label,
+            IP: st.inningsPitched ?? "0.0",
+            W: toNum(st.wins),
+            SV: toNum(st.saves),
+            K: toNum(st.strikeOuts),
+            ERA: st.era ?? "0.00",
+            WHIP: st.whip ?? "0.00",
+          } satisfies RecentPitchingRow);
+        }
+      }
+    }
+
+    // Sort rows: 7d, 15d, 30d, YTD (fallback labels sort after YTD)
     const order = ["7d", "15d", "30d", "YTD"];
-    rows.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+    rows.sort((a, b) => {
+      const ai = order.indexOf(a.label);
+      const bi = order.indexOf(b.label);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
 
     return { rows };
   });
@@ -422,12 +482,31 @@ export async function getPlayerFieldingStats(mlbId: string, season?: number): Pr
     const data = await fetchJsonPublic<any>(url);
     const splits = (data?.stats?.[0]?.splits ?? []) as Array<Record<string, any>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    const result = splits.map((s) => ({
-      position: s.position?.abbreviation ?? s.position?.name ?? "??",
-      games: toNum(s.stat?.games),
-      gamesStarted: toNum(s.stat?.gamesStarted),
-      innings: toNum(s.stat?.innings),
-    })).sort((a: FieldingStatRow, b: FieldingStatRow) => b.games - a.games);
-    return result;
+    // Aggregate by position — traded players have separate rows per team
+    const posMap = new Map<string, { games: number; gamesStarted: number; innings: number }>();
+    for (const s of splits) {
+      const pos = s.position?.abbreviation ?? s.position?.name ?? "??";
+      const prev = posMap.get(pos) ?? { games: 0, gamesStarted: 0, innings: 0 };
+      prev.games += toNum(s.stat?.games);
+      prev.gamesStarted += toNum(s.stat?.gamesStarted);
+      prev.innings += toNum(s.stat?.innings);
+      posMap.set(pos, prev);
+    }
+
+    return Array.from(posMap.entries())
+      .map(([position, agg]) => ({ position, ...agg }))
+      .sort((a, b) => b.games - a.games);
+  });
+}
+
+export async function getPlayerNews(mlbId: string): Promise<PlayerTransaction[]> {
+  const id = String(mlbId ?? "").trim();
+  if (!id) return [];
+
+  return cached(`news:${id}`, async () => {
+    const data = await fetchJsonApi<{ mlbId: number; transactions: PlayerTransaction[] }>(
+      `${API_BASE}/players/${id}/news`
+    );
+    return data?.transactions ?? [];
   });
 }

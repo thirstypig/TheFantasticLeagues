@@ -170,6 +170,64 @@ For local development without OAuth:
 
 ---
 
+## Season Lifecycle & Keeper Selection Process
+
+The season follows a strict linear progression. Keepers are selected during the **new** season's SETUP phase, not at the end of the previous season.
+
+### Full Sequence
+
+```
+PREVIOUS SEASON (COMPLETED)
+  └─ Season ends, final standings recorded
+
+NEW SEASON (SETUP)
+  ├─ 1. Commissioner creates the new season (e.g., 2026)
+  ├─ 2. Populate rosters from prior season
+  │     POST /api/commissioner/:leagueId/keeper-prep/populate
+  │     (copies players from previous season's final roster)
+  ├─ 3. Owners select keepers (up to keeper_count per team)
+  │     - Owners: POST /api/leagues/:id/my-roster/keepers
+  │     - Commissioner: POST /api/commissioner/:leagueId/keeper-prep/save
+  ├─ 4. Commissioner locks keeper selections
+  │     POST /api/commissioner/:leagueId/keeper-prep/lock
+  │     → Non-keepers released to FA pool (releasedAt set)
+  │     → keepers_locked rule set to "true"
+  └─ 5. Commissioner advances to DRAFT
+
+NEW SEASON (DRAFT)
+  ├─ League rules auto-locked (no changes allowed)
+  ├─ Keeper selections CANNOT be modified
+  ├─ Auction draft runs (FA players nominated and bid on)
+  └─ Commissioner advances to IN_SEASON
+
+NEW SEASON (IN_SEASON)
+  ├─ Trading enabled (propose, vote, process)
+  ├─ Waiver claims enabled (FAAB budget)
+  ├─ Add/Drop enabled (commissioner-only)
+  └─ Commissioner advances to COMPLETED when season ends
+
+NEW SEASON (COMPLETED)
+  └─ Final standings recorded, ready for next cycle
+```
+
+### Key Rules
+- **Valid transitions**: SETUP → DRAFT → IN_SEASON → COMPLETED (no skipping or reversing)
+- **Keeper limit**: Configurable via `keeper_count` league rule (default: 4)
+- **Lock is irreversible for non-keepers**: Unlocking does NOT restore released players
+- **Season guard middleware**: `requireSeasonStatus()` enforces phase constraints on write endpoints
+- **Client gating**: `useSeasonGating()` hook controls UI feature visibility by phase
+
+### Commissioner Checklist (New Season)
+1. Create new season for the league
+2. Populate rosters from prior season
+3. Notify owners to select keepers (deadline TBD)
+4. Lock keeper selections
+5. Advance to Draft phase
+6. Run auction draft
+7. Advance to In Season
+
+---
+
 ## Add a UI Component
 
 1. Check if a shadcn-style primitive exists in `client/src/components/ui/`.

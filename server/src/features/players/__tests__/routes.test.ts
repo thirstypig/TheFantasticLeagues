@@ -112,6 +112,58 @@ describe("GET /players", () => {
     expect(res.body.players).toHaveLength(1);
     expect(res.body.players[0].player_name).toBe("Pitcher");
   });
+
+  it("expands two-way player (Ohtani) into hitter + pitcher rows", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
+      { id: 11, mlbId: 1, name: "Regular Hitter", posPrimary: "CF", posList: "CF", mlbTeam: "NYM" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/players");
+    expect(res.status).toBe(200);
+    // Ohtani should produce 2 rows (DH + P), plus 1 regular hitter = 3 total
+    expect(res.body.players).toHaveLength(3);
+
+    const ohtaniRows = res.body.players.filter((p: any) => p.player_name === "Shohei Ohtani");
+    expect(ohtaniRows).toHaveLength(2);
+
+    const hitterRow = ohtaniRows.find((p: any) => !p.is_pitcher);
+    expect(hitterRow.positions).toBe("DH");
+    expect(hitterRow.is_pitcher).toBe(false);
+
+    const pitcherRow = ohtaniRows.find((p: any) => p.is_pitcher);
+    expect(pitcherRow.positions).toBe("P");
+    expect(pitcherRow.is_pitcher).toBe(true);
+  });
+
+  it("shows Ohtani pitcher row when filtering type=pitchers", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/players?type=pitchers");
+    expect(res.status).toBe(200);
+    expect(res.body.players).toHaveLength(1);
+    expect(res.body.players[0].player_name).toBe("Shohei Ohtani");
+    expect(res.body.players[0].is_pitcher).toBe(true);
+    expect(res.body.players[0].positions).toBe("P");
+  });
+
+  it("shows Ohtani hitter row when filtering type=hitters", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/players?type=hitters");
+    expect(res.status).toBe(200);
+    expect(res.body.players).toHaveLength(1);
+    expect(res.body.players[0].player_name).toBe("Shohei Ohtani");
+    expect(res.body.players[0].is_pitcher).toBe(false);
+    expect(res.body.players[0].positions).toBe("DH");
+  });
 });
 
 // ── GET /players/:mlbId ──────────────────────────────────────────
@@ -189,6 +241,25 @@ describe("GET /player-season-stats", () => {
     expect(res.body.stats).toHaveLength(1);
     expect(res.body.stats[0].AB).toBe(0);
     expect(res.body.stats[0].dollar_value).toBe(0);
+  });
+
+  it("expands Ohtani into hitter + pitcher rows in season stats", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/player-season-stats?leagueId=1");
+    expect(res.status).toBe(200);
+    expect(res.body.stats).toHaveLength(2);
+
+    const hitter = res.body.stats.find((s: any) => !s.is_pitcher);
+    expect(hitter.positions).toBe("DH");
+    expect(hitter.mlb_id).toBe("660271");
+
+    const pitcher = res.body.stats.find((s: any) => s.is_pitcher);
+    expect(pitcher.positions).toBe("P");
+    expect(pitcher.mlb_id).toBe("660271");
   });
 });
 

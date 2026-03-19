@@ -6,6 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
 import { Logo } from "../../../components/ui/Logo";
 import { supabase } from "../../../lib/supabase";
+import { track } from "../../../lib/posthog";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
@@ -30,6 +31,7 @@ export default function Login() {
 
     try {
       await loginWithPassword(email, password);
+      track("login", { method: "password" });
       window.location.href = "/";
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
@@ -83,7 +85,7 @@ export default function Login() {
 
           <div className="space-y-6">
             <div>
-              <GoogleSignInButton label="Continue with Google" onClick={loginWithGoogle} />
+              <GoogleSignInButton label="Continue with Google" onClick={() => { track("login", { method: "google" }); loginWithGoogle(); }} />
             </div>
 
             <div className="relative py-2">

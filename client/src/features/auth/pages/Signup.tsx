@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import GoogleSignInButton from "../../../components/GoogleSignInButton";
 import { Logo } from "../../../components/ui/Logo";
 import { useAuth } from "../../../auth/AuthProvider";
+import { track } from "../../../lib/posthog";
 
 export default function Signup() {
   const { loginWithGoogle } = useAuth();
@@ -32,6 +33,7 @@ export default function Signup() {
 
       if (signUpError) throw signUpError;
 
+      track("signup", { method: "password" });
       setSuccess(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unknown error occurred";
@@ -83,7 +85,7 @@ export default function Signup() {
               </div>
             ) : (<>
             <div>
-              <GoogleSignInButton label="Continue with Google" onClick={loginWithGoogle} />
+              <GoogleSignInButton label="Continue with Google" onClick={() => { track("signup", { method: "google" }); loginWithGoogle(); }} />
             </div>
 
             <div className="relative py-2">

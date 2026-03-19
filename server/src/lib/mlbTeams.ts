@@ -20,11 +20,11 @@ export function getTeamsForSource(source: string): Set<string> | null {
   return null; // MLB or Other — no filter
 }
 
-/** Looks up the league's stats_source rule, defaults to "NL". */
+/** Looks up the league's stats_source rule, defaults to "ALL". */
 export async function getLeagueStatsSource(leagueId: number): Promise<string> {
   const rule = await prisma.leagueRule.findFirst({
     where: { leagueId, key: "stats_source" },
     select: { value: true },
   });
-  return rule?.value ?? "NL";
+  return rule?.value ?? "ALL";
 }

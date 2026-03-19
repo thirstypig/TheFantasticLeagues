@@ -3,6 +3,7 @@ import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/PlayerDetailModal';
 import { POS_ORDER, getPrimaryPosition, getLastName } from '../../../lib/baseballUtils';
+import { NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
 import PageHeader from '../../../components/ui/PageHeader';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
@@ -30,6 +31,7 @@ export default function Players() {
   const [filterTeam, setFilterTeam] = useState<string>('ALL'); // MLB Team
   const [filterFantasyTeam, setFilterFantasyTeam] = useState<string>('ALL'); // OGBA Team
   const [filterPos, setFilterPos] = useState<string>('ALL');
+  const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('ALL');
 
   // Sort State
   const [sortKey, setSortKey] = useState<string>('name');
@@ -93,7 +95,15 @@ export default function Players() {
         
         if (filterPos !== 'ALL') {
              const pPos = getPrimaryPosition(p.positions);
-             if (!pPos.includes(filterPos)) return false; 
+             if (!pPos.includes(filterPos)) return false;
+        }
+        if (filterLeague !== 'ALL') {
+             const team = (p.mlb_team || p.mlbTeam || '').toString().trim();
+             // Players with no team (FA) or already rostered always pass
+             if (team && !p.ogba_team_code && !p.team) {
+                 const leagueSet = filterLeague === 'NL' ? NL_TEAMS : AL_TEAMS;
+                 if (!leagueSet.has(team)) return false;
+             }
         }
         return true;
      });
@@ -140,7 +150,7 @@ export default function Players() {
              return sortDesc ? (valB as number) - (valA as number) : (valA as number) - (valB as number);
          }
      });
-  }, [players, periodStats, periods, statsMode, viewGroup, viewMode, searchQuery, filterTeam, filterFantasyTeam, filterPos, sortKey, sortDesc]);
+  }, [players, periodStats, periods, statsMode, viewGroup, viewMode, searchQuery, filterTeam, filterFantasyTeam, filterPos, filterLeague, sortKey, sortDesc]);
 
 
   const toggleExpand = (id: string) => {
@@ -182,6 +192,19 @@ export default function Players() {
                   >
                       Pitchers
                   </button>
+              </div>
+
+              {/* League Filter Toggle */}
+              <div className="flex bg-[var(--lg-tint)] rounded-[var(--lg-radius-lg)] p-1 border border-[var(--lg-border-subtle)]">
+                  {(['ALL', 'AL', 'NL'] as const).map(lg => (
+                      <button
+                          key={lg}
+                          onClick={() => setFilterLeague(lg)}
+                          className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-[var(--lg-radius-md)] transition-all ${filterLeague === lg ? 'bg-[var(--lg-accent)] text-white shadow-xl shadow-blue-500/20 scale-[1.02]' : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]'}`}
+                      >
+                          {lg}
+                      </button>
+                  ))}
               </div>
 
               {/* Search */}

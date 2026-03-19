@@ -34,6 +34,14 @@ export const PITCHING_CATS: string[] = [
   "QS", "HLD", "IP", "CG", "SHO", "L", "BB", "HR",
 ];
 
+// ─── MLB League Team Sets ───
+
+/** National League team abbreviations. */
+export const NL_TEAMS = new Set(["ARI","ATL","CHC","CIN","COL","LAD","MIA","MIL","NYM","PHI","PIT","SD","SF","STL","WSH"]);
+
+/** American League team abbreviations (includes ATH/OAK). */
+export const AL_TEAMS = new Set(["BAL","BOS","CLE","DET","HOU","KC","LAA","MIN","NYY","OAK","ATH","SEA","TB","TEX","TOR","CWS"]);
+
 // ─── Special Players ───
 
 /** Ohtani's MLB ID for dual-role handling. */

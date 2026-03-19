@@ -264,9 +264,9 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (448 server + 187 client + 29 MCP = 664 tests)
+### Current Test Coverage (454 server + 187 client + 29 MCP = 670 tests)
 
-**Server (448 tests):**
+**Server (454 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
@@ -292,10 +292,10 @@ server/src/__tests__/integration/
 - `server/src/__tests__/integration/transaction-claims.test.ts` — 25 tests
 - `server/src/features/archive/__tests__/routes.test.ts` — 38 tests (seasons, standings, periods, stats, team update, stat update, sync, recalculate, search, AI, archive-current)
 - `server/src/features/standings/__tests__/routes.test.ts` — 11 tests (period, category, season standings with live data)
-- `server/src/features/players/__tests__/mlbSyncService.test.ts` — 7 tests (fetchAllTeams, fetchNLTeams, syncAllPlayers with team changes)
+- `server/src/features/players/__tests__/mlbSyncService.test.ts` — 9 tests (fetchAllTeams, fetchNLTeams, syncAllPlayers with team changes)
 - `server/src/features/admin/__tests__/routes.test.ts` — 21 tests (league CRUD, members, import-rosters, reset, delete, team-codes, sync-mlb, sync-stats, audit-log)
 - `server/src/features/keeper-prep/__tests__/routes.test.ts` — 8 tests (populate, status, roster, save, lock/unlock)
-- `server/src/features/players/__tests__/routes.test.ts` — 13 tests (list/filter, detail, fielding, season-stats, period-stats, auction-values)
+- `server/src/features/players/__tests__/routes.test.ts` — 16 tests (list/filter, detail, fielding, season-stats, period-stats, auction-values, transactions)
 - `server/src/features/periods/__tests__/routes.test.ts` — 10 tests (list, create, update, delete with auth checks)
 - `server/src/features/transactions/__tests__/routes.test.ts` — 8 tests (list, filter, paginate, claim by playerId/mlbId, drop)
 - `server/src/features/franchises/__tests__/routes.test.ts` — 6 tests (list, detail, update settings)

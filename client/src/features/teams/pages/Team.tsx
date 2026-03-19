@@ -134,6 +134,7 @@ export default function Team() {
               return {
                 ...csvMatch,
                 ogba_team_code: code,
+                ogba_team_name: team?.name ?? "",
                 mlb_team_abbr: mlbTeam || csvMatch.mlb_team_abbr || csvMatch.mlb_team || "",
                 player_name: csvMatch.player_name || playerName,
                 price,
@@ -147,6 +148,7 @@ export default function Team() {
               mlb_id: String(mlbId || ""),
               player_name: playerName,
               ogba_team_code: code,
+              ogba_team_name: team?.name ?? "",
               positions: posList || posPrimary || "UT",
               posPrimary,
               is_pitcher: pitcherPos.includes(posPrimary),
