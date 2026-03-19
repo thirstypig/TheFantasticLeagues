@@ -4,6 +4,29 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-19 (Session 26) — 2025 Stats from MLB API, Auction Bid Tracking
+
+### Completed
+- **2025 season stats from MLB API** — Players page and auction Player Pool now show real 2025 stats for ALL MLB players (not just rostered). Batched MLB Stats API fetching (50 players/batch) for all 1,652 players in DB, with 30-day SQLite cache via `mlbGetJson()` and CSV fallback on API failure
+- **Sortable stat columns** — All stat columns (R, HR, RBI, SB, AVG for hitters; W, SV, K, ERA, WHIP for pitchers) are sortable in both Players page and Auction Player Pool with visual sort indicators
+- **Auction bid history tracking** — Wired `AuctionLot` and `AuctionBid` Prisma models to persist all bids. `/nominate` creates lot + opening bid, `/bid` writes bid record (fire-and-forget), `/finish` updates lot with final price and winner
+- **Draft Board log** — New `AuctionDraftLog` component with two views: "Draft Board" (completed auctions in nomination order with expandable bid history per lot) and "Live Feed" (existing event stream). Fetches from new `GET /api/auction/bid-history` endpoint
+- **Removed $ column from Player Pool** — Cleaned up auction Player Pool tab (removed dollar value column, fixed default sort)
+- **Tech.tsx updated** — Session 26 build journal entry, updated session count and token estimate
+
+### Pending / Next Steps
+- Sunday March 22 live auction — all infrastructure ready
+- Production deployment
+- Compound engineering review / refactor (user mentioned for next session)
+
+### Test Results
+- Server: 454 passing
+- Client: 187 passing
+- MCP: 29 passing
+- **Total: 670 tests**
+
+---
+
 ## Session 2026-03-19 (Session 25) — Player Data Polish, Full Team Names, OF Mapping
 
 ### Completed

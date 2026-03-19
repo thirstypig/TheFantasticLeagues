@@ -30,6 +30,7 @@ export interface NominationState {
   timerDuration: number;
   status: 'running' | 'paused' | 'ended';
   pausedRemainingMs?: number; // If paused, how much time was left
+  lotId?: number; // DB AuctionLot ID for bid tracking
 }
 
 export interface AuctionLogEvent {

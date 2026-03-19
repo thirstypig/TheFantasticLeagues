@@ -9,7 +9,7 @@ import { logger } from "../../lib/logger.js";
 import { DataService } from "./services/dataService.js";
 import fs from "fs";
 import path from "path";
-import { parseCsv } from "../../lib/utils.js";
+import { parseCsv, chunk } from "../../lib/utils.js";
 import { TWO_WAY_PLAYERS } from "../../lib/sportConfig.js";
 
 /** Exclude synthetic filler players created by auction E2E tests */
@@ -20,6 +20,124 @@ function isFillerPlayer(p: { mlbId?: number | null; name?: string }): boolean {
 }
 
 const router = Router();
+
+// --- Last-Season Stats (2025) from MLB API ---
+type SeasonStatEntry = {
+  R: number; HR: number; RBI: number; SB: number; H: number; AB: number; AVG: number;
+  W: number; SV: number; K: number; ERA: number; WHIP: number;
+};
+
+const LAST_SEASON = 2025;
+let lastSeasonCache: Map<string, SeasonStatEntry> | null = null;
+let lastSeasonPromise: Promise<Map<string, SeasonStatEntry>> | null = null;
+
+/** Parse hitting/pitching stats from an MLB API person object into our flat format */
+function parseSeasonStats(person: any): SeasonStatEntry {
+  const entry: SeasonStatEntry = { R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0, W: 0, SV: 0, K: 0, ERA: 0, WHIP: 0 };
+  if (!person.stats) return entry;
+
+  for (const statGroup of person.stats) {
+    const groupName = statGroup.group?.displayName?.toLowerCase();
+    const split = statGroup.splits?.[0]?.stat;
+    if (!split) continue;
+
+    if (groupName === "hitting") {
+      entry.AB = split.atBats || 0;
+      entry.H = split.hits || 0;
+      entry.R = split.runs || 0;
+      entry.HR = split.homeRuns || 0;
+      entry.RBI = split.rbi || 0;
+      entry.SB = split.stolenBases || 0;
+      entry.AVG = entry.AB > 0 ? entry.H / entry.AB : 0;
+    } else if (groupName === "pitching") {
+      entry.W = split.wins || 0;
+      entry.SV = split.saves || 0;
+      entry.K = split.strikeOuts || 0;
+      const ip = split.inningsPitched ? parseFloat(split.inningsPitched) : 0;
+      const er = split.earnedRuns || 0;
+      const bbH = (split.baseOnBalls || 0) + (split.hitsAllowed ?? split.hits ?? 0);
+      entry.ERA = ip > 0 ? (er / ip) * 9 : 0;
+      entry.WHIP = ip > 0 ? bbH / ip : 0;
+    }
+  }
+  return entry;
+}
+
+/** Load 2025 stats from CSV as immediate fallback (covers ~139 rostered players) */
+function loadCsvFallback(): Map<string, SeasonStatEntry> {
+  const m = new Map<string, SeasonStatEntry>();
+  const filePath = path.join(process.cwd(), "src", "data", "ogba_player_season_totals_2025.csv");
+  if (!fs.existsSync(filePath)) return m;
+
+  const rows = parseCsv(fs.readFileSync(filePath, "utf-8"));
+  for (const row of rows) {
+    const r = row as Record<string, string>;
+    const mlbId = (r["mlb_id"] ?? "").trim();
+    if (!mlbId) continue;
+    m.set(mlbId, {
+      R: Number(r["R"]) || 0, HR: Number(r["HR"]) || 0, RBI: Number(r["RBI"]) || 0,
+      SB: Number(r["SB"]) || 0, H: Number(r["H"]) || 0, AB: Number(r["AB"]) || 0,
+      AVG: Number(r["AVG"]) || 0, W: Number(r["W"]) || 0, SV: Number(r["SV"]) || 0,
+      K: Number(r["K"]) || 0, ERA: Number(r["ERA"]) || 0, WHIP: Number(r["WHIP"]) || 0,
+    });
+  }
+  return m;
+}
+
+/** 30-day TTL for historical stats (2025 won't change) */
+const HISTORICAL_TTL = 30 * 24 * 3600;
+const MLB_BASE = "https://statsapi.mlb.com/api/v1";
+
+/** Fetch 2025 season stats from MLB API for all players in DB. Uses 30-day SQLite cache. */
+async function fetchLastSeasonFromApi(): Promise<Map<string, SeasonStatEntry>> {
+  const allPlayers = await prisma.player.findMany({
+    where: { mlbId: { not: null } },
+    select: { mlbId: true },
+  });
+
+  const mlbIds = allPlayers.map((p) => String(p.mlbId!));
+  logger.info({ playerCount: mlbIds.length, season: LAST_SEASON }, "Fetching last-season stats from MLB API");
+
+  const batches = chunk(mlbIds, 50);
+  const cache = new Map<string, SeasonStatEntry>();
+
+  for (const batch of batches) {
+    const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=stats(group=[hitting,pitching],type=[season],season=${LAST_SEASON})`;
+    const data = await mlbGetJson(url, HISTORICAL_TTL);
+    for (const person of (data.people || [])) {
+      cache.set(String(person.id), parseSeasonStats(person));
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  logger.info({ fetched: cache.size, season: LAST_SEASON }, "Last-season stats loaded from MLB API");
+  return cache;
+}
+
+/**
+ * Get last-season stats map. Awaits the MLB API fetch if in progress.
+ * Falls back to CSV only if the API fetch fails.
+ */
+async function getLastSeasonStats(): Promise<Map<string, SeasonStatEntry>> {
+  if (lastSeasonCache) return lastSeasonCache;
+
+  // Kick off API fetch (only once) and await it
+  if (!lastSeasonPromise) {
+    lastSeasonPromise = fetchLastSeasonFromApi()
+      .then((cache) => {
+        lastSeasonCache = cache;
+        return cache;
+      })
+      .catch((err) => {
+        logger.error({ error: String(err) }, "Failed to fetch last-season stats from MLB API — using CSV fallback");
+        lastSeasonPromise = null; // Allow retry on next request
+        lastSeasonCache = loadCsvFallback();
+        return lastSeasonCache;
+      });
+  }
+
+  return lastSeasonPromise;
+}
 
 // --- Player Values Cache (from 2026 Player Values CSV) ---
 type PlayerValueEntry = { name: string; team: string; pos: string; value: number };
@@ -384,6 +502,8 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
 
   // Load player values from 2026 CSV (name → dollar value + position)
   const valuesMap = loadPlayerValues();
+  // Load last season (2025) stats — full MLB API data or CSV fallback
+  const lastSeasonMap = await getLastSeasonStats();
 
   const stats = allPlayers
     .filter((p) => {
@@ -399,6 +519,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
       const mlbTeam = p.mlbTeam ?? "";
       const nameKey = p.name.toLowerCase();
       const pv = valuesMap.get(nameKey) ?? valuesMap.get(normalizeName(p.name));
+      const ss = lastSeasonMap.get(mlbId);
 
       return {
         mlb_id: mlbId,
@@ -408,8 +529,10 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         ogba_team_name: roster?.teamName ?? "",
         positions: pv?.pos || p.posList || p.posPrimary || "",
         is_pitcher: isPitcher,
-        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0,
-        GS: 0, W: 0, SV: 0, K: 0, ERA: 0, WHIP: 0, SO: 0,
+        AB: ss?.AB ?? 0, H: ss?.H ?? 0, R: ss?.R ?? 0, HR: ss?.HR ?? 0,
+        RBI: ss?.RBI ?? 0, SB: ss?.SB ?? 0, AVG: ss?.AVG ?? 0,
+        GS: 0, W: ss?.W ?? 0, SV: ss?.SV ?? 0, K: ss?.K ?? 0,
+        ERA: ss?.ERA ?? 0, WHIP: ss?.WHIP ?? 0, SO: 0,
         mlb_team: mlbTeam,
         mlbTeam: mlbTeam,
         fantasy_value: roster?.price,

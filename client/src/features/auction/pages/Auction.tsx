@@ -15,6 +15,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import AuctionResults from "./AuctionResults";
+import AuctionDraftLog from '../components/AuctionDraftLog';
 
 export default function Auction() {
   const { toast } = useToast();
@@ -267,31 +268,10 @@ export default function Auction() {
                         label: 'AI Analysis', 
                         content: <AIAnalysisTab log={auctionState?.log || []} teams={displayTeams} />
                     },
-                    { 
-                        key: 'log', 
-                        label: 'Log', 
-                        content: <div className="h-full overflow-auto bg-[var(--lg-glass-bg)] divide-y divide-[var(--lg-table-border)]">
-                            {(!auctionState?.log || auctionState.log.length === 0) && (
-                                <div className="p-4 text-center text-[var(--lg-text-muted)] text-sm">
-                                    No auction activity yet.
-                                </div>
-                            )}
-                            {auctionState?.log?.map((evt, i) => (
-                                <div key={i} className="p-3 flex flex-col gap-1 text-sm hover:bg-[var(--lg-bg-secondary)]/30">
-                                    <div className="flex justify-between items-start">
-                                        <span className={`font-bold ${evt.type === 'WIN' ? 'text-[var(--lg-success)]' : evt.type === 'BID' ? 'text-[var(--lg-text-primary)]' : 'text-[var(--lg-accent)]'}`}>
-                                            {evt.type}
-                                        </span>
-                                        <span className="text-xs text-[var(--lg-text-muted)]">
-                                            {new Date(evt.timestamp).toLocaleTimeString()}
-                                        </span>
-                                    </div>
-                                    <div className="text-[var(--lg-text-secondary)]">
-                                        {evt.message}
-                                    </div>
-                                </div>
-                            ))}
-                        </div> 
+                    {
+                        key: 'log',
+                        label: 'Log',
+                        content: <AuctionDraftLog log={auctionState?.log || []} teams={displayTeams} />
                     }
                 ]} 
             />
