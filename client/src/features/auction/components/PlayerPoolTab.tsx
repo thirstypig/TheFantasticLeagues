@@ -301,23 +301,23 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                     <ThemedTh className="px-2 tracking-wide" onClick={() => handleHeaderClick('name')}>Player{sortArrow('name')}</ThemedTh>
                     {viewGroup === 'hitters' ? (
                         <>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('R')}>R{sortArrow('R')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('HR')}>HR{sortArrow('HR')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('RBI')}>RBI{sortArrow('RBI')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('SB')}>SB{sortArrow('SB')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('AVG')}>AVG{sortArrow('AVG')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('R')} title="Runs">R{sortArrow('R')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('HR')} title="Home Runs">HR{sortArrow('HR')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('RBI')} title="Runs Batted In">RBI{sortArrow('RBI')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('SB')} title="Stolen Bases">SB{sortArrow('SB')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('AVG')} title="Batting Average">AVG{sortArrow('AVG')}</ThemedTh>
                         </>
                     ) : (
                         <>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('W')}>W{sortArrow('W')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('SV')}>SV{sortArrow('SV')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('K')}>K{sortArrow('K')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('ERA')}>ERA{sortArrow('ERA')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('WHIP')}>WHIP{sortArrow('WHIP')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('W')} title="Wins">W{sortArrow('W')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('SV')} title="Saves">SV{sortArrow('SV')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('K')} title="Strikeouts">K{sortArrow('K')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('ERA')} title="Earned Run Average (lower is better)">ERA{sortArrow('ERA')}</ThemedTh>
+                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('WHIP')} title="Walks + Hits per Inning Pitched (lower is better)">WHIP{sortArrow('WHIP')}</ThemedTh>
                         </>
                     )}
-                    <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('val')}>Val{sortArrow('val')}</ThemedTh>
-                    <ThemedTh className="w-14 px-1"> </ThemedTh>
+                    <ThemedTh align="center" className="px-1 w-10 cursor-help" onClick={() => handleHeaderClick('val')} title="Projected auction value. During bidding, shows surplus (value minus current bid). Green = bargain, Red = overpay.">Val{sortArrow('val')}</ThemedTh>
+                    <ThemedTh className="w-14 px-1" title="Click Nom to nominate a player for auction"> </ThemedTh>
                 </ThemedTr>
             </ThemedThead>
             <ThemedTbody className="divide-y divide-[var(--lg-table-border)]">
