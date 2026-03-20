@@ -39,7 +39,7 @@ export default function Auction() {
   const { queue: myQueue, add: addToQueue, remove: removeFromQueue, isQueued, moveUp: moveQueueUp, moveDown: moveQueueDown } = useNominationQueue(myTeamId);
   const { starred: starredIds, toggle: toggleStar } = useWatchlist(activeLeagueId);
   const sounds = useAuctionSounds();
-  const { prefs: auctionPrefs, toggle: togglePref } = useAuctionPrefs();
+  const { prefs: auctionPrefs, toggle: togglePref, update: updatePref } = useAuctionPrefs();
 
   // Proxy bid state (private — only the owner sees their own max bid)
   const [myProxyBid, setMyProxyBid] = useState<number | null>(null);
@@ -380,6 +380,7 @@ export default function Auction() {
                                     starredIds={auctionPrefs.watchlist ? starredIds : undefined}
                                     onToggleStar={auctionPrefs.watchlist ? toggleStar : undefined}
                                     showBidPicker={auctionPrefs.openingBidPicker}
+                                    defaultLeagueFilter={auctionPrefs.defaultLeagueFilter}
                                     activeBidPlayerId={auctionPrefs.valueColumn ? auctionState?.nomination?.playerId : undefined}
                                     activeBidAmount={auctionPrefs.valueColumn ? auctionState?.nomination?.currentBid : undefined}
                                  />
@@ -404,7 +405,7 @@ export default function Auction() {
                     {
                         key: 'settings',
                         label: 'Settings',
-                        content: <AuctionSettingsTab prefs={auctionPrefs} onToggle={togglePref} />
+                        content: <AuctionSettingsTab prefs={auctionPrefs} onToggle={togglePref} onUpdate={updatePref} />
                     }
                 ]} 
             />

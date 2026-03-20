@@ -5,6 +5,7 @@ interface TabItem {
   key: string;
   label: string;
   count?: number;
+  badge?: boolean;
   content: React.ReactNode;
 }
 
@@ -19,8 +20,8 @@ export default function ContextDeck({ tabs }: ContextDeckProps) {
 
   return (
     <div className="flex flex-col h-full w-full liquid-glass backdrop-blur-3xl">
-      {/* Tab Bar */}
-      <div className="flex items-center gap-0.5 px-2 py-1 bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)]">
+      {/* Tab Bar — compact single row */}
+      <div className="flex items-center gap-0 px-1 bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] shrink-0">
         {tabs.map((tab) => {
           const isActive = activeKey === tab.key;
           return (
@@ -28,18 +29,26 @@ export default function ContextDeck({ tabs }: ContextDeckProps) {
               key={tab.key}
               onClick={() => setActiveKey(tab.key)}
               className={`
-                px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded-md transition-all
+                relative px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wide transition-all
                 ${isActive
-                  ? 'bg-[var(--lg-accent)] text-white'
-                  : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]'
+                  ? 'text-[var(--lg-accent)]'
+                  : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]'
                 }
               `}
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`ml-1 tabular-nums ${isActive ? 'text-white/50' : ''}`}>
+                <span className={`ml-0.5 tabular-nums ${isActive ? 'opacity-50' : 'opacity-30'}`}>
                   {tab.count}
                 </span>
+              )}
+              {/* Active indicator line */}
+              {isActive && (
+                <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--lg-accent)] rounded-full" />
+              )}
+              {/* Unread badge */}
+              {tab.badge && !isActive && (
+                <span className="absolute top-1 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--lg-accent)]" />
               )}
             </button>
           );

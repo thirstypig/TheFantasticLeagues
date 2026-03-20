@@ -1,13 +1,14 @@
 import React from 'react';
-import { Volume2, MessageCircle, Star, DollarSign, TrendingUp, BarChart3 } from 'lucide-react';
-import type { AuctionPrefs } from '../hooks/useAuctionPrefs';
+import { Volume2, MessageCircle, Star, DollarSign, TrendingUp, BarChart3, Globe } from 'lucide-react';
+import type { AuctionPrefs, LeagueFilter } from '../hooks/useAuctionPrefs';
 
 interface AuctionSettingsTabProps {
   prefs: AuctionPrefs;
   onToggle: (key: keyof AuctionPrefs) => void;
+  onUpdate: <K extends keyof AuctionPrefs>(key: K, value: AuctionPrefs[K]) => void;
 }
 
-const SETTINGS: Array<{ key: keyof AuctionPrefs; icon: React.ElementType; label: string; desc: string }> = [
+const TOGGLE_SETTINGS: Array<{ key: keyof AuctionPrefs; icon: React.ElementType; label: string; desc: string }> = [
   { key: 'sounds', icon: Volume2, label: 'Sound Effects', desc: 'Audio alerts for nominations, outbids, wins, and your turn' },
   { key: 'chat', icon: MessageCircle, label: 'Chat', desc: 'Real-time chat with other owners during the draft' },
   { key: 'watchlist', icon: Star, label: 'Watchlist', desc: 'Star icon on players and filtered view in Player Pool' },
@@ -16,13 +17,15 @@ const SETTINGS: Array<{ key: keyof AuctionPrefs; icon: React.ElementType; label:
   { key: 'spendingPace', icon: BarChart3, label: 'Spending Pace', desc: 'Budget bars, avg cost, and hot/cold indicators on Teams tab' },
 ];
 
-export default function AuctionSettingsTab({ prefs, onToggle }: AuctionSettingsTabProps) {
+export default function AuctionSettingsTab({ prefs, onToggle, onUpdate }: AuctionSettingsTabProps) {
   return (
     <div className="h-full overflow-y-auto px-4 py-3 space-y-1">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">
         Personal Preferences
       </div>
-      {SETTINGS.map(s => (
+
+      {/* Toggle settings */}
+      {TOGGLE_SETTINGS.map(s => (
         <button
           key={s.key}
           onClick={() => onToggle(s.key)}
@@ -33,14 +36,36 @@ export default function AuctionSettingsTab({ prefs, onToggle }: AuctionSettingsT
             <div className="text-xs font-semibold text-[var(--lg-text-primary)]">{s.label}</div>
             <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">{s.desc}</div>
           </div>
-          {/* Toggle switch */}
           <div className={`w-8 h-4.5 rounded-full p-0.5 transition-colors shrink-0 ${prefs[s.key] ? 'bg-[var(--lg-accent)]' : 'bg-[var(--lg-border-subtle)]'}`}>
             <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${prefs[s.key] ? 'translate-x-3.5' : 'translate-x-0'}`} />
           </div>
         </button>
       ))}
+
+      {/* Default league filter */}
+      <div className="flex items-center gap-3 p-3 rounded-lg">
+        <Globe size={16} className="text-[var(--lg-accent)]" />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-[var(--lg-text-primary)]">Default League Filter</div>
+          <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">Set your default Player Pool filter</div>
+        </div>
+        <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
+          {(['ALL', 'NL', 'AL'] as LeagueFilter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => onUpdate('defaultLeagueFilter', f)}
+              className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${
+                prefs.defaultLeagueFilter === f ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="pt-3 text-[10px] text-[var(--lg-text-muted)] opacity-40 text-center">
-        These settings are saved locally per device
+        Saved locally per device
       </div>
     </div>
   );
