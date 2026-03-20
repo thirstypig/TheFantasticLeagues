@@ -526,6 +526,11 @@ const buildJournal = [
     title: "Session 29: Auction Enhancements — Proxy Bids, Force Assign, Timers",
     detail: "Implemented eBay-style proxy/max bids with server-side auto-bidding resolution (competing proxies settle at loser's max + $1, private per-team). Added commissioner Force Assign to manually assign players to teams (bypasses auction for verbal deals). Made bid timer and nomination timer configurable via league rules. Added Decline/Pass toggle for team owners to sit out a player's bidding. 12 future auction feature ideas added to backlog (AUC-01 through AUC-12).",
   },
+  {
+    date: "Mar 2026",
+    title: "Session 31: 6 Auction Enhancements, Code Review, Roster Release",
+    detail: "Built all 6 high/medium-impact auction features: opening bid picker (AUC-01), watchlist/favorites with star icons (AUC-02), real-time chat via WebSocket (AUC-03), Web Audio API sound effects with mute toggle (AUC-04), value/surplus display in Player Pool (AUC-05), and spending pace tracker with budget bars and hot/cold indicators (AUC-06). Ran 6-agent code review finding 20 issues (5 P1, 9 P2, 6 P3) — fixed all P1s (proxy bid auth bypass, deletion bug, unbounded chat array, input validation) and all P2s (type safety, useCallback, win sound detection, rate limiter). Added commissioner roster release button to RosterGrid. 670 tests passing.",
+  },
 ];
 
 const workflowSteps = [
