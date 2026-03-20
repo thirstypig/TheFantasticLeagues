@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal } from 'lucide-react';
+import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal, Clock } from 'lucide-react';
 import { ClientAuctionState } from '../hooks/useAuctionState';
 import NominationQueue from './NominationQueue';
 import { Button } from '../../../components/ui/button';
@@ -74,18 +74,42 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
   const queueIds = serverState?.queue || [];
   const queueIndex = serverState?.queueIndex || 0;
 
+  // Nomination timer countdown (AUC-08)
+  const nomTimerDuration = serverState?.config?.nominationTimer || 30;
+  const [nomTimeLeft, setNomTimeLeft] = useState(nomTimerDuration);
+
+  // Reset nom timer when queueIndex changes (new nominator's turn)
+  useEffect(() => {
+    if (nomination || serverState?.status !== 'nominating') return;
+    setNomTimeLeft(nomTimerDuration);
+    const interval = setInterval(() => {
+      setNomTimeLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [serverState?.queueIndex, nomination, serverState?.status, nomTimerDuration]);
+
   // --- Waiting for Nomination ---
   if (!nomination) {
+      const isMyTurn = myTeamId != null && queueIds[queueIndex] === myTeamId;
+      const nomCritical = nomTimeLeft <= 10;
+
       return (
           <div className="flex flex-col gap-3">
-              {/* Status */}
+              {/* Status + countdown */}
               <div className="text-center py-4">
                   <div className="text-lg font-semibold text-[var(--lg-text-heading)] mb-1">Awaiting Nomination</div>
-                  <p className="text-xs text-[var(--lg-text-muted)]">
-                     {myTeamId && queueIds[queueIndex] === myTeamId
+                  <p className="text-xs text-[var(--lg-text-muted)] mb-2">
+                     {isMyTurn
                         ? <span className="text-[var(--lg-accent)] font-semibold animate-pulse">Your turn — select a player</span>
                         : "Stand by for the next nominee"}
                   </p>
+                  {/* Nomination countdown */}
+                  <div className="flex items-center justify-center gap-2">
+                    <Clock size={14} className={nomCritical ? 'text-[var(--lg-error)] animate-pulse' : 'text-[var(--lg-text-muted)] opacity-50'} />
+                    <span className={`text-2xl font-bold tabular-nums ${nomCritical ? 'text-[var(--lg-error)] animate-pulse' : 'text-[var(--lg-text-muted)]'}`}>
+                      {nomTimeLeft}s
+                    </span>
+                  </div>
               </div>
 
               {/* Queue */}
@@ -123,7 +147,9 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
   return (
     <div className="flex flex-col gap-3">
         {/* Nominee: photo + info + timer in one compact row */}
-        <div className="flex gap-3 items-stretch rounded-lg overflow-hidden border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]">
+        <div className={`flex gap-3 items-stretch rounded-lg overflow-hidden border bg-[var(--lg-tint)] transition-all ${
+          isCriticalTime ? 'border-[var(--lg-error)]/50 shadow-lg shadow-red-500/10' : 'border-[var(--lg-border-subtle)]'
+        }`}>
             {/* Player headshot */}
             <div className="w-20 shrink-0 relative bg-[var(--lg-bg-secondary)]">
                 <img
@@ -143,13 +169,22 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                 <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">{nomination.playerTeam}</div>
             </div>
 
-            {/* Timer */}
-            <div className="flex items-center pr-3">
+            {/* Timer + Going Once visual (AUC-09) */}
+            <div className="flex flex-col items-center justify-center pr-3">
                 <div className={`text-4xl font-bold tabular-nums transition-all ${
                     isCriticalTime ? 'text-[var(--lg-error)] animate-pulse' : 'text-[var(--lg-text-primary)]'
                 }`}>
                     {timeLeft}
                 </div>
+                {nomination.status === 'running' && timeLeft <= 5 && timeLeft > 3 && (
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-amber-400 animate-pulse">Going once...</div>
+                )}
+                {nomination.status === 'running' && timeLeft <= 3 && timeLeft > 1 && (
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--lg-error)] animate-pulse">Going twice...</div>
+                )}
+                {nomination.status === 'running' && timeLeft <= 1 && timeLeft > 0 && (
+                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-error)] animate-bounce">SOLD!</div>
+                )}
             </div>
         </div>
 
@@ -237,7 +272,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
 
         <div className="text-center text-[10px] text-[var(--lg-text-muted)] opacity-50">
             {isHighBidder
-              ? 'You are the high bidder'
+              ? `You are the high bidder · Keeper next year: $${currentBid + 5}`
               : !myTeam
               ? 'No team assigned'
               : `Max bid: $${myTeam.maxBid}`
