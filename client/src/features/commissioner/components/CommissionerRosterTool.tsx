@@ -80,7 +80,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
        <RosterControls leagueId={leagueId} teams={teams} onUpdate={handleUpdate} />
 
        {/* Roster Grid */}
-       <RosterGrid teams={teams} rosters={rosters} />
+       <RosterGrid teams={teams} rosters={rosters} canRelease onRelease={handleUpdate} />
     </div>
   );
 }

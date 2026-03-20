@@ -5,8 +5,19 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import type { AuctionState } from "../types.js";
 
+/** Extended WebSocket with auction metadata */
+interface AuctionSocket extends WebSocket {
+  __userId?: number;
+  __userName?: string;
+  __leagueId?: number;
+  __alive?: boolean;
+}
+
 // Per-league rooms: leagueId -> Set of connected WebSockets
 const rooms = new Map<number, Set<WebSocket>>();
+
+// Chat rate limiter: userId -> recent message timestamps (shared across all connections)
+const chatRateLimits = new Map<number, number[]>();
 
 /**
  * Broadcast auction state to all connected clients in a league room.
@@ -89,13 +100,65 @@ export function attachAuctionWs(httpServer: HttpServer): WebSocketServer {
     }
     rooms.get(leagueId)!.add(ws);
 
+    // Look up display name for chat
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true },
+    });
+    const displayName = dbUser?.name || dbUser?.email?.split("@")[0] || `User ${userId}`;
+
+    // Store metadata on socket for chat
+    (ws as AuctionSocket).__userId = userId;
+    (ws as AuctionSocket).__userName = displayName;
+    (ws as AuctionSocket).__leagueId = leagueId;
+
     logger.info({ userId, leagueId }, "Auction WS client connected");
+
+    // Handle incoming messages (chat)
+    ws.on("message", (raw: Buffer | string) => {
+      try {
+        const msg = JSON.parse(typeof raw === "string" ? raw : raw.toString());
+        if (msg.type !== "CHAT" || typeof msg.text !== "string") return;
+
+        // Rate limit: max 5 messages per 10 seconds
+        const now = Date.now();
+        const times = chatRateLimits.get(userId) || [];
+        const recent = times.filter(t => now - t < 10_000);
+        if (recent.length >= 5) return; // silently drop
+        recent.push(now);
+        chatRateLimits.set(userId, recent);
+
+        // Sanitize text (max 500 chars, strip control chars)
+        const text = msg.text.slice(0, 500).replace(/[\x00-\x1f]/g, "");
+        if (!text.trim()) return;
+
+        const chatPayload = JSON.stringify({
+          type: "CHAT",
+          userId,
+          userName: displayName,
+          text,
+          timestamp: now,
+        });
+
+        // Broadcast to all clients in the room
+        const clients = rooms.get(leagueId);
+        if (clients) {
+          for (const client of clients) {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(chatPayload);
+            }
+          }
+        }
+      } catch {
+        // Ignore malformed messages
+      }
+    });
 
     // Heartbeat: respond to pings
     ws.on("pong", () => {
-      (ws as any).__alive = true;
+      (ws as AuctionSocket).__alive = true;
     });
-    (ws as any).__alive = true;
+    (ws as AuctionSocket).__alive = true;
 
     // Clean up on close
     ws.on("close", () => {
@@ -114,11 +177,11 @@ export function attachAuctionWs(httpServer: HttpServer): WebSocketServer {
   // Heartbeat interval: detect stale connections
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
-      if ((ws as any).__alive === false) {
+      if ((ws as AuctionSocket).__alive === false) {
         ws.terminate();
         continue;
       }
-      (ws as any).__alive = false;
+      (ws as AuctionSocket).__alive = false;
       ws.ping();
     }
   }, 30_000);

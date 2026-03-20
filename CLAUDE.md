@@ -77,7 +77,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `trades` | routes | 1 page, 1 component, api | Trade proposals, voting |
 | `waivers` | routes | (minimal) | Waiver claims workflow |
 | `transactions` | routes | 1 page, api | Transaction history |
-| `auction` | routes, auctionImport | 2 pages, 10 components, 2 hooks | Live auction draft |
+| `auction` | routes, auctionImport | 2 pages, 11 components, 4 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace) |
 | `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
 | `commissioner` | routes, CommissionerService | 1 page, 5 components | Commissioner admin tools |
 | `franchises` | routes | — | Franchise (org) CRUD, org-level settings |

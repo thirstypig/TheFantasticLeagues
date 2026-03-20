@@ -1,9 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { fetchJsonApi } from '../../../api/base';
 import { POS_ORDER } from '../../../lib/baseballUtils';
 import { mapPosition } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
+import { useToast } from '../../../contexts/ToastContext';
 
 interface Team {
   id: number;
@@ -29,10 +31,13 @@ interface RosterGridProps {
   teams?: Team[];
   rosters?: RosterItem[];
   className?: string;
+  canRelease?: boolean;
+  onRelease?: () => void;
 }
 
-export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className }: RosterGridProps) {
-  const { outfieldMode } = useLeague();
+export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, onRelease }: RosterGridProps) {
+  const { outfieldMode, leagueId: contextLeagueId } = useLeague();
+  const { toast, confirm } = useToast();
   const [teams, setTeams] = useState<Team[]>(initialTeams || []);
   const [rosters, setRosters] = useState<RosterItem[]>(initialRosters || []);
   const [loading, setLoading] = useState(!initialTeams || !initialRosters);
@@ -87,7 +92,25 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
     return acc;
   }, {} as Record<number, RosterItem[]>);
 
-  const totalSpots = 12 * 25; // Approximate total capacity for visualization scaling? No, just list.
+  const effectiveLeagueId = leagueId || contextLeagueId;
+
+  const handleRelease = async (rosterId: number, playerName: string) => {
+    if (!effectiveLeagueId) return;
+    const ok = await confirm(`Release ${playerName} from their team?`);
+    if (!ok) return;
+    try {
+      await fetchJsonApi(`/api/commissioner/${effectiveLeagueId}/roster/release`, {
+        method: 'POST',
+        body: JSON.stringify({ rosterId }),
+      });
+      toast(`Released ${playerName}`, 'success');
+      // Remove from local state immediately
+      setRosters(prev => prev.filter(r => r.id !== rosterId));
+      onRelease?.();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Release failed', 'error');
+    }
+  };
 
   return (
     <div className={className}>
@@ -122,9 +145,17 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                        <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{mapPosition(r.player.posPrimary, outfieldMode)}</span>
                                        <span className="text-[var(--lg-text-primary)] truncate group-hover:text-sky-300 transition-colors">{r.player.name}</span>
                                    </div>
-                                   <div className="flex items-center gap-2">
-                                        {r.player.mlbId && <span className="text-xs px-1 bg-[var(--lg-tint)] rounded text-[var(--lg-text-muted)]">MLB</span>}
+                                   <div className="flex items-center gap-1.5">
                                         <span className="font-semibold text-amber-400 w-6 text-right">${r.price}</span>
+                                        {canRelease && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleRelease(r.id, r.player.name); }}
+                                                className="p-0.5 text-[var(--lg-text-muted)] opacity-40 hover:opacity-100 hover:text-red-400 hover:bg-red-900/20 rounded transition-all"
+                                                title={`Release ${r.player.name}`}
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        )}
                                    </div>
                                </div>
                            ))}

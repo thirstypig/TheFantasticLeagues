@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import AuctionLayout from '../components/AuctionLayout';
 import AuctionStage from '../components/AuctionStage';
 import AuctionComplete from '../components/AuctionComplete';
@@ -11,11 +11,14 @@ import MyNominationQueue from '../components/MyNominationQueue';
 import { getPlayerSeasonStats, type PlayerSeasonStat, getLeague, getMe } from '../../../api';
 import { useAuctionState } from '../hooks/useAuctionState';
 import { useNominationQueue } from '../hooks/useNominationQueue';
+import { useWatchlist } from '../hooks/useWatchlist';
+import { useAuctionSounds } from '../hooks/useAuctionSounds';
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import AuctionResults from "./AuctionResults";
 import AuctionDraftLog from '../components/AuctionDraftLog';
+import ChatTab from '../components/ChatTab';
 
 export default function Auction() {
   const { toast } = useToast();
@@ -30,8 +33,11 @@ export default function Auction() {
   const [isCommissioner, setIsCommissioner] = useState(false);
 
   // Use the Hook
-  const { state: auctionState, actions } = useAuctionState(activeLeagueId);
+  const { state: auctionState, chatMessages, actions } = useAuctionState(activeLeagueId);
+  const [myUserId, setMyUserId] = useState<number | undefined>(undefined);
   const { queue: myQueue, add: addToQueue, remove: removeFromQueue, isQueued, moveUp: moveQueueUp, moveDown: moveQueueDown } = useNominationQueue(myTeamId);
+  const { starred: starredIds, toggle: toggleStar } = useWatchlist(activeLeagueId);
+  const sounds = useAuctionSounds();
 
   // Proxy bid state (private — only the owner sees their own max bid)
   const [myProxyBid, setMyProxyBid] = useState<number | null>(null);
@@ -69,21 +75,23 @@ export default function Auction() {
             if (!mounted) return;
             setPlayers(stats);
 
-            const myUserId = meRes.user?.id;
+            const fetchedUserId = meRes.user?.id;
+            if (fetchedUserId) setMyUserId(fetchedUserId);
 
             if (currentLeagueId) {
                 setActiveLeagueId(currentLeagueId);
 
                 // Check commissioner role from memberships
-                const membership = meRes.user?.memberships?.find((m: any) => m.leagueId === currentLeagueId);
+                const membership = meRes.user?.memberships?.find((m: { leagueId: number; role: string }) => m.leagueId === currentLeagueId);
                 if (membership?.role === 'COMMISSIONER' || meRes.user?.isAdmin) {
                     setIsCommissioner(true);
                 }
 
                 const detail = await getLeague(currentLeagueId);
                 if (!mounted) return;
-                const myTeam = detail.league.teams.find((t: any) =>
-                  t.ownerUserId === myUserId || (t.ownerships || []).some((o: any) => o.userId === myUserId)
+                const teamsWithOwnership = detail.league.teams as Array<typeof detail.league.teams[number] & { ownerships?: { userId: number }[] }>;
+                const myTeam = teamsWithOwnership.find(t =>
+                  t.ownerUserId === fetchedUserId || (t.ownerships || []).some(o => o.userId === fetchedUserId)
                 );
                 if (myTeam) {
                     setMyTeamId(myTeam.id);
@@ -108,6 +116,50 @@ export default function Auction() {
     && myTeamId
     && auctionState.queue?.[auctionState.queueIndex] === myTeamId;
 
+  // Sound effect triggers — detect state transitions
+  const prevNomPlayerRef = useRef<string | null>(null);
+  const prevHighBidderRef = useRef<number | null>(null);
+  const prevLogLenRef = useRef(0);
+  const prevIsMyTurnRef = useRef(false);
+
+  useEffect(() => {
+    const nomPlayer = auctionState?.nomination?.playerId ?? null;
+    const highBidder = auctionState?.nomination?.highBidderTeamId ?? null;
+    const logLen = auctionState?.log?.length ?? 0;
+
+    // New nomination
+    if (nomPlayer && nomPlayer !== prevNomPlayerRef.current) {
+      sounds.playNomination();
+    }
+
+    // Outbid — was high bidder, now someone else is
+    if (prevHighBidderRef.current === myTeamId && highBidder !== null && highBidder !== myTeamId) {
+      sounds.playOutbid();
+    }
+
+    // Won a player — check for new WIN events for my team
+    // Log uses unshift (prepend), so new events are at the beginning
+    if (logLen > prevLogLenRef.current && auctionState?.log) {
+      const newCount = logLen - prevLogLenRef.current;
+      const newEvents = auctionState.log.slice(0, newCount);
+      if (newEvents.some(e => e.type === 'WIN' && e.teamId === myTeamId)) {
+        sounds.playWin();
+      }
+    }
+
+    prevNomPlayerRef.current = nomPlayer;
+    prevHighBidderRef.current = highBidder;
+    prevLogLenRef.current = logLen;
+  }, [auctionState?.nomination?.playerId, auctionState?.nomination?.highBidderTeamId, auctionState?.log?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Your turn to nominate — sound
+  useEffect(() => {
+    if (isMyTurnToNominate && !prevIsMyTurnRef.current) {
+      sounds.playYourTurn();
+    }
+    prevIsMyTurnRef.current = !!isMyTurnToNominate;
+  }, [isMyTurnToNominate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-nominate from personal queue when it's my turn
   useEffect(() => {
     if (!isMyTurnToNominate || myQueue.length === 0 || players.length === 0) return;
@@ -127,34 +179,31 @@ export default function Auction() {
     }
   }, [isMyTurnToNominate, myQueue, players]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Handler: Nominate
-  const handleNominate = async (player: PlayerSeasonStat) => {
+  // Handler: Nominate (startBid defaults to $1 if not specified)
+  const handleNominate = useCallback(async (player: PlayerSeasonStat, startBid?: number) => {
       if (!myTeamId) {
           toast("You are not part of this league/auction.", "error");
           return;
       }
       if (!activeLeagueId) return;
 
-      // Ask for opening bid? Default $1
-      const startBid = 1;
-
       try {
           await actions.nominate({
               nominatorTeamId: myTeamId,
               playerId: player.mlb_id || '',
               playerName: player.player_name || 'Unknown',
-              startBid: startBid,
+              startBid: startBid ?? 1,
               positions: player.positions || (player.is_pitcher ? 'P' : 'UT'),
               team: player.mlb_team || 'FA',
               isPitcher: Boolean(player.is_pitcher)
           });
-      } catch (e: any) {
-          const msg = e?.message || "Nomination failed";
+      } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "Nomination failed";
           toast(msg, "error");
       }
-  };
+  }, [myTeamId, activeLeagueId, actions, toast]);
 
-  const handleBid = async (amount: number) => {
+  const handleBid = useCallback(async (amount: number) => {
       if (!myTeamId) {
           toast("You are not part of this league/auction.", "error");
           return;
@@ -164,11 +213,11 @@ export default function Auction() {
               bidderTeamId: myTeamId,
               amount
           });
-      } catch (e: any) {
-          const msg = e?.message || "Bid failed";
+      } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "Bid failed";
           toast(msg, "error");
       }
-  };
+  }, [myTeamId, actions, toast]);
 
   const handleSetProxyBid = useCallback(async (maxBid: number) => {
       if (!myTeamId) {
@@ -216,10 +265,10 @@ export default function Auction() {
   // For now, let's map server teams to expected shape.
   const displayTeams = useMemo(() => {
       if (!auctionState?.teams) return [];
-      return auctionState.teams.map((t: any) => ({
+      return auctionState.teams.map(t => ({
           ...t,
           isMe: t.id === myTeamId,
-          rosterCount: t.rosterCount || 0 // Ensure field exists
+          rosterCount: t.rosterCount || 0
       }));
   }, [auctionState?.teams, myTeamId]);
 
@@ -279,6 +328,8 @@ export default function Auction() {
     <AuctionLayout
         title="Auction"
         subtitle="Real-time auction draft room. Nominate players and manage bids."
+        isMuted={sounds.isMuted}
+        onToggleMute={sounds.toggleMute}
         stage={
             <div className="flex flex-col h-full gap-2">
                 <AuctionStage
@@ -324,13 +375,17 @@ export default function Auction() {
                                     auctionConfig={auctionState?.config}
                                     onForceAssign={isCommissioner ? handleForceAssign : undefined}
                                     isCommissioner={isCommissioner}
+                                    starredIds={starredIds}
+                                    onToggleStar={toggleStar}
+                                    activeBidPlayerId={auctionState?.nomination?.playerId}
+                                    activeBidAmount={auctionState?.nomination?.currentBid}
                                  /> 
                     },
                     { 
                         key: 'teams', 
                         label: 'Teams', 
                         count: displayTeams.length, 
-                        content: <TeamListTab teams={displayTeams} players={players} /> 
+                        content: <TeamListTab teams={displayTeams} players={players} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} /> 
                     },
                     { 
                         key: 'analysis', 
@@ -341,6 +396,12 @@ export default function Auction() {
                         key: 'log',
                         label: 'Log',
                         content: <AuctionDraftLog log={auctionState?.log || []} teams={displayTeams} />
+                    },
+                    {
+                        key: 'chat',
+                        label: 'Chat',
+                        count: chatMessages.length || undefined,
+                        content: <ChatTab messages={chatMessages} onSend={actions.sendChat} myUserId={myUserId} />
                     }
                 ]} 
             />

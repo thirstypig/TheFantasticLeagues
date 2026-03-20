@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PlayerSeasonStat } from '../../../api';
 import { fetchJsonApi } from '../../../api/base';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { useToast } from "../../../contexts/ToastContext";
+import { Flame, Snowflake } from 'lucide-react';
 
 interface Team {
   id: number;
@@ -12,6 +13,7 @@ interface Team {
   budget: number;
   maxBid: number;
   rosterCount: number;
+  spotsLeft?: number;
   roster?: { id: number; playerId: number; price: number; assignedPosition?: string | null }[];
   isMe?: boolean;
 }
@@ -32,9 +34,11 @@ interface RosterEntry {
 interface TeamListTabProps {
   teams?: Team[];
   players?: PlayerSeasonStat[];
+  budgetCap?: number;
+  rosterSize?: number;
 }
 
-export default function TeamListTab({ teams = [], players = [] }: TeamListTabProps) {
+export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23 }: TeamListTabProps) {
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailedRoster, setDetailedRoster] = useState<RosterEntry[] | null>(null);
@@ -53,7 +57,7 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
     const fetchRoster = async () => {
         try {
             setLoadingIds(prev => new Set(prev).add(expandedId));
-            const data = await fetchJsonApi<any>(`/api/teams/${expandedId}/summary`);
+            const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`/api/teams/${expandedId}/summary`);
             setDetailedRoster(data.currentRoster);
         } catch (err) {
             console.error(err);
@@ -86,64 +90,104 @@ export default function TeamListTab({ teams = [], players = [] }: TeamListTabPro
                body: JSON.stringify({ assignedPosition: newPos })
            });
 
-           const data = await fetchJsonApi<any>(`/api/teams/${teamId}/summary`);
+           const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`/api/teams/${teamId}/summary`);
            setDetailedRoster(data.currentRoster);
 
       } catch(err) {
           console.error("Failed to swap pos", err);
           toast("Failed to update position. Reverting...", "error");
           try {
-              const data = await fetchJsonApi<any>(`/api/teams/${teamId}/summary`);
+              const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`/api/teams/${teamId}/summary`);
               setDetailedRoster(data.currentRoster);
           } catch { /* ignore */ }
       }
   };
 
+  // League-wide average cost per player for hot/cold comparison
+  const leagueAvg = useMemo(() => {
+    const totalDrafted = teams.reduce((sum, t) => sum + t.rosterCount, 0);
+    const totalSpent = teams.reduce((sum, t) => sum + (budgetCap - t.budget), 0);
+    return totalDrafted > 0 ? totalSpent / totalDrafted : 0;
+  }, [teams, budgetCap]);
+
   return (
     <div className="h-full overflow-y-auto scrollbar-hide">
+        {/* League summary */}
+        {teams.length > 0 && (
+          <div className="px-6 py-2 border-b border-[var(--lg-divide)] bg-[var(--lg-glass-bg-hover)] flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+            <span>{teams.reduce((s, t) => s + t.rosterCount, 0)} drafted</span>
+            <span>${teams.reduce((s, t) => s + (budgetCap - t.budget), 0)} spent</span>
+            <span>Avg ${leagueAvg.toFixed(1)}/player</span>
+          </div>
+        )}
         <div className="divide-y divide-[var(--lg-divide)]">
             {teams.map((team: Team, idx: number) => {
                 const isExpanded = expandedId === team.id;
                 const isLoading = loadingIds.has(team.id);
-                
+
                 const rosterSource = (isExpanded && detailedRoster) ? detailedRoster : (team.roster || []);
-                
+
                 const roster = rosterSource.map((rItem: RosterEntry) => {
                    return {
                        ...rItem,
-                       stat: players.find((p: PlayerSeasonStat) => String(p.mlb_id) == String(rItem.playerId)) 
+                       stat: players.find((p: PlayerSeasonStat) => String(p.mlb_id) == String(rItem.playerId))
                    };
                 });
-                
+
+                const spent = budgetCap - team.budget;
+                const spotsLeft = team.spotsLeft ?? (rosterSize - team.rosterCount);
+                const avgCost = team.rosterCount > 0 ? spent / team.rosterCount : 0;
+                const remainingPerSpot = spotsLeft > 0 ? team.budget / spotsLeft : 0;
+                const spentPct = Math.min(100, (spent / budgetCap) * 100);
+                const isHot = team.rosterCount >= 2 && avgCost > leagueAvg * 1.25;
+                const isCold = team.rosterCount >= 2 && avgCost < leagueAvg * 0.75;
+
                 return (
                     <div key={team.id} className={`${team.isMe ? 'bg-[var(--lg-tint)]' : ''}`}>
-                        <div 
-                            className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
+                        <div
+                            className="px-6 py-3 cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
                             onClick={() => setExpandedId(isExpanded ? null : team.id)}
                         >
-                            <div className="flex items-center gap-4">
-                                <span className="text-[var(--lg-text-muted)] font-bold text-xs w-6 opacity-30">{String(idx + 1).padStart(2, '0')}</span>
-                                <div className="flex flex-col">
-                                    <span className={`font-semibold ${team.isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-primary)]'}`}>
-                                        {team.name}
-                                    </span>
-                                    <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">
-                                        {team.rosterCount} / 26 Roster
-                                    </span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[var(--lg-text-muted)] font-bold text-xs w-6 opacity-30">{String(idx + 1).padStart(2, '0')}</span>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`font-semibold ${team.isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-primary)]'}`}>
+                                                {team.name}
+                                            </span>
+                                            {isHot && <Flame size={12} className="text-red-400" />}
+                                            {isCold && <Snowflake size={12} className="text-blue-400" />}
+                                        </div>
+                                        <span className="text-[10px] font-medium text-[var(--lg-text-muted)] opacity-60">
+                                            {team.rosterCount}/{rosterSize} · avg ${avgCost.toFixed(0)} · ${remainingPerSpot.toFixed(0)}/spot left
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-6 text-right">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Budget</span>
+                                        <span className="font-semibold text-[var(--lg-text-primary)]">${team.budget}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Max</span>
+                                        <span className="font-semibold text-[var(--lg-accent)]">${team.maxBid}</span>
+                                    </div>
+                                    <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div className="flex items-center gap-8 text-right">
-                                <div className="flex flex-col">
-                                    <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Budget</span>
-                                    <span className="font-semibold text-[var(--lg-text-primary)]">${team.budget}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Max Bid</span>
-                                    <span className="font-semibold text-[var(--lg-accent)]">${team.maxBid}</span>
-                                </div>
-                                <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            {/* Budget progress bar */}
+                            <div className="mt-1.5 ml-10 mr-16">
+                                <div className="h-1 rounded-full bg-[var(--lg-tint)] overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all ${
+                                            spentPct > 85 ? 'bg-red-400' : spentPct > 60 ? 'bg-amber-400' : 'bg-emerald-400'
+                                        }`}
+                                        style={{ width: `${spentPct}%` }}
+                                    />
                                 </div>
                             </div>
                         </div>

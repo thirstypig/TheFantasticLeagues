@@ -114,14 +114,14 @@ Items grouped by priority. P1 = fix before live auction (Mar 22), P2 = fix soon,
 Future auction enhancements, roughly ordered by impact.
 
 ### High Impact
-- [ ] **AUC-01**: Nominator sets opening bid — let nominator choose starting bid (not always $1). Backend `startBid` already supported, client hardcodes `1`.
-- [ ] **AUC-02**: Watchlist / Favorites — star players in the Player Pool for quick filtering. Different from nomination queue (which auto-nominates).
-- [ ] **AUC-03**: Chat / Trash Talk — real-time chat sidebar via existing WebSocket. Social feature for live auctions.
-- [ ] **AUC-04**: Bid Notifications / Sound Effects — audio ping on outbid, your turn, critical time. Keeps engagement when in another tab.
+- [x] **AUC-01**: Nominator sets opening bid — inline $input with Go button in PlayerPoolTab (default $1). Enter to confirm, Escape to cancel. Auto-nominations from queue still use $1. *(Session 30)*
+- [x] **AUC-02**: Watchlist / Favorites — star icon on every player row (amber when starred), "★" filter button, persisted per league in localStorage. New hook: `useWatchlist.ts`. *(Session 30)*
+- [x] **AUC-03**: Chat / Trash Talk — WebSocket CHAT messages broadcast to room, rate limited (5 msgs/10s, 500 char max), ephemeral (in-memory). New component: `ChatTab.tsx`. *(Session 30)*
+- [x] **AUC-04**: Sound Effects / Notifications — Web Audio API oscillator tones (zero deps), 5 sounds (ding, alert, sweep, arpeggio, tick), mute toggle persisted in localStorage. New hook: `useAuctionSounds.ts`. *(Session 30)*
 
 ### Medium Impact
-- [ ] **AUC-05**: Value Over Replacement in Player Pool — show delta between projected value and current bid during live bidding ("Value: $35 | Bid: $22 | Surplus: +$13").
-- [ ] **AUC-06**: Spending Pace Tracker — visual per-team budget burn rate ("$180 on 12 players, avg $15, $220 left for 11 spots").
+- [x] **AUC-05**: Value Over Replacement in Player Pool — "Val" column showing $dollar_value, surplus (value - current bid) with green/red color coding during active bidding. Sortable. *(Session 30)*
+- [x] **AUC-06**: Spending Pace Tracker — league summary bar (total drafted, spent, avg price), per-team budget progress bars (green/amber/red), hot/cold indicators (Flame/Snowflake when avg differs >25% from league avg). *(Session 30)*
 - [ ] **AUC-07**: Position Needs Matrix — grid showing each team's filled/open positions in Team List tab. Reveals who needs the current player.
 - [ ] **AUC-08**: Nomination Timer Countdown — visible countdown when it's your turn to nominate (30s default). Auto-skip exists but UX could be clearer.
 - [ ] **AUC-09**: "Going Once, Going Twice" Visual — escalating visual flourish at 5s/3s/1s (border pulse, text callout, "SOLD!" animation).

@@ -352,6 +352,7 @@ function processProxyBids(state: AuctionState): boolean {
   // Challenger's proxy wins — they become the new high bidder
   // They bid at currentHolderMax + 1 (just enough to beat the current holder's proxy)
   const winningBid = Math.min(bestMax, currentHolderMax + 1);
+  const previousHighBidder = nom.highBidderTeamId;
   nom.currentBid = winningBid;
   nom.highBidderTeamId = bestTeamId;
 
@@ -375,7 +376,7 @@ function processProxyBids(state: AuctionState): boolean {
   });
 
   // Remove the exhausted proxy bid of the previous holder
-  delete nom.proxyBids[nom.highBidderTeamId === bestTeamId ? Number(Object.keys(nom.proxyBids).find(k => Number(k) !== bestTeamId) ?? 0) : nom.highBidderTeamId];
+  delete nom.proxyBids[previousHighBidder];
 
   return true;
 }
@@ -1162,6 +1163,14 @@ router.get("/my-proxy-bid", requireAuth, asyncHandler(async (req, res) => {
   const teamId = Number(req.query.teamId);
   if (!Number.isFinite(teamId)) return res.status(400).json({ error: "Missing teamId" });
 
+  // Verify the requesting user owns this team
+  const userId = (req as any).user?.id;
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { ownerUserId: true } });
+  const ownership = await prisma.teamOwnership.findFirst({ where: { teamId, userId } });
+  if (team?.ownerUserId !== userId && !ownership && !(req as any).user?.isAdmin) {
+    return res.status(403).json({ error: "Not your team" });
+  }
+
   const state = await getState(leagueId);
   const myProxy = state.nomination?.proxyBids?.[teamId] ?? null;
   res.json({ maxBid: myProxy });
@@ -1173,6 +1182,14 @@ router.delete("/proxy-bid", requireAuth, asyncHandler(async (req, res) => {
   const teamId = Number(req.query.teamId);
   if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
     return res.status(400).json({ error: "Missing leagueId or teamId" });
+  }
+
+  // Verify the requesting user owns this team
+  const userId = (req as any).user?.id;
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { ownerUserId: true } });
+  const ownership = await prisma.teamOwnership.findFirst({ where: { teamId, userId } });
+  if (team?.ownerUserId !== userId && !ownership && !(req as any).user?.isAdmin) {
+    return res.status(403).json({ error: "Not your team" });
   }
 
   const state = await getState(leagueId);

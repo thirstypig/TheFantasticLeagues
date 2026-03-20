@@ -1,15 +1,17 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Columns2, Rows2 } from 'lucide-react';
+import { Columns2, Rows2, Volume2, VolumeOff } from 'lucide-react';
 
 interface AuctionLayoutProps {
   stage: ReactNode;
   context: ReactNode;
   title?: ReactNode;
   subtitle?: ReactNode;
+  isMuted?: boolean;
+  onToggleMute?: () => void;
 }
 
-export default function AuctionLayout({ stage, context }: AuctionLayoutProps) {
+export default function AuctionLayout({ stage, context, isMuted, onToggleMute }: AuctionLayoutProps) {
   const [layout, setLayout] = useState<'stacked' | 'side'>(() => {
     return (localStorage.getItem('fbst-auction-layout') as 'stacked' | 'side') || 'stacked';
   });
@@ -24,21 +26,32 @@ export default function AuctionLayout({ stage, context }: AuctionLayoutProps) {
       {/* Compact header with layout toggle */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--lg-table-border)] bg-[var(--lg-bg-secondary)] shrink-0">
         <div className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Auction Draft</div>
-        <div className="hidden md:flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)]">
-          <button
-            onClick={() => toggleLayout('stacked')}
-            className={`p-1 rounded transition-all ${layout === 'stacked' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
-            title="Stacked layout"
-          >
-            <Rows2 size={14} />
-          </button>
-          <button
-            onClick={() => toggleLayout('side')}
-            className={`p-1 rounded transition-all ${layout === 'side' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
-            title="Side-by-side layout"
-          >
-            <Columns2 size={14} />
-          </button>
+        <div className="flex items-center gap-2">
+          {onToggleMute && (
+            <button
+              onClick={onToggleMute}
+              className={`p-1 rounded transition-all ${isMuted ? 'text-[var(--lg-text-muted)] opacity-50' : 'text-[var(--lg-accent)]'}`}
+              title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+            >
+              {isMuted ? <VolumeOff size={14} /> : <Volume2 size={14} />}
+            </button>
+          )}
+          <div className="hidden md:flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)]">
+            <button
+              onClick={() => toggleLayout('stacked')}
+              className={`p-1 rounded transition-all ${layout === 'stacked' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+              title="Stacked layout"
+            >
+              <Rows2 size={14} />
+            </button>
+            <button
+              onClick={() => toggleLayout('side')}
+              className={`p-1 rounded transition-all ${layout === 'side' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+              title="Side-by-side layout"
+            >
+              <Columns2 size={14} />
+            </button>
+          </div>
         </div>
       </div>
 

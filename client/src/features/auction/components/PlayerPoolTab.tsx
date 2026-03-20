@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import { getLastName } from '../../../lib/baseballUtils';
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
+import { Star } from 'lucide-react';
 
 import {
   PlayerSeasonStat,
@@ -16,31 +17,40 @@ interface AuctionConfig {
 
 interface PlayerPoolTabProps {
   players: PlayerSeasonStat[];
-  teams?: { code: string; name: string; id?: number; positionCounts?: Record<string, number>; pitcherCount?: number; hitterCount?: number }[];
-  onNominate?: (player: PlayerSeasonStat) => void;
+  teams?: { code: string; name: string; id?: number; positionCounts?: Record<string, number>; pitcherCount?: number; hitterCount?: number; budget?: number; maxBid?: number; rosterCount?: number; spotsLeft?: number }[];
+  onNominate?: (player: PlayerSeasonStat, startBid?: number) => void;
   onQueue?: (playerId: string | number) => void;
   isQueued?: (playerId: string | number) => boolean;
   myTeamId?: number;
   auctionConfig?: AuctionConfig;
   onForceAssign?: (player: PlayerSeasonStat, teamId: number, price: number) => void;
   isCommissioner?: boolean;
+  starredIds?: Set<string>;
+  onToggleStar?: (mlbId: string) => void;
+  activeBidPlayerId?: string;
+  activeBidAmount?: number;
 }
 
 import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots, NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 
-export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner }: PlayerPoolTabProps) {
+export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // Nomination bid picker state
+  const [nominatingPlayer, setNominatingPlayer] = useState<PlayerSeasonStat | null>(null);
+  const [startBidInput, setStartBidInput] = useState('1');
+  const nomInputRef = React.useRef<HTMLInputElement>(null);
+
   // View State — default to "remaining" (available players)
   const [viewGroup, setViewGroup] = useState<'hitters' | 'pitchers'>('hitters');
-  const [viewMode, setViewMode] = useState<'all' | 'remaining'>('remaining');
+  const [viewMode, setViewMode] = useState<'all' | 'remaining' | 'starred'>('remaining');
 
   // Sort State
-  type StatKey = 'name' | 'R' | 'HR' | 'RBI' | 'SB' | 'AVG' | 'W' | 'SV' | 'K' | 'ERA' | 'WHIP';
+  type StatKey = 'name' | 'R' | 'HR' | 'RBI' | 'SB' | 'AVG' | 'W' | 'SV' | 'K' | 'ERA' | 'WHIP' | 'val';
   const [sortKey, setSortKey] = useState<StatKey>('name');
   const [sortDesc, setSortDesc] = useState(false);
 
@@ -98,6 +108,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
   // Helper to get stat value
   const getStat = (p: PlayerSeasonStat, key: StatKey) => {
+      if (key === 'val') return Number(p.dollar_value ?? p.value ?? 0);
       const val = p[key] ?? 0;
       return Number(val) || 0;
   };
@@ -113,9 +124,11 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
          res = res.filter(p => p.is_pitcher);
      }
 
-     // 1. Filter Remaining
+     // 1. Filter by availability / starred
      if (viewMode === 'remaining') {
          res = res.filter(p => !p.ogba_team_code && !p.team);
+     } else if (viewMode === 'starred') {
+         res = res.filter(p => starredIds?.has(String(p.mlb_id)));
      }
 
      // 2. League filter (NL/AL/All)
@@ -170,8 +183,13 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
   const sortArrow = (key: StatKey) =>
     sortKey === key ? (sortDesc ? ' ▾' : ' ▴') : '';
 
-  // Column count for expanded row colspan (name + 5 stats + action)
-  const colCount = 7;
+  // Focus nom input when it appears
+  useEffect(() => {
+    if (nominatingPlayer && nomInputRef.current) nomInputRef.current.focus();
+  }, [nominatingPlayer]);
+
+  // Column count for expanded row colspan (star + name + 5 stats + val + action)
+  const colCount = onToggleStar ? 9 : 8;
 
   return (
     <div className="h-full flex flex-col bg-[var(--lg-glass-bg)]">
@@ -205,7 +223,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             className={`px-2 py-1 rounded-md bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] placeholder:opacity-30 transition-all ${searchFocused || searchQuery ? 'w-32' : 'w-16'}`}
         />
 
-        {/* All / Avail */}
+        {/* All / Avail / Starred */}
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
             <button
                 onClick={() => setViewMode('all')}
@@ -219,6 +237,15 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             >
                 Avail
             </button>
+            {onToggleStar && (
+                <button
+                    onClick={() => setViewMode('starred')}
+                    className={`px-2 py-1 text-[10px] font-semibold rounded transition-all flex items-center gap-0.5 ${viewMode === 'starred' ? 'bg-amber-500/20 text-amber-400' : 'text-[var(--lg-text-muted)]'}`}
+                    title="Starred players"
+                >
+                    <Star size={10} fill={viewMode === 'starred' ? 'currentColor' : 'none'} />
+                </button>
+            )}
         </div>
 
         {/* NL / AL / All toggle */}
@@ -269,6 +296,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
         <ThemedTable bare compact>
             <ThemedThead className="sticky top-0 z-10 bg-[var(--lg-glass-bg-hover)]">
                 <ThemedTr>
+                    {onToggleStar && <ThemedTh className="w-6 px-0.5"> </ThemedTh>}
                     <ThemedTh className="px-2 tracking-wide" onClick={() => handleHeaderClick('name')}>Player{sortArrow('name')}</ThemedTh>
                     {viewGroup === 'hitters' ? (
                         <>
@@ -287,6 +315,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                              <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('WHIP')}>WHIP{sortArrow('WHIP')}</ThemedTh>
                         </>
                     )}
+                    <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('val')}>Val{sortArrow('val')}</ThemedTh>
                     <ThemedTh className="w-14 px-1"> </ThemedTh>
                 </ThemedTr>
             </ThemedThead>
@@ -302,6 +331,18 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                 className={`${isExpanded ? 'bg-[var(--lg-tint)]' : ''} ${isTaken ? 'opacity-40' : ''}`}
                                 onClick={() => toggleExpand(p.row_id ?? '')}
                             >
+                                {/* Star */}
+                                {onToggleStar && (
+                                    <ThemedTd className="px-0.5 w-6" align="center">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onToggleStar(String(p.mlb_id)); }}
+                                            className="p-0.5 hover:scale-110 transition-transform"
+                                            title={starredIds?.has(String(p.mlb_id)) ? 'Remove from watchlist' : 'Add to watchlist'}
+                                        >
+                                            <Star size={12} className={starredIds?.has(String(p.mlb_id)) ? 'text-amber-400 fill-amber-400' : 'text-[var(--lg-text-muted)] opacity-30'} />
+                                        </button>
+                                    </ThemedTd>
+                                )}
                                 <ThemedTd className="px-2">
                                     <div className="font-semibold text-sm text-[var(--lg-text-primary)] leading-tight">
                                         {p.mlb_full_name || p.player_name}
@@ -337,22 +378,83 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     </>
                                 )}
 
+                                {/* Value + Surplus (AUC-05) */}
+                                <ThemedTd align="center" className="px-1">
+                                    {(() => {
+                                        const val = p.dollar_value ?? p.value;
+                                        if (!val) return <span className="text-xs text-[var(--lg-text-muted)] opacity-30">-</span>;
+                                        const isActiveBid = activeBidPlayerId && String(p.mlb_id) === activeBidPlayerId && activeBidAmount;
+                                        if (isActiveBid) {
+                                            const surplus = val - activeBidAmount!;
+                                            return (
+                                                <div className="flex flex-col items-center leading-tight">
+                                                    <span className="text-[10px] text-[var(--lg-text-muted)]">${val}</span>
+                                                    <span className={`text-[10px] font-bold ${surplus > 0 ? 'text-emerald-400' : surplus < 0 ? 'text-red-400' : 'text-[var(--lg-text-muted)]'}`}>
+                                                        {surplus > 0 ? '+' : ''}{surplus}
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                        return <span className="text-xs text-[var(--lg-text-secondary)]">${val}</span>;
+                                    })()}
+                                </ThemedTd>
+
+                                {/* Nominate / Bid picker */}
                                 <ThemedTd align="center" className="px-1">
                                     {!isTaken && onNominate && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onNominate(p);
-                                            }}
-                                            className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md hover:opacity-90 active:scale-95 transition-all ${
-                                                isPositionFullForMyTeam(p)
-                                                    ? 'bg-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]'
-                                                    : 'bg-[var(--lg-accent)] text-white'
-                                            }`}
-                                            title={isPositionFullForMyTeam(p) ? 'Position full for your team (others can still bid)' : 'Nominate'}
-                                        >
-                                            Nom
-                                        </button>
+                                        nominatingPlayer?.mlb_id === p.mlb_id ? (
+                                            <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                                                <span className="text-[10px] text-[var(--lg-text-muted)]">$</span>
+                                                <input
+                                                    ref={nomInputRef}
+                                                    type="number"
+                                                    min={1}
+                                                    max={myTeamData?.maxBid ?? 999}
+                                                    value={startBidInput}
+                                                    onChange={e => setStartBidInput(e.target.value)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') {
+                                                            const bid = Math.max(1, Math.min(parseInt(startBidInput) || 1, myTeamData?.maxBid ?? 999));
+                                                            onNominate(p, bid);
+                                                            setNominatingPlayer(null);
+                                                            setStartBidInput('1');
+                                                        }
+                                                        if (e.key === 'Escape') {
+                                                            setNominatingPlayer(null);
+                                                            setStartBidInput('1');
+                                                        }
+                                                    }}
+                                                    className="w-10 px-1 py-0.5 text-[10px] text-center rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const bid = Math.max(1, Math.min(parseInt(startBidInput) || 1, myTeamData?.maxBid ?? 999));
+                                                        onNominate(p, bid);
+                                                        setNominatingPlayer(null);
+                                                        setStartBidInput('1');
+                                                    }}
+                                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[var(--lg-accent)] text-white hover:opacity-90"
+                                                >
+                                                    Go
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setNominatingPlayer(p);
+                                                    setStartBidInput('1');
+                                                }}
+                                                className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md hover:opacity-90 active:scale-95 transition-all ${
+                                                    isPositionFullForMyTeam(p)
+                                                        ? 'bg-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]'
+                                                        : 'bg-[var(--lg-accent)] text-white'
+                                                }`}
+                                                title={isPositionFullForMyTeam(p) ? 'Position full for your team (others can still bid)' : 'Nominate'}
+                                            >
+                                                Nom
+                                            </button>
+                                        )
                                     )}
                                 </ThemedTd>
                             </ThemedTr>

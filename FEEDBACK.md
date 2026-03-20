@@ -4,6 +4,44 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-20 (Session 30) — Auction Enhancements: Opening Bids, Watchlist, Chat, Sounds, VOR, Spending Pace
+
+### Completed
+- **AUC-01: Nominator Sets Opening Bid** — clicking "Nom" in PlayerPoolTab shows inline $input with Go button (default $1). Enter to confirm, Escape to cancel. Auto-nominations from queue still use $1.
+- **AUC-02: Watchlist / Favorites** — star icon on every player row in Player Pool (amber when starred), new "★" filter button alongside All/Avail, persisted per league in localStorage. New hook: `useWatchlist.ts`.
+- **AUC-03: Chat / Trash Talk** — WebSocket handles incoming CHAT messages and broadcasts to room. Rate limited (5 msgs/10s per user, 500 char max). New ChatTab component in ContextDeck (5th tab). Ephemeral (in-memory only). New component: `ChatTab.tsx`.
+- **AUC-04: Sound Effects / Notifications** — Web Audio API oscillator tones (zero dependencies). 5 sounds: nomination (ding), outbid (alert), your turn (sweep), win (arpeggio), tick. Mute/unmute toggle in AuctionLayout header, persisted in localStorage. New hook: `useAuctionSounds.ts`.
+- **AUC-05: Value Over Replacement** — new "Val" column in Player Pool showing $dollar_value. During active bidding: shows surplus (value - current bid) with color coding (green for bargain, red for overpay). Sortable by value.
+- **AUC-06: Spending Pace Tracker** — league summary bar (total drafted, total spent, avg price/player). Per-team: roster/total, avg cost, remaining $/spot. Budget progress bar (green/amber/red by spend %). Hot/cold indicators (Flame/Snowflake icons) when team avg differs >25% from league avg.
+- **Documentation** — updated TODO.md (AUC-01 through AUC-06 marked complete), CLAUDE.md (auction module description), FEEDBACK.md
+
+### Files Added
+- `client/src/features/auction/hooks/useWatchlist.ts`
+- `client/src/features/auction/hooks/useAuctionSounds.ts`
+- `client/src/features/auction/components/ChatTab.tsx`
+
+### Files Modified
+- `client/src/features/auction/components/PlayerPoolTab.tsx` (AUC-01, AUC-02, AUC-05)
+- `client/src/features/auction/components/TeamListTab.tsx` (AUC-06)
+- `client/src/features/auction/components/AuctionLayout.tsx` (AUC-04 mute toggle)
+- `client/src/features/auction/pages/Auction.tsx` (all 6 features wired in)
+- `client/src/features/auction/hooks/useAuctionState.ts` (AUC-03 chat, AUC-06 budgetCap/rosterSize config)
+- `server/src/features/auction/services/auctionWsService.ts` (AUC-03 chat broadcast)
+
+### Test Results
+- Server: 454 passing
+- Client: 187 passing
+- MCP: 29 passing
+- **Total: 670 tests**
+- TypeScript: clean (both client and server)
+
+### Pending / Next Steps
+- Auction feature backlog remaining: AUC-07 through AUC-12 in TODO.md
+- TD-Q03 (auction/routes.ts extraction) — intentionally deferred
+- Sunday March 22 live auction — all infrastructure ready
+
+---
+
 ## Session 2026-03-19 (Session 29) — Auction Enhancements: Proxy Bids, Force Assign, Timers, Decline
 
 ### Completed

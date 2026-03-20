@@ -14,6 +14,9 @@ export interface AuctionTeam {
   maxBid: number;
   rosterCount: number;
   spotsLeft: number;
+  pitcherCount?: number;
+  hitterCount?: number;
+  positionCounts?: Record<string, number>;
   roster: { id: number; playerId: number; price: number; assignedPosition?: string | null }[];
 }
 
@@ -32,31 +35,18 @@ export interface NominationState {
   pausedRemainingMs?: number;
 }
 
-export interface ClientNominationState {
-  playerId: string;
-  playerName: string;
-  playerTeam: string;
-  positions: string;
-  isPitcher: boolean;
-  nominatorTeamId: number;
-  currentBid: number;
-  highBidderTeamId: number;
-  endTime: string;
-  timerDuration: number;
-  status: 'running' | 'paused' | 'ended';
-  pausedRemainingMs?: number;
-}
-
 export interface ClientAuctionState {
   leagueId: number | null;
   status: AuctionStatus;
-  nomination: ClientNominationState | null;
-  teams: any[]; // Using any to avoid strict type duplication for now
+  nomination: NominationState | null;
+  teams: AuctionTeam[];
   queue: number[];
   queueIndex: number;
   config: {
     bidTimer: number;
     nominationTimer: number;
+    budgetCap?: number;
+    rosterSize?: number;
     pitcherCount?: number;
     batterCount?: number;
     positionLimits?: Record<string, number> | null;
@@ -76,8 +66,17 @@ export interface AuctionLogEvent {
   message: string;
 }
 
+export interface ChatMessage {
+  type: 'CHAT';
+  userId: number;
+  userName: string;
+  text: string;
+  timestamp: number;
+}
+
 export function useAuctionState(leagueId?: number | null) {
     const [state, setState] = useState<ClientAuctionState | null>(null);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -146,10 +145,18 @@ export function useAuctionState(leagueId?: number | null) {
 
                 ws.onmessage = (event) => {
                     try {
-                        const data = JSON.parse(event.data) as ClientAuctionState;
-                        setState(data);
-                        setError(null);
-                        setLoading(false);
+                        const data = JSON.parse(event.data);
+                        // Discriminate chat messages from auction state broadcasts
+                        if (data.type === 'CHAT') {
+                            setChatMessages(prev => {
+                                const next = [...prev, data as ChatMessage];
+                                return next.length > 200 ? next.slice(-200) : next;
+                            });
+                        } else {
+                            setState(data as ClientAuctionState);
+                            setError(null);
+                            setLoading(false);
+                        }
                     } catch {
                         // Ignore malformed messages
                     }
@@ -254,8 +261,15 @@ export function useAuctionState(leagueId?: number | null) {
         if (!wsRef.current) fetchState();
     };
 
+    const sendChat = useCallback((text: string) => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'CHAT', text }));
+        }
+    }, []);
+
     return {
         state,
+        chatMessages,
         loading,
         error,
         actions: {
@@ -267,6 +281,7 @@ export function useAuctionState(leagueId?: number | null) {
             forceAssign,
             initAuction,
             finishAuction,
+            sendChat,
             pause: async () => { await fetchJsonApi('/api/auction/pause', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             resume: async () => { await fetchJsonApi('/api/auction/resume', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             reset: async () => { await fetchJsonApi('/api/auction/reset', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
