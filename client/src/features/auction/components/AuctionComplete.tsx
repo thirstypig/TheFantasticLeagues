@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Download } from 'lucide-react';
 import type { ClientAuctionState, AuctionLogEvent } from '../hooks/useAuctionState';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
@@ -73,6 +73,48 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
     return { teamResults, totalLots, totalSpent };
   }, [auctionState]);
 
+  const handleExportExcel = async () => {
+    const xlsx = await import('xlsx');
+    const wb = xlsx.utils.book_new();
+
+    // Summary sheet
+    const summaryData = teamResults.map(t => ({
+      Team: t.name,
+      'Players': t.roster.length,
+      'Total Spent': t.totalSpent,
+      'Budget Remaining': t.budget,
+      'Avg Cost': t.roster.length > 0 ? Math.round(t.totalSpent / t.roster.length) : 0,
+    }));
+    xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(summaryData), 'Summary');
+
+    // All picks sheet (chronological from log)
+    const wins = (auctionState.log || []).filter(e => e.type === 'WIN').reverse();
+    const picksData = wins.map((w, i) => ({
+      Pick: i + 1,
+      Player: w.playerName || '',
+      Team: w.teamName || '',
+      Price: w.amount || 0,
+    }));
+    xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(picksData), 'All Picks');
+
+    // Per-team sheets
+    for (const team of teamResults) {
+      if (team.roster.length === 0) continue;
+      const teamData = team.roster
+        .sort((a, b) => b.price - a.price)
+        .map((p, i) => ({
+          '#': i + 1,
+          Player: p.playerName,
+          Price: p.price,
+          Position: p.positions || '',
+        }));
+      const sheetName = team.name.slice(0, 31); // Excel 31-char limit
+      xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(teamData), sheetName);
+    }
+
+    xlsx.writeFile(wb, `Auction_Results_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="px-4 py-6 md:px-6 md:py-10 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -86,6 +128,13 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
         <p className="text-sm text-[var(--lg-text-secondary)]">
           The auction draft has concluded. All rosters are filled.
         </p>
+        <button
+          onClick={handleExportExcel}
+          className="inline-flex items-center gap-1.5 px-4 py-2 mt-2 text-xs font-semibold rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)] transition-colors"
+        >
+          <Download size={14} />
+          Export to Excel
+        </button>
       </div>
 
       {/* Summary Stats */}

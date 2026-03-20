@@ -31,6 +31,8 @@ import Changelog from "./pages/Changelog";
 import Status from "./pages/Status";
 import Analytics from "./pages/Analytics";
 import Docs from "./pages/Docs";
+import GuidePage from "./pages/Guide";
+import About from "./pages/About";
 import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
@@ -71,7 +73,7 @@ export default function App() {
                 <Route path="/auction-results" element={<AuctionResults />} />
                 <Route path="/commissioner/:leagueId" element={<Commissioner />} />
                 <Route path="/admin" element={<Admin />} />
-                <Route path="/guide" element={<Navigate to="/rules" replace />} />
+                <Route path="/guide" element={<GuidePage />} />
                 <Route path="/archive" element={<ArchivePage />} />
                 {/* Redirects for removed routes */}
                 <Route path="/period" element={<Navigate to="/season" replace />} />
@@ -85,6 +87,7 @@ export default function App() {
                 <Route path="/status" element={<Status />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/docs" element={<Docs />} />
+                <Route path="/about" element={<About />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>

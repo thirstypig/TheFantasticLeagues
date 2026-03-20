@@ -735,3 +735,15 @@ a:hover {
   opacity: 0.6;
   border-radius: 0 var(--lg-radius-md) var(--lg-radius-md) 0;
 }
+
+/* ====================================================================
+   Print Styles (for Guide PDF export)
+   ==================================================================== */
+@media print {
+  body { background: white !important; color: black !important; }
+  .lg-sidebar, aside, nav, header { display: none !important; }
+  .print\:hidden { display: none !important; }
+  .hidden.print\:block { display: block !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  * { color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
