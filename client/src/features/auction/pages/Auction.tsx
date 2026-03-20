@@ -42,7 +42,7 @@ export default function Auction() {
 
             // Parallel fetch: players + me
             const [stats, meRes] = await Promise.all([
-                getPlayerSeasonStats(),
+                getPlayerSeasonStats(currentLeagueId || undefined),
                 getMe(),
             ]);
             if (!mounted) return;
