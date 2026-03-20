@@ -35,7 +35,7 @@ const changelog: ChangelogEntry[] = [
     session: "Session 31",
     title: "Auction UX, MLB Home, Guide Rewrite & Code Review",
     highlights: [
-      "9 of 12 auction enhancements complete (timer, sold visual, keeper cost, settings)",
+      "10 of 12 auction enhancements complete (position matrix, timer, sold visual, keeper cost, settings)",
       "MLB-powered Home page with live scores & transactions",
       "Guide split into 3 pages with Playwright screenshots",
     ],
@@ -52,7 +52,9 @@ const changelog: ChangelogEntry[] = [
       { type: "feat", description: "Sidebar collapse/expand caret, condensed 6 to 4 sections" },
       { type: "feat", description: "mlb-feed server module (3 endpoints: scores, transactions, my-players)" },
       { type: "feat", description: "Bid timer dropdown (15s increments)" },
+      { type: "feat", description: "Position needs matrix in Teams tab (filled/limit per position per team)" },
       { type: "feat", description: "Tooltips on auction column headers" },
+      { type: "fix", description: "CI pipeline — Supabase placeholder env vars for GitHub Actions (PRs #58-59)" },
       { type: "fix", description: "Proxy bid auth bypass (GET+DELETE required no ownership check)" },
       { type: "fix", description: "Proxy bid deletion bug" },
       { type: "fix", description: "Unbounded chat array (memory leak)" },

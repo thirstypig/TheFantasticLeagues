@@ -4,18 +4,19 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
-## Session 2026-03-20 (Session 31) — 10 PRs, Auction UX, MLB Home, Guide Rewrite, Code Review
+## Session 2026-03-20 (Session 31) — 14 PRs, Auction UX, MLB Home, Guide Rewrite, Code Review, CI Fix
 
 ### Summary
-Massive session with 10 PRs merged (#46 through #55), completing 9 of 12 auction enhancements, adding MLB-powered Home page, rewriting the Guide, and running a full code review.
+Massive session with 14 PRs merged (#46 through #59), completing 10 of 12 auction enhancements, adding MLB-powered Home page, rewriting the Guide, running a full code review, and fixing CI.
 
-### Completed — Auction Enhancements (9 of 12 done)
+### Completed — Auction Enhancements (10 of 12 done)
 - **AUC-01**: Opening bid picker (inline $ input on Nom button)
 - **AUC-02**: Watchlist/Favorites (star icons, localStorage, filtered view)
 - **AUC-03**: Chat/Trash Talk (WebSocket bidirectional, rate-limited, ChatTab)
 - **AUC-04**: Sound Effects (Web Audio API oscillator tones, mute toggle)
 - **AUC-05**: Value Over Replacement (Val column, surplus display)
 - **AUC-06**: Spending Pace Tracker (budget bars, avg cost, hot/cold indicators)
+- **AUC-07**: Position Needs Matrix (compact grid in Teams tab, filled/limit per position per team)
 - **AUC-08**: Nomination Timer Countdown (30s visible countdown, red pulse at <10s)
 - **AUC-09**: "Going Once, Going Twice, SOLD!" Visual (5s/3s/1s escalation)
 - **AUC-12**: Keeper Cost Preview (shows next year cost when high bidder)
@@ -39,6 +40,7 @@ Massive session with 10 PRs merged (#46 through #55), completing 9 of 12 auction
 ### Completed — Infrastructure
 - New mlb-feed server module (3 endpoints: scores, transactions, my-players-today)
 - MCP phases 7-8 complete (21 integration tests, full README)
+- CI pipeline fix — Supabase placeholder env vars for GitHub Actions (PRs #58-59)
 
 ### Test Results
 - Server: 454 passing
@@ -47,7 +49,7 @@ Massive session with 10 PRs merged (#46 through #55), completing 9 of 12 auction
 - **Total: 691 tests**
 
 ### Pending / Next Steps
-- AUC-07 (Position Needs Matrix), AUC-10 (Pre-Draft Rankings), AUC-11 (Post-Auction Trade Block) — remaining backlog
+- AUC-10 (Pre-Draft Rankings), AUC-11 (Post-Auction Trade Block) — remaining backlog
 - TD-Q03 (auction/routes.ts extraction) — intentionally deferred
 - Production deployment
 - Sunday March 22 live auction

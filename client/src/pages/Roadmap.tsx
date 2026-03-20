@@ -152,7 +152,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Grid showing each team's filled/open positions in Team List tab. Reveals who needs the current player most.",
         icon: Layers,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["auction", "strategy"],
       },
       {
@@ -272,8 +272,9 @@ interface CompletedGroup {
 
 const completedFeatures: CompletedGroup[] = [
   {
-    label: "Session 31 (10 PRs merged)",
+    label: "Session 31 (14 PRs merged)",
     items: [
+      { title: "Position Needs Matrix", description: "Compact grid in Teams tab showing filled/limit per position per team.", session: "31" },
       { title: "Nomination Timer Countdown", description: "Visible 30s countdown during nominating phase, pulses red at <10s.", session: "31" },
       { title: "'Going Once, Going Twice, SOLD!' Visual", description: "Escalating visual at 5s/3s/1s with amber/red/bounce sequence and red glow border.", session: "31" },
       { title: "Keeper Cost Preview", description: "Shows next year keeper cost ($bid+5) when you're the high bidder.", session: "31" },
@@ -285,6 +286,7 @@ const completedFeatures: CompletedGroup[] = [
       { title: "Commissioner Roster Release", description: "Release button in RosterGrid for commissioner player management.", session: "31" },
       { title: "Sidebar Overhaul", description: "Collapse/expand caret, condensed from 6 to 4 sections.", session: "31" },
       { title: "MCP Phases 7-8", description: "21 integration tests, full README documentation for MLB Data Proxy.", session: "31" },
+      { title: "CI Pipeline Fix", description: "Fixed Supabase placeholder env vars for GitHub Actions CI (PRs #58-59).", session: "31" },
       { title: "Code Review Fixes", description: "5 P1 + 9 P2 fixes: proxy bid auth bypass, unbounded chat, type safety, useCallback.", session: "31" },
     ],
   },
