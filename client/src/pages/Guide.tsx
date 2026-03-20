@@ -2,6 +2,16 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, Printer, Gavel, Star, MessageCircle, Volume2, TrendingUp, BarChart3, Target, UserPlus, HelpCircle, LayoutDashboard, Settings, Search } from 'lucide-react';
 
+// ─── Screenshot helper ──────────────────────────────────────────────
+function Screenshot({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+  return (
+    <figure className="my-3 rounded-lg overflow-hidden border border-[var(--lg-border-subtle)] shadow-sm">
+      <img src={src} alt={alt} className="w-full" loading="lazy" />
+      {caption && <figcaption className="text-[10px] text-[var(--lg-text-muted)] text-center py-1.5 bg-[var(--lg-tint)] border-t border-[var(--lg-border-subtle)]">{caption}</figcaption>}
+    </figure>
+  );
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function Section({ title, icon: Icon, defaultOpen, children }: { title: string; icon: React.ElementType; defaultOpen?: boolean; children: React.ReactNode }) {
@@ -76,6 +86,7 @@ export default function Guide() {
             <Step num={2} title="Create an Account">
               Go to the <strong>Sign Up</strong> page. Enter your email and password, or sign in with <strong>Google</strong> or <strong>Yahoo</strong>.
             </Step>
+            <Screenshot src="/guide/02-signup-dark.png" alt="Create Account page" caption="The signup page — enter your name, email, and password, or continue with Google" />
             <Step num={3} title="Enter Your Invite Code">
               After signing in, you'll see an invite code prompt on the Home page. Enter your code to join your league.
             </Step>
@@ -88,6 +99,7 @@ export default function Guide() {
 
         {/* ─── NAVIGATING THE APP ──────────────────────────── */}
         <Section title="Navigating the App" icon={LayoutDashboard}>
+          <Screenshot src="/guide/04-home-dark.png" alt="Home page dashboard" caption="The Home page — live MLB scores, your team dashboard, and daily transactions" />
           <p>The sidebar on the left is your main navigation. Here's what each section contains:</p>
           <div className="space-y-2 mt-2">
             {[
@@ -111,6 +123,11 @@ export default function Guide() {
         {/* ─── THE AUCTION DRAFT ────────────────────────────── */}
         <Section title="The Auction Draft" icon={Gavel} defaultOpen>
           <p>The auction is a <strong>live, real-time event</strong> where all team owners bid on players simultaneously.</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-3">
+            <Screenshot src="/guide/05-auction-nominating-dark.png" alt="Auction in dark mode" caption="Auction draft room — dark mode" />
+            <Screenshot src="/guide/06-auction-nominating-light.png" alt="Auction in light mode" caption="Auction draft room — light mode" />
+          </div>
 
           <h4 className="font-semibold text-[var(--lg-text-heading)] mt-4 mb-2 text-sm">How Nominating Works</h4>
           <div className="space-y-3">
