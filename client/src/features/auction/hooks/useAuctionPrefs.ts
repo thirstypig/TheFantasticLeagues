@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
 
+export type LeagueFilter = 'ALL' | 'NL' | 'AL';
+
 export interface AuctionPrefs {
   sounds: boolean;
   chat: boolean;
@@ -7,6 +9,7 @@ export interface AuctionPrefs {
   openingBidPicker: boolean;
   valueColumn: boolean;
   spendingPace: boolean;
+  defaultLeagueFilter: LeagueFilter;
 }
 
 const DEFAULTS: AuctionPrefs = {
@@ -16,6 +19,7 @@ const DEFAULTS: AuctionPrefs = {
   openingBidPicker: true,
   valueColumn: true,
   spendingPace: true,
+  defaultLeagueFilter: 'ALL',
 };
 
 const STORAGE_KEY = 'auctionPrefs';
@@ -35,7 +39,7 @@ function save(prefs: AuctionPrefs) {
 export function useAuctionPrefs() {
   const [prefs, setPrefs] = useState<AuctionPrefs>(load);
 
-  const update = useCallback((key: keyof AuctionPrefs, value: boolean) => {
+  const update = useCallback(<K extends keyof AuctionPrefs>(key: K, value: AuctionPrefs[K]) => {
     setPrefs(prev => {
       const next = { ...prev, [key]: value };
       save(next);
@@ -45,7 +49,9 @@ export function useAuctionPrefs() {
 
   const toggle = useCallback((key: keyof AuctionPrefs) => {
     setPrefs(prev => {
-      const next = { ...prev, [key]: !prev[key] };
+      const val = prev[key];
+      if (typeof val !== 'boolean') return prev;
+      const next = { ...prev, [key]: !val };
       save(next);
       return next;
     });

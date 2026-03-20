@@ -30,13 +30,14 @@ interface PlayerPoolTabProps {
   activeBidPlayerId?: string;
   activeBidAmount?: number;
   showBidPicker?: boolean;
+  defaultLeagueFilter?: 'ALL' | 'NL' | 'AL';
 }
 
 import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots, NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 
-export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true }: PlayerPoolTabProps) {
+export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true, defaultLeagueFilter = 'ALL' }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -57,7 +58,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterLeague, setFilterLeague] = useState<'ALL' | 'NL' | 'AL'>('ALL');
+  const [filterLeague, setFilterLeague] = useState<'ALL' | 'NL' | 'AL'>(defaultLeagueFilter);
   const [filterTeam, setFilterTeam] = useState<string>('ALL'); // Real MLB Team
   const [filterPos, setFilterPos] = useState<string>('ALL');
 
@@ -316,7 +317,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                              <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('WHIP')} title="Walks + Hits per Inning Pitched (lower is better)">WHIP{sortArrow('WHIP')}</ThemedTh>
                         </>
                     )}
-                    <ThemedTh align="center" className="px-1 w-10 cursor-help" onClick={() => handleHeaderClick('val')} title="Projected auction value. During bidding, shows surplus (value minus current bid). Green = bargain, Red = overpay.">Val{sortArrow('val')}</ThemedTh>
+                    <ThemedTh align="center" className="px-1 w-10 cursor-help" onClick={() => handleHeaderClick('val')} title="Projected auction value based on pre-season analysis. Green ($10+) = high-value target. Red ($0 or negative) = below replacement level, not worth bidding on. Blank = no projection available. During active bidding, shows surplus (value minus current bid).">Val{sortArrow('val')}</ThemedTh>
                     <ThemedTh className="w-14 px-1" title="Click Nom to nominate a player for auction"> </ThemedTh>
                 </ThemedTr>
             </ThemedThead>
@@ -383,7 +384,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                 <ThemedTd align="center" className="px-1">
                                     {(() => {
                                         const val = p.dollar_value ?? p.value;
-                                        if (!val) return <span className="text-xs text-[var(--lg-text-muted)] opacity-30">-</span>;
+                                        if (!val) return <span className="text-xs text-[var(--lg-text-muted)] opacity-30 cursor-help" title="No projected value available for this player">-</span>;
                                         const isActiveBid = activeBidPlayerId && String(p.mlb_id) === activeBidPlayerId && activeBidAmount;
                                         if (isActiveBid) {
                                             const surplus = val - activeBidAmount!;
