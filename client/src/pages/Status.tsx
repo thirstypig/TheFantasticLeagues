@@ -253,8 +253,8 @@ export default function Status() {
             { label: "Auth", value: "Supabase Auth (Google/Yahoo OAuth)" },
             { label: "Real-time", value: "WebSocket (auction)" },
             { label: "Cache", value: "SQLite (MLB API proxy)" },
-            { label: "Tests", value: "670 passing (454 server + 187 client + 29 MCP)" },
-            { label: "API Endpoints", value: "116 across 17 modules" },
+            { label: "Tests", value: "691 passing (454 server + 187 client + 50 MCP)" },
+            { label: "API Endpoints", value: "119 across 18 modules" },
           ].map((item) => (
             <div key={item.label} className="flex items-baseline gap-2 text-sm py-1">
               <span className="text-[var(--lg-text-muted)] font-medium w-24 shrink-0">{item.label}</span>

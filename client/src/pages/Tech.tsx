@@ -32,9 +32,9 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "56,760+", icon: FileCode },
-  { label: "Client (React/TS)", value: "28,550", icon: Monitor },
-  { label: "Server (Node/TS)", value: "28,210", icon: Server },
+  { label: "Total Lines of Code", value: "56,767+", icon: FileCode },
+  { label: "Client (React/TS)", value: "28,556", icon: Monitor },
+  { label: "Server (Node/TS)", value: "28,211", icon: Server },
   { label: "Test Coverage", value: "9,200+ lines", icon: TestTube },
   { label: "Database Models", value: "30", icon: Database },
   { label: "API Endpoints", value: "119", icon: Plug },
@@ -529,8 +529,8 @@ const buildJournal = [
   },
   {
     date: "Mar 2026",
-    title: "Session 31: 10 PRs, Auction UX, MLB Home, Guide Rewrite",
-    detail: "Massive session with 10 PRs merged (#46-#55). Completed 9 of 12 auction enhancements: opening bid picker (AUC-01), watchlist (AUC-02), chat (AUC-03), sounds (AUC-04), value/surplus (AUC-05), spending pace (AUC-06), nomination timer countdown (AUC-08), 'Going Once/Twice/SOLD!' visual (AUC-09), keeper cost preview (AUC-12). Added auction settings panel with 6 per-user toggles and Excel export. Built MLB-powered Home page with live scores, transactions, and date navigation via new mlb-feed server module. Rewrote Guide into 3 focused pages (Account, Auction, FAQ) with Playwright screenshots. Added About page. Ran code review fixing 5 P1s (proxy bid auth bypass, deletion bug, unbounded chat) and 9 P2s (type safety, useCallback). Overhauled sidebar (collapse/expand, 6→4 sections). MCP phases 7-8 complete (21 integration tests, full README). 691 tests passing across 56,760+ lines of TypeScript.",
+    title: "Session 31: 14 PRs, Auction UX, MLB Home, Guide Rewrite",
+    detail: "Massive session with 14 PRs merged (#46-#59). Completed 10 of 12 auction enhancements: opening bid picker (AUC-01), watchlist (AUC-02), chat (AUC-03), sounds (AUC-04), value/surplus (AUC-05), spending pace (AUC-06), nomination timer countdown (AUC-08), 'Going Once/Twice/SOLD!' visual (AUC-09), keeper cost preview (AUC-12). Added position needs matrix (AUC-07), auction settings panel with 6 per-user toggles and Excel export. Built MLB-powered Home page with live scores, transactions, and date navigation via new mlb-feed server module. Rewrote Guide into 3 focused pages (Account, Auction, FAQ) with Playwright screenshots. Added About page. Ran code review fixing 5 P1s (proxy bid auth bypass, deletion bug, unbounded chat) and 9 P2s (type safety, useCallback). Overhauled sidebar (collapse/expand, 6→4 sections). MCP phases 7-8 complete (21 integration tests, full README). Fixed CI pipeline with Supabase placeholder env vars (PRs #58-59). 691 tests passing across 56,767+ lines of TypeScript.",
   },
 ];
 
@@ -595,7 +595,7 @@ const costComparison = {
     totalLow: "$120K",
     totalHigh: "$300K",
     timeline: "6–12 months",
-    note: "Full-stack agency (NY/SF/Austin). Includes PM, design, frontend, backend, QA, DevOps. Based on 17 feature modules, 116 API endpoints, 30 DB models, real-time WebSocket, OAuth, live MLB data integration.",
+    note: "Full-stack agency (NY/SF/Austin). Includes PM, design, frontend, backend, QA, DevOps. Based on 18 feature modules, 119 API endpoints, 30 DB models, real-time WebSocket, OAuth, live MLB data integration.",
   },
   offshore: {
     rateRange: "$25–60/hr",
@@ -607,9 +607,9 @@ const costComparison = {
     note: "Offshore team (India/China). Lower hourly rate but often requires more hours due to communication overhead, timezone gaps, and iteration cycles. PM/QA often separate line items.",
   },
   scope: [
-    "56,760+ lines of TypeScript (strict mode)",
+    "56,767+ lines of TypeScript (strict mode)",
     "18 mirrored client/server feature modules",
-    "119 REST API endpoints + WebSocket real-time auction",
+    "119 API endpoints + WebSocket real-time auction",
     "30 Prisma database models with 10 migrations",
     "691 automated tests (unit + integration)",
     "OAuth integration (Google/Yahoo via Supabase)",
@@ -1142,7 +1142,7 @@ export default function Tech() {
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at what it took to build The Fantastic Leagues — the tools, the process,
           the decisions, and the numbers. Built from November 2025 to present across
-          31 sessions, 56,760+ lines of TypeScript, and an estimated 75 million+ AI tokens.
+          31 sessions, 56,767+ lines of TypeScript, and an estimated 75 million+ AI tokens.
         </p>
         <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
           Last updated: March 20, 2026
