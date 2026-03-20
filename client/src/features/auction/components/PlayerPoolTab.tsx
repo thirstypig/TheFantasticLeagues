@@ -29,13 +29,14 @@ interface PlayerPoolTabProps {
   onToggleStar?: (mlbId: string) => void;
   activeBidPlayerId?: string;
   activeBidAmount?: number;
+  showBidPicker?: boolean;
 }
 
 import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots, NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 
-export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount }: PlayerPoolTabProps) {
+export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -402,7 +403,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                 {/* Nominate / Bid picker */}
                                 <ThemedTd align="center" className="px-1">
                                     {!isTaken && onNominate && (
-                                        nominatingPlayer?.mlb_id === p.mlb_id ? (
+                                        showBidPicker && nominatingPlayer?.mlb_id === p.mlb_id ? (
                                             <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                                                 <span className="text-[10px] text-[var(--lg-text-muted)]">$</span>
                                                 <input
@@ -442,8 +443,12 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setNominatingPlayer(p);
-                                                    setStartBidInput('1');
+                                                    if (showBidPicker) {
+                                                        setNominatingPlayer(p);
+                                                        setStartBidInput('1');
+                                                    } else {
+                                                        onNominate(p, 1);
+                                                    }
                                                 }}
                                                 className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md hover:opacity-90 active:scale-95 transition-all ${
                                                     isPositionFullForMyTeam(p)

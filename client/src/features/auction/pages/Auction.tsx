@@ -6,7 +6,6 @@ import AuctionComplete from '../components/AuctionComplete';
 import ContextDeck from '../components/ContextDeck';
 import PlayerPoolTab from '../components/PlayerPoolTab';
 import TeamListTab from '../components/TeamListTab';
-import AIAnalysisTab from '../components/AIAnalysisTab';
 import MyNominationQueue from '../components/MyNominationQueue';
 import { getPlayerSeasonStats, type PlayerSeasonStat, getLeague, getMe } from '../../../api';
 import { useAuctionState } from '../hooks/useAuctionState';
@@ -19,6 +18,8 @@ import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import AuctionResults from "./AuctionResults";
 import AuctionDraftLog from '../components/AuctionDraftLog';
 import ChatTab from '../components/ChatTab';
+import AuctionSettingsTab from '../components/AuctionSettingsTab';
+import { useAuctionPrefs } from '../hooks/useAuctionPrefs';
 
 export default function Auction() {
   const { toast } = useToast();
@@ -38,6 +39,7 @@ export default function Auction() {
   const { queue: myQueue, add: addToQueue, remove: removeFromQueue, isQueued, moveUp: moveQueueUp, moveDown: moveQueueDown } = useNominationQueue(myTeamId);
   const { starred: starredIds, toggle: toggleStar } = useWatchlist(activeLeagueId);
   const sounds = useAuctionSounds();
+  const { prefs: auctionPrefs, toggle: togglePref } = useAuctionPrefs();
 
   // Proxy bid state (private — only the owner sees their own max bid)
   const [myProxyBid, setMyProxyBid] = useState<number | null>(null);
@@ -375,33 +377,34 @@ export default function Auction() {
                                     auctionConfig={auctionState?.config}
                                     onForceAssign={isCommissioner ? handleForceAssign : undefined}
                                     isCommissioner={isCommissioner}
-                                    starredIds={starredIds}
-                                    onToggleStar={toggleStar}
-                                    activeBidPlayerId={auctionState?.nomination?.playerId}
-                                    activeBidAmount={auctionState?.nomination?.currentBid}
-                                 /> 
+                                    starredIds={auctionPrefs.watchlist ? starredIds : undefined}
+                                    onToggleStar={auctionPrefs.watchlist ? toggleStar : undefined}
+                                    showBidPicker={auctionPrefs.openingBidPicker}
+                                    activeBidPlayerId={auctionPrefs.valueColumn ? auctionState?.nomination?.playerId : undefined}
+                                    activeBidAmount={auctionPrefs.valueColumn ? auctionState?.nomination?.currentBid : undefined}
+                                 />
                     },
-                    { 
-                        key: 'teams', 
-                        label: 'Teams', 
-                        count: displayTeams.length, 
-                        content: <TeamListTab teams={displayTeams} players={players} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} /> 
-                    },
-                    { 
-                        key: 'analysis', 
-                        label: 'AI Analysis', 
-                        content: <AIAnalysisTab log={auctionState?.log || []} teams={displayTeams} />
+                    {
+                        key: 'teams',
+                        label: 'Teams',
+                        count: displayTeams.length,
+                        content: <TeamListTab teams={displayTeams} players={players} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} showPace={auctionPrefs.spendingPace} />
                     },
                     {
                         key: 'log',
                         label: 'Log',
                         content: <AuctionDraftLog log={auctionState?.log || []} teams={displayTeams} />
                     },
-                    {
+                    ...(auctionPrefs.chat ? [{
                         key: 'chat',
                         label: 'Chat',
                         count: chatMessages.length || undefined,
                         content: <ChatTab messages={chatMessages} onSend={actions.sendChat} myUserId={myUserId} />
+                    }] : []),
+                    {
+                        key: 'settings',
+                        label: 'Settings',
+                        content: <AuctionSettingsTab prefs={auctionPrefs} onToggle={togglePref} />
                     }
                 ]} 
             />
