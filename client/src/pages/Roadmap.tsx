@@ -23,7 +23,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "March 20, 2026 (Session 30)";
+const LAST_UPDATED = "March 20, 2026 (Session 31)";
 
 // ─── Product Roadmap ───
 
@@ -157,18 +157,18 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Nomination Timer Countdown",
-        description: "Visible countdown when it's your turn to nominate (30s default). Auto-skip exists but UX could be clearer.",
+        description: "Visible 30s countdown during nominating phase, pulses red at <10s.",
         icon: Activity,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["auction", "ux"],
       },
       {
         title: "'Going Once, Going Twice' Visual",
-        description: "Escalating visual flourish at 5s/3s/1s — border pulse, text callout, 'SOLD!' animation.",
+        description: "Escalating visual at 5s/3s/1s — 'Going once' (amber), 'Going twice' (red), 'SOLD!' (bounce). Red glow border on nominee card.",
         icon: Sparkles,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["auction", "ux"],
       },
       {
@@ -189,10 +189,10 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Keeper Cost Preview",
-        description: "During bidding, show next year's keeper cost: 'If you keep next year: $bid + $5'. Helps with long-term strategy.",
+        description: "Shows 'Keeper next year: $bid+5' when you're the high bidder during live auction.",
         icon: TrendingUp,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["auction", "keeper"],
       },
     ],
@@ -271,6 +271,23 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 31 (10 PRs merged)",
+    items: [
+      { title: "Nomination Timer Countdown", description: "Visible 30s countdown during nominating phase, pulses red at <10s.", session: "31" },
+      { title: "'Going Once, Going Twice, SOLD!' Visual", description: "Escalating visual at 5s/3s/1s with amber/red/bounce sequence and red glow border.", session: "31" },
+      { title: "Keeper Cost Preview", description: "Shows next year keeper cost ($bid+5) when you're the high bidder.", session: "31" },
+      { title: "MLB-Powered Home Page", description: "Live MLB scores, transactions, date navigation, dashboard cards.", session: "31" },
+      { title: "About Page", description: "Product overview, features list, commissioner tools breakdown.", session: "31" },
+      { title: "Guide Split into 3 Pages", description: "Account, Auction, FAQ with Playwright screenshots in light/dark mode.", session: "31" },
+      { title: "Auction Settings Panel", description: "6 per-user toggles for sounds, chat, pace tracker, values, keeper cost, sold animation.", session: "31" },
+      { title: "Auction Excel Export", description: "Download draft results as Excel on auction completion screen.", session: "31" },
+      { title: "Commissioner Roster Release", description: "Release button in RosterGrid for commissioner player management.", session: "31" },
+      { title: "Sidebar Overhaul", description: "Collapse/expand caret, condensed from 6 to 4 sections.", session: "31" },
+      { title: "MCP Phases 7-8", description: "21 integration tests, full README documentation for MLB Data Proxy.", session: "31" },
+      { title: "Code Review Fixes", description: "5 P1 + 9 P2 fixes: proxy bid auth bypass, unbounded chat, type safety, useCallback.", session: "31" },
+    ],
+  },
   {
     label: "Auction Features (Session 29-30)",
     items: [
@@ -397,7 +414,9 @@ function ProductRoadmapSection() {
                       >
                         <div className="flex items-start gap-3">
                           <div className="mt-0.5">
-                            {item.status === "in-progress" ? (
+                            {item.status === "done" ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            ) : item.status === "in-progress" ? (
                               <Activity className="w-4 h-4 text-amber-400" />
                             ) : (
                               <Circle className="w-4 h-4 text-[var(--lg-text-muted)]" />
@@ -460,7 +479,7 @@ function CompletedFeaturesSection() {
             Completed Features
           </h2>
           <p className="text-xs text-[var(--lg-text-muted)]">
-            {totalCompleted} features shipped across 30 sessions
+            {totalCompleted} features shipped across 31 sessions
           </p>
         </div>
         {open ? (

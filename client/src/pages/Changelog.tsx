@@ -30,6 +30,40 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.31.0",
+    date: "Mar 20, 2026",
+    session: "Session 31",
+    title: "Auction UX, MLB Home, Guide Rewrite & Code Review",
+    highlights: [
+      "9 of 12 auction enhancements complete (timer, sold visual, keeper cost, settings)",
+      "MLB-powered Home page with live scores & transactions",
+      "Guide split into 3 pages with Playwright screenshots",
+    ],
+    changes: [
+      { type: "feat", description: "Nomination timer countdown (30s visible, red pulse at <10s)" },
+      { type: "feat", description: "'Going Once, Going Twice, SOLD!' escalation visual (5s/3s/1s)" },
+      { type: "feat", description: "Keeper cost preview ($bid+5) when high bidder" },
+      { type: "feat", description: "Auction settings panel with 6 per-user toggles" },
+      { type: "feat", description: "Auction Excel export on completion screen" },
+      { type: "feat", description: "MLB-powered Home page with live scores, transactions, date nav" },
+      { type: "feat", description: "About page with product overview and feature breakdown" },
+      { type: "feat", description: "Guide split into 3 pages (Account, Auction, FAQ) with screenshots" },
+      { type: "feat", description: "Commissioner roster release button in RosterGrid" },
+      { type: "feat", description: "Sidebar collapse/expand caret, condensed 6 to 4 sections" },
+      { type: "feat", description: "mlb-feed server module (3 endpoints: scores, transactions, my-players)" },
+      { type: "feat", description: "Bid timer dropdown (15s increments)" },
+      { type: "feat", description: "Tooltips on auction column headers" },
+      { type: "fix", description: "Proxy bid auth bypass (GET+DELETE required no ownership check)" },
+      { type: "fix", description: "Proxy bid deletion bug" },
+      { type: "fix", description: "Unbounded chat array (memory leak)" },
+      { type: "fix", description: "Bid picker validation" },
+      { type: "refactor", description: "Type safety: teams:any[] to AuctionTeam[], duplicate interfaces removed" },
+      { type: "refactor", description: "useCallback on handlers, win sound detection, rate limiter fix" },
+      { type: "test", description: "MCP phases 7-8: 21 integration tests, full README" },
+      { type: "docs", description: "Print/PDF styles for Guide pages" },
+    ],
+  },
+  {
     version: "0.27.0",
     date: "Mar 19, 2026",
     session: "Session 27",
@@ -341,7 +375,7 @@ function ChangelogStats() {
         </div>
         <div className="text-center">
           <div className="text-xl font-semibold text-[var(--lg-text-primary)] tabular-nums">
-            27
+            31
           </div>
           <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Sessions</div>
         </div>

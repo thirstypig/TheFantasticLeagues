@@ -4,27 +4,41 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
-## Session 2026-03-20 (Session 31) — MCP Phase 7-8: Integration Tests & Documentation
+## Session 2026-03-20 (Session 31) — 10 PRs, Auction UX, MLB Home, Guide Rewrite, Code Review
 
-### Completed
-- **MCP Phase 7: Integration Tests** — Created `mcp-servers/mlb-data/__tests__/integration.test.ts` with 21 tests:
-  - Tool registry completeness (9 tests): verifies all 8 MlbClient methods + getJson are callable
-  - TTL configuration (1 test): validates all 6 TTL constants
-  - Cache round-trip (4 tests): API fetch on miss, cache hit on repeat, invalidation, clear
-  - Rate limiter integration (2 tests): rate limiter consulted on misses, skipped on hits
-  - End-to-end tool scenarios (3 tests): search-then-detail flow, syncPlayerTeams caching, standings/schedule
-  - Error handling (1 test): API errors propagate to caller
-  - Cache stats accuracy (1 test): hits/misses/entries/size tracking
-- **MCP Phase 8: Documentation** — Expanded `mcp-servers/mlb-data/README.md` with full architecture diagram, tool parameter table, cache TTL strategy, rate limiting config, setup/configuration instructions, test coverage table, file structure
-- **Updated MCP plan** — Marked Phase 7 integration test and all Phase 8 items as complete in `docs/MCP-MLB-API-PLAN.md`
+### Summary
+Massive session with 10 PRs merged (#46 through #55), completing 9 of 12 auction enhancements, adding MLB-powered Home page, rewriting the Guide, and running a full code review.
 
-### Files Added
-- `mcp-servers/mlb-data/__tests__/integration.test.ts`
+### Completed — Auction Enhancements (9 of 12 done)
+- **AUC-01**: Opening bid picker (inline $ input on Nom button)
+- **AUC-02**: Watchlist/Favorites (star icons, localStorage, filtered view)
+- **AUC-03**: Chat/Trash Talk (WebSocket bidirectional, rate-limited, ChatTab)
+- **AUC-04**: Sound Effects (Web Audio API oscillator tones, mute toggle)
+- **AUC-05**: Value Over Replacement (Val column, surplus display)
+- **AUC-06**: Spending Pace Tracker (budget bars, avg cost, hot/cold indicators)
+- **AUC-08**: Nomination Timer Countdown (30s visible countdown, red pulse at <10s)
+- **AUC-09**: "Going Once, Going Twice, SOLD!" Visual (5s/3s/1s escalation)
+- **AUC-12**: Keeper Cost Preview (shows next year cost when high bidder)
 
-### Files Modified
-- `mcp-servers/mlb-data/README.md` (expanded from stub to comprehensive documentation)
-- `docs/MCP-MLB-API-PLAN.md` (Phase 7-8 checkboxes marked complete)
-- `FEEDBACK.md` (this entry)
+### Completed — Code Review & Fixes
+- 5 P1 fixes: unbounded chat array, proxy bid deletion bug, proxy bid auth bypass (GET+DELETE), bid picker validation
+- 9 P2 fixes: type safety (teams:any[] to AuctionTeam[]), duplicate interfaces, useCallback, win sound detection, rate limiter, watchlist toggle
+
+### Completed — New Features
+- MLB-powered Home page (live scores, transactions, date navigation, dashboard cards)
+- About page (product overview, features, commissioner tools)
+- Guide split into 3 pages (Account, Auction, FAQ) with Playwright screenshots
+- Auction Settings panel (6 per-user toggles)
+- Auction Excel export on completion screen
+- Commissioner roster release button in RosterGrid
+- Sidebar: collapse/expand caret, condensed 6 to 4 sections
+- Bid timer dropdown (15s increments)
+- Print/PDF styles for Guide
+- Tooltips on auction column headers
+
+### Completed — Infrastructure
+- New mlb-feed server module (3 endpoints: scores, transactions, my-players-today)
+- MCP phases 7-8 complete (21 integration tests, full README)
 
 ### Test Results
 - Server: 454 passing
@@ -33,9 +47,10 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - **Total: 691 tests**
 
 ### Pending / Next Steps
-- Phase 6 remaining: test tools from Claude Code conversation
-- Phase 7 remaining: verify FBST server works with MCP enabled and disabled
+- AUC-07 (Position Needs Matrix), AUC-10 (Pre-Draft Rankings), AUC-11 (Post-Auction Trade Block) — remaining backlog
 - TD-Q03 (auction/routes.ts extraction) — intentionally deferred
+- Production deployment
+- Sunday March 22 live auction
 
 ---
 

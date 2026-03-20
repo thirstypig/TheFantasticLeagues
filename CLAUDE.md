@@ -22,7 +22,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 17 feature modules mirrored client/server
+- 18 feature modules mirrored client/server
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -64,7 +64,7 @@ fbst/
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-### Current Feature Modules (17)
+### Current Feature Modules (18)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -77,7 +77,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `trades` | routes | 1 page, 1 component, api | Trade proposals, voting |
 | `waivers` | routes | (minimal) | Waiver claims workflow |
 | `transactions` | routes | 1 page, api | Transaction history |
-| `auction` | routes, auctionImport | 2 pages, 11 components, 4 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace) |
+| `auction` | routes, auctionImport | 2 pages, 14 components, 5 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace, settings, timer, sold visual) |
 | `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
 | `commissioner` | routes, CommissionerService | 1 page, 5 components | Commissioner admin tools |
 | `franchises` | routes | — | Franchise (org) CRUD, org-level settings |
@@ -85,6 +85,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `admin` | routes | 1 page, 2 components | System admin panel (includes league creation + CSV import) |
 | `archive` | routes, 3 archive services | 1 page, api | Historical data import/export |
 | `periods` | routes | 1 page (Season) | Season/period standings with toggle |
+| `mlb-feed` | routes | — | Live MLB scores, transactions, my-players-today |
 
 ### Feature Module Pattern
 ```
@@ -431,7 +432,7 @@ Local MCP server that acts as an intelligent caching proxy between FBST and the 
 cd mcp-servers/mlb-data && npm run build && node dist/index.js
 ```
 
-**Tests:** 29 tests (8 cache + 5 rate limiter + 16 tool tests)
+**Tests:** 50 tests (8 cache + 5 rate limiter + 16 tool tests + 21 integration tests)
 ```bash
 cd mcp-servers/mlb-data && npx vitest run
 ```

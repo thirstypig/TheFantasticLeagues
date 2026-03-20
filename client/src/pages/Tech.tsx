@@ -32,18 +32,18 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "46,870+", icon: FileCode },
-  { label: "Client (React/TS)", value: "19,910", icon: Monitor },
-  { label: "Server (Node/TS)", value: "26,960", icon: Server },
-  { label: "Test Coverage", value: "7,800+ lines", icon: TestTube },
+  { label: "Total Lines of Code", value: "56,760+", icon: FileCode },
+  { label: "Client (React/TS)", value: "28,550", icon: Monitor },
+  { label: "Server (Node/TS)", value: "28,210", icon: Server },
+  { label: "Test Coverage", value: "9,200+ lines", icon: TestTube },
   { label: "Database Models", value: "30", icon: Database },
-  { label: "API Endpoints", value: "116", icon: Plug },
-  { label: "Feature Modules", value: "17", icon: Layers },
-  { label: "Git Commits", value: "140+", icon: GitCommit },
-  { label: "Tests Passing", value: "670", icon: TestTube },
+  { label: "API Endpoints", value: "119", icon: Plug },
+  { label: "Feature Modules", value: "18", icon: Layers },
+  { label: "Git Commits", value: "189", icon: GitCommit },
+  { label: "Tests Passing", value: "691", icon: TestTube },
   { label: "DB Schema Lines", value: "723", icon: Braces },
   { label: "DB Migrations", value: "10", icon: Database },
-  { label: "Est. Tokens Used", value: "~68M+", icon: Bot },
+  { label: "Est. Tokens Used", value: "~75M+", icon: Bot },
 ];
 
 const techStack = [
@@ -106,7 +106,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "670 tests", desc: "454 server + 187 client + 29 MCP tests" },
+      { name: "691 tests", desc: "454 server + 187 client + 50 MCP tests" },
     ],
   },
   {
@@ -131,7 +131,7 @@ const featureModules = [
   { name: "trades", desc: "Trade proposals & voting" },
   { name: "waivers", desc: "FAAB waiver claims workflow" },
   { name: "transactions", desc: "Transaction history & activity feed" },
-  { name: "auction", desc: "Live auction draft with WebSocket" },
+  { name: "auction", desc: "Live auction draft with WebSocket, chat, sounds, settings" },
   { name: "keeper-prep", desc: "Keeper selection workflows" },
   { name: "commissioner", desc: "Commissioner admin tools" },
   { name: "seasons", desc: "Season lifecycle management" },
@@ -139,6 +139,7 @@ const featureModules = [
   { name: "archive", desc: "Historical data import/export" },
   { name: "periods", desc: "Period standings & payouts" },
   { name: "franchises", desc: "Organization-level settings & membership" },
+  { name: "mlb-feed", desc: "Live MLB scores, transactions, my-players-today" },
 ];
 
 const erdDiagrams: { label: string; chart: string }[] = [
@@ -528,8 +529,8 @@ const buildJournal = [
   },
   {
     date: "Mar 2026",
-    title: "Session 31: 6 Auction Enhancements, Code Review, Roster Release",
-    detail: "Built all 6 high/medium-impact auction features: opening bid picker (AUC-01), watchlist/favorites with star icons (AUC-02), real-time chat via WebSocket (AUC-03), Web Audio API sound effects with mute toggle (AUC-04), value/surplus display in Player Pool (AUC-05), and spending pace tracker with budget bars and hot/cold indicators (AUC-06). Ran 6-agent code review finding 20 issues (5 P1, 9 P2, 6 P3) — fixed all P1s (proxy bid auth bypass, deletion bug, unbounded chat array, input validation) and all P2s (type safety, useCallback, win sound detection, rate limiter). Added commissioner roster release button to RosterGrid. 670 tests passing.",
+    title: "Session 31: 10 PRs, Auction UX, MLB Home, Guide Rewrite",
+    detail: "Massive session with 10 PRs merged (#46-#55). Completed 9 of 12 auction enhancements: opening bid picker (AUC-01), watchlist (AUC-02), chat (AUC-03), sounds (AUC-04), value/surplus (AUC-05), spending pace (AUC-06), nomination timer countdown (AUC-08), 'Going Once/Twice/SOLD!' visual (AUC-09), keeper cost preview (AUC-12). Added auction settings panel with 6 per-user toggles and Excel export. Built MLB-powered Home page with live scores, transactions, and date navigation via new mlb-feed server module. Rewrote Guide into 3 focused pages (Account, Auction, FAQ) with Playwright screenshots. Added About page. Ran code review fixing 5 P1s (proxy bid auth bypass, deletion bug, unbounded chat) and 9 P2s (type safety, useCallback). Overhauled sidebar (collapse/expand, 6→4 sections). MCP phases 7-8 complete (21 integration tests, full README). 691 tests passing across 56,760+ lines of TypeScript.",
   },
 ];
 
@@ -581,11 +582,11 @@ const lessons = [
 
 const costComparison = {
   aiCost: {
-    tokens: "~68M+",
+    tokens: "~75M+",
     apiCost: "$150–250",
     subscriptionCost: "$100–200/mo",
     totalRange: "$200–$2,400",
-    note: "Claude Code subscription + API tokens over 27 sessions (Nov 2025–Mar 2026)",
+    note: "Claude Code subscription + API tokens over 31 sessions (Nov 2025–Mar 2026)",
   },
   usDevShop: {
     rateRange: "$150–250/hr",
@@ -606,11 +607,11 @@ const costComparison = {
     note: "Offshore team (India/China). Lower hourly rate but often requires more hours due to communication overhead, timezone gaps, and iteration cycles. PM/QA often separate line items.",
   },
   scope: [
-    "46,870+ lines of TypeScript (strict mode)",
-    "17 mirrored client/server feature modules",
-    "116 REST API endpoints + WebSocket real-time auction",
+    "56,760+ lines of TypeScript (strict mode)",
+    "18 mirrored client/server feature modules",
+    "119 REST API endpoints + WebSocket real-time auction",
     "30 Prisma database models with 10 migrations",
-    "670 automated tests (unit + integration)",
+    "691 automated tests (unit + integration)",
     "OAuth integration (Google/Yahoo via Supabase)",
     "Live MLB Stats API integration with caching proxy",
     "MCP server with 8 tools, rate limiter, circuit breaker",
@@ -727,6 +728,14 @@ const apiModules: ApiModule[] = [
       { method: "POST", path: "/sync-mlb", auth: "requireAdmin", description: "Sync MLB players" },
       { method: "POST", path: "/sync-stats", auth: "requireAdmin", description: "Sync period stats" },
       { method: "GET", path: "/audit-log", auth: "requireAdmin", description: "View audit log" },
+    ],
+  },
+  {
+    name: "mlb-feed", prefix: "/api/mlb-feed",
+    routes: [
+      { method: "GET", path: "/scores", auth: "requireAuth", description: "Live MLB scores by date" },
+      { method: "GET", path: "/transactions", auth: "requireAuth", description: "Recent MLB transactions" },
+      { method: "GET", path: "/my-players-today", auth: "requireAuth", description: "My rostered players playing today" },
     ],
   },
 ];
@@ -997,7 +1006,7 @@ function CostEstimate() {
                 {c.aiCost.totalRange}
               </div>
               <div className="text-xs text-[var(--lg-text-muted)] mb-3">
-                {c.aiCost.tokens} tokens &middot; 27 sessions &middot; 5 months
+                {c.aiCost.tokens} tokens &middot; 31 sessions &middot; 5 months
               </div>
               <div className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">
                 {c.aiCost.note}
@@ -1133,10 +1142,10 @@ export default function Tech() {
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at what it took to build The Fantastic Leagues — the tools, the process,
           the decisions, and the numbers. Built from November 2025 to present across
-          27 sessions, 46,870+ lines of TypeScript, and an estimated 68 million+ AI tokens.
+          31 sessions, 56,760+ lines of TypeScript, and an estimated 75 million+ AI tokens.
         </p>
         <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
-          Last updated: March 19, 2026
+          Last updated: March 20, 2026
         </p>
       </div>
 
@@ -1173,8 +1182,8 @@ export default function Tech() {
           How This Was Built: The AI Development Workflow
         </h2>
         <p className="text-sm text-[var(--lg-text-secondary)] mb-4">
-          Building a 47K-line full-stack app through conversational AI requires structure.
-          Here's the system that made it work across 25 sessions.
+          Building a 57K-line full-stack app through conversational AI requires structure.
+          Here's the system that made it work across 31 sessions.
         </p>
         <div className="space-y-3">
           {workflowSteps.map((step) => (
@@ -1283,7 +1292,7 @@ export default function Tech() {
       {/* Feature Modules */}
       <div>
         <h2 className="text-lg font-semibold text-[var(--lg-text-primary)] mb-4">
-          17 Feature Modules
+          18 Feature Modules
         </h2>
         <p className="text-sm text-[var(--lg-text-secondary)] mb-3">
           The codebase is organized by domain — each module encapsulates its own
@@ -1393,7 +1402,7 @@ export default function Tech() {
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 68M+ tokens across 27 sessions |{" "}
+        Built with Claude Code — estimated 75M+ tokens across 31 sessions |{" "}
         <Link to="/roadmap" className="text-[var(--lg-accent)] hover:underline">
           Roadmap
         </Link>
