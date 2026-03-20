@@ -3,10 +3,11 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { fetchJsonApi, API_BASE, yyyyMmDd, addDays } from "../api/base";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gavel, Trophy, Users, Calendar } from "lucide-react";
 import { joinLeague } from "../features/leagues/api";
 import { useToast } from "../contexts/ToastContext";
 import { useLeague } from "../contexts/LeagueContext";
+import { useSeasonGating } from "../hooks/useSeasonGating";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -154,13 +155,31 @@ function TransactionRow({ tx }: { tx: MlbTransaction }) {
 
 // ─── Main Page ──────────────────────────────────────────────────────
 
+interface MyTeamInfo {
+  name: string;
+  id: number;
+  budget: number;
+  rosterCount: number;
+}
+
+interface LeagueDash {
+  leagueName: string;
+  season: number;
+  teamCount: number;
+  myTeam: MyTeamInfo | null;
+}
+
 export default function Home() {
   const { user, loading: authLoading, refresh } = useAuth();
   const { toast } = useToast();
   const { leagueId: currentLeagueId } = useLeague();
+  const gating = useSeasonGating();
 
   // Date state
   const [date, setDate] = useState(() => yyyyMmDd(new Date()));
+
+  // League dashboard
+  const [dash, setDash] = useState<LeagueDash | null>(null);
 
   // MLB data
   const [games, setGames] = useState<GameScore[]>([]);
@@ -174,18 +193,26 @@ export default function Home() {
   const [joining, setJoining] = useState(false);
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
 
-  // Check if user has a team
+  // Check if user has a team + build dashboard
   useEffect(() => {
-    if (!user || !currentLeagueId) { setHasTeam(null); return; }
-    fetchJsonApi<{ league: { teams: Array<{ ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
+    if (!user || !currentLeagueId) { setHasTeam(null); setDash(null); return; }
+    fetchJsonApi<{ league: { name: string; season: number; teams: Array<{ id: number; name: string; budget: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
       .then(res => {
         const uid = Number(user.id);
-        const mine = res.league?.teams?.find(t =>
+        const league = res.league;
+        const teams = league?.teams || [];
+        const mine = teams.find(t =>
           t.ownerUserId === uid || (t.ownerships || []).some(o => o.userId === uid)
         );
         setHasTeam(!!mine);
+        setDash({
+          leagueName: league?.name || '',
+          season: league?.season || new Date().getFullYear(),
+          teamCount: teams.length,
+          myTeam: mine ? { name: mine.name, id: mine.id, budget: mine.budget, rosterCount: 0 } : null,
+        });
       })
-      .catch(() => setHasTeam(null));
+      .catch(() => { setHasTeam(null); setDash(null); });
   }, [user, currentLeagueId]);
 
   // Fetch scores
@@ -274,6 +301,64 @@ export default function Home() {
               {joining ? "..." : "Join"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Dashboard cards */}
+      {dash && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {/* My Team */}
+          {dash.myTeam && (
+            <Link to={`/teams/${dash.myTeam.name}`} className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-3 hover:border-[var(--lg-accent)]/30 transition-colors">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Users size={14} className="text-[var(--lg-accent)]" />
+                <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">My Team</span>
+              </div>
+              <div className="text-sm font-semibold text-[var(--lg-text-heading)] truncate">{dash.myTeam.name}</div>
+              <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">Budget: ${dash.myTeam.budget}</div>
+            </Link>
+          )}
+
+          {/* League */}
+          <Link to="/season" className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-3 hover:border-[var(--lg-accent)]/30 transition-colors">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Trophy size={14} className="text-amber-400" />
+              <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">League</span>
+            </div>
+            <div className="text-sm font-semibold text-[var(--lg-text-heading)]">{dash.leagueName}</div>
+            <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">{dash.season} · {dash.teamCount} teams</div>
+          </Link>
+
+          {/* Season Phase */}
+          <Link to="/season" className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-3 hover:border-[var(--lg-accent)]/30 transition-colors">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Calendar size={14} className="text-emerald-400" />
+              <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Phase</span>
+            </div>
+            <div className="text-sm font-semibold text-[var(--lg-text-heading)]">{gating.phaseGuidance?.split('—')[0]?.trim() || 'Setup'}</div>
+            <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">{gating.canAuction ? 'Auction open' : gating.canTrade ? 'Trades open' : 'Pre-season'}</div>
+          </Link>
+
+          {/* Quick Action */}
+          {gating.canAuction ? (
+            <Link to="/auction" className="rounded-xl border border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/5 p-3 hover:bg-[var(--lg-accent)]/10 transition-colors">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Gavel size={14} className="text-[var(--lg-accent)]" />
+                <span className="text-[10px] font-semibold uppercase text-[var(--lg-accent)]">Auction</span>
+              </div>
+              <div className="text-sm font-semibold text-[var(--lg-accent)]">Draft Room</div>
+              <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">Live auction open</div>
+            </Link>
+          ) : (
+            <Link to="/activity" className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-3 hover:border-[var(--lg-accent)]/30 transition-colors">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Gavel size={14} className="text-purple-400" />
+                <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Activity</span>
+              </div>
+              <div className="text-sm font-semibold text-[var(--lg-text-heading)]">Transactions</div>
+              <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">Trades & waivers</div>
+            </Link>
+          )}
         </div>
       )}
 
