@@ -4,6 +4,41 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-20 (Session 31) — MCP Phase 7-8: Integration Tests & Documentation
+
+### Completed
+- **MCP Phase 7: Integration Tests** — Created `mcp-servers/mlb-data/__tests__/integration.test.ts` with 21 tests:
+  - Tool registry completeness (9 tests): verifies all 8 MlbClient methods + getJson are callable
+  - TTL configuration (1 test): validates all 6 TTL constants
+  - Cache round-trip (4 tests): API fetch on miss, cache hit on repeat, invalidation, clear
+  - Rate limiter integration (2 tests): rate limiter consulted on misses, skipped on hits
+  - End-to-end tool scenarios (3 tests): search-then-detail flow, syncPlayerTeams caching, standings/schedule
+  - Error handling (1 test): API errors propagate to caller
+  - Cache stats accuracy (1 test): hits/misses/entries/size tracking
+- **MCP Phase 8: Documentation** — Expanded `mcp-servers/mlb-data/README.md` with full architecture diagram, tool parameter table, cache TTL strategy, rate limiting config, setup/configuration instructions, test coverage table, file structure
+- **Updated MCP plan** — Marked Phase 7 integration test and all Phase 8 items as complete in `docs/MCP-MLB-API-PLAN.md`
+
+### Files Added
+- `mcp-servers/mlb-data/__tests__/integration.test.ts`
+
+### Files Modified
+- `mcp-servers/mlb-data/README.md` (expanded from stub to comprehensive documentation)
+- `docs/MCP-MLB-API-PLAN.md` (Phase 7-8 checkboxes marked complete)
+- `FEEDBACK.md` (this entry)
+
+### Test Results
+- Server: 454 passing
+- Client: 187 passing
+- MCP: 50 passing (+21 from integration tests)
+- **Total: 691 tests**
+
+### Pending / Next Steps
+- Phase 6 remaining: test tools from Claude Code conversation
+- Phase 7 remaining: verify FBST server works with MCP enabled and disabled
+- TD-Q03 (auction/routes.ts extraction) — intentionally deferred
+
+---
+
 ## Session 2026-03-20 (Session 30) — Auction Enhancements: Opening Bids, Watchlist, Chat, Sounds, VOR, Spending Pace
 
 ### Completed

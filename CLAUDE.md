@@ -264,7 +264,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (454 server + 187 client + 29 MCP = 670 tests)
+### Current Test Coverage (454 server + 187 client + 50 MCP = 691 tests)
 
 **Server (454 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
@@ -316,10 +316,11 @@ server/src/__tests__/integration/
 - `client/src/features/transactions/__tests__/ActivityPage.test.tsx` — 6 tests (tabs, add/drop)
 - `client/src/features/admin/__tests__/Admin.test.tsx` — 6 tests (admin access, non-admin denied)
 
-**MCP (29 tests):**
+**MCP (50 tests):**
 - `mcp-servers/mlb-data/__tests__/cache.test.ts` — 8 tests (get/set/invalidate/TTL expiry/stats)
 - `mcp-servers/mlb-data/__tests__/rateLimiter.test.ts` — 5 tests (token bucket, queue, rejection, metrics)
 - `mcp-servers/mlb-data/__tests__/tools.test.ts` — 16 tests (all 8 tools with mocked MLB API responses)
+- `mcp-servers/mlb-data/__tests__/integration.test.ts` — 21 tests (cache round-trip, rate limiter integration, tool registry, end-to-end scenarios)
 
 ### Running Tests
 ```bash

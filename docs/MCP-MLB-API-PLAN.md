@@ -149,14 +149,14 @@ Build a local MCP (Model Context Protocol) server that acts as an intelligent ca
 - [x] Unit tests for cache layer (8 tests: get/set/invalidate/TTL expiry/stats)
 - [x] Unit tests for rate limiter (5 tests: token bucket, queue behavior, rejection, metrics)
 - [x] Unit tests for MCP tools (16 tests: all 8 tools + cache stats, mocked MLB API responses)
-- [ ] Integration test: MCP server startup → tool call → cached response → cache hit
+- [x] Integration test: MCP server startup → tool call → cached response → cache hit
 - [ ] Verify FBST server works with MCP enabled and disabled
 
 ### Phase 8: Documentation
-- [ ] Update CLAUDE.md with MCP server section
-- [ ] Update FEEDBACK.md with session progress
-- [ ] Add README to `mcp-servers/mlb-data/` with setup/usage instructions
-- [ ] Document cache TTL strategy and rate limit configuration
+- [x] Update CLAUDE.md with MCP server section
+- [x] Update FEEDBACK.md with session progress
+- [x] Add README to `mcp-servers/mlb-data/` with setup/usage instructions
+- [x] Document cache TTL strategy and rate limit configuration
 
 ## Cache TTL Strategy
 
