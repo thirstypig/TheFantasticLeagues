@@ -32,6 +32,9 @@ import Status from "./pages/Status";
 import Analytics from "./pages/Analytics";
 import Docs from "./pages/Docs";
 import GuidePage from "./pages/Guide";
+import GuideAccount from "./pages/guide/GuideAccount";
+import GuideAuction from "./pages/guide/GuideAuction";
+import GuideFaq from "./pages/guide/GuideFaq";
 import About from "./pages/About";
 import { useAuth } from "./auth/AuthProvider";
 
@@ -74,6 +77,9 @@ export default function App() {
                 <Route path="/commissioner/:leagueId" element={<Commissioner />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/guide" element={<GuidePage />} />
+                <Route path="/guide/account" element={<GuideAccount />} />
+                <Route path="/guide/auction" element={<GuideAuction />} />
+                <Route path="/guide/faq" element={<GuideFaq />} />
                 <Route path="/archive" element={<ArchivePage />} />
                 {/* Redirects for removed routes */}
                 <Route path="/period" element={<Navigate to="/season" replace />} />
