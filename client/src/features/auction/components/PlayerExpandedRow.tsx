@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getPrimaryPosition } from '../../../lib/baseballUtils';
 import {
   PlayerSeasonStat,
@@ -21,9 +21,11 @@ interface PlayerExpandedRowProps {
   isQueued?: (playerId: string | number) => boolean;
   onViewDetail?: (player: PlayerSeasonStat) => void;
   colSpan?: number;
+  onForceAssign?: (player: PlayerSeasonStat, teamId: number, price: number) => void;
+  assignTeams?: { id: number; name: string }[];
 }
 
-export default function PlayerExpandedRow({ player, isTaken, ownerName, onNominate, onQueue, isQueued, onViewDetail, colSpan = 7 }: PlayerExpandedRowProps) {
+export default function PlayerExpandedRow({ player, isTaken, ownerName, onNominate, onQueue, isQueued, onViewDetail, colSpan = 7, onForceAssign, assignTeams }: PlayerExpandedRowProps) {
   const [careerStats, setCareerStats] = useState<(CareerHittingRow | CareerPitchingRow)[]>([]);
   const [fieldingStats, setFieldingStats] = useState<FieldingStatRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -151,7 +153,7 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 flex-wrap">
                     {onViewDetail && (
                         <button
                             onClick={() => onViewDetail(player)}
@@ -168,6 +170,9 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                             {isQueued?.(player.mlb_id || '') ? '✓ Queued' : '+ Queue'}
                         </button>
                     )}
+                    {!isTaken && onForceAssign && assignTeams && (
+                        <ForceAssignForm player={player} teams={assignTeams} onAssign={onForceAssign} />
+                    )}
                     {isTaken && (
                         <span className="text-xs font-semibold text-[var(--lg-text-muted)] self-center px-2">
                             {ownerName ? `Held by ${ownerName}` : 'Player Taken'}
@@ -177,5 +182,76 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
             </div>
         </ThemedTd>
     </tr>
+  );
+}
+
+// --- Force Assign Inline Form (Commissioner only) ---
+function ForceAssignForm({ player, teams, onAssign }: {
+  player: PlayerSeasonStat;
+  teams: { id: number; name: string }[];
+  onAssign: (player: PlayerSeasonStat, teamId: number, price: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [teamId, setTeamId] = useState<number>(teams[0]?.id ?? 0);
+  const [price, setPrice] = useState('1');
+  const priceRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open && priceRef.current) priceRef.current.focus();
+  }, [open]);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-sm font-semibold bg-amber-900/20 border border-amber-500/30 text-amber-400 px-4 py-2 rounded shadow-sm hover:bg-amber-900/30 active:scale-95 transition-all"
+      >
+        Force Assign
+      </button>
+    );
+  }
+
+  const handleSubmit = () => {
+    const p = parseInt(price, 10);
+    if (!teamId || isNaN(p) || p < 0) return;
+    onAssign(player, teamId, p);
+    setOpen(false);
+  };
+
+  return (
+    <div className="flex items-center gap-2 bg-[var(--lg-bg-secondary)] border border-amber-500/30 rounded px-3 py-2">
+      <select
+        value={teamId}
+        onChange={e => setTeamId(Number(e.target.value))}
+        className="text-xs bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-primary)] rounded px-2 py-1"
+      >
+        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+      </select>
+      <div className="relative">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--lg-text-muted)]">$</span>
+        <input
+          ref={priceRef}
+          type="number"
+          min={0}
+          max={999}
+          value={price}
+          onChange={e => setPrice(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') setOpen(false); }}
+          className="w-16 pl-5 pr-1 py-1 text-xs rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)]"
+        />
+      </div>
+      <button
+        onClick={handleSubmit}
+        className="text-xs font-semibold bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-500 transition-colors"
+      >
+        Assign
+      </button>
+      <button
+        onClick={() => setOpen(false)}
+        className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] px-1"
+      >
+        Cancel
+      </button>
+    </div>
   );
 }

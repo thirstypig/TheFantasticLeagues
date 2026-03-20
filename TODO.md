@@ -109,6 +109,30 @@ Items grouped by priority. P1 = fix before live auction (Mar 22), P2 = fix soon,
 
 ---
 
+## Auction Feature Ideas (backlog)
+
+Future auction enhancements, roughly ordered by impact.
+
+### High Impact
+- [ ] **AUC-01**: Nominator sets opening bid — let nominator choose starting bid (not always $1). Backend `startBid` already supported, client hardcodes `1`.
+- [ ] **AUC-02**: Watchlist / Favorites — star players in the Player Pool for quick filtering. Different from nomination queue (which auto-nominates).
+- [ ] **AUC-03**: Chat / Trash Talk — real-time chat sidebar via existing WebSocket. Social feature for live auctions.
+- [ ] **AUC-04**: Bid Notifications / Sound Effects — audio ping on outbid, your turn, critical time. Keeps engagement when in another tab.
+
+### Medium Impact
+- [ ] **AUC-05**: Value Over Replacement in Player Pool — show delta between projected value and current bid during live bidding ("Value: $35 | Bid: $22 | Surplus: +$13").
+- [ ] **AUC-06**: Spending Pace Tracker — visual per-team budget burn rate ("$180 on 12 players, avg $15, $220 left for 11 spots").
+- [ ] **AUC-07**: Position Needs Matrix — grid showing each team's filled/open positions in Team List tab. Reveals who needs the current player.
+- [ ] **AUC-08**: Nomination Timer Countdown — visible countdown when it's your turn to nominate (30s default). Auto-skip exists but UX could be clearer.
+- [ ] **AUC-09**: "Going Once, Going Twice" Visual — escalating visual flourish at 5s/3s/1s (border pulse, text callout, "SOLD!" animation).
+
+### Nice-to-Have
+- [ ] **AUC-10**: Pre-Draft Rankings Import — owners upload personal player rankings (CSV) as a private column in Player Pool.
+- [ ] **AUC-11**: Post-Auction Trade Block — immediately after draft, owners flag players they'd trade.
+- [ ] **AUC-12**: Keeper Cost Preview — during bidding, show next year's keeper cost ("If you keep next year: $bid + $5").
+
+---
+
 ## Completed (all sessions)
 
 <details>

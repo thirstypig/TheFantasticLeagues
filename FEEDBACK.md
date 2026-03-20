@@ -4,6 +4,28 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-19 (Session 29) — Auction Enhancements: Proxy Bids, Force Assign, Timers, Decline
+
+### Completed
+- **Proxy/Max Bid (eBay-style)** — Team owners can set a max bid; server auto-bids incrementally up to that amount. Resolves competing proxy bids (highest wins at loser's max + $1). Private per-team — other teams can't see your max.
+- **Force Assign (Commissioner Override)** — Commissioner can manually assign any available player to any team at any price via the Player Pool expanded row. Bypasses the auction process for verbal deals or timer issues.
+- **Configurable Auction Timers** — Bid timer (default 15s) and nomination timer (default 30s) now load from league rules (`bid_timer`, `nomination_timer`). Configurable via Commissioner Rules tab.
+- **Decline/Pass Feature** — Team owners can "pass" on a player during bidding, hiding bid buttons. Can rejoin at any time. Auto-resets on new nomination. Pure client-side (no server state needed).
+- **Bigger "Set Max Bid" Button** — Upgraded from tiny text link to full-width bordered button with `py-3 px-4` styling.
+- **Manual bid override** — +$1/+$5 buttons work independently of proxy bid. Proxy display auto-clears when current bid exceeds proxy max.
+- **12 auction feature ideas** added to TODO.md backlog (AUC-01 through AUC-12)
+
+### Test Results
+- Server: 454 passing
+- Client: 187 passing
+- TypeScript: clean (both client and server)
+
+### Pending / Next Steps
+- Auction feature backlog (AUC-01 through AUC-12) in TODO.md
+- TD-Q03 (auction/routes.ts extraction) — intentionally deferred
+
+---
+
 ## Session 2026-03-19 (Session 28) — Meta Pages, Analytics, Code Review Fixes & P3 Cleanup
 
 ### Completed

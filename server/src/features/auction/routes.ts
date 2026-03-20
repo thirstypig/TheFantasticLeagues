@@ -29,6 +29,12 @@ const bidSchema = z.object({
   amount: z.number().int().min(1).max(999),
 });
 
+const proxyBidSchema = z.object({
+  leagueId: z.number().int().positive(),
+  bidderTeamId: z.number().int().positive(),
+  maxBid: z.number().int().min(1).max(999),
+});
+
 const router = Router();
 
 // --- Types (re-exported from types.ts to maintain backwards compatibility) ---
@@ -205,11 +211,11 @@ const refreshTeams = async (state: AuctionState) => {
 };
 
 /** Load budget/roster config from LeagueRule, falling back to defaults. */
-async function loadLeagueConfig(leagueId: number): Promise<{ budgetCap: number; rosterSize: number; pitcherCount: number; batterCount: number }> {
+async function loadLeagueConfig(leagueId: number): Promise<{ budgetCap: number; rosterSize: number; pitcherCount: number; batterCount: number; bidTimer: number; nominationTimer: number }> {
   const rules = await prisma.leagueRule.findMany({
     where: {
       leagueId,
-      key: { in: ["auction_budget", "pitcher_count", "batter_count"] },
+      key: { in: ["auction_budget", "pitcher_count", "batter_count", "bid_timer", "nomination_timer"] },
     },
     select: { key: true, value: true },
   });
@@ -219,8 +225,10 @@ async function loadLeagueConfig(leagueId: number): Promise<{ budgetCap: number; 
   const pitcherCount = Number(ruleMap.get("pitcher_count")) || 9;
   const batterCount = Number(ruleMap.get("batter_count")) || 14;
   const rosterSize = pitcherCount + batterCount;
+  const bidTimer = Number(ruleMap.get("bid_timer")) || 15;
+  const nominationTimer = Number(ruleMap.get("nomination_timer")) || 30;
 
-  return { budgetCap, rosterSize, pitcherCount, batterCount };
+  return { budgetCap, rosterSize, pitcherCount, batterCount, bidTimer, nominationTimer };
 }
 
 /** Load per-position roster limits from LeagueRule. */
@@ -267,6 +275,125 @@ function checkPositionLimit(
   }
 
   return null;
+}
+
+/**
+ * Process proxy bids after a manual bid lands.
+ * If another team has a proxy bid higher than the current bid,
+ * auto-bid on their behalf at currentBid + 1 (or their max if lower).
+ * Returns true if a proxy bid was triggered (caller should broadcast).
+ */
+function processProxyBids(state: AuctionState): boolean {
+  const nom = state.nomination;
+  if (!nom || nom.status !== 'running' || !nom.proxyBids) return false;
+
+  // Find the highest proxy bid from a team OTHER than the current high bidder
+  let bestTeamId: number | null = null;
+  let bestMax = 0;
+
+  for (const [teamIdStr, maxAmount] of Object.entries(nom.proxyBids)) {
+    const teamId = Number(teamIdStr);
+    if (teamId === nom.highBidderTeamId) continue; // skip current winner
+    if (maxAmount <= nom.currentBid) continue; // can't outbid
+
+    // Verify team can still afford it and has position room
+    const team = state.teams.find(t => t.id === teamId);
+    if (!team) continue;
+    const effectiveMax = Math.min(maxAmount, team.maxBid);
+    if (effectiveMax <= nom.currentBid) continue;
+
+    const posErr = checkPositionLimit(teamId, nom.isPitcher, state);
+    if (posErr) continue;
+
+    if (effectiveMax > bestMax) {
+      bestMax = effectiveMax;
+      bestTeamId = teamId;
+    }
+  }
+
+  if (bestTeamId === null) return false;
+
+  // Auto-bid: just enough to win, or their max if that's all they need
+  const autoBidAmount = Math.min(bestMax, nom.currentBid + 1);
+
+  // But wait — if the current high bidder also has a proxy bid, we need to
+  // resolve the two proxy bids against each other
+  const currentHolderMax = nom.proxyBids[nom.highBidderTeamId] ?? nom.currentBid;
+  if (currentHolderMax >= bestMax) {
+    // Current holder's proxy wins — they auto-bid at bestMax + 1 (or their max)
+    const counterBid = Math.min(currentHolderMax, bestMax + 1);
+    if (counterBid > nom.currentBid) {
+      nom.currentBid = counterBid;
+      // highBidderTeamId stays the same
+      const team = state.teams.find(t => t.id === nom.highBidderTeamId);
+
+      // Persist bid to DB
+      if (nom.lotId) {
+        prisma.auctionBid.create({
+          data: { lotId: nom.lotId, teamId: nom.highBidderTeamId, amount: counterBid },
+        }).catch((err) => logger.error({ error: String(err) }, "Failed to persist proxy bid"));
+      }
+
+      state.log.unshift({
+        type: 'BID',
+        teamId: nom.highBidderTeamId,
+        teamName: team?.name,
+        playerName: nom.playerName,
+        amount: counterBid,
+        timestamp: Date.now(),
+        message: `${team?.name || 'Team'} auto-bid $${counterBid}`
+      });
+    }
+    // Remove the losing proxy bid since it's been exhausted
+    delete nom.proxyBids[bestTeamId];
+    return true;
+  }
+
+  // Challenger's proxy wins — they become the new high bidder
+  // They bid at currentHolderMax + 1 (just enough to beat the current holder's proxy)
+  const winningBid = Math.min(bestMax, currentHolderMax + 1);
+  nom.currentBid = winningBid;
+  nom.highBidderTeamId = bestTeamId;
+
+  const team = state.teams.find(t => t.id === bestTeamId);
+
+  // Persist bid to DB
+  if (nom.lotId) {
+    prisma.auctionBid.create({
+      data: { lotId: nom.lotId, teamId: bestTeamId, amount: winningBid },
+    }).catch((err) => logger.error({ error: String(err) }, "Failed to persist proxy bid"));
+  }
+
+  state.log.unshift({
+    type: 'BID',
+    teamId: bestTeamId,
+    teamName: team?.name,
+    playerName: nom.playerName,
+    amount: winningBid,
+    timestamp: Date.now(),
+    message: `${team?.name || 'Team'} auto-bid $${winningBid}`
+  });
+
+  // Remove the exhausted proxy bid of the previous holder
+  delete nom.proxyBids[nom.highBidderTeamId === bestTeamId ? Number(Object.keys(nom.proxyBids).find(k => Number(k) !== bestTeamId) ?? 0) : nom.highBidderTeamId];
+
+  return true;
+}
+
+/**
+ * Strip proxy bids from state before broadcasting.
+ * Each client only sees their own proxy bid via a separate mechanism.
+ */
+function sanitizeStateForBroadcast(state: AuctionState): AuctionState {
+  if (!state.nomination?.proxyBids) return state;
+  // Deep-clone nomination to avoid mutating the real state
+  return {
+    ...state,
+    nomination: {
+      ...state.nomination,
+      proxyBids: undefined,
+    },
+  };
 }
 
 // --- Auto-Finish Timer ---
@@ -429,7 +556,11 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
   const state = await getState(leagueId);
-  res.json(state);
+  // Strip proxy bids (private) — client fetches their own via /proxy-bid
+  const sanitized = state.nomination?.proxyBids
+    ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
+    : state;
+  res.json(sanitized);
 }));
 
 // POST /api/auction/init
@@ -452,7 +583,7 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
   }
 
   // Load budget/roster config from league rules
-  const { budgetCap, rosterSize, pitcherCount, batterCount } = await loadLeagueConfig(leagueId);
+  const { budgetCap, rosterSize, pitcherCount, batterCount, bidTimer, nominationTimer } = await loadLeagueConfig(leagueId);
   const positionLimits = await loadPositionLimits(leagueId);
 
   const state = createDefaultState(leagueId);
@@ -460,6 +591,8 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
   state.config.rosterSize = rosterSize;
   state.config.pitcherCount = pitcherCount;
   state.config.batterCount = batterCount;
+  state.config.bidTimer = bidTimer;
+  state.config.nominationTimer = nominationTimer;
   state.config.positionLimits = positionLimits;
   auctionStates.set(leagueId, state);
   await refreshTeams(state);
@@ -477,7 +610,7 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
     userId: req.user!.id,
     action: "AUCTION_INIT",
     resourceType: "Auction",
-    metadata: { leagueId, teamCount: state.teams.length, budgetCap, rosterSize },
+    metadata: { leagueId, teamCount: state.teams.length, budgetCap, rosterSize, bidTimer, nominationTimer },
   });
 
   res.json(state);
@@ -621,12 +754,21 @@ router.post("/bid", requireAuth, validateBody(bidSchema), requireSeasonStatus(["
   state.nomination.endTime = new Date(now + state.config.bidTimer * 1000).toISOString();
   state.lastUpdate = Date.now();
 
+  // Process proxy bids — may trigger auto-responses
+  const proxyFired = processProxyBids(state);
+  if (proxyFired) {
+    // Reset timer again since a proxy bid extended the auction
+    const proxyNow = Date.now();
+    state.nomination.endTime = new Date(proxyNow + state.config.bidTimer * 1000).toISOString();
+    state.lastUpdate = proxyNow;
+  }
+
   // Reset auto-finish timer
   scheduleAutoFinish(leagueId, state.config.bidTimer * 1000);
 
   broadcastState(leagueId, state);
   persistState(leagueId, state);
-  res.json(state);
+  res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/finish
@@ -779,7 +921,7 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
     }
 
     // Load budget/roster config from league rules
-    const { budgetCap, rosterSize, pitcherCount, batterCount } = await loadLeagueConfig(leagueId);
+    const { budgetCap, rosterSize, pitcherCount, batterCount, bidTimer, nominationTimer } = await loadLeagueConfig(leagueId);
     const positionLimits = await loadPositionLimits(leagueId);
 
     const state = createDefaultState(leagueId);
@@ -787,6 +929,8 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
     state.config.rosterSize = rosterSize;
     state.config.pitcherCount = pitcherCount;
     state.config.batterCount = batterCount;
+    state.config.bidTimer = bidTimer;
+    state.config.nominationTimer = nominationTimer;
     state.config.positionLimits = positionLimits;
     state.status = "nominating";
     auctionStates.set(leagueId, state);
@@ -850,6 +994,193 @@ router.get("/bid-history", requireAuth, requireLeagueMember("leagueId"), asyncHa
       })),
     })),
   });
+}));
+
+// POST /api/auction/force-assign — Commissioner manually assigns a player to a team
+const forceAssignSchema = z.object({
+  leagueId: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  playerId: z.string().min(1).max(20),   // mlbId
+  playerName: z.string().min(1).max(200),
+  price: z.number().int().min(0).max(999),
+  positions: z.string().min(1).max(100),
+  isPitcher: z.boolean(),
+});
+
+router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
+
+  const { teamId, playerId, playerName, price, positions, isPitcher } = req.body;
+
+  // Verify team belongs to this league
+  const team = await prisma.team.findFirst({ where: { id: teamId, leagueId } });
+  if (!team) return res.status(400).json({ error: "Team not found in this league" });
+
+  // Verify player not already on a roster in this league
+  const dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
+  if (dbPlayer) {
+    const existing = await prisma.roster.findFirst({
+      where: { playerId: dbPlayer.id, team: { leagueId }, releasedAt: null }
+    });
+    if (existing) return res.status(400).json({ error: "Player already on a roster" });
+  }
+
+  // Find or create player record
+  let player = dbPlayer;
+  if (!player) {
+    player = await prisma.player.create({
+      data: {
+        mlbId: Number(playerId),
+        name: playerName,
+        posPrimary: positions.split('/')[0] || 'UT',
+        posList: positions.split('/').join(','),
+      }
+    });
+  }
+
+  // Look up league season for the source tag
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+  const season = league?.season ?? new Date().getFullYear();
+
+  await prisma.roster.create({
+    data: {
+      teamId,
+      playerId: player.id,
+      price,
+      source: `auction_${season}`,
+    }
+  });
+
+  // Refresh auction state if active
+  const state = auctionStates.get(leagueId);
+  if (state) {
+    await refreshTeams(state);
+    state.log.unshift({
+      type: 'WIN',
+      teamId,
+      teamName: team.name,
+      playerName,
+      amount: price,
+      timestamp: Date.now(),
+      message: `Commissioner assigned ${playerName} to ${team.name} for $${price}`
+    });
+    state.lastUpdate = Date.now();
+    broadcastState(leagueId, state);
+    persistState(leagueId, state);
+  }
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "AUCTION_FORCE_ASSIGN",
+    resourceType: "Auction",
+    resourceId: String(player.id),
+    metadata: { leagueId, teamId, playerId: player.id, playerName, price },
+  });
+
+  res.json({ success: true, playerName, teamName: team.name, price });
+}));
+
+// POST /api/auction/proxy-bid — set a max/proxy bid (eBay-style)
+router.post("/proxy-bid", requireAuth, validateBody(proxyBidSchema), requireSeasonStatus(["DRAFT"]), requireTeamOwner("bidderTeamId"), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const state = await getState(leagueId);
+
+  if (state.status !== 'bidding' || !state.nomination) {
+    return res.status(400).json({ error: "No active nomination" });
+  }
+
+  if (state.nomination.status !== 'running') {
+    return res.status(400).json({ error: "Auction is paused" });
+  }
+
+  const { bidderTeamId, maxBid } = req.body;
+  const bidder = state.teams.find(t => t.id === bidderTeamId);
+  if (!bidder) return res.status(400).json({ error: "Bidder not found" });
+  if (bidder.maxBid < maxBid) return res.status(400).json({ error: "Not enough budget for this max bid" });
+  if (maxBid <= state.nomination.currentBid) return res.status(400).json({ error: "Max bid must be higher than current bid" });
+
+  // Guard: check position limits
+  const posError = checkPositionLimit(bidderTeamId, state.nomination.isPitcher, state);
+  if (posError) return res.status(400).json({ error: posError });
+
+  // Store proxy bid
+  if (!state.nomination.proxyBids) state.nomination.proxyBids = {};
+  state.nomination.proxyBids[bidderTeamId] = maxBid;
+
+  // If this team isn't the current high bidder, trigger an immediate auto-bid
+  if (state.nomination.highBidderTeamId !== bidderTeamId) {
+    // Place an immediate bid at currentBid + 1 (or maxBid if lower)
+    const immediateBid = Math.min(maxBid, state.nomination.currentBid + 1);
+
+    // But first check if current high bidder has a proxy that can counter
+    // processProxyBids handles all the logic
+    state.nomination.currentBid = immediateBid;
+    state.nomination.highBidderTeamId = bidderTeamId;
+
+    // Persist to DB
+    if (state.nomination.lotId) {
+      prisma.auctionBid.create({
+        data: { lotId: state.nomination.lotId, teamId: bidderTeamId, amount: immediateBid },
+      }).catch((err) => logger.error({ error: String(err) }, "Failed to persist proxy initial bid"));
+    }
+
+    state.log.unshift({
+      type: 'BID',
+      teamId: bidderTeamId,
+      teamName: bidder.name,
+      playerName: state.nomination.playerName,
+      amount: immediateBid,
+      timestamp: Date.now(),
+      message: `${bidder.name} bid $${immediateBid}`
+    });
+
+    // Now process proxy bids to resolve any counter-proxy
+    processProxyBids(state);
+
+    // Reset timer
+    const now = Date.now();
+    state.nomination.endTime = new Date(now + state.config.bidTimer * 1000).toISOString();
+    scheduleAutoFinish(leagueId, state.config.bidTimer * 1000);
+  }
+
+  state.lastUpdate = Date.now();
+  broadcastState(leagueId, state);
+  persistState(leagueId, state);
+
+  // Return the proxy bid amount to the caller (private)
+  res.json({ success: true, maxBid, currentBid: state.nomination.currentBid, highBidderTeamId: state.nomination.highBidderTeamId });
+}));
+
+// GET /api/auction/my-proxy-bid?leagueId=N&teamId=N — get your current proxy bid
+router.get("/my-proxy-bid", requireAuth, asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+
+  const teamId = Number(req.query.teamId);
+  if (!Number.isFinite(teamId)) return res.status(400).json({ error: "Missing teamId" });
+
+  const state = await getState(leagueId);
+  const myProxy = state.nomination?.proxyBids?.[teamId] ?? null;
+  res.json({ maxBid: myProxy });
+}));
+
+// DELETE /api/auction/proxy-bid — cancel your proxy bid
+router.delete("/proxy-bid", requireAuth, asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  const teamId = Number(req.query.teamId);
+  if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
+    return res.status(400).json({ error: "Missing leagueId or teamId" });
+  }
+
+  const state = await getState(leagueId);
+  if (state.nomination?.proxyBids?.[teamId]) {
+    delete state.nomination.proxyBids[teamId];
+    persistState(leagueId, state);
+  }
+  res.json({ success: true });
 }));
 
 export const auctionRouter = router;

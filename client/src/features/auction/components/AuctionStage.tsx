@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { Pause, Play, RotateCcw, Undo2 } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal } from 'lucide-react';
 import { ClientAuctionState } from '../hooks/useAuctionState';
 import NominationQueue from './NominationQueue';
 import { Button } from '../../../components/ui/button';
@@ -25,9 +25,12 @@ interface AuctionStageProps {
     onResume?: () => void;
     onReset?: () => void;
     onUndoFinish?: () => void;
+    onSetProxyBid?: (maxBid: number) => void;
+    myProxyBid?: number | null;
+    onCancelProxyBid?: () => void;
 }
 
-export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, onPause, onResume, onReset, onUndoFinish }: AuctionStageProps) {
+export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, onPause, onResume, onReset, onUndoFinish, onSetProxyBid, myProxyBid, onCancelProxyBid }: AuctionStageProps) {
   const { confirm } = useToast();
 
   const nomination = serverState?.nomination;
@@ -50,6 +53,13 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
     const interval = setInterval(checkTime, 200);
     return () => clearInterval(interval);
   }, [nomination]);
+
+  // Decline/Pass state — resets when nomination changes (new player)
+  const [isDeclined, setIsDeclined] = useState(false);
+  const nominationPlayerId = serverState?.nomination?.playerId;
+  useEffect(() => {
+    setIsDeclined(false);
+  }, [nominationPlayerId]);
 
   // Skeleton
   if (!serverState) {
@@ -163,27 +173,67 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             </div>
         </div>
 
-        {/* Bid buttons */}
-        <div className="grid grid-cols-2 gap-2">
-            <Button
-                disabled={!canAffordMin || isHighBidder || nomination.status !== 'running'}
-                onClick={() => onBid(minRaise)}
-                variant="default"
-                className="h-14 flex flex-col items-center justify-center gap-0.5"
-            >
-                <span className="text-[10px] font-medium uppercase opacity-70">+$1</span>
-                <span className="text-lg font-bold">${minRaise}</span>
-            </Button>
-            <Button
-                disabled={!canAffordJump || isHighBidder || nomination.status !== 'running'}
-                onClick={() => onBid(jumpRaise)}
-                variant="secondary"
-                className="h-14 flex flex-col items-center justify-center gap-0.5 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)]"
-            >
-                <span className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)] opacity-70">+$5</span>
-                <span className="text-lg font-bold text-[var(--lg-accent)]">${jumpRaise}</span>
-            </Button>
-        </div>
+        {/* Bid buttons + Decline toggle */}
+        {isDeclined ? (
+            <div className="flex flex-col gap-2">
+                <div className="text-center py-3 rounded-lg border border-[var(--lg-warning)]/30 bg-[var(--lg-warning)]/5">
+                    <div className="text-sm font-semibold text-[var(--lg-warning)]">Passing on this player</div>
+                    <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">You won't bid unless you rejoin</div>
+                </div>
+                <Button
+                    variant="secondary"
+                    className="h-10"
+                    onClick={() => setIsDeclined(false)}
+                >
+                    <HandMetal size={14} /> Rejoin Bidding
+                </Button>
+            </div>
+        ) : (
+            <>
+                <div className="grid grid-cols-2 gap-2">
+                    <Button
+                        disabled={!canAffordMin || isHighBidder || nomination.status !== 'running'}
+                        onClick={() => onBid(minRaise)}
+                        variant="default"
+                        className="h-14 flex flex-col items-center justify-center gap-0.5"
+                    >
+                        <span className="text-[10px] font-medium uppercase opacity-70">+$1</span>
+                        <span className="text-lg font-bold">${minRaise}</span>
+                    </Button>
+                    <Button
+                        disabled={!canAffordJump || isHighBidder || nomination.status !== 'running'}
+                        onClick={() => onBid(jumpRaise)}
+                        variant="secondary"
+                        className="h-14 flex flex-col items-center justify-center gap-0.5 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)]"
+                    >
+                        <span className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)] opacity-70">+$5</span>
+                        <span className="text-lg font-bold text-[var(--lg-accent)]">${jumpRaise}</span>
+                    </Button>
+                </div>
+                {/* Pass button — only show when not already high bidder */}
+                {myTeam && !isHighBidder && nomination.status === 'running' && (
+                    <button
+                        onClick={() => setIsDeclined(true)}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-warning)] transition-colors"
+                    >
+                        <HandMetal size={12} />
+                        Pass (sit out this player)
+                    </button>
+                )}
+            </>
+        )}
+
+        {/* Proxy / Max Bid */}
+        {myTeam && onSetProxyBid && nomination.status === 'running' && (
+            <ProxyBidSection
+                currentBid={currentBid}
+                maxAffordable={myTeam.maxBid}
+                myProxyBid={myProxyBid ?? null}
+                onSet={onSetProxyBid}
+                onCancel={onCancelProxyBid}
+                isHighBidder={isHighBidder}
+            />
+        )}
 
         <div className="text-center text-[10px] text-[var(--lg-text-muted)] opacity-50">
             {isHighBidder
@@ -224,5 +274,97 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
         {/* Nomination queue */}
         <NominationQueue teams={teams} queue={queueIds} queueIndex={queueIndex} myTeamId={myTeamId} />
     </div>
+  );
+}
+
+// --- Proxy Bid Sub-Component ---
+
+interface ProxyBidSectionProps {
+  currentBid: number;
+  maxAffordable: number;
+  myProxyBid: number | null;
+  onSet: (maxBid: number) => void;
+  onCancel?: () => void;
+  isHighBidder: boolean;
+}
+
+function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCancel, isHighBidder }: ProxyBidSectionProps) {
+  const [inputValue, setInputValue] = useState('');
+  const [showInput, setShowInput] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when shown
+  useEffect(() => {
+    if (showInput && inputRef.current) inputRef.current.focus();
+  }, [showInput]);
+
+  const handleSubmit = () => {
+    const val = parseInt(inputValue, 10);
+    if (!val || val <= currentBid || val > maxAffordable) return;
+    onSet(val);
+    setInputValue('');
+    setShowInput(false);
+  };
+
+  // Active proxy bid display
+  if (myProxyBid) {
+    return (
+      <div className="flex items-center justify-between px-4 py-3 rounded-lg border border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/5">
+        <div className="flex items-center gap-2">
+          <Target size={16} className="text-[var(--lg-accent)]" />
+          <span className="text-sm font-semibold text-[var(--lg-accent)]">
+            Auto-bid up to ${myProxyBid}
+          </span>
+        </div>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="p-1 text-[var(--lg-text-muted)] hover:text-red-400 rounded"
+            title="Cancel auto-bid"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Set proxy bid UI
+  if (showInput) {
+    return (
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--lg-text-muted)]">$</span>
+          <input
+            ref={inputRef}
+            type="number"
+            min={currentBid + 1}
+            max={maxAffordable}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') setShowInput(false); }}
+            placeholder={`${currentBid + 1}–${maxAffordable}`}
+            className="w-full pl-6 pr-2 py-2 text-sm rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] placeholder:text-[var(--lg-text-muted)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+          />
+        </div>
+        <Button size="sm" onClick={handleSubmit} disabled={!inputValue || parseInt(inputValue) <= currentBid || parseInt(inputValue) > maxAffordable}>
+          Set
+        </Button>
+        <button onClick={() => setShowInput(false)} className="p-1.5 text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">
+          <X size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  // Button to open proxy bid input
+  return (
+    <button
+      onClick={() => setShowInput(true)}
+      className="w-full flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-lg border border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/5 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/10 transition-colors"
+    >
+      <Target size={16} />
+      Set Max Bid (auto-bid)
+    </button>
   );
 }

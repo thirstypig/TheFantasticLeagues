@@ -31,6 +31,10 @@ export interface NominationState {
   status: 'running' | 'paused' | 'ended';
   pausedRemainingMs?: number; // If paused, how much time was left
   lotId?: number; // DB AuctionLot ID for bid tracking
+
+  // Proxy/max bids (eBay-style) — keyed by teamId, value is max amount willing to pay.
+  // PRIVATE: stripped before broadcasting to clients (each client only sees their own).
+  proxyBids?: Record<number, number>;
 }
 
 export interface AuctionLogEvent {

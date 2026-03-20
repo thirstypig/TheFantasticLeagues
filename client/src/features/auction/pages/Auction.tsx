@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import AuctionLayout from '../components/AuctionLayout';
 import AuctionStage from '../components/AuctionStage';
 import AuctionComplete from '../components/AuctionComplete';
@@ -32,6 +32,27 @@ export default function Auction() {
   // Use the Hook
   const { state: auctionState, actions } = useAuctionState(activeLeagueId);
   const { queue: myQueue, add: addToQueue, remove: removeFromQueue, isQueued, moveUp: moveQueueUp, moveDown: moveQueueDown } = useNominationQueue(myTeamId);
+
+  // Proxy bid state (private — only the owner sees their own max bid)
+  const [myProxyBid, setMyProxyBid] = useState<number | null>(null);
+  const lastNominationId = auctionState?.nomination?.playerId;
+
+  // Fetch proxy bid when nomination changes
+  useEffect(() => {
+    if (!myTeamId || !lastNominationId || !activeLeagueId) {
+      setMyProxyBid(null);
+      return;
+    }
+    actions.getMyProxyBid(myTeamId).then(setMyProxyBid).catch(() => setMyProxyBid(null));
+  }, [myTeamId, lastNominationId, activeLeagueId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-clear proxy bid display when current bid exceeds it
+  const currentBidAmount = auctionState?.nomination?.currentBid;
+  useEffect(() => {
+    if (myProxyBid && currentBidAmount && currentBidAmount >= myProxyBid) {
+      setMyProxyBid(null);
+    }
+  }, [currentBidAmount, myProxyBid]);
 
   // Initialization: Fetch Data & Identify User
   useEffect(() => {
@@ -149,6 +170,47 @@ export default function Auction() {
       }
   };
 
+  const handleSetProxyBid = useCallback(async (maxBid: number) => {
+      if (!myTeamId) {
+          toast("You are not part of this league/auction.", "error");
+          return;
+      }
+      try {
+          await actions.setProxyBid({ bidderTeamId: myTeamId, maxBid });
+          setMyProxyBid(maxBid);
+          toast(`Auto-bid set: up to $${maxBid}`, "success");
+      } catch (e: any) {
+          toast(e?.message || "Failed to set max bid", "error");
+      }
+  }, [myTeamId, actions, toast]);
+
+  const handleCancelProxyBid = useCallback(async () => {
+      if (!myTeamId) return;
+      try {
+          await actions.cancelProxyBid(myTeamId);
+          setMyProxyBid(null);
+          toast("Auto-bid cancelled", "info");
+      } catch (e: any) {
+          toast(e?.message || "Failed to cancel", "error");
+      }
+  }, [myTeamId, actions, toast]);
+
+  const handleForceAssign = useCallback(async (player: PlayerSeasonStat, teamId: number, price: number) => {
+      try {
+          await actions.forceAssign({
+              teamId,
+              playerId: String(player.mlb_id),
+              playerName: player.player_name || 'Unknown',
+              price,
+              positions: player.positions || (player.is_pitcher ? 'P' : 'UT'),
+              isPitcher: Boolean(player.is_pitcher),
+          });
+          toast(`Assigned ${player.player_name} to team for $${price}`, "success");
+      } catch (e: any) {
+          toast(e?.message || "Force assign failed", "error");
+      }
+  }, [actions, toast]);
+
   // Adapter for TeamListTab (it expects local TeamData, we have server AuctionTeam)
   // We mash them together or refactor TeamListTab.
   // For now, let's map server teams to expected shape.
@@ -228,6 +290,9 @@ export default function Auction() {
                     onResume={isCommissioner ? actions.resume : undefined}
                     onReset={isCommissioner ? actions.reset : undefined}
                     onUndoFinish={isCommissioner ? actions.undoFinish : undefined}
+                    onSetProxyBid={handleSetProxyBid}
+                    myProxyBid={myProxyBid}
+                    onCancelProxyBid={handleCancelProxyBid}
                 />
                 {myQueue.length > 0 && (
                     <MyNominationQueue
@@ -257,6 +322,8 @@ export default function Auction() {
                                     isQueued={isQueued}
                                     myTeamId={myTeamId}
                                     auctionConfig={auctionState?.config}
+                                    onForceAssign={isCommissioner ? handleForceAssign : undefined}
+                                    isCommissioner={isCommissioner}
                                  /> 
                     },
                     { 

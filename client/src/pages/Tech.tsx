@@ -521,6 +521,11 @@ const buildJournal = [
     title: "Session 28: Meta Pages, Analytics & Full Tech Debt Cleanup",
     detail: "Built 3 new pages (/changelog, /status, /analytics) and added 4 new sections to /tech. Added to /roadmap: Velocity chart, Risk Register, Session planner. Fixed all remaining P2s (CR-09 type import, CR-10 StatKey union). Completed all P3s: extracted statsService.ts (CR-15), added compact ThemedTable variant via React context and migrated auction tables (CR-16), lazy-loaded xlsx + generative-ai saving 3.5MB startup (RD-01), enforced Prisma singleton across 8 scripts (RD-02), npm audit in CI (RD-03), moved shared components to components/shared/ (RD-04). 68 of 69 total items resolved — only TD-Q03 intentionally deferred.",
   },
+  {
+    date: "Mar 2026",
+    title: "Session 29: Auction Enhancements — Proxy Bids, Force Assign, Timers",
+    detail: "Implemented eBay-style proxy/max bids with server-side auto-bidding resolution (competing proxies settle at loser's max + $1, private per-team). Added commissioner Force Assign to manually assign players to teams (bypasses auction for verbal deals). Made bid timer and nomination timer configurable via league rules. Added Decline/Pass toggle for team owners to sit out a player's bidding. 12 future auction feature ideas added to backlog (AUC-01 through AUC-12).",
+  },
 ];
 
 const workflowSteps = [
@@ -670,9 +675,15 @@ const apiModules: ApiModule[] = [
       { method: "POST", path: "/nominate", auth: "requireAuth", description: "Nominate player" },
       { method: "POST", path: "/bid", auth: "requireAuth", description: "Place bid" },
       { method: "POST", path: "/finish", auth: "requireAdmin", description: "Finish current lot" },
+      { method: "POST", path: "/undo-finish", auth: "requireAdmin", description: "Undo last finish" },
       { method: "POST", path: "/pause", auth: "requireCommissioner", description: "Pause auction" },
       { method: "POST", path: "/resume", auth: "requireCommissioner", description: "Resume auction" },
       { method: "POST", path: "/reset", auth: "requireAdmin", description: "Reset auction" },
+      { method: "POST", path: "/force-assign", auth: "requireCommissioner", description: "Force assign player" },
+      { method: "POST", path: "/proxy-bid", auth: "requireAuth", description: "Set max/proxy bid" },
+      { method: "GET", path: "/my-proxy-bid", auth: "requireAuth", description: "Get my proxy bid" },
+      { method: "DELETE", path: "/proxy-bid", auth: "requireAuth", description: "Cancel proxy bid" },
+      { method: "GET", path: "/state", auth: "requireLeagueMember", description: "Get auction state" },
       { method: "GET", path: "/bid-history", auth: "requireAuth", description: "Bid history" },
     ],
   },

@@ -209,6 +209,37 @@ export function useAuctionState(leagueId?: number | null) {
         if (!wsRef.current) fetchState();
     };
 
+    const setProxyBid = async (payload: { bidderTeamId: number, maxBid: number }) => {
+        await fetchJsonApi('/api/auction/proxy-bid', {
+            method: 'POST',
+            body: withLeagueId(payload)
+        });
+        track("auction_proxy_bid", { max_bid: payload.maxBid });
+        if (!wsRef.current) fetchState();
+    };
+
+    const getMyProxyBid = async (teamId: number): Promise<number | null> => {
+        const lid = leagueIdRef.current;
+        if (!lid) return null;
+        const data = await fetchJsonApi<{ maxBid: number | null }>(`/api/auction/my-proxy-bid?leagueId=${lid}&teamId=${teamId}`);
+        return data.maxBid;
+    };
+
+    const forceAssign = async (payload: { teamId: number, playerId: string, playerName: string, price: number, positions: string, isPitcher: boolean }) => {
+        await fetchJsonApi('/api/auction/force-assign', {
+            method: 'POST',
+            body: withLeagueId(payload)
+        });
+        track("auction_force_assign", { player_name: payload.playerName, price: payload.price });
+        if (!wsRef.current) fetchState();
+    };
+
+    const cancelProxyBid = async (teamId: number) => {
+        const lid = leagueIdRef.current;
+        if (!lid) return;
+        await fetchJsonApi(`/api/auction/proxy-bid?leagueId=${lid}&teamId=${teamId}`, { method: 'DELETE' });
+    };
+
     const initAuction = async (leagueIdOverride: number) => {
         await fetchJsonApi('/api/auction/init', {
              method: 'POST',
@@ -230,6 +261,10 @@ export function useAuctionState(leagueId?: number | null) {
         actions: {
             nominate,
             bid,
+            setProxyBid,
+            getMyProxyBid,
+            cancelProxyBid,
+            forceAssign,
             initAuction,
             finishAuction,
             pause: async () => { await fetchJsonApi('/api/auction/pause', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },

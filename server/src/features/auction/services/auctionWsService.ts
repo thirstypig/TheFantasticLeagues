@@ -15,7 +15,12 @@ export function broadcastState(leagueId: number, state: AuctionState): void {
   const clients = rooms.get(leagueId);
   if (!clients || clients.size === 0) return;
 
-  const payload = JSON.stringify(state);
+  // Strip proxyBids before sending — they are private per-team secrets
+  const sanitized = state.nomination?.proxyBids
+    ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
+    : state;
+
+  const payload = JSON.stringify(sanitized);
   for (const ws of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(payload);

@@ -22,13 +22,15 @@ interface PlayerPoolTabProps {
   isQueued?: (playerId: string | number) => boolean;
   myTeamId?: number;
   auctionConfig?: AuctionConfig;
+  onForceAssign?: (player: PlayerSeasonStat, teamId: number, price: number) => void;
+  isCommissioner?: boolean;
 }
 
 import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots, NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 
-export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig }: PlayerPoolTabProps) {
+export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -364,6 +366,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     onQueue={onQueue}
                                     isQueued={isQueued}
                                     colSpan={colCount}
+                                    onForceAssign={isCommissioner ? onForceAssign : undefined}
+                                    assignTeams={isCommissioner ? teams.filter(t => t.id != null).map(t => ({ id: t.id!, name: t.name })) : undefined}
                                 />
                             )}
                         </React.Fragment>

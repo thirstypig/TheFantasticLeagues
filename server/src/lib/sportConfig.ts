@@ -70,6 +70,8 @@ export const DEFAULT_RULES = [
   { category: "draft", key: "draft_type", value: "SNAKE", label: "Draft Type" },
   { category: "draft", key: "auction_budget", value: "400", label: "Auction Budget ($)" },
   { category: "draft", key: "min_bid", value: "1", label: "Minimum Bid ($)" },
+  { category: "draft", key: "bid_timer", value: "15", label: "Bid Timer (seconds)" },
+  { category: "draft", key: "nomination_timer", value: "30", label: "Nomination Timer (seconds)" },
   { category: "draft", key: "keeper_count", value: "4", label: "Keepers per Team" },
   // IL
   { category: "il", key: "il_slot_1_cost", value: "10", label: "1st IL Slot Cost ($)" },
