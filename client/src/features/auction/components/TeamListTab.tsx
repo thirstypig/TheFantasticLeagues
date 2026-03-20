@@ -36,9 +36,10 @@ interface TeamListTabProps {
   players?: PlayerSeasonStat[];
   budgetCap?: number;
   rosterSize?: number;
+  showPace?: boolean;
 }
 
-export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23 }: TeamListTabProps) {
+export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23, showPace = true }: TeamListTabProps) {
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailedRoster, setDetailedRoster] = useState<RosterEntry[] | null>(null);
@@ -113,7 +114,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
   return (
     <div className="h-full overflow-y-auto scrollbar-hide">
         {/* League summary */}
-        {teams.length > 0 && (
+        {showPace && teams.length > 0 && (
           <div className="px-6 py-2 border-b border-[var(--lg-divide)] bg-[var(--lg-glass-bg-hover)] flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
             <span>{teams.reduce((s, t) => s + t.rosterCount, 0)} drafted</span>
             <span>${teams.reduce((s, t) => s + (budgetCap - t.budget), 0)} spent</span>
@@ -156,11 +157,13 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                             <span className={`font-semibold ${team.isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-primary)]'}`}>
                                                 {team.name}
                                             </span>
-                                            {isHot && <Flame size={12} className="text-red-400" />}
-                                            {isCold && <Snowflake size={12} className="text-blue-400" />}
+                                            {showPace && isHot && <Flame size={12} className="text-red-400" />}
+                                            {showPace && isCold && <Snowflake size={12} className="text-blue-400" />}
                                         </div>
                                         <span className="text-[10px] font-medium text-[var(--lg-text-muted)] opacity-60">
-                                            {team.rosterCount}/{rosterSize} · avg ${avgCost.toFixed(0)} · ${remainingPerSpot.toFixed(0)}/spot left
+                                            {showPace
+                                              ? `${team.rosterCount}/${rosterSize} · avg $${avgCost.toFixed(0)} · $${remainingPerSpot.toFixed(0)}/spot left`
+                                              : `${team.rosterCount} / ${rosterSize} Roster`}
                                         </span>
                                     </div>
                                 </div>
@@ -180,6 +183,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                 </div>
                             </div>
                             {/* Budget progress bar */}
+                            {showPace && (
                             <div className="mt-1.5 ml-10 mr-16">
                                 <div className="h-1 rounded-full bg-[var(--lg-tint)] overflow-hidden">
                                     <div
@@ -190,6 +194,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                     />
                                 </div>
                             </div>
+                            )}
                         </div>
 
                         {isExpanded && (
