@@ -95,6 +95,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       'Players': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />,
       'Payouts': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
       'Activity': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />,
+      'About': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+      'Guide': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
       'Rules': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />,
       'Archive': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />,
       'Commissioner': <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
@@ -111,35 +113,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const NAV_SECTIONS: NavSection[] = [
     {
-      title: "My Team",
+      title: "League",
       items: [
         { to: "/", label: "Home", show: true },
-      ],
-    },
-    {
-      title: "Season",
-      items: [
         { to: "/season", label: "Season", show: true },
         { to: "/players", label: "Players", show: true },
-        { to: "/rules", label: "Rules", show: true },
-      ],
-    },
-    {
-      title: "Transactions",
-      items: [
-        { to: "/activity", label: "Activity", show: true },
         { to: "/auction", label: "Auction", show: true },
+        { to: "/activity", label: "Activity", show: true },
       ],
     },
     {
-      title: "History",
+      title: "Reference",
       items: [
+        { to: "/about", label: "About", show: true },
+        { to: "/guide", label: "Guide", show: true },
+        { to: "/rules", label: "Rules", show: true },
         { to: "/archive", label: "Archive", show: true },
         { to: "/payouts", label: "Payouts", show: true },
       ],
     },
     {
-      title: "Management",
+      title: "Manage",
       items: [
         {
           to: `/commissioner/${leagueId}`,
@@ -152,12 +146,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     {
       title: "Resources",
       items: [
-        { to: "/changelog", label: "Changelog", show: Boolean(user?.isAdmin) },
-        { to: "/status", label: "Status", show: Boolean(user?.isAdmin) },
         { to: "/roadmap", label: "Roadmap", show: Boolean(user?.isAdmin) },
+        { to: "/changelog", label: "Changelog", show: Boolean(user?.isAdmin) },
         { to: "/tech", label: "Under the Hood", show: Boolean(user?.isAdmin) },
-        { to: "/analytics", label: "Analytics", show: Boolean(user?.isAdmin) },
         { to: "/docs", label: "Docs", show: Boolean(user?.isAdmin) },
+        { to: "/status", label: "Status", show: Boolean(user?.isAdmin) },
       ],
     },
   ];
@@ -235,12 +228,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   {theme === 'dark' ? '☀️' : '🌙'}
                 </button>
                 <button
-                  onClick={() => setSidebarVisible(false)}
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
                   className="p-1.5 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
-                  title="Minimize Sidebar"
-                  aria-label="Minimize sidebar"
+                  title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+                  aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 transition-transform ${sidebarOpen ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                   </svg>
                 </button>
@@ -292,7 +285,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            <nav className="flex-1 space-y-3 overflow-y-auto" aria-label="Main navigation">
+            <nav className="flex-1 space-y-2 overflow-y-auto" aria-label="Main navigation">
               {NAV_SECTIONS.map((section) => {
                 const visibleItems = section.items.filter((item) => item.show);
                 if (visibleItems.length === 0) return null;

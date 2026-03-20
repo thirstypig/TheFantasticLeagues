@@ -57,6 +57,8 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   draft_mode: { type: 'select', options: ["AUCTION", "DRAFT"] },
   draft_type: { type: 'select', options: ["SNAKE", "LINEAR"], dependsOn: { key: 'draft_mode', value: 'DRAFT' } },
   auction_budget: { type: 'number', dependsOn: { key: 'draft_mode', value: 'AUCTION' }, suffix: '$' },
+  bid_timer: { type: 'select', options: ["10", "15", "30", "45", "60", "90", "120"], suffix: 's', dependsOn: { key: 'draft_mode', value: 'AUCTION' } },
+  nomination_timer: { type: 'select', options: ["15", "30", "45", "60", "90", "120"], suffix: 's', dependsOn: { key: 'draft_mode', value: 'AUCTION' } },
   keeper_count: { type: 'slider', min: 0, max: 10, step: 1 },
   min_bid: { type: 'select', options: ["1", "2", "3", "4", "5"], suffix: '$' },
   grand_slam: { type: 'number', suffix: '$' },

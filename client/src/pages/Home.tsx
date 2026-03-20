@@ -1,339 +1,332 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { getPlayerSeasonStats, type PlayerSeasonStat } from "../api";
-import { fetchJsonApi, API_BASE } from "../api/base";
-import { TableCard, Table, THead, Tr, Th, Td } from "../components/ui/TableCard";
-import PageHeader from "../components/ui/PageHeader";
-import { formatAvg } from "../lib/playerDisplay";
-import { mapPosition } from "../lib/sportConfig";
+import { fetchJsonApi, API_BASE, yyyyMmDd, addDays } from "../api/base";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { joinLeague } from "../features/leagues/api";
 import { useToast } from "../contexts/ToastContext";
 import { useLeague } from "../contexts/LeagueContext";
 
-function num(v: string | number | null | undefined): number {
-  return Number(v) || 0;
-}
+// ─── Types ──────────────────────────────────────────────────────────
 
-interface Player {
-  mlbId: number;
-  name: string;
-  posPrimary: string;
-}
-
-interface RosterEntry {
-  id: number;
-  teamId: number;
-  isKeeper?: boolean;
-  player: Player;
-  stat?: PlayerSeasonStat;
-}
-
-interface Team {
+interface TeamScore {
   id: number;
   name: string;
-  code?: string;
-  ownerUserId?: number;
-  ownerships?: Array<{ userId: number }>;
+  abbr: string;
+  score: number;
+  wins: number;
+  losses: number;
 }
 
-export default function Home() {
-  const { user, loading: authLoading, refresh } = useAuth();
-  const { toast } = useToast();
+interface GameScore {
+  gamePk: number;
+  status: string;
+  detailedState: string;
+  startTime: string;
+  away: TeamScore;
+  home: TeamScore;
+  inning?: number;
+  inningState?: string;
+}
 
-  const [myTeam, setMyTeam] = useState<Team | null>(null);
-  const [roster, setRoster] = useState<RosterEntry[]>([]);
-  const [stats, setStats] = useState<PlayerSeasonStat[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
-  const [joining, setJoining] = useState(false);
-  const [outfieldMode, setOutfieldMode] = useState("OF");
-  const { leagueId: currentLeagueId } = useLeague();
+interface MlbTransaction {
+  id: number;
+  playerName: string;
+  playerMlbId: number;
+  teamName: string;
+  teamAbbr: string;
+  fromTeamName?: string;
+  fromTeamAbbr?: string;
+  type: string;
+  typeCode: string;
+  description: string;
+  date: string;
+}
 
-  useEffect(() => {
-    if (!user) return;
+// ─── Sub-Components ─────────────────────────────────────────────────
 
-    const lid = currentLeagueId;
-    if (!lid) return;
-
-    let mounted = true;
-    (async () => {
-       try {
-         setLoading(true);
-
-         // Parallel fetch: league detail + rosters + player stats
-         const [leagueRes, rostersRes, statsData] = await Promise.all([
-           fetchJsonApi<any>(`${API_BASE}/leagues/${lid}`),
-           fetchJsonApi<any>(`${API_BASE}/leagues/${lid}/rosters`),
-           getPlayerSeasonStats(),
-         ]);
-         if (!mounted) return;
-
-         setOutfieldMode(leagueRes.league?.outfieldMode || "OF");
-         const teams = leagueRes.league?.teams || [];
-         const uid = Number(user.id);
-         const mine = teams.find((t: { ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }) =>
-           t.ownerUserId === uid || (t.ownerships || []).some((o) => o.userId === uid)
-         );
-
-         if (mine) {
-            setMyTeam(mine);
-            const myRoster = (rostersRes.rosters || []).filter((r: { teamId: number }) => r.teamId === mine.id);
-            setRoster(myRoster);
-            setStats(statsData || []);
-         } else {
-            setMyTeam(null);
-            setRoster([]);
-            setStats([]);
-         }
-
-       } catch (err) {
-         console.error("Home load error", err);
-       } finally {
-         if (mounted) setLoading(false);
-       }
-    })();
-    return () => { mounted = false; };
-  }, [user, currentLeagueId]);
-
-   const rosterWithStats = useMemo(() => {
-       const statsMap = new Map(stats.map(s => [Number(s.mlb_id), s]));
-       return roster.map(r => ({
-           ...r,
-           stat: statsMap.get(r.player.mlbId),
-       }));
-   }, [roster, stats]);
-
-  const hitters = rosterWithStats.filter(r => r.player.posPrimary !== 'P' && r.player.posPrimary !== 'RP' && r.player.posPrimary !== 'SP');
-  const pitchers = rosterWithStats.filter(r => r.player.posPrimary === 'P' || r.player.posPrimary === 'RP' || r.player.posPrimary === 'SP');
-
-  if (!user && !authLoading) {
-    return null; // Should be handled by App.tsx routing Landing
-  }
-
-  if (!user) return null; // Fallback during loading
+function DateNavigator({ date, onChange }: { date: string; onChange: (d: string) => void }) {
+  const today = yyyyMmDd(new Date());
+  const isToday = date === today;
+  const displayDate = isToday ? "Today" : new Date(date + "T12:00:00").toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
-    <div className="relative min-h-full max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10 scrollbar-hide">
-      <div className="mb-12 animate-in fade-in slide-in-from-top-4 duration-500">
-        <PageHeader
-          title="Dashboard"
-          subtitle={<span>Welcome, <span className="text-[var(--lg-accent)] font-semibold uppercase">{user.name || user.email}</span>.</span>}
-        />
-      </div>
-
-      {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 text-[var(--lg-text-muted)] animate-pulse">
-            <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-            <div className="text-xs font-medium uppercase">Loading...</div>
-          </div>
-      ) : !myTeam ? (
-          <div className="lg-card p-8 md:p-16 text-center max-w-2xl mx-auto shadow-2xl animate-in fade-in zoom-in-95 duration-700">
-             <div className="w-20 h-20 rounded-full bg-[var(--lg-tint)] flex items-center justify-center mx-auto mb-8 border border-[var(--lg-border-subtle)] text-4xl">
-               <svg className="w-10 h-10 text-[var(--lg-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-               </svg>
-             </div>
-             <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)] mb-2">Welcome, {user.name || user.email}</h2>
-             <p className="text-sm font-medium text-[var(--lg-text-secondary)] mb-8 leading-relaxed opacity-60">
-               You're not on a team yet. Enter an invite code from your league commissioner to join.
-             </p>
-
-             <form
-               onSubmit={async (e) => {
-                 e.preventDefault();
-                 const code = inviteCode.trim();
-                 if (!code) return;
-                 setJoining(true);
-                 try {
-                   const res = await joinLeague(code);
-                   toast(`Joined ${res.league.name} ${res.league.season ?? ''}!`.trim(), "success");
-                   setInviteCode("");
-                   await refresh();
-                 } catch (err) {
-                   toast(err instanceof Error ? err.message : "Failed to join league", "error");
-                 } finally {
-                   setJoining(false);
-                 }
-               }}
-               className="flex items-center gap-3 max-w-sm mx-auto mb-8"
-             >
-               <input
-                 type="text"
-                 value={inviteCode}
-                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                 placeholder="Enter invite code"
-                 className="flex-1 h-12 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-mono tracking-widest text-center uppercase"
-               />
-               <button
-                 type="submit"
-                 disabled={joining || !inviteCode.trim()}
-                 className="h-12 px-6 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
-               >
-                 {joining ? "Joining..." : "Join"}
-               </button>
-             </form>
-
-             <p className="text-xs text-[var(--lg-text-muted)] opacity-50">
-               Ask your league commissioner for an invite code, or{" "}
-               <Link to="/guide" className="text-[var(--lg-accent)] hover:underline">view the guide</Link>{" "}
-               to learn more.
-             </p>
-          </div>
-      ) : (
-          <div className="space-y-6 md:space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
-             <div className="lg-card p-0 overflow-hidden border-b-8 border-[var(--lg-accent)] shadow-2xl bg-transparent">
-                 <div className="p-4 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-10 bg-[var(--lg-tint)]">
-                     <div>
-                        <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] mb-3 opacity-60">My Team</div>
-                        <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)] leading-none">{myTeam.name}</h2>
-                        <div className="mt-4 flex items-center gap-3">
-                           <span className="text-xs font-medium uppercase text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-md">Active</span>
-                           <span className="text-xs font-mono text-[var(--lg-text-muted)] opacity-40">#{myTeam.id}</span>
-                        </div>
-                     </div>
-                     <div className="flex items-center">
-                       <Link to="/players" className="lg-button lg-button-primary px-8 py-3 shadow-xl shadow-blue-500/20 group">
-                         Players <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-                       </Link>
-                     </div>
-                 </div>
-
-                 {/* Keepers Summary */}
-                 {roster.some(r => r.isKeeper) && (
-                   <div className="px-4 md:px-10 pt-4 md:pt-6 flex items-center gap-4">
-                     <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">K</span>
-                     <span className="text-xs font-medium text-[var(--lg-text-secondary)]">
-                       Keepers: {roster.filter(r => r.isKeeper).length} selected
-                       {" · "}
-                       Cost: ${roster.filter(r => r.isKeeper).reduce((sum, r) => sum + ((r as any).price ?? 0), 0)}
-                     </span>
-                   </div>
-                 )}
-
-                 <div className="p-4 md:p-10 grid grid-cols-1 gap-14">
-                   {/* Hitters */}
-                   <div>
-                     <div className="flex items-center gap-4 mb-8">
-                        <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-lg shadow-blue-500/20"></div>
-                        <h3 className="text-2xl font-semibold uppercase text-[var(--lg-text-heading)]">Hitters <span className="text-[var(--lg-text-muted)] font-medium text-xs ml-3 uppercase opacity-40">Roster</span></h3>
-                     </div>
-                     <div className="lg-card p-0 overflow-hidden bg-black/20">
-                     <TableCard>
-                     <Table>
-                        <THead>
-                            <Tr>
-                                <Th align="left">Role</Th>
-                                <Th align="left">Player</Th>
-                                <Th align="center">MLB</Th>
-                                <Th align="center">R</Th>
-                                <Th align="center">HR</Th>
-                                <Th align="center">RBI</Th>
-                                <Th align="center">SB</Th>
-                                <Th align="center">AVG</Th>
-                                <Th align="center">AB</Th>
-                            </Tr>
-                        </THead>
-                        <tbody className="divide-y divide-[var(--lg-divide)]">
-                            {hitters.length === 0 && <Tr><td colSpan={9} className="p-16 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase opacity-30">No hitters on roster</td></Tr>}
-                            {hitters.map(r => {
-                                const s = (r.stat || {}) as PlayerSeasonStat;
-                                return (
-                                    <Tr key={r.id} className="hover:bg-[var(--lg-tint)]">
-                                        <Td className="py-4">
-                                          <span className="text-xs font-medium uppercase text-blue-400 bg-blue-400/10 border border-blue-400/20 px-2 py-0.5 rounded-md">
-                                            {mapPosition(r.player.posPrimary, outfieldMode)}
-                                          </span>
-                                        </Td>
-                                        <Td>
-                                          <span className="inline-flex items-center gap-1.5">
-                                            {r.player.name}
-                                            {r.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
-                                          </span>
-                                        </Td>
-                                        <Td align="center"><span className="text-xs text-[var(--lg-text-muted)]">{(r.player as any).mlbTeam || "—"}</span></Td>
-                                        <Td align="center">{num(s.R)}</Td>
-                                        <Td align="center"><span className="text-blue-500">{num(s.HR)}</span></Td>
-                                        <Td align="center">{num(s.RBI)}</Td>
-                                        <Td align="center"><span className="text-emerald-500">{num(s.SB)}</span></Td>
-                                        <Td align="center"><span className="text-[var(--lg-accent)]">{formatAvg(s.AVG || 0)}</span></Td>
-                                        <Td align="center"><span className="text-[var(--lg-text-muted)] opacity-40">{num(s.AB)}</span></Td>
-                                    </Tr>
-                                );
-                            })}
-                        </tbody>
-                     </Table>
-                     </TableCard>
-                     </div>
-                   </div>
-
-                   {/* Pitchers */}
-                   <div>
-                     <div className="flex items-center gap-4 mb-8">
-                        <div className="w-1.5 h-6 bg-purple-500 rounded-full shadow-lg shadow-purple-500/20"></div>
-                        <h3 className="text-2xl font-semibold uppercase text-[var(--lg-text-heading)]">Pitchers <span className="text-[var(--lg-text-muted)] font-medium text-xs ml-3 uppercase opacity-40">Roster</span></h3>
-                     </div>
-                     <div className="lg-card p-0 overflow-hidden bg-black/20">
-                     <TableCard>
-                     <Table>
-                        <THead>
-                            <Tr>
-                                <Th align="left">Role</Th>
-                                <Th align="left">Player</Th>
-                                <Th align="center">MLB</Th>
-                                <Th align="center">W</Th>
-                                <Th align="center">SV</Th>
-                                <Th align="center">K</Th>
-                                <Th align="center">ERA</Th>
-                                <Th align="center">WHIP</Th>
-                            </Tr>
-                        </THead>
-                        <tbody className="divide-y divide-[var(--lg-divide)]">
-                            {pitchers.length === 0 && <Tr><td colSpan={8} className="p-16 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase opacity-30">No pitchers on roster</td></Tr>}
-                            {pitchers.map(r => {
-                                const s = (r.stat || {}) as PlayerSeasonStat;
-                                return (
-                                    <Tr key={r.id} className="hover:bg-[var(--lg-tint)]">
-                                        <Td className="py-4">
-                                          <span className="text-xs font-medium uppercase text-purple-400 bg-purple-400/10 border border-purple-400/20 px-2 py-0.5 rounded-md">
-                                            {r.player.posPrimary}
-                                          </span>
-                                        </Td>
-                                        <Td>
-                                          <span className="inline-flex items-center gap-1.5">
-                                            {r.player.name}
-                                            {r.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
-                                          </span>
-                                        </Td>
-                                        <Td align="center"><span className="text-xs text-[var(--lg-text-muted)]">{(r.player as any).mlbTeam || "—"}</span></Td>
-                                        <Td align="center"><span className="text-emerald-500">{num(s.W)}</span></Td>
-                                        <Td align="center"><span className="text-amber-500">{num(s.SV)}</span></Td>
-                                        <Td align="center"><span className="text-blue-500">{num(s.K)}</span></Td>
-                                        <Td align="center"><span className="text-blue-400">{s.ERA !== undefined ? Number(s.ERA).toFixed(2) : '—'}</span></Td>
-                                        <Td align="center"><span className="text-purple-400">{s.WHIP !== undefined ? Number(s.WHIP).toFixed(2) : '—'}</span></Td>
-                                    </Tr>
-                                );
-                            })}
-                        </tbody>
-                     </Table>
-                     </TableCard>
-                     </div>
-                   </div>
-                 </div>
-              </div>
-          </div>
-      )}
-      <BuildInfoPanel />
+    <div className="flex items-center justify-center gap-3 mb-4">
+      <button
+        onClick={() => onChange(yyyyMmDd(addDays(new Date(date + "T12:00:00"), -1)))}
+        className="p-1.5 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all"
+      >
+        <ChevronLeft size={18} />
+      </button>
+      <span className="text-sm font-semibold text-[var(--lg-text-heading)] min-w-[140px] text-center">
+        {displayDate}
+      </span>
+      <button
+        onClick={() => onChange(yyyyMmDd(addDays(new Date(date + "T12:00:00"), 1)))}
+        disabled={isToday}
+        className="p-1.5 rounded-lg hover:bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-all disabled:opacity-20"
+      >
+        <ChevronRight size={18} />
+      </button>
     </div>
   );
 }
 
-function BuildInfoPanel() {
+function GameCard({ game }: { game: GameScore }) {
+  const isLive = game.status === "Live";
+  const isFinal = game.status === "Final";
+  const isPreview = game.status === "Preview";
+
+  const gameTime = new Date(game.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  const statusText = isLive
+    ? `${game.inningState || ''} ${game.inning || ''}`
+    : isFinal
+    ? game.detailedState || 'Final'
+    : gameTime;
+
+  const mlbUrl = `https://www.mlb.com/gameday/${game.gamePk}`;
+
   return (
-    <div className="fixed bottom-4 right-6 pointer-events-none z-50">
-      <div className="text-xs font-medium uppercase tracking-[0.5em] text-[var(--lg-text-muted)] opacity-20 select-none">
-        TFL // {__COMMIT_HASH__}
+    <a
+      href={mlbUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`block rounded-lg border p-2.5 min-w-[150px] flex-1 hover:border-[var(--lg-accent)]/40 transition-colors ${
+      isLive ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]'
+    }`}>
+      {/* Status */}
+      <div className={`text-[9px] font-bold uppercase tracking-wide mb-1.5 ${
+        isLive ? 'text-emerald-400' : 'text-[var(--lg-text-muted)] opacity-50'
+      }`}>
+        {isLive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse" />}
+        {statusText}
+      </div>
+      {/* Away */}
+      <div className="flex justify-between items-center mb-0.5">
+        <span className={`text-xs font-bold ${!isPreview && game.away.score > game.home.score ? 'text-[var(--lg-text-heading)]' : 'text-[var(--lg-text-secondary)]'}`}>
+          {game.away.abbr}
+        </span>
+        {!isPreview && <span className="text-xs font-bold tabular-nums text-[var(--lg-text-primary)]">{game.away.score}</span>}
+      </div>
+      {/* Home */}
+      <div className="flex justify-between items-center">
+        <span className={`text-xs font-bold ${!isPreview && game.home.score > game.away.score ? 'text-[var(--lg-text-heading)]' : 'text-[var(--lg-text-secondary)]'}`}>
+          {game.home.abbr}
+        </span>
+        {!isPreview && <span className="text-xs font-bold tabular-nums text-[var(--lg-text-primary)]">{game.home.score}</span>}
+      </div>
+      {/* Records */}
+      <div className="text-[9px] text-[var(--lg-text-muted)] opacity-40 mt-1 flex justify-between">
+        <span>{game.away.wins}-{game.away.losses}</span>
+        <span>{game.home.wins}-{game.home.losses}</span>
+      </div>
+    </a>
+  );
+}
+
+const TYPE_COLORS: Record<string, string> = {
+  TR: 'bg-blue-500/10 text-blue-400',
+  SC: 'bg-amber-500/10 text-amber-400',
+  CU: 'bg-emerald-500/10 text-emerald-400',
+  ASG: 'bg-emerald-500/10 text-emerald-400',
+  OPT: 'bg-red-500/10 text-red-400',
+  REL: 'bg-red-500/10 text-red-400',
+  DFA: 'bg-red-500/10 text-red-400',
+  FA: 'bg-purple-500/10 text-purple-400',
+};
+
+function TransactionRow({ tx }: { tx: MlbTransaction }) {
+  const color = TYPE_COLORS[tx.typeCode] || 'bg-[var(--lg-tint)] text-[var(--lg-text-muted)]';
+  return (
+    <div className="flex items-start gap-2 py-2 border-b border-[var(--lg-border-subtle)] last:border-0">
+      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${color}`}>
+        {tx.typeCode || tx.type.slice(0, 3)}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-[var(--lg-text-primary)] leading-relaxed">{tx.description}</div>
+      </div>
+      <span className="text-[10px] font-bold text-[var(--lg-text-muted)] shrink-0">{tx.teamAbbr}</span>
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────
+
+export default function Home() {
+  const { user, loading: authLoading, refresh } = useAuth();
+  const { toast } = useToast();
+  const { leagueId: currentLeagueId } = useLeague();
+
+  // Date state
+  const [date, setDate] = useState(() => yyyyMmDd(new Date()));
+
+  // MLB data
+  const [games, setGames] = useState<GameScore[]>([]);
+  const [transactions, setTransactions] = useState<MlbTransaction[]>([]);
+  const [loadingScores, setLoadingScores] = useState(true);
+  const [loadingTx, setLoadingTx] = useState(true);
+  const [txFilter, setTxFilter] = useState<'ALL' | 'NL' | 'AL'>('ALL');
+
+  // Invite code
+  const [inviteCode, setInviteCode] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [hasTeam, setHasTeam] = useState<boolean | null>(null);
+
+  // Check if user has a team
+  useEffect(() => {
+    if (!user || !currentLeagueId) { setHasTeam(null); return; }
+    fetchJsonApi<{ league: { teams: Array<{ ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
+      .then(res => {
+        const uid = Number(user.id);
+        const mine = res.league?.teams?.find(t =>
+          t.ownerUserId === uid || (t.ownerships || []).some(o => o.userId === uid)
+        );
+        setHasTeam(!!mine);
+      })
+      .catch(() => setHasTeam(null));
+  }, [user, currentLeagueId]);
+
+  // Fetch scores
+  useEffect(() => {
+    setLoadingScores(true);
+    fetchJsonApi<{ games: GameScore[] }>(`${API_BASE}/mlb/scores?date=${date}`)
+      .then(res => setGames(res.games || []))
+      .catch(() => setGames([]))
+      .finally(() => setLoadingScores(false));
+  }, [date]);
+
+  // Fetch transactions
+  useEffect(() => {
+    setLoadingTx(true);
+    fetchJsonApi<{ transactions: MlbTransaction[] }>(`${API_BASE}/mlb/transactions?date=${date}&filter=${txFilter}`)
+      .then(res => setTransactions(res.transactions || []))
+      .catch(() => setTransactions([]))
+      .finally(() => setLoadingTx(false));
+  }, [date, txFilter]);
+
+  // Auto-refresh scores when live games
+  useEffect(() => {
+    const hasLive = games.some(g => g.status === 'Live');
+    if (!hasLive) return;
+    const interval = setInterval(() => {
+      fetchJsonApi<{ games: GameScore[] }>(`${API_BASE}/mlb/scores?date=${date}`)
+        .then(res => setGames(res.games || []))
+        .catch(() => {});
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [games, date]);
+
+  // Invite code handler
+  const handleJoin = async () => {
+    if (!inviteCode.trim()) return;
+    setJoining(true);
+    try {
+      await joinLeague(inviteCode.trim());
+      toast("Joined league!", "success");
+      setInviteCode("");
+      await refresh();
+      setHasTeam(true);
+    } catch (e: unknown) {
+      toast(e instanceof Error ? e.message : "Failed to join", "error");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  if (!user && !authLoading) return null;
+  if (!user) return null;
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-8 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl md:text-2xl font-semibold text-[var(--lg-text-heading)]">
+          MLB Today
+        </h1>
+        <p className="text-xs text-[var(--lg-text-muted)] mt-0.5">
+          Welcome, <span className="text-[var(--lg-accent)] font-semibold">{user.name || user.email}</span>
+        </p>
+      </div>
+
+      {/* Invite code banner (only if no team) */}
+      {hasTeam === false && (
+        <div className="rounded-xl border border-[var(--lg-accent)]/20 bg-[var(--lg-accent)]/5 p-4 flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex-1 text-sm text-[var(--lg-text-primary)]">
+            <strong>Join a League</strong> — enter your invite code to get started
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={inviteCode}
+              onChange={e => setInviteCode(e.target.value.toUpperCase())}
+              onKeyDown={e => { if (e.key === 'Enter') handleJoin(); }}
+              placeholder="ABC123"
+              maxLength={10}
+              className="w-24 px-3 py-1.5 text-sm font-mono text-center rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+            />
+            <button
+              onClick={handleJoin}
+              disabled={joining || !inviteCode.trim()}
+              className="px-4 py-1.5 text-sm font-semibold rounded-lg bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
+            >
+              {joining ? "..." : "Join"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Date navigator */}
+      <DateNavigator date={date} onChange={setDate} />
+
+      {/* Scores */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+          Scores {games.some(g => g.status === 'Live') && <span className="text-emerald-400 ml-1 animate-pulse">Live</span>}
+        </h2>
+        {loadingScores ? (
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {[1,2,3,4].map(i => <div key={i} className="h-24 w-[150px] rounded-lg bg-[var(--lg-tint)] animate-pulse shrink-0" />)}
+          </div>
+        ) : games.length === 0 ? (
+          <div className="text-center py-8 text-xs text-[var(--lg-text-muted)] opacity-50">No games scheduled</div>
+        ) : (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {games.map(g => <GameCard key={g.gamePk} game={g} />)}
+          </div>
+        )}
+      </div>
+
+      {/* Transactions */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Transactions</h2>
+          <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)]">
+            {(['ALL', 'NL', 'AL'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setTxFilter(f)}
+                className={`px-2 py-0.5 text-[10px] font-semibold uppercase rounded transition-all ${
+                  txFilter === f ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+        {loadingTx ? (
+          <div className="space-y-2">
+            {[1,2,3].map(i => <div key={i} className="h-8 rounded bg-[var(--lg-tint)] animate-pulse" />)}
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-8 text-xs text-[var(--lg-text-muted)] opacity-50">No transactions for this date</div>
+        ) : (
+          <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-3 max-h-[400px] overflow-y-auto">
+            {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -126,9 +126,7 @@ export async function getPlayerSeasonStats(leagueId?: number): Promise<PlayerSea
   const key = leagueId ?? 1;
   if (!_seasonStatsCache.has(key)) {
     _seasonStatsCache.set(key, (async () => {
-      const url = leagueId && leagueId !== 1
-        ? `${API_BASE}/player-season-stats?leagueId=${leagueId}`
-        : `${API_BASE}/player-season-stats`;
+      const url = `${API_BASE}/player-season-stats?leagueId=${key}`;
       const resp = await fetchJsonApi<{ stats: Record<string, any>[] }>(url); // eslint-disable-line @typescript-eslint/no-explicit-any
       const raw = resp?.stats ?? [];
       return dedupeByRowId(raw.map(normalizeTwoWayRow), "season");
