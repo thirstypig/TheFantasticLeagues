@@ -265,9 +265,9 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (454 server + 187 client + 50 MCP = 691 tests)
+### Current Test Coverage (473 server + 187 client + 50 MCP = 710 tests)
 
-**Server (454 tests):**
+**Server (473 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
@@ -300,6 +300,7 @@ server/src/__tests__/integration/
 - `server/src/features/periods/__tests__/routes.test.ts` — 10 tests (list, create, update, delete with auth checks)
 - `server/src/features/transactions/__tests__/routes.test.ts` — 8 tests (list, filter, paginate, claim by playerId/mlbId, drop)
 - `server/src/features/franchises/__tests__/routes.test.ts` — 6 tests (list, detail, update settings)
+- `server/src/features/auction/__tests__/retrospective.test.ts` — 11 tests (league stats, bargains/overpays, position spending, team efficiency)
 
 **Client (187 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)

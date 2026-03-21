@@ -29,7 +29,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "March 20, 2026 (Session 32 — Extended)";
+const LAST_UPDATED = "March 21, 2026 (Session 33)";
 
 // ─── Product Roadmap ───
 
@@ -71,10 +71,10 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Production Deployment",
-        description: "Deploy all changes to Render. Verify Supabase auth, MLB API caching, and WebSocket connections in production.",
+        description: "Deploy all changes to Render. CSP hardened, HSTS enabled, static caching, Node 20 pinned, graceful shutdown aligned.",
         icon: Globe,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["infrastructure"],
       },
       {
@@ -100,7 +100,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Real-time standings powered by automated MLB stats sync. Period-over-period trends, category breakdowns, playoff race tracker.",
         icon: BarChart3,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["standings", "feature"],
       },
       {
@@ -108,7 +108,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Scheduled daily sync of MLB stats during the season via cron job. Auto-compute period standings. Zero manual intervention.",
         icon: Activity,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["automation"],
       },
       {
@@ -132,7 +132,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Full FAAB waiver UI for owners: submit claims with priority + bid amount, view pending claims, get results after processing.",
         icon: Users,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["waivers"],
       },
       {
@@ -182,7 +182,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Owners upload personal player rankings (CSV) as a private column in Player Pool for reference during bidding.",
         icon: BarChart3,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["auction"],
       },
       {
@@ -190,7 +190,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Immediately after draft, owners flag players they'd be willing to trade. Jump-starts the trade market.",
         icon: Users,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["auction", "trades"],
       },
       {
@@ -327,10 +327,10 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Code Quality Polish",
-        description: "Remove unused ErrorBoundary fallback prop, use design tokens for reconnect banner colors, simplify ErrorBoundary dual state.",
+        description: "Removed unused ErrorBoundary fallback prop, design tokens for reconnect banner, simplified ErrorBoundary to single error state.",
         icon: FileText,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["quality", "cleanup"],
       },
     ],
@@ -410,6 +410,17 @@ interface CompletedGroup {
 
 const completedFeatures: CompletedGroup[] = [
   {
+    label: "Session 33 — Production Deploy & Hardening",
+    items: [
+      { title: "Production Deployment", description: "Render config overhauled: production domain, VITE_* build-time vars, Node 20 pinned, 60s graceful shutdown.", session: "33" },
+      { title: "CSP Hardening", description: "Scoped wss: to wss://*.supabase.co. Added PostHog domains. Removed stale fbst-api.onrender.com.", session: "33" },
+      { title: "HSTS Header", description: "Strict-Transport-Security (1 year, includeSubDomains) via helmet.", session: "33" },
+      { title: "Static Asset Caching", description: "maxAge 1 year + immutable on Vite-hashed assets via express.static.", session: "33" },
+      { title: "Auction Retrospective", description: "Post-draft analytics endpoint + DraftReport component: bargains, overpays, position spending, team efficiency.", session: "33" },
+      { title: "6-Agent Code Review", description: "Security, architecture, simplicity, learnings review. All P2/P3 findings resolved.", session: "33" },
+    ],
+  },
+  {
     label: "Session 32 — Reliability & AI",
     items: [
       { title: "React Error Boundaries", description: "Root + feature-level (Auction, Commissioner) boundaries with friendly error card, retry button, PostHog crash reporting.", session: "32" },
@@ -428,6 +439,10 @@ const completedFeatures: CompletedGroup[] = [
       { title: "PWA Installable App", description: "manifest.json + service worker. Network-first caching. Installable on phone home screen.", session: "32" },
       { title: "Browser Push Notifications", description: "Your turn / Outbid / Won notifications. Web Notifications API with Settings toggle.", session: "32" },
       { title: "SS/MI Position Fix", description: "Server was double-counting eligible roster slots. Now uses assigned position for accurate counts.", session: "32" },
+      { title: "Code Quality Polish", description: "ErrorBoundary cleanup: no unused fallback prop, single error state, design tokens on reconnect banner.", session: "32" },
+      { title: "Live Standings Dashboard", description: "Real-time standings powered by PlayerStatsPeriod. Period-over-period trends with category breakdowns.", session: "24" },
+      { title: "Automated Stats Sync", description: "Two daily cron jobs: player roster sync (12:00 UTC) and stats sync (13:00 UTC). Zero manual intervention.", session: "24" },
+      { title: "Waiver Claim Workflow", description: "Full FAAB waiver system: submit claims with bid amount, priority ordering, commissioner processing, cancel with audit trail.", session: "13" },
     ],
   },
   {
@@ -646,7 +661,7 @@ function CompletedFeaturesSection() {
             Completed Features
           </h2>
           <p className="text-xs text-[var(--lg-text-muted)]">
-            {totalCompleted} features shipped across 31 sessions
+            {totalCompleted} features shipped across 33 sessions
           </p>
         </div>
         {open ? (

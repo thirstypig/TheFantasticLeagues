@@ -30,6 +30,70 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.33.0",
+    date: "Mar 20, 2026",
+    session: "Session 33",
+    title: "Production Deployment & Code Review Hardening",
+    highlights: [
+      "Production deployment readiness for Render — CSP, HSTS, static caching, shutdown alignment",
+      "Auction retrospective endpoint with post-draft analytics and DraftReport component",
+      "6-agent code review with all P2/P3 findings resolved",
+    ],
+    changes: [
+      { type: "feat", description: "Auction retrospective endpoint — league stats, bargains/overpays, position spending, contested lots, team efficiency" },
+      { type: "feat", description: "DraftReport component — post-auction analytics rendered on AuctionComplete page" },
+      { type: "feat", description: "Guide additions — 'Finding Players' screenshot, 'Before the Draft' section with league rules screenshot" },
+      { type: "security", description: "CSP hardening — scoped wss: to wss://*.supabase.co, removed stale fbst-api.onrender.com" },
+      { type: "security", description: "HSTS header — Strict-Transport-Security (1 year, includeSubDomains) via helmet" },
+      { type: "security", description: "Service worker same-origin check — only cache responses from own origin" },
+      { type: "fix", description: "CSP connectSrc/scriptSrc — added PostHog domains for analytics in production" },
+      { type: "fix", description: "Shutdown timeout alignment — 55s hard kill matches Render's 60s maxShutdownDelaySeconds" },
+      { type: "fix", description: "Express version mismatch — removed Express v5 from root package.json (server uses v4)" },
+      { type: "perf", description: "Static asset caching — maxAge 1 year + immutable on Vite-hashed assets" },
+      { type: "docs", description: "render.yaml overhaul — production domain, VITE_* build-time vars, Node 20 pinned, graceful shutdown" },
+      { type: "docs", description: "Production deployment plan at docs/plans/" },
+      { type: "test", description: "11 new retrospective tests" },
+    ],
+  },
+  {
+    version: "0.32.0",
+    date: "Mar 20, 2026",
+    session: "Session 32",
+    title: "Reliability, AI, Auction UX, Platform Quality",
+    highlights: [
+      "6 AI endpoints: draft grades, trade analyzer, keeper recommender, waiver advisor, weekly insights, bid advisor",
+      "Error boundaries, WebSocket reconnect, PostHog expansion (18 events), mobile auction testing",
+      "Pre-draft rankings import, post-auction trade block, PWA, browser push notifications",
+    ],
+    changes: [
+      { type: "feat", description: "AI Post-Draft Grade — grades each team A-F with reasoning, cached per league" },
+      { type: "feat", description: "AI Trade Analyzer — evaluates fairness (fair/slightly_unfair/unfair), identifies winner" },
+      { type: "feat", description: "AI Keeper Recommender — ranks all roster players by keeper value" },
+      { type: "feat", description: "AI Waiver Bid Advisor — suggests FAAB bid with confidence level" },
+      { type: "feat", description: "AI Weekly Insights — 3-5 actionable insights per team with overall grade" },
+      { type: "feat", description: "AI Auction Draft Advisor — real-time 'Should I bid?' recommendation" },
+      { type: "feat", description: "Pre-Draft Rankings Import (AUC-10) — CSV upload/paste, private 'My Rank' column" },
+      { type: "feat", description: "Post-Auction Trade Block (AUC-11) — toggle players as tradeable, DB-backed (+8 tests)" },
+      { type: "feat", description: "PWA installable app — manifest.json, service worker, network-first caching" },
+      { type: "feat", description: "Browser push notifications — your turn, outbid, won with Settings toggle" },
+      { type: "feat", description: "Commissioner tab reorg — 6→5 tabs (League, Members, Teams, Season, Trades)" },
+      { type: "feat", description: "React error boundaries — root + feature-level with retry button, PostHog crash reporting" },
+      { type: "feat", description: "Offline/reconnect indicator — amber banner, exponential backoff, polling safety net" },
+      { type: "feat", description: "PostHog analytics expansion — 8→18 tracked events across all features" },
+      { type: "fix", description: "SS/MI position fix — server double-counting eligible slots, now uses assigned position" },
+      { type: "fix", description: "Mobile auction overflow — AppShell min-w-0 overflow-x-hidden fix" },
+      { type: "fix", description: "Nomination queue redesign — vertical stack, 3 teams, full names" },
+      { type: "fix", description: "Position matrix fix — full team names, P column shows X/9" },
+      { type: "security", description: "Zod validation on all AI JSON responses" },
+      { type: "security", description: "Cached + deduped draft-grades endpoint prevents abuse" },
+      { type: "refactor", description: "Deduplicated reconnect logic (scheduleReconnect)" },
+      { type: "refactor", description: "Generic AI error messages — no internal details leaked" },
+      { type: "refactor", description: "catch(e: unknown) convention across AI endpoints" },
+      { type: "test", description: "8 new trade block tests" },
+      { type: "test", description: "Mobile viewport testing (390x844 iPhone 14)" },
+    ],
+  },
+  {
     version: "0.31.0",
     date: "Mar 20, 2026",
     session: "Session 31",
@@ -385,7 +449,7 @@ function ChangelogStats() {
         </div>
         <div className="text-center">
           <div className="text-xl font-semibold text-[var(--lg-text-primary)] tabular-nums">
-            31
+            33
           </div>
           <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Sessions</div>
         </div>

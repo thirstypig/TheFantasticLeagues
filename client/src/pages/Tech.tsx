@@ -32,15 +32,15 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "56,767+", icon: FileCode },
-  { label: "Client (React/TS)", value: "28,556", icon: Monitor },
-  { label: "Server (Node/TS)", value: "28,211", icon: Server },
+  { label: "Total Lines of Code", value: "60,630+", icon: FileCode },
+  { label: "Client (React/TS)", value: "31,195", icon: Monitor },
+  { label: "Server (Node/TS)", value: "29,435", icon: Server },
   { label: "Test Coverage", value: "9,200+ lines", icon: TestTube },
   { label: "Database Models", value: "30", icon: Database },
   { label: "API Endpoints", value: "119", icon: Plug },
   { label: "Feature Modules", value: "18", icon: Layers },
   { label: "Git Commits", value: "190+", icon: GitCommit },
-  { label: "Tests Passing", value: "691", icon: TestTube },
+  { label: "Tests Passing", value: "710", icon: TestTube },
   { label: "DB Schema Lines", value: "723", icon: Braces },
   { label: "DB Migrations", value: "10", icon: Database },
   { label: "Est. Tokens Used", value: "~75M+", icon: Bot },
@@ -530,7 +530,17 @@ const buildJournal = [
   {
     date: "Mar 2026",
     title: "Session 31: 19 PRs, Auction UX, My Val, MLB Home, Guide Rewrite",
-    detail: "Massive session with 19 PRs merged (#46-#64). Completed 10 of 12 auction enhancements plus personalized My Val — roster-aware player valuation with 4 factors (position need, budget pressure, scarcity, market pressure). Val column colors (green/red) with hover tooltips showing base vs adjusted breakdown. Public guide pages, compact tabs, default league filter. Multi-user test script for My Val validation. Resource page audit. Also: opening bid picker (AUC-01), watchlist (AUC-02), chat (AUC-03), sounds (AUC-04), value/surplus (AUC-05), spending pace (AUC-06), nomination timer countdown (AUC-08), 'Going Once/Twice/SOLD!' visual (AUC-09), keeper cost preview (AUC-12). Position needs matrix (AUC-07), auction settings panel with 6 per-user toggles and Excel export. MLB-powered Home page with live scores, transactions, and date navigation via mlb-feed module. Guide rewritten into 3 pages with Playwright screenshots. Code review fixing 5 P1s and 9 P2s. CI pipeline fix. 691 tests passing across 56,767+ lines of TypeScript.",
+    detail: "Massive session with 19 PRs merged (#46-#64). Completed 10 of 12 auction enhancements plus personalized My Val — roster-aware player valuation with 4 factors (position need, budget pressure, scarcity, market pressure). Val column colors (green/red) with hover tooltips showing base vs adjusted breakdown. Public guide pages, compact tabs, default league filter. Multi-user test script for My Val validation. Resource page audit. Also: opening bid picker (AUC-01), watchlist (AUC-02), chat (AUC-03), sounds (AUC-04), value/surplus (AUC-05), spending pace (AUC-06), nomination timer countdown (AUC-08), 'Going Once/Twice/SOLD!' visual (AUC-09), keeper cost preview (AUC-12). Position needs matrix (AUC-07), auction settings panel with 6 per-user toggles and Excel export. MLB-powered Home page with live scores, transactions, and date navigation via mlb-feed module. Guide rewritten into 3 pages with Playwright screenshots. Code review fixing 5 P1s and 9 P2s. CI pipeline fix. 691 tests passing across 60,630+ lines of TypeScript.",
+  },
+  {
+    date: "Mar 2026",
+    title: "Session 32: 25 Features — Reliability, AI, Auction UX, Platform Quality",
+    detail: "Pre-auction reliability blitz with 25 shipped features. 6 AI endpoints (post-draft grades, trade analyzer, keeper recommender, waiver advisor, weekly insights, auction bid advisor) — all Zod-validated, cached, with deduped concurrent requests. React error boundaries (root + feature-level) with PostHog crash reporting. WebSocket reconnect indicator with exponential backoff. PostHog analytics expanded from 8 to 18 tracked events. Mobile auction tested at 390x844. Pre-draft rankings CSV import (AUC-10) and post-auction trade block (AUC-11). PWA installable app. Browser push notifications. Commissioner tab reorg (6→5 tabs). SS/MI position counting fix. 9 code review fixes (P1+P2). 699 tests passing.",
+  },
+  {
+    date: "Mar 2026",
+    title: "Session 33: Production Deployment & Code Review Hardening",
+    detail: "Production deployment readiness for Render. 6-agent code review (security, architecture, simplicity, learnings) with all P2/P3 findings resolved. CSP hardened — scoped wss: to specific origins, added HSTS (1yr), PostHog domains added. Static asset caching with maxAge/immutable for Vite-hashed files. Service worker same-origin check. Render config overhauled — production domain, VITE_* build-time vars, Node 20 pinned, 60s graceful shutdown. Express v5 removed from root deps. Auction retrospective endpoint with DraftReport component for post-draft analytics. Guide additions. 710 tests passing.",
   },
 ];
 
@@ -586,7 +596,7 @@ const costComparison = {
     apiCost: "$150–250",
     subscriptionCost: "$100–200/mo",
     totalRange: "$200–$2,400",
-    note: "Claude Code subscription + API tokens over 31 sessions (Nov 2025–Mar 2026)",
+    note: "Claude Code subscription + API tokens over 33 sessions (Nov 2025–Mar 2026)",
   },
   usDevShop: {
     rateRange: "$150–250/hr",
@@ -607,11 +617,11 @@ const costComparison = {
     note: "Offshore team (India/China). Lower hourly rate but often requires more hours due to communication overhead, timezone gaps, and iteration cycles. PM/QA often separate line items.",
   },
   scope: [
-    "56,767+ lines of TypeScript (strict mode)",
+    "60,630+ lines of TypeScript (strict mode)",
     "18 mirrored client/server feature modules",
     "119 API endpoints + WebSocket real-time auction",
     "30 Prisma database models with 10 migrations",
-    "691 automated tests (unit + integration)",
+    "710 automated tests (unit + integration)",
     "OAuth integration (Google/Yahoo via Supabase)",
     "Live MLB Stats API integration with caching proxy",
     "MCP server with 8 tools, rate limiter, circuit breaker",
@@ -1006,7 +1016,7 @@ function CostEstimate() {
                 {c.aiCost.totalRange}
               </div>
               <div className="text-xs text-[var(--lg-text-muted)] mb-3">
-                {c.aiCost.tokens} tokens &middot; 31 sessions &middot; 5 months
+                {c.aiCost.tokens} tokens &middot; 33 sessions &middot; 5 months
               </div>
               <div className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">
                 {c.aiCost.note}
@@ -1142,7 +1152,7 @@ export default function Tech() {
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at what it took to build The Fantastic Leagues — the tools, the process,
           the decisions, and the numbers. Built from November 2025 to present across
-          31 sessions, 56,767+ lines of TypeScript, and an estimated 75 million+ AI tokens.
+          33 sessions, 60,630+ lines of TypeScript, and an estimated 75 million+ AI tokens.
         </p>
         <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
           Last updated: March 20, 2026
@@ -1183,7 +1193,7 @@ export default function Tech() {
         </h2>
         <p className="text-sm text-[var(--lg-text-secondary)] mb-4">
           Building a 57K-line full-stack app through conversational AI requires structure.
-          Here's the system that made it work across 31 sessions.
+          Here's the system that made it work across 33 sessions.
         </p>
         <div className="space-y-3">
           {workflowSteps.map((step) => (
@@ -1325,7 +1335,7 @@ export default function Tech() {
         </p>
         <div className="space-y-0">
           {buildJournal.map((entry, idx) => (
-            <div key={entry.date} className="flex gap-4">
+            <div key={entry.title} className="flex gap-4">
               {/* Timeline line */}
               <div className="flex flex-col items-center">
                 <div className="w-3 h-3 rounded-full bg-[var(--lg-accent)] shrink-0 mt-1" />
@@ -1402,7 +1412,7 @@ export default function Tech() {
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 75M+ tokens across 31 sessions |{" "}
+        Built with Claude Code — estimated 75M+ tokens across 33 sessions |{" "}
         <Link to="/roadmap" className="text-[var(--lg-accent)] hover:underline">
           Roadmap
         </Link>

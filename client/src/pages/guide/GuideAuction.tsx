@@ -112,6 +112,9 @@ export default function GuideAuction() {
 
         <Section title="Finding Players" icon={Search}>
           <p>The <strong>Player Pool</strong> tab in the auction (and the <strong>Players</strong> page) let you browse all available players.</p>
+
+          <Screenshot src="/guide/10-players-stats.png" alt="Player search with stats" caption="Player Search — filter by position, league, team, and sort by any stat column" />
+
           <ul className="list-disc list-inside space-y-1.5 ml-1 mt-2">
             <li><strong>Column headers</strong> — click to sort by any stat (R, HR, RBI, SB, AVG for hitters; W, SV, K, ERA, WHIP for pitchers). Hover over headers for descriptions.</li>
             <li><strong>Val column</strong> — projected auction value. Sort by Val to find the best available players.</li>
@@ -119,6 +122,19 @@ export default function GuideAuction() {
             <li><strong>Add to Queue</strong> — in the expanded view, click "Add to Queue" to pre-load your nomination list.</li>
           </ul>
           <Tip>Sort by <strong>Val</strong> (descending) to see the most valuable available players at a glance.</Tip>
+        </Section>
+
+        <Section title="Before the Draft" icon={BarChart3}>
+          <p>Review your league's rules before draft day — budget, roster size, and positions determine your strategy.</p>
+
+          <Screenshot src="/guide/12-league-rules.png" alt="League rules overview" caption="League Rules — budget ($400), roster positions (14H + 9P), scoring categories, and keeper limits" />
+
+          <ul className="list-disc list-inside space-y-1.5 ml-1 mt-2">
+            <li><strong>Budget</strong> — your total spending cap for the entire draft. Leftover budget becomes FAAB for in-season waivers.</li>
+            <li><strong>Roster positions</strong> — know how many of each position you need (C, 1B, 2B, SS, 3B, MI, CI, OF, DH for hitters; 9 pitchers).</li>
+            <li><strong>Keepers</strong> — if your league uses keepers, those players are pre-assigned before the draft starts.</li>
+          </ul>
+          <Tip>On the <strong>Home</strong> page, the <strong>Draft Room</strong> card links directly to the live auction when it's active.</Tip>
         </Section>
       </div>
 

@@ -71,6 +71,10 @@ const sessionVelocity = [
   { session: "21-23", items: 30, label: "Code review, auth, MCP" },
   { session: "24-25", items: 26, label: "Live data, auction prep" },
   { session: "26-27", items: 24, label: "Stats, bid tracking, roadmap" },
+  { session: "28-30", items: 28, label: "Auction UX, proxy, chat, sounds" },
+  { session: "31", items: 31, label: "My Val, guides, code review" },
+  { session: "32", items: 25, label: "AI, reliability, mobile, PWA" },
+  { session: "33", items: 13, label: "Deploy, CSP, HSTS, retrospective" },
 ];
 
 /* ── Components ──────────────────────────────────────────────────── */
@@ -87,7 +91,7 @@ function VelocityChart() {
           Development Velocity
         </h2>
         <span className="text-xs text-[var(--lg-text-muted)] ml-auto tabular-nums">
-          {totalItems} items across 27 sessions
+          {totalItems} items across 33 sessions
         </span>
       </div>
 

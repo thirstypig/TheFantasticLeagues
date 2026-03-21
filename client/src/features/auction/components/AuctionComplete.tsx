@@ -8,6 +8,7 @@ import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
+import DraftReport from './DraftReport';
 
 interface AuctionCompleteProps {
   auctionState: ClientAuctionState;
@@ -331,6 +332,9 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
           teams={(auctionState.teams || []).map(t => ({ id: t.id, name: t.name, code: t.code }))}
         />
       )}
+
+      {/* Draft Report — post-auction analytics */}
+      {leagueId && <DraftReport leagueId={leagueId} myTeamId={myTeamId} />}
 
       {/* Team Results */}
       <div className="space-y-2">

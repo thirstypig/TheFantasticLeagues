@@ -4,6 +4,45 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-20 (Session 33) — Production Deployment & Code Review Hardening
+
+### Summary
+Production deployment readiness for Render with 6-agent code review. All P2/P3 findings resolved. Auction retrospective endpoint with DraftReport component.
+
+### Completed — Production Deployment (PRs #69, #70)
+- **CSP Hardening** — scoped `wss:` to `wss://*.supabase.co`, added PostHog domains (`us.i.posthog.com`, `us-assets.i.posthog.com`), removed stale `fbst-api.onrender.com`
+- **HSTS Header** — `Strict-Transport-Security` (1 year, includeSubDomains) via helmet
+- **Static Asset Caching** — `maxAge: '1y'`, `immutable: true`, `index: false` on `express.static` for Vite-hashed assets
+- **Service Worker Origin Check** — only cache same-origin responses
+- **render.yaml Overhaul** — production domain `thefantasticleagues.com`, `VITE_*` build-time vars, `APP_URL`, `RESEND_API_KEY`, `maxShutdownDelaySeconds: 60`, Node 20 pinned
+- **Shutdown Timeout Alignment** — hard kill at 55s matches Render's 60s `maxShutdownDelaySeconds`
+- **Express v5 Cleanup** — removed `express@^5.1.0` and `cors` from root `package.json` (server uses v4)
+- **SW Cache Bump** — `tfl-v1` → `tfl-v2` for clean deploy
+
+### Completed — Features
+- **Auction Retrospective** — `GET /api/auction/retrospective?leagueId=N`: league stats, bargains/overpays, position spending, contested lots, team efficiency, spending pace (+11 tests)
+- **DraftReport Component** — post-auction analytics rendered on AuctionComplete page
+- **Guide Additions** — "Finding Players" screenshot, "Before the Draft" section with league rules screenshot
+
+### Completed — Code Review (6-agent)
+- Security Sentinel, Architecture Strategist, Code Simplicity, Learnings Researcher
+- 2 P2 findings resolved: scoped wss: CSP, aligned shutdown timeout
+- 5 P3 findings resolved: static caching, SW origin check, Node pinning, HSTS, Express cleanup
+
+### Test Results
+- Server: 473 passing (+11 retrospective)
+- Client: 187 passing
+- MCP: 50 passing
+- **Total: 710 tests**
+
+### Pending / Next Steps
+- Verify Render deploy succeeded (auto-triggered by merge to main)
+- Post-deploy smoke test: health check, auth, WebSocket, PostHog
+- Sunday March 22 live auction
+- TD-Q03 (auction/routes.ts extraction) — intentionally deferred
+
+---
+
 ## Session 2026-03-20 (Session 32) — Reliability, Mobile, PostHog, AI Draft Grades
 
 ### Summary

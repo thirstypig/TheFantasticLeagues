@@ -1003,6 +1003,156 @@ router.get("/bid-history", requireAuth, requireLeagueMember("leagueId"), asyncHa
   });
 }));
 
+// GET /api/auction/retrospective?leagueId=N
+// Post-draft analytics: league stats, bargains/overpays, position spending, contested lots, team efficiency, spending pace.
+router.get("/retrospective", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+
+  // Get league teams
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    select: { id: true, name: true, code: true, budget: true },
+  });
+  const teamIds = teams.map(t => t.id);
+  const teamMap = new Map(teams.map(t => [t.id, t]));
+
+  // All completed lots with bids + player data
+  const lots = await prisma.auctionLot.findMany({
+    where: {
+      nominatingTeamId: { in: teamIds },
+      status: "completed",
+      finalPrice: { not: null },
+      winnerTeamId: { not: null },
+    },
+    include: {
+      player: { select: { id: true, name: true, posPrimary: true, mlbTeam: true } },
+      bids: { select: { teamId: true, amount: true } },
+    },
+    orderBy: { startTs: "asc" },
+  });
+
+  if (lots.length === 0) {
+    return res.status(404).json({ error: "No completed auction data found" });
+  }
+
+  // PlayerValue for bargain/overpay analysis
+  const playerValues = await prisma.playerValue.findMany({
+    where: { leagueId, playerId: { not: null } },
+    select: { playerId: true, value: true },
+  });
+  const valueMap = new Map(playerValues.map(v => [v.playerId!, v.value]));
+
+  // ── League-level metrics ──
+  const prices = lots.map(l => l.finalPrice!);
+  const totalLots = lots.length;
+  const totalSpent = prices.reduce((s, p) => s + p, 0);
+  const avgPrice = Math.round((totalSpent / totalLots) * 10) / 10;
+  const sorted = [...prices].sort((a, b) => a - b);
+  const medianPrice = sorted.length % 2 === 0
+    ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+    : sorted[Math.floor(sorted.length / 2)];
+  const totalBidsPlaced = lots.reduce((s, l) => s + l.bids.length, 0);
+  const avgBidsPerLot = Math.round((totalBidsPlaced / totalLots) * 10) / 10;
+
+  const mostExpIdx = prices.indexOf(Math.max(...prices));
+  const mostExpLot = lots[mostExpIdx];
+  const mostExpensivePlayer = { playerName: mostExpLot.player.name, position: mostExpLot.player.posPrimary, price: mostExpLot.finalPrice! };
+
+  const nonOneDollar = lots.filter(l => l.finalPrice! > 1);
+  const cheapestWin = nonOneDollar.length > 0
+    ? (() => { const c = nonOneDollar.reduce((min, l) => l.finalPrice! < min.finalPrice! ? l : min); return { playerName: c.player.name, position: c.player.posPrimary, price: c.finalPrice! }; })()
+    : null;
+
+  // ── Bargain/Overpay analysis ──
+  const surplusEntries = lots
+    .filter(l => valueMap.has(l.player.id))
+    .map(l => ({
+      playerName: l.player.name,
+      position: l.player.posPrimary,
+      price: l.finalPrice!,
+      projectedValue: valueMap.get(l.player.id)!,
+      surplus: valueMap.get(l.player.id)! - l.finalPrice!,
+    }));
+  const bargains = [...surplusEntries].sort((a, b) => b.surplus - a.surplus).slice(0, 5).filter(e => e.surplus > 0);
+  const overpays = [...surplusEntries].sort((a, b) => a.surplus - b.surplus).slice(0, 5).filter(e => e.surplus < 0);
+
+  // ── Position spending breakdown ──
+  function normPos(pos: string): string {
+    const p = pos.trim().toUpperCase();
+    if (["LF", "CF", "RF"].includes(p)) return "OF";
+    return p;
+  }
+  const posMap = new Map<string, { totalSpent: number; playerCount: number }>();
+  for (const lot of lots) {
+    const pos = normPos(lot.player.posPrimary);
+    const entry = posMap.get(pos) ?? { totalSpent: 0, playerCount: 0 };
+    entry.totalSpent += lot.finalPrice!;
+    entry.playerCount++;
+    posMap.set(pos, entry);
+  }
+  const positionSpending = [...posMap.entries()]
+    .map(([position, d]) => ({ position, totalSpent: d.totalSpent, avgPrice: Math.round((d.totalSpent / d.playerCount) * 10) / 10, playerCount: d.playerCount }))
+    .sort((a, b) => b.totalSpent - a.totalSpent);
+
+  // ── Most contested lots ──
+  const mostContested = [...lots]
+    .map(l => ({
+      playerName: l.player.name,
+      position: l.player.posPrimary,
+      price: l.finalPrice!,
+      bidCount: l.bids.length,
+      teamsInvolved: new Set(l.bids.map(b => b.teamId)).size,
+    }))
+    .sort((a, b) => b.bidCount - a.bidCount)
+    .slice(0, 5);
+
+  // ── Team efficiency ──
+  const teamEfficiency = teams.map(team => {
+    const teamLots = lots.filter(l => l.winnerTeamId === team.id);
+    const spent = teamLots.reduce((s, l) => s + l.finalPrice!, 0);
+    const withValues = teamLots.filter(l => valueMap.has(l.player.id));
+    const bargainCount = withValues.filter(l => valueMap.get(l.player.id)! > l.finalPrice!).length;
+    const overpayCount = withValues.filter(l => valueMap.get(l.player.id)! < l.finalPrice!).length;
+    const totalSurplus = withValues.reduce((s, l) => s + (valueMap.get(l.player.id)! - l.finalPrice!), 0);
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      totalSpent: spent,
+      playersAcquired: teamLots.length,
+      avgPrice: teamLots.length > 0 ? Math.round((spent / teamLots.length) * 10) / 10 : 0,
+      budgetRemaining: team.budget,
+      bargainCount,
+      overpayCount,
+      totalSurplus,
+    };
+  }).sort((a, b) => b.totalSurplus - a.totalSurplus);
+
+  // ── Spending pace (quarters) ──
+  const quarterSize = Math.ceil(lots.length / 4);
+  const spendingPace = [1, 2, 3, 4].map(q => {
+    const start = (q - 1) * quarterSize;
+    const chunk = lots.slice(start, start + quarterSize);
+    const qSpent = chunk.reduce((s, l) => s + l.finalPrice!, 0);
+    return {
+      quarter: q,
+      avgPrice: chunk.length > 0 ? Math.round((qSpent / chunk.length) * 10) / 10 : 0,
+      totalSpent: qSpent,
+      lotsCount: chunk.length,
+    };
+  });
+
+  res.json({
+    league: { totalLots, totalSpent, avgPrice, medianPrice, mostExpensivePlayer, cheapestWin, totalBidsPlaced, avgBidsPerLot },
+    bargains,
+    overpays,
+    positionSpending,
+    mostContested,
+    teamEfficiency,
+    spendingPace,
+  });
+}));
+
 // POST /api/auction/force-assign — Commissioner manually assigns a player to a team
 const forceAssignSchema = z.object({
   leagueId: z.number().int().positive(),
