@@ -77,8 +77,8 @@ async function main() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
-          connectSrc: ["'self'", "https://*.supabase.co", "https://fbst-api.onrender.com", "https://statsapi.mlb.com"],
+          scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://us-assets.i.posthog.com"],
+          connectSrc: ["'self'", "wss:", "https://*.supabase.co", "https://us.i.posthog.com", "https://us.posthog.com", "https://statsapi.mlb.com"],
           imgSrc: ["'self'", "data:", "https://*.googleusercontent.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https:"],
           fontSrc: ["'self'", "https:", "data:"],

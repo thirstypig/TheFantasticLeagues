@@ -10,12 +10,17 @@ services:
     buildCommand: npm run build
     startCommand: npm start
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 60
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "4010"
-      # These must be set manually in the Render dashboard (secrets):
+      - key: CLIENT_URL
+        value: https://thefantasticleagues.com
+      - key: APP_URL
+        value: https://thefantasticleagues.com
+      # Server secrets (set manually in Render dashboard):
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
@@ -24,7 +29,15 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
-      - key: CLIENT_URL
-        value: https://fbst.onrender.com
       - key: ADMIN_EMAILS
+        sync: false
+      # Client build-time vars (Vite inlines at build — set in dashboard):
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_POSTHOG_KEY
+        sync: false
+      # Optional integrations:
+      - key: RESEND_API_KEY
         sync: false
