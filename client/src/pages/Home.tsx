@@ -99,29 +99,30 @@ function GameCard({ game }: { game: GameScore }) {
     }`}>
       {/* Status */}
       <div className={`text-[9px] font-bold uppercase tracking-wide mb-1.5 ${
-        isLive ? 'text-emerald-400' : 'text-[var(--lg-text-muted)] opacity-50'
+        isLive ? 'text-emerald-400' : 'text-[var(--lg-text-muted)]'
       }`}>
         {isLive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse" />}
         {statusText}
       </div>
       {/* Away */}
       <div className="flex justify-between items-center mb-0.5">
-        <span className={`text-xs font-bold ${!isPreview && game.away.score > game.home.score ? 'text-[var(--lg-text-heading)]' : 'text-[var(--lg-text-secondary)]'}`}>
-          {game.away.abbr}
+        <span className="flex items-baseline gap-1.5">
+          <span className={`text-xs font-bold ${!isPreview && game.away.score > game.home.score ? 'text-[var(--lg-text-heading)]' : 'text-[var(--lg-text-secondary)]'}`}>
+            {game.away.abbr}
+          </span>
+          <span className="text-[9px] text-[var(--lg-text-muted)] tabular-nums">{game.away.wins}-{game.away.losses}</span>
         </span>
         {!isPreview && <span className="text-xs font-bold tabular-nums text-[var(--lg-text-primary)]">{game.away.score}</span>}
       </div>
       {/* Home */}
       <div className="flex justify-between items-center">
-        <span className={`text-xs font-bold ${!isPreview && game.home.score > game.away.score ? 'text-[var(--lg-text-heading)]' : 'text-[var(--lg-text-secondary)]'}`}>
-          {game.home.abbr}
+        <span className="flex items-baseline gap-1.5">
+          <span className={`text-xs font-bold ${!isPreview && game.home.score > game.away.score ? 'text-[var(--lg-text-heading)]' : 'text-[var(--lg-text-secondary)]'}`}>
+            {game.home.abbr}
+          </span>
+          <span className="text-[9px] text-[var(--lg-text-muted)] tabular-nums">{game.home.wins}-{game.home.losses}</span>
         </span>
         {!isPreview && <span className="text-xs font-bold tabular-nums text-[var(--lg-text-primary)]">{game.home.score}</span>}
-      </div>
-      {/* Records */}
-      <div className="text-[9px] text-[var(--lg-text-muted)] opacity-40 mt-1 flex justify-between">
-        <span>{game.away.wins}-{game.away.losses}</span>
-        <span>{game.home.wins}-{game.home.losses}</span>
       </div>
     </a>
   );
