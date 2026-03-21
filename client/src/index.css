@@ -27,19 +27,19 @@
        CORE DESIGN TOKENS - LIGHT MODE
        ============================================ */
 
-    /* Background — cool gray, not white */
-    --lg-bg-primary: #e4e9f0;
-    --lg-bg-secondary: #d8dfe8;
+    /* Background — warm gray, easy on eyes */
+    --lg-bg-primary: #d6dde7;
+    --lg-bg-secondary: #cdd5e1;
     --lg-bg-page: linear-gradient(
       145deg,
-      #e0e6ee 0%,
-      #d2dae5 50%,
-      #dbe2ec 100%
+      #d4dbe6 0%,
+      #c8d1de 50%,
+      #d0d9e5 100%
     );
 
     /* Glass — visible panels on the gray background */
-    --lg-glass-bg: rgba(248, 250, 252, 0.5);
-    --lg-glass-bg-hover: rgba(248, 250, 252, 0.65);
+    --lg-glass-bg: rgba(245, 247, 250, 0.7);
+    --lg-glass-bg-hover: rgba(245, 247, 250, 0.82);
     --lg-glass-border: rgba(255, 255, 255, 0.4);
     --lg-glass-border-subtle: rgba(0, 45, 114, 0.1);
     --lg-glass-blur: blur(20px);
@@ -49,8 +49,8 @@
 
     /* Text */
     --lg-text-primary: #0f172a;
-    --lg-text-secondary: #475569;
-    --lg-text-muted: #64748b;
+    --lg-text-secondary: #374151;
+    --lg-text-muted: #4b5563;
     --lg-text-heading: var(--lg-pantone-294);
     --lg-text-accent: var(--lg-pantone-294-light);
 
@@ -60,10 +60,10 @@
     --lg-accent-active: var(--lg-pantone-294-bright);
 
     /* Tables */
-    --lg-table-header-bg: rgba(0, 45, 114, 0.06);
-    --lg-table-border: rgba(0, 45, 114, 0.1);
-    --lg-table-row-hover: rgba(0, 45, 114, 0.04);
-    --lg-table-row-alt: rgba(0, 45, 114, 0.02);
+    --lg-table-header-bg: rgba(0, 45, 114, 0.10);
+    --lg-table-border: rgba(0, 45, 114, 0.12);
+    --lg-table-row-hover: rgba(0, 45, 114, 0.07);
+    --lg-table-row-alt: rgba(0, 45, 114, 0.04);
 
     /* Sidebar */
     --lg-sidebar-bg: rgba(248, 250, 252, 0.55);
@@ -77,11 +77,11 @@
     --lg-input-focus: var(--lg-pantone-294-bright);
 
     /* Mode-aware tints (navy on light, white on dark) */
-    --lg-tint: rgba(0, 45, 114, 0.04);
-    --lg-tint-hover: rgba(0, 45, 114, 0.08);
-    --lg-border-faint: rgba(0, 45, 114, 0.06);
-    --lg-border-subtle: rgba(0, 45, 114, 0.1);
-    --lg-divide: rgba(0, 45, 114, 0.06);
+    --lg-tint: rgba(0, 45, 114, 0.06);
+    --lg-tint-hover: rgba(0, 45, 114, 0.10);
+    --lg-border-faint: rgba(0, 45, 114, 0.08);
+    --lg-border-subtle: rgba(0, 45, 114, 0.12);
+    --lg-divide: rgba(0, 45, 114, 0.08);
 
     /* Status Colors */
     --lg-success: #059669;
@@ -180,7 +180,7 @@
     /* Text - Dark */
     --lg-text-primary: #f1f5f9;
     --lg-text-secondary: #cbd5e1;
-    --lg-text-muted: #64748b;
+    --lg-text-muted: #8b9bb5;
     --lg-text-heading: var(--lg-pantone-294-bright);
     --lg-text-accent: var(--lg-pantone-294-bright);
 
@@ -207,11 +207,11 @@
     --lg-input-focus: var(--lg-pantone-294-bright);
 
     /* Mode-aware tints - Dark (white tints) */
-    --lg-tint: rgba(255, 255, 255, 0.05);
-    --lg-tint-hover: rgba(255, 255, 255, 0.1);
-    --lg-border-faint: rgba(255, 255, 255, 0.05);
-    --lg-border-subtle: rgba(255, 255, 255, 0.1);
-    --lg-divide: rgba(255, 255, 255, 0.05);
+    --lg-tint: rgba(255, 255, 255, 0.06);
+    --lg-tint-hover: rgba(255, 255, 255, 0.12);
+    --lg-border-faint: rgba(255, 255, 255, 0.07);
+    --lg-border-subtle: rgba(255, 255, 255, 0.12);
+    --lg-divide: rgba(255, 255, 255, 0.07);
 
     /* Delta Colors - Dark */
     --lg-delta-positive: #34d399;
@@ -435,7 +435,7 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     padding: 4px 8px 2px;
-    opacity: 0.6;
+    opacity: 0.85;
   }
 
   /* ============================================
