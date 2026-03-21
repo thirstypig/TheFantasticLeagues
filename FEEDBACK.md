@@ -4,7 +4,7 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
-## Session 2026-03-20 (Session 31) — 19 PRs, Auction UX, My Val, MLB Home, Guide Rewrite, Code Review, CI Fix
+## Session 2026-03-20 (Session 31) — 21 PRs, Auction UX, My Val, MLB Home, Guide, AI Roadmap, CI Fix
 
 ### Summary
 Massive session with 19 PRs merged (#46 through #64), completing 10 of 12 auction enhancements, adding personalized My Val (roster-aware valuation with 4 factors), MLB-powered Home page, rewriting the Guide, running a full code review, and fixing CI.
