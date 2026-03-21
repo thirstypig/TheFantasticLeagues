@@ -81,6 +81,14 @@ const productRoadmap: RoadmapPhase[] = [
         tags: ["infrastructure"],
       },
       {
+        title: "Sticky Table Headers",
+        description: "Column headers persist while scrolling in Players page and Auction Player Pool. Critical for identifying stat categories in large tables.",
+        icon: Layers,
+        effort: "Small",
+        status: "planned",
+        tags: ["ux", "tables"],
+      },
+      {
         title: "Post-Auction Retrospective",
         description: "After the live draft: review auction logs, analyze bid patterns, identify UX issues from real usage, document findings.",
         icon: BarChart3,
