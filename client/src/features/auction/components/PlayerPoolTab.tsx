@@ -142,7 +142,17 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
         else if (demand >= 3) scarcityMultiplier = Math.max(scarcityMultiplier, 1.1);
       }
 
-      return Math.round(baseVal * needMultiplier * budgetMultiplier * scarcityMultiplier);
+      // 4. Market pressure — if league-wide budget is low, prices drop
+      let marketMultiplier = 1.0;
+      const totalBudget = teams.reduce((sum, t) => sum + (t.budget ?? 0), 0);
+      const totalSpots = teams.reduce((sum, t) => sum + (t.spotsLeft ?? 0), 0);
+      const leagueAvgPerSpot = totalSpots > 0 ? totalBudget / totalSpots : 0;
+      if (leagueAvgPerSpot < 10) marketMultiplier = 0.7; // Very tight market
+      else if (leagueAvgPerSpot < 15) marketMultiplier = 0.85;
+      else if (leagueAvgPerSpot > 25) marketMultiplier = 1.15; // Lots of money left
+
+      const raw = baseVal * needMultiplier * budgetMultiplier * scarcityMultiplier * marketMultiplier;
+      return Math.max(1, Math.round(raw)); // Minimum value is $1
     };
   }, [myTeamData, auctionConfig, teams]);
 
@@ -197,7 +207,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
           const myVal = computeMyValue(p);
           if (myVal != null) return myVal;
         }
-        return Number(p.dollar_value ?? p.value ?? 0);
+        const raw = Number(p.dollar_value ?? p.value ?? 0);
+        return raw ? Math.max(1, raw) : 0;
       }
       const val = p[key] ?? 0;
       return Number(val) || 0;
