@@ -31,13 +31,14 @@ interface PlayerPoolTabProps {
   activeBidAmount?: number;
   showBidPicker?: boolean;
   defaultLeagueFilter?: 'ALL' | 'NL' | 'AL';
+  rankings?: Map<string, number>;
 }
 
 import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots, NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 
-export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true, defaultLeagueFilter = 'ALL' }: PlayerPoolTabProps) {
+export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true, defaultLeagueFilter = 'ALL', rankings }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -52,9 +53,11 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
   const [viewMode, setViewMode] = useState<'all' | 'remaining' | 'starred'>('remaining');
 
   // Sort State
-  type StatKey = 'name' | 'R' | 'HR' | 'RBI' | 'SB' | 'AVG' | 'W' | 'SV' | 'K' | 'ERA' | 'WHIP' | 'val';
+  type StatKey = 'name' | 'R' | 'HR' | 'RBI' | 'SB' | 'AVG' | 'W' | 'SV' | 'K' | 'ERA' | 'WHIP' | 'val' | 'rank';
   const [sortKey, setSortKey] = useState<StatKey>('name');
   const [sortDesc, setSortDesc] = useState(false);
+
+  const hasRankings = rankings && rankings.size > 0;
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,6 +205,10 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
   // Helper to get stat value
   const getStat = (p: PlayerSeasonStat, key: StatKey) => {
+      if (key === 'rank') {
+        const r = rankings?.get((p.player_name || '').toLowerCase());
+        return r ?? 9999; // unranked players sort to end
+      }
       if (key === 'val') {
         if (myTeamId) {
           const myVal = computeMyValue(p);
@@ -289,8 +296,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
     if (nominatingPlayer && nomInputRef.current) nomInputRef.current.focus();
   }, [nominatingPlayer]);
 
-  // Column count for expanded row colspan (star + name + 5 stats + val + action)
-  const colCount = onToggleStar ? 9 : 8;
+  // Column count for expanded row colspan (star + rank + name + 5 stats + val + action)
+  const colCount = (onToggleStar ? 9 : 8) + (hasRankings ? 1 : 0);
 
   return (
     <div className="h-full flex flex-col bg-[var(--lg-glass-bg)]">
@@ -398,6 +405,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             <ThemedThead className="sticky top-0 z-10 bg-[var(--lg-glass-bg-hover)]">
                 <ThemedTr>
                     {onToggleStar && <ThemedTh className="w-6 px-0.5"> </ThemedTh>}
+                    {hasRankings && <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('rank')} title="My Rank (from imported rankings)">#R{sortArrow('rank')}</ThemedTh>}
                     <ThemedTh className="px-2 tracking-wide" onClick={() => handleHeaderClick('name')}>Player{sortArrow('name')}</ThemedTh>
                     {viewGroup === 'hitters' ? (
                         <>
@@ -444,6 +452,19 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                         </button>
                                     </ThemedTd>
                                 )}
+                                {/* My Rank */}
+                                {hasRankings && (() => {
+                                    const myRank = rankings?.get((p.player_name || '').toLowerCase());
+                                    return (
+                                        <ThemedTd align="center" className="px-1 w-8">
+                                            {myRank ? (
+                                                <span className="text-[10px] font-bold tabular-nums text-[var(--lg-accent)]">{myRank}</span>
+                                            ) : (
+                                                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-20">-</span>
+                                            )}
+                                        </ThemedTd>
+                                    );
+                                })()}
                                 <ThemedTd className="px-2">
                                     <div className="font-semibold text-sm text-[var(--lg-text-primary)] leading-tight">
                                         {p.mlb_full_name || p.player_name}

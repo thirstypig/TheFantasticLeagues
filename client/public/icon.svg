@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <circle cx="256" cy="256" r="160" fill="#f8fafc" stroke="#1a75ff" stroke-width="8"/>
+  <path d="M256 96 C256 96 280 180 340 200 C400 220 420 256 420 256
+           C420 256 400 292 340 312 C280 332 256 416 256 416
+           C256 416 232 332 172 312 C112 292 92 256 92 256
+           C92 256 112 220 172 200 C232 180 256 96 256 96Z"
+        fill="none" stroke="#dc2626" stroke-width="6" opacity="0.8"/>
+  <text x="256" y="280" text-anchor="middle" font-family="Inter,system-ui,sans-serif"
+        font-size="120" font-weight="800" fill="#1a75ff">TFL</text>
+</svg>

@@ -1,6 +1,7 @@
 
 import React, { ReactNode, useState } from 'react';
-import { Columns2, Rows2, Volume2, VolumeOff } from 'lucide-react';
+import { Columns2, Rows2, Volume2, VolumeOff, Loader2 } from 'lucide-react';
+import type { ConnectionStatus } from '../hooks/useAuctionState';
 
 interface AuctionLayoutProps {
   stage: ReactNode;
@@ -9,9 +10,10 @@ interface AuctionLayoutProps {
   subtitle?: ReactNode;
   isMuted?: boolean;
   onToggleMute?: () => void;
+  connectionStatus?: ConnectionStatus;
 }
 
-export default function AuctionLayout({ stage, context, isMuted, onToggleMute }: AuctionLayoutProps) {
+export default function AuctionLayout({ stage, context, isMuted, onToggleMute, connectionStatus }: AuctionLayoutProps) {
   const [layout, setLayout] = useState<'stacked' | 'side'>(() => {
     return (localStorage.getItem('fbst-auction-layout') as 'stacked' | 'side') || 'stacked';
   });
@@ -55,11 +57,19 @@ export default function AuctionLayout({ stage, context, isMuted, onToggleMute }:
         </div>
       </div>
 
+      {/* Connection status banner — only show after a disconnect, not on initial connect */}
+      {connectionStatus === "reconnecting" && (
+        <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/30 text-[var(--lg-warning)] text-xs font-medium shrink-0 animate-pulse">
+          <Loader2 size={12} className="animate-spin" />
+          Reconnecting to auction server...
+        </div>
+      )}
+
       {layout === 'stacked' ? (
         /* Stacked: nomination on top, player pool below */
         <div className="flex flex-col h-full overflow-hidden">
-          <section className="shrink-0 border-b border-[var(--lg-table-border)] bg-[var(--lg-bg-secondary)] overflow-y-auto max-h-[45vh]">
-            <div className="p-4">{stage}</div>
+          <section className="shrink-0 border-b border-[var(--lg-table-border)] bg-[var(--lg-bg-secondary)] overflow-y-auto overflow-x-hidden max-h-[45vh]">
+            <div className="p-4 overflow-hidden">{stage}</div>
           </section>
           <section className="flex-1 overflow-hidden flex flex-col">
             {context}

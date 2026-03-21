@@ -74,14 +74,19 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export type ConnectionStatus = "connecting" | "connected" | "reconnecting";
+
 export function useAuctionState(leagueId?: number | null) {
     const [state, setState] = useState<ClientAuctionState | null>(null);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
 
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const wsRef = useRef<WebSocket | null>(null);
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reconnectAttemptRef = useRef(0);
     const leagueIdRef = useRef(leagueId);
     leagueIdRef.current = leagueId;
 
@@ -119,10 +124,23 @@ export function useAuctionState(leagueId?: number | null) {
         // Initial fetch
         fetchState();
 
-        // Try WebSocket connection
+        // Try WebSocket connection with auto-reconnect
         let cancelled = false;
 
+        function scheduleReconnect() {
+            setConnectionStatus("reconnecting");
+            startPolling();
+            const attempt = reconnectAttemptRef.current++;
+            const delay = Math.min(1000 * Math.pow(2, attempt), 15000);
+            reconnectTimerRef.current = setTimeout(() => {
+                reconnectTimerRef.current = null;
+                connectWs();
+            }, delay);
+        }
+
         async function connectWs() {
+            if (cancelled) return;
+
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 const token = session?.access_token;
@@ -139,14 +157,18 @@ export function useAuctionState(leagueId?: number | null) {
                 wsRef.current = ws;
 
                 ws.onopen = () => {
-                    // WebSocket connected — stop polling
                     stopPolling();
+                    const attempts = reconnectAttemptRef.current;
+                    if (attempts > 0) {
+                        track("auction_ws_reconnected", { attempts });
+                    }
+                    reconnectAttemptRef.current = 0;
+                    setConnectionStatus("connected");
                 };
 
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        // Discriminate chat messages from auction state broadcasts
                         if (data.type === 'CHAT') {
                             setChatMessages(prev => {
                                 const next = [...prev, data as ChatMessage];
@@ -164,18 +186,14 @@ export function useAuctionState(leagueId?: number | null) {
 
                 ws.onclose = () => {
                     wsRef.current = null;
-                    if (!cancelled) {
-                        // Fallback to polling
-                        startPolling();
-                    }
+                    if (!cancelled) scheduleReconnect();
                 };
 
                 ws.onerror = () => {
                     ws.close();
                 };
             } catch {
-                // WebSocket setup failed — use polling
-                if (!cancelled) startPolling();
+                if (!cancelled) scheduleReconnect();
             }
         }
 
@@ -184,6 +202,10 @@ export function useAuctionState(leagueId?: number | null) {
         return () => {
             cancelled = true;
             stopPolling();
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+                reconnectTimerRef.current = null;
+            }
             if (wsRef.current) {
                 wsRef.current.close();
                 wsRef.current = null;
@@ -252,6 +274,7 @@ export function useAuctionState(leagueId?: number | null) {
              method: 'POST',
              body: JSON.stringify({ leagueId: leagueIdOverride })
         });
+        track("auction_init", { league_id: leagueIdOverride });
         if (!wsRef.current) fetchState();
     };
 
@@ -264,6 +287,7 @@ export function useAuctionState(leagueId?: number | null) {
     const sendChat = useCallback((text: string) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'CHAT', text }));
+            track("auction_chat_send");
         }
     }, []);
 
@@ -272,6 +296,7 @@ export function useAuctionState(leagueId?: number | null) {
         chatMessages,
         loading,
         error,
+        connectionStatus,
         actions: {
             nominate,
             bid,

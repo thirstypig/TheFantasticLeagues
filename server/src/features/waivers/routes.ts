@@ -227,5 +227,79 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
   res.json({ success: true, logs });
 }));
 
+// ─── AI Waiver Bid Advice ───────────────────────────────────────────────────
+
+// Cache: keyed by leagueId:teamId:playerId
+const waiverAdviceCache = new Map<string, { suggestedBid: number; confidence: string; reasoning: string }>();
+
+// GET /api/waivers/ai-advice?leagueId=X&teamId=Y&playerId=Z
+router.get("/ai-advice", requireAuth, asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  const teamId = Number(req.query.teamId);
+  const playerId = Number(req.query.playerId);
+
+  if (!Number.isFinite(leagueId) || !Number.isFinite(teamId) || !Number.isFinite(playerId)) {
+    return res.status(400).json({ error: "Missing leagueId, teamId, or playerId" });
+  }
+
+  // Check cache
+  const cacheKey = `${leagueId}:${teamId}:${playerId}`;
+  const cached = waiverAdviceCache.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  // Verify team ownership (or admin)
+  if (!req.user!.isAdmin) {
+    const owns = await isTeamOwner(teamId, req.user!.id);
+    if (!owns) return res.status(403).json({ error: "You do not own this team" });
+  }
+
+  // Fetch team with roster
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team || team.leagueId !== leagueId) {
+    return res.status(404).json({ error: "Team not found" });
+  }
+
+  // Fetch the target player
+  const player = await prisma.player.findUnique({ where: { id: playerId } });
+  if (!player) return res.status(404).json({ error: "Player not found" });
+
+  // Fetch current roster
+  const roster = await prisma.roster.findMany({
+    where: { teamId, releasedAt: null },
+    include: { player: { select: { name: true, posPrimary: true } } },
+  });
+
+  // Get league team count
+  const teamCount = await prisma.team.count({ where: { leagueId } });
+
+  // Fetch league season
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+
+  const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+  const result = await aiAnalysisService.adviseWaiverBid(
+    {
+      name: player.name,
+      position: player.posPrimary,
+      mlbTeam: player.mlbTeam ?? 'FA',
+      statsSummary: `${player.posPrimary}, ${player.mlbTeam ?? 'FA'}`,
+    },
+    roster.map(r => ({
+      playerName: r.player.name,
+      position: r.player.posPrimary,
+      price: r.price,
+    })),
+    team.budget,
+    { teamCount, season: league?.season ?? new Date().getFullYear() },
+  );
+
+  if (!result.success) {
+    logger.warn({ error: result.error, leagueId, teamId, playerId }, "Waiver advice failed");
+    return res.status(503).json({ error: "Waiver advice is temporarily unavailable" });
+  }
+
+  waiverAdviceCache.set(cacheKey, result.result!);
+  res.json(result.result);
+}));
+
 export const waiversRouter = router;
 export default waiversRouter;

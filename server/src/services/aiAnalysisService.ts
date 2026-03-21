@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma.js';
 import { logger } from '../lib/logger.js';
+import { z } from 'zod';
 
 // Lazy-load @google/generative-ai (1.2MB) — only imported when AI analysis is actually requested
 let _genAI: any = null;
@@ -219,6 +220,460 @@ Keep it conversational. Highlight specific players and prices.`;
     } catch (err) {
       logger.error({ error: String(err) }, "AI draft analysis failed");
       return { success: false, error: 'Analysis failed' };
+    }
+  }
+  /**
+   * Grade all teams' drafts from the current auction results.
+   * Returns A-F grades with reasoning for each team.
+   */
+  async gradeCurrentDraft(teams: {
+    id: number;
+    name: string;
+    code: string;
+    budget: number;
+    roster: { playerId: number; price: number; assignedPosition?: string | null }[];
+    pitcherCount?: number;
+    hitterCount?: number;
+  }[], leagueConfig: { budgetCap: number; rosterSize: number; pitcherCount: number; batterCount: number }): Promise<{
+    success: boolean;
+    grades?: { teamId: number; teamName: string; grade: string; summary: string }[];
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'Draft grading is temporarily unavailable' };
+    }
+
+    try {
+      const teamSummaries = teams.map(team => {
+        const totalSpent = team.roster.reduce((sum, r) => sum + r.price, 0);
+        const bargains = team.roster.filter(r => r.price <= 3).length;
+
+        return {
+          name: team.name,
+          id: team.id,
+          totalSpent,
+          budgetRemaining: team.budget,
+          rosterSize: team.roster.length,
+          hitters: team.hitterCount ?? 0,
+          pitchers: team.pitcherCount ?? 0,
+          bargainCount: bargains,
+        };
+      });
+
+      const leagueAvgSpent = teamSummaries.reduce((s, t) => s + t.totalSpent, 0) / teamSummaries.length;
+
+      const prompt = `You are a fantasy baseball auction draft analyst. Grade each team's draft performance A through F.
+
+League Config:
+- Budget: $${leagueConfig.budgetCap} per team
+- Roster: ${leagueConfig.rosterSize} total (${leagueConfig.batterCount} hitters, ${leagueConfig.pitcherCount} pitchers)
+- League Avg Spend: $${Math.round(leagueAvgSpent)}
+
+Team Summaries:
+${JSON.stringify(teamSummaries, null, 2)}
+
+For each team, provide:
+1. A letter grade (A+, A, A-, B+, B, B-, C+, C, C-, D, F)
+2. A 1-2 sentence summary explaining the grade
+
+Consider these factors:
+- Value efficiency: Did they get good value or overpay?
+- Budget management: Did they use their budget wisely, or leave too much on the table?
+- Roster balance: Good mix of hitters vs pitchers?
+- Star power vs depth: Did they invest in elite talent or spread the budget thin?
+- Bargain hunting: Did they find value at $1-$3?
+
+IMPORTANT: Return ONLY a valid JSON array, no markdown, no code blocks. Example format:
+[{"teamId": 1, "teamName": "Team A", "grade": "B+", "summary": "Solid draft with good value picks..."}]`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+
+      // Parse JSON — strip markdown code fences if present
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      // Validate LLM output with Zod — AI is nondeterministic
+      const gradeSchema = z.array(z.object({
+        teamId: z.number(),
+        teamName: z.string().max(200),
+        grade: z.string().max(5),
+        summary: z.string().max(1000),
+      }));
+      const parsed = gradeSchema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid grade structure");
+        return { success: false, error: 'Draft grading returned invalid data' };
+      }
+
+      return { success: true, grades: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI draft grade failed");
+      return { success: false, error: 'Draft grading failed' };
+    }
+  }
+
+  // ─── Feature 1: Trade Analyzer ──────────────────────────────────────────────
+
+  async analyzeTrade(
+    tradeItems: { playerId?: number; playerName: string; fromTeamId: number; toTeamId: number; type: "player" | "budget"; amount?: number }[],
+    teams: { id: number; name: string; budget: number; roster: { playerName: string; position: string; price: number }[] }[],
+    leagueId: number,
+  ): Promise<{
+    success: boolean;
+    result?: { fairness: string; winner: string; analysis: string; recommendation: string };
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI trade analysis is not available' };
+    }
+
+    try {
+      const teamMap = new Map(teams.map(t => [t.id, t]));
+
+      const itemDescriptions = tradeItems.map(item => {
+        const from = teamMap.get(item.fromTeamId);
+        const to = teamMap.get(item.toTeamId);
+        if (item.type === "budget") {
+          return `$${item.amount} FAAB from ${from?.name ?? 'Unknown'} to ${to?.name ?? 'Unknown'}`;
+        }
+        return `${item.playerName} from ${from?.name ?? 'Unknown'} to ${to?.name ?? 'Unknown'}`;
+      });
+
+      const teamSummaries = teams.map(t => ({
+        name: t.name,
+        budget: t.budget,
+        rosterSize: t.roster.length,
+        roster: t.roster.map(r => `${r.playerName} (${r.position}, $${r.price})`).join(', '),
+      }));
+
+      const prompt = `You are a fantasy baseball trade analyst. Analyze this trade proposal.
+
+League ID: ${leagueId}
+
+Trade Items:
+${itemDescriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')}
+
+Teams Involved:
+${JSON.stringify(teamSummaries, null, 2)}
+
+Analyze the trade and return ONLY a valid JSON object (no markdown, no code blocks) with these fields:
+- "fairness": one of "fair", "slightly_unfair", or "unfair"
+- "winner": name of the team that benefits more (or "even" if fair)
+- "analysis": 2-3 sentences analyzing the trade impact on both teams
+- "recommendation": 1 sentence recommendation (approve, reject, or suggest modifications)`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.object({
+        fairness: z.enum(["fair", "slightly_unfair", "unfair"]),
+        winner: z.string().max(200),
+        analysis: z.string().max(2000),
+        recommendation: z.string().max(500),
+      });
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid trade analysis structure");
+        return { success: false, error: 'Trade analysis returned invalid data' };
+      }
+
+      return { success: true, result: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI trade analysis failed");
+      return { success: false, error: 'Trade analysis failed' };
+    }
+  }
+
+  // ─── Feature 2: Keeper Recommender ──────────────────────────────────────────
+
+  async recommendKeepers(
+    teamRoster: { playerId: number; playerName: string; position: string; price: number; keeperCost: number; statsSummary: string }[],
+    leagueRules: { maxKeepers: number; budgetCap: number },
+    teamBudget: number,
+  ): Promise<{
+    success: boolean;
+    result?: { recommendations: { playerId: number; playerName: string; keeperCost: number; reasoning: string; rank: number }[]; strategy: string };
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI keeper recommendation is not available' };
+    }
+
+    try {
+      const rosterData = teamRoster.map(r => ({
+        name: r.playerName,
+        position: r.position,
+        currentPrice: r.price,
+        keeperCost: r.keeperCost,
+        stats: r.statsSummary,
+      }));
+
+      const prompt = `You are a fantasy baseball keeper selection advisor. Recommend which players to keep.
+
+Team Budget: $${teamBudget} / $${leagueRules.budgetCap}
+Max Keepers: ${leagueRules.maxKeepers}
+
+Roster (with keeper costs = current price + $5):
+${JSON.stringify(rosterData, null, 2)}
+
+Consider:
+- Value relative to keeper cost (is the player worth more than their keeper price in an auction?)
+- Position scarcity
+- Player quality and consistency
+- Budget impact of keeping vs drafting fresh
+
+Return ONLY a valid JSON object (no markdown, no code blocks) with:
+- "recommendations": array of objects with { "playerId": number, "playerName": string, "keeperCost": number, "reasoning": string (1-2 sentences), "rank": number (1 = best keeper value) }
+  Include ALL roster players ranked, with the top ${leagueRules.maxKeepers} being recommended keepers.
+- "strategy": 2-3 sentences about overall keeper strategy
+
+Use these exact playerIds from the roster: ${teamRoster.map(r => `${r.playerName}=${r.playerId}`).join(', ')}`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.object({
+        recommendations: z.array(z.object({
+          playerId: z.number(),
+          playerName: z.string().max(200),
+          keeperCost: z.number(),
+          reasoning: z.string().max(500),
+          rank: z.number(),
+        })),
+        strategy: z.string().max(2000),
+      });
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid keeper recommendation structure");
+        return { success: false, error: 'Keeper recommendation returned invalid data' };
+      }
+
+      return { success: true, result: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI keeper recommendation failed");
+      return { success: false, error: 'Keeper recommendation failed' };
+    }
+  }
+
+  // ─── Feature 3: Waiver Bid Advisor ──────────────────────────────────────────
+
+  async adviseWaiverBid(
+    player: { name: string; position: string; mlbTeam: string; statsSummary: string },
+    teamRoster: { playerName: string; position: string; price: number }[],
+    teamBudget: number,
+    leagueContext: { teamCount: number; season: number },
+  ): Promise<{
+    success: boolean;
+    result?: { suggestedBid: number; confidence: string; reasoning: string };
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI waiver advice is not available' };
+    }
+
+    try {
+      const positionPlayers = teamRoster.filter(r => r.position === player.position);
+
+      const prompt = `You are a fantasy baseball FAAB waiver bid advisor.
+
+Player to Claim: ${player.name} (${player.position}, ${player.mlbTeam})
+Player Stats: ${player.statsSummary}
+
+Team Info:
+- Remaining FAAB Budget: $${teamBudget}
+- League Size: ${leagueContext.teamCount} teams
+- Season: ${leagueContext.season}
+
+Current Roster at ${player.position}: ${positionPlayers.length > 0 ? positionPlayers.map(r => `${r.playerName} ($${r.price})`).join(', ') : 'None'}
+Full Roster Size: ${teamRoster.length} players
+
+Consider:
+- Player's value and recent performance
+- Position need (upgrade vs depth)
+- Budget preservation for future claims
+- League competitiveness (${leagueContext.teamCount} teams)
+
+Return ONLY a valid JSON object (no markdown, no code blocks) with:
+- "suggestedBid": number (integer, $0 minimum, max $${teamBudget})
+- "confidence": one of "high", "medium", or "low"
+- "reasoning": 2-3 sentences explaining the bid recommendation`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.object({
+        suggestedBid: z.number().int().nonnegative(),
+        confidence: z.enum(["high", "medium", "low"]),
+        reasoning: z.string().max(2000),
+      });
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid waiver advice structure");
+        return { success: false, error: 'Waiver advice returned invalid data' };
+      }
+
+      return { success: true, result: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI waiver advice failed");
+      return { success: false, error: 'Waiver advice failed' };
+    }
+  }
+
+  // ─── Feature 4: Weekly AI Insights ──────────────────────────────────────────
+
+  async generateWeeklyInsights(
+    team: { id: number; name: string; budget: number },
+    roster: { playerName: string; position: string; price: number }[],
+    standings: { teamName: string; rank: number; totalScore: number }[],
+    recentTransactions: { type: string; playerName: string; date: string }[],
+  ): Promise<{
+    success: boolean;
+    result?: { insights: { category: string; title: string; detail: string }[]; overallGrade: string };
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI insights are not available' };
+    }
+
+    try {
+      const teamStanding = standings.find(s => s.teamName === team.name);
+
+      const prompt = `You are a fantasy baseball team analyst providing weekly insights.
+
+Team: ${team.name}
+Current Rank: ${teamStanding?.rank ?? 'N/A'} / ${standings.length} teams
+Total Score: ${teamStanding?.totalScore ?? 'N/A'}
+Remaining Budget: $${team.budget}
+
+Roster (${roster.length} players):
+${roster.map(r => `- ${r.playerName} (${r.position}, $${r.price})`).join('\n')}
+
+League Standings:
+${standings.map(s => `${s.rank}. ${s.teamName}: ${s.totalScore} pts`).join('\n')}
+
+Recent Transactions:
+${recentTransactions.length > 0 ? recentTransactions.map(t => `- ${t.type}: ${t.playerName} (${t.date})`).join('\n') : 'None'}
+
+Provide 3-5 actionable insights. Return ONLY a valid JSON object (no markdown, no code blocks) with:
+- "insights": array of objects with { "category": string (e.g. "Roster", "Standings", "Budget", "Pitching", "Hitting"), "title": string (short headline), "detail": string (2-3 sentences) }
+- "overallGrade": letter grade A+ through F for team's current position and trajectory`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.object({
+        insights: z.array(z.object({
+          category: z.string().max(50),
+          title: z.string().max(200),
+          detail: z.string().max(1000),
+        })),
+        overallGrade: z.string().max(5),
+      });
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid insights structure");
+        return { success: false, error: 'Weekly insights returned invalid data' };
+      }
+
+      return { success: true, result: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI weekly insights failed");
+      return { success: false, error: 'Weekly insights failed' };
+    }
+  }
+
+  // ─── Feature 5: Auction Draft Advisor ───────────────────────────────────────
+
+  async adviseBid(
+    playerName: string,
+    playerPosition: string,
+    currentBid: number,
+    teamBudget: number,
+    teamNeeds: { pitcherCount: number; hitterCount: number; pitcherMax: number; hitterMax: number; openSlots: number },
+    leagueContext: { avgBudgetRemaining: number; teamsCount: number; rosterSize: number },
+  ): Promise<{
+    success: boolean;
+    result?: { shouldBid: boolean; maxRecommendedBid: number; reasoning: string; confidence: string };
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI bid advice is not available' };
+    }
+
+    try {
+      const isPitcher = ['SP', 'RP', 'P', 'CL'].includes(playerPosition);
+      const positionNeed = isPitcher
+        ? `${teamNeeds.pitcherCount}/${teamNeeds.pitcherMax} pitchers filled`
+        : `${teamNeeds.hitterCount}/${teamNeeds.hitterMax} hitters filled`;
+
+      const prompt = `You are a fantasy baseball auction draft advisor. Should this team bid on this player?
+
+Player: ${playerName} (${playerPosition})
+Current Bid: $${currentBid}
+
+Team Status:
+- Budget Remaining: $${teamBudget}
+- Open Roster Slots: ${teamNeeds.openSlots}
+- Position: ${positionNeed}
+
+League Context:
+- ${leagueContext.teamsCount} teams in league
+- Average Budget Remaining: $${Math.round(leagueContext.avgBudgetRemaining)}
+- Roster Size: ${leagueContext.rosterSize}
+
+Consider:
+- Is the current price a good value?
+- Does the team need this position?
+- Budget preservation: need $1 minimum for each remaining slot
+- Competitive advantage of this player vs waiting
+
+Return ONLY a valid JSON object (no markdown, no code blocks) with:
+- "shouldBid": boolean
+- "maxRecommendedBid": number (integer, the highest you'd recommend bidding)
+- "reasoning": 2-3 sentences explaining the recommendation
+- "confidence": one of "high", "medium", or "low"`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.object({
+        shouldBid: z.boolean(),
+        maxRecommendedBid: z.number().int().nonnegative(),
+        reasoning: z.string().max(2000),
+        confidence: z.enum(["high", "medium", "low"]),
+      });
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid bid advice structure");
+        return { success: false, error: 'Bid advice returned invalid data' };
+      }
+
+      return { success: true, result: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI bid advice failed");
+      return { success: false, error: 'Bid advice failed' };
     }
   }
 }

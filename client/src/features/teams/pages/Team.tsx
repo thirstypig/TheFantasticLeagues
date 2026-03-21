@@ -1,17 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
-import { getPlayerSeasonStats, type PlayerSeasonStat, getTeamDetails, getTeams } from "../../../api";
+import { getPlayerSeasonStats, type PlayerSeasonStat, getTeamDetails, getTeams, getTeamAiInsights, TeamInsightsResult } from "../../../api";
 import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
 import TeamRosterManager from "../components/TeamRosterManager";
 import { useLeague } from "../../../contexts/LeagueContext";
+import { getTradeBlock } from "../api";
 
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
 import { isPitcher, normalizePosition, formatAvg, getMlbTeamAbbr } from "../../../lib/playerDisplay";
 import { mapPosition } from "../../../lib/sportConfig";
 import { TableCard, Table, THead, Tr, Th, Td } from "../../../components/ui/TableCard";
 import { Button } from "../../../components/ui/button";
+import { Sparkles, Loader2, ArrowLeftRight } from "lucide-react";
 
 function normCode(v: any): string {
   return String(v ?? "").trim().toUpperCase();
@@ -81,6 +83,14 @@ export default function Team() {
   const [selected, setSelected] = useState<PlayerSeasonStat | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // AI Insights state
+  const [aiInsights, setAiInsights] = useState<TeamInsightsResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Trade block state
+  const [tradeBlockIds, setTradeBlockIds] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     let ok = true;
 
@@ -106,10 +116,14 @@ export default function Team() {
         if (foundId) {
           setDbTeamId(foundId);
 
-          // 3. Load DB roster (source of truth for who is on the team)
-          const details = await getTeamDetails(foundId);
+          // 3. Load DB roster + trade block in parallel
+          const [details, tradeBlockData] = await Promise.all([
+            getTeamDetails(foundId),
+            getTradeBlock(foundId).catch(() => ({ playerIds: [] as number[] })),
+          ]);
           if (!ok) return;
           setCurrentRoster(details.currentRoster || []);
+          setTradeBlockIds(new Set(tradeBlockData.playerIds));
 
           // 4. Build player list from DB roster, merge in CSV stats
           const dbRoster: any[] = details.currentRoster || [];
@@ -129,10 +143,13 @@ export default function Team() {
 
             const isKeeper = r.isKeeper ?? false;
 
+            const dbPlayerId = r.playerId ?? r.player?.id ?? 0;
+
             if (csvMatch) {
               // Use CSV stats, overlay DB fields for consistency
               return {
                 ...csvMatch,
+                _dbPlayerId: dbPlayerId,
                 ogba_team_code: code,
                 ogba_team_name: team?.name ?? "",
                 mlb_team_abbr: mlbTeam || csvMatch.mlb_team_abbr || csvMatch.mlb_team || "",
@@ -145,6 +162,7 @@ export default function Team() {
             // No CSV match — build a minimal row from DB data
             const pitcherPos = ["P", "SP", "RP"];
             return {
+              _dbPlayerId: dbPlayerId,
               mlb_id: String(mlbId || ""),
               player_name: playerName,
               ogba_team_code: code,
@@ -199,7 +217,7 @@ export default function Team() {
 
   return (
     <div className="flex-1 min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-12">
         <header className="mb-10 text-center relative">
           <h1 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)] mb-4">{teamName}</h1>
           <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
@@ -217,10 +235,35 @@ export default function Team() {
                  <span className="opacity-40 ml-[-4px] mr-2">←</span> Teams
                </Button>
              </Link>
-             
+
+             {/* AI Insights Button */}
+             {dbTeamId && (
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 onClick={async () => {
+                   if (!dbTeamId || !leagueId) return;
+                   setAiLoading(true);
+                   setAiError(null);
+                   try {
+                     const result = await getTeamAiInsights(leagueId, dbTeamId);
+                     setAiInsights(result);
+                   } catch (e: unknown) {
+                     setAiError(e instanceof Error ? e.message : "Failed to load insights");
+                   } finally {
+                     setAiLoading(false);
+                   }
+                 }}
+                 disabled={aiLoading}
+               >
+                 {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                 <span className="ml-1">AI Insights</span>
+               </Button>
+             )}
+
              {/* Manage Button - Only show if DB data loaded */}
              {dbTeamId && (
-                 <Button 
+                 <Button
                     onClick={() => setIsManaging(true)}
                  >
                     <span>Manage Roster</span>
@@ -232,6 +275,39 @@ export default function Team() {
         {error && (
           <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-200">
             {error}
+          </div>
+        )}
+
+        {/* AI Insights Section */}
+        {aiError && (
+          <div className="mb-4 text-center text-xs text-red-400">{aiError}</div>
+        )}
+        {aiInsights && (
+          <div className="mb-8 rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-[var(--lg-accent)]" />
+                <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">AI Insights</span>
+              </div>
+              {aiInsights.overallGrade && (
+                <span className="px-2 py-1 rounded text-xs font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] border border-[var(--lg-accent)]/20">
+                  Grade: {aiInsights.overallGrade}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(aiInsights.insights || []).map((insight, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-faint)]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]">
+                      {insight.category}
+                    </span>
+                    <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{insight.title}</span>
+                  </div>
+                  <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{insight.detail}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -311,6 +387,11 @@ export default function Team() {
                               <span className="inline-flex items-center gap-1.5">
                                 {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
                                 {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                                {tradeBlockIds.has((p as any)?._dbPlayerId) && (
+                                  <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
+                                    <ArrowLeftRight size={10} className="inline -mt-px" /> TB
+                                  </span>
+                                )}
                               </span>
                             </Td>
                             <Td align="center">
@@ -408,6 +489,11 @@ export default function Team() {
                               <span className="inline-flex items-center gap-1.5">
                                 {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
                                 {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                                {tradeBlockIds.has((p as any)?._dbPlayerId) && (
+                                  <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
+                                    <ArrowLeftRight size={10} className="inline -mt-px" /> TB
+                                  </span>
+                                )}
                               </span>
                             </Td>
                             <Td align="center">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { track } from '../../../lib/posthog';
 
 export function useWatchlist(leagueId: number | null | undefined) {
   const [starred, setStarred] = useState<Set<string>>(new Set());
@@ -29,8 +30,13 @@ export function useWatchlist(leagueId: number | null | undefined) {
       } else {
         next.add(mlbId);
       }
-      if (leagueId) localStorage.setItem(`auctionWatchlist_${leagueId}`, JSON.stringify([...next]));
       return next;
+    });
+    // Side effects outside the state updater — prevents double-fire under StrictMode
+    setStarred(current => {
+      if (leagueId) localStorage.setItem(`auctionWatchlist_${leagueId}`, JSON.stringify([...current]));
+      track("auction_watchlist_toggle", { action: current.has(mlbId) ? "add" : "remove", count: current.size });
+      return current;
     });
   }, [leagueId]);
 

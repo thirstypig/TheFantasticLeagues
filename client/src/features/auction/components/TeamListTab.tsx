@@ -39,6 +39,8 @@ interface TeamListTabProps {
   players?: PlayerSeasonStat[];
   budgetCap?: number;
   rosterSize?: number;
+  pitcherMax?: number;
+  hitterMax?: number;
   showPace?: boolean;
   positionLimits?: Record<string, number> | null;
   showPositionMatrix?: boolean;
@@ -47,7 +49,7 @@ interface TeamListTabProps {
 // Position order for the matrix display
 const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "DH", "P"];
 
-export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23, showPace = true, positionLimits, showPositionMatrix = true }: TeamListTabProps) {
+export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23, pitcherMax, hitterMax, showPace = true, positionLimits, showPositionMatrix = true }: TeamListTabProps) {
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailedRoster, setDetailedRoster] = useState<RosterEntry[] | null>(null);
@@ -145,10 +147,11 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
               <tbody>
                 {teams.map(team => (
                   <tr key={team.id} className={team.isMe ? 'bg-[var(--lg-accent)]/5' : ''}>
-                    <td className="px-2 py-1 font-semibold text-[var(--lg-text-primary)] truncate max-w-[80px] sticky left-0 bg-inherit z-10">{team.name.split(' ').pop()}</td>
+                    <td className="px-2 py-1 font-semibold text-[var(--lg-text-primary)] truncate max-w-[100px] sticky left-0 bg-inherit z-10" title={team.name}>{team.name}</td>
                     {MATRIX_POSITIONS.map(pos => {
-                      const filled = team.positionCounts?.[pos] ?? 0;
-                      const limit = positionLimits?.[pos];
+                      // For "P" column, show aggregate pitcher count with pitcherMax
+                      const filled = pos === "P" ? (team.pitcherCount ?? team.positionCounts?.[pos] ?? 0) : (team.positionCounts?.[pos] ?? 0);
+                      const limit = pos === "P" ? (positionLimits?.[pos] ?? pitcherMax) : positionLimits?.[pos];
                       const isFull = limit != null && filled >= limit;
                       return (
                         <td key={pos} className="px-1 py-1 text-center tabular-nums">

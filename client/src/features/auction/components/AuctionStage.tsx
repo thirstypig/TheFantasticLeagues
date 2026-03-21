@@ -1,10 +1,20 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal, Clock } from 'lucide-react';
+import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal, Clock, Sparkles, Loader2, Check, XCircle } from 'lucide-react';
 import { ClientAuctionState } from '../hooks/useAuctionState';
 import NominationQueue from './NominationQueue';
 import { Button } from '../../../components/ui/button';
 import { useToast } from "../../../contexts/ToastContext";
+import { fetchJsonApi, API_BASE } from '../../../api/base';
+import { track } from '../../../lib/posthog';
+
+// AI Bid Advice types
+interface BidAdvice {
+  shouldBid: boolean;
+  maxRecommendedBid: number;
+  reasoning: string;
+  confidence: string;
+}
 
 interface Team {
   id: number;
@@ -61,6 +71,15 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
     setIsDeclined(false);
   }, [nominationPlayerId]);
 
+  // AI Bid Advice state — resets when nomination changes
+  const [bidAdvice, setBidAdvice] = useState<BidAdvice | null>(null);
+  const [bidAdviceLoading, setBidAdviceLoading] = useState(false);
+  const [bidAdviceError, setBidAdviceError] = useState<string | null>(null);
+  useEffect(() => {
+    setBidAdvice(null);
+    setBidAdviceError(null);
+  }, [nominationPlayerId]);
+
   // Skeleton
   if (!serverState) {
       return (
@@ -97,7 +116,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
           <div className="flex flex-col gap-3">
               {/* Status + countdown */}
               <div className="text-center py-4">
-                  <div className="text-lg font-semibold text-[var(--lg-text-heading)] mb-1">Awaiting Nomination</div>
+                  <div className="text-base md:text-lg font-semibold text-[var(--lg-text-heading)] mb-1">Awaiting Nomination</div>
                   <p className="text-xs text-[var(--lg-text-muted)] mb-2">
                      {isMyTurn
                         ? <span className="text-[var(--lg-accent)] font-semibold animate-pulse">Your turn — select a player</span>
@@ -245,6 +264,68 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         <span className="text-lg font-bold text-[var(--lg-accent)]">${jumpRaise}</span>
                     </Button>
                 </div>
+                {/* AI Bid Advice */}
+                {myTeam && nomination.status === 'running' && (
+                  <div className="space-y-1">
+                    {!bidAdvice && (
+                      <button
+                        onClick={async () => {
+                          const lid = serverState?.leagueId;
+                          if (!lid || !myTeamId || !nomination.playerId) return;
+                          setBidAdviceLoading(true);
+                          setBidAdviceError(null);
+                          track("ai_auction_advice_requested", { playerId: nomination.playerId, currentBid });
+                          try {
+                            const result = await fetchJsonApi<BidAdvice>(
+                              `${API_BASE}/auction/ai-advice?leagueId=${lid}&teamId=${myTeamId}&playerId=${nomination.playerId}&currentBid=${currentBid}`
+                            );
+                            setBidAdvice(result);
+                          } catch (e: unknown) {
+                            setBidAdviceError(e instanceof Error ? e.message : "Advice unavailable");
+                          } finally {
+                            setBidAdviceLoading(false);
+                          }
+                        }}
+                        disabled={bidAdviceLoading}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-accent)] transition-colors"
+                      >
+                        {bidAdviceLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        AI Bid Advice
+                      </button>
+                    )}
+                    {bidAdviceError && (
+                      <div className="text-[10px] text-red-400 text-center">{bidAdviceError}</div>
+                    )}
+                    {bidAdvice && (
+                      <div className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {bidAdvice.shouldBid
+                              ? <Check size={12} className="text-emerald-400" />
+                              : <XCircle size={12} className="text-red-400" />
+                            }
+                            <span className={`text-xs font-semibold ${bidAdvice.shouldBid ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {bidAdvice.shouldBid ? 'Bid' : 'Pass'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[var(--lg-text-muted)]">
+                              Max: <span className="font-bold text-[var(--lg-text-primary)]">${bidAdvice.maxRecommendedBid}</span>
+                            </span>
+                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${
+                              bidAdvice.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-400' :
+                              bidAdvice.confidence === 'medium' ? 'bg-amber-500/10 text-amber-400' :
+                              'bg-red-500/10 text-red-400'
+                            }`}>
+                              {bidAdvice.confidence}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">{bidAdvice.reasoning}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Pass button — only show when not already high bidder */}
                 {myTeam && !isHighBidder && nomination.status === 'running' && (
                     <button

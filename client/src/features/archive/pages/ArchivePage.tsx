@@ -687,6 +687,7 @@ export default function ArchivePage() {
                           {hitters.length > 0 && (
                             <div className="border-b border-[var(--lg-border-faint)]">
                               <div className="px-8 py-3 bg-blue-500/5 text-xs font-medium uppercase text-blue-400">Batting Roster</div>
+                              <div className="overflow-x-auto">
                               <ThemedTable bare>
                                 <ThemedThead>
                                   <ThemedTr>
@@ -718,6 +719,7 @@ export default function ArchivePage() {
                                   })}
                                 </tbody>
                               </ThemedTable>
+                              </div>
                             </div>
                           )}
 
@@ -725,6 +727,7 @@ export default function ArchivePage() {
                           {pitchers.length > 0 && (
                             <div>
                               <div className="px-8 py-3 bg-purple-500/5 text-xs font-medium uppercase text-purple-400">Pitching Roster</div>
+                              <div className="overflow-x-auto">
                               <ThemedTable bare>
                                 <ThemedThead>
                                   <ThemedTr>
@@ -756,6 +759,7 @@ export default function ArchivePage() {
                                   })}
                                 </tbody>
                               </ThemedTable>
+                              </div>
                             </div>
                           )}
 
@@ -796,10 +800,10 @@ export default function ArchivePage() {
                 </div>
             ) : (
                 // Season Matrix View
-                <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden">
-                  <SeasonTable 
-                      periods={periodMeta} 
-                      rows={seasonRows} 
+                <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden overflow-x-auto">
+                  <SeasonTable
+                      periods={periodMeta}
+                      rows={seasonRows}
                   />
                 </div>
             )}

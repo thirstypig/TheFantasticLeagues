@@ -10,7 +10,8 @@ import multer from "multer";
 import { KeeperPrepService } from "./services/keeperPrepService.js";
 import { PlayerValueService } from "./services/playerValueService.js";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireCommissionerOrAdmin } from "../../middleware/auth.js";
+import { logger } from "../../lib/logger.js";
+import { requireAuth, requireCommissionerOrAdmin, requireLeagueMember } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
@@ -320,6 +321,79 @@ router.delete(
     });
 
     return res.json({ success: true, cleared: count });
+  })
+);
+
+// ─── AI Keeper Recommendation ───────────────────────────────────────────────
+
+// Cache: keyed by leagueId:teamId
+const keeperRecommendCache = new Map<string, { recommendations: any[]; strategy: string }>();
+
+/**
+ * GET /api/commissioner/:leagueId/keeper-prep/ai-recommend?teamId=Y
+ * AI-powered keeper selection recommendations for a team.
+ */
+router.get(
+  "/commissioner/:leagueId/keeper-prep/ai-recommend",
+  requireAuth,
+  requireLeagueMember("leagueId"),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const teamId = Number(req.query.teamId);
+    if (!Number.isFinite(teamId)) return res.status(400).json({ error: "Missing teamId" });
+
+    // Check cache
+    const cacheKey = `${leagueId}:${teamId}`;
+    const cached = keeperRecommendCache.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    // Verify team belongs to league
+    const team = await prisma.team.findUnique({ where: { id: teamId } });
+    if (!team || team.leagueId !== leagueId) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    // Fetch roster with player details
+    const roster = await prisma.roster.findMany({
+      where: { teamId, releasedAt: null },
+      include: {
+        player: { select: { id: true, name: true, posPrimary: true, mlbTeam: true } },
+      },
+      orderBy: { price: "desc" },
+    });
+
+    // Fetch league rules for keeper limits and budget
+    const rules = await prisma.leagueRule.findMany({
+      where: { leagueId },
+      select: { key: true, value: true },
+    });
+    const rulesMap = new Map(rules.map(r => [r.key, r.value]));
+    const maxKeepers = Number(rulesMap.get("keeper_count") ?? "5");
+    const budgetCap = Number(rulesMap.get("budget") ?? "400");
+
+    const teamRoster = roster.map(r => ({
+      playerId: r.player.id,
+      playerName: r.player.name,
+      position: r.player.posPrimary,
+      price: r.price,
+      keeperCost: r.price + 5,
+      statsSummary: `$${r.price} acquisition, ${r.player.posPrimary}, ${r.player.mlbTeam ?? 'FA'}`,
+    }));
+
+    const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+    const result = await aiAnalysisService.recommendKeepers(
+      teamRoster,
+      { maxKeepers, budgetCap },
+      team.budget,
+    );
+
+    if (!result.success) {
+      logger.warn({ error: result.error, leagueId, teamId }, "Keeper recommendation failed");
+      return res.status(503).json({ error: "Keeper recommendation is temporarily unavailable" });
+    }
+
+    keeperRecommendCache.set(cacheKey, result.result!);
+    res.json(result.result);
   })
 );
 

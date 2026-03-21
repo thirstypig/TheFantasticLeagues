@@ -1,7 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { Trophy, Download } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trophy, Download, Sparkles, Loader2, ArrowLeftRight, Save, Check, Rewind } from 'lucide-react';
+import AuctionReplay from './AuctionReplay';
 import type { ClientAuctionState, AuctionLogEvent } from '../hooks/useAuctionState';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+import { fetchJsonApi } from '../../../api/base';
+import { useLeague } from '../../../contexts/LeagueContext';
+import { track } from '../../../lib/posthog';
+import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
+import BidHistoryChart from './BidHistoryChart';
 
 interface AuctionCompleteProps {
   auctionState: ClientAuctionState;
@@ -17,8 +23,81 @@ interface TeamResult {
   roster: { playerId: string; playerName: string; price: number; positions: string; isPitcher: boolean }[];
 }
 
+interface DraftGrade {
+  teamId: number;
+  teamName: string;
+  grade: string;
+  summary: string;
+}
+
 export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompleteProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
+  const [draftGrades, setDraftGrades] = useState<DraftGrade[] | null>(null);
+  const [gradesLoading, setGradesLoading] = useState(false);
+  const [gradesError, setGradesError] = useState<string | null>(null);
+  const [showReplay, setShowReplay] = useState(false);
+  const { leagueId } = useLeague();
+
+  // Trade block state
+  const [tradeBlockSelections, setTradeBlockSelections] = useState<Set<string>>(new Set());
+  const [tradeBlockSaving, setTradeBlockSaving] = useState(false);
+  const [tradeBlockSaved, setTradeBlockSaved] = useState(false);
+  const [tradeBlockError, setTradeBlockError] = useState<string | null>(null);
+  // All teams' trade block data: teamId -> Set of playerIds (as strings)
+  const [leagueTradeBlocks, setLeagueTradeBlocks] = useState<Record<number, Set<string>>>({});
+
+  // Load league-wide trade blocks on mount
+  useEffect(() => {
+    if (!leagueId) return;
+    getLeagueTradeBlocks(leagueId)
+      .then(({ tradeBlocks }) => {
+        const parsed: Record<number, Set<string>> = {};
+        for (const [teamIdStr, playerIds] of Object.entries(tradeBlocks)) {
+          parsed[Number(teamIdStr)] = new Set(playerIds.map(String));
+        }
+        setLeagueTradeBlocks(parsed);
+        // Pre-populate my team's selections
+        if (myTeamId && parsed[myTeamId]) {
+          setTradeBlockSelections(new Set(parsed[myTeamId]));
+        }
+      })
+      .catch(() => { /* non-critical */ });
+  }, [leagueId, myTeamId]);
+
+  const toggleTradeBlock = useCallback((playerId: string) => {
+    setTradeBlockSaved(false);
+    setTradeBlockSelections(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) {
+        next.delete(playerId);
+      } else {
+        next.add(playerId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSaveTradeBlock = useCallback(async () => {
+    if (!myTeamId) return;
+    setTradeBlockSaving(true);
+    setTradeBlockError(null);
+    try {
+      const playerIds = Array.from(tradeBlockSelections).map(Number).filter(Number.isFinite);
+      const result = await saveTradeBlock(myTeamId, playerIds);
+      setTradeBlockSaved(true);
+      track("trade_block_saved", { teamId: myTeamId, count: result.playerIds.length });
+      // Update league-wide data for my team
+      setLeagueTradeBlocks(prev => ({
+        ...prev,
+        [myTeamId]: new Set(result.playerIds.map(String)),
+      }));
+      setTimeout(() => setTradeBlockSaved(false), 3000);
+    } catch (e: unknown) {
+      setTradeBlockError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setTradeBlockSaving(false);
+    }
+  }, [myTeamId, tradeBlockSelections]);
 
   const { teamResults, totalLots, totalSpent } = useMemo(() => {
     const wins = (auctionState.log || []).filter((e: AuctionLogEvent) => e.type === 'WIN');
@@ -128,13 +207,28 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
         <p className="text-sm text-[var(--lg-text-secondary)]">
           The auction draft has concluded. All rosters are filled.
         </p>
-        <button
-          onClick={handleExportExcel}
-          className="inline-flex items-center gap-1.5 px-4 py-2 mt-2 text-xs font-semibold rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)] transition-colors"
-        >
-          <Download size={14} />
-          Export to Excel
-        </button>
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)] transition-colors"
+          >
+            <Download size={14} />
+            Export to Excel
+          </button>
+          {(auctionState.log || []).length > 0 && (
+            <button
+              onClick={() => setShowReplay((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                showReplay
+                  ? 'border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]'
+                  : 'border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)]'
+              }`}
+            >
+              <Rewind size={14} />
+              {showReplay ? 'Hide Replay' : 'Replay Draft'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -152,6 +246,91 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
           <div className="text-2xl font-bold text-[var(--lg-text-heading)] tabular-nums">{teamResults.length}</div>
         </div>
       </div>
+
+      {/* Auction Replay */}
+      {showReplay && (
+        <AuctionReplay
+          log={auctionState.log || []}
+          teams={(auctionState.teams || []).map((t) => ({ id: t.id, name: t.name, code: t.code }))}
+          onClose={() => setShowReplay(false)}
+        />
+      )}
+
+      {/* AI Draft Grades */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-pink-400" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">AI Draft Grades</h2>
+          </div>
+          {!draftGrades && (
+            <button
+              onClick={async () => {
+                if (!leagueId) return;
+                setGradesLoading(true);
+                setGradesError(null);
+                try {
+                  const data = await fetchJsonApi<{ grades: DraftGrade[] }>(`/api/auction/draft-grades?leagueId=${leagueId}`);
+                  setDraftGrades(data.grades);
+                  track("auction_draft_grades_generated");
+                } catch (e: unknown) {
+                  setGradesError(e instanceof Error ? e.message : 'Failed to generate grades');
+                } finally {
+                  setGradesLoading(false);
+                }
+              }}
+              disabled={gradesLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-pink-500/10 text-pink-400 border border-pink-500/20 hover:bg-pink-500/20 transition-colors disabled:opacity-50"
+            >
+              {gradesLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {gradesLoading ? 'Grading...' : 'Generate Grades'}
+            </button>
+          )}
+        </div>
+
+        {gradesError && (
+          <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            {gradesError}
+          </div>
+        )}
+
+        {draftGrades && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {draftGrades.map((g) => {
+              const isMe = g.teamId === myTeamId;
+              const gradeColor =
+                g.grade.startsWith('A') ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5' :
+                g.grade.startsWith('B') ? 'text-blue-400 border-blue-500/30 bg-blue-500/5' :
+                g.grade.startsWith('C') ? 'text-amber-400 border-amber-500/30 bg-amber-500/5' :
+                'text-red-400 border-red-500/30 bg-red-500/5';
+
+              return (
+                <div
+                  key={g.teamId}
+                  className={`rounded-lg border p-4 ${gradeColor} ${isMe ? 'ring-1 ring-[var(--lg-accent)]' : ''}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-[var(--lg-text-primary)]">
+                      {g.teamName}
+                      {isMe && <span className="ml-1.5 text-xs text-[var(--lg-accent)]">(You)</span>}
+                    </span>
+                    <span className="text-2xl font-bold tabular-nums">{g.grade}</span>
+                  </div>
+                  <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{g.summary}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Bid History Visualization */}
+      {(auctionState.log || []).length > 0 && (
+        <BidHistoryChart
+          log={auctionState.log || []}
+          teams={(auctionState.teams || []).map(t => ({ id: t.id, name: t.name, code: t.code }))}
+        />
+      )}
 
       {/* Team Results */}
       <div className="space-y-2">
@@ -202,24 +381,93 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                           <ThemedTh className="w-10">#</ThemedTh>
                           <ThemedTh>Player</ThemedTh>
                           <ThemedTh align="right" className="pr-6">Price</ThemedTh>
+                          <ThemedTh align="center" className="w-12">Trade</ThemedTh>
                         </ThemedTr>
                       </ThemedThead>
                       <tbody className="divide-y divide-[var(--lg-divide)]">
                         {team.roster
                           .sort((a, b) => b.price - a.price)
-                          .map((player, idx) => (
-                            <ThemedTr key={player.playerId}>
-                              <ThemedTd className="py-2 text-[var(--lg-text-muted)] text-xs">{idx + 1}</ThemedTd>
-                              <ThemedTd className="py-2">
-                                <span className="font-semibold text-[var(--lg-text-primary)]">{player.playerName}</span>
-                              </ThemedTd>
-                              <ThemedTd align="right" className="py-2 pr-6">
-                                <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</span>
-                              </ThemedTd>
-                            </ThemedTr>
-                          ))}
+                          .map((player, idx) => {
+                            const isOnTradeBlock = isMe
+                              ? tradeBlockSelections.has(player.playerId)
+                              : (leagueTradeBlocks[team.id]?.has(player.playerId) ?? false);
+
+                            return (
+                              <ThemedTr key={player.playerId}>
+                                <ThemedTd className="py-2 text-[var(--lg-text-muted)] text-xs">{idx + 1}</ThemedTd>
+                                <ThemedTd className="py-2">
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <span className="font-semibold text-[var(--lg-text-primary)]">{player.playerName}</span>
+                                    {!isMe && isOnTradeBlock && (
+                                      <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="Available for trade">
+                                        <ArrowLeftRight size={10} className="inline -mt-px" /> TB
+                                      </span>
+                                    )}
+                                  </span>
+                                </ThemedTd>
+                                <ThemedTd align="right" className="py-2 pr-6">
+                                  <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</span>
+                                </ThemedTd>
+                                <ThemedTd align="center" className="py-2">
+                                  {isMe ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleTradeBlock(player.playerId);
+                                      }}
+                                      className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
+                                        isOnTradeBlock
+                                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                                          : 'bg-transparent text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:border-orange-500/30 hover:text-orange-400'
+                                      }`}
+                                      title={isOnTradeBlock ? 'Remove from trade block' : 'Add to trade block'}
+                                    >
+                                      <ArrowLeftRight size={12} />
+                                    </button>
+                                  ) : isOnTradeBlock ? (
+                                    <ArrowLeftRight size={12} className="text-orange-400 mx-auto" />
+                                  ) : (
+                                    <span className="text-[var(--lg-text-muted)] opacity-30">--</span>
+                                  )}
+                                </ThemedTd>
+                              </ThemedTr>
+                            );
+                          })}
                       </tbody>
                     </ThemedTable>
+                    {/* Save Trade Block button for own team */}
+                    {isMe && (
+                      <div className="px-4 md:px-6 py-3 flex items-center justify-between border-t border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50">
+                        <span className="text-xs text-[var(--lg-text-muted)]">
+                          {tradeBlockSelections.size > 0
+                            ? `${tradeBlockSelections.size} player${tradeBlockSelections.size !== 1 ? 's' : ''} on trade block`
+                            : 'Click the trade icons to flag players as available'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {tradeBlockError && (
+                            <span className="text-xs text-red-400">{tradeBlockError}</span>
+                          )}
+                          <button
+                            onClick={handleSaveTradeBlock}
+                            disabled={tradeBlockSaving}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 ${
+                              tradeBlockSaved
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20'
+                            }`}
+                          >
+                            {tradeBlockSaving ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : tradeBlockSaved ? (
+                              <Check size={12} />
+                            ) : (
+                              <Save size={12} />
+                            )}
+                            {tradeBlockSaving ? 'Saving...' : tradeBlockSaved ? 'Saved' : 'Save Trade Block'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

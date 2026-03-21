@@ -166,21 +166,27 @@ const refreshTeams = async (state: AuctionState) => {
     const spots = rosterSize - count;
 
     // Count pitchers/hitters and positions
+    // Use assignedPosition if available (the actual roster slot filled),
+    // otherwise fall back to player's primary position mapped to eligible slots.
     let pitchers = 0;
     let hitters = 0;
     const posCounts: Record<string, number> = {};
     for (const r of t.rosters) {
-      const pos = (r.player?.posPrimary ?? "").toUpperCase();
-      const isPitch = PITCHER_CODES.has(pos);
+      const assignedPos = (r.assignedPosition ?? "").toUpperCase();
+      const playerPos = (r.player?.posPrimary ?? "").toUpperCase();
+      const isPitch = PITCHER_CODES.has(playerPos);
       if (isPitch) {
         pitchers++;
         posCounts["P"] = (posCounts["P"] || 0) + 1;
       } else {
         hitters++;
-        // Map to roster slots
-        const slots = positionToSlots(pos);
-        for (const slot of slots) {
-          posCounts[slot] = (posCounts[slot] || 0) + 1;
+        if (assignedPos && assignedPos !== "BN") {
+          // Use actual assigned slot — only count that one slot
+          posCounts[assignedPos] = (posCounts[assignedPos] || 0) + 1;
+        } else {
+          // No assigned position yet — count the primary position slot only
+          const primarySlot = positionToSlots(playerPos)[0];
+          if (primarySlot) posCounts[primarySlot] = (posCounts[primarySlot] || 0) + 1;
         }
       }
     }
@@ -1198,6 +1204,140 @@ router.delete("/proxy-bid", requireAuth, asyncHandler(async (req, res) => {
     persistState(leagueId, state);
   }
   res.json({ success: true });
+}));
+
+// Draft grade cache — auction data is frozen at "completed", so cache is permanent per league
+const draftGradeCache = new Map<number, { teamId: number; teamName: string; grade: string; summary: string }[]>();
+const draftGradeInFlight = new Map<number, Promise<any>>();
+
+// GET /api/auction/draft-grades — AI-generated draft grades for all teams
+router.get("/draft-grades", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Missing leagueId" });
+
+  const state = await getState(leagueId);
+  if (state.status !== "completed") {
+    return res.status(400).json({ error: "Auction must be completed to generate draft grades" });
+  }
+
+  // Serve from cache if available
+  const cached = draftGradeCache.get(leagueId);
+  if (cached) return res.json({ grades: cached });
+
+  // Deduplicate concurrent requests — share one Gemini call
+  let inflight = draftGradeInFlight.get(leagueId);
+  if (!inflight) {
+    inflight = (async () => {
+      const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+      return aiAnalysisService.gradeCurrentDraft(
+        state.teams.map(t => ({
+          id: t.id,
+          name: t.name,
+          code: t.code,
+          budget: t.budget,
+          roster: t.roster,
+          pitcherCount: t.pitcherCount,
+          hitterCount: t.hitterCount,
+        })),
+        {
+          budgetCap: state.config.budgetCap ?? 400,
+          rosterSize: state.config.rosterSize ?? 23,
+          pitcherCount: state.config.pitcherCount ?? 9,
+          batterCount: state.config.batterCount ?? 14,
+        }
+      );
+    })();
+    draftGradeInFlight.set(leagueId, inflight);
+  }
+
+  try {
+    const result = await inflight;
+
+    if (!result.success) {
+      logger.warn({ error: result.error, leagueId }, "Draft grades failed");
+      return res.status(503).json({ error: "Draft grading is temporarily unavailable" });
+    }
+
+    // Cache permanently — auction state is frozen
+    draftGradeCache.set(leagueId, result.grades);
+    res.json({ grades: result.grades });
+  } finally {
+    draftGradeInFlight.delete(leagueId);
+  }
+}));
+
+// ─── AI Auction Bid Advice ──────────────────────────────────────────────────
+
+// Cache: keyed by leagueId:teamId:playerId:currentBid
+const bidAdviceCache = new Map<string, { shouldBid: boolean; maxRecommendedBid: number; reasoning: string; confidence: string }>();
+
+// GET /api/auction/ai-advice?leagueId=X&teamId=Y&playerId=Z&currentBid=N
+router.get("/ai-advice", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  const teamId = Number(req.query.teamId);
+  const playerId = Number(req.query.playerId);
+  const currentBid = Number(req.query.currentBid);
+
+  if (!Number.isFinite(leagueId) || !Number.isFinite(teamId) || !Number.isFinite(playerId) || !Number.isFinite(currentBid)) {
+    return res.status(400).json({ error: "Missing leagueId, teamId, playerId, or currentBid" });
+  }
+
+  // Check cache
+  const cacheKey = `${leagueId}:${teamId}:${playerId}:${currentBid}`;
+  const cached = bidAdviceCache.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  const state = await getState(leagueId);
+
+  // Find the team in auction state
+  const teamState = state.teams.find(t => t.id === teamId);
+  if (!teamState) return res.status(400).json({ error: "Team not in auction" });
+
+  // Find player info from current nomination or DB
+  let playerName = state.nomination?.playerName ?? "Unknown";
+  let playerPosition = state.nomination?.positions?.split('/')[0] ?? "UT";
+
+  if (state.nomination?.playerId === String(playerId)) {
+    playerName = state.nomination.playerName;
+    playerPosition = state.nomination.positions.split('/')[0] || "UT";
+  } else {
+    const dbPlayer = await prisma.player.findFirst({ where: { mlbId: playerId } });
+    if (dbPlayer) {
+      playerName = dbPlayer.name;
+      playerPosition = dbPlayer.posPrimary;
+    }
+  }
+
+  // Calculate team needs
+  const avgBudget = state.teams.reduce((sum, t) => sum + t.budget, 0) / (state.teams.length || 1);
+
+  const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+  const result = await aiAnalysisService.adviseBid(
+    playerName,
+    playerPosition,
+    currentBid,
+    teamState.budget,
+    {
+      pitcherCount: teamState.pitcherCount ?? 0,
+      hitterCount: teamState.hitterCount ?? 0,
+      pitcherMax: state.config.pitcherCount ?? 9,
+      hitterMax: state.config.batterCount ?? 14,
+      openSlots: (state.config.rosterSize ?? 23) - (teamState.roster?.length ?? 0),
+    },
+    {
+      avgBudgetRemaining: avgBudget,
+      teamsCount: state.teams.length,
+      rosterSize: state.config.rosterSize ?? 23,
+    },
+  );
+
+  if (!result.success) {
+    logger.warn({ error: result.error, leagueId, teamId, playerId }, "Bid advice failed");
+    return res.status(503).json({ error: "Bid advice is temporarily unavailable" });
+  }
+
+  bidAdviceCache.set(cacheKey, result.result!);
+  res.json(result.result);
 }));
 
 export const auctionRouter = router;

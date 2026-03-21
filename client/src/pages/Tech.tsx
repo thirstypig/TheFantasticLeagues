@@ -39,7 +39,7 @@ const stats = [
   { label: "Database Models", value: "30", icon: Database },
   { label: "API Endpoints", value: "119", icon: Plug },
   { label: "Feature Modules", value: "18", icon: Layers },
-  { label: "Git Commits", value: "189", icon: GitCommit },
+  { label: "Git Commits", value: "190+", icon: GitCommit },
   { label: "Tests Passing", value: "691", icon: TestTube },
   { label: "DB Schema Lines", value: "723", icon: Braces },
   { label: "DB Migrations", value: "10", icon: Database },
@@ -886,9 +886,9 @@ function BundleSize() {
 
       {open && (
         <div className="px-5 pb-5">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 overflow-x-auto">
             {bundleDeps.map((dep) => (
-              <div key={dep.name} className="flex items-center gap-3 text-sm py-2 px-3 rounded-md bg-[var(--lg-tint)]">
+              <div key={dep.name} className="flex items-center gap-3 text-sm py-2 px-3 rounded-md bg-[var(--lg-tint)] min-w-[500px]">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${dep.concern === "none" ? "bg-emerald-500" : dep.concern === "watch" ? "bg-amber-500" : "bg-red-500"}`} />
                 <span className="font-medium text-[var(--lg-text-primary)] w-48 shrink-0">{dep.name}</span>
                 <span className="text-xs text-[var(--lg-text-muted)] tabular-nums w-16 shrink-0">{dep.diskSize}</span>
@@ -940,11 +940,11 @@ function DependencyHealth() {
 
       {open && (
         <div className="px-5 pb-5">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 overflow-x-auto">
             {depHealth.map((dep) => {
               const cfg = statusConfig[dep.status];
               return (
-                <div key={dep.name} className="flex items-center gap-3 text-sm py-2 px-3 rounded-md bg-[var(--lg-tint)]">
+                <div key={dep.name} className="flex items-center gap-3 text-sm py-2 px-3 rounded-md bg-[var(--lg-tint)] min-w-[450px]">
                   <span className="font-medium text-[var(--lg-text-primary)] w-40 shrink-0">{dep.name}</span>
                   <span className="text-xs text-[var(--lg-text-muted)] tabular-nums w-12 shrink-0">{dep.current}</span>
                   <span className="text-[var(--lg-text-muted)]">→</span>

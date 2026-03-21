@@ -106,3 +106,21 @@ export async function clearPlayerValues(leagueId: number): Promise<{ success: bo
     method: "DELETE",
   });
 }
+
+// --- AI Keeper Recommendations ---
+
+export interface KeeperRecommendation {
+  rank: number;
+  playerName: string;
+  keeperCost: number;
+  reasoning: string;
+}
+
+export interface KeeperRecommendResult {
+  recommendations: KeeperRecommendation[];
+  strategy: string;
+}
+
+export async function getKeeperAiRecommendations(leagueId: number, teamId: number): Promise<KeeperRecommendResult> {
+  return fetchJsonApi<KeeperRecommendResult>(`${API_BASE}/commissioner/${leagueId}/keeper-prep/ai-recommend?teamId=${teamId}`);
+}

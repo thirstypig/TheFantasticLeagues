@@ -20,6 +20,8 @@ import AuctionDraftLog from '../components/AuctionDraftLog';
 import ChatTab from '../components/ChatTab';
 import AuctionSettingsTab from '../components/AuctionSettingsTab';
 import { useAuctionPrefs } from '../hooks/useAuctionPrefs';
+import { useAuctionNotifications } from '../hooks/useAuctionNotifications';
+import { useMyRankings } from '../hooks/useMyRankings';
 
 export default function Auction() {
   const { toast } = useToast();
@@ -34,12 +36,16 @@ export default function Auction() {
   const [isCommissioner, setIsCommissioner] = useState(false);
 
   // Use the Hook
-  const { state: auctionState, chatMessages, actions } = useAuctionState(activeLeagueId);
+  const { state: auctionState, chatMessages, connectionStatus, actions } = useAuctionState(activeLeagueId);
   const [myUserId, setMyUserId] = useState<number | undefined>(undefined);
   const { queue: myQueue, add: addToQueue, remove: removeFromQueue, isQueued, moveUp: moveQueueUp, moveDown: moveQueueDown } = useNominationQueue(myTeamId);
   const { starred: starredIds, toggle: toggleStar } = useWatchlist(activeLeagueId);
   const sounds = useAuctionSounds();
   const { prefs: auctionPrefs, toggle: togglePref, update: updatePref } = useAuctionPrefs();
+  const { rankings, rankingsCount, importRankings, clearRankings } = useMyRankings(activeLeagueId);
+
+  // Browser notifications (fires on state transitions: your turn, outbid, win)
+  useAuctionNotifications(auctionState, myTeamId, !auctionPrefs.notifications);
 
   // Proxy bid state (private — only the owner sees their own max bid)
   const [myProxyBid, setMyProxyBid] = useState<number | null>(null);
@@ -332,8 +338,9 @@ export default function Auction() {
         subtitle="Real-time auction draft room. Nominate players and manage bids."
         isMuted={sounds.isMuted}
         onToggleMute={sounds.toggleMute}
+        connectionStatus={connectionStatus}
         stage={
-            <div className="flex flex-col h-full gap-2">
+            <div className="flex flex-col h-full gap-2 min-w-0">
                 <AuctionStage
                     serverState={auctionState}
                     myTeamId={myTeamId}
@@ -383,13 +390,14 @@ export default function Auction() {
                                     defaultLeagueFilter={auctionPrefs.defaultLeagueFilter}
                                     activeBidPlayerId={auctionPrefs.valueColumn ? auctionState?.nomination?.playerId : undefined}
                                     activeBidAmount={auctionPrefs.valueColumn ? auctionState?.nomination?.currentBid : undefined}
+                                    rankings={rankingsCount > 0 ? rankings : undefined}
                                  />
                     },
                     {
                         key: 'teams',
                         label: 'Teams',
                         count: displayTeams.length,
-                        content: <TeamListTab teams={displayTeams} players={players} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} showPace={auctionPrefs.spendingPace} positionLimits={auctionState?.config?.positionLimits} />
+                        content: <TeamListTab teams={displayTeams} players={players} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} pitcherMax={auctionState?.config?.pitcherCount} hitterMax={auctionState?.config?.batterCount} showPace={auctionPrefs.spendingPace} positionLimits={auctionState?.config?.positionLimits} />
                     },
                     {
                         key: 'log',
@@ -405,7 +413,7 @@ export default function Auction() {
                     {
                         key: 'settings',
                         label: 'Settings',
-                        content: <AuctionSettingsTab prefs={auctionPrefs} onToggle={togglePref} onUpdate={updatePref} />
+                        content: <AuctionSettingsTab prefs={auctionPrefs} onToggle={togglePref} onUpdate={updatePref} rankingsCount={rankingsCount} onImportRankings={importRankings} onClearRankings={clearRankings} />
                     }
                 ]} 
             />

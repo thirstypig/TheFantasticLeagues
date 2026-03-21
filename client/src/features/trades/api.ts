@@ -122,3 +122,30 @@ export async function processTrade(tradeId: number): Promise<{ success: boolean 
         method: 'POST',
     });
 }
+
+// --- AI Trade Analysis ---
+
+export interface TradeAnalysisItem {
+  playerId?: number;
+  playerName: string;
+  fromTeamId: number;
+  toTeamId: number;
+  type: "player" | "budget";
+  amount?: number;
+}
+
+export interface TradeAnalysisResult {
+  fairness: string;
+  winner: string;
+  analysis: string;
+  recommendation: string;
+}
+
+export async function analyzeTrade(leagueId: number, items: TradeAnalysisItem[]): Promise<TradeAnalysisResult> {
+    const result = await fetchJsonApi<TradeAnalysisResult>(`${API_BASE}/trades/analyze`, {
+        method: 'POST',
+        body: JSON.stringify({ leagueId, items }),
+    });
+    track("ai_trade_analysis_requested", { item_count: items.length });
+    return result;
+}

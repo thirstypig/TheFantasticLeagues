@@ -124,26 +124,32 @@ describe("Commissioner", () => {
   it("renders navigation tabs", async () => {
     renderWithRoute();
     await waitFor(() => {
-      expect(screen.getByText("Overview")).toBeInTheDocument();
-      expect(screen.getByText("Season")).toBeInTheDocument();
-      expect(screen.getByText("Rosters")).toBeInTheDocument();
-      expect(screen.getByText("Trades")).toBeInTheDocument();
+      // Tab buttons contain label text; "Members" and "Teams" also appear in quick stats
+      const buttons = screen.getAllByRole("button");
+      const tabLabels = buttons.map((b) => b.textContent?.trim());
+      expect(tabLabels).toContain("League");
+      expect(tabLabels).toContain("Members");
+      expect(tabLabels).toContain("Teams");
+      expect(tabLabels).toContain("Season");
+      expect(tabLabels).toContain("Trades");
     });
   });
 
-  it("renders team name in overview", async () => {
+  it("renders quick stats in league tab", async () => {
     renderWithRoute();
     await waitFor(() => {
-      // "Aces" appears in both the team card and the owner-assignment dropdown
-      const matches = screen.getAllByText("Aces");
-      expect(matches.length).toBeGreaterThanOrEqual(1);
+      // Quick stats show team count and member count as "1" each
+      const ones = screen.getAllByText("1");
+      expect(ones.length).toBeGreaterThanOrEqual(2);
     });
   });
 
   it("shows season phase badge", async () => {
     renderWithRoute();
     await waitFor(() => {
-      expect(screen.getByText("IN SEASON")).toBeInTheDocument();
+      // Phase badge appears in both the guidance bar and the quick stats
+      const badges = screen.getAllByText("IN SEASON");
+      expect(badges.length).toBeGreaterThanOrEqual(1);
     });
   });
 

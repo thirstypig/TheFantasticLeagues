@@ -54,3 +54,19 @@ export async function processWaiverClaims(leagueId: number): Promise<WaiverProce
     method: "POST",
   });
 }
+
+// --- AI Waiver Bid Advice ---
+
+export interface WaiverBidAdvice {
+  suggestedBid: number;
+  confidence: string;
+  reasoning: string;
+}
+
+export async function getWaiverAiAdvice(leagueId: number, teamId: number, playerId: number): Promise<WaiverBidAdvice> {
+  const result = await fetchJsonApi<WaiverBidAdvice>(
+    `${API_BASE}/waivers/ai-advice?leagueId=${leagueId}&teamId=${teamId}&playerId=${playerId}`
+  );
+  track("ai_waiver_advice_requested", { leagueId, teamId, playerId });
+  return result;
+}

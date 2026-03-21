@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getMyRoster, saveKeepers } from "../../leagues/api";
+import { getKeeperAiRecommendations, KeeperRecommendResult } from "../api";
 import PageHeader from "../../../components/ui/PageHeader";
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { mapPosition } from "../../../lib/sportConfig";
+import { Sparkles, Loader2 } from "lucide-react";
+import { track } from "../../../lib/posthog";
 
 // Helper to format currency
 const fmtMoney = (n: number) => {
@@ -28,6 +31,11 @@ export default function KeeperSelection() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isLocked, setIsLocked] = useState(false);
   const [keeperLimit, setKeeperLimit] = useState(4);
+
+  // AI Recommendations state
+  const [aiResult, setAiResult] = useState<KeeperRecommendResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Load Data
   useEffect(() => {
@@ -119,6 +127,64 @@ export default function KeeperSelection() {
                     <p className="text-sm opacity-80">The commissioner has locked keeper selections for the upcoming auction. You can no longer modify your team.</p>
                 </div>
             )}
+            {/* AI Recommendations Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={async () => {
+                  if (!team?.id) return;
+                  setAiLoading(true);
+                  setAiError(null);
+                  track("ai_keeper_recommend_requested", { leagueId, teamId: team.id });
+                  try {
+                    const result = await getKeeperAiRecommendations(leagueId, team.id);
+                    setAiResult(result);
+                  } catch (e: unknown) {
+                    setAiError(e instanceof Error ? e.message : "Failed to get recommendations");
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                disabled={aiLoading || !team?.id}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/5 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/10 transition-colors disabled:opacity-50"
+              >
+                {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                Get AI Recommendations
+              </button>
+            </div>
+
+            {/* AI Recommendations Result */}
+            {aiError && <div className="text-xs text-red-400 text-center">{aiError}</div>}
+            {aiResult && (
+              <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={14} className="text-[var(--lg-accent)]" />
+                  <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">AI Keeper Recommendations</span>
+                </div>
+                <div className="space-y-2">
+                  {(aiResult.recommendations || []).map((rec, idx) => (
+                    <div key={idx} className="flex items-start gap-3 py-2 border-b border-[var(--lg-divide)] last:border-0">
+                      <div className="w-6 h-6 rounded-full bg-[var(--lg-accent)]/10 flex items-center justify-center text-xs font-bold text-[var(--lg-accent)] shrink-0">
+                        {rec.rank || idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-[var(--lg-text-primary)]">{rec.playerName}</span>
+                          <span className="text-[10px] font-mono text-[var(--lg-text-muted)]">${rec.keeperCost}</span>
+                        </div>
+                        <p className="text-xs text-[var(--lg-text-secondary)] mt-0.5 leading-relaxed">{rec.reasoning}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {aiResult.strategy && (
+                  <div className="pt-2 border-t border-[var(--lg-divide)]">
+                    <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Strategy</div>
+                    <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed italic">{aiResult.strategy}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Summary Card */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center shadow-xl backdrop-blur-sm">
                 <div>

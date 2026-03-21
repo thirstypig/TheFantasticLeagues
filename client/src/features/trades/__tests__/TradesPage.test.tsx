@@ -64,6 +64,8 @@ vi.mock("../../teams/components/TeamRosterView", () => ({
 vi.mock("lucide-react", () => ({
   Eye: () => <span>Eye</span>,
   Plus: () => <span>Plus</span>,
+  Sparkles: () => <span>Sparkles</span>,
+  Loader2: () => <span>Loader2</span>,
 }));
 
 import { TradesPage, TradeCard, LeagueTradeCard } from "../pages/TradesPage";

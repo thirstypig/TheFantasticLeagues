@@ -4,6 +4,61 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-20 (Session 32) — Reliability, Mobile, PostHog, AI Draft Grades
+
+### Summary
+Pre-auction reliability session. Added React error boundaries, WebSocket reconnect indicator, PostHog analytics enhancement (18 tracked events), mobile auction testing/fixes, and AI post-draft grade feature.
+
+### Completed — Platform Quality
+- **React Error Boundaries** — Root + feature-level (Auction, AuctionResults, Commissioner) boundaries with friendly error card, retry button, PostHog crash reporting
+- **Offline/Reconnect Indicator** — Amber "Reconnecting..." banner on WS disconnect, auto-reconnect with exponential backoff (1s→2s→4s→8s→15s cap), polling safety net during reconnect
+- **Mobile Auction Testing** — Tested 390x844 (iPhone 14) viewport via Playwright. Fixed AppShell mobile overflow (`min-w-0 overflow-x-hidden`) that was clipping right edge of content. Responsive text sizing on auction stage.
+- **PostHog Analytics Enhancement** — Expanded from 8 to 18 tracked events: auction_init, auction_chat_send, auction_watchlist_toggle, auction_ws_reconnected, auction_draft_grades_generated. Updated Analytics page metrics.
+
+### Completed — AI Features (6 endpoints)
+- **AI Post-Draft Grade** — `GET /api/auction/draft-grades?leagueId=X`. Grades each team A-F. Cached per league, Zod-validated, deduped concurrent requests.
+- **AI Trade Analyzer** — `POST /api/trades/analyze`. Evaluates trade fairness (fair/slightly_unfair/unfair), identifies winner, analysis + recommendation.
+- **AI Keeper Recommender** — `GET /api/commissioner/:leagueId/keeper-prep/ai-recommend?teamId=Y`. Ranks all roster players by keeper value.
+- **AI Waiver Bid Advisor** — `GET /api/waivers/ai-advice?leagueId=X&teamId=Y&playerId=Z`. Suggests FAAB bid with confidence level.
+- **AI Weekly Insights** — `GET /api/teams/ai-insights?leagueId=X&teamId=Y`. 3-5 actionable insights + overall grade.
+- **AI Auction Draft Advisor** — `GET /api/auction/ai-advice?leagueId=X&teamId=Y&playerId=Z&currentBid=N`. Real-time bid recommendation.
+
+### Completed — Code Review Fixes (9 items)
+- **P1**: Zod validation on AI JSON responses, cached+deduped draft-grades endpoint, `catch(e:unknown)` convention, initial connectionStatus fix
+- **P2**: Deduplicated reconnect logic (scheduleReconnect), removed stack traces from PostHog, generic AI error messages, track() outside state updater, removed unused topPicks from AI prompt
+
+### Completed — AI Features (6 server + 5 client UIs)
+- Post-Draft Grade, Trade Analyzer, Keeper Recommender, Waiver Bid Advisor, Weekly Insights, Auction Bid Advisor
+- All endpoints Zod-validated, cached, with generic error messages
+
+### Completed — Auction Enhancements
+- **AUC-10**: Pre-Draft Rankings Import — CSV upload/paste, private "My Rank" column
+- **AUC-11**: Post-Auction Trade Block — toggle players as tradeable, DB-backed (+8 tests)
+- **SS/MI position fix** — server was double-counting eligible slots; now uses assigned position
+- **Nomination Queue redesign** — vertical stack, 3 teams, full names
+- **Position Matrix fix** — full team names, P column shows X/9
+
+### Completed — Platform Quality
+- **Commissioner Reorg** — 6→5 tabs (League, Members, Teams, Season, Trades)
+- **PWA** — manifest.json, service worker, installable on phones
+- **Browser Push Notifications** — Your turn / Outbid / Won notifications
+- **Mobile fixes** — Team, Archive, Tech overflow wrappers, hamburger menu fix
+- **AI Insights route fix** — moved before /:id parameterized route
+
+### Test Results
+- Server: 462 passing (+8 trade block)
+- Client: 187 passing
+- MCP: 50 passing
+- **Total: 699 tests**
+
+### Pending / Next Steps
+- Auction Replay + Bid History Visualization (building)
+- TD-Q03 (auction/routes.ts extraction) — intentionally deferred
+- Production deployment
+- Sunday March 22 live auction
+
+---
+
 ## Session 2026-03-20 (Session 31) — 21 PRs, Auction UX, My Val, MLB Home, Guide, AI Roadmap, CI Fix
 
 ### Summary

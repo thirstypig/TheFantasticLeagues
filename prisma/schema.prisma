@@ -245,6 +245,9 @@ model Team {
   transactions TransactionEvent[]
   auctionBids  AuctionBid[]
 
+  // Trade Block: JSON array of playerIds the owner has flagged as available for trade
+  tradeBlockPlayerIds Json @default("[]")
+
   // Trade Relations
   proposedTrades     Trade[]     @relation("TradeProposer")
   tradeItemsSent     TradeItem[] @relation("TradeSender")

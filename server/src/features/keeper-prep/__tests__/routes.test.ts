@@ -8,6 +8,7 @@ vi.mock("../../../db/prisma.js", () => ({
     team: { findUnique: vi.fn() },
     roster: { findMany: vi.fn() },
     playerValue: { findMany: vi.fn().mockResolvedValue([]) },
+    leagueRule: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
@@ -33,6 +34,7 @@ vi.mock("fs", () => ({
 vi.mock("../../../middleware/auth.js", () => ({
   requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   requireCommissionerOrAdmin: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireLeagueMember: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/validate.js", () => ({
   validateBody: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),

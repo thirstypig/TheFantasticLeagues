@@ -36,6 +36,7 @@ import GuideAccount from "./pages/guide/GuideAccount";
 import GuideAuction from "./pages/guide/GuideAuction";
 import GuideFaq from "./pages/guide/GuideFaq";
 import About from "./pages/About";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
@@ -72,9 +73,9 @@ export default function App() {
                 <Route path="/transactions" element={<Navigate to="/activity" replace />} />
                 <Route path="/trades" element={<Navigate to="/activity" replace />} />
                 <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
-                <Route path="/auction" element={<Auction />} />
-                <Route path="/auction-results" element={<AuctionResults />} />
-                <Route path="/commissioner/:leagueId" element={<Commissioner />} />
+                <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
+                <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
+                <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/guide" element={<GuidePage />} />
                 <Route path="/guide/account" element={<GuideAccount />} />

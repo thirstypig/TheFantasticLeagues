@@ -8,12 +8,15 @@ import {
   processTrade,
   TradeProposal,
   getLeague,
+  analyzeTrade,
+  TradeAnalysisResult,
+  TradeAnalysisItem,
 } from "../../../api";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { TradeAssetSelector } from "../components/TradeAssetSelector";
 import TeamRosterView from "../../teams/components/TeamRosterView";
-import { Eye, Plus } from "lucide-react";
+import { Eye, Plus, Sparkles, Loader2 } from "lucide-react";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../contexts/ToastContext";
@@ -217,6 +220,33 @@ export function TradesPage() {
   );
 }
 
+// --- AI Analysis Inline Card ---
+function TradeAiAnalysis({ result }: { result: TradeAnalysisResult }) {
+  const fairnessColor =
+    result.fairness === "fair" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
+    result.fairness === "slightly_unfair" ? "text-amber-400 bg-amber-500/10 border-amber-500/20" :
+    "text-red-400 bg-red-500/10 border-red-500/20";
+
+  return (
+    <div className="mt-3 p-3 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Sparkles size={14} className="text-[var(--lg-accent)]" />
+        <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">AI Analysis</span>
+        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${fairnessColor}`}>
+          {result.fairness.replace("_", " ")}
+        </span>
+        {result.winner && (
+          <span className="text-xs text-[var(--lg-text-muted)]">
+            Winner: <span className="font-semibold text-[var(--lg-text-primary)]">{result.winner}</span>
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{result.analysis}</p>
+      <p className="text-[10px] text-[var(--lg-text-muted)] italic">{result.recommendation}</p>
+    </div>
+  );
+}
+
 export function TradeCard({
   trade,
   onRefresh,
@@ -228,10 +258,38 @@ export function TradeCard({
   currentUserId?: number;
   onViewContext?: () => void;
 }) {
+  const { leagueId: currentLeagueId } = useLeague();
   const isPending = trade.status === "PROPOSED";
   const isProposer = trade.proposingTeam?.ownerUserId === currentUserId
     || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
-  
+
+  // AI Analysis state
+  const [aiResult, setAiResult] = useState<TradeAnalysisResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAnalyze = async () => {
+    if (!currentLeagueId || !trade.proposingTeamId || !trade.acceptingTeamId) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const items: TradeAnalysisItem[] = trade.items.map((i) => ({
+        playerId: i.player?.id,
+        playerName: i.player?.name || `$${i.amount} Budget`,
+        fromTeamId: i.senderTeamId || trade.proposingTeamId!,
+        toTeamId: i.senderTeamId === trade.proposingTeamId ? trade.acceptingTeamId! : trade.proposingTeamId!,
+        type: i.assetType === "BUDGET" ? "budget" : "player",
+        amount: i.amount,
+      }));
+      const result = await analyzeTrade(currentLeagueId, items);
+      setAiResult(result);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Analysis failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="lg-card p-4">
       <div className="flex justify-between items-start mb-4">
@@ -244,6 +302,16 @@ export function TradeCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+            {isPending && !aiResult && (
+              <button
+                onClick={handleAnalyze}
+                disabled={aiLoading}
+                className="p-1 hover:bg-[var(--lg-tint)] rounded text-[var(--lg-text-muted)] hover:text-[var(--lg-accent)] disabled:opacity-50 transition-colors"
+                title="AI Analysis"
+              >
+                {aiLoading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              </button>
+            )}
             {onViewContext && (
                 <button onClick={onViewContext} className="p-1 hover:bg-[var(--lg-tint)] rounded text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]" title="View Context">
                     <Eye size={16} />
@@ -292,8 +360,12 @@ export function TradeCard({
         </div>
       </div>
 
+      {/* AI Analysis Result */}
+      {aiResult && <TradeAiAnalysis result={aiResult} />}
+      {aiError && <div className="mt-2 text-xs text-red-400">{aiError}</div>}
+
       {isPending && (
-         <div className="flex justify-end space-x-2">
+         <div className="flex justify-end space-x-2 mt-3">
            {isProposer ? (
              <button
                onClick={async () => {

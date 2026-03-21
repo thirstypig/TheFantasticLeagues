@@ -127,8 +127,8 @@ Future auction enhancements, roughly ordered by impact.
 - [x] **AUC-09**: "Going Once, Going Twice, SOLD!" Visual — "Going once" at 5s (amber), "Going twice" at 3s (red), "SOLD!" at 1s (bounce). Red glow border on nominee card. *(Session 31)*
 
 ### Nice-to-Have
-- [ ] **AUC-10**: Pre-Draft Rankings Import — owners upload personal player rankings (CSV) as a private column in Player Pool.
-- [ ] **AUC-11**: Post-Auction Trade Block — immediately after draft, owners flag players they'd trade.
+- [x] **AUC-10**: Pre-Draft Rankings Import — CSV upload or paste in Settings tab, private "My Rank" column in Player Pool, sortable. localStorage per league. *(Session 32)*
+- [x] **AUC-11**: Post-Auction Trade Block — toggle players as "available for trade" on AuctionComplete page, visible to all teams on Team page. DB-backed via `tradeBlockPlayerIds` on Team model. 8 new tests. *(Session 32)*
 - [x] **AUC-12**: Keeper Cost Preview — shows "Keeper next year: $bid+5" when you're the high bidder. *(Session 31)*
 
 ---

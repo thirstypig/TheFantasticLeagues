@@ -25,10 +25,11 @@ interface MetricCard {
 const metrics: MetricCard[] = [
   { label: "Pageviews", description: "Page-level tracking with SPA-aware navigation events via PostHog", icon: Eye, status: "tracking" },
   { label: "User Identity", description: "Authenticated users identified by email for session continuity", icon: Users, status: "tracking" },
-  { label: "Feature Adoption", description: "Which features owners use most — auction, trades, standings, archive", icon: Target, status: "planned" },
-  { label: "Auction Engagement", description: "Bid velocity, nomination patterns, session duration during live drafts", icon: Zap, status: "planned" },
+  { label: "Feature Adoption", description: "Auth (login/signup/logout), trade proposals, waiver claims, keeper saves, watchlist", icon: Target, status: "tracking" },
+  { label: "Auction Engagement", description: "Nominate, bid, proxy bid, chat, init, finish, force assign, watchlist toggle, WebSocket reconnects", icon: Zap, status: "tracking" },
+  { label: "Error Tracking", description: "React error boundaries report crashes with component name and stack trace", icon: Target, status: "tracking" },
   { label: "Page Performance", description: "Load times, slow API calls, and rendering bottlenecks", icon: Timer, status: "planned" },
-  { label: "Click Tracking", description: "Key interaction events — trade votes, waiver submissions, tab switches", icon: MousePointer, status: "planned" },
+  { label: "Click Tracking", description: "Granular interaction events — tab switches, modal opens, sort changes", icon: MousePointer, status: "planned" },
 ];
 
 interface InsightItem {

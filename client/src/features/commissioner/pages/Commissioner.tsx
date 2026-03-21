@@ -186,18 +186,17 @@ export default function Commissioner() {
   const gating = useSeasonGating();
 
   // Tab definitions with season-aware gating
-  type TabKey = 'overview' | 'season' | 'rosters' | 'trades' | 'keepers' | 'auction';
-  const TABS: { key: TabKey; label: string; enabled: boolean; reason?: string }[] = [
-    { key: 'overview', label: 'Overview', enabled: true },
-    { key: 'season', label: 'Season', enabled: true },
-    { key: 'rosters', label: 'Rosters', enabled: !gating.isReadOnly, reason: 'Season is completed' },
-    { key: 'trades', label: 'Trades', enabled: !gating.isReadOnly, reason: 'Season is completed' },
-    { key: 'keepers', label: 'Keepers', enabled: gating.canKeepers, reason: 'Keepers are available during Setup and Draft' },
-    { key: 'auction', label: 'Auction', enabled: gating.canKeepers || gating.canAuction, reason: 'Auction is available during Setup and Draft' },
+  type TabKey = 'league' | 'members' | 'teams' | 'season' | 'trades';
+  const TABS: { key: TabKey; label: string; icon: string; enabled: boolean; reason?: string }[] = [
+    { key: 'league', label: 'League', icon: 'building', enabled: true },
+    { key: 'members', label: 'Members', icon: 'users', enabled: true },
+    { key: 'teams', label: 'Teams', icon: 'trophy', enabled: true },
+    { key: 'season', label: 'Season', icon: 'calendar', enabled: true },
+    { key: 'trades', label: 'Trades', icon: 'arrows', enabled: !gating.isReadOnly, reason: 'Season is completed' },
   ];
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [activeTab, setActiveTab] = useState<TabKey>('league');
 
   // Hash listener — only navigate to enabled tabs
   useEffect(() => {
@@ -618,7 +617,7 @@ export default function Commissioner() {
                              setActiveTab(tab.key);
                         }}
                         className={cls(
-                            "px-4 py-2 text-sm font-semibold rounded-lg transition-colors",
+                            "px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5",
                             !tab.enabled && "opacity-40 cursor-not-allowed",
                             activeTab === tab.key && tab.enabled
                                 ? "bg-[var(--lg-accent)] text-white"
@@ -629,16 +628,80 @@ export default function Commissioner() {
                         title={tab.enabled ? undefined : tab.reason}
                         disabled={!tab.enabled}
                     >
+                        {tab.icon === 'building' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg>
+                        )}
+                        {tab.icon === 'users' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        )}
+                        {tab.icon === 'trophy' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                        )}
+                        {tab.icon === 'calendar' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+                        )}
+                        {tab.icon === 'arrows' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+                        )}
                         {tab.label}
                     </button>
                 ))}
             </div>
 
-            {/* Tab: Overview */}
-            {activeTab === 'overview' && (
-                <div className="grid gap-5 lg:grid-cols-2">
+            {/* Tab: League */}
+            {activeTab === 'league' && (
+                <div className="space-y-5">
+                  {/* Quick Stats */}
+                  <div className="grid gap-4 grid-cols-3">
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
+                      <div className="text-2xl font-semibold text-[var(--lg-text-heading)]">{overview.teams.length}</div>
+                      <div className="text-xs text-[var(--lg-text-muted)]">Teams</div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
+                      <div className="text-2xl font-semibold text-[var(--lg-text-heading)]">{overview.memberships.length}</div>
+                      <div className="text-xs text-[var(--lg-text-muted)]">Members</div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
+                      <div className={cls(
+                        "text-sm font-semibold rounded-full inline-block px-3 py-1",
+                        gating.seasonStatus === "SETUP" && "bg-blue-500/15 text-blue-500",
+                        gating.seasonStatus === "DRAFT" && "bg-amber-500/15 text-amber-500",
+                        gating.seasonStatus === "IN_SEASON" && "bg-green-500/15 text-green-500",
+                        gating.seasonStatus === "COMPLETED" && "bg-[var(--lg-text-muted)]/15 text-[var(--lg-text-muted)]",
+                        !gating.seasonStatus && "bg-[var(--lg-text-muted)]/15 text-[var(--lg-text-muted)]",
+                      )}>
+                        {gating.seasonStatus?.replace("_", " ") ?? "No Season"}
+                      </div>
+                      <div className="text-xs text-[var(--lg-text-muted)] mt-1">Season Status</div>
+                    </div>
+                  </div>
+
+                  {/* League Settings */}
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                    <div className="mb-3 text-lg font-semibold text-[var(--lg-text-heading)]">League Settings</div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
+                        <div className="text-sm text-[var(--lg-text-muted)]">Draft Mode</div>
+                        <div className="text-sm font-medium text-[var(--lg-text-primary)]">
+                          {league.draftMode}
+                          {league.draftMode === "DRAFT" ? ` (${league.draftOrder ?? "—"})` : null}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
+                        <div className="text-sm text-[var(--lg-text-muted)]">Public</div>
+                        <div className="text-sm font-medium text-[var(--lg-text-primary)]">{league.isPublic ? "Yes" : "No"}</div>
+                      </div>
+                      {league.publicSlug && (
+                        <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
+                          <div className="text-sm text-[var(--lg-text-muted)]">Slug</div>
+                          <div className="text-sm font-medium text-[var(--lg-text-primary)]">{league.publicSlug}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Invite Code */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 lg:col-span-2">
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Invite Code</div>
                     </div>
@@ -702,8 +765,13 @@ export default function Commissioner() {
                       Share this code with users so they can join your league.
                     </p>
                   </div>
+                </div>
+            )}
 
-                  {/* Members */}
+            {/* Tab: Members */}
+            {activeTab === 'members' && (
+                <div className="space-y-5">
+                  {/* Member List */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Members</div>
@@ -757,80 +825,86 @@ export default function Commissioner() {
                         );
                       })}
                     </div>
-
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
-                      <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
-                        <input
-                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          placeholder="owner@email.com"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                        />
-                        <select
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          value={inviteRole}
-                          onChange={(e) => setInviteRole(e.target.value as any)}
-                          title="Select role"
-                        >
-                          <option value="OWNER">OWNER</option>
-                          <option value="COMMISSIONER">COMMISSIONER</option>
-                        </select>
-
-                        <div className="md:col-span-3 flex justify-end">
-                          <button
-                            type="submit"
-                            className={cls(
-                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
-                              busy && "opacity-60 cursor-not-allowed"
-                            )}
-                            disabled={busy}
-                          >
-                            Add
-                          </button>
-                        </div>
-                      </form>
-
-                      <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
-                        If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.
-                      </div>
-                    </div>
-
-                    {/* Pending Invites */}
-                    {pendingInvites.length > 0 && (
-                      <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
-                          Pending Invites
-                          <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {pendingInvites.map((inv) => (
-                            <div
-                              key={inv.id}
-                              className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
-                            >
-                              <div className="min-w-0">
-                                <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
-                                <div className="text-xs text-[var(--lg-text-muted)]">
-                                  {inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}
-                                  {inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => onCancelInvite(inv.id)}
-                                className="shrink-0 text-xs text-red-400 hover:text-red-300"
-                                disabled={busy}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Teams */}
+                  {/* Add Member */}
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                    <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
+                    <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
+                      <input
+                        className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
+                        placeholder="owner@email.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                      />
+                      <select
+                        className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as any)}
+                        title="Select role"
+                      >
+                        <option value="OWNER">OWNER</option>
+                        <option value="COMMISSIONER">COMMISSIONER</option>
+                      </select>
+
+                      <div className="md:col-span-3 flex justify-end">
+                        <button
+                          type="submit"
+                          className={cls(
+                            "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
+                            busy && "opacity-60 cursor-not-allowed"
+                          )}
+                          disabled={busy}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
+                      If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.
+                    </div>
+                  </div>
+
+                  {/* Pending Invites */}
+                  {pendingInvites.length > 0 && (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
+                        Pending Invites
+                        <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {pendingInvites.map((inv) => (
+                          <div
+                            key={inv.id}
+                            className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
+                              <div className="text-xs text-[var(--lg-text-muted)]">
+                                {inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}
+                                {inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => onCancelInvite(inv.id)}
+                              className="shrink-0 text-xs text-red-400 hover:text-red-300"
+                              disabled={busy}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+            )}
+
+            {/* Tab: Teams */}
+            {activeTab === 'teams' && (
+                <div className="space-y-5">
+                  {/* Team List */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Teams</div>
@@ -887,6 +961,7 @@ export default function Commissioner() {
                       ))}
                     </div>
 
+                    {/* Create Team */}
                     <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
                       <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Create team</div>
                       <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
@@ -955,6 +1030,7 @@ export default function Commissioner() {
                       </form>
                     </div>
 
+                    {/* Assign Owner */}
                     <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
                       <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Assign team owner</div>
 
@@ -1011,17 +1087,9 @@ export default function Commissioner() {
                       </div>
                     </div>
                   </div>
-                </div>
-            )}
 
-            {/* Tab: Season */}
-            {activeTab === 'season' && (
-                <SeasonManager leagueId={lid} draftMode={overview.league?.draftMode} />
-            )}
-
-            {/* Tab: Rosters */}
-            {activeTab === 'rosters' && (
-                <div className="space-y-6">
+                  {/* Roster Tool */}
+                  {!gating.isReadOnly && (
                     <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                        <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Manual Roster Management</h2>
                        <CommissionerRosterTool
@@ -1030,6 +1098,39 @@ export default function Commissioner() {
                           onUpdate={() => { /* no-op or refresh */ }}
                         />
                     </div>
+                  )}
+                </div>
+            )}
+
+            {/* Tab: Season */}
+            {activeTab === 'season' && (
+                <div className="space-y-6">
+                    <SeasonManager leagueId={lid} draftMode={overview.league?.draftMode} />
+
+                    {/* Keepers — only when canKeepers */}
+                    {gating.canKeepers && (
+                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                           <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
+                           <KeeperPrepDashboard leagueId={lid} />
+                      </div>
+                    )}
+
+                    {/* Auction Controls — only when canAuction or canKeepers (Setup/Draft) */}
+                    {(gating.canKeepers || gating.canAuction) && (
+                      <div className="space-y-6">
+                        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                          <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Live Auction Draft</h3>
+                          <p className="text-sm text-[var(--lg-text-muted)] mb-4">Start and manage the live auction draft from the Auction page.</p>
+                          <Link
+                            to={`/leagues/${lid}/auction`}
+                            className="inline-block rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-600 transition-colors"
+                          >
+                            Go to Auction Draft
+                          </Link>
+                        </div>
+                        <CommissionerControls leagueId={lid} />
+                      </div>
+                    )}
                 </div>
             )}
 
@@ -1045,33 +1146,6 @@ export default function Commissioner() {
                     </div>
                 </div>
             )}
-
-            {/* Tab: Keepers */}
-            {activeTab === 'keepers' && (
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                         <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
-                         <KeeperPrepDashboard leagueId={lid} />
-                    </div>
-                </div>
-            )}
-
-             {/* Tab: Auction */}
-             {activeTab === 'auction' && (
-                <div className="space-y-6">
-                     <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                       <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Live Auction Draft</h3>
-                       <p className="text-sm text-[var(--lg-text-muted)] mb-4">Start and manage the live auction draft from the Auction page.</p>
-                       <Link
-                         to={`/leagues/${lid}/auction`}
-                         className="inline-block rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-600 transition-colors"
-                       >
-                         Go to Auction Draft
-                       </Link>
-                     </div>
-                     <CommissionerControls leagueId={lid} />
-                </div>
-             )}
 
           </>
         )}

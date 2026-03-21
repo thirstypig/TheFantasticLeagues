@@ -4,6 +4,7 @@ export type LeagueFilter = 'ALL' | 'NL' | 'AL';
 
 export interface AuctionPrefs {
   sounds: boolean;
+  notifications: boolean;
   chat: boolean;
   watchlist: boolean;
   openingBidPicker: boolean;
@@ -14,6 +15,7 @@ export interface AuctionPrefs {
 
 const DEFAULTS: AuctionPrefs = {
   sounds: true,
+  notifications: true,
   chat: true,
   watchlist: true,
   openingBidPicker: true,

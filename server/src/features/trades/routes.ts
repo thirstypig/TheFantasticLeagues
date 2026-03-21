@@ -348,5 +348,67 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+// POST /api/trades/analyze - AI-powered trade analysis
+const tradeAnalyzeSchema = z.object({
+  leagueId: z.number().int().positive(),
+  items: z.array(z.object({
+    playerId: z.number().int().positive().optional(),
+    playerName: z.string().min(1).max(200),
+    fromTeamId: z.number().int().positive(),
+    toTeamId: z.number().int().positive(),
+    type: z.enum(["player", "budget"]),
+    amount: z.number().nonnegative().optional(),
+  })).min(1),
+});
+
+// Cache: keyed by sorted trade item fingerprint
+const tradeAnalysisCache = new Map<string, { fairness: string; winner: string; analysis: string; recommendation: string }>();
+
+router.post("/analyze", requireAuth, validateBody(tradeAnalyzeSchema), requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const { leagueId, items } = req.body;
+
+  // Build cache key from trade items
+  const cacheKey = `${leagueId}:${JSON.stringify(items.map((i: any) => `${i.fromTeamId}-${i.toTeamId}-${i.type}-${i.playerName}-${i.amount ?? 0}`).sort())}`;
+  const cached = tradeAnalysisCache.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  // Fetch involved teams with rosters
+  const involvedTeamIds = [...new Set<number>(items.flatMap((i: any) => [i.fromTeamId, i.toTeamId]))];
+  const teams = await prisma.team.findMany({
+    where: { id: { in: involvedTeamIds }, leagueId },
+    include: {
+      rosters: {
+        where: { releasedAt: null },
+        include: { player: { select: { name: true, posPrimary: true } } },
+      },
+    },
+  });
+
+  if (teams.length !== involvedTeamIds.length) {
+    return res.status(400).json({ error: "All teams must belong to the same league" });
+  }
+
+  const teamData = teams.map(t => ({
+    id: t.id,
+    name: t.name,
+    budget: t.budget,
+    roster: t.rosters.map(r => ({
+      playerName: r.player.name,
+      position: r.player.posPrimary,
+      price: r.price,
+    })),
+  }));
+
+  const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+  const result = await aiAnalysisService.analyzeTrade(items, teamData, leagueId);
+
+  if (!result.success) {
+    return res.status(503).json({ error: "Trade analysis is temporarily unavailable" });
+  }
+
+  tradeAnalysisCache.set(cacheKey, result.result!);
+  res.json(result.result);
+}));
+
 export const tradesRouter = router;
 export default tradesRouter;

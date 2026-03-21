@@ -378,8 +378,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </aside>
 
-        <div className="flex-1 flex flex-col min-h-screen transition-all duration-300">
-          <header className={`sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--lg-border-faint)] px-6 py-5 lg:hidden bg-[var(--lg-bg-page)]/80 backdrop-blur-3xl`}>
+        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden transition-all duration-300">
+          <header className={`sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--lg-border-faint)] px-4 py-3 lg:hidden bg-[var(--lg-bg-page)]/80 backdrop-blur-3xl`} style={{ minHeight: '56px' }}>
             <button
               onClick={() => setMobileOpen(true)}
               className="lg-button lg-button-secondary p-2.5"
