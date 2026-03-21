@@ -42,10 +42,15 @@ Production deployment readiness for Render with 6-agent code review. All P2/P3 f
 - MCP: 50 passing
 - **Total: 710 tests**
 
-### Pending / Next Steps
-- Post-deploy smoke test: health check, auth, WebSocket, PostHog
-- Sunday March 22 live auction — pre-auction testing tomorrow
-- SaaS Phase 1 planning (post-auction)
+### Pending / Next Steps — Pre-Auction (March 21)
+1. **Post-deploy smoke test** — health check, auth, WebSocket, PostHog on thefantasticleagues.com
+2. **End-to-end auction test in production** — create test auction, verify WS, bid, nominate, timer
+3. **Sticky table headers** — Players page and Auction player pool tables lose column headers on scroll. CSS `position: sticky; top: 0` exists in `.lg-table thead` but doesn't work inside scrollable containers. Fix for both Players and Auction PlayerPoolTab.
+4. **Design contrast spot-check** — verify light/dark mode improvements look correct on live site
+
+### Pending / Next Steps — Post-Auction
+- Post-auction retrospective — review logs, bid patterns, UX issues from real usage
+- SaaS Phase 1 planning (multi-league, snake draft, public directory)
 - TD-Q03 (auction/routes.ts extraction) — intentionally deferred
 
 ---
