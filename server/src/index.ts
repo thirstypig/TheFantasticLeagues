@@ -99,6 +99,13 @@ async function main() {
     next();
   });
 
+  // Prevent Cloudflare/CDN from caching API responses
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    next();
+  });
+
   // Auth must run before rate limiter so globalLimiter can key by user ID
   app.use(attachUser);
 
