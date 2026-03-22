@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlayerSeasonStat } from '../../../api';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { useToast } from "../../../contexts/ToastContext";
@@ -96,7 +96,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
       });
 
       try {
-           await fetchJsonApi(`/api/teams/${teamId}/roster/${rosterId}`, {
+           await fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
                method: 'PATCH',
                body: JSON.stringify({ assignedPosition: newPos })
            });

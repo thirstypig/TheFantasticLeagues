@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { fetchJsonApi, fetchWithAuth } from '../../../api/base';
+import { fetchJsonApi, fetchWithAuth, API_BASE } from '../../../api/base';
 
 interface Team {
   id: number;
@@ -78,7 +78,7 @@ export default function RosterControls({ leagueId, teams, onUpdate }: RosterCont
 
     try {
       setLoading(true);
-      await fetchJsonApi(`/api/commissioner/${leagueId}/roster/assign`, {
+      await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/roster/assign`, {
         method: 'POST',
         body: JSON.stringify({
           teamId: Number(selectedTeamId),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { useToast } from "../../../contexts/ToastContext";
 
@@ -60,7 +60,7 @@ export default function RosterManagementForm({ year, teamCodes }: RosterManageme
     }
 
     try {
-      await fetchJsonApi('/api/roster/add-player', {
+      await fetchJsonApi(`${API_BASE}/roster/add-player`, {
         method: 'POST',
         body: JSON.stringify({
           year,
@@ -81,7 +81,7 @@ export default function RosterManagementForm({ year, teamCodes }: RosterManageme
     if (!await confirm(`Delete ${playerName} from roster?`)) return;
 
     try {
-      await fetchJsonApi(`/api/roster/${id}`, { method: 'DELETE' });
+      await fetchJsonApi(`${API_BASE}/roster/${id}`, { method: 'DELETE' });
       setSuccess(`Removed ${playerName}`);
       loadRoster();
     } catch (e) {

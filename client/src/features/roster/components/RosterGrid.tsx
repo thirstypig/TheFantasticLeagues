@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { POS_ORDER } from '../../../lib/baseballUtils';
 import { mapPosition } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
@@ -99,7 +99,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
     const ok = await confirm(`Release ${playerName} from their team?`);
     if (!ok) return;
     try {
-      await fetchJsonApi(`/api/commissioner/${effectiveLeagueId}/roster/release`, {
+      await fetchJsonApi(`${API_BASE}/commissioner/${effectiveLeagueId}/roster/release`, {
         method: 'POST',
         body: JSON.stringify({ rosterId }),
       });

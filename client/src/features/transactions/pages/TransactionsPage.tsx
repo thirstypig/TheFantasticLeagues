@@ -1,7 +1,7 @@
 // client/src/pages/TransactionsPage.tsx
 import React, { useEffect, useState } from "react";
 import { getTransactions, TransactionEvent, getPlayerSeasonStats, getLeague, PlayerSeasonStat, getSeasonStandings } from "../../../api";
-import { fetchJsonApi } from "../../../api/base";
+import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { processWaiverClaims } from "../../waivers/api";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
@@ -78,7 +78,7 @@ export default function TransactionsPage() {
       if (!confirmed) return;
 
       try {
-          await fetchJsonApi('/api/transactions/claim', {
+          await fetchJsonApi(`${API_BASE}/transactions/claim`, {
               method: 'POST',
               body: JSON.stringify({
                   leagueId,

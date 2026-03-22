@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { supabase } from '../../../lib/supabase';
 import { track } from '../../../lib/posthog';
 
@@ -94,7 +94,7 @@ export function useAuctionState(leagueId?: number | null) {
         try {
             const lid = leagueIdRef.current;
             if (!lid) return;
-            const data = await fetchJsonApi<ClientAuctionState>(`/api/auction/state?leagueId=${lid}`);
+            const data = await fetchJsonApi<ClientAuctionState>(`${API_BASE}/auction/state?leagueId=${lid}`);
             setState(data);
             setError(null);
         } catch (err: unknown) {
@@ -161,6 +161,7 @@ export function useAuctionState(leagueId?: number | null) {
 
                 ws.onopen = () => {
                     stopPolling();
+                    fetchState(); // Re-fetch state on connect to ensure we have latest
                     const attempts = reconnectAttemptRef.current;
                     if (attempts > 0) {
                         track("auction_ws_reconnected", { attempts });
@@ -223,7 +224,7 @@ export function useAuctionState(leagueId?: number | null) {
     };
 
     const nominate = async (payload: { nominatorTeamId: number, playerId: string, playerName: string, startBid: number, positions: string, team: string, isPitcher: boolean }) => {
-        await fetchJsonApi('/api/auction/nominate', {
+        await fetchJsonApi(`${API_BASE}/auction/nominate`, {
             method: 'POST',
             body: withLeagueId(payload)
         });
@@ -233,7 +234,7 @@ export function useAuctionState(leagueId?: number | null) {
     };
 
     const bid = async (payload: { bidderTeamId: number, amount: number }) => {
-        await fetchJsonApi('/api/auction/bid', {
+        await fetchJsonApi(`${API_BASE}/auction/bid`, {
             method: 'POST',
             body: withLeagueId(payload)
         });
@@ -242,7 +243,7 @@ export function useAuctionState(leagueId?: number | null) {
     };
 
     const setProxyBid = async (payload: { bidderTeamId: number, maxBid: number }) => {
-        await fetchJsonApi('/api/auction/proxy-bid', {
+        await fetchJsonApi(`${API_BASE}/auction/proxy-bid`, {
             method: 'POST',
             body: withLeagueId(payload)
         });
@@ -253,12 +254,12 @@ export function useAuctionState(leagueId?: number | null) {
     const getMyProxyBid = async (teamId: number): Promise<number | null> => {
         const lid = leagueIdRef.current;
         if (!lid) return null;
-        const data = await fetchJsonApi<{ maxBid: number | null }>(`/api/auction/my-proxy-bid?leagueId=${lid}&teamId=${teamId}`);
+        const data = await fetchJsonApi<{ maxBid: number | null }>(`${API_BASE}/auction/my-proxy-bid?leagueId=${lid}&teamId=${teamId}`);
         return data.maxBid;
     };
 
     const forceAssign = async (payload: { teamId: number, playerId: string, playerName: string, price: number, positions: string, isPitcher: boolean }) => {
-        await fetchJsonApi('/api/auction/force-assign', {
+        await fetchJsonApi(`${API_BASE}/auction/force-assign`, {
             method: 'POST',
             body: withLeagueId(payload)
         });
@@ -269,11 +270,11 @@ export function useAuctionState(leagueId?: number | null) {
     const cancelProxyBid = async (teamId: number) => {
         const lid = leagueIdRef.current;
         if (!lid) return;
-        await fetchJsonApi(`/api/auction/proxy-bid?leagueId=${lid}&teamId=${teamId}`, { method: 'DELETE' });
+        await fetchJsonApi(`${API_BASE}/auction/proxy-bid?leagueId=${lid}&teamId=${teamId}`, { method: 'DELETE' });
     };
 
     const initAuction = async (leagueIdOverride: number) => {
-        await fetchJsonApi('/api/auction/init', {
+        await fetchJsonApi(`${API_BASE}/auction/init`, {
              method: 'POST',
              body: JSON.stringify({ leagueId: leagueIdOverride })
         });
@@ -282,7 +283,7 @@ export function useAuctionState(leagueId?: number | null) {
     };
 
     const finishAuction = async () => {
-        await fetchJsonApi('/api/auction/finish', { method: 'POST', body: withLeagueId() });
+        await fetchJsonApi(`${API_BASE}/auction/finish`, { method: 'POST', body: withLeagueId() });
         track("auction_finish");
         if (!wsRef.current) fetchState();
     };
@@ -310,10 +311,10 @@ export function useAuctionState(leagueId?: number | null) {
             initAuction,
             finishAuction,
             sendChat,
-            pause: async () => { await fetchJsonApi('/api/auction/pause', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
-            resume: async () => { await fetchJsonApi('/api/auction/resume', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
-            reset: async () => { await fetchJsonApi('/api/auction/reset', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
-            undoFinish: async () => { await fetchJsonApi('/api/auction/undo-finish', { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); }
+            pause: async () => { await fetchJsonApi(`${API_BASE}/auction/pause`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            resume: async () => { await fetchJsonApi(`${API_BASE}/auction/resume`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            reset: async () => { await fetchJsonApi(`${API_BASE}/auction/reset`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            undoFinish: async () => { await fetchJsonApi(`${API_BASE}/auction/undo-finish`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); }
         }
     };
 }
