@@ -89,7 +89,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
               </div>
             )}
             <ThemedTable bare compact>
-              <ThemedThead className="sticky top-0 z-10 bg-[var(--lg-glass-bg-hover)]">
+              <ThemedThead sticky>
                 <ThemedTr>
                   <ThemedTh align="center" className="w-8">#</ThemedTh>
                   <ThemedTh className="px-2">Player</ThemedTh>

@@ -402,7 +402,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <ThemedTable bare compact>
-            <ThemedThead className="sticky top-0 z-10 bg-[var(--lg-glass-bg-hover)]">
+            <ThemedThead sticky>
                 <ThemedTr>
                     {onToggleStar && <ThemedTh className="w-6 px-0.5"> </ThemedTh>}
                     {hasRankings && <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('rank')} title="My Rank (from imported rankings)">#R{sortArrow('rank')}</ThemedTh>}

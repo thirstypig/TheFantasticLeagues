@@ -115,7 +115,7 @@ const TableCell = React.forwardRef<
       className={cn(
         compact
           ? "px-1.5 py-1 align-middle text-sm text-[var(--lg-text-primary)] tabular-nums"
-          : "px-3 py-2.5 align-middle text-sm text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+          : "px-3 py-3 align-middle text-[15px] leading-5 text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}

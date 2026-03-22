@@ -30,6 +30,28 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.34.0",
+    date: "Mar 21, 2026",
+    session: "Session 34",
+    title: "Sticky Table Headers & Accessibility",
+    highlights: [
+      "Sticky table headers on Players page and Auction PlayerPoolTab — headers stay visible while scrolling",
+      "WCAG 2.2 AA color fixes — all status colors now pass contrast requirements in both light and dark mode",
+      "Age-friendly table typography — 15px font, taller rows, explicit line-height for 40+ readability",
+    ],
+    changes: [
+      { type: "feat", description: "Sticky table headers — ThemedThead gets sticky prop, bare ThemedTable renders raw <table> to eliminate overflow wrapper" },
+      { type: "feat", description: "Players page — viewport-constrained layout with internal scroll container for sticky headers" },
+      { type: "fix", description: "WCAG AA status colors — success #065f46, warning #92400e, error #b91c1c (light); #34d399, #fbbf24, #f87171 (dark)" },
+      { type: "fix", description: "Dark mode status color overrides — added .dark section overrides following Apple HIG pattern" },
+      { type: "fix", description: "Alert classes — replaced hardcoded hex with var() references for theme consistency" },
+      { type: "perf", description: "Replaced backdrop-blur-xl on sticky headers with opaque background — eliminates per-frame GPU blur, 60 FPS scroll" },
+      { type: "fix", description: "Table cell typography — 14px→15px font, py-2.5→py-3 padding, added leading-5 for 40+ readability" },
+      { type: "fix", description: "New --lg-table-header-sticky-bg token — #e8ecf2 (light) / #1c2638 (dark) opaque composited equivalents" },
+      { type: "docs", description: "Accessibility plan with 8-agent research — contrast verification, colorblind safety, performance analysis" },
+    ],
+  },
+  {
     version: "0.33.0",
     date: "Mar 20, 2026",
     session: "Session 33",

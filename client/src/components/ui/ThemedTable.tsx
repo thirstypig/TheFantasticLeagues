@@ -1,7 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import {
-  Table,
   TableHeader,
   TableBody,
   TableRow,
@@ -25,34 +24,47 @@ interface ThemedTableProps {
  * Set `compact={true}` for tighter padding (auction panels, etc.).
  */
 export function ThemedTable({ children, className = '', bare = false, compact = false }: ThemedTableProps) {
-  const content = compact ? (
-    <TableCompactProvider compact>
-      {bare ? (
-        <Table className={className}>{children}</Table>
-      ) : (
-        <div className={cn('overflow-x-auto rounded-2xl liquid-glass', className)}>
-          <table className="w-full caption-bottom text-sm">{children}</table>
-        </div>
-      )}
-    </TableCompactProvider>
-  ) : bare ? (
-    <Table className={className}>{children}</Table>
-  ) : (
+  const tableEl = <table className={cn("w-full caption-bottom text-sm", className)}>{children}</table>;
+
+  if (compact) {
+    return (
+      <TableCompactProvider compact>
+        {bare ? tableEl : (
+          <div className={cn('overflow-x-auto rounded-2xl liquid-glass', className)}>
+            <table className="w-full caption-bottom text-sm">{children}</table>
+          </div>
+        )}
+      </TableCompactProvider>
+    );
+  }
+
+  if (bare) return tableEl;
+
+  return (
     <div className={cn('overflow-x-auto rounded-2xl liquid-glass', className)}>
       <table className="w-full caption-bottom text-sm">{children}</table>
     </div>
   );
-
-  return content;
 }
 
 interface ThemedTheadProps {
   children: React.ReactNode;
   className?: string;
+  /** Pin header to top of scroll container */
+  sticky?: boolean;
 }
 
-export function ThemedThead({ children, className = '' }: ThemedTheadProps) {
-  return <TableHeader className={className}>{children}</TableHeader>;
+export function ThemedThead({ children, className = '', sticky = false }: ThemedTheadProps) {
+  return (
+    <TableHeader
+      className={cn(
+        sticky && 'sticky top-0 z-10 bg-[var(--lg-table-header-sticky-bg)] border-b border-[var(--lg-border-subtle)]',
+        className
+      )}
+    >
+      {children}
+    </TableHeader>
+  );
 }
 
 export function ThemedTbody({ children, className = '' }: { children: React.ReactNode; className?: string }) {

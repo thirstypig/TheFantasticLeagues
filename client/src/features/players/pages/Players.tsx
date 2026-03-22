@@ -165,7 +165,7 @@ export default function Players() {
   );
 
   return (
-    <div className="h-full flex flex-col scrollbar-hide">
+    <div className="h-[100dvh] flex flex-col overflow-hidden scrollbar-hide">
        {/* Page Header */}
        <div className="max-w-6xl mx-auto px-4 pt-6 md:px-6 md:pt-10">
          <PageHeader 
@@ -175,7 +175,7 @@ export default function Players() {
        </div>
 
        {/* Filters Header */}
-       <div className="max-w-6xl mx-auto px-4 py-4 md:px-6 sticky top-0 z-50">
+       <div className="max-w-6xl mx-auto px-4 py-4 md:px-6">
           <div className="lg-card p-4 flex flex-wrap items-center gap-3 md:gap-6 bg-transparent backdrop-blur-3xl">
               
               {/* Type Toggle */}
@@ -273,10 +273,9 @@ export default function Players() {
 
        {/* Results Table */}
        <div className="flex-1 overflow-auto max-w-6xl mx-auto px-4 pb-8 md:px-6 md:pb-12 custom-scrollbar">
-           <div className="lg-card p-0 overflow-hidden bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700">
-               <div className="overflow-x-auto">
+           <div className="lg-card p-0 bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700">
                    <ThemedTable bare>
-                       <ThemedThead>
+                       <ThemedThead sticky>
                             <ThemedTr>
                                 <ThemedTh className="pl-8 py-3" onClick={() => {
                                     if (sortKey === 'name') setSortDesc(!sortDesc);
@@ -424,7 +423,6 @@ export default function Players() {
                            })}
                        </tbody>
                    </ThemedTable>
-               </div>
            </div>
            
            {filteredPlayers.length === 0 && (
