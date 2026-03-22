@@ -85,6 +85,11 @@ async function getState(leagueId: number): Promise<AuctionState> {
       // Backfill config fields for states persisted before this change
       if (!persisted.config.budgetCap) persisted.config.budgetCap = 400;
       if (!persisted.config.rosterSize) persisted.config.rosterSize = 23;
+      if (!persisted.config.positionLimits) {
+        persisted.config.positionLimits = await loadPositionLimits(leagueId);
+      }
+      // Refresh teams from DB to ensure fresh budgets/rosters/position counts
+      await refreshTeams(persisted);
       auctionStates.set(leagueId, persisted);
       return persisted;
     }
@@ -257,15 +262,18 @@ const PITCHER_CODES = new Set<string>(SPORT_PITCHER_CODES);
  *
  * Per-position limits (C:2, OF:5, etc.) are NOT enforced during the draft —
  * they are informational for planning and enforced during in-season roster moves.
- * Only the total pitcher count (9) and hitter count (14) are hard limits.
+ * Enforces both pitcher/hitter totals AND per-position slot limits.
+ * A player is only blocked when ALL eligible slots are full.
+ * E.g., SS maps to [SS, MI] — blocked only when both SS and MI slots are filled.
  *
  * Uses in-memory auction state (refreshed after each lot finishes) instead of
  * querying the DB on every bid.
  */
-function checkPositionLimit(
+export function checkPositionLimit(
   teamId: number,
   isPitcher: boolean,
   state: AuctionState,
+  positions?: string,
 ): string | null {
   const teamObj = state.teams.find(t => t.id === teamId);
   if (!teamObj) return null;
@@ -278,6 +286,23 @@ function checkPositionLimit(
   }
   if (!isPitcher && teamObj.hitterCount >= batterMax) {
     return `Team already has ${batterMax} hitters (max)`;
+  }
+
+  // Per-position slot limits (hitters only — pitchers are all lumped under "P")
+  if (!isPitcher && positions && state.config.positionLimits) {
+    const posLimits = state.config.positionLimits;
+    const primaryPos = positions.split(/[,\/]/)[0].trim().toUpperCase();
+    const slots = positionToSlots(primaryPos);
+    if (slots.length > 0) {
+      const allFull = slots.every(slot => {
+        const limit = posLimits[slot];
+        if (limit === undefined) return false;
+        return (teamObj.positionCounts[slot] ?? 0) >= limit;
+      });
+      if (allFull) {
+        return `All eligible position slots full for ${primaryPos} (${slots.join(", ")})`;
+      }
+    }
   }
 
   return null;
@@ -308,7 +333,7 @@ function processProxyBids(state: AuctionState): boolean {
     const effectiveMax = Math.min(maxAmount, team.maxBid);
     if (effectiveMax <= nom.currentBid) continue;
 
-    const posErr = checkPositionLimit(teamId, nom.isPitcher, state);
+    const posErr = checkPositionLimit(teamId, nom.isPitcher, state, nom.positions);
     if (posErr) continue;
 
     if (effectiveMax > bestMax) {
@@ -644,8 +669,9 @@ router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeaso
     if (existing) return res.status(400).json({ error: "Player already on a roster" });
   }
 
-  // Note: position limits are NOT checked on nomination — the nominator puts any
-  // available player up for bid.  Limits are enforced on /bid (bidder validation).
+  // Check position limits for the nominating team
+  const nomPosError = checkPositionLimit(nominatorTeamId, isPitcher, state, positions);
+  if (nomPosError) return res.status(400).json({ error: nomPosError });
 
   // Clear nomination timer (team is nominating)
   clearNominationTimer(leagueId);
@@ -734,7 +760,7 @@ router.post("/bid", requireAuth, validateBody(bidSchema), requireSeasonStatus(["
 
   // Guard: check position limits for the bidding team
   const posError = checkPositionLimit(
-    bidderTeamId, state.nomination.isPitcher, state
+    bidderTeamId, state.nomination.isPitcher, state, state.nomination.positions
   );
   if (posError) return res.status(400).json({ error: posError });
 
@@ -1260,7 +1286,7 @@ router.post("/proxy-bid", requireAuth, validateBody(proxyBidSchema), requireSeas
   if (maxBid <= state.nomination.currentBid) return res.status(400).json({ error: "Max bid must be higher than current bid" });
 
   // Guard: check position limits
-  const posError = checkPositionLimit(bidderTeamId, state.nomination.isPitcher, state);
+  const posError = checkPositionLimit(bidderTeamId, state.nomination.isPitcher, state, state.nomination.positions);
   if (posError) return res.status(400).json({ error: posError });
 
   // Store proxy bid

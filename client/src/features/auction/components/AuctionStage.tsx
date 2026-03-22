@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal, Clock, Sparkles, Loader2, Check, XCircle } from 'lucide-react';
 import { ClientAuctionState } from '../hooks/useAuctionState';
 import NominationQueue from './NominationQueue';
@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/button';
 import { useToast } from "../../../contexts/ToastContext";
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { track } from '../../../lib/posthog';
+import { positionToSlots } from '../../../lib/sportConfig';
 
 // AI Bid Advice types
 interface BidAdvice {
@@ -23,6 +24,9 @@ interface Team {
   budget: number;
   maxBid: number;
   rosterCount: number;
+  pitcherCount?: number;
+  hitterCount?: number;
+  positionCounts?: Record<string, number>;
   isMe?: boolean;
 }
 
@@ -163,6 +167,23 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
   const canAffordJump = myTeam ? myTeam.maxBid >= jumpRaise : false;
   const isHighBidder = nomination.highBidderTeamId === myTeamId;
 
+  // Check if all eligible position slots are full for my team
+  const isPositionFull = useMemo(() => {
+    if (!nomination || !myTeam || !serverState) return false;
+    const config = serverState.config;
+    if (nomination.isPitcher) return (myTeam.pitcherCount ?? 0) >= (config.pitcherCount ?? 9);
+    if ((myTeam.hitterCount ?? 0) >= (config.batterCount ?? 14)) return true;
+    if (!config.positionLimits) return false;
+    const primaryPos = (nomination.positions || '').split(/[,\/]/)[0].trim().toUpperCase();
+    const slots = positionToSlots(primaryPos);
+    if (slots.length === 0) return false;
+    return slots.every(slot => {
+      const limit = config.positionLimits?.[slot];
+      if (limit === undefined) return false;
+      return (myTeam.positionCounts?.[slot] ?? 0) >= limit;
+    });
+  }, [nomination, myTeam, serverState]);
+
   return (
     <div className="flex flex-col gap-3">
         {/* Nominee: photo + info + timer in one compact row */}
@@ -244,9 +265,14 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             </div>
         ) : (
             <>
+                {isPositionFull && !isHighBidder && (
+                    <div className="text-center py-2 rounded-lg border border-[var(--lg-warning)]/30 bg-[var(--lg-warning)]/5">
+                        <div className="text-xs font-semibold text-[var(--lg-warning)]">Position full on your roster</div>
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                     <Button
-                        disabled={!canAffordMin || isHighBidder || nomination.status !== 'running'}
+                        disabled={!canAffordMin || isHighBidder || nomination.status !== 'running' || isPositionFull}
                         onClick={() => onBid(minRaise)}
                         variant="default"
                         className="h-14 flex flex-col items-center justify-center gap-0.5"
@@ -255,7 +281,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         <span className="text-lg font-bold">${minRaise}</span>
                     </Button>
                     <Button
-                        disabled={!canAffordJump || isHighBidder || nomination.status !== 'running'}
+                        disabled={!canAffordJump || isHighBidder || nomination.status !== 'running' || isPositionFull}
                         onClick={() => onBid(jumpRaise)}
                         variant="secondary"
                         className="h-14 flex flex-col items-center justify-center gap-0.5 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)]"

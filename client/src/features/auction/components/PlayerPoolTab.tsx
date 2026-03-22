@@ -580,8 +580,10 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                             </div>
                                         ) : (
                                             <button
+                                                disabled={isPositionFullForMyTeam(p)}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
+                                                    if (isPositionFullForMyTeam(p)) return;
                                                     if (showBidPicker) {
                                                         setNominatingPlayer(p);
                                                         setStartBidInput('1');
@@ -589,12 +591,12 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                         onNominate(p, 1);
                                                     }
                                                 }}
-                                                className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md hover:opacity-90 active:scale-95 transition-all ${
+                                                className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md transition-all ${
                                                     isPositionFullForMyTeam(p)
-                                                        ? 'bg-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]'
-                                                        : 'bg-[var(--lg-accent)] text-white'
+                                                        ? 'bg-[var(--lg-border-subtle)] text-[var(--lg-text-muted)] cursor-not-allowed opacity-60'
+                                                        : 'bg-[var(--lg-accent)] text-white hover:opacity-90 active:scale-95'
                                                 }`}
-                                                title={isPositionFullForMyTeam(p) ? 'Position full for your team (others can still bid)' : 'Nominate'}
+                                                title={isPositionFullForMyTeam(p) ? 'Position full for your team' : 'Nominate'}
                                             >
                                                 Nom
                                             </button>
