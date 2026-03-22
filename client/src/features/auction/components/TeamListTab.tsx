@@ -17,14 +17,15 @@ interface Team {
   pitcherCount?: number;
   hitterCount?: number;
   positionCounts?: Record<string, number>;
-  roster?: { id: number; playerId: number; price: number; assignedPosition?: string | null }[];
+  roster?: { id: number; playerId: number; mlbId?: number | null; playerName?: string | null; price: number; assignedPosition?: string | null }[];
   isMe?: boolean;
 }
 
 interface RosterEntry {
   id: number;
   playerId: number;
-  mlbId?: number;
+  mlbId?: number | null;
+  playerName?: string | null;
   name?: string;
   price: number;
   assignedPosition?: string | null;
@@ -68,7 +69,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
     const fetchRoster = async () => {
         try {
             setLoadingIds(prev => new Set(prev).add(expandedId));
-            const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`/api/teams/${expandedId}/summary`);
+            const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`${API_BASE}/teams/${expandedId}/summary`);
             setDetailedRoster(data.currentRoster);
         } catch (err) {
             console.error(err);
@@ -101,14 +102,14 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                body: JSON.stringify({ assignedPosition: newPos })
            });
 
-           const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`/api/teams/${teamId}/summary`);
+           const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`${API_BASE}/teams/${teamId}/summary`);
            setDetailedRoster(data.currentRoster);
 
       } catch(err) {
           console.error("Failed to swap pos", err);
           toast("Failed to update position. Reverting...", "error");
           try {
-              const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`/api/teams/${teamId}/summary`);
+              const data = await fetchJsonApi<{ currentRoster: RosterEntry[] }>(`${API_BASE}/teams/${teamId}/summary`);
               setDetailedRoster(data.currentRoster);
           } catch { /* ignore */ }
       }
@@ -178,9 +179,10 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                 const rosterSource = (isExpanded && detailedRoster) ? detailedRoster : (team.roster || []);
 
                 const roster = rosterSource.map((rItem: RosterEntry) => {
+                   const lookupId = rItem.mlbId || rItem.playerId;
                    return {
                        ...rItem,
-                       stat: players.find((p: PlayerSeasonStat) => String(p.mlb_id) == String(rItem.playerId))
+                       stat: players.find((p: PlayerSeasonStat) => String(p.mlb_id) === String(lookupId))
                    };
                 });
 
@@ -263,10 +265,10 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                         </ThemedThead>
                                         <tbody className="divide-y divide-[var(--lg-divide)]">
                                             {roster.map((entry: RosterEntry) => {
-                                                const mlbId = entry.mlbId || entry.playerId; 
-                                                const name = entry.name || `Player #${entry.playerId}`;
-                                                
-                                                const stat = players.find((p: PlayerSeasonStat) => String(p.mlb_id) == String(mlbId));
+                                                const mlbId = entry.mlbId || entry.playerId;
+                                                const name = (entry as any).playerName || entry.name || `Player #${mlbId}`;
+
+                                                const stat = players.find((p: PlayerSeasonStat) => String(p.mlb_id) === String(mlbId));
                                                 const displayName = stat?.mlb_full_name || stat?.player_name || name;
                                                 const displayPos = entry.assignedPosition || stat?.positions || 'BN';
                                                 

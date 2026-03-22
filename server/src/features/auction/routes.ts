@@ -210,6 +210,8 @@ const refreshTeams = async (state: AuctionState) => {
       roster: t.rosters.map(r => ({
           id: r.id,
           playerId: r.playerId,
+          mlbId: r.player?.mlbId ?? null,
+          playerName: r.player?.name ?? null,
           price: Number(r.price),
           assignedPosition: r.assignedPosition
       }))

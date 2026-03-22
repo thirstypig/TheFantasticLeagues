@@ -280,6 +280,29 @@ export default function Auction() {
       }));
   }, [auctionState?.teams, myTeamId]);
 
+  // Enrich players with real-time draft status from auction state.
+  // The initial player fetch may not reflect force-assigns or recent wins,
+  // so we overlay team ownership from the live auction state.
+  const enrichedPlayers = useMemo(() => {
+    if (!auctionState?.teams || auctionState.teams.length === 0) return players;
+    // Build a map: mlbId → team code for all drafted players
+    const draftedMap = new Map<string, string>();
+    for (const team of auctionState.teams) {
+      for (const r of team.roster) {
+        const mlbId = String(r.mlbId || r.playerId);
+        draftedMap.set(mlbId, team.code);
+      }
+    }
+    if (draftedMap.size === 0) return players;
+    return players.map(p => {
+      const teamCode = draftedMap.get(String(p.mlb_id));
+      if (teamCode && !p.ogba_team_code) {
+        return { ...p, ogba_team_code: teamCode, team: teamCode };
+      }
+      return p;
+    });
+  }, [players, auctionState?.teams]);
+
   // If not in DRAFT, show read-only auction results instead of the live auction
   if (!gating.canAuction) {
     return <AuctionResults />;
@@ -356,7 +379,7 @@ export default function Auction() {
                 />
                 {myQueue.length > 0 && (
                     <MyNominationQueue
-                        players={players}
+                        players={enrichedPlayers}
                         queueIds={myQueue}
                         onRemove={removeFromQueue}
                         onMoveUp={moveQueueUp}
@@ -375,7 +398,7 @@ export default function Auction() {
                         key: 'pool', 
                         label: 'Player Pool', 
                         content: <PlayerPoolTab
-                                    players={players}
+                                    players={enrichedPlayers}
                                     teams={displayTeams}
                                     onNominate={auctionState?.status === 'nominating' ? handleNominate : undefined}
                                     onQueue={addToQueue}
@@ -397,7 +420,7 @@ export default function Auction() {
                         key: 'teams',
                         label: 'Teams',
                         count: displayTeams.length,
-                        content: <TeamListTab teams={displayTeams} players={players} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} pitcherMax={auctionState?.config?.pitcherCount} hitterMax={auctionState?.config?.batterCount} showPace={auctionPrefs.spendingPace} positionLimits={auctionState?.config?.positionLimits} />
+                        content: <TeamListTab teams={displayTeams} players={enrichedPlayers} budgetCap={auctionState?.config?.budgetCap} rosterSize={auctionState?.config?.rosterSize} pitcherMax={auctionState?.config?.pitcherCount} hitterMax={auctionState?.config?.batterCount} showPace={auctionPrefs.spendingPace} positionLimits={auctionState?.config?.positionLimits} />
                     },
                     {
                         key: 'log',
