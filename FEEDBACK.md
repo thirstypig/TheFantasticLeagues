@@ -50,13 +50,20 @@ Major data quality session: position eligibility from MLB fielding stats, AAA pr
 - **Total: 679 tests** (MCP: 50 additional)
 - TypeScript: clean (client + server)
 
-### Pending / Next Steps — Priority Order
-1. **Teams tab position save + matrix refresh** — position dropdown saves to DB but auction state matrix doesn't update (needs WebSocket refresh trigger)
-2. **Post-auction retrospective** — review logs, bid patterns, UX issues from real usage
-3. **Stabilize `enrichedPlayers` dependency** — P3; use `rosterFingerprint` to prevent unnecessary re-renders
-4. **Extract `expandAndSplitTwoWayStats()`** — P3; fold stat zeroing into expansion helper
-5. **Type `mlbGetJson` return** — P2-4 from code review; add generics to eliminate `any` chain
-6. **SaaS Phase 1 planning** — multi-league, snake draft, public directory
+### Next Session Plan (Session 37)
+1. **Add "End Auction" endpoint** — manual complete action that marks auction as `completed` without requiring full rosters; currently only ends automatically when all rosters full
+2. **Create 2026 periods** — needed before DRAFT→IN_SEASON transition; use Commissioner Season Manager
+3. **Run AI auction retrospective** — endpoint + service already exist (`retrospective.test.ts` has 11 tests); analyze bargains/overpays, position spending, team efficiency
+4. **Fix Teams tab position save + matrix refresh** — PATCH saves to DB but auction state matrix doesn't update (needs WebSocket refresh or `refreshTeams()` trigger after save)
+5. **Sidebar nav condensing** — current nav is too expanded; research best practices (collapsible groups, icon-only mode, progressive disclosure) and implement a more compact layout
+6. **Table design evaluation + refresh** — CE-level review of all table designs across the app (Players, Standings, Auction, Teams, Archive, Periods); evaluate consistency, information density, visual hierarchy; provide design options/mockups
+7. **Confirm feature module isolation** — verify all 18 feature modules follow conventions, no circular deps, proper index.ts exports
+
+### Pending (Lower Priority)
+- **Stabilize `enrichedPlayers` dependency** — P3; use `rosterFingerprint` to prevent unnecessary re-renders
+- **Extract `expandAndSplitTwoWayStats()`** — P3; fold stat zeroing into expansion helper
+- **Type `mlbGetJson` return** — P2-4 from code review; add generics to eliminate `any` chain
+- **SaaS Phase 1 planning** — multi-league, snake draft, public directory
 
 ### Concerns / Tech Debt
 - `Player.posList` is global (not per-league) — if leagues diverge on GP threshold, would need per-league eligibility model
