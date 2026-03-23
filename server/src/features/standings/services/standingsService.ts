@@ -1,6 +1,7 @@
 
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
+import { TWO_WAY_PLAYERS, PITCHER_CODES } from "../../../lib/sportConfig.js";
 import type { PeriodStatRow } from "../../../types/stats.js";
 
 // --- Types ---
@@ -373,18 +374,32 @@ export async function computeTeamStatsFromDb(
       const stats = roster.player.periodStats[0]; // at most one per period
       if (!stats) continue;
 
-      R += stats.R;
-      HR += stats.HR;
-      RBI += stats.RBI;
-      SB += stats.SB;
-      H += stats.H;
-      AB += stats.AB;
-      W += stats.W;
-      S += stats.SV; // DB stores SV, TeamStatRow uses S
-      K += stats.K;
-      ER += stats.ER;
-      IP += stats.IP;
-      BB_H += stats.BB_H;
+      // Two-way players (Ohtani): only count the stat group matching their assigned role.
+      // P-assigned roster entry → pitching stats only; DH/hitter → hitting stats only.
+      const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
+      const assignedAsP = PITCHER_CODES.includes(
+        (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase() as any
+      );
+
+      const countHitting = !isTwoWay || !assignedAsP;
+      const countPitching = !isTwoWay || assignedAsP;
+
+      if (countHitting) {
+        R += stats.R;
+        HR += stats.HR;
+        RBI += stats.RBI;
+        SB += stats.SB;
+        H += stats.H;
+        AB += stats.AB;
+      }
+      if (countPitching) {
+        W += stats.W;
+        S += stats.SV; // DB stores SV, TeamStatRow uses S
+        K += stats.K;
+        ER += stats.ER;
+        IP += stats.IP;
+        BB_H += stats.BB_H;
+      }
     }
 
     const AVG = AB > 0 ? H / AB : 0;
