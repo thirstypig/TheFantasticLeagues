@@ -167,7 +167,10 @@ const refreshTeams = async (state: AuctionState) => {
   state.teams = teams.map(t => {
     const spent = t.rosters.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
     const count = t.rosters.length;
-    const remaining = budgetCap - spent;
+    // Use team's actual budget (reflects trade adjustments) instead of league-wide budgetCap.
+    // Team.budget starts at budgetCap and is adjusted by budget trades (increment/decrement).
+    const teamBudget = t.budget ?? budgetCap;
+    const remaining = teamBudget - spent;
     const spots = rosterSize - count;
 
     // Count pitchers/hitters and positions
