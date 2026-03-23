@@ -365,9 +365,7 @@ describe("GET /admin/audit-log", () => {
 // ── POST /admin/sync-position-eligibility ──────────────────────
 
 describe("POST /admin/sync-position-eligibility", () => {
-  it("syncs position eligibility with default threshold from league rule", async () => {
-    mockPrisma.leagueRule.findFirst.mockResolvedValue({ key: "position_eligibility_gp", value: "15" });
-
+  it("defaults to 20 GP threshold when not provided", async () => {
     const res = await supertest(app)
       .post("/admin/sync-position-eligibility")
       .send({});
@@ -375,8 +373,8 @@ describe("POST /admin/sync-position-eligibility", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.updated).toBe(15);
-    expect(res.body.gpThreshold).toBe(15);
-    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 15);
+    expect(res.body.gpThreshold).toBe(20);
+    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 20);
   });
 
   it("accepts custom season and gpThreshold", async () => {
@@ -388,18 +386,6 @@ describe("POST /admin/sync-position-eligibility", () => {
     expect(res.body.season).toBe(2025);
     expect(res.body.gpThreshold).toBe(10);
     expect(syncPositionEligibility).toHaveBeenCalledWith(2025, 10);
-  });
-
-  it("defaults to 20 GP when no league rule exists", async () => {
-    mockPrisma.leagueRule.findFirst.mockResolvedValue(null);
-
-    const res = await supertest(app)
-      .post("/admin/sync-position-eligibility")
-      .send({});
-
-    expect(res.status).toBe(200);
-    expect(res.body.gpThreshold).toBe(20);
-    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 20);
   });
 });
 

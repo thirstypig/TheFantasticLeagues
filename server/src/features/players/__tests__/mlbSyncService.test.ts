@@ -86,7 +86,7 @@ describe("syncAllPlayers", () => {
       .mockResolvedValueOnce(mockTeams)   // fetchAllTeams
       .mockResolvedValueOnce(mockRoster); // fetchTeamRoster
 
-    mockPrisma.player.findFirst.mockResolvedValue(null); // no existing players
+    mockPrisma.player.findMany.mockResolvedValue([]); // no existing players
     mockPrisma.player.create.mockResolvedValue({ id: 1 });
 
     const result = await syncAllPlayers(2026);
@@ -103,7 +103,10 @@ describe("syncAllPlayers", () => {
       .mockResolvedValueOnce(mockTeams)
       .mockResolvedValueOnce(mockRoster);
 
-    mockPrisma.player.findFirst.mockResolvedValue({ id: 1, mlbId: 660271, mlbTeam: "LAD" });
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 660271, mlbTeam: "LAD" },
+      { id: 2, mlbId: 605141, mlbTeam: "LAD" },
+    ]);
     mockPrisma.player.update.mockResolvedValue({ id: 1 });
 
     const result = await syncAllPlayers(2026);
@@ -123,7 +126,9 @@ describe("syncAllPlayers", () => {
       });
 
     // Player was previously on NYY, now on LAD
-    mockPrisma.player.findFirst.mockResolvedValue({ id: 1, mlbId: 660271, mlbTeam: "NYY" });
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 660271, mlbTeam: "NYY" },
+    ]);
     mockPrisma.player.update.mockResolvedValue({ id: 1 });
 
     const result = await syncAllPlayers(2026);
@@ -148,7 +153,7 @@ describe("syncAllPlayers", () => {
       .mockRejectedValueOnce(new Error("API error")) // LAD fails
       .mockResolvedValueOnce(mockRoster); // NYY succeeds
 
-    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.findMany.mockResolvedValue([]);
     mockPrisma.player.create.mockResolvedValue({ id: 1 });
 
     const result = await syncAllPlayers(2026);
@@ -178,7 +183,7 @@ describe("syncAllPlayers", () => {
         ],
       });
 
-    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.findMany.mockResolvedValue([]);
     mockPrisma.player.create.mockResolvedValue({ id: 1 });
 
     await syncAllPlayers(2026);
@@ -202,7 +207,9 @@ describe("syncAllPlayers", () => {
         ],
       });
 
-    mockPrisma.player.findFirst.mockResolvedValue({ id: 3, mlbId: 660271, mlbTeam: "LAD" });
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 3, mlbId: 660271, mlbTeam: "LAD" },
+    ]);
     mockPrisma.player.update.mockResolvedValue({ id: 3 });
 
     await syncAllPlayers(2026);
@@ -476,7 +483,7 @@ describe("syncAAARosters", () => {
       .mockResolvedValueOnce(mockOkcRoster)    // OKC roster
       .mockResolvedValueOnce(mockIndRoster);   // IND roster
 
-    mockPrisma.player.findFirst.mockResolvedValue(null); // no existing players
+    mockPrisma.player.findMany.mockResolvedValue([]); // no existing players
     mockPrisma.player.create.mockResolvedValue({ id: 1 });
 
     const result = await syncAAARosters(2026);
@@ -504,9 +511,9 @@ describe("syncAAARosters", () => {
       .mockResolvedValueOnce(mockOkcRoster);
 
     // Player already exists with an MLB team
-    mockPrisma.player.findFirst.mockResolvedValue({
-      id: 5, mlbId: 700001, mlbTeam: "LAD", posPrimary: "SS",
-    });
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 5, mlbId: 700001, mlbTeam: "LAD" },
+    ]);
 
     const result = await syncAAARosters(2026);
 
@@ -524,9 +531,9 @@ describe("syncAAARosters", () => {
       .mockResolvedValueOnce(mockIndRoster);
 
     // Player exists but has no team (FA)
-    mockPrisma.player.findFirst.mockResolvedValue({
-      id: 10, mlbId: 804606, mlbTeam: "FA", posPrimary: "SS",
-    });
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 10, mlbId: 804606, mlbTeam: "FA" },
+    ]);
     mockPrisma.player.update.mockResolvedValue({ id: 10 });
 
     const result = await syncAAARosters(2026);
@@ -546,7 +553,7 @@ describe("syncAAARosters", () => {
       .mockRejectedValueOnce(new Error("API error")) // OKC fails
       .mockResolvedValueOnce(mockIndRoster);          // IND succeeds
 
-    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.findMany.mockResolvedValue([]);
     mockPrisma.player.create.mockResolvedValue({ id: 1 });
 
     const result = await syncAAARosters(2026);
@@ -565,7 +572,7 @@ describe("syncAAARosters", () => {
         roster: [{ person: { id: 700099, fullName: "Mystery Player" }, position: { abbreviation: "CF", type: "Hitter" } }],
       });
 
-    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.findMany.mockResolvedValue([]);
     mockPrisma.player.create.mockResolvedValue({ id: 1 });
 
     const result = await syncAAARosters(2026);

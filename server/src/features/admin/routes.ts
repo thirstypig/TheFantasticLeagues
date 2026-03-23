@@ -306,7 +306,7 @@ router.post("/admin/sync-stats", requireAuth, requireAdmin, validateBody(syncSta
  * Fetches fielding stats from MLB API and updates Player.posList based on
  * games-played threshold. Players qualify for a position if GP >= threshold.
  * Body (optional): { season?: number, gpThreshold?: number }
- * If gpThreshold not provided, reads from league rules (position_eligibility_gp).
+ * gpThreshold defaults to 20 if not provided.
  */
 const syncEligibilitySchema = z.object({
   season: z.number().int().min(1900).max(2100).optional(),
@@ -315,15 +315,7 @@ const syncEligibilitySchema = z.object({
 
 router.post("/admin/sync-position-eligibility", requireAuth, requireAdmin, validateBody(syncEligibilitySchema), asyncHandler(async (req, res) => {
   const season = Number(req.body?.season) || new Date().getFullYear();
-
-  // Resolve GP threshold: explicit param > league rule > default (20)
-  let gpThreshold = req.body?.gpThreshold;
-  if (!gpThreshold) {
-    const rule = await prisma.leagueRule.findFirst({
-      where: { key: "position_eligibility_gp" },
-    });
-    gpThreshold = rule ? Number(rule.value) : 20;
-  }
+  const gpThreshold = req.body?.gpThreshold ?? 20;
 
   const result = await syncPositionEligibility(season, gpThreshold);
 

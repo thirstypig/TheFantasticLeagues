@@ -13,7 +13,6 @@ interface MlbTeam {
   league?: { id: number; name: string };
   division?: { id: number; name: string };
   parentOrgId?: number;
-  parentOrgName?: string;
 }
 
 interface MlbRosterPerson {
@@ -61,6 +60,30 @@ async function fetchTeamRoster(
 }
 
 /**
+ * Pre-load all existing players into a lookup map by mlbId.
+ * Eliminates N+1 queries during roster sync.
+ */
+async function buildPlayerLookup(): Promise<Map<number, { id: number; mlbTeam: string | null }>> {
+  const players = await prisma.player.findMany({
+    where: { mlbId: { not: null } },
+    select: { id: true, mlbId: true, mlbTeam: true },
+  });
+  const map = new Map<number, { id: number; mlbTeam: string | null }>();
+  for (const p of players) {
+    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam });
+  }
+  return map;
+}
+
+/**
+ * Build posList for a player, adding P for two-way players.
+ */
+function buildPosList(mlbId: number, posAbbr: string): string {
+  const twoWay = TWO_WAY_PLAYERS.get(mlbId);
+  return twoWay ? `${posAbbr},P` : posAbbr;
+}
+
+/**
  * Sync all NL rosters into the Player table.
  * Upserts by mlbId — creates new players, updates existing ones.
  */
@@ -72,6 +95,7 @@ export async function syncNLPlayers(season: number): Promise<{
   const nlTeams = await fetchNLTeams(season);
   logger.info({ count: nlTeams.length, season }, "Fetched NL teams");
 
+  const playerLookup = await buildPlayerLookup();
   let created = 0;
   let updated = 0;
 
@@ -99,31 +123,21 @@ export async function syncNLPlayers(season: number): Promise<{
       const name = entry.person.fullName;
       const rawPos = entry.position.abbreviation || "UT";
       const posAbbr = resolvePosition(mlbId, rawPos);
+      const posList = buildPosList(mlbId, posAbbr);
 
-      const existing = await prisma.player.findFirst({
-        where: { mlbId },
-      });
+      const existing = playerLookup.get(mlbId);
 
       if (existing) {
         await prisma.player.update({
           where: { id: existing.id },
-          data: {
-            name,
-            mlbTeam: abbr,
-            posPrimary: posAbbr,
-          },
+          data: { name, mlbTeam: abbr, posPrimary: posAbbr, posList },
         });
         updated++;
       } else {
-        await prisma.player.create({
-          data: {
-            mlbId,
-            name,
-            mlbTeam: abbr,
-            posPrimary: posAbbr,
-            posList: posAbbr,
-          },
+        const created_ = await prisma.player.create({
+          data: { mlbId, name, mlbTeam: abbr, posPrimary: posAbbr, posList },
         });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr });
         created++;
       }
     }
@@ -163,6 +177,7 @@ export async function syncAllPlayers(season: number): Promise<{
   const allTeams = await fetchAllTeams(season);
   logger.info({ count: allTeams.length, season }, "Fetched all MLB teams");
 
+  const playerLookup = await buildPlayerLookup();
   let created = 0;
   let updated = 0;
   const teamChanges: Array<{ playerId: number; name: string; from: string; to: string }> = [];
@@ -191,14 +206,9 @@ export async function syncAllPlayers(season: number): Promise<{
       const name = entry.person.fullName;
       const rawPos = entry.position.abbreviation || "UT";
       const posAbbr = resolvePosition(mlbId, rawPos);
+      const posList = buildPosList(mlbId, posAbbr);
 
-      // Two-way players get both hitter position + P in their posList
-      const twoWay = TWO_WAY_PLAYERS.get(mlbId);
-      const posList = twoWay ? `${posAbbr},P` : posAbbr;
-
-      const existing = await prisma.player.findFirst({
-        where: { mlbId },
-      });
+      const existing = playerLookup.get(mlbId);
 
       if (existing) {
         // Detect team change
@@ -217,24 +227,15 @@ export async function syncAllPlayers(season: number): Promise<{
 
         await prisma.player.update({
           where: { id: existing.id },
-          data: {
-            name,
-            mlbTeam: abbr,
-            posPrimary: posAbbr,
-            posList,
-          },
+          data: { name, mlbTeam: abbr, posPrimary: posAbbr, posList },
         });
+        existing.mlbTeam = abbr; // Update lookup for subsequent teams
         updated++;
       } else {
-        await prisma.player.create({
-          data: {
-            mlbId,
-            name,
-            mlbTeam: abbr,
-            posPrimary: posAbbr,
-            posList,
-          },
+        const created_ = await prisma.player.create({
+          data: { mlbId, name, mlbTeam: abbr, posPrimary: posAbbr, posList },
         });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr });
         created++;
       }
     }
@@ -259,18 +260,18 @@ export async function syncAllPlayers(season: number): Promise<{
 }
 
 /**
- * Fetch season stats for a batch of player IDs using the MLB people endpoint.
- * Returns raw player data with hydrated stats.
+ * Batch-fetch player data from the MLB people endpoint with a configurable hydrate param.
+ * Chunks mlbIds into batches of 50 with 100ms delay between requests.
  */
-export async function fetchPlayerStats(
+async function fetchPlayerBatch(
   mlbIds: number[],
-  season: number
+  hydrateParam: string
 ): Promise<any[]> {
   const batches = chunk(mlbIds.map(String), 50);
   const allPlayers: any[] = [];
 
   for (const batch of batches) {
-    const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`;
+    const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=${hydrateParam}`;
     const data = await mlbGetJson(url);
     allPlayers.push(...(data.people || []));
     await new Promise((r) => setTimeout(r, 100));
@@ -280,24 +281,34 @@ export async function fetchPlayerStats(
 }
 
 /**
- * Fetch fielding stats for a batch of player IDs using the MLB people endpoint.
+ * Fetch season stats for a batch of player IDs.
+ * Returns raw player data with hydrated hitting/pitching stats.
+ */
+export async function fetchPlayerStats(
+  mlbIds: number[],
+  season: number
+): Promise<any[]> {
+  return fetchPlayerBatch(mlbIds, `currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`);
+}
+
+/**
+ * Fetch fielding stats for a batch of player IDs.
  * Returns raw player data with hydrated fielding stats.
  */
 export async function fetchPlayerFieldingStats(
   mlbIds: number[],
   season: number
 ): Promise<any[]> {
-  const batches = chunk(mlbIds.map(String), 50);
-  const allPlayers: any[] = [];
+  return fetchPlayerBatch(mlbIds, `stats(group=[fielding],type=[season],season=${season})`);
+}
 
-  for (const batch of batches) {
-    const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=stats(group=[fielding],type=[season],season=${season})`;
-    const data = await mlbGetJson(url);
-    allPlayers.push(...(data.people || []));
-    await new Promise((r) => setTimeout(r, 100));
-  }
-
-  return allPlayers;
+/**
+ * Normalize position abbreviation: SP/RP → P for roster slot consistency.
+ */
+function normalizePos(pos: string): string {
+  const p = pos.trim().toUpperCase();
+  if (p === "SP" || p === "RP") return "P";
+  return p;
 }
 
 /**
@@ -370,13 +381,6 @@ export async function syncPositionEligibility(
   let unchanged = 0;
   let errors = 0;
 
-  // Normalize position abbreviations for consistency
-  const normalizePos = (pos: string): string => {
-    const p = pos.trim().toUpperCase();
-    if (p === "SP" || p === "RP") return "P";
-    return p;
-  };
-
   for (const player of players) {
     try {
       const fielding = fieldingByMlbId.get(player.mlbId!);
@@ -393,14 +397,16 @@ export async function syncPositionEligibility(
       const eligible = new Set<string>();
       eligible.add(normalizePos(player.posPrimary));
 
-      for (const [pos, games] of fielding) {
-        if (games >= gpThreshold) {
-          eligible.add(normalizePos(pos));
+      if (fielding) {
+        for (const [pos, games] of fielding) {
+          if (games >= gpThreshold) {
+            eligible.add(normalizePos(pos));
+          }
         }
       }
 
       // Two-way players always qualify for P (pitching stats aren't in fielding group)
-      if (TWO_WAY_PLAYERS.has(player.mlbId!)) {
+      if (isTwoWay) {
         eligible.add("P");
       }
 
@@ -479,6 +485,7 @@ export async function syncAAARosters(season: number): Promise<{
   const aaaTeams = await fetchAAATeams(season);
   logger.info({ count: aaaTeams.length, season }, "Fetched AAA teams");
 
+  const playerLookup = await buildPlayerLookup();
   let created = 0;
   let updated = 0;
   let skipped = 0;
@@ -513,9 +520,7 @@ export async function syncAAARosters(season: number): Promise<{
       const rawPos = entry.position.abbreviation || "UT";
       const posAbbr = resolvePosition(mlbId, rawPos);
 
-      const existing = await prisma.player.findFirst({
-        where: { mlbId },
-      });
+      const existing = playerLookup.get(mlbId);
 
       if (existing) {
         // Only update if the player doesn't already have an MLB team set
@@ -523,26 +528,18 @@ export async function syncAAARosters(season: number): Promise<{
         if (!existing.mlbTeam || existing.mlbTeam === "FA") {
           await prisma.player.update({
             where: { id: existing.id },
-            data: {
-              name,
-              mlbTeam: parentAbbr,
-              posPrimary: posAbbr,
-            },
+            data: { name, mlbTeam: parentAbbr, posPrimary: posAbbr },
           });
+          existing.mlbTeam = parentAbbr;
           updated++;
         } else {
           skipped++;
         }
       } else {
-        await prisma.player.create({
-          data: {
-            mlbId,
-            name,
-            mlbTeam: parentAbbr,
-            posPrimary: posAbbr,
-            posList: posAbbr,
-          },
+        const created_ = await prisma.player.create({
+          data: { mlbId, name, mlbTeam: parentAbbr, posPrimary: posAbbr, posList: posAbbr },
         });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: parentAbbr });
         created++;
       }
     }
