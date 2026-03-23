@@ -271,3 +271,160 @@ export async function fetchPlayerStats(
 
   return allPlayers;
 }
+
+/**
+ * Fetch fielding stats for a batch of player IDs using the MLB people endpoint.
+ * Returns raw player data with hydrated fielding stats.
+ */
+export async function fetchPlayerFieldingStats(
+  mlbIds: number[],
+  season: number
+): Promise<any[]> {
+  const batches = chunk(mlbIds.map(String), 50);
+  const allPlayers: any[] = [];
+
+  for (const batch of batches) {
+    const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=stats(group=[fielding],type=[season],season=${season})`;
+    const data = await mlbGetJson(url);
+    allPlayers.push(...(data.people || []));
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  return allPlayers;
+}
+
+/**
+ * Extract games-per-position from MLB API fielding stats response for one player.
+ * Aggregates across teams (traded players have separate splits per team).
+ */
+function extractFieldingPositions(player: any): Map<string, number> {
+  const posMap = new Map<string, number>();
+
+  const statsGroups = player.stats ?? [];
+  for (const group of statsGroups) {
+    if (group.group?.displayName !== "fielding") continue;
+    for (const split of group.splits ?? []) {
+      const pos: string | undefined =
+        split.stat?.position?.abbreviation ?? split.position?.abbreviation;
+      const games = Number(split.stat?.games ?? split.stat?.gamesPlayed ?? 0);
+      if (pos && games > 0) {
+        posMap.set(pos, (posMap.get(pos) ?? 0) + games);
+      }
+    }
+  }
+
+  return posMap;
+}
+
+/**
+ * Sync position eligibility for all players in the database.
+ * Fetches fielding stats from MLB API and updates Player.posList based on
+ * a games-played threshold. Players qualify for a position if they have
+ * played >= gpThreshold games there in the given season.
+ *
+ * @param season - MLB season year
+ * @param gpThreshold - Minimum games played to qualify (default 20)
+ * @returns Summary of updates
+ */
+export async function syncPositionEligibility(
+  season: number,
+  gpThreshold: number = 20
+): Promise<{
+  updated: number;
+  unchanged: number;
+  total: number;
+  errors: number;
+}> {
+  // Fetch all players with MLB IDs
+  const players = await prisma.player.findMany({
+    where: { mlbId: { not: null } },
+    select: { id: true, mlbId: true, posPrimary: true, posList: true },
+  });
+
+  logger.info(
+    { total: players.length, season, gpThreshold },
+    "Starting position eligibility sync"
+  );
+
+  const mlbIds = players
+    .map((p) => p.mlbId!)
+    .filter((id) => id > 0);
+
+  // Batch fetch fielding stats from MLB API
+  const mlbPlayers = await fetchPlayerFieldingStats(mlbIds, season);
+
+  // Build lookup: mlbId → fielding positions map
+  const fieldingByMlbId = new Map<number, Map<string, number>>();
+  for (const mp of mlbPlayers) {
+    fieldingByMlbId.set(mp.id, extractFieldingPositions(mp));
+  }
+
+  let updated = 0;
+  let unchanged = 0;
+  let errors = 0;
+
+  // Normalize position abbreviations for consistency
+  const normalizePos = (pos: string): string => {
+    const p = pos.trim().toUpperCase();
+    if (p === "SP" || p === "RP") return "P";
+    return p;
+  };
+
+  for (const player of players) {
+    try {
+      const fielding = fieldingByMlbId.get(player.mlbId!);
+      if (!fielding || fielding.size === 0) {
+        unchanged++;
+        continue;
+      }
+
+      // Build eligible positions: primary position always included,
+      // plus any position with GP >= threshold
+      const eligible = new Set<string>();
+      eligible.add(normalizePos(player.posPrimary));
+
+      for (const [pos, games] of fielding) {
+        if (games >= gpThreshold) {
+          eligible.add(normalizePos(pos));
+        }
+      }
+
+      // Sort: primary first, then alphabetically
+      const primary = normalizePos(player.posPrimary);
+      const sorted = [primary, ...[...eligible].filter((p) => p !== primary).sort()];
+      const newPosList = sorted.join(",");
+
+      if (newPosList === player.posList) {
+        unchanged++;
+        continue;
+      }
+
+      await prisma.player.update({
+        where: { id: player.id },
+        data: { posList: newPosList },
+      });
+
+      if (newPosList !== player.posPrimary) {
+        logger.debug(
+          { playerId: player.id, mlbId: player.mlbId, old: player.posList, new: newPosList },
+          "Position eligibility updated"
+        );
+      }
+
+      updated++;
+    } catch (err) {
+      logger.error(
+        { playerId: player.id, mlbId: player.mlbId, error: String(err) },
+        "Failed to update position eligibility"
+      );
+      errors++;
+    }
+  }
+
+  logger.info(
+    { updated, unchanged, total: players.length, errors, season, gpThreshold },
+    "Position eligibility sync complete"
+  );
+
+  return { updated, unchanged, total: players.length, errors };
+}

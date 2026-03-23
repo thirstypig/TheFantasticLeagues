@@ -19,7 +19,7 @@ vi.mock("../../../db/prisma.js", () => ({
     teamStatsPeriod: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     teamStatsSeason: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     leagueMembership: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    leagueRule: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    leagueRule: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), findFirst: vi.fn() },
     period: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     $transaction: vi.fn(async (ops: any[]) => Promise.all(ops)),
   },
@@ -55,6 +55,7 @@ vi.mock("../../commissioner/services/CommissionerService.js", () => {
 vi.mock("../../players/services/mlbSyncService.js", () => ({
   syncNLPlayers: vi.fn().mockResolvedValue({ created: 10, updated: 5, total: 15 }),
   syncAllPlayers: vi.fn().mockResolvedValue({ created: 10, updated: 5, teams: 30, teamChanges: [] }),
+  syncPositionEligibility: vi.fn().mockResolvedValue({ updated: 15, unchanged: 85, total: 100, errors: 0 }),
 }));
 vi.mock("../../players/services/mlbStatsSyncService.js", () => ({
   syncPeriodStats: vi.fn().mockResolvedValue({ synced: 20, skipped: 2, errors: 0 }),
@@ -65,7 +66,7 @@ vi.mock("../../../lib/schemas.js", () => ({
 }));
 
 import { prisma } from "../../../db/prisma.js";
-import { syncAllPlayers } from "../../players/services/mlbSyncService.js";
+import { syncAllPlayers, syncPositionEligibility } from "../../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../../players/services/mlbStatsSyncService.js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- vi.mock injects __mockFns at runtime
 const { __mockFns } = await import("../../commissioner/services/CommissionerService.js") as any;
@@ -357,5 +358,46 @@ describe("GET /admin/audit-log", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.limit).toBe(200);
+  });
+});
+
+// ── POST /admin/sync-position-eligibility ──────────────────────
+
+describe("POST /admin/sync-position-eligibility", () => {
+  it("syncs position eligibility with default threshold from league rule", async () => {
+    mockPrisma.leagueRule.findFirst.mockResolvedValue({ key: "position_eligibility_gp", value: "15" });
+
+    const res = await supertest(app)
+      .post("/admin/sync-position-eligibility")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.updated).toBe(15);
+    expect(res.body.gpThreshold).toBe(15);
+    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 15);
+  });
+
+  it("accepts custom season and gpThreshold", async () => {
+    const res = await supertest(app)
+      .post("/admin/sync-position-eligibility")
+      .send({ season: 2025, gpThreshold: 10 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.season).toBe(2025);
+    expect(res.body.gpThreshold).toBe(10);
+    expect(syncPositionEligibility).toHaveBeenCalledWith(2025, 10);
+  });
+
+  it("defaults to 20 GP when no league rule exists", async () => {
+    mockPrisma.leagueRule.findFirst.mockResolvedValue(null);
+
+    const res = await supertest(app)
+      .post("/admin/sync-position-eligibility")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.gpThreshold).toBe(20);
+    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 20);
   });
 });

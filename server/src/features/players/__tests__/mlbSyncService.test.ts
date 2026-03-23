@@ -6,13 +6,14 @@ vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     player: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 vi.mock("../../../lib/mlbApi.js", () => ({
   mlbGetJson: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock("../../../lib/mlbApi.js", () => ({
 
 import { prisma } from "../../../db/prisma.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
-import { syncAllPlayers, fetchAllTeams, syncNLPlayers, fetchNLTeams } from "../services/mlbSyncService.js";
+import { syncAllPlayers, fetchAllTeams, syncNLPlayers, fetchNLTeams, syncPositionEligibility } from "../services/mlbSyncService.js";
 
 const mockPrisma = prisma as any;
 const mockMlbGetJson = mlbGetJson as any;
@@ -213,5 +214,191 @@ describe("syncAllPlayers", () => {
         posPrimary: "DH",
       }),
     });
+  });
+});
+
+// ── syncPositionEligibility ─────────────────────────────────────
+
+describe("syncPositionEligibility", () => {
+  const makeMlbFieldingResponse = (players: Array<{ id: number; positions: Array<{ pos: string; games: number }> }>) => ({
+    people: players.map((p) => ({
+      id: p.id,
+      stats: [{
+        group: { displayName: "fielding" },
+        splits: p.positions.map((pos) => ({
+          stat: { position: { abbreviation: pos.pos }, games: pos.games },
+        })),
+      }],
+    })),
+  });
+
+  it("updates posList based on GP threshold", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "1B", posList: "1B" },
+    ]);
+
+    // Player has 75 GP at OF, 50 GP at 1B
+    mockMlbGetJson.mockResolvedValue(
+      makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "1B", games: 50 }, { pos: "LF", games: 75 }] }])
+    );
+
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    expect(result.updated).toBe(1);
+    expect(result.unchanged).toBe(0);
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { posList: "1B,LF" },
+    });
+  });
+
+  it("excludes positions below GP threshold", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "SS", posList: "SS" },
+    ]);
+
+    // 80 GP at SS, only 5 at 2B (below threshold)
+    mockMlbGetJson.mockResolvedValue(
+      makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "SS", games: 80 }, { pos: "2B", games: 5 }] }])
+    );
+
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    // posList stays "SS" — no new positions, so no update needed
+    expect(result.unchanged).toBe(1);
+    expect(result.updated).toBe(0);
+  });
+
+  it("normalizes SP/RP to P", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "P", posList: "P" },
+    ]);
+
+    mockMlbGetJson.mockResolvedValue(
+      makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "SP", games: 30 }, { pos: "RP", games: 10 }] }])
+    );
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    // SP + RP both normalize to P, which is already primary
+    expect(result.unchanged).toBe(1);
+  });
+
+  it("always includes primary position even below threshold", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "CF", posList: "CF" },
+    ]);
+
+    // Called up in September — only 10 GP at CF, but 25 GP at LF from earlier in year
+    mockMlbGetJson.mockResolvedValue(
+      makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "CF", games: 10 }, { pos: "LF", games: 25 }] }])
+    );
+
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    expect(result.updated).toBe(1);
+    // CF is primary (always included), LF qualifies at 25 GP
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { posList: "CF,LF" },
+    });
+  });
+
+  it("skips players with no fielding data", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "DH", posList: "DH" },
+    ]);
+
+    // No fielding data (DH doesn't play the field)
+    mockMlbGetJson.mockResolvedValue({ people: [{ id: 12345, stats: [] }] });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    expect(result.unchanged).toBe(1);
+    expect(result.updated).toBe(0);
+    expect(mockPrisma.player.update).not.toHaveBeenCalled();
+  });
+
+  it("aggregates stats across teams for traded players", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "1B", posList: "1B" },
+    ]);
+
+    // Traded mid-season: 15 GP at OF on team A + 10 GP at OF on team B = 25 total
+    mockMlbGetJson.mockResolvedValue({
+      people: [{
+        id: 12345,
+        stats: [{
+          group: { displayName: "fielding" },
+          splits: [
+            { stat: { position: { abbreviation: "1B" }, games: 40 } },
+            { stat: { position: { abbreviation: "LF" }, games: 15 } },
+            { stat: { position: { abbreviation: "LF" }, games: 10 } },
+          ],
+        }],
+      }],
+    });
+
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    expect(result.updated).toBe(1);
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { posList: "1B,LF" },
+    });
+  });
+
+  it("respects custom GP threshold", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 12345, posPrimary: "SS", posList: "SS" },
+    ]);
+
+    // 15 GP at 2B — below 20 default but above 10
+    mockMlbGetJson.mockResolvedValue(
+      makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "SS", games: 80 }, { pos: "2B", games: 15 }] }])
+    );
+
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    // With threshold = 10, 2B should qualify
+    const result = await syncPositionEligibility(2026, 10);
+
+    expect(result.updated).toBe(1);
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { posList: "SS,2B" },
+    });
+  });
+
+  it("handles multiple players in batch", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 111, posPrimary: "1B", posList: "1B" },
+      { id: 2, mlbId: 222, posPrimary: "SS", posList: "SS" },
+      { id: 3, mlbId: 333, posPrimary: "CF", posList: "CF" },
+    ]);
+
+    mockMlbGetJson.mockResolvedValue(
+      makeMlbFieldingResponse([
+        { id: 111, positions: [{ pos: "1B", games: 80 }, { pos: "RF", games: 30 }] },
+        { id: 222, positions: [{ pos: "SS", games: 100 }] },  // no change
+        { id: 333, positions: [{ pos: "CF", games: 60 }, { pos: "LF", games: 25 }, { pos: "RF", games: 22 }] },
+      ])
+    );
+
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    expect(result.updated).toBe(2);   // players 1 and 3
+    expect(result.unchanged).toBe(1); // player 2
+    expect(result.total).toBe(3);
   });
 });

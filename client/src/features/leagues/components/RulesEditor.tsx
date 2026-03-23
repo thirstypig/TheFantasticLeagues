@@ -51,6 +51,7 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   roster_positions: { type: 'json_object_counts', listOptions: POSITIONS },
   outfield_mode: { type: 'select', options: ["OF", "LF/CF/RF"] },
   dh_games_threshold: { type: 'slider', min: 1, max: 50, step: 1 },
+  position_eligibility_gp: { type: 'slider', min: 1, max: 50, step: 1 },
   hitting_stats: { type: 'checkbox_list', listOptions: HITTING_CATS },
   pitching_stats: { type: 'checkbox_list', listOptions: PITCHING_CATS },
   min_innings: { type: 'select', options: ["10", "20", "30", "40", "50", "60", "70"] },

@@ -10,7 +10,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
-import { syncNLPlayers, syncAllPlayers } from "../players/services/mlbSyncService.js";
+import { syncNLPlayers, syncAllPlayers, syncPositionEligibility } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
 
 const createLeagueSchema = z.object({
@@ -299,6 +299,42 @@ router.post("/admin/sync-stats", requireAuth, requireAdmin, validateBody(syncSta
   });
 
   return res.json({ success: true, scope: "all_active" });
+}));
+
+/**
+ * POST /api/admin/sync-position-eligibility
+ * Fetches fielding stats from MLB API and updates Player.posList based on
+ * games-played threshold. Players qualify for a position if GP >= threshold.
+ * Body (optional): { season?: number, gpThreshold?: number }
+ * If gpThreshold not provided, reads from league rules (position_eligibility_gp).
+ */
+const syncEligibilitySchema = z.object({
+  season: z.number().int().min(1900).max(2100).optional(),
+  gpThreshold: z.number().int().min(1).max(162).optional(),
+});
+
+router.post("/admin/sync-position-eligibility", requireAuth, requireAdmin, validateBody(syncEligibilitySchema), asyncHandler(async (req, res) => {
+  const season = Number(req.body?.season) || new Date().getFullYear();
+
+  // Resolve GP threshold: explicit param > league rule > default (20)
+  let gpThreshold = req.body?.gpThreshold;
+  if (!gpThreshold) {
+    const rule = await prisma.leagueRule.findFirst({
+      where: { key: "position_eligibility_gp" },
+    });
+    gpThreshold = rule ? Number(rule.value) : 20;
+  }
+
+  const result = await syncPositionEligibility(season, gpThreshold);
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "POSITION_ELIGIBILITY_SYNC",
+    resourceType: "Player",
+    metadata: { season, gpThreshold, ...result },
+  });
+
+  return res.json({ success: true, season, gpThreshold, ...result });
 }));
 
 /**

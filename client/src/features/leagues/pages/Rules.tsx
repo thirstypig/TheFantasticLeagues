@@ -63,6 +63,7 @@ export default function Rules() {
   const keeperCount = rv(rules, "keeper_count") || "4";
   const statsSource = rv(rules, "stats_source") || "NL";
   const dhThreshold = rv(rules, "dh_games_threshold") || "20";
+  const posEligGp = rv(rules, "position_eligibility_gp") || "20";
 
   let hittingCats: string[] = [];
   let pitchingCats: string[] = [];
@@ -144,6 +145,7 @@ export default function Rules() {
                 { label: "Keepers", value: `${keeperCount} per team` },
                 { label: "Roster", value: `${batterCount}H + ${pitcherCount}P` },
                 { label: "DH Threshold", value: `${dhThreshold} games` },
+                { label: "Pos. Eligibility", value: `${posEligGp} GP` },
               ].map((item) => (
                 <div key={item.label} className="bg-[var(--lg-tint)] p-3 md:p-4 rounded-2xl border border-[var(--lg-border-faint)]">
                   <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{item.label}</div>
