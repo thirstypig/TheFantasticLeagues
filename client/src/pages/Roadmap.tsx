@@ -540,6 +540,8 @@ const completedFeatures: CompletedGroup[] = [
       { title: "Table Density System", description: "3-tier density (compact/default/comfortable), SortableHeader, zebra striping, semantic value tokens.", session: "37" },
       { title: "AI Insights Fixes", description: "Fixed trade analyzer middleware (req.body), weekly insights missing teamId, user team lookup on AIHub.", session: "37" },
       { title: "Code Quality Sweep", description: "splitTwoWayStats() extraction, mlbGetJson<T> generics, enrichedPlayers rosterFingerprint.", session: "37" },
+      { title: "Security: User PII Fix", description: "GET /leagues/:id was exposing full User model (passwordHash, resetToken, isAdmin). Now returns only safe fields.", session: "37" },
+      { title: "5-Agent Code Review", description: "Security sentinel, performance oracle, architecture strategist, TypeScript reviewer, simplicity reviewer — 12 findings, 1 critical fixed.", session: "37" },
       { title: "AI Post-Draft Grade", description: "AI grades each team's draft A-F with reasoning. Considers value, budget management, balance, bargain hunting.", session: "32" },
       { title: "AI Trade Analyzer", description: "Evaluates trade fairness, identifies winner, provides analysis and recommendation via POST /api/trades/analyze.", session: "32" },
       { title: "AI Keeper Recommender", description: "Ranks all players by keeper value with reasoning. Considers cost, position scarcity, budget impact.", session: "32" },

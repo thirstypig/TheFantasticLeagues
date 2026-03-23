@@ -53,6 +53,8 @@ const changelog: ChangelogEntry[] = [
       { type: "perf", description: "enrichedPlayers rosterFingerprint — stable dependency prevents re-renders on non-roster auction updates" },
       { type: "test", description: "requireLeagueMember body fallback test — 493 server tests (was 492)" },
       { type: "docs", description: "SaaS Phase 1 plan: snake draft, onboarding, directory, Stripe billing, Astro marketing" },
+      { type: "security", description: "GET /leagues/:id no longer exposes passwordHash, resetToken, isAdmin, or payment handles — explicit select on owner relation" },
+      { type: "docs", description: "5-agent code review: security sentinel, performance oracle, architecture strategist, TypeScript reviewer, simplicity reviewer" },
     ],
   },
   {

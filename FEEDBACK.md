@@ -39,18 +39,29 @@ Tested all 9 AI features end-to-end, fixed 2 bugs, implemented table density sys
 - **Total: 680 tests** (MCP: 50 additional)
 - TypeScript: clean (client + server)
 
-### Pending / Next Session
-1. **Table design visual testing** — verify density changes look right in browser (dark + light mode)
-2. **Adopt SortableHeader** — replace inline sort logic in Players.tsx, AuctionValues.tsx, StatsTables.tsx
-3. **Sticky first column** — mobile player name pinning (CSS-only)
-4. **useMemo split** — separate filter/sort in Players.tsx for performance
-5. **SaaS Phase 1A** — begin snake draft implementation
-6. **Fund AI API** — Gemini needs paid plan, Anthropic needs credits
+### Completed — 5-Agent Code Review (PR #89)
+- **Security Sentinel**: Found CRITICAL — `GET /leagues/:id` returned full User model (passwordHash, resetToken, isAdmin, payment handles). **Fixed immediately** (commit `7c61d2d`)
+- **Performance Oracle**: rosterFingerprint good; AIHub team fetch over-fetches (should centralize)
+- **Architecture Strategist**: Dual-context conflict (compact+density); 7 pages duplicate team-finding logic
+- **TypeScript Reviewer**: SortableHeader missing aria-sort/keyboard; AIHub missing abort controller; splitTwoWayStats mutation undocumented
+- **Code Simplicity Reviewer**: SortableHeader + semantic tokens are YAGNI (but planned for phased adoption)
+
+### Pending / Next Session (from code review P2 findings)
+1. **Extract `useMyTeamId` hook** — 7 pages duplicate team-finding logic (Architecture P2)
+2. **AIHub abort controller** — add cleanup to useEffect fetch to prevent race conditions (TypeScript P2)
+3. **SortableHeader accessibility** — add `aria-sort`, `tabIndex`, `onKeyDown` before adoption (TypeScript P2)
+4. **Document `splitTwoWayStats` mutation** — add JSDoc warning about in-place mutation (TypeScript P2)
+5. **Deprecate `compact` prop** — replace with `density="compact"` in 2 callers to avoid dual-context conflict (Architecture P2)
+6. **Adopt SortableHeader** — replace inline sort logic in Players.tsx, AuctionValues.tsx, StatsTables.tsx
+7. **Table design visual testing** — verify density changes look right in browser (dark + light mode)
+8. **SaaS Phase 1A** — begin snake draft implementation
+9. **Fund AI API** — Gemini needs paid plan, Anthropic needs credits
 
 ### Concerns / Tech Debt
 - `Player.posList` is global (not per-league) — if leagues diverge on GP threshold, would need per-league eligibility model
 - `syncNLPlayers` superseded by `syncAllPlayers` — candidate for removal
 - Gemini API key on free tier with 0 quota — falls back to Claude (costs money)
+- `--lg-positive`/`--lg-negative` CSS tokens added but unused — adopt or remove next session
 
 ---
 
