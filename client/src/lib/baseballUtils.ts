@@ -5,9 +5,9 @@
 export { POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition } from "./sportConfig";
 
 /**
- * Returns true if a player's positions make them eligible for CI (Corner Infield: 1B or 3B).
+ * Returns true if a player's positions make them eligible for CM (Corner Man: 1B or 3B).
  */
-export function isCIEligible(positions: string | undefined): boolean {
+export function isCMEligible(positions: string | undefined): boolean {
     if (!positions) return false;
     const posList = positions.split(',').map(p => p.trim());
     return posList.some(p => p === '1B' || p === '3B');

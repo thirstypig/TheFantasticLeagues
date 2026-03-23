@@ -131,7 +131,7 @@ export default function GuideAuction() {
 
           <ul className="list-disc list-inside space-y-1.5 ml-1 mt-2">
             <li><strong>Budget</strong> — your total spending cap for the entire draft. Leftover budget becomes FAAB for in-season waivers.</li>
-            <li><strong>Roster positions</strong> — know how many of each position you need (C, 1B, 2B, SS, 3B, MI, CI, OF, DH for hitters; 9 pitchers).</li>
+            <li><strong>Roster positions</strong> — know how many of each position you need (C, 1B, 2B, SS, 3B, MI, CM, OF, DH for hitters; 9 pitchers).</li>
             <li><strong>Keepers</strong> — if your league uses keepers, those players are pre-assigned before the draft starts.</li>
           </ul>
           <Tip>On the <strong>Home</strong> page, the <strong>Draft Room</strong> card links directly to the live auction when it's active.</Tip>

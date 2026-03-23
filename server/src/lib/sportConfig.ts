@@ -5,11 +5,11 @@
 
 // ─── Position Configuration ───
 
-export const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "SP", "RP", "P", "DH"] as const;
+export const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "SP", "RP", "P", "DH"] as const;
 
 export const PITCHER_CODES = ["P", "SP", "RP", "TWP"] as const;
 
-export const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "DH", "P", "SP", "RP", "BN", "IL"] as const;
+export const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "BN", "IL"] as const;
 
 // ─── Position-to-Slot Mapping ───
 
@@ -17,9 +17,9 @@ export const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "DH", "
 export function positionToSlots(pos: string): string[] {
   const p = pos.trim().toUpperCase();
   if (p === "C") return ["C"];
-  if (p === "1B") return ["1B", "CI"];
+  if (p === "1B") return ["1B", "CM"];
   if (p === "2B") return ["2B", "MI"];
-  if (p === "3B") return ["3B", "CI"];
+  if (p === "3B") return ["3B", "CM"];
   if (p === "SS") return ["SS", "MI"];
   if (p === "LF" || p === "CF" || p === "RF" || p === "OF") return ["OF"];
   if (p === "DH") return ["DH"];
@@ -58,7 +58,7 @@ export const DEFAULT_RULES = [
   // Roster
   { category: "roster", key: "pitcher_count", value: "9", label: "Pitchers per Team" },
   { category: "roster", key: "batter_count", value: "14", label: "Batters per Team" },
-  { category: "roster", key: "roster_positions", value: JSON.stringify({ "C": 2, "1B": 1, "2B": 1, "3B": 1, "SS": 1, "MI": 1, "CI": 1, "OF": 5, "DH": 1 }), label: "Batter Positions" },
+  { category: "roster", key: "roster_positions", value: JSON.stringify({ "C": 2, "1B": 1, "2B": 1, "3B": 1, "SS": 1, "MI": 1, "CM": 1, "OF": 5, "DH": 1 }), label: "Batter Positions" },
   { category: "roster", key: "outfield_mode", value: "OF", label: "Outfield Position Display" },
   { category: "roster", key: "dh_games_threshold", value: "20", label: "DH Games Threshold" },
   { category: "roster", key: "position_eligibility_gp", value: "20", label: "Position Eligibility (GP)" },
