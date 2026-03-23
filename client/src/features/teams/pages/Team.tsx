@@ -161,15 +161,18 @@ export default function Team() {
 
             // No CSV match — build a minimal row from DB data
             const pitcherPos = ["P", "SP", "RP"];
+            // For two-way players (Ohtani), use assignedPosition to determine pitcher status
+            const assignedPos = r.assignedPosition || "";
+            const effectiveIsPitcher = pitcherPos.includes(assignedPos) || pitcherPos.includes(posPrimary);
             return {
               _dbPlayerId: dbPlayerId,
               mlb_id: String(mlbId || ""),
               player_name: playerName,
               ogba_team_code: code,
               ogba_team_name: team?.name ?? "",
-              positions: posList || posPrimary || "UT",
-              posPrimary,
-              is_pitcher: pitcherPos.includes(posPrimary),
+              positions: assignedPos || posList || posPrimary || "UT",
+              posPrimary: assignedPos || posPrimary,
+              is_pitcher: effectiveIsPitcher,
               R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0,
               W: 0, SV: 0, K: 0, IP: 0, ERA: 0, WHIP: 0, BB_H: 0,
               mlb_team_abbr: mlbTeam,
