@@ -212,12 +212,12 @@ export function requireCommissionerOrAdmin(leagueIdParam = "leagueId"): RequestH
 /**
  * Middleware factory: requires the user to be a member of the league
  * (any role: COMMISSIONER or OWNER). Reads leagueId from
- * req.params[leagueIdParam] first, then req.query[leagueIdParam].
+ * req.params[leagueIdParam], then req.query[leagueIdParam], then req.body[leagueIdParam].
  * Admins bypass. Must be placed after `requireAuth`.
  */
 export function requireLeagueMember(leagueIdParam = "leagueId"): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const raw = req.params[leagueIdParam] ?? req.query[leagueIdParam];
+    const raw = req.params[leagueIdParam] ?? req.query[leagueIdParam] ?? req.body?.[leagueIdParam];
     const leagueId = Number(raw);
     if (!Number.isFinite(leagueId)) {
       return res.status(400).json({ error: "Invalid leagueId" });

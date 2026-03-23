@@ -2,12 +2,43 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-// Context for compact table mode — tighter padding for embedded panels (auction, etc.)
+// ─── Table density system ──────────────────────────────────────────────────
+// compact:     28-32px rows, 12px font — auction panels, embedded tables
+// default:     36-40px rows, 13px font — players, standings, stats
+// comfortable: 44-48px rows, 15px font — summary tables, team overview (original)
+
+export type TableDensity = "compact" | "default" | "comfortable";
+
+const TableDensityContext = React.createContext<TableDensity>("comfortable");
+export const useTableDensity = () => React.useContext(TableDensityContext);
+export function TableDensityProvider({ density, children }: { density: TableDensity; children: React.ReactNode }) {
+  return <TableDensityContext.Provider value={density}>{children}</TableDensityContext.Provider>;
+}
+
+// Backwards-compatible aliases for existing compact usage
 const TableCompactContext = React.createContext(false);
 export const useTableCompact = () => React.useContext(TableCompactContext);
 export function TableCompactProvider({ compact, children }: { compact: boolean; children: React.ReactNode }) {
-  return <TableCompactContext.Provider value={compact}>{children}</TableCompactContext.Provider>;
+  return (
+    <TableCompactContext.Provider value={compact}>
+      <TableDensityProvider density={compact ? "compact" : "comfortable"}>
+        {children}
+      </TableDensityProvider>
+    </TableCompactContext.Provider>
+  );
 }
+
+const headStyles: Record<TableDensity, string> = {
+  compact: "px-1.5 py-1.5 text-left align-middle text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]",
+  default: "h-9 px-3 text-left align-middle text-[11px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  comfortable: "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+};
+
+const cellStyles: Record<TableDensity, string> = {
+  compact: "px-1.5 py-1 align-middle text-sm text-[var(--lg-text-primary)] tabular-nums",
+  default: "px-3 py-1.5 align-middle text-[13px] leading-5 text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  comfortable: "px-3 py-3 align-middle text-[15px] leading-5 text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+};
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -69,13 +100,13 @@ const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.HTMLAttributes<HTMLTableRowElement>
 >(({ className, ...props }, ref) => {
-  const compact = useTableCompact();
+  const density = useTableDensity();
   return (
     <tr
       ref={ref}
       className={cn(
         "border-b border-[var(--lg-table-border)] transition-colors hover:bg-[var(--lg-table-row-hover)] data-[state=selected]:bg-[var(--lg-table-row-hover)]",
-        compact && "hover:bg-[var(--lg-tint)]",
+        density === "compact" && "hover:bg-[var(--lg-tint)]",
         className
       )}
       {...props}
@@ -88,16 +119,11 @@ const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => {
-  const compact = useTableCompact();
+  const density = useTableDensity();
   return (
     <th
       ref={ref}
-      className={cn(
-        compact
-          ? "px-1.5 py-1.5 text-left align-middle text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]"
-          : "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-        className
-      )}
+      className={cn(headStyles[density], className)}
       {...props}
     />
   );
@@ -108,16 +134,11 @@ const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => {
-  const compact = useTableCompact();
+  const density = useTableDensity();
   return (
     <td
       ref={ref}
-      className={cn(
-        compact
-          ? "px-1.5 py-1 align-middle text-sm text-[var(--lg-text-primary)] tabular-nums"
-          : "px-3 py-3 align-middle text-[15px] leading-5 text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-        className
-      )}
+      className={cn(cellStyles[density], className)}
       {...props}
     />
   );

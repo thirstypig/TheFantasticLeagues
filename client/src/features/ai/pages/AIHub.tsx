@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Sparkles, Lock, Loader2, ExternalLink, BarChart3, Trophy, TrendingUp, ArrowLeftRight, Users, Gavel, BookOpen, Rewind, Brain } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
+import { useAuth } from "../../../auth/AuthProvider";
 import PageHeader from "../../../components/ui/PageHeader";
 
 /* ── Types ───────────────────────────────────────────────────────── */
@@ -32,6 +33,22 @@ interface DraftGrade {
 export default function AIHub() {
   const { leagueId } = useLeague();
   const gating = useSeasonGating();
+  const { user } = useAuth();
+
+  // Fetch user's team for features that require teamId
+  const [myTeamId, setMyTeamId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!user || !leagueId) return;
+    fetchJsonApi<{ league: { teams: Array<{ id: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${leagueId}`)
+      .then(res => {
+        const uid = Number(user.id);
+        const mine = res.league?.teams?.find(t =>
+          t.ownerUserId === uid || (t.ownerships || []).some(o => o.userId === uid)
+        );
+        setMyTeamId(mine?.id ?? null);
+      })
+      .catch(() => setMyTeamId(null));
+  }, [user, leagueId]);
 
   // State for generating/viewing results
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
@@ -100,7 +117,7 @@ export default function AIHub() {
       category: "season",
       available: isInSeason,
       lockReason: "Available during the active season",
-      generateUrl: `/teams/ai-insights?leagueId=${leagueId}`,
+      generateUrl: myTeamId ? `/teams/ai-insights?leagueId=${leagueId}&teamId=${myTeamId}` : undefined,
     },
     {
       id: "trade-analysis",

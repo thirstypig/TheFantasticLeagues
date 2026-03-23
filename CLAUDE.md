@@ -161,7 +161,9 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/auth/AuthProvider.tsx` — global React auth context
 - `client/src/api/base.ts` — fetchJsonApi, API_BASE config
 - `client/src/api/types.ts` — shared API response/request types
-- `client/src/components/ui/` — shadcn-style UI primitives
+- `client/src/components/ui/` — shadcn-style UI primitives (table.tsx has 3-tier density: compact/default/comfortable)
+- `client/src/components/ui/SortableHeader.tsx` — reusable sort header with direction indicators
+- `client/src/components/ui/ThemedTable.tsx` — ThemedTable supports `density` and `zebra` props
 - `client/src/components/AppShell.tsx` — app shell
 - `client/src/components/shared/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players); includes fielding stats (games by position)
 - `client/src/components/shared/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
@@ -266,14 +268,14 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (492 server + 187 client + 50 MCP = 729 tests)
+### Current Test Coverage (493 server + 187 client + 50 MCP = 730 tests)
 
-**Server (492 tests):**
+**Server (493 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
 - `server/src/middleware/__tests__/auth.test.ts` — 6 tests (requireAuth, requireAdmin)
-- `server/src/middleware/__tests__/authExtended.test.ts` — 27 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, etc.)
+- `server/src/middleware/__tests__/authExtended.test.ts` — 28 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, requireLeagueMember body fallback)
 - `server/src/middleware/__tests__/asyncHandler.test.ts` — 4 tests
 - `server/src/middleware/__tests__/validate.test.ts` — 7 tests
 - `server/src/middleware/__tests__/seasonGuard.test.ts` — 10 tests (requireSeasonStatus: allowed/denied status, no season, team lookup, error forwarding)

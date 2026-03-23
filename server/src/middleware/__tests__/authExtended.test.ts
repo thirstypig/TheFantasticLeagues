@@ -262,6 +262,21 @@ describe("requireLeagueMember", () => {
     expect(res.body).toEqual({ error: "Invalid leagueId" });
     expect(next).not.toHaveBeenCalled();
   });
+
+  it("reads leagueId from body when not in params or query", async () => {
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+    const req = mockReq({ user: { id: 1, isAdmin: false }, params: {}, query: {}, body: { leagueId: 3 } });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(mockPrisma.leagueMembership.findUnique).toHaveBeenCalledWith({
+      where: { leagueId_userId: { leagueId: 3, userId: 1 } },
+      select: { role: true },
+    });
+  });
 });
 
 describe("isTeamOwner", () => {

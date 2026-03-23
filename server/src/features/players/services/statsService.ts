@@ -201,6 +201,40 @@ export function expandTwoWayPlayers<T extends { mlb_id: string; is_pitcher: bool
   return result;
 }
 
+/**
+ * Zero out cross-role stats for two-way players after expansion.
+ * Pitcher rows get hitting stats zeroed; hitter rows get pitching stats zeroed.
+ * Optionally applies pitcher-specific dollar values from a values map.
+ */
+export function splitTwoWayStats<T extends {
+  mlb_id: string; is_pitcher: boolean; player_name: string;
+  AB: number; H: number; R: number; HR: number; RBI: number; SB: number; AVG: number;
+  W: number; SV: number; K: number; ERA: number; WHIP: number;
+  dollar_value?: number; value?: number;
+}>(
+  stats: T[],
+  valuesMap?: Map<string, { value: number }>,
+): T[] {
+  for (const s of stats) {
+    if (!TWO_WAY_PLAYERS.has(Number(s.mlb_id))) continue;
+    if (s.is_pitcher) {
+      s.AB = 0; s.H = 0; s.R = 0; s.HR = 0; s.RBI = 0; s.SB = 0; s.AVG = 0;
+      if (valuesMap) {
+        const nameKey = s.player_name.toLowerCase();
+        const normKey = normalizeName(s.player_name);
+        const pitcherPv = valuesMap.get(`${nameKey}::P`) ?? valuesMap.get(`${normKey}::P`);
+        if (pitcherPv) {
+          s.dollar_value = pitcherPv.value;
+          s.value = pitcherPv.value;
+        }
+      }
+    } else {
+      s.W = 0; s.SV = 0; s.K = 0; s.ERA = 0; s.WHIP = 0;
+    }
+  }
+  return stats;
+}
+
 /** Exclude synthetic filler players created by auction E2E tests */
 export function isFillerPlayer(p: { mlbId?: number | null; name?: string }): boolean {
   if (p.mlbId !== null && p.mlbId !== undefined && p.mlbId >= 900000) return true;

@@ -280,6 +280,15 @@ export default function Auction() {
       }));
   }, [auctionState?.teams, myTeamId]);
 
+  // Stable fingerprint of roster assignments — only changes when a player is
+  // drafted/moved, not on every auction state update (bids, nominations, log entries).
+  const rosterFingerprint = useMemo(() => {
+    if (!auctionState?.teams) return "";
+    return auctionState.teams
+      .map(t => t.roster.map(r => `${r.mlbId ?? r.playerId}:${t.code}`).sort().join(","))
+      .join("|");
+  }, [auctionState?.teams]);
+
   // Enrich players with real-time draft status from auction state.
   // The initial player fetch may not reflect force-assigns or recent wins,
   // so we overlay team ownership from the live auction state.
@@ -301,7 +310,8 @@ export default function Auction() {
       }
       return p;
     });
-  }, [players, auctionState?.teams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, rosterFingerprint]);
 
   // If not in DRAFT, show read-only auction results instead of the live auction
   if (!gating.canAuction) {

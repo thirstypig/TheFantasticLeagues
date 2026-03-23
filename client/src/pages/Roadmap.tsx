@@ -33,7 +33,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "March 21, 2026 (Session 33 — Extended)";
+const LAST_UPDATED = "March 23, 2026 (Session 37)";
 
 // ─── Product Roadmap ───
 
@@ -115,10 +115,10 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Modern Table Redesign",
-        description: "Linear/Notion-inspired borderless tables with 3 density tiers, SortableHeader, sticky first column for mobile, useMemo performance split.",
+        description: "3-tier density system (compact/default/comfortable), SortableHeader component, zebra striping, semantic value tokens. Applied to Players, StatsTables, AuctionValues.",
         icon: Layers,
         effort: "Large",
-        status: "planned",
+        status: "in-progress",
         tags: ["ux", "tables"],
       },
       {
@@ -537,6 +537,9 @@ const completedFeatures: CompletedGroup[] = [
       { title: "Offline/Reconnect Indicator", description: "Amber 'Reconnecting...' banner on WS disconnect. Auto-reconnect with exponential backoff (1s→15s). Polling safety net.", session: "32" },
       { title: "PostHog Analytics Enhancement", description: "18 tracked events across auth, auction, trades, waivers, keepers, and error boundaries.", session: "32" },
       { title: "Mobile Auction Testing & Fix", description: "Tested 390x844 viewport. Fixed AppShell overflow causing right-edge clipping. All auction controls verified.", session: "32" },
+      { title: "Table Density System", description: "3-tier density (compact/default/comfortable), SortableHeader, zebra striping, semantic value tokens.", session: "37" },
+      { title: "AI Insights Fixes", description: "Fixed trade analyzer middleware (req.body), weekly insights missing teamId, user team lookup on AIHub.", session: "37" },
+      { title: "Code Quality Sweep", description: "splitTwoWayStats() extraction, mlbGetJson<T> generics, enrichedPlayers rosterFingerprint.", session: "37" },
       { title: "AI Post-Draft Grade", description: "AI grades each team's draft A-F with reasoning. Considers value, budget management, balance, bargain hunting.", session: "32" },
       { title: "AI Trade Analyzer", description: "Evaluates trade fairness, identifies winner, provides analysis and recommendation via POST /api/trades/analyze.", session: "32" },
       { title: "AI Keeper Recommender", description: "Ranks all players by keeper value with reasoning. Considers cost, position scarcity, budget impact.", session: "32" },

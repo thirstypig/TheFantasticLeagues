@@ -59,12 +59,12 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   throw lastError || new Error(`MLB API failed after ${retries} retries`);
 }
 
-export async function mlbGetJson(url: string, ttlSeconds = DEFAULT_TTL): Promise<any> {
+export async function mlbGetJson<T = any>(url: string, ttlSeconds = DEFAULT_TTL): Promise<T> {
   const cached = cacheGet(url);
-  if (cached !== null) return cached;
+  if (cached !== null) return cached as T;
 
   const res = await fetchWithRetry(url);
-  const data = await res.json();
+  const data = await res.json() as T;
   cacheSet(url, data, ttlSeconds);
   return data;
 }

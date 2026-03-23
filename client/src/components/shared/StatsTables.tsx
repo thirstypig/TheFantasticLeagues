@@ -190,7 +190,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
       </h2>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
-      <ThemedTable bare>
+      <ThemedTable bare density="default" zebra>
         <ThemedThead>
           <ThemedTr>
             <ThemedTh className="px-8 py-5">Team</ThemedTh>
@@ -263,7 +263,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
       </h3>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
-      <ThemedTable bare>
+      <ThemedTable bare density="default" zebra>
         <ThemedThead>
           <ThemedTr>
             <ThemedTh className="px-8 py-4">Team</ThemedTh>
@@ -324,7 +324,7 @@ export const SeasonTable: React.FC<SeasonTableProps> = ({
       </h2>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
-          <ThemedTable bare>
+          <ThemedTable bare density="default" zebra>
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh className="px-8 py-5">Team</ThemedTh>
@@ -388,7 +388,7 @@ export const TeamSeasonSummaryTable: React.FC<TeamSeasonSummaryProps> = ({
       </h3>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
-          <ThemedTable bare>
+          <ThemedTable bare density="default" zebra>
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh className="px-6 py-4">Period</ThemedTh>
@@ -454,7 +454,7 @@ export const TeamPeriodHittersTable: React.FC<TeamPeriodHittersProps> = ({
       </h3>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
-          <ThemedTable bare>
+          <ThemedTable bare density="default" zebra>
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh className="px-4 py-4">Player</ThemedTh>
@@ -539,7 +539,7 @@ export const TeamPeriodPitchersTable: React.FC<TeamPeriodPitchersProps> = ({
       </h3>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
-          <ThemedTable bare>
+          <ThemedTable bare density="default" zebra>
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh className="px-4 py-4">Player</ThemedTh>

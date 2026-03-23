@@ -4,6 +4,56 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-23 (Session 37) — AI Insights Fixes, Table Density, Code Quality, SaaS Planning
+
+### Summary
+Tested all 9 AI features end-to-end, fixed 2 bugs, implemented table density system, extracted code quality improvements, and created SaaS Phase 1 plan. 1 PR merged.
+
+### Completed — AI Insights Deep Dive
+- **Tested all 9 AI endpoints** — 7/9 worked, 2 had bugs, both fixed
+- **Trade Analyzer fix** — `requireLeagueMember` only checked `req.params`/`req.query`, not `req.body`; POST endpoints with body-based `leagueId` would 400
+- **Weekly Insights fix** — AIHub was missing `teamId` in generate URL; added user team fetch on mount
+- **Draft Report** — was 404 due to stale server process; roster fallback works after restart
+- +1 new test for `requireLeagueMember` body fallback
+
+### Completed — Table Design Refresh
+- **3-tier density system** — `compact` (28px), `default` (36px), `comfortable` (44px) via `TableDensityContext`
+- **SortableHeader component** — replaces 10+ inline sort implementations
+- **Zebra striping** — `zebra` prop on ThemedTable, uses existing `lg-table` CSS class
+- **Semantic value tokens** — `--lg-positive` / `--lg-negative` (mode-aware green/red)
+- Applied `density="default" zebra` to Players, StatsTables, AuctionValues
+
+### Completed — Code Quality Improvements
+- **`splitTwoWayStats()`** — extracted from inline route logic into `statsService.ts` (18 lines → 2)
+- **`mlbGetJson<T>`** — generic type parameter (backwards-compatible)
+- **`rosterFingerprint`** — stable dependency for enrichedPlayers, prevents re-renders on non-roster updates
+
+### Completed — SaaS Phase 1 Plan
+- Created `docs/plans/2026-03-23-saas-phase-1-plan.md`
+- 5 phases: Snake draft → Self-service onboarding → Public directory → Stripe billing → Astro marketing site
+- Pricing: Free (1 league, snake) vs Pro ($49/season — auction, keepers, AI, archive)
+
+### Test Results
+- Server: 493 passing (+1)
+- Client: 187 passing
+- **Total: 680 tests** (MCP: 50 additional)
+- TypeScript: clean (client + server)
+
+### Pending / Next Session
+1. **Table design visual testing** — verify density changes look right in browser (dark + light mode)
+2. **Adopt SortableHeader** — replace inline sort logic in Players.tsx, AuctionValues.tsx, StatsTables.tsx
+3. **Sticky first column** — mobile player name pinning (CSS-only)
+4. **useMemo split** — separate filter/sort in Players.tsx for performance
+5. **SaaS Phase 1A** — begin snake draft implementation
+6. **Fund AI API** — Gemini needs paid plan, Anthropic needs credits
+
+### Concerns / Tech Debt
+- `Player.posList` is global (not per-league) — if leagues diverge on GP threshold, would need per-league eligibility model
+- `syncNLPlayers` superseded by `syncAllPlayers` — candidate for removal
+- Gemini API key on free tier with 0 quota — falls back to Claude (costs money)
+
+---
+
 ## Session 2026-03-22 (Session 36) — Position Eligibility, Prospects, Auction Lifecycle, Sidebar, Ohtani
 
 ### Summary

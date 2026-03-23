@@ -66,6 +66,10 @@
     --lg-table-row-hover: rgba(0, 45, 114, 0.07);
     --lg-table-row-alt: rgba(0, 45, 114, 0.04);
 
+    /* Semantic value colors (mode-aware) */
+    --lg-positive: #16a34a;
+    --lg-negative: #dc2626;
+
     /* Sidebar */
     --lg-sidebar-bg: rgba(248, 250, 252, 0.55);
     --lg-sidebar-border: rgba(0, 45, 114, 0.08);
@@ -196,6 +200,10 @@
     --lg-table-border: rgba(255, 255, 255, 0.08);
     --lg-table-row-hover: rgba(26, 117, 255, 0.06);
     --lg-table-row-alt: rgba(26, 117, 255, 0.03);
+
+    /* Semantic value colors - Dark */
+    --lg-positive: #4ade80;
+    --lg-negative: #f87171;
 
     /* Sidebar - Dark */
     --lg-sidebar-bg: rgba(15, 23, 42, 0.8);

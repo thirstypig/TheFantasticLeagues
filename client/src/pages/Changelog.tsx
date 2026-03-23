@@ -30,6 +30,32 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.37.0",
+    date: "Mar 23, 2026",
+    session: "Session 37",
+    title: "AI Insights Fixes, Table Density System, Code Quality, SaaS Planning",
+    highlights: [
+      "All 9 AI features tested and verified — fixed trade analyzer middleware bug and weekly insights missing teamId",
+      "Table density system — 3-tier (compact/default/comfortable) with SortableHeader and zebra striping",
+      "Extracted splitTwoWayStats() helper, typed mlbGetJson with generics, stabilized enrichedPlayers",
+      "SaaS Phase 1 plan — snake draft, self-service onboarding, Stripe billing, public league directory",
+    ],
+    changes: [
+      { type: "fix", description: "requireLeagueMember middleware now checks req.body — fixes trade analyzer 400 error on POST endpoints" },
+      { type: "fix", description: "AIHub weekly insights includes teamId in generate URL — was missing, causing 400" },
+      { type: "fix", description: "AIHub fetches user's team on mount for team-scoped AI features" },
+      { type: "feat", description: "3-tier table density system: compact (28px), default (36px), comfortable (44px) via React context" },
+      { type: "feat", description: "SortableHeader component — reusable sort indicators replacing 10+ inline implementations" },
+      { type: "feat", description: "Zebra striping prop on ThemedTable — activates existing lg-table CSS class" },
+      { type: "feat", description: "Semantic value tokens: --lg-positive / --lg-negative for mode-aware green/red" },
+      { type: "refactor", description: "splitTwoWayStats() extracted from inline route logic into statsService.ts helper" },
+      { type: "refactor", description: "mlbGetJson<T> generic type parameter — backwards-compatible type safety" },
+      { type: "perf", description: "enrichedPlayers rosterFingerprint — stable dependency prevents re-renders on non-roster auction updates" },
+      { type: "test", description: "requireLeagueMember body fallback test — 493 server tests (was 492)" },
+      { type: "docs", description: "SaaS Phase 1 plan: snake draft, onboarding, directory, Stripe billing, Astro marketing" },
+    ],
+  },
+  {
     version: "0.36.0",
     date: "Mar 22-23, 2026",
     session: "Session 36",

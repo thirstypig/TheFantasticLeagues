@@ -274,7 +274,7 @@ export default function Players() {
        {/* Results Table */}
        <div className="flex-1 overflow-auto max-w-6xl mx-auto px-4 pb-8 md:px-6 md:pb-12 custom-scrollbar">
            <div className="lg-card p-0 bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700">
-                   <ThemedTable bare>
+                   <ThemedTable bare density="default" zebra>
                        <ThemedThead sticky>
                             <ThemedTr>
                                 <ThemedTh className="pl-8 py-3" onClick={() => {

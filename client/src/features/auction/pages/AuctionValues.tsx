@@ -160,7 +160,7 @@ export default function AuctionValues() {
       </div>
 
       <div>
-        <ThemedTable>
+        <ThemedTable density="default" zebra>
           <ThemedThead>
             <ThemedTr>
               <ThemedTh>PLAYER</ThemedTh>
