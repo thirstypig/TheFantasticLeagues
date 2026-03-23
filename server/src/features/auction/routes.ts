@@ -993,7 +993,7 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
 // POST /api/auction/complete
 // Commissioner/admin action to manually end the auction.
 // If a nomination is in progress, it is canceled (not awarded).
-router.post("/complete", requireAuth, requireCommissionerOrAdmin("leagueId"), asyncHandler(async (req, res) => {
+router.post("/complete", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
     const leagueId = readLeagueId(req);
     if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
