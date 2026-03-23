@@ -28,6 +28,7 @@ import {
   Trophy,
   DollarSign,
   Search,
+  RefreshCw,
 } from "lucide-react";
 
 /* ── Data ────────────────────────────────────────────────────────── */
@@ -66,11 +67,27 @@ const productRoadmap: RoadmapPhase[] = [
     items: [
       {
         title: "Live Auction Draft (Mar 22)",
-        description: "First live auction draft with 8 owners, real-time bidding via WebSocket, bid tracking, and draft board log.",
+        description: "First live auction draft completed. Fixed API routing (49 hardcoded paths), player name display, force-assign availability, position dropdowns (MI/CI), Ohtani stats split, and position matrix colors.",
         icon: Target,
         effort: "Large",
-        status: "in-progress",
+        status: "done",
         tags: ["auction", "milestone"],
+      },
+      {
+        title: "Position Eligibility Refresh",
+        description: "Sync position eligibility from MLB fielding stats. 20+ games played at a position qualifies for that slot. Currently stale from initial import.",
+        icon: RefreshCw,
+        effort: "Medium",
+        status: "in-progress",
+        tags: ["players", "data"],
+      },
+      {
+        title: "Minor League Prospect Sync",
+        description: "Expand player sync to include top prospects and minor league players so they appear in the auction player pool.",
+        icon: Users,
+        effort: "Medium",
+        status: "planned",
+        tags: ["players", "data"],
       },
       {
         title: "Production Deployment",

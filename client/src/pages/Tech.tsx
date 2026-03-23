@@ -542,6 +542,11 @@ const buildJournal = [
     title: "Session 33: Production Deployment & Code Review Hardening",
     detail: "Production deployment readiness for Render. 6-agent code review (security, architecture, simplicity, learnings) with all P2/P3 findings resolved. CSP hardened — scoped wss: to specific origins, added HSTS (1yr), PostHog domains added. Static asset caching with maxAge/immutable for Vite-hashed files. Service worker same-origin check. Render config overhauled — production domain, VITE_* build-time vars, Node 20 pinned, 60s graceful shutdown. Express v5 removed from root deps. Auction retrospective endpoint with DraftReport component for post-draft analytics. Guide additions. 710 tests passing.",
   },
+  {
+    date: "Mar 2026",
+    title: "Session 35: Live Auction Production Fixes & Code Quality Sweep",
+    detail: "Critical production fixes during live auction draft. Auction showed 0 teams — root cause: useAuctionState.ts used hardcoded /api/ paths instead of ${API_BASE}, routing through Cloudflare instead of direct to Render. Fixed 49 hardcoded paths across 22 files (complete API_BASE migration). Player names in Teams tab — server now sends mlbId/playerName in roster data. Force-assigned players immediately marked as taken via enrichedPlayers useMemo overlaying auction state. Position dropdown shows MI/CI roster slots via positionToSlots(). Ohtani two-way stats split — pitcher row shows pitching stats only. Position matrix colors reversed (green=full, not red). 5-agent code review (security, architecture, performance, simplicity, patterns) resolved all 5 P2 findings: server type drift, duplicate players.find(), unnecessary as-any cast, || to ?? nullish coalescing, inline constant dedup. Compound learning docs: deployment checklist, production outage post-mortem, UX fixes. Pre-deploy audit memory saved. 660 tests passing.",
+  },
 ];
 
 const workflowSteps = [

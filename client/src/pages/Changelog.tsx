@@ -30,6 +30,32 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.35.0",
+    date: "Mar 22, 2026",
+    session: "Session 35",
+    title: "Live Auction Production Fixes & Code Quality Sweep",
+    highlights: [
+      "Fixed production auction outage — 0 teams caused by hardcoded /api/ paths bypassing API_BASE",
+      "Player names in Teams tab — server now sends mlbId/playerName in roster data",
+      "Position dropdown shows MI/CI roster slots via positionToSlots()",
+      "Ohtani two-way stats split — pitcher row shows pitching stats only",
+      "Complete API_BASE migration — 49 hardcoded paths fixed across 22 files",
+    ],
+    changes: [
+      { type: "fix", description: "Auction routing — all fetchJsonApi calls use ${API_BASE} instead of hardcoded /api/ (PRs #79, #80)" },
+      { type: "fix", description: "Player names — server includes mlbId/playerName in roster data; Teams tab shows actual names instead of 'Player #XXX'" },
+      { type: "fix", description: "Force-assign availability — enrichedPlayers useMemo overlays real-time auction state onto player pool" },
+      { type: "fix", description: "Position dropdown — MI/CI slots derived from positionToSlots(); removed BN/UTIL" },
+      { type: "fix", description: "Ohtani stats — pitcher row zeros out hitting stats, hitter row zeros out pitching stats" },
+      { type: "fix", description: "Position matrix colors — green for full (correct), neutral for partial, muted for empty" },
+      { type: "fix", description: "WebSocket safety net — fetchState() on WS connect ensures state even if initial HTTP fetch fails" },
+      { type: "refactor", description: "Complete API_BASE migration — 49 paths across 22 files, zero hardcoded /api/ paths remain" },
+      { type: "refactor", description: "Server AuctionTeam type updated to match runtime shape (id, mlbId, playerName)" },
+      { type: "refactor", description: "Removed duplicate players.find() in TeamListTab, unnecessary (entry as any) cast, || → ?? for mlbId" },
+      { type: "docs", description: "Compound learnings — deployment checklist, production outage post-mortem, UX fixes documentation" },
+    ],
+  },
+  {
     version: "0.34.1",
     date: "Mar 21, 2026",
     session: "Session 34b",
