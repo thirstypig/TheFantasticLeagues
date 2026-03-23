@@ -3,6 +3,7 @@ title: "feat: Make all AI features visible and discoverable across the app"
 type: feat
 status: active
 date: 2026-03-23
+deepened: 2026-03-23
 ---
 
 # Make All AI Features Visible and Discoverable
@@ -184,6 +185,104 @@ Instead of a hub, add a small `✨ AI` badge/button on each page where an AI fea
 | `client/src/features/trades/pages/TradesPage.tsx` | **Modify** — Add AI analysis section |
 | `client/src/features/teams/pages/Team.tsx` | **Modify** — Add Weekly Insights section |
 
+---
+
+## Research Insights (Deepened 2026-03-23)
+
+### Hub + Inline = The Winning Pattern
+
+Industry consensus (Notion AI, Linear, Vercel, GitHub Copilot): use a **two-layer approach**:
+- **Layer 1 — AI Hub page** for discovery (all features in one view, status badges, links)
+- **Layer 2 — Inline triggers** on each page (sparkle icon, "Get AI Advice" button)
+
+FBST already has Layer 2 (inline). The Hub is the missing piece.
+
+### Locked State UX (Critical)
+
+**Use opacity + badge, NOT full greyscale.** Users must be able to read what a locked feature does.
+
+```
+Card at opacity-60 + lock badge in top-right corner:
+  "Requires IN_SEASON" or "Available after first trade"
+```
+
+- Full grey cards feel broken and kill discoverability (anti-pattern)
+- Always answer "what unlocks this?" directly on the card
+- Mobile users can't hover — put lock reason visible, not tooltip-only
+
+### Card Anatomy (5 Zones)
+
+```
+┌─────────────────────────────────────┐
+│  [Icon]   Title              [Badge]│  ← Header
+│           Description text          │  ← Body
+│  Last generated: 2h ago            │  ← Freshness
+│  [ Generate Analysis ]    View →   │  ← Action + nav link
+└─────────────────────────────────────┘
+```
+
+Grid: `grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6`
+
+### Three-State Button
+
+```
+Never generated  → "Generate"
+Cached (fresh)   → "View Results"
+Cached (stale)   → "Regenerate"
+```
+
+Freshness thresholds for fantasy baseball:
+- **Fresh** (green dot): < 6 hours
+- **Stale** (amber dot): > 24 hours
+- **Expired**: > 1 week → auto-show "Regenerate"
+
+### Loading State: Rotating Messages
+
+For 2-10 second AI generation, use rotating status messages (reduces perceived wait):
+
+```
+"Crunching the numbers..."
+"Analyzing roster composition..."
+"Comparing league-wide trends..."
+"Generating insights..."
+```
+
+Rotate every 2.5s with a branded spinner (sparkle icon inside the spinner ring).
+
+### Server-Side Caching (New)
+
+Add caching to avoid redundant LLM calls. Options:
+- **Simple**: `AiCache` table with `{ featureType, entityKey, result, generatedAt }`
+- **Or**: JSON column on existing model
+- Return `generatedAt` in all AI responses so client can show freshness
+- `force: true` param to bypass cache and regenerate
+
+### Cost Indicator: Keep It Simple
+
+For a private league app, just show:
+```
+🟢 AI Available | Powered by Gemini
+```
+No token counts, no dollar costs. Only add usage limits if billing users directly.
+
+### Existing Components to Leverage
+
+| Component | Path | Use For |
+|-----------|------|---------|
+| `AIInsightsModal` | `client/src/components/AIInsightsModal.tsx` | Display AI results in modal |
+| `Card` | `client/src/components/ui/card.tsx` | Feature cards with liquid-glass |
+| `Badge` | `client/src/components/ui/Badge.tsx` | Status badges (6 variants) |
+| `Tooltip` | `client/src/components/ui/Tooltip.tsx` | Lock reason tooltips |
+| `useSeasonGating()` | `client/src/hooks/useSeasonGating.ts` | Phase-based lock logic |
+
+### References
+
+- Notion AI, Linear AI, Vercel AI, GitHub Copilot — hub + inline patterns
+- Orbix: "10 AI-Driven UX Patterns Transforming SaaS in 2026"
+- UX Collective: "10 UX Design Shifts You Can't Ignore in 2026"
+- IxDF: Progressive Disclosure principles
+- shadcn/ui: Skeleton, Card, Badge components
+
 ## Sources
 
 - `server/src/services/aiAnalysisService.ts` — All 8 AI methods
@@ -193,3 +292,4 @@ Instead of a hub, add a small `✨ AI` badge/button on each page where an AI fea
 - `server/src/features/waivers/routes.ts` — ai-advice endpoint
 - `server/src/features/archive/routes.ts` — ai/trends, ai/draft endpoints
 - `client/src/hooks/useSeasonGating.ts` — Season phase gating
+- `client/src/components/AIInsightsModal.tsx` — Existing AI modal
