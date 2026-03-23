@@ -63,7 +63,7 @@ export class AIAnalysisService {
     if (!_geminiDisabled) {
       const genAI = await ensureGenAI();
       if (genAI) {
-        const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         // Wrap Gemini model to detect quota errors and auto-fallback
         const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
         if (anthropicKey) {
