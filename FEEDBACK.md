@@ -4,6 +4,67 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-22 (Session 36) — Position Eligibility, Prospects, Code Review
+
+### Summary
+Major data quality session: position eligibility from MLB fielding stats, AAA prospect sync, Ohtani pitcher eligibility fix, auction budget fix for trades, CI→CM rename, and a 6-agent code review with all P1/P2 findings resolved. 5 PRs merged (#81-#85).
+
+### Completed — Position Eligibility (PR #81)
+- **`syncPositionEligibility()`** — fetches MLB fielding stats in batch, updates `Player.posList` for all positions with GP >= threshold (configurable, default 20)
+- **New league rule `position_eligibility_gp`** — commissioner-configurable via slider (1-50)
+- **New admin endpoint** `POST /api/admin/sync-position-eligibility`
+- **199 players** updated with multi-position eligibility (e.g., Burleson: 1B→1B,DH,LF,RF)
+- **Auction budget fix** — `refreshTeams()` now uses `Team.budget` (per-team, reflects trades) instead of `budgetCap`. DLC correctly shows $475, DVD $325 after $75 trade.
+
+### Completed — AAA Prospect Sync (PR #82)
+- **`syncAAARosters()`** — fetches all ~30 Triple-A team rosters, creates players not already in DB
+- Maps AAA teams to MLB parent orgs via `parentOrgId`
+- Skips players already on 40-man rosters (preserves authoritative data)
+- **622 new prospects** created (total players: 1,652→2,274)
+- **New admin endpoint** `POST /api/admin/sync-prospects`
+
+### Completed — Ohtani Pitcher Eligibility (PR #83)
+- `syncAllPlayers()` now sets `posList="DH,P"` for TWO_WAY_PLAYERS entries (was "DH" only)
+- `syncPositionEligibility()` adds "P" for two-way players even without fielding data
+- Ohtani now selectable as P in roster position dropdown
+
+### Completed — 6-Agent Code Review + Fixes (PR #84)
+- **P1-1**: Fixed `undefined` fielding iteration crash for two-way players (null guard)
+- **P1-2**: Removed unscoped `leagueRule.findFirst` — now defaults to 20 GP
+- **P2-3**: Replaced N+1 `findFirst` with batch `buildPlayerLookup()` (~2,400→3 DB round-trips)
+- **P2-5**: Added two-way player `posList` logic to `syncNLPlayers` via shared `buildPosList()`
+- **P2-6**: Extracted shared `fetchPlayerBatch()` — deduplicated `fetchPlayerStats`/`fetchPlayerFieldingStats`
+- **P3**: Removed unused `parentOrgName`, promoted `normalizePos` to module level, reused `isTwoWay`
+
+### Completed — CI → CM Rename (PR #85)
+- Renamed Corner Infield (CI) to Corner Man (CM) across all code + DB
+- 6 files changed, DB migration: 4 roster entries + 2 league rules updated
+
+### Completed — Manual Player Fixes
+- **Konnor Griffin** (mlbId 804606) — created in DB, added to Los Doyers roster at $150 as SS
+- **Walker Buehler** (mlbId 621111) — updated team BOS→SD (now on Padres AAA affiliate)
+
+### Test Results
+- Server: 492 passing (+19 new)
+- Client: 187 passing
+- **Total: 679 tests** (MCP: 50 additional)
+- TypeScript: clean (client + server)
+
+### Pending / Next Steps — Priority Order
+1. **Teams tab position save + matrix refresh** — position dropdown saves to DB but auction state matrix doesn't update (needs WebSocket refresh trigger)
+2. **Post-auction retrospective** — review logs, bid patterns, UX issues from real usage
+3. **Stabilize `enrichedPlayers` dependency** — P3; use `rosterFingerprint` to prevent unnecessary re-renders
+4. **Extract `expandAndSplitTwoWayStats()`** — P3; fold stat zeroing into expansion helper
+5. **Type `mlbGetJson` return** — P2-4 from code review; add generics to eliminate `any` chain
+6. **SaaS Phase 1 planning** — multi-league, snake draft, public directory
+
+### Concerns / Tech Debt
+- `Player.posList` is global (not per-league) — if leagues diverge on GP threshold, would need per-league eligibility model
+- `syncNLPlayers` is effectively superseded by `syncAllPlayers` — consider removing
+- Archive import service keeps both CM and CI in position sets for backwards compat with old data
+
+---
+
 ## Session 2026-03-22 (Session 35) — Live Auction Production Fixes
 
 ### Summary
