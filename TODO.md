@@ -98,6 +98,18 @@ Items grouped by priority. P1 = fix before live auction (Mar 22), P2 = fix soon,
 - [x] **CR-16**: Raw `<table>` instead of ThemedTable in `AuctionDraftLog.tsx` and `PlayerPoolTab.tsx` — added `compact` variant to ThemedTable via React context, migrated both files.
   - Effort: Medium
 
+### Player Data
+
+- [ ] **TD-F01**: Expand player sync to include minor league prospects and top rookies — currently `syncAllPlayers` only syncs MLB 40-man rosters. Need to include top prospects (e.g., Konner Griffin) so they appear in the auction player pool for nomination. MLB Stats API has minor league roster data. Consider syncing "futures" or "top prospects" lists per team.
+  - Files: `server/src/features/players/services/mlbSyncService.ts`, MCP `get-team-roster` tool
+  - Effort: Medium
+
+- [ ] **TD-F02**: Refresh position eligibility from fielding stats — Player `posList`/`posPrimary` fields are stale from initial sync and don't reflect games played at each position. Rule: 20+ games played at a position qualifies the player for that slot. Example: Alex Burleson has 75 GP at OF but DB only shows "1B", so OF isn't offered in the position dropdown.
+  - Fix: During stats sync (`syncAllPlayers` or a new fielding sync), fetch fielding stats from MLB API (`hydrate=stats(group=[fielding],type=[season])`), compute games played per position, and update `Player.posList` with all positions where GP >= 20.
+  - The position dropdown in `TeamListTab.tsx` already uses `positionToSlots()` to derive eligible roster slots (MI, CI, etc.) — it just needs correct source data.
+  - Files: `server/src/features/players/services/mlbSyncService.ts`, `server/src/features/players/routes.ts` (fielding endpoint already exists), `prisma/schema.prisma` (Player.posList)
+  - Effort: Medium
+
 ### Existing Open Items
 
 - [ ] **TD-Q03**: `auction/routes.ts` (874 LOC) — extraction deferred; real-time stateful system with in-memory state + timers; 72+ tests pass. Revisit after auction season.

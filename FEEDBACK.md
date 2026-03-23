@@ -4,6 +4,53 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-22 (Session 35) — Live Auction Production Fixes
+
+### Summary
+Critical production fixes during a live auction draft. Auction was non-functional (0 teams, no player names, stale availability). Root cause: hardcoded `/api/` paths bypassed `API_BASE`, routing through Cloudflare instead of direct to Render. Fixed in rapid succession with 8 commits, 2 PRs, and a 5-agent code review.
+
+### Completed — Production Outage (PRs #79, #80)
+- **API routing fix** — replaced 21 hardcoded `/api/` paths with `${API_BASE}` in `useAuctionState.ts` + 6 other files; auction calls now go direct to Render
+- **Player names** — server includes `mlbId` and `playerName` in roster data (was only sending internal `playerId`)
+- **Force-assign availability** — added `enrichedPlayers` useMemo that overlays real-time auction state onto player pool
+- **WebSocket safety net** — added `fetchState()` on WS connect to re-fetch if initial HTTP fetch failed
+- **Cloudflare cache prevention** — `Cache-Control: no-store` on all `/api` routes (commit `b8f69c2`)
+
+### Completed — Auction UX Fixes
+- **Position dropdown** — MI/CI roster slots via `positionToSlots()` instead of hardcoded BN/UTIL
+- **Ohtani two-way stats** — pitcher row now zeros out hitting stats, hitter row zeros out pitching stats
+- **Position matrix colors** — green=fully filled (correct), neutral=partial, muted=empty (was red=full which felt like an error)
+
+### Completed — Code Quality (5-Agent Review)
+- **Complete API_BASE migration** — 28 more hardcoded paths across 15 files (total: 49 paths fixed across 22 files)
+- **Server type drift** — updated `AuctionTeam.roster` in `types.ts` to match actual runtime shape (`id`, `mlbId`, `playerName`)
+- **Duplicate `players.find()`** — removed redundant O(n) scan in TeamListTab; uses `entry.stat` from first lookup
+- **`(entry as any).playerName`** — removed unnecessary cast (type already had field)
+- **`||` → `??`** — nullish coalescing for `mlbId` fallback in 3 locations
+- **Duplicate constant** — replaced inline `slotOrder` with existing `MATRIX_POSITIONS`
+
+### Completed — Documentation
+- **Compound learning doc** — `docs/solutions/runtime-errors/auction-production-outage-api-routing-player-ids.md`
+- **UX fixes doc** — `docs/solutions/ui-bugs/auction-ux-position-dropdown-ohtani-stats-api-migration.md`
+- **Deployment docs** — `docs/solutions/deployment/` (5 files: checklist, quick-reference, readme, hardcoded paths, CSP/WS)
+- **Feedback memory** — `feedback_predeploy_audit.md` (pre-deploy checklist for future deploys)
+
+### Test Results
+- Server: 473 passing
+- Client: 187 passing
+- **Total: 660 tests** (MCP: 50 additional)
+- TypeScript: clean (client + server)
+
+### Pending / Next Steps — Priority Order
+1. **TD-F02**: Refresh position eligibility from fielding stats — 20+ GP rule (e.g., Burleson has 75 GP at OF but DB only shows 1B)
+2. **TD-F01**: Expand player sync to include minor league prospects (e.g., Konner Griffin)
+3. **Post-auction retrospective** — review logs, bid patterns, UX issues from real usage
+4. **Stabilize `enrichedPlayers` dependency** — P3 from review; use `rosterFingerprint` to prevent unnecessary re-renders on bids
+5. **Extract `expandAndSplitTwoWayStats()`** — P3; fold stat zeroing into expansion helper to prevent future callers from forgetting
+6. **SaaS Phase 1 planning** — multi-league, snake draft, public directory
+
+---
+
 ## Session 2026-03-21 (Session 34) — Sticky Table Headers & Accessibility
 
 ### Summary
