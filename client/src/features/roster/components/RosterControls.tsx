@@ -53,7 +53,7 @@ export default function RosterControls({ leagueId, teams, onUpdate }: RosterCont
         return;
       }
       try {
-        const data = await fetchJsonApi<any>(`/api/archive/search-mlb?query=${encodeURIComponent(query)}`);
+        const data = await fetchJsonApi<any>(`${API_BASE}/archive/search-mlb?query=${encodeURIComponent(query)}`);
         setResults(data.players || []);
         setShowDropdown(true);
       } catch (e) {
@@ -109,7 +109,7 @@ export default function RosterControls({ leagueId, teams, onUpdate }: RosterCont
     formData.append('file', importFile);
     
     try {
-        const res = await fetchWithAuth(`/api/commissioner/${leagueId}/roster/import`, {
+        const res = await fetchWithAuth(`${API_BASE}/commissioner/${leagueId}/roster/import`, {
             method: 'POST',
             body: formData,
         });

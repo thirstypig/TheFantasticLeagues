@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fetchWithAuth, fetchJsonApi } from '../../../api/base';
+import { fetchWithAuth, fetchJsonApi, API_BASE } from '../../../api/base';
 import { useToast } from "../../../contexts/ToastContext";
 
 
@@ -37,7 +37,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     formData.append('file', file);
 
     try {
-      const response = await fetchWithAuth(`/api/archive/${selectedYear}/import-excel`, {
+      const response = await fetchWithAuth(`${API_BASE}/archive/${selectedYear}/import-excel`, {
         method: 'POST',
         body: formData,
       });
@@ -65,7 +65,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting full sync for ${selectedYear} (Auto-match + Stats)...`]);
 
     try {
-      const data = await fetchJsonApi<{ logs?: string[] }>(`/api/archive/${selectedYear}/sync`, {
+      const data = await fetchJsonApi<{ logs?: string[] }>(`${API_BASE}/archive/${selectedYear}/sync`, {
         method: 'POST',
       });
 
@@ -85,7 +85,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting auto-match for ${all ? 'all seasons' : selectedYear}...`]);
 
     try {
-      const url = all ? '/api/archive/auto-match-all' : `/api/archive/${selectedYear}/auto-match`;
+      const url = all ? `${API_BASE}/archive/auto-match-all` : `${API_BASE}/archive/${selectedYear}/auto-match`;
       const data = await fetchJsonApi<{ results?: { year: number; matched: number; unmatched: number }[]; matched?: number; unmatched?: number }>(url, {
         method: 'POST',
       });
@@ -115,7 +115,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting live season archival...`]);
 
     try {
-      const data = await fetchJsonApi<{ logs?: string[] }>(`/api/archive/archive-current`, {
+      const data = await fetchJsonApi<{ logs?: string[] }>(`${API_BASE}/archive/archive-current`, {
         method: 'POST',
       });
 
@@ -139,7 +139,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
     setLogs([`Starting global recalculation for all seasons...`]);
 
     try {
-      const data = await fetchJsonApi<{ totalUpdated: number }>(`/api/archive/recalculate-all`, {
+      const data = await fetchJsonApi<{ totalUpdated: number }>(`${API_BASE}/archive/recalculate-all`, {
         method: 'POST',
       });
 

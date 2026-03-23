@@ -11,7 +11,7 @@ export interface AuctionTeam {
   pitcherCount: number;
   hitterCount: number;
   positionCounts: Record<string, number>; // e.g. { C: 2, OF: 3, ... }
-  roster: { playerId: number; price: number; assignedPosition?: string | null }[];
+  roster: { id: number; playerId: number; mlbId: number | null; playerName: string | null; price: number; assignedPosition?: string | null }[];
 }
 
 export interface NominationState {

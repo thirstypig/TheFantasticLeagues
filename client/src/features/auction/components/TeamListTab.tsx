@@ -180,7 +180,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                 const rosterSource = (isExpanded && detailedRoster) ? detailedRoster : (team.roster || []);
 
                 const roster = rosterSource.map((rItem: RosterEntry) => {
-                   const lookupId = rItem.mlbId || rItem.playerId;
+                   const lookupId = rItem.mlbId ?? rItem.playerId;
                    return {
                        ...rItem,
                        stat: players.find((p: PlayerSeasonStat) => String(p.mlb_id) === String(lookupId))
@@ -266,10 +266,10 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                         </ThemedThead>
                                         <tbody className="divide-y divide-[var(--lg-divide)]">
                                             {roster.map((entry: RosterEntry) => {
-                                                const mlbId = entry.mlbId || entry.playerId;
-                                                const name = (entry as any).playerName || entry.name || `Player #${mlbId}`;
+                                                const mlbId = entry.mlbId ?? entry.playerId;
+                                                const name = entry.playerName || entry.name || `Player #${mlbId}`;
 
-                                                const stat = players.find((p: PlayerSeasonStat) => String(p.mlb_id) === String(mlbId));
+                                                const stat = entry.stat;
                                                 const displayName = stat?.mlb_full_name || stat?.player_name || name;
                                                 const displayPos = entry.assignedPosition || stat?.positions || 'BN';
                                                 
@@ -313,8 +313,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                                         // Add DH for all hitters, P for pitchers
                                                                         if (!isPitcher && slots.size > 0) slots.add('DH');
                                                                         if (isPitcher) slots.add('P');
-                                                                        const slotOrder = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "DH", "P"];
-                                                                        const sorted = slotOrder.filter(s => slots.has(s));
+                                                                        const sorted = MATRIX_POSITIONS.filter(s => slots.has(s));
                                                                         return sorted.map(p => <option key={p} value={p} className="text-black">{p}</option>);
                                                                     })()}
                                                                 </select>

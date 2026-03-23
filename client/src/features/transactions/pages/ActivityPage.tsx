@@ -7,7 +7,7 @@ import {
   PlayerSeasonStat,
   getSeasonStandings,
 } from "../../../api";
-import { fetchJsonApi } from "../../../api/base";
+import { fetchJsonApi, API_BASE } from "../../../api/base";
 import {
   getTrades,
   TradeProposal,
@@ -118,7 +118,7 @@ export default function ActivityPage() {
     if (!confirmed) return;
 
     try {
-      await fetchJsonApi("/api/transactions/claim", {
+      await fetchJsonApi(`${API_BASE}/transactions/claim`, {
         method: "POST",
         body: JSON.stringify({
           leagueId: currentLeagueId,
@@ -146,7 +146,7 @@ export default function ActivityPage() {
     if (!confirmed) return;
 
     try {
-      await fetchJsonApi("/api/transactions/drop", {
+      await fetchJsonApi(`${API_BASE}/transactions/drop`, {
         method: "POST",
         body: JSON.stringify({
           leagueId: currentLeagueId,

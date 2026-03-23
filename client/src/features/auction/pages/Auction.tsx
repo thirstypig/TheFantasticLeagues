@@ -289,7 +289,7 @@ export default function Auction() {
     const draftedMap = new Map<string, string>();
     for (const team of auctionState.teams) {
       for (const r of team.roster) {
-        const mlbId = String(r.mlbId || r.playerId);
+        const mlbId = String(r.mlbId ?? r.playerId);
         draftedMap.set(mlbId, team.code);
       }
     }

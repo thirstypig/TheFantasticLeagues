@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { BarChart3, TrendingUp, TrendingDown, Loader2, Target, Users, DollarSign, Gavel, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { fetchJsonApi } from "../../../api/base";
+import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 
 /* ── Types (matches server response) ─────────────────────────────── */
@@ -75,7 +75,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchJsonApi<RetrospectiveData>(`/api/auction/retrospective?leagueId=${leagueId}`);
+      const result = await fetchJsonApi<RetrospectiveData>(`${API_BASE}/auction/retrospective?leagueId=${leagueId}`);
       setData(result);
     } catch {
       setError("Could not load draft report");

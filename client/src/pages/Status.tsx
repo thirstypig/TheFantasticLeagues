@@ -14,7 +14,7 @@ import {
   Clock,
   Wifi,
 } from "lucide-react";
-import { fetchJsonApi } from "../api/base";
+import { fetchJsonApi, API_BASE } from "../api/base";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -48,7 +48,7 @@ export default function Status() {
     // Check Express API + DB health
     const apiStart = Date.now();
     try {
-      const res = await fetchJsonApi<{ status: string; database?: string; supabase?: string }>("/api/health");
+      const res = await fetchJsonApi<{ status: string; database?: string; supabase?: string }>(`${API_BASE}/health`);
       const apiLatency = Date.now() - apiStart;
 
       setChecks((prev) =>

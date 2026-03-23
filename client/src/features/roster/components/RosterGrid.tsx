@@ -62,8 +62,8 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
       try {
         // Parallel fetch
         const [teamsRes, rostersRes] = await Promise.all([
-            fetchJsonApi<any>(`/api/commissioner/${leagueId}`),
-            fetchJsonApi<any>(`/api/commissioner/${leagueId}/rosters`)
+            fetchJsonApi<any>(`${API_BASE}/commissioner/${leagueId}`),
+            fetchJsonApi<any>(`${API_BASE}/commissioner/${leagueId}/rosters`)
         ]);
 
         if (teamsRes.error) throw new Error(teamsRes.error);

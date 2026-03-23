@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { mapPosition } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
@@ -44,7 +44,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
   useEffect(() => {
     if (!leagueId) return;
     let mounted = true;
-    fetchJsonApi<{ lots: LotEntry[] }>(`/api/auction/bid-history?leagueId=${leagueId}`)
+    fetchJsonApi<{ lots: LotEntry[] }>(`${API_BASE}/auction/bid-history?leagueId=${leagueId}`)
       .then(data => { if (mounted) setLots(data.lots); })
       .catch(() => {});
     return () => { mounted = false; };

@@ -3,7 +3,7 @@ import { Trophy, Download, Sparkles, Loader2, ArrowLeftRight, Save, Check, Rewin
 import AuctionReplay from './AuctionReplay';
 import type { ClientAuctionState, AuctionLogEvent } from '../hooks/useAuctionState';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
@@ -271,7 +271,7 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                 setGradesLoading(true);
                 setGradesError(null);
                 try {
-                  const data = await fetchJsonApi<{ grades: DraftGrade[] }>(`/api/auction/draft-grades?leagueId=${leagueId}`);
+                  const data = await fetchJsonApi<{ grades: DraftGrade[] }>(`${API_BASE}/auction/draft-grades?leagueId=${leagueId}`);
                   setDraftGrades(data.grades);
                   track("auction_draft_grades_generated");
                 } catch (e: unknown) {

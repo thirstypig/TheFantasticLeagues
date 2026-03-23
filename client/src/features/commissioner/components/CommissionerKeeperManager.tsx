@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getLeague } from '../../../api';
 import { getCommissionerRosters, assignRosterKeeper, releaseRosterEntry } from '../api';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { mapPosition } from "../../../lib/sportConfig";
@@ -77,7 +77,7 @@ export default function CommissionerKeeperManager({ leagueId }: KeeperManagerPro
             return;
         }
         const t = setTimeout(async () => {
-             const data = await fetchJsonApi<any>(`/api/archive/search-mlb?query=${encodeURIComponent(query)}`);
+             const data = await fetchJsonApi<any>(`${API_BASE}/archive/search-mlb?query=${encodeURIComponent(query)}`);
              setSearchResults(data.players || []);
         }, 300);
         return () => clearTimeout(t);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fetchJsonApi } from '../api/base';
+import { fetchJsonApi, API_BASE } from '../api/base';
 
 interface AIInsightsModalProps {
   isOpen: boolean;
@@ -25,8 +25,8 @@ export default function AIInsightsModal({ isOpen, onClose, year, teamCode, teamN
 
     try {
       const endpoint = type === 'trends' 
-        ? `/api/archive/${year}/ai/trends/${teamCode}`
-        : `/api/archive/${year}/ai/draft/${teamCode}`;
+        ? `${API_BASE}/archive/${year}/ai/trends/${teamCode}`
+        : `${API_BASE}/archive/${year}/ai/draft/${teamCode}`;
       
       const data = await fetchJsonApi<{ analysis: string }>(endpoint);
       setAnalysis(data.analysis);

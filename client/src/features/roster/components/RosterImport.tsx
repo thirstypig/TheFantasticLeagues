@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fetchWithAuth } from '../../../api/base';
+import { fetchWithAuth, API_BASE } from '../../../api/base';
 
 interface RosterImportProps {
   year: number;
@@ -32,7 +32,7 @@ export default function RosterImport({ year, onImportComplete }: RosterImportPro
     formData.append('year', String(year));
 
     try {
-      const response = await fetchWithAuth('/api/roster/import', {
+      const response = await fetchWithAuth(`${API_BASE}/roster/import`, {
         method: 'POST',
         body: formData,
       });

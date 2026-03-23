@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getMe, getLeague } from '../../../api';
 import { useLeague } from '../../../contexts/LeagueContext';
-import { fetchJsonApi } from '../../../api/base';
+import { fetchJsonApi, API_BASE } from '../../../api/base';
 import type { ClientAuctionState } from '../hooks/useAuctionState';
 import AuctionComplete from '../components/AuctionComplete';
 
@@ -22,7 +22,7 @@ export default function AuctionResults() {
         setError(null);
 
         const [state, meRes] = await Promise.all([
-          fetchJsonApi<ClientAuctionState>(`/api/auction/state?leagueId=${leagueId}`),
+          fetchJsonApi<ClientAuctionState>(`${API_BASE}/auction/state?leagueId=${leagueId}`),
           getMe(),
         ]);
 

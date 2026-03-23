@@ -223,7 +223,7 @@ function finish(state: AuctionState): { success: boolean; error?: string; winner
   if (!winner) return { success: false, error: "Winner not found" };
 
   // Update winner's roster/budget in-memory
-  winner.roster.push({ playerId: Number(playerId), price: currentBid });
+  winner.roster.push({ id: Date.now(), playerId: Number(playerId), mlbId: null, playerName: playerName, price: currentBid });
   winner.rosterCount += 1;
   winner.spotsLeft -= 1;
   winner.budget -= currentBid;
@@ -575,7 +575,7 @@ describe("auction simulation: budget edge cases", () => {
 
     // Spend most of budget: 20 players at $19 each = $380 spent
     for (let i = 0; i < 20; i++) {
-      team.roster.push({ playerId: 1000 + i, price: 19 });
+      team.roster.push({ id: 6000 + i, playerId: 1000 + i, mlbId: null, playerName: null, price: 19 });
     }
     team.rosterCount = 20;
     team.spotsLeft = 3;
@@ -611,7 +611,7 @@ describe("auction simulation: budget edge cases", () => {
 
     // Fill 22 spots cheaply
     for (let i = 0; i < 22; i++) {
-      team.roster.push({ playerId: 2000 + i, price: 1 });
+      team.roster.push({ id: 8000 + i, playerId: 2000 + i, mlbId: null, playerName: null, price: 1 });
     }
     team.rosterCount = 22;
     team.spotsLeft = 1;
@@ -635,7 +635,7 @@ describe("auction simulation: budget edge cases", () => {
 
     // Fill all 23 spots
     for (let i = 0; i < 23; i++) {
-      team.roster.push({ playerId: 3000 + i, price: 1 });
+      team.roster.push({ id: 9000 + i, playerId: 3000 + i, mlbId: null, playerName: null, price: 1 });
     }
     team.rosterCount = 23;
     team.spotsLeft = 0;
@@ -740,7 +740,7 @@ describe("auction simulation: complete draft for 2 teams", () => {
 
     // Fill all spots
     for (let i = 0; i < 23; i++) {
-      team.roster.push({ playerId: 4000 + i, price: 1 });
+      team.roster.push({ id: 7000 + i, playerId: 4000 + i, mlbId: null, playerName: null, price: 1 });
     }
     team.rosterCount = 23;
     team.spotsLeft = 0;
