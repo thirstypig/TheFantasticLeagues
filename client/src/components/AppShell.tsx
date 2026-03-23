@@ -20,8 +20,8 @@ function isActive(pathname: string, to: string) {
   return pathname === to || pathname.startsWith(to + "/");
 }
 
-type NavItem = { to: string; label: string; show?: boolean };
-type NavSection = { title: string; items: NavItem[] };
+type NavItem = { to: string; label: string; show?: boolean; disabled?: boolean; disabledTip?: string };
+type NavSection = { title: string; items: NavItem[]; collapsible?: boolean; defaultOpen?: boolean };
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
@@ -82,6 +82,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [isDragging]);
 
+  // Escape key closes mobile drawer; Cmd+B toggles sidebar
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && mobileOpen) {
+        setMobileOpen(false);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        setSidebarOpen(!sidebarOpen);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen, sidebarOpen, setSidebarOpen]);
+
   const canAccessCommissioner = useMemo(() => {
     if (Boolean(user?.isAdmin)) return true;
     const selected = (leagues ?? []).find((l: LeagueListItem) => l.id === leagueId);
@@ -111,29 +126,49 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return icons[label] || <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />;
   };
 
+  // Collapsible section state (persisted in localStorage)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem("fbst-nav-collapsed");
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
+
+  const toggleSection = useCallback((title: string) => {
+    setCollapsedSections((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      localStorage.setItem("fbst-nav-collapsed", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const NAV_SECTIONS: NavSection[] = [
     {
-      title: "League",
+      title: "",
       items: [
         { to: "/", label: "Home", show: true },
         { to: "/season", label: "Season", show: true },
         { to: "/players", label: "Players", show: true },
-        { to: "/auction", label: "Auction", show: true },
+        { to: "/auction", label: "Auction", show: true, disabled: !gating.canAuction, disabledTip: "Available during draft" },
         { to: "/activity", label: "Activity", show: true },
       ],
     },
     {
-      title: "Reference",
+      title: "League",
+      collapsible: true,
+      defaultOpen: false,
       items: [
+        { to: "/rules", label: "Rules", show: true },
+        { to: "/payouts", label: "Payouts", show: true },
+        { to: "/archive", label: "Archive", show: true },
         { to: "/about", label: "About", show: true },
         { to: "/guide", label: "Guide", show: true },
-        { to: "/rules", label: "Rules", show: true },
-        { to: "/archive", label: "Archive", show: true },
-        { to: "/payouts", label: "Payouts", show: true },
       ],
     },
     {
       title: "Manage",
+      collapsible: true,
+      defaultOpen: false,
       items: [
         {
           to: `/commissioner/${leagueId}`,
@@ -144,10 +179,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ],
     },
     {
-      title: "Resources",
+      title: "Dev",
+      collapsible: true,
+      defaultOpen: false,
       items: [
-        { to: "/roadmap", label: "Roadmap", show: Boolean(user?.isAdmin) },
         { to: "/changelog", label: "Changelog", show: Boolean(user?.isAdmin) },
+        { to: "/roadmap", label: "Roadmap", show: Boolean(user?.isAdmin) },
         { to: "/tech", label: "Under the Hood", show: Boolean(user?.isAdmin) },
         { to: "/docs", label: "Docs", show: Boolean(user?.isAdmin) },
         { to: "/status", label: "Status", show: Boolean(user?.isAdmin) },
@@ -162,10 +199,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const renderNavLink = (item: NavItem) => {
     const active = isActive(loc.pathname, item.to);
+
+    if (item.disabled) {
+      return (
+        <span
+          key={item.label}
+          className={`lg-sidebar-item opacity-30 cursor-not-allowed ${!sidebarOpen ? 'justify-center' : ''}`}
+          title={item.disabledTip || item.label}
+        >
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {getNavIcon(item.label)}
+          </svg>
+          {sidebarOpen && <span className="truncate">{item.label}</span>}
+        </span>
+      );
+    }
+
     return (
       <Link
         key={item.label}
         to={item.to}
+        aria-current={active ? "page" : undefined}
         onClick={() => {
           if (window.innerWidth < 1024) {
             setMobileOpen(false);
@@ -285,21 +339,42 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             )}
 
-            <nav className="flex-1 space-y-2 overflow-y-auto" aria-label="Main navigation">
+            <nav className="flex-1 space-y-1 overflow-y-auto" aria-label="Main navigation">
               {NAV_SECTIONS.map((section) => {
-                const visibleItems = section.items.filter((item) => item.show);
+                const visibleItems = section.items.filter((item) => item.show !== false);
                 if (visibleItems.length === 0) return null;
 
+                const isCollapsible = section.collapsible && sidebarOpen;
+                const isOpen = !isCollapsible || !(collapsedSections[section.title] ?? !section.defaultOpen);
+
                 return (
-                  <div key={section.title}>
-                    {sidebarOpen && (
-                      <div className="lg-sidebar-section-label">
-                        {section.title}
+                  <div key={section.title || "_primary"}>
+                    {section.title && sidebarOpen && (
+                      isCollapsible ? (
+                        <button
+                          onClick={() => toggleSection(section.title)}
+                          className="lg-sidebar-section-label w-full flex items-center justify-between cursor-pointer hover:text-[var(--lg-text-primary)] transition-colors"
+                          aria-expanded={isOpen}
+                        >
+                          <span>{section.title}</span>
+                          <svg className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      ) : (
+                        <div className="lg-sidebar-section-label">
+                          {section.title}
+                        </div>
+                      )
+                    )}
+                    {!sidebarOpen && section.title && (
+                      <div className="h-px bg-[var(--lg-border-faint)] mx-2 my-2" />
+                    )}
+                    {isOpen && (
+                      <div className="space-y-0.5">
+                        {visibleItems.map(renderNavLink)}
                       </div>
                     )}
-                    <div className="space-y-0.5">
-                      {visibleItems.map(renderNavLink)}
-                    </div>
                   </div>
                 );
               })}
