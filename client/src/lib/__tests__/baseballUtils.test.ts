@@ -4,7 +4,7 @@ import {
   POS_SCORE,
   getPrimaryPosition,
   sortByPosition,
-  isCIEligible,
+  isCMEligible,
   isMIEligible,
   getLastName,
 } from "../baseballUtils";
@@ -12,7 +12,7 @@ import {
 describe("POS_ORDER", () => {
   it("has 10 positions in canonical order", () => {
     expect(POS_ORDER).toEqual([
-      "C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "P", "DH",
+      "C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "P", "DH",
     ]);
   });
 });
@@ -22,7 +22,7 @@ describe("POS_SCORE", () => {
     expect(POS_SCORE["C"]).toBe(0);
     expect(POS_SCORE["1B"]).toBe(1);
     expect(POS_SCORE["MI"]).toBe(5);
-    expect(POS_SCORE["CI"]).toBe(6);
+    expect(POS_SCORE["CM"]).toBe(6);
     expect(POS_SCORE["P"]).toBe(8);
     expect(POS_SCORE["DH"]).toBe(9);
   });
@@ -121,27 +121,27 @@ describe("sortByPosition", () => {
   });
 });
 
-describe("isCIEligible", () => {
+describe("isCMEligible", () => {
   it("returns true for 1B", () => {
-    expect(isCIEligible("1B")).toBe(true);
+    expect(isCMEligible("1B")).toBe(true);
   });
 
   it("returns true for 3B", () => {
-    expect(isCIEligible("3B")).toBe(true);
+    expect(isCMEligible("3B")).toBe(true);
   });
 
   it("returns true for multi-position with 1B", () => {
-    expect(isCIEligible("OF,1B")).toBe(true);
+    expect(isCMEligible("OF,1B")).toBe(true);
   });
 
   it("returns false for non-corner positions", () => {
-    expect(isCIEligible("SS")).toBe(false);
-    expect(isCIEligible("2B")).toBe(false);
-    expect(isCIEligible("OF")).toBe(false);
+    expect(isCMEligible("SS")).toBe(false);
+    expect(isCMEligible("2B")).toBe(false);
+    expect(isCMEligible("OF")).toBe(false);
   });
 
   it("returns false for undefined", () => {
-    expect(isCIEligible(undefined)).toBe(false);
+    expect(isCMEligible(undefined)).toBe(false);
   });
 });
 

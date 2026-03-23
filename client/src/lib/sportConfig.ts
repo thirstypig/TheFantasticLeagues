@@ -7,7 +7,7 @@
 // ─── Position Configuration ───
 
 /** Canonical position order for sorting and display (auction/league view). */
-export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "P", "DH"];
+export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "P", "DH"];
 
 /** Score mapping for position sorting (lower = earlier in lineup). */
 export const POS_SCORE: Record<string, number> = Object.fromEntries(
@@ -15,7 +15,7 @@ export const POS_SCORE: Record<string, number> = Object.fromEntries(
 );
 
 /** All position codes used in roster slots. */
-export const POSITIONS: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CI", "OF", "DH", "P", "SP", "RP", "BN", "IL"];
+export const POSITIONS: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "BN", "IL"];
 
 /** Position codes that indicate a pitcher. */
 export const PITCHER_CODES = ["P", "SP", "RP", "TWP"] as const;
@@ -26,9 +26,9 @@ export const PITCHER_CODES = ["P", "SP", "RP", "TWP"] as const;
 export function positionToSlots(pos: string): string[] {
   const p = pos.trim().toUpperCase();
   if (p === "C") return ["C"];
-  if (p === "1B") return ["1B", "CI"];
+  if (p === "1B") return ["1B", "CM"];
   if (p === "2B") return ["2B", "MI"];
-  if (p === "3B") return ["3B", "CI"];
+  if (p === "3B") return ["3B", "CM"];
   if (p === "SS") return ["SS", "MI"];
   if (p === "LF" || p === "CF" || p === "RF" || p === "OF") return ["OF"];
   if (p === "DH") return ["DH"];
