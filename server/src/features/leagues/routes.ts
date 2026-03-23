@@ -73,7 +73,7 @@ router.get("/leagues/:id", asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.id);
 
   // Check visibility/membership
-  const league = await prisma.league.findUnique({
+  const leagueRaw = await prisma.league.findUnique({
     where: { id: leagueId },
     include: {
       teams: {
@@ -89,6 +89,17 @@ router.get("/leagues/:id", asyncHandler(async (req, res) => {
       },
     },
   });
+  // Strip sensitive fields from owner (passwordHash, resetToken, isAdmin, payment handles)
+  const league = leagueRaw ? {
+    ...leagueRaw,
+    teams: leagueRaw.teams.map(t => {
+      const o = t.owner as any;
+      return {
+        ...t,
+        owner: o ? { id: o.id, name: o.name, email: o.email, avatarUrl: o.avatarUrl } : null,
+      };
+    }),
+  } : null;
 
   if (!league) return res.status(404).json({ error: "League not found" });
 
