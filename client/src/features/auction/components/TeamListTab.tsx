@@ -158,7 +158,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                       return (
                         <td key={pos} className="px-1 py-1 text-center tabular-nums">
                           <span className={`inline-block min-w-[20px] px-0.5 rounded ${
-                            isFull ? 'bg-red-500/15 text-red-400 font-bold' : filled > 0 ? 'text-emerald-400 font-semibold' : 'text-[var(--lg-text-muted)] opacity-30'
+                            isFull ? 'bg-emerald-500/15 text-emerald-400 font-bold' : filled > 0 ? 'text-[var(--lg-text-primary)] font-semibold' : 'text-[var(--lg-text-muted)] opacity-30'
                           }`}>
                             {filled}{limit != null ? `/${limit}` : ''}
                           </span>
