@@ -183,12 +183,12 @@ describe("syncAllPlayers", () => {
 
     await syncAllPlayers(2026);
 
-    // Should store "DH" (from TWO_WAY_PLAYERS hitterPos), not "TWP"
+    // Should store "DH" primary and "DH,P" for posList (two-way player)
     expect(mockPrisma.player.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         mlbId: 660271,
         posPrimary: "DH",
-        posList: "DH",
+        posList: "DH,P",
       }),
     });
   });
@@ -207,11 +207,12 @@ describe("syncAllPlayers", () => {
 
     await syncAllPlayers(2026);
 
-    // Should update to "DH", not "TWP"
+    // Should update to "DH" primary and "DH,P" for posList (two-way player)
     expect(mockPrisma.player.update).toHaveBeenCalledWith({
       where: { id: 3 },
       data: expect.objectContaining({
         posPrimary: "DH",
+        posList: "DH,P",
       }),
     });
   });
@@ -323,6 +324,25 @@ describe("syncPositionEligibility", () => {
     expect(result.unchanged).toBe(1);
     expect(result.updated).toBe(0);
     expect(mockPrisma.player.update).not.toHaveBeenCalled();
+  });
+
+  it("adds P to posList for two-way players even without fielding data", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 3, mlbId: 660271, posPrimary: "DH", posList: "DH" },
+    ]);
+
+    // Ohtani as DH has no fielding stats (DHs don't field)
+    mockMlbGetJson.mockResolvedValue({ people: [{ id: 660271, stats: [] }] });
+
+    mockPrisma.player.update.mockResolvedValue({ id: 3 });
+
+    const result = await syncPositionEligibility(2026, 20);
+
+    expect(result.updated).toBe(1);
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 3 },
+      data: { posList: "DH,P" },
+    });
   });
 
   it("aggregates stats across teams for traded players", async () => {

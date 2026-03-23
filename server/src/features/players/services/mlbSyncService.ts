@@ -192,6 +192,10 @@ export async function syncAllPlayers(season: number): Promise<{
       const rawPos = entry.position.abbreviation || "UT";
       const posAbbr = resolvePosition(mlbId, rawPos);
 
+      // Two-way players get both hitter position + P in their posList
+      const twoWay = TWO_WAY_PLAYERS.get(mlbId);
+      const posList = twoWay ? `${posAbbr},P` : posAbbr;
+
       const existing = await prisma.player.findFirst({
         where: { mlbId },
       });
@@ -217,6 +221,7 @@ export async function syncAllPlayers(season: number): Promise<{
             name,
             mlbTeam: abbr,
             posPrimary: posAbbr,
+            posList,
           },
         });
         updated++;
@@ -227,7 +232,7 @@ export async function syncAllPlayers(season: number): Promise<{
             name,
             mlbTeam: abbr,
             posPrimary: posAbbr,
-            posList: posAbbr,
+            posList,
           },
         });
         created++;
@@ -375,7 +380,10 @@ export async function syncPositionEligibility(
   for (const player of players) {
     try {
       const fielding = fieldingByMlbId.get(player.mlbId!);
-      if (!fielding || fielding.size === 0) {
+      const isTwoWay = TWO_WAY_PLAYERS.has(player.mlbId!);
+
+      // Skip players with no fielding data (unless they're two-way players who need P added)
+      if ((!fielding || fielding.size === 0) && !isTwoWay) {
         unchanged++;
         continue;
       }
@@ -389,6 +397,11 @@ export async function syncPositionEligibility(
         if (games >= gpThreshold) {
           eligible.add(normalizePos(pos));
         }
+      }
+
+      // Two-way players always qualify for P (pitching stats aren't in fielding group)
+      if (TWO_WAY_PLAYERS.has(player.mlbId!)) {
+        eligible.add("P");
       }
 
       // Sort: primary first, then alphabetically
