@@ -12,6 +12,8 @@ interface MlbTeam {
   abbreviation: string;
   league?: { id: number; name: string };
   division?: { id: number; name: string };
+  parentOrgId?: number;
+  parentOrgName?: string;
 }
 
 interface MlbRosterPerson {
@@ -427,4 +429,119 @@ export async function syncPositionEligibility(
   );
 
   return { updated, unchanged, total: players.length, errors };
+}
+
+/**
+ * Fetch all Triple-A teams from MLB Stats API.
+ * Each AAA team has a parentOrgId linking it to its MLB parent.
+ */
+export async function fetchAAATeams(season: number): Promise<MlbTeam[]> {
+  const url = `${MLB_BASE}/teams?sportId=11&season=${season}`;
+  const data = await mlbGetJson(url);
+  return data.teams || [];
+}
+
+/**
+ * Sync AAA (Triple-A) rosters into the Player table.
+ * Creates new players for minor leaguers not already in the DB.
+ * Tags each player with their MLB parent org abbreviation.
+ *
+ * @param season - MLB season year
+ * @returns Summary of sync results
+ */
+export async function syncAAARosters(season: number): Promise<{
+  created: number;
+  updated: number;
+  skipped: number;
+  aaaTeams: number;
+}> {
+  // Step 1: Fetch all MLB teams to build ID → abbreviation map
+  const mlbTeams = await fetchAllTeams(season);
+  const mlbAbbrById = new Map<number, string>();
+  for (const t of mlbTeams) {
+    mlbAbbrById.set(t.id, t.abbreviation);
+  }
+
+  // Step 2: Fetch all AAA teams
+  const aaaTeams = await fetchAAATeams(season);
+  logger.info({ count: aaaTeams.length, season }, "Fetched AAA teams");
+
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const team of aaaTeams) {
+    // Map AAA team to MLB parent org abbreviation
+    const parentAbbr = team.parentOrgId
+      ? mlbAbbrById.get(team.parentOrgId) ?? "FA"
+      : "FA";
+
+    let roster: MlbRosterPerson[];
+    try {
+      const url = `${MLB_BASE}/teams/${team.id}/roster?rosterType=fullRoster&season=${season}`;
+      const data = await mlbGetJson(url);
+      roster = data.roster || [];
+    } catch (err) {
+      logger.error(
+        { teamId: team.id, team: team.name, error: String(err) },
+        "Failed to fetch AAA roster"
+      );
+      continue;
+    }
+
+    logger.info(
+      { team: team.name, parentOrg: parentAbbr, playerCount: roster.length },
+      "Processing AAA roster"
+    );
+
+    for (const entry of roster) {
+      const mlbId = entry.person.id;
+      const name = entry.person.fullName;
+      const rawPos = entry.position.abbreviation || "UT";
+      const posAbbr = resolvePosition(mlbId, rawPos);
+
+      const existing = await prisma.player.findFirst({
+        where: { mlbId },
+      });
+
+      if (existing) {
+        // Only update if the player doesn't already have an MLB team set
+        // (don't overwrite 40-man roster data with AAA data)
+        if (!existing.mlbTeam || existing.mlbTeam === "FA") {
+          await prisma.player.update({
+            where: { id: existing.id },
+            data: {
+              name,
+              mlbTeam: parentAbbr,
+              posPrimary: posAbbr,
+            },
+          });
+          updated++;
+        } else {
+          skipped++;
+        }
+      } else {
+        await prisma.player.create({
+          data: {
+            mlbId,
+            name,
+            mlbTeam: parentAbbr,
+            posPrimary: posAbbr,
+            posList: posAbbr,
+          },
+        });
+        created++;
+      }
+    }
+
+    // Rate limit: delay between teams
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  logger.info(
+    { created, updated, skipped, aaaTeams: aaaTeams.length, season },
+    "AAA roster sync complete"
+  );
+
+  return { created, updated, skipped, aaaTeams: aaaTeams.length };
 }

@@ -10,7 +10,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
-import { syncNLPlayers, syncAllPlayers, syncPositionEligibility } from "../players/services/mlbSyncService.js";
+import { syncNLPlayers, syncAllPlayers, syncPositionEligibility, syncAAARosters } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
 
 const createLeagueSchema = z.object({
@@ -335,6 +335,31 @@ router.post("/admin/sync-position-eligibility", requireAuth, requireAdmin, valid
   });
 
   return res.json({ success: true, season, gpThreshold, ...result });
+}));
+
+/**
+ * POST /api/admin/sync-prospects
+ * Fetches AAA (Triple-A) rosters from MLB API and upserts new players.
+ * Creates players not already in DB; skips those already on MLB 40-man rosters.
+ * Body (optional): { season?: number }
+ */
+const syncProspectsSchema = z.object({
+  season: z.number().int().min(1900).max(2100).optional(),
+});
+
+router.post("/admin/sync-prospects", requireAuth, requireAdmin, validateBody(syncProspectsSchema), asyncHandler(async (req, res) => {
+  const season = Number(req.body?.season) || new Date().getFullYear();
+
+  const result = await syncAAARosters(season);
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "AAA_PROSPECT_SYNC",
+    resourceType: "Player",
+    metadata: { season, ...result },
+  });
+
+  return res.json({ success: true, season, ...result });
 }));
 
 /**

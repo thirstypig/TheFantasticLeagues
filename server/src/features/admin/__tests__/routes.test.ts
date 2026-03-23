@@ -56,6 +56,7 @@ vi.mock("../../players/services/mlbSyncService.js", () => ({
   syncNLPlayers: vi.fn().mockResolvedValue({ created: 10, updated: 5, total: 15 }),
   syncAllPlayers: vi.fn().mockResolvedValue({ created: 10, updated: 5, teams: 30, teamChanges: [] }),
   syncPositionEligibility: vi.fn().mockResolvedValue({ updated: 15, unchanged: 85, total: 100, errors: 0 }),
+  syncAAARosters: vi.fn().mockResolvedValue({ created: 50, updated: 10, skipped: 200, aaaTeams: 30 }),
 }));
 vi.mock("../../players/services/mlbStatsSyncService.js", () => ({
   syncPeriodStats: vi.fn().mockResolvedValue({ synced: 20, skipped: 2, errors: 0 }),
@@ -66,7 +67,7 @@ vi.mock("../../../lib/schemas.js", () => ({
 }));
 
 import { prisma } from "../../../db/prisma.js";
-import { syncAllPlayers, syncPositionEligibility } from "../../players/services/mlbSyncService.js";
+import { syncAllPlayers, syncPositionEligibility, syncAAARosters } from "../../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../../players/services/mlbStatsSyncService.js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- vi.mock injects __mockFns at runtime
 const { __mockFns } = await import("../../commissioner/services/CommissionerService.js") as any;
@@ -399,5 +400,30 @@ describe("POST /admin/sync-position-eligibility", () => {
     expect(res.status).toBe(200);
     expect(res.body.gpThreshold).toBe(20);
     expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 20);
+  });
+});
+
+// ── POST /admin/sync-prospects ─────────────────────────────────
+
+describe("POST /admin/sync-prospects", () => {
+  it("syncs AAA rosters for current year", async () => {
+    const res = await supertest(app)
+      .post("/admin/sync-prospects")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.created).toBe(50);
+    expect(res.body.aaaTeams).toBe(30);
+    expect(syncAAARosters).toHaveBeenCalledOnce();
+  });
+
+  it("accepts custom season", async () => {
+    const res = await supertest(app)
+      .post("/admin/sync-prospects")
+      .send({ season: 2025 });
+
+    expect(res.status).toBe(200);
+    expect(syncAAARosters).toHaveBeenCalledWith(2025);
   });
 });

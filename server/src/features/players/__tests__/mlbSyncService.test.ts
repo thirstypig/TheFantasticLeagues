@@ -21,7 +21,7 @@ vi.mock("../../../lib/mlbApi.js", () => ({
 
 import { prisma } from "../../../db/prisma.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
-import { syncAllPlayers, fetchAllTeams, syncNLPlayers, fetchNLTeams, syncPositionEligibility } from "../services/mlbSyncService.js";
+import { syncAllPlayers, fetchAllTeams, syncNLPlayers, fetchNLTeams, syncPositionEligibility, syncAAARosters, fetchAAATeams } from "../services/mlbSyncService.js";
 
 const mockPrisma = prisma as any;
 const mockMlbGetJson = mlbGetJson as any;
@@ -400,5 +400,158 @@ describe("syncPositionEligibility", () => {
     expect(result.updated).toBe(2);   // players 1 and 3
     expect(result.unchanged).toBe(1); // player 2
     expect(result.total).toBe(3);
+  });
+});
+
+// ── fetchAAATeams ───────────────────────────────────────────────
+
+describe("fetchAAATeams", () => {
+  it("returns AAA teams with sportId=11", async () => {
+    mockMlbGetJson.mockResolvedValue({
+      teams: [
+        { id: 238, name: "Oklahoma City Baseball Club", abbreviation: "OKC", parentOrgId: 119 },
+        { id: 233, name: "Indianapolis Indians", abbreviation: "IND", parentOrgId: 134 },
+      ],
+    });
+
+    const teams = await fetchAAATeams(2026);
+    expect(teams).toHaveLength(2);
+    expect(mockMlbGetJson).toHaveBeenCalledWith(expect.stringContaining("sportId=11"));
+  });
+});
+
+// ── syncAAARosters ──────────────────────────────────────────────
+
+describe("syncAAARosters", () => {
+  const mockMlbTeams = {
+    teams: [
+      { id: 119, name: "Los Angeles Dodgers", abbreviation: "LAD", league: { id: 104 } },
+      { id: 134, name: "Pittsburgh Pirates", abbreviation: "PIT", league: { id: 104 } },
+    ],
+  };
+
+  const mockAAATeams = {
+    teams: [
+      { id: 238, name: "Oklahoma City Baseball Club", abbreviation: "OKC", parentOrgId: 119 },
+      { id: 233, name: "Indianapolis Indians", abbreviation: "IND", parentOrgId: 134 },
+    ],
+  };
+
+  const mockOkcRoster = {
+    roster: [
+      { person: { id: 700001, fullName: "Prospect A" }, position: { abbreviation: "SS", type: "Hitter" } },
+    ],
+  };
+
+  const mockIndRoster = {
+    roster: [
+      { person: { id: 804606, fullName: "Konnor Griffin" }, position: { abbreviation: "SS", type: "Hitter" } },
+    ],
+  };
+
+  it("creates new players from AAA rosters", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockMlbTeams)    // fetchAllTeams
+      .mockResolvedValueOnce(mockAAATeams)     // fetchAAATeams
+      .mockResolvedValueOnce(mockOkcRoster)    // OKC roster
+      .mockResolvedValueOnce(mockIndRoster);   // IND roster
+
+    mockPrisma.player.findFirst.mockResolvedValue(null); // no existing players
+    mockPrisma.player.create.mockResolvedValue({ id: 1 });
+
+    const result = await syncAAARosters(2026);
+
+    expect(result.created).toBe(2);
+    expect(result.updated).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.aaaTeams).toBe(2);
+
+    // Verify parent org mapping: OKC → LAD, IND → PIT
+    expect(mockPrisma.player.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ mlbTeam: "LAD", name: "Prospect A" }),
+    });
+    expect(mockPrisma.player.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ mlbTeam: "PIT", name: "Konnor Griffin" }),
+    });
+  });
+
+  it("skips players already on MLB 40-man rosters", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockMlbTeams)
+      .mockResolvedValueOnce({
+        teams: [{ id: 238, name: "OKC", abbreviation: "OKC", parentOrgId: 119 }],
+      })
+      .mockResolvedValueOnce(mockOkcRoster);
+
+    // Player already exists with an MLB team
+    mockPrisma.player.findFirst.mockResolvedValue({
+      id: 5, mlbId: 700001, mlbTeam: "LAD", posPrimary: "SS",
+    });
+
+    const result = await syncAAARosters(2026);
+
+    expect(result.created).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(mockPrisma.player.update).not.toHaveBeenCalled();
+  });
+
+  it("updates players with no MLB team (free agents)", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockMlbTeams)
+      .mockResolvedValueOnce({
+        teams: [{ id: 233, name: "IND", abbreviation: "IND", parentOrgId: 134 }],
+      })
+      .mockResolvedValueOnce(mockIndRoster);
+
+    // Player exists but has no team (FA)
+    mockPrisma.player.findFirst.mockResolvedValue({
+      id: 10, mlbId: 804606, mlbTeam: "FA", posPrimary: "SS",
+    });
+    mockPrisma.player.update.mockResolvedValue({ id: 10 });
+
+    const result = await syncAAARosters(2026);
+
+    expect(result.updated).toBe(1);
+    expect(result.created).toBe(0);
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: { name: "Konnor Griffin", mlbTeam: "PIT", posPrimary: "SS" },
+    });
+  });
+
+  it("continues on roster fetch failure", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockMlbTeams)
+      .mockResolvedValueOnce(mockAAATeams)
+      .mockRejectedValueOnce(new Error("API error")) // OKC fails
+      .mockResolvedValueOnce(mockIndRoster);          // IND succeeds
+
+    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.create.mockResolvedValue({ id: 1 });
+
+    const result = await syncAAARosters(2026);
+
+    expect(result.aaaTeams).toBe(2);
+    expect(result.created).toBe(1); // only IND roster processed
+  });
+
+  it("uses FA when parentOrgId is missing", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockMlbTeams)
+      .mockResolvedValueOnce({
+        teams: [{ id: 999, name: "Unknown AAA", abbreviation: "UNK" }], // no parentOrgId
+      })
+      .mockResolvedValueOnce({
+        roster: [{ person: { id: 700099, fullName: "Mystery Player" }, position: { abbreviation: "CF", type: "Hitter" } }],
+      });
+
+    mockPrisma.player.findFirst.mockResolvedValue(null);
+    mockPrisma.player.create.mockResolvedValue({ id: 1 });
+
+    const result = await syncAAARosters(2026);
+
+    expect(mockPrisma.player.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ mlbTeam: "FA" }),
+    });
   });
 });
