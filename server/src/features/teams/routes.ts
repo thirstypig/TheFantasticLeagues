@@ -83,26 +83,94 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
 
   const roster = await prisma.roster.findMany({
     where: { teamId, releasedAt: null },
-    include: { player: { select: { name: true, posPrimary: true } } },
+    include: { player: { select: { name: true, posPrimary: true, mlbTeam: true } } },
   });
 
-  const allTeams = await prisma.team.findMany({
-    where: { leagueId },
-    include: { season: true },
-    orderBy: { name: "asc" },
-  });
+  // Load projected auction values from CSV
+  const fs = await import("fs");
+  const path = await import("path");
+  const valMap = new Map<string, { value: number; stats: string }>();
+  const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
+  try {
+    const csvText = fs.readFileSync(csvPath, "utf-8");
+    const lines = csvText.trim().split("\n");
+    const headers = lines[0].split(",").map(h => h.trim());
+    const nameIdx = headers.indexOf("player_name");
+    const valIdx = headers.indexOf("dollar_value");
+    const statKeys = ["R", "HR", "RBI", "SB", "AVG", "W", "SV", "ERA", "WHIP", "K"];
+    const statIdxs = statKeys.map(k => headers.indexOf(k));
+    if (nameIdx >= 0 && valIdx >= 0) {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        const name = cols[nameIdx]?.trim();
+        const val = parseFloat(cols[valIdx]?.trim());
+        if (!name || isNaN(val)) continue;
+        const statParts = statKeys.map((k, si) => {
+          const v = cols[statIdxs[si]]?.trim();
+          return v && v !== "" ? `${k}:${v}` : null;
+        }).filter(Boolean);
+        valMap.set(name, { value: val, stats: statParts.join(", ") });
+      }
+    }
+  } catch { /* proceed without */ }
 
-  const standings = allTeams
-    .map((t) => ({
-      teamName: t.name,
-      totalScore: t.season
-        ? (t.season.R + t.season.HR + t.season.RBI + t.season.SB + t.season.W + t.season.S + t.season.K)
-        : 0,
-      rank: 0,
-    }))
-    .sort((a, b) => b.totalScore - a.totalScore)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
+  // Check for actual season stats (TeamStatsSeason)
+  const teamSeasonStats = await prisma.teamStatsSeason.findFirst({ where: { teamId } });
+  const hasActualStats = !!teamSeasonStats;
 
+  // Build category rankings if we have actual stats
+  let categoryRankings: { category: string; rank: number; value: number }[] | null = null;
+  if (hasActualStats) {
+    const allTeamStats = await prisma.teamStatsSeason.findMany({
+      where: { team: { leagueId } },
+      include: { team: { select: { id: true, name: true } } },
+    });
+    if (allTeamStats.length > 0) {
+      const cats = [
+        { key: "R", field: "R", asc: false },
+        { key: "HR", field: "HR", asc: false },
+        { key: "RBI", field: "RBI", asc: false },
+        { key: "SB", field: "SB", asc: false },
+        { key: "AVG", field: "AVG", asc: false },
+        { key: "W", field: "W", asc: false },
+        { key: "SV", field: "SV", asc: false },
+        { key: "K", field: "K", asc: false },
+        { key: "ERA", field: "ERA", asc: true },
+        { key: "WHIP", field: "WHIP", asc: true },
+      ];
+      categoryRankings = cats.map(cat => {
+        const sorted = [...allTeamStats].sort((a, b) => {
+          const aVal = (a as any)[cat.field] ?? 0;
+          const bVal = (b as any)[cat.field] ?? 0;
+          return cat.asc ? aVal - bVal : bVal - aVal;
+        });
+        const rank = sorted.findIndex(s => s.teamId === teamId) + 1;
+        const value = (teamSeasonStats as any)[cat.field] ?? 0;
+        return { category: cat.key, rank, value: Math.round(value * 1000) / 1000 };
+      });
+    }
+  }
+
+  // Build standings from TeamStatsSeason or fallback to empty
+  let standings: { teamName: string; rank: number; totalScore: number }[];
+  if (hasActualStats) {
+    const allTeamStats = await prisma.teamStatsSeason.findMany({
+      where: { team: { leagueId } },
+      include: { team: { select: { name: true } } },
+    });
+    // Compute roto points: rank each team in each category, sum ranks
+    // Simplified: just use total of counting stats for now
+    standings = allTeamStats
+      .map(ts => ({ teamName: ts.team.name, totalScore: 0, rank: 0 }))
+      .sort((a, b) => b.totalScore - a.totalScore)
+      .map((s, i) => ({ ...s, rank: i + 1 }));
+  } else {
+    // No stats — provide empty standings
+    const allTeams = await prisma.team.findMany({ where: { leagueId }, select: { name: true } });
+    standings = allTeams.map((t, i) => ({ teamName: t.name, rank: i + 1, totalScore: 0 }));
+  }
+
+  // Recent transactions
   const recentTx = await prisma.roster.findMany({
     where: {
       teamId,
@@ -112,24 +180,33 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     orderBy: { acquiredAt: "desc" },
     take: 10,
   });
-
   const transactions = recentTx.map(tx => ({
     type: tx.source,
     playerName: tx.player.name,
     date: tx.acquiredAt.toISOString().split('T')[0],
   }));
 
+  // League type
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { rules: true } });
+  const leagueType = (league?.rules as any)?.leagueType ?? "NL";
+
   const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
-  const result = await aiAnalysisService.generateWeeklyInsights(
-    { id: team.id, name: team.name, budget: team.budget },
-    roster.map(r => ({
+  const result = await aiAnalysisService.generateWeeklyInsights({
+    team: { id: team.id, name: team.name, budget: team.budget },
+    roster: roster.map(r => ({
       playerName: r.player.name,
       position: r.player.posPrimary,
+      mlbTeam: r.player.mlbTeam || "",
       price: r.price,
+      projectedValue: valMap.get(r.player.name)?.value ?? null,
+      projectedStats: valMap.get(r.player.name)?.stats ?? null,
     })),
     standings,
-    transactions,
-  );
+    categoryRankings,
+    recentTransactions: transactions,
+    leagueType,
+    hasActualStats,
+  });
 
   if (!result.success) {
     logger.warn({ error: result.error, leagueId, teamId }, "Weekly insights failed");

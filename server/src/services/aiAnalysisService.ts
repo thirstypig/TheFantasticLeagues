@@ -877,16 +877,25 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with:
     }
   }
 
-  // ─── Feature 4: Weekly AI Insights ──────────────────────────────────────────
+  // ─── Feature 4: Weekly AI Insights (Stats-Aware) ───────────────────────────
 
-  async generateWeeklyInsights(
-    team: { id: number; name: string; budget: number },
-    roster: { playerName: string; position: string; price: number }[],
-    standings: { teamName: string; rank: number; totalScore: number }[],
-    recentTransactions: { type: string; playerName: string; date: string }[],
-  ): Promise<{
+  async generateWeeklyInsights(input: {
+    team: { id: number; name: string; budget: number };
+    roster: { playerName: string; position: string; mlbTeam?: string; price: number; projectedValue: number | null; projectedStats: string | null }[];
+    standings: { teamName: string; rank: number; totalScore: number }[];
+    /** Category standings: where this team ranks in each of 10 roto categories (null if no stats yet) */
+    categoryRankings: { category: string; rank: number; value: number }[] | null;
+    recentTransactions: { type: string; playerName: string; date: string }[];
+    leagueType: string;
+    /** Whether actual stats are available or we're in pre-season projection mode */
+    hasActualStats: boolean;
+  }): Promise<{
     success: boolean;
-    result?: { insights: { category: string; title: string; detail: string }[]; overallGrade: string };
+    result?: {
+      insights: { category: string; title: string; detail: string; priority: string }[];
+      overallGrade: string;
+      mode: string;
+    };
     error?: string;
   }> {
     const model = await this.getModel();
@@ -895,27 +904,55 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with:
     }
 
     try {
+      const { team, roster, standings, categoryRankings, recentTransactions, leagueType, hasActualStats } = input;
       const teamStanding = standings.find(s => s.teamName === team.name);
+      const leagueTypeLabel = leagueType === "NL" ? "NL-ONLY" : leagueType === "AL" ? "AL-ONLY" : "Mixed";
+      const mode = hasActualStats ? "in-season" : "pre-season";
 
-      const prompt = `You are a fantasy baseball team analyst providing weekly insights.
+      const isPP = AIAnalysisService.isPitcherPos;
+      const hitters = roster.filter(r => !isPP(r.position));
+      const pitchers = roster.filter(r => isPP(r.position));
 
-Team: ${team.name}
-Current Rank: ${teamStanding?.rank ?? 'N/A'} / ${standings.length} teams
-Total Score: ${teamStanding?.totalScore ?? 'N/A'}
-Remaining Budget: $${team.budget}
+      const prompt = `You are a fantasy baseball team analyst providing ${mode === "pre-season" ? "pre-season outlook and" : ""} weekly insights for an ${leagueTypeLabel} 10-category roto league (R, HR, RBI, SB, AVG | W, SV, K, ERA, WHIP).
 
-Roster (${roster.length} players):
-${roster.map(r => `- ${r.playerName} (${r.position}, $${r.price})`).join('\n')}
+MODE: ${mode === "pre-season" ? "PRE-SEASON — no actual stats yet, use projected values and your knowledge of these players to provide a team outlook with actionable recommendations." : "IN-SEASON — actual stats are available, compare performance to projections and identify trends."}
 
-League Standings:
+TEAM: ${team.name}
+${teamStanding ? `Current Rank: ${teamStanding.rank} / ${standings.length} teams (${teamStanding.totalScore} roto pts)` : 'Standings not yet available'}
+Remaining FAAB Budget: $${team.budget}
+
+ROSTER (${roster.length} players):
+Hitters (${hitters.length}):
+${hitters.map(r => `  ${r.playerName} (${r.position}, ${r.mlbTeam || '?'}, $${r.price}${r.projectedValue !== null ? `, val $${r.projectedValue}` : ''})`).join('\n')}
+Pitchers (${pitchers.length}):
+${pitchers.map(r => `  ${r.playerName} (${r.position}, ${r.mlbTeam || '?'}, $${r.price}${r.projectedValue !== null ? `, val $${r.projectedValue}` : ''})`).join('\n')}
+
+NOTE: All players listed above are confirmed NL-only eligible based on their current MLB team assignments in our database. Do NOT flag any of these players as ineligible.
+
+${categoryRankings ? `CATEGORY STANDINGS (your rank out of ${standings.length} teams):
+${categoryRankings.map(c => `  ${c.category}: ${c.rank}${c.rank <= 2 ? ' ★' : c.rank >= standings.length - 1 ? ' ⚠' : ''} (${c.value})`).join('\n')}` : 'No category standings available yet.'}
+
+LEAGUE STANDINGS:
 ${standings.map(s => `${s.rank}. ${s.teamName}: ${s.totalScore} pts`).join('\n')}
 
-Recent Transactions:
-${recentTransactions.length > 0 ? recentTransactions.map(t => `- ${t.type}: ${t.playerName} (${t.date})`).join('\n') : 'None'}
+RECENT TRANSACTIONS (last 14 days):
+${recentTransactions.length > 0 ? recentTransactions.map(t => `  ${t.type}: ${t.playerName} (${t.date})`).join('\n') : 'None'}
 
-Provide 3-5 actionable insights. Return ONLY a valid JSON object (no markdown, no code blocks) with:
-- "insights": array of objects with { "category": string (e.g. "Roster", "Standings", "Budget", "Pitching", "Hitting"), "title": string (short headline), "detail": string (2-3 sentences) }
-- "overallGrade": letter grade A+ through F for team's current position and trajectory`;
+Provide 4-6 actionable insights. Each insight should be specific and reference actual players on the roster. Prioritize:
+1. ${mode === "pre-season" ? "Category projections — where will this team be strong/weak?" : "Category standings — where is the team gaining/losing ground?"}
+2. Roster risks — injury-prone players, unproven prospects, position depth issues
+3. Trade/waiver recommendations — specific category gaps to address and what type of player to target
+4. ${mode === "pre-season" ? "Sleeper picks — which roster players could outperform projections?" : "Over/underperformers — who is exceeding or falling short of expectations?"}
+5. Budget strategy — how to deploy remaining FAAB budget effectively
+6. Competitive positioning — realistic path to winning categories or improving rank
+
+Return ONLY a valid JSON object (no markdown, no code blocks):
+{
+  "insights": [{ "category": string, "title": string (short headline), "detail": string (2-3 specific sentences), "priority": "high" | "medium" | "low" }],
+  "overallGrade": "A+ through F grade for the team's outlook/trajectory"
+}
+
+For category, use one of: "Hitting", "Pitching", "Roster", "Standings", "Budget", "Trade Target", "Waiver Wire", "Sleeper", "Risk"`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
@@ -927,6 +964,7 @@ Provide 3-5 actionable insights. Return ONLY a valid JSON object (no markdown, n
           category: z.string().max(50),
           title: z.string().max(200),
           detail: z.string().max(1000),
+          priority: z.enum(["high", "medium", "low"]).default("medium"),
         })),
         overallGrade: z.string().max(5),
       });
@@ -937,7 +975,7 @@ Provide 3-5 actionable insights. Return ONLY a valid JSON object (no markdown, n
         return { success: false, error: 'Weekly insights returned invalid data' };
       }
 
-      return { success: true, result: parsed.data };
+      return { success: true, result: { ...parsed.data, mode } };
     } catch (err) {
       logger.error({ error: String(err) }, "AI weekly insights failed");
       return { success: false, error: 'Weekly insights failed' };

@@ -307,10 +307,33 @@ export default function AIHub() {
                     {/* Results: Weekly Insights */}
                     {feature.id === "weekly-insights" && hasResult && !isLoading && isExpanded && (
                       <div className="mt-4 border-t border-[var(--lg-border-faint)] pt-4 space-y-2">
-                        {(results["weekly-insights"]?.result?.insights || []).slice(0, 3).map((insight: any, i: number) => (
-                          <div key={i} className="text-xs">
-                            <span className="font-bold text-[var(--lg-text-primary)]">{insight.title}</span>
-                            <span className="text-[var(--lg-text-muted)] ml-1">{insight.detail}</span>
+                        {/* Mode indicator */}
+                        {results["weekly-insights"]?.mode && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              results["weekly-insights"].mode === "in-season"
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                            }`}>
+                              {results["weekly-insights"].mode}
+                            </span>
+                            <span className="text-[10px] text-[var(--lg-text-muted)]">
+                              Grade: <span className="font-bold text-[var(--lg-text-primary)]">{results["weekly-insights"].overallGrade}</span>
+                            </span>
+                          </div>
+                        )}
+                        {(results["weekly-insights"]?.insights || []).map((insight: any, i: number) => (
+                          <div key={i} className="text-xs flex gap-2">
+                            {insight.priority && (
+                              <span className={`flex-shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full ${
+                                insight.priority === "high" ? "bg-red-400" :
+                                insight.priority === "medium" ? "bg-amber-400" : "bg-[var(--lg-text-muted)]"
+                              }`} />
+                            )}
+                            <div>
+                              <span className="font-bold text-[var(--lg-text-primary)]">{insight.title}</span>
+                              <span className="text-[var(--lg-text-muted)] ml-1">{insight.detail}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
