@@ -60,17 +60,9 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
 
 const insightsCache = new Map<string, { data: any; expiresAt: number }>();
 const INSIGHTS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const INSIGHTS_CACHE_MAX = 100;
 const insightsInFlight = new Map<string, Promise<any>>(); // dedup concurrent requests
-
-/** Get ISO week key like "2026-W13" for dedup */
-function getWeekKey(date: Date = new Date()): string {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-  const week1 = new Date(d.getFullYear(), 0, 4);
-  const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
-  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-}
+import { getWeekKey } from "../../lib/utils.js";
 
 // GET /api/teams/ai-insights?leagueId=X&teamId=Y
 router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
@@ -115,45 +107,26 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     include: { player: { select: { name: true, posPrimary: true, mlbTeam: true } } },
   });
 
-  // Load projected auction values from CSV
-  const fs = await import("fs");
-  const path = await import("path");
-  const valMap = new Map<string, { value: number; stats: string }>();
-  const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
-  try {
-    const csvText = fs.readFileSync(csvPath, "utf-8");
-    const lines = csvText.trim().split("\n");
-    const headers = lines[0].split(",").map(h => h.trim());
-    const nameIdx = headers.indexOf("player_name");
-    const valIdx = headers.indexOf("dollar_value");
-    const statKeys = ["R", "HR", "RBI", "SB", "AVG", "W", "SV", "ERA", "WHIP", "K"];
-    const statIdxs = statKeys.map(k => headers.indexOf(k));
-    if (nameIdx >= 0 && valIdx >= 0) {
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",");
-        const name = cols[nameIdx]?.trim();
-        const val = parseFloat(cols[valIdx]?.trim());
-        if (!name || isNaN(val)) continue;
-        const statParts = statKeys.map((k, si) => {
-          const v = cols[statIdxs[si]]?.trim();
-          return v && v !== "" ? `${k}:${v}` : null;
-        }).filter(Boolean);
-        valMap.set(name, { value: val, stats: statParts.join(", ") });
-      }
-    }
-  } catch { /* proceed without */ }
+  // Load projected auction values (cached singleton)
+  const { getAuctionValueMap } = await import("../../lib/auctionValues.js");
+  const valMap = getAuctionValueMap();
 
   // Check for actual season stats (TeamStatsSeason)
   const teamSeasonStats = await prisma.teamStatsSeason.findFirst({ where: { teamId } });
   const hasActualStats = !!teamSeasonStats;
 
   // Build category rankings if we have actual stats
+  // Query team stats once and reuse for both category rankings and standings
   let categoryRankings: { category: string; rank: number; value: number }[] | null = null;
+  let standings: { teamName: string; rank: number; totalScore: number }[];
+
   if (hasActualStats) {
     const allTeamStats = await prisma.teamStatsSeason.findMany({
       where: { team: { leagueId } },
       include: { team: { select: { id: true, name: true } } },
     });
+
+    // Category rankings
     if (allTeamStats.length > 0) {
       const cats = [
         { key: "R", field: "R", asc: false },
@@ -178,23 +151,13 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
         return { category: cat.key, rank, value: Math.round(value * 1000) / 1000 };
       });
     }
-  }
 
-  // Build standings from TeamStatsSeason or fallback to empty
-  let standings: { teamName: string; rank: number; totalScore: number }[];
-  if (hasActualStats) {
-    const allTeamStats = await prisma.teamStatsSeason.findMany({
-      where: { team: { leagueId } },
-      include: { team: { select: { name: true } } },
-    });
-    // Compute roto points: rank each team in each category, sum ranks
-    // Simplified: just use total of counting stats for now
+    // Standings (reuse same query)
     standings = allTeamStats
       .map(ts => ({ teamName: ts.team.name, totalScore: 0, rank: 0 }))
       .sort((a, b) => b.totalScore - a.totalScore)
       .map((s, i) => ({ ...s, rank: i + 1 }));
   } else {
-    // No stats — provide empty standings
     const allTeams = await prisma.team.findMany({ where: { leagueId }, select: { name: true } });
     standings = allTeams.map((t, i) => ({ teamName: t.name, rank: i + 1, totalScore: 0 }));
   }
@@ -259,6 +222,15 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     });
 
     const enriched = { ...result.result, generatedAt: new Date().toISOString(), weekKey };
+    // Evict expired + enforce max size
+    if (insightsCache.size >= INSIGHTS_CACHE_MAX) {
+      const now = Date.now();
+      for (const [k, v] of insightsCache) { if (v.expiresAt < now) insightsCache.delete(k); }
+      if (insightsCache.size >= INSIGHTS_CACHE_MAX) {
+        const firstKey = insightsCache.keys().next().value;
+        if (firstKey !== undefined) insightsCache.delete(firstKey);
+      }
+    }
     insightsCache.set(cacheKey, { data: enriched, expiresAt: Date.now() + INSIGHTS_CACHE_TTL });
     res.json(enriched);
   } finally {

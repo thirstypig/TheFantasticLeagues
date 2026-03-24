@@ -13,7 +13,7 @@ import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 
 /**
  * Auto-generate AI analysis after a waiver claim is processed.
- * Persists the analysis on the WaiverClaim record.
+ * Persists the analysis on the WaiverClaim record via proper AIAnalysisService method.
  */
 async function generateWaiverAnalysis(claimId: number, leagueId: number): Promise<void> {
   const claim = await prisma.waiverClaim.findUnique({
@@ -21,83 +21,45 @@ async function generateWaiverAnalysis(claimId: number, leagueId: number): Promis
     include: {
       player: { select: { name: true, posPrimary: true, mlbTeam: true } },
       dropPlayer: { select: { name: true, posPrimary: true } },
-      team: {
-        select: { id: true, name: true, budget: true },
-      },
+      team: { select: { id: true, name: true, budget: true } },
     },
   });
   if (!claim || claim.status !== "SUCCESS") return;
 
-  // Get team roster for context
   const roster = await prisma.roster.findMany({
     where: { teamId: claim.teamId, releasedAt: null },
     include: { player: { select: { name: true, posPrimary: true } } },
   });
 
-  // Load projected value
-  const fs = await import("fs");
-  const path = await import("path");
-  let projectedValue: number | null = null;
-  try {
-    const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
-    const csvText = fs.readFileSync(csvPath, "utf-8");
-    const lines = csvText.trim().split("\n");
-    const headers = lines[0].split(",").map(h => h.trim());
-    const nameIdx = headers.indexOf("player_name");
-    const valIdx = headers.indexOf("dollar_value");
-    if (nameIdx >= 0 && valIdx >= 0) {
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",");
-        if (cols[nameIdx]?.trim() === claim.player.name) {
-          projectedValue = parseFloat(cols[valIdx]?.trim());
-          break;
-        }
-      }
-    }
-  } catch { /* proceed without */ }
+  // Load projected value from auction values
+  const { getAuctionValueMap } = await import("../../lib/auctionValues.js");
+  const valMap = getAuctionValueMap();
+  const projectedValue = valMap.get(claim.player.name)?.value ?? null;
 
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { rules: true } });
   const leagueType = (league?.rules as any)?.leagueType ?? "NL";
 
-  const prompt = `You are a fantasy baseball analyst. Evaluate this completed FAAB waiver claim.
+  const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+  const result = await aiAnalysisService.analyzeWaiverClaim({
+    teamName: claim.team.name,
+    teamBudgetAfter: claim.team.budget,
+    playerName: claim.player.name,
+    playerPosition: claim.player.posPrimary,
+    playerMlbTeam: claim.player.mlbTeam || "",
+    bidAmount: claim.bidAmount,
+    dropPlayerName: claim.dropPlayer?.name ?? null,
+    dropPlayerPosition: claim.dropPlayer?.posPrimary ?? null,
+    projectedValue,
+    rosterSample: roster.slice(0, 15).map(r => `  ${r.player.name} (${r.player.posPrimary})`),
+    leagueType,
+  });
 
-League: ${leagueType === "NL" ? "NL-ONLY" : leagueType === "AL" ? "AL-ONLY" : "Mixed"}, 10-cat roto
-
-CLAIM:
-- Team: ${claim.team.name} (budget after: $${claim.team.budget})
-- Added: ${claim.player.name} (${claim.player.posPrimary}, ${claim.player.mlbTeam}) for $${claim.bidAmount} FAAB
-${claim.dropPlayer ? `- Dropped: ${claim.dropPlayer.name} (${claim.dropPlayer.posPrimary})` : '- No player dropped'}
-${projectedValue !== null ? `- Player projected value: $${projectedValue}` : ''}
-
-TEAM ROSTER (${roster.length} players after claim):
-${roster.slice(0, 15).map(r => `  ${r.player.name} (${r.player.posPrimary})`).join('\n')}
-
-Provide a brief assessment. Return ONLY a valid JSON object:
-{
-  "assessment": "2-3 sentences: was the FAAB bid appropriate? What does this add to the team? Was the drop (if any) justified?",
-  "bidGrade": "A+ through F grade for the bid amount relative to player value",
-  "categoryImpact": "Which roto categories this helps (e.g., 'Adds SV and K depth')"
-}`;
-
-  try {
-    const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
-    const model = await (aiAnalysisService as any).getModel();
-    if (!model) return;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-    const parsed = JSON.parse(jsonStr);
-
-    if (parsed.assessment) {
-      await prisma.waiverClaim.update({
-        where: { id: claimId },
-        data: { aiAnalysis: parsed as any },
-      });
-      logger.info({ claimId }, "Post-waiver AI analysis persisted");
-    }
-  } catch (err) {
-    logger.warn({ error: String(err), claimId }, "Waiver AI analysis generation failed");
+  if (result.success && result.result) {
+    await prisma.waiverClaim.update({
+      where: { id: claimId },
+      data: { aiAnalysis: result.result as any },
+    });
+    logger.info({ claimId }, "Post-waiver AI analysis persisted");
   }
 }
 

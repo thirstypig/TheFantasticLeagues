@@ -1555,29 +1555,11 @@ router.get("/draft-report", requireAuth, requireLeagueMember("leagueId"), asyncH
     return res.status(400).json({ error: "No roster data available to generate draft report" });
   }
 
-  // Load projected auction values from CSV for surplus calculations
-  const fs = await import("fs");
-  const path = await import("path");
+  // Load projected auction values (cached singleton)
+  const { getAuctionValueMap } = await import("../../lib/auctionValues.js");
+  const auctionValMap = getAuctionValueMap();
   const valMap = new Map<string, number>();
-  const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
-  try {
-    const csvText = fs.readFileSync(csvPath, "utf-8");
-    const lines = csvText.trim().split("\n");
-    const headers = lines[0].split(",").map(h => h.trim());
-    const nameIdx = headers.indexOf("player_name");
-    const valIdx = headers.indexOf("dollar_value");
-    if (nameIdx >= 0 && valIdx >= 0) {
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",");
-        const name = cols[nameIdx]?.trim();
-        const val = parseFloat(cols[valIdx]?.trim());
-        if (name && !isNaN(val)) valMap.set(name, val);
-      }
-    }
-    logger.info({ count: valMap.size }, "Loaded auction values for draft report");
-  } catch {
-    logger.warn({}, "Could not load auction values CSV — surplus will not be calculated");
-  }
+  for (const [name, entry] of auctionValMap) valMap.set(name, entry.value);
 
   // Get league config from auction state or defaults
   const state = session?.state as AuctionState | null;
@@ -1734,6 +1716,7 @@ router.get("/draft-grades", requireAuth, requireLeagueMember("leagueId"), asyncH
 
 // Cache: keyed by leagueId:teamId:playerId:currentBid
 const bidAdviceCache = new Map<string, { shouldBid: boolean; maxRecommendedBid: number; reasoning: string; confidence: string; categoryImpact: string }>();
+const BID_ADVICE_CACHE_MAX = 200;
 
 // GET /api/auction/ai-advice?leagueId=X&teamId=Y&playerId=Z&currentBid=N
 router.get("/ai-advice", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
@@ -1775,40 +1758,9 @@ router.get("/ai-advice", requireAuth, requireLeagueMember("leagueId"), asyncHand
     }
   }
 
-  // Load auction values CSV for projected value + alternatives
-  const fs = await import("fs");
-  const path = await import("path");
-  const valMap = new Map<string, { value: number; stats: string }>();
-  const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
-  try {
-    const csvText = fs.readFileSync(csvPath, "utf-8");
-    const lines = csvText.trim().split("\n");
-    const headers = lines[0].split(",").map(h => h.trim());
-    const nameIdx = headers.indexOf("player_name");
-    const valIdx = headers.indexOf("dollar_value");
-    const posIdx = headers.indexOf("positions");
-    const isPIdx = headers.indexOf("is_pitcher");
-    // Build stat summary indices
-    const statKeys = ["R", "HR", "RBI", "SB", "AVG", "W", "SV", "ERA", "WHIP", "K"];
-    const statIdxs = statKeys.map(k => headers.indexOf(k));
-
-    if (nameIdx >= 0 && valIdx >= 0) {
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",");
-        const name = cols[nameIdx]?.trim();
-        const val = parseFloat(cols[valIdx]?.trim());
-        if (!name || isNaN(val)) continue;
-        // Build a stat summary string
-        const statParts = statKeys.map((k, si) => {
-          const v = cols[statIdxs[si]]?.trim();
-          return v && v !== "" ? `${k}: ${v}` : null;
-        }).filter(Boolean);
-        valMap.set(name, { value: val, stats: statParts.join(", ") });
-      }
-    }
-  } catch {
-    // Auction values not available — proceed without
-  }
+  // Load auction values (cached singleton)
+  const { getAuctionValueMap: getValMap } = await import("../../lib/auctionValues.js");
+  const valMap = getValMap();
 
   // Get player's projected value and stats
   const playerValData = valMap.get(playerName);
@@ -1886,6 +1838,11 @@ router.get("/ai-advice", requireAuth, requireLeagueMember("leagueId"), asyncHand
     return res.status(503).json({ error: "Bid advice is temporarily unavailable" });
   }
 
+  // Evict oldest entry if cache is full
+  if (bidAdviceCache.size >= BID_ADVICE_CACHE_MAX) {
+    const firstKey = bidAdviceCache.keys().next().value;
+    if (firstKey !== undefined) bidAdviceCache.delete(firstKey);
+  }
   bidAdviceCache.set(cacheKey, result.result!);
   res.json(result.result);
 }));

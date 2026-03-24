@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { z } from "zod";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
+import { validateBody } from "../../middleware/validate.js";
 import { mlbGetJson, fetchMlbTeamsMap } from "../../lib/mlbApi.js";
 import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
@@ -277,15 +279,7 @@ router.get(
 
 // ─── Weekly League Digest ────────────────────────────────────────────────────
 
-/** Get ISO week key like "2026-W13" */
-function getWeekKey(date: Date = new Date()): string {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-  const week1 = new Date(d.getFullYear(), 0, 4);
-  const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
-  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-}
+import { getWeekKey } from "../../lib/utils.js";
 
 const tradeStyles = ["conservative", "outrageous", "fun"] as const;
 
@@ -388,14 +382,14 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
 }));
 
 // POST /api/mlb/league-digest/vote — Vote on the Trade of the Week
-router.post("/league-digest/vote", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
-  const leagueId = Number(req.body.leagueId);
-  const vote = req.body.vote as "yes" | "no";
-  const userId = req.user!.id;
+const voteSchema = z.object({
+  leagueId: z.number().int().positive(),
+  vote: z.enum(["yes", "no"]),
+});
 
-  if (!Number.isFinite(leagueId) || !["yes", "no"].includes(vote)) {
-    return res.status(400).json({ error: "Missing leagueId or invalid vote (yes/no)" });
-  }
+router.post("/league-digest/vote", requireAuth, validateBody(voteSchema), asyncHandler(async (req, res) => {
+  const { leagueId, vote } = req.body;
+  const userId = req.user!.id;
 
   const weekKey = getWeekKey();
   const insight = await prisma.aiInsight.findFirst({

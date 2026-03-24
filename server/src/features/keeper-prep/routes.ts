@@ -371,26 +371,11 @@ router.get(
     const maxKeepers = Number(rulesMap.get("keeper_count") ?? "5");
     const budgetCap = Number(rulesMap.get("budget") ?? "400");
 
-    // Load projected auction values from CSV
-    const fs = await import("fs");
-    const path = await import("path");
+    // Load projected auction values (cached singleton)
+    const { getAuctionValueMap } = await import("../../lib/auctionValues.js");
+    const auctionVals = getAuctionValueMap();
     const valMap = new Map<string, number>();
-    try {
-      const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
-      const csvText = fs.readFileSync(csvPath, "utf-8");
-      const lines = csvText.trim().split("\n");
-      const headers = lines[0].split(",").map(h => h.trim());
-      const nameIdx = headers.indexOf("player_name");
-      const valIdx = headers.indexOf("dollar_value");
-      if (nameIdx >= 0 && valIdx >= 0) {
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(",");
-          const name = cols[nameIdx]?.trim();
-          const val = parseFloat(cols[valIdx]?.trim());
-          if (name && !isNaN(val)) valMap.set(name, val);
-        }
-      }
-    } catch { /* proceed without */ }
+    for (const [name, entry] of auctionVals) valMap.set(name, entry.value);
 
     // League type
     const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { rules: true } });

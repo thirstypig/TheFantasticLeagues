@@ -103,7 +103,13 @@ export class AIAnalysisService {
           return {
             async generateContent(prompt: string) {
               try {
-                return await geminiModel.generateContent(prompt);
+                // Wrap Gemini call with 60-second timeout (Gemini SDK has no built-in timeout)
+                const timeoutMs = 60_000;
+                const result = await Promise.race([
+                  geminiModel.generateContent(prompt),
+                  new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Gemini timeout after ${timeoutMs}ms`)), timeoutMs)),
+                ]);
+                return result;
               } catch (err: any) {
                 const msg = String(err?.message ?? err);
                 logger.warn({ error: msg.substring(0, 200) }, "Gemini failed, switching to Anthropic");
@@ -1218,6 +1224,72 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
     } catch (err) {
       logger.error({ error: String(err) }, "AI bid advice failed");
       return { success: false, error: 'Bid advice failed' };
+    }
+  }
+  // ─── Post-Waiver Claim Analysis ──────────────────────────────────────────
+
+  async analyzeWaiverClaim(input: {
+    teamName: string;
+    teamBudgetAfter: number;
+    playerName: string;
+    playerPosition: string;
+    playerMlbTeam: string;
+    bidAmount: number;
+    dropPlayerName: string | null;
+    dropPlayerPosition: string | null;
+    projectedValue: number | null;
+    rosterSample: string[];
+    leagueType: string;
+  }): Promise<{
+    success: boolean;
+    result?: { assessment: string; bidGrade: string; categoryImpact: string };
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI waiver analysis is not available' };
+    }
+
+    try {
+      const leagueTypeLabel = input.leagueType === "NL" ? "NL-ONLY" : input.leagueType === "AL" ? "AL-ONLY" : "Mixed";
+
+      const prompt = `You are a fantasy baseball analyst. Evaluate this completed waiver claim.
+
+League: ${leagueTypeLabel}, 10-cat roto
+
+CLAIM:
+- Team: ${input.teamName} (waiver budget after: $${input.teamBudgetAfter})
+- Added: ${input.playerName} (${input.playerPosition}, ${input.playerMlbTeam}) for $${input.bidAmount}
+${input.dropPlayerName ? `- Dropped: ${input.dropPlayerName} (${input.dropPlayerPosition})` : '- No player dropped'}
+${input.projectedValue !== null ? `- Player projected value: $${input.projectedValue}` : ''}
+
+TEAM ROSTER (after claim):
+${input.rosterSample.join('\n')}
+
+Provide a brief assessment. Return ONLY a valid JSON object (no markdown, no code blocks):
+{"assessment": "2-3 sentences", "bidGrade": "A+ through F", "categoryImpact": "which categories this helps"}`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.object({
+        assessment: z.string().max(2000),
+        bidGrade: z.string().max(5),
+        categoryImpact: z.string().max(500),
+      });
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid waiver analysis");
+        return { success: false, error: 'Waiver analysis returned invalid data' };
+      }
+
+      return { success: true, result: parsed.data };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI waiver analysis failed");
+      return { success: false, error: 'Waiver analysis failed' };
     }
   }
 }
