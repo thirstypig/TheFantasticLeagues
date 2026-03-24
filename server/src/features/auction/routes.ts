@@ -1774,7 +1774,7 @@ router.get("/ai-advice", requireAuth, requireLeagueMember("leagueId"), asyncHand
       if (r.playerName) draftedPlayerNames.add(r.playerName);
     }
   }
-  const isPitcherPos = (pos: string) => ["SP", "RP", "P", "CL"].includes(pos.toUpperCase());
+  const { isPitcher: isPitcherPos } = await import("../../lib/sportConfig.js");
   const nominatedIsPitcher = isPitcherPos(playerPosition);
   const alternatives: { name: string; projectedValue: number }[] = [];
   for (const [name, data] of valMap.entries()) {

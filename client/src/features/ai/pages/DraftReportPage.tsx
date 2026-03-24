@@ -66,16 +66,9 @@ interface DraftReport {
   generatedAt: string;
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────── */
+import { gradeColor } from "../../../lib/sportConfig";
 
-function gradeColor(grade: string): string {
-  const g = grade.replace(/[+-]/g, "").toUpperCase();
-  if (g === "A") return "text-emerald-400";
-  if (g === "B") return "text-blue-400";
-  if (g === "C") return "text-amber-400";
-  if (g === "D") return "text-orange-400";
-  return "text-red-400";
-}
+/* ── Helpers ─────────────────────────────────────────────────────── */
 
 function surplusColor(surplus: number | null): string {
   if (surplus === null) return "";

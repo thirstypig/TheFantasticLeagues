@@ -129,5 +129,5 @@ export const TWO_WAY_PLAYERS: ReadonlyMap<number, { hitterPos: string; name: str
 
 export function isPitcher(pos: string): boolean {
   const s = pos.trim().toUpperCase();
-  return s === "P" || s === "SP" || s === "RP" || s === "TWP";
+  return s === "P" || s === "SP" || s === "RP" || s === "CL" || s === "TWP";
 }

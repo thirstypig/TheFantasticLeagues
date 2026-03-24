@@ -182,3 +182,13 @@ export function fmtRate(v: number): string {
   const s = v.toFixed(3);
   return s.startsWith("0") ? s.slice(1) : s;
 }
+
+/** Map a letter grade (A+ through F) to a Tailwind text color class. */
+export function gradeColor(grade: string): string {
+  const g = grade.replace(/[+-]/g, "").toUpperCase();
+  if (g === "A") return "text-emerald-400";
+  if (g === "B") return "text-blue-400";
+  if (g === "C") return "text-amber-400";
+  if (g === "D") return "text-orange-400";
+  return "text-red-400";
+}

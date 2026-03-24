@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Gavel, Trophy, Users, Calendar, Sparkles, Ch
 import { joinLeague } from "../features/leagues/api";
 import { useToast } from "../contexts/ToastContext";
 import { useLeague, findMyTeam } from "../contexts/LeagueContext";
+import { gradeColor } from "../lib/sportConfig";
 import { useSeasonGating } from "../hooks/useSeasonGating";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -444,12 +445,7 @@ export default function Home() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {digest.teamGrades.map((tg: any) => (
                       <div key={tg.teamName} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]">
-                        <span className={`text-sm font-black tabular-nums w-7 text-center ${
-                          tg.grade?.startsWith("A") ? "text-emerald-400" :
-                          tg.grade?.startsWith("B") ? "text-blue-400" :
-                          tg.grade?.startsWith("C") ? "text-amber-400" :
-                          "text-red-400"
-                        }`}>{tg.grade}</span>
+                        <span className={`text-sm font-black tabular-nums w-7 text-center ${gradeColor(tg.grade || "")}`}>{tg.grade}</span>
                         <div className="min-w-0">
                           <div className="text-xs font-semibold text-[var(--lg-text-primary)] truncate">{tg.teamName}</div>
                           <div className="text-[10px] text-[var(--lg-text-muted)] leading-tight truncate">{tg.trend}</div>
@@ -484,55 +480,50 @@ export default function Home() {
                   <p className="text-[11px] text-[var(--lg-text-secondary)] leading-relaxed italic">{digest.proposedTrade.reasoning}</p>
 
                   {/* Poll */}
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-[var(--lg-accent)]/10">
-                    <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Would you make this trade?</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={async () => {
-                          if (!currentLeagueId || voting) return;
-                          setVoting(true);
-                          try {
-                            const result = await fetchJsonApi<{ yes: number; no: number; myVote: string }>(`${API_BASE}/mlb/league-digest/vote`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ leagueId: currentLeagueId, vote: "yes" }),
-                            });
-                            setDigest((prev: any) => prev ? { ...prev, voteResults: result } : prev);
-                          } catch {} finally { setVoting(false); }
-                        }}
-                        disabled={voting || digest.voteResults?.myVote === "yes"}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                          digest.voteResults?.myVote === "yes"
-                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                            : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:border-emerald-500/30 hover:text-emerald-400"
-                        }`}
-                      >
-                        Yes {digest.voteResults?.yes > 0 && `(${digest.voteResults.yes})`}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!currentLeagueId || voting) return;
-                          setVoting(true);
-                          try {
-                            const result = await fetchJsonApi<{ yes: number; no: number; myVote: string }>(`${API_BASE}/mlb/league-digest/vote`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ leagueId: currentLeagueId, vote: "no" }),
-                            });
-                            setDigest((prev: any) => prev ? { ...prev, voteResults: result } : prev);
-                          } catch {} finally { setVoting(false); }
-                        }}
-                        disabled={voting || digest.voteResults?.myVote === "no"}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                          digest.voteResults?.myVote === "no"
-                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                            : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:border-red-500/30 hover:text-red-400"
-                        }`}
-                      >
-                        No {digest.voteResults?.no > 0 && `(${digest.voteResults.no})`}
-                      </button>
-                    </div>
-                  </div>
+                  {(() => {
+                    const handleVote = async (v: "yes" | "no") => {
+                      if (!currentLeagueId || voting) return;
+                      setVoting(true);
+                      try {
+                        const result = await fetchJsonApi<{ yes: number; no: number; myVote: string }>(`${API_BASE}/mlb/league-digest/vote`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ leagueId: currentLeagueId, vote: v }),
+                        });
+                        setDigest((prev: any) => prev ? { ...prev, voteResults: result } : prev);
+                      } catch {} finally { setVoting(false); }
+                    };
+                    const myVote = digest.voteResults?.myVote;
+                    return (
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-[var(--lg-accent)]/10">
+                        <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Would you make this trade?</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleVote("yes")}
+                            disabled={voting || myVote === "yes"}
+                            className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                              myVote === "yes"
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:border-emerald-500/30 hover:text-emerald-400"
+                            }`}
+                          >
+                            Yes {digest.voteResults?.yes > 0 && `(${digest.voteResults.yes})`}
+                          </button>
+                          <button
+                            onClick={() => handleVote("no")}
+                            disabled={voting || myVote === "no"}
+                            className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                              myVote === "no"
+                                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:border-red-500/30 hover:text-red-400"
+                            }`}
+                          >
+                            No {digest.voteResults?.no > 0 && `(${digest.voteResults.no})`}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

@@ -314,6 +314,7 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
         where: { releasedAt: null },
         include: { player: { select: { name: true, posPrimary: true } } },
         orderBy: { price: "desc" },
+        take: 8, // Only top 8 by price used in prompt — skip fetching full rosters
       },
     },
     orderBy: { name: "asc" },

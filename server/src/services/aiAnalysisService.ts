@@ -1,6 +1,7 @@
 import { prisma } from '../db/prisma.js';
 import { logger } from '../lib/logger.js';
 import { z } from 'zod';
+import { isPitcher as isPitcherPos } from '../lib/sportConfig.js';
 
 // Lazy-load @google/generative-ai — only imported when AI analysis is actually requested
 let _genAI: any = null;
@@ -445,10 +446,7 @@ Keep it conversational. Highlight specific players and prices.`;
   }
   // ─── Combined Draft Report ──────────────────────────────────────────────────
 
-  /** Check if a position string is a pitcher. */
-  private static isPitcherPos(pos: string): boolean {
-    return ['SP', 'RP', 'P', 'CL'].includes(pos.toUpperCase());
-  }
+  // isPitcherPos imported from sportConfig.ts at module level
 
   /**
    * Generate a comprehensive per-team draft report with AI grades, analysis,
@@ -481,7 +479,7 @@ Keep it conversational. Highlight specific players and prices.`;
     }
 
     try {
-      const isPP = AIAnalysisService.isPitcherPos;
+      const isPP = isPitcherPos;
 
       // ── Compute data-driven metrics per team ──
       const allAuctionHitterPrices: number[] = [];
@@ -1031,7 +1029,7 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with:
       const leagueTypeLabel = leagueType === "NL" ? "NL-ONLY" : leagueType === "AL" ? "AL-ONLY" : "Mixed";
       const mode = hasActualStats ? "in-season" : "pre-season";
 
-      const isPP = AIAnalysisService.isPitcherPos;
+      const isPP = isPitcherPos;
       const hitters = roster.filter(r => !isPP(r.position));
       const pitchers = roster.filter(r => isPP(r.position));
 
@@ -1152,7 +1150,7 @@ For category, use one of: "Hitting", "Pitching", "Roster", "Standings", "Budget"
 
     try {
       const { player, currentBid, team, league, alternativesAtPosition, teamProjections, playerProjectedStats } = input;
-      const isPitcher = AIAnalysisService.isPitcherPos(player.position);
+      const isPitcher = isPitcherPos(player.position);
       const positionNeed = isPitcher
         ? `${team.pitcherCount}/${team.pitcherMax} pitchers filled`
         : `${team.hitterCount}/${team.hitterMax} hitters filled`;
