@@ -4,6 +4,41 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-24 (Session 39) — AI Insights Overhaul: Draft Report, League Digest, Auto-Analyzers
+
+### Summary
+Complete overhaul of the AI Insights feature. Built 7 new/upgraded AI-powered features across the app. All features use projected auction values from CSV, NL-only league context, and persist results to DB for instant reload.
+
+### Completed
+- Combined Draft Grades + Draft Report into dedicated `/draft-report` page with surplus analysis, per-team grades (A+ through F), keeper assessment, category strengths/weaknesses, favorite MLB team, NL-only scarcity context, methodology blurb, attribution (Google Gemini & Anthropic Claude)
+- Upgraded Live Bid Advice with team-aware marginal value (knows roster, projected values, remaining pool, category needs)
+- Upgraded Weekly Team Insights with pre-season/in-season adaptive mode, projected values, priority levels, auto-generates on Team page load, persists to AiInsight table (weekly dedup), expand/collapse, dates, mobile responsive
+- Built Home Page Weekly League Digest: 2-sentence overview, hot/cold teams, team grades, Trade of the Week (rotating conservative/outrageous/fun), expand/collapse, persisted weekly
+- Built Post-Trade Analyzer: fire-and-forget on trade processing, persists aiAnalysis on Trade record, shows inline with fairness badge
+- Built Post-Waiver Analyzer: fire-and-forget on waiver processing, persists aiAnalysis on WaiverClaim, bid grade + category impact
+- Restructured AI Hub: Historical Draft Review → Draft Report (Archive) linking to /draft-report
+- Schema changes: AiInsight model, aiAnalysis Json? on Trade and WaiverClaim (via db push)
+- All 730 tests passing (493 server + 187 client + 50 MCP)
+
+### Pending / Next Steps
+- Verify production deployment on Render (all code pushed to main, API returning SPA HTML — may be deploy in-progress)
+- Production teams not loading issue — API routes return SPA catch-all HTML, needs investigation on Render config
+- Keeper Recommendations AI feature (existing, could be enhanced)
+- Season Trends AI feature (existing, partially absorbed into League Digest)
+- Purge Cloudflare cache after Render deploy completes
+
+### Concerns / Tech Debt
+- Production API returning HTML for /api/* routes — likely Render deploy issue, not code issue
+- AiInsight table uses teamId for league-wide digests (uses first team's id as anchor) — could be cleaner with nullable teamId
+- Auction values CSV (ogba_auction_values_2026.csv) is read directly from filesystem in multiple endpoints — could be centralized
+
+### Test Results
+- Server: 493 passing, 0 failing
+- Client: 187 passing, 0 failing
+- MCP: 50 passing, 0 failing
+
+---
+
 ## Session 2026-03-23 (Session 38) — Code Review P2 Cleanup: Context, Accessibility, SortableHeader Adoption
 
 ### Summary
