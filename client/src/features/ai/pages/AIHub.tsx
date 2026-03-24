@@ -21,12 +21,6 @@ interface AIFeature {
   generateUrl?: string;
 }
 
-interface DraftGrade {
-  teamId: number;
-  teamName: string;
-  grade: string;
-  summary: string;
-}
 
 /* ── Main Page ───────────────────────────────────────────────────── */
 
@@ -59,29 +53,19 @@ export default function AIHub() {
   const isInSeason = gating.seasonStatus === "IN_SEASON";
   const isDraft = gating.canAuction;
 
+  const hasRosterData = hasAuctionCompleted || isInSeason || gating.seasonStatus === "COMPLETED";
+
   const features: AIFeature[] = [
     // Draft
     {
-      id: "draft-grades",
-      title: "Draft Grades",
-      description: "AI-generated letter grades (A+ through F) for each team's auction draft performance.",
-      icon: Trophy,
-      category: "draft",
-      available: hasAuctionCompleted,
-      lockReason: "Available after the auction is complete",
-      navigateTo: "/auction",
-      generateUrl: `/auction/draft-grades?leagueId=${leagueId}`,
-    },
-    {
       id: "draft-report",
       title: "Draft Report",
-      description: "League stats, bargains, overpays, position spending, and team efficiency analysis.",
-      icon: BarChart3,
+      description: "Per-team grades, strategy analysis, value efficiency, and projected stat contributions.",
+      icon: Trophy,
       category: "draft",
-      available: hasAuctionCompleted,
-      lockReason: "Available after the auction is complete",
-      navigateTo: "/auction",
-      generateUrl: `/auction/retrospective?leagueId=${leagueId}`,
+      available: hasRosterData,
+      lockReason: "Available after rosters are drafted",
+      navigateTo: "/draft-report",
     },
     {
       id: "bid-advice",
@@ -318,39 +302,7 @@ export default function AIHub() {
                       <div className="mt-3 pl-12 text-xs text-rose-400">{errors[feature.id]}</div>
                     )}
 
-                    {/* Results: Draft Grades */}
-                    {feature.id === "draft-grades" && hasResult && !isLoading && isExpanded && (
-                      <div className="mt-4 space-y-2 border-t border-[var(--lg-border-faint)] pt-4">
-                        {(results["draft-grades"]?.grades || []).map((g: DraftGrade) => (
-                          <div key={g.teamId} className="flex items-start gap-3 p-2 rounded-lg hover:bg-[var(--lg-tint)] transition-colors">
-                            <span className="text-lg font-bold tabular-nums w-8 text-center">{g.grade}</span>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-[var(--lg-text-primary)]">{g.teamName}</div>
-                              <div className="text-[11px] text-[var(--lg-text-muted)] leading-relaxed">{g.summary}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Results: Draft Report summary */}
-                    {feature.id === "draft-report" && hasResult && !isLoading && isExpanded && (
-                      <div className="mt-4 border-t border-[var(--lg-border-faint)] pt-4 space-y-2 text-xs text-[var(--lg-text-secondary)]">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-[var(--lg-tint)] p-2.5 rounded-lg">
-                            <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] opacity-50">Total Spent</div>
-                            <div className="font-bold text-[var(--lg-text-primary)]">${results["draft-report"]?.league?.totalSpent}</div>
-                          </div>
-                          <div className="bg-[var(--lg-tint)] p-2.5 rounded-lg">
-                            <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] opacity-50">Avg Price</div>
-                            <div className="font-bold text-[var(--lg-text-primary)]">${results["draft-report"]?.league?.avgPrice}</div>
-                          </div>
-                        </div>
-                        <Link to="/auction" className="text-[var(--lg-accent)] font-medium hover:underline text-xs">
-                          View full report →
-                        </Link>
-                      </div>
-                    )}
+                    {/* Draft Report now has its own page at /draft-report */}
 
                     {/* Results: Weekly Insights */}
                     {feature.id === "weekly-insights" && hasResult && !isLoading && isExpanded && (

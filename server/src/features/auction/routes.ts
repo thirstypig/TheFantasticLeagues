@@ -1524,6 +1524,152 @@ router.delete("/proxy-bid", requireAuth, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+// ─── Combined Draft Report (grades + analysis + projected stats) ─────────────
+
+// Deduplication for in-flight draft report generation
+const draftReportInFlight = new Map<number, Promise<any>>();
+
+// GET /api/auction/draft-report — Combined AI draft report with per-team grades, analysis, projected stats
+router.get("/draft-report", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Missing leagueId" });
+
+  // Check for persisted report in AuctionSession
+  const session = await prisma.auctionSession.findUnique({ where: { leagueId } });
+  if (session?.state && (session.state as any).draftReport) {
+    return res.json((session.state as any).draftReport);
+  }
+
+  // Build from roster data + auction log + projected values
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    include: {
+      rosters: {
+        where: { releasedAt: null },
+        include: { player: { select: { name: true, posPrimary: true, mlbTeam: true } } },
+      },
+    },
+  });
+
+  if (teams.length === 0 || teams.every(t => t.rosters.length === 0)) {
+    return res.status(400).json({ error: "No roster data available to generate draft report" });
+  }
+
+  // Load projected auction values from CSV for surplus calculations
+  const fs = await import("fs");
+  const path = await import("path");
+  const valMap = new Map<string, number>();
+  const csvPath = path.join(process.cwd(), "data", "ogba_auction_values_2026.csv");
+  try {
+    const csvText = fs.readFileSync(csvPath, "utf-8");
+    const lines = csvText.trim().split("\n");
+    const headers = lines[0].split(",").map(h => h.trim());
+    const nameIdx = headers.indexOf("player_name");
+    const valIdx = headers.indexOf("dollar_value");
+    if (nameIdx >= 0 && valIdx >= 0) {
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        const name = cols[nameIdx]?.trim();
+        const val = parseFloat(cols[valIdx]?.trim());
+        if (name && !isNaN(val)) valMap.set(name, val);
+      }
+    }
+    logger.info({ count: valMap.size }, "Loaded auction values for draft report");
+  } catch {
+    logger.warn({}, "Could not load auction values CSV — surplus will not be calculated");
+  }
+
+  // Get league config from auction state or defaults
+  const state = session?.state as AuctionState | null;
+  const config = state?.config ?? { budgetCap: 400, rosterSize: 23, pitcherCount: 9, batterCount: 14 };
+
+  // Build auction log from state log entries (WIN events = completed picks)
+  const logEntries = (state?.log ?? [])
+    .filter(l => l.type === "WIN" && l.playerName && l.teamName && l.amount != null)
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .map((l, i) => ({
+      playerName: l.playerName!,
+      teamName: l.teamName!,
+      price: l.amount!,
+      order: i + 1,
+    }));
+
+  // Identify keepers via roster source field, attach projected values + MLB team
+  const teamData = teams.map(team => {
+    const keepers = team.rosters.filter(r => r.source === "prior_season");
+    const auctionPicks = team.rosters.filter(r => r.source !== "prior_season");
+    const keeperSpend = keepers.reduce((s, r) => s + r.price, 0);
+    const auctionSpend = auctionPicks.reduce((s, r) => s + r.price, 0);
+
+    // Compute favorite MLB team (most players from)
+    const mlbTeamCounts: Record<string, number> = {};
+    team.rosters.forEach(r => {
+      const tm = r.player.mlbTeam || "UNK";
+      mlbTeamCounts[tm] = (mlbTeamCounts[tm] || 0) + 1;
+    });
+    const sortedMlbTeams = Object.entries(mlbTeamCounts).sort((a, b) => b[1] - a[1]);
+    const favMlbTeam = sortedMlbTeams[0] ? { team: sortedMlbTeams[0][0], count: sortedMlbTeams[0][1] } : null;
+
+    return {
+      id: team.id,
+      name: team.name,
+      budget: team.budget,
+      keeperSpend,
+      auctionSpend,
+      favMlbTeam,
+      roster: team.rosters.map(r => ({
+        playerName: r.player.name,
+        position: r.player.posPrimary,
+        mlbTeam: r.player.mlbTeam || "",
+        price: r.price,
+        isKeeper: r.source === "prior_season",
+        projectedValue: valMap.get(r.player.name) ?? null,
+      })),
+    };
+  });
+
+  // Deduplicate concurrent requests
+  let inflight = draftReportInFlight.get(leagueId);
+  if (!inflight) {
+    inflight = (async () => {
+      const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
+      return aiAnalysisService.generateDraftReport(
+        teamData,
+        {
+          budgetCap: config.budgetCap ?? 400,
+          rosterSize: config.rosterSize ?? 23,
+          pitcherCount: config.pitcherCount ?? 9,
+          batterCount: config.batterCount ?? 14,
+        },
+        logEntries,
+      );
+    })();
+    draftReportInFlight.set(leagueId, inflight);
+  }
+
+  try {
+    const result = await inflight;
+
+    if (!result.success) {
+      logger.warn({ error: result.error, leagueId }, "Draft report generation failed");
+      return res.status(503).json({ error: "Draft report generation is temporarily unavailable" });
+    }
+
+    // Persist in AuctionSession so it survives restarts
+    if (session) {
+      const updatedState = { ...(session.state as any), draftReport: result.report };
+      await prisma.auctionSession.update({
+        where: { leagueId },
+        data: { state: updatedState },
+      });
+    }
+
+    res.json(result.report);
+  } finally {
+    draftReportInFlight.delete(leagueId);
+  }
+}));
+
 // Draft grade cache — auction data is frozen at "completed", so cache is permanent per league
 const draftGradeCache = new Map<number, { teamId: number; teamName: string; grade: string; summary: string }[]>();
 const draftGradeInFlight = new Map<number, Promise<any>>();

@@ -37,6 +37,7 @@ import GuideAuction from "./pages/guide/GuideAuction";
 import GuideFaq from "./pages/guide/GuideFaq";
 import About from "./pages/About";
 import AIHub from "./features/ai/pages/AIHub";
+import DraftReportPage from "./features/ai/pages/DraftReportPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
 
@@ -97,6 +98,7 @@ export default function App() {
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/ai" element={<AIHub />} />
+                <Route path="/draft-report" element={<DraftReportPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppShell>

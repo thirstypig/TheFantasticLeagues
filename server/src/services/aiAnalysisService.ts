@@ -53,6 +53,39 @@ interface AnalysisResult {
   error?: string;
 }
 
+export interface DraftReportTeamResult {
+  teamId: number;
+  teamName: string;
+  grade: string;
+  keeperAssessment: string;
+  analysis: string;
+  projectedStats: string;
+  categoryStrengths: string;
+  categoryWeaknesses: string;
+  auctionSpend: number;
+  keeperSpend: number;
+  keeperCount: number;
+  avgHitterPrice: number;
+  avgPitcherPrice: number;
+  totalSurplus: number;
+  auctionSurplus: number;
+  hitterSpend: number;
+  pitcherSpend: number;
+  top3Pct: number;
+  favMlbTeam: { team: string; count: number } | null;
+  bestBargain: { playerName: string; position: string; price: number; projectedValue: number; surplus: number } | null;
+  worstOverpay: { playerName: string; position: string; price: number; projectedValue: number; surplus: number } | null;
+  keepers: { playerName: string; position: string; price: number; projectedValue: number | null; surplus: number | null }[];
+  roster: { playerName: string; position: string; mlbTeam?: string; price: number; isKeeper: boolean; projectedValue: number | null; surplus: number | null }[];
+}
+
+export interface DraftReportResult {
+  leagueSummary: { avgHitterPrice: number; avgPitcherPrice: number };
+  surplusRanking: { teamId: number; teamName: string; surplus: number }[];
+  teams: DraftReportTeamResult[];
+  generatedAt: string;
+}
+
 // Track Gemini availability — once it fails, use Anthropic for the rest of the process lifetime
 let _geminiDisabled = false;
 
@@ -289,6 +322,250 @@ Keep it conversational. Highlight specific players and prices.`;
       return { success: false, error: 'Analysis failed' };
     }
   }
+  // ─── Combined Draft Report ──────────────────────────────────────────────────
+
+  /** Check if a position string is a pitcher. */
+  private static isPitcherPos(pos: string): boolean {
+    return ['SP', 'RP', 'P', 'CL'].includes(pos.toUpperCase());
+  }
+
+  /**
+   * Generate a comprehensive per-team draft report with AI grades, analysis,
+   * keeper assessment, and projected stat contributions.
+   *
+   * Data-driven: uses projected auction values (dollar_value from CSV) to
+   * compute surplus per player, best bargain, worst overpay, and total surplus
+   * per team — feeding all of this into the AI prompt for accurate grading.
+   */
+  async generateDraftReport(
+    teams: {
+      id: number;
+      name: string;
+      roster: { playerName: string; position: string; mlbTeam?: string; price: number; isKeeper: boolean; projectedValue: number | null }[];
+      keeperSpend: number;
+      auctionSpend: number;
+      budget: number;
+      favMlbTeam?: { team: string; count: number } | null;
+    }[],
+    leagueConfig: { budgetCap: number; rosterSize: number; pitcherCount: number; batterCount: number },
+    auctionLog: { playerName: string; teamName: string; price: number; order: number }[],
+  ): Promise<{
+    success: boolean;
+    report?: DraftReportResult;
+    error?: string;
+  }> {
+    const model = await this.getModel();
+    if (!model) {
+      return { success: false, error: 'AI draft report is not available' };
+    }
+
+    try {
+      const isPP = AIAnalysisService.isPitcherPos;
+
+      // ── Compute data-driven metrics per team ──
+      const allAuctionHitterPrices: number[] = [];
+      const allAuctionPitcherPrices: number[] = [];
+
+      const teamMetrics = teams.map(team => {
+        const keepers = team.roster.filter(r => r.isKeeper);
+        const auctionPicks = team.roster.filter(r => !r.isKeeper);
+
+        const auctionHitters = auctionPicks.filter(r => !isPP(r.position));
+        const auctionPitchers = auctionPicks.filter(r => isPP(r.position));
+        auctionHitters.forEach(r => allAuctionHitterPrices.push(r.price));
+        auctionPitchers.forEach(r => allAuctionPitcherPrices.push(r.price));
+
+        const avgHitterPrice = auctionHitters.length > 0
+          ? Math.round((auctionHitters.reduce((s, r) => s + r.price, 0) / auctionHitters.length) * 10) / 10
+          : 0;
+        const avgPitcherPrice = auctionPitchers.length > 0
+          ? Math.round((auctionPitchers.reduce((s, r) => s + r.price, 0) / auctionPitchers.length) * 10) / 10
+          : 0;
+
+        // Surplus calculations (only for players with projected values)
+        const withValues = team.roster
+          .filter(r => r.projectedValue !== null)
+          .map(r => ({ ...r, surplus: r.projectedValue! - r.price }));
+
+        const auctionWithValues = withValues.filter(r => !r.isKeeper);
+        const totalSurplus = withValues.reduce((s, r) => s + r.surplus, 0);
+        const auctionSurplus = auctionWithValues.reduce((s, r) => s + r.surplus, 0);
+
+        const bestBargain = auctionWithValues.length > 0
+          ? [...auctionWithValues].sort((a, b) => b.surplus - a.surplus)[0]
+          : null;
+        const worstOverpay = auctionWithValues.length > 0
+          ? [...auctionWithValues].sort((a, b) => a.surplus - b.surplus)[0]
+          : null;
+
+        // Top 3 most expensive auction picks
+        const top3Picks = [...auctionPicks].sort((a, b) => b.price - a.price).slice(0, 3);
+        const top3Pct = team.auctionSpend > 0
+          ? Math.round((top3Picks.reduce((s, p) => s + p.price, 0) / team.auctionSpend) * 100)
+          : 0;
+
+        // Hitter/pitcher spend ratio
+        const hitterSpend = auctionHitters.reduce((s, r) => s + r.price, 0);
+        const pitcherSpend = auctionPitchers.reduce((s, r) => s + r.price, 0);
+
+        return {
+          id: team.id,
+          name: team.name,
+          keeperSpend: team.keeperSpend,
+          auctionSpend: team.auctionSpend,
+          avgHitterPrice,
+          avgPitcherPrice,
+          totalSurplus: Math.round(totalSurplus),
+          auctionSurplus: Math.round(auctionSurplus),
+          hitterSpend,
+          pitcherSpend,
+          top3Pct,
+          favMlbTeam: team.favMlbTeam ?? null,
+          bestBargain: bestBargain ? { playerName: bestBargain.playerName, position: bestBargain.position, price: bestBargain.price, projectedValue: bestBargain.projectedValue!, surplus: Math.round(bestBargain.surplus) } : null,
+          worstOverpay: worstOverpay ? { playerName: worstOverpay.playerName, position: worstOverpay.position, price: worstOverpay.price, projectedValue: worstOverpay.projectedValue!, surplus: Math.round(worstOverpay.surplus) } : null,
+          keepers: keepers.map(k => ({
+            playerName: k.playerName, position: k.position, price: k.price,
+            projectedValue: k.projectedValue,
+            surplus: k.projectedValue !== null ? Math.round(k.projectedValue - k.price) : null,
+          })),
+          roster: team.roster.map(r => ({
+            playerName: r.playerName, position: r.position, mlbTeam: r.mlbTeam ?? "", price: r.price, isKeeper: r.isKeeper,
+            projectedValue: r.projectedValue,
+            surplus: r.projectedValue !== null ? Math.round(r.projectedValue - r.price) : null,
+          })),
+        };
+      });
+
+      // League-wide averages
+      const leagueAvgHitterPrice = allAuctionHitterPrices.length > 0
+        ? Math.round((allAuctionHitterPrices.reduce((s, p) => s + p, 0) / allAuctionHitterPrices.length) * 10) / 10
+        : 0;
+      const leagueAvgPitcherPrice = allAuctionPitcherPrices.length > 0
+        ? Math.round((allAuctionPitcherPrices.reduce((s, p) => s + p, 0) / allAuctionPitcherPrices.length) * 10) / 10
+        : 0;
+
+      // Surplus ranking
+      const surplusRanking = [...teamMetrics].sort((a, b) => b.auctionSurplus - a.auctionSurplus);
+
+      // ── Build AI prompt with all the data ──
+      const sortedLog = [...auctionLog].sort((a, b) => a.order - b.order);
+      const earlyPicks = sortedLog.slice(0, 8).map(l => `${l.playerName} → ${l.teamName} ($${l.price})`);
+      const latePicks = sortedLog.slice(-8).map(l => `${l.playerName} → ${l.teamName} ($${l.price})`);
+
+      const prompt = `You are an expert fantasy baseball auction draft analyst. Produce a comprehensive draft report for each team.
+
+IMPORTANT LEAGUE CONTEXT: This is an NL-ONLY league. Only National League players are eligible. This significantly increases the value of elite NL players due to scarcity — there is no AL talent pool to draw from. The projected dollar values provided are based on mixed-league projections and therefore UNDERVALUE NL players in this context. Keep this in mind when evaluating overpays vs bargains — paying above mixed-league value for an elite NL player may be reasonable in an NL-only format.
+
+League Config:
+- Budget: $${leagueConfig.budgetCap} per team (${leagueConfig.rosterSize} roster: ${leagueConfig.batterCount} hitters, ${leagueConfig.pitcherCount} pitchers)
+- NL-ONLY league (15 NL teams, ~400 eligible players total)
+- 4 keepers per team (carried over at keeper cost from prior season)
+- 10-category roto: R, HR, RBI, SB, AVG (hitting) | W, SV, K, ERA, WHIP (pitching)
+- League Avg Auction Hitter Price: $${leagueAvgHitterPrice}
+- League Avg Auction Pitcher Price: $${leagueAvgPitcherPrice}
+
+Value Efficiency Ranking (auction surplus = projected value minus price paid, higher is better):
+${surplusRanking.map((t, i) => `${i + 1}. ${t.name}: ${t.auctionSurplus >= 0 ? '+' : ''}$${t.auctionSurplus}`).join('\n')}
+
+Auction Spending Trends:
+First 8 picks: ${earlyPicks.join(' | ')}
+Last 8 picks: ${latePicks.join(' | ')}
+
+Team-by-Team Rosters (with projected values):
+${teamMetrics.map(t => `
+## ${t.name} (id: ${t.id})
+${t.favMlbTeam ? `Favorite MLB Team: ${t.favMlbTeam.team} (${t.favMlbTeam.count} players)` : ''}
+Keeper Spend: $${t.keeperSpend} | Auction Spend: $${t.auctionSpend}
+Avg Auction Hitter: $${t.avgHitterPrice} | Avg Auction Pitcher: $${t.avgPitcherPrice}
+Hitter/Pitcher Spend Split: $${t.hitterSpend}/$${t.pitcherSpend} | Top 3 Concentration: ${t.top3Pct}%
+Total Auction Surplus: ${t.auctionSurplus >= 0 ? '+' : ''}$${t.auctionSurplus}
+${t.bestBargain ? `Best Bargain: ${t.bestBargain.playerName} (paid $${t.bestBargain.price}, val $${t.bestBargain.projectedValue}, surplus +$${t.bestBargain.surplus})` : ''}
+${t.worstOverpay ? `Worst Overpay: ${t.worstOverpay.playerName} (paid $${t.worstOverpay.price}, val $${t.worstOverpay.projectedValue}, surplus $${t.worstOverpay.surplus})` : ''}
+Keepers: ${t.keepers.map(k => `${k.playerName} (${k.position}, $${k.price}${k.projectedValue !== null ? `, val $${k.projectedValue}` : ''})`).join(', ') || 'None'}
+Auction Picks: ${t.roster.filter(r => !r.isKeeper).sort((a, b) => b.price - a.price).map(p => `${p.playerName} (${p.position}/${p.mlbTeam ?? ''}, $${p.price}${p.projectedValue !== null ? `, val $${p.projectedValue}` : ''})`).join(', ') || 'None'}
+`).join('\n')}
+
+For EACH team, provide:
+1. A letter grade (A+, A, A-, B+, B, B-, C+, C, C-, D, F) — grade the AUCTION DRAFT ONLY (not keepers). Use the surplus data heavily but factor in NL-only scarcity: a team with positive or near-zero surplus should get A-range grades. A team with large negative surplus (-$100+) should get C or below. Be differentiated — not every team should get a B.
+2. A 2-3 sentence keeper assessment: evaluate the quality of their keeper selections. Did they keep the right players? Were keeper costs good value?
+3. A 3-4 sentence auction analysis covering draft strategy, best/worst moves, and how auction picks complement keepers.
+4. Projected stat contributions: estimate realistic 2026 projected stats for the FULL roster (keepers + auction picks). Provide team totals for: R, HR, RBI, SB, AVG (hitters) and W, SV, K, ERA, WHIP (pitchers).
+5. Category strengths (1-3 of the 10 roto categories where this team should DOMINATE) and category weaknesses (1-3 categories where this team is VULNERABLE). Be specific — reference which players drive the strength or create the weakness.
+
+IMPORTANT: Return ONLY a valid JSON array, no markdown, no code blocks. Each element:
+[{"teamId": number, "teamName": string, "grade": string, "keeperAssessment": string, "analysis": string, "projectedStats": string, "categoryStrengths": string, "categoryWeaknesses": string}]
+
+For projectedStats, format as a single line like: "Hitting: ~850 R, 280 HR, 830 RBI, 110 SB, .262 AVG | Pitching: ~85 W, 45 SV, 1050 K, 3.65 ERA, 1.18 WHIP"
+For categoryStrengths/categoryWeaknesses, format like: "HR (Olson, Ohtani, Turner combine for ~90 HR), SB (Turner, Cruz elite speed)" or "SV (no elite closer), AVG (multiple low-average power bats)"`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+
+      const jsonStr = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const raw = JSON.parse(jsonStr);
+
+      const schema = z.array(z.object({
+        teamId: z.number(),
+        teamName: z.string().max(200),
+        grade: z.string().max(5),
+        keeperAssessment: z.string().max(2000),
+        analysis: z.string().max(3000),
+        projectedStats: z.string().max(500),
+        categoryStrengths: z.string().max(1000),
+        categoryWeaknesses: z.string().max(1000),
+      }));
+
+      const parsed = schema.safeParse(raw);
+      if (!parsed.success) {
+        logger.error({ zodError: parsed.error.message }, "AI returned invalid draft report structure");
+        return { success: false, error: 'Draft report returned invalid data' };
+      }
+
+      // Merge AI output with computed metrics
+      const reportTeams = parsed.data.map(g => {
+        const metrics = teamMetrics.find(t => t.id === g.teamId);
+        return {
+          teamId: g.teamId,
+          teamName: g.teamName,
+          grade: g.grade,
+          keeperAssessment: g.keeperAssessment,
+          analysis: g.analysis,
+          projectedStats: g.projectedStats,
+          categoryStrengths: g.categoryStrengths,
+          categoryWeaknesses: g.categoryWeaknesses,
+          auctionSpend: metrics?.auctionSpend ?? 0,
+          keeperSpend: metrics?.keeperSpend ?? 0,
+          keeperCount: metrics?.keepers.length ?? 0,
+          avgHitterPrice: metrics?.avgHitterPrice ?? 0,
+          avgPitcherPrice: metrics?.avgPitcherPrice ?? 0,
+          totalSurplus: metrics?.totalSurplus ?? 0,
+          auctionSurplus: metrics?.auctionSurplus ?? 0,
+          hitterSpend: metrics?.hitterSpend ?? 0,
+          pitcherSpend: metrics?.pitcherSpend ?? 0,
+          top3Pct: metrics?.top3Pct ?? 0,
+          favMlbTeam: metrics?.favMlbTeam ?? null,
+          bestBargain: metrics?.bestBargain ?? null,
+          worstOverpay: metrics?.worstOverpay ?? null,
+          keepers: metrics?.keepers ?? [],
+          roster: metrics?.roster ?? [],
+        };
+      });
+
+      return {
+        success: true,
+        report: {
+          leagueSummary: { avgHitterPrice: leagueAvgHitterPrice, avgPitcherPrice: leagueAvgPitcherPrice },
+          surplusRanking: surplusRanking.map(t => ({ teamId: t.id, teamName: t.name, surplus: t.auctionSurplus })),
+          teams: reportTeams,
+          generatedAt: new Date().toISOString(),
+        },
+      };
+    } catch (err) {
+      logger.error({ error: String(err) }, "AI draft report failed");
+      return { success: false, error: 'Draft report generation failed' };
+    }
+  }
+
   /**
    * Grade all teams' drafts from the current auction results.
    * Returns A-F grades with reasoning for each team.
