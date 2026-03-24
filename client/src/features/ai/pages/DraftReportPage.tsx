@@ -269,12 +269,13 @@ export default function DraftReportPage() {
     return () => clearInterval(interval);
   }, [loading]);
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async (force = false) => {
     if (!leagueId) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchJsonApi<DraftReport>(`${API_BASE}/auction/draft-report?leagueId=${leagueId}`);
+      const url = `${API_BASE}/auction/draft-report?leagueId=${leagueId}${force ? "&force=true" : ""}`;
+      const data = await fetchJsonApi<DraftReport>(url);
       setReport(data);
     } catch (err) {
       setError((err as Error)?.message || "Failed to generate draft report");
@@ -294,10 +295,21 @@ export default function DraftReportPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="Draft Report"
-        subtitle="AI-powered analysis of the 2026 auction draft — grades, strategy, values, and projections for every team."
-      />
+      <div className="flex items-start justify-between gap-4 mb-8">
+        <PageHeader
+          title="Draft Report"
+          subtitle="AI-powered analysis of the 2026 auction draft — grades, strategy, values, and projections for every team."
+        />
+        {report && !loading && (
+          <button
+            onClick={() => { generate(true); }}
+            className="flex-shrink-0 mt-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-accent)]/30 transition-colors"
+            title="Regenerate report with fresh data and AI analysis"
+          >
+            Regenerate
+          </button>
+        )}
+      </div>
 
       {/* Loading state */}
       {loading && (
@@ -314,7 +326,7 @@ export default function DraftReportPage() {
       {error && !loading && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">
           {error}
-          <button onClick={generate} className="ml-3 underline hover:no-underline">Retry</button>
+          <button onClick={() => generate()} className="ml-3 underline hover:no-underline">Retry</button>
         </div>
       )}
 

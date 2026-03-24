@@ -1534,9 +1534,10 @@ router.get("/draft-report", requireAuth, requireLeagueMember("leagueId"), asyncH
   const leagueId = Number(req.query.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Missing leagueId" });
 
-  // Check for persisted report in AuctionSession
+  // Check for persisted report in AuctionSession (skip cache if force=true)
+  const forceRegenerate = req.query.force === "true";
   const session = await prisma.auctionSession.findUnique({ where: { leagueId } });
-  if (session?.state && (session.state as any).draftReport) {
+  if (!forceRegenerate && session?.state && (session.state as any).draftReport) {
     return res.json((session.state as any).draftReport);
   }
 
