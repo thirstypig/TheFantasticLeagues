@@ -444,13 +444,20 @@ export default function Home() {
                   <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Team Grades</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {digest.teamGrades.map((tg: any) => (
-                      <div key={tg.teamName} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]">
-                        <span className={`text-sm font-black tabular-nums w-7 text-center ${gradeColor(tg.grade || "")}`}>{tg.grade}</span>
+                      <button
+                        key={tg.teamName}
+                        onClick={(e) => {
+                          const el = e.currentTarget.querySelector('[data-trend]') as HTMLElement;
+                          if (el) el.classList.toggle('line-clamp-1');
+                        }}
+                        className="flex items-start gap-2 px-3 py-2 rounded-lg bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)] text-left hover:bg-[var(--lg-tint)] transition-colors w-full"
+                      >
+                        <span className={`text-sm font-black tabular-nums w-7 text-center flex-shrink-0 mt-0.5 ${gradeColor(tg.grade || "")}`}>{tg.grade}</span>
                         <div className="min-w-0">
-                          <div className="text-xs font-semibold text-[var(--lg-text-primary)] truncate">{tg.teamName}</div>
-                          <div className="text-[10px] text-[var(--lg-text-muted)] leading-tight truncate">{tg.trend}</div>
+                          <div className="text-xs font-semibold text-[var(--lg-text-primary)]">{tg.teamName}</div>
+                          <div data-trend className="text-[10px] text-[var(--lg-text-muted)] leading-relaxed line-clamp-1">{tg.trend}</div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

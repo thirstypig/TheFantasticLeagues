@@ -314,7 +314,6 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
         where: { releasedAt: null },
         include: { player: { select: { name: true, posPrimary: true } } },
         orderBy: { price: "desc" },
-        take: 8, // Only top 8 by price used in prompt — skip fetching full rosters
       },
     },
     orderBy: { name: "asc" },
@@ -341,13 +340,33 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
   const weekNum = parseInt(weekKey.split("-W")[1]) || 0;
   const tradeStyle = tradeStyles[weekNum % 3];
 
-  const teamData = teams.map(t => ({
-    id: t.id,
-    name: t.name,
-    budget: t.budget,
-    rosterHighlights: t.rosters.slice(0, 8).map(r => `${r.player.name} (${r.player.posPrimary}, $${r.price})`).join(", "),
-    recentMoves: (movesByTeam.get(t.id) || []).slice(0, 5).join("; "),
-  }));
+  // Identify keepers per team (source = "prior_season")
+  const teamData = teams.map(t => {
+    const keepers = t.rosters.filter(r => r.source === "prior_season");
+    const nonKeepers = t.rosters.filter(r => r.source !== "prior_season");
+    return {
+      id: t.id,
+      name: t.name,
+      budget: t.budget,
+      rosterHighlights: t.rosters.slice(0, 8).map(r => `${r.player.name} (${r.player.posPrimary}, $${r.price})`).join(", "),
+      keeperNames: keepers.map(k => k.player.name).join(", "),
+      recentMoves: (movesByTeam.get(t.id) || []).slice(0, 5).join("; "),
+    };
+  });
+
+  // Get previous week's vote results to inform this week's trade proposal
+  const prevWeekKey = getWeekKey(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+  const prevDigest = await prisma.aiInsight.findFirst({
+    where: { type: "league_digest", leagueId, weekKey: prevWeekKey },
+  });
+  let previousVotes: { yes: number; no: number } | null = null;
+  if (prevDigest) {
+    const prevData = prevDigest.data as any;
+    const votes: Record<string, string> = prevData?.votes || {};
+    const yes = Object.values(votes).filter(v => v === "yes").length;
+    const no = Object.values(votes).filter(v => v === "no").length;
+    if (yes + no > 0) previousVotes = { yes, no };
+  }
 
   const { aiAnalysisService } = await import("../../services/aiAnalysisService.js");
   const result = await aiAnalysisService.generateLeagueDigest({
@@ -357,6 +376,7 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
     teams: teamData,
     tradeStyle,
     weekNumber: weekNum,
+    previousVotes,
   });
 
   if (!result.success) {
