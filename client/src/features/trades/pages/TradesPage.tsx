@@ -13,7 +13,7 @@ import {
   TradeAnalysisItem,
 } from "../../../api";
 import { useAuth } from "../../../auth/AuthProvider";
-import { useLeague } from "../../../contexts/LeagueContext";
+import { useLeague, findMyTeam } from "../../../contexts/LeagueContext";
 import { TradeAssetSelector } from "../components/TradeAssetSelector";
 import TeamRosterView from "../../teams/components/TeamRosterView";
 import { Eye, Plus, Sparkles, Loader2 } from "lucide-react";
@@ -551,7 +551,7 @@ export function CreateTradeForm({ onCancel, onSuccess }: { onCancel: () => void;
         const detail = await getLeague(currentLeagueId);
         const l = detail.league;
         const uid = user?.id ? Number(user.id) : undefined;
-        const my = l.teams.find((t: any) => t.owner === user?.email || (uid && (t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid))));
+        const my = uid ? findMyTeam(l.teams, uid) : null;
 
         if (my) {
           setMyTeam(my);

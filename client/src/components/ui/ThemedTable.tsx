@@ -6,7 +6,6 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  TableCompactProvider,
   TableDensityProvider,
   type TableDensity,
 } from './table';
@@ -16,9 +15,7 @@ interface ThemedTableProps {
   className?: string;
   /** Set to true if this table is already inside a styled container */
   bare?: boolean;
-  /** Compact mode — tighter padding for embedded panels (auction, sidebars) */
-  compact?: boolean;
-  /** Table density tier — overrides compact if set */
+  /** Table density tier: "compact" | "default" | "comfortable" */
   density?: TableDensity;
   /** Apply zebra striping (alternating row backgrounds) */
   zebra?: boolean;
@@ -27,12 +24,10 @@ interface ThemedTableProps {
 /**
  * ThemedTable - Wraps shadcn Table with optional liquid-glass container.
  * Set `bare={true}` if already inside a glass container.
- * Set `compact={true}` for tighter padding (auction panels, etc.).
  * Set `density` for fine-grained control: "compact" | "default" | "comfortable".
  * Set `zebra={true}` for alternating row backgrounds.
  */
-export function ThemedTable({ children, className = '', bare = false, compact = false, density, zebra = false }: ThemedTableProps) {
-  const effectiveDensity: TableDensity = density ?? (compact ? "compact" : "comfortable");
+export function ThemedTable({ children, className = '', bare = false, density = "comfortable", zebra = false }: ThemedTableProps) {
   const zebraClass = zebra ? "lg-table" : "";
 
   const tableEl = (
@@ -41,25 +36,15 @@ export function ThemedTable({ children, className = '', bare = false, compact = 
     </table>
   );
 
-  const wrapped = (
-    <TableDensityProvider density={effectiveDensity}>
-      {compact ? (
-        <TableCompactProvider compact>
-          {bare ? tableEl : (
-            <div className={cn('overflow-x-auto rounded-2xl liquid-glass', className)}>
-              {tableEl}
-            </div>
-          )}
-        </TableCompactProvider>
-      ) : bare ? tableEl : (
+  return (
+    <TableDensityProvider density={density}>
+      {bare ? tableEl : (
         <div className={cn('overflow-x-auto rounded-2xl liquid-glass', className)}>
           {tableEl}
         </div>
       )}
     </TableDensityProvider>
   );
-
-  return wrapped;
 }
 
 interface ThemedTheadProps {

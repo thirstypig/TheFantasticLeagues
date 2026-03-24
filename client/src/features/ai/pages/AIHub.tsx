@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Sparkles, Lock, Loader2, ExternalLink, BarChart3, Trophy, TrendingUp, ArrowLeftRight, Users, Gavel, BookOpen, Rewind, Brain } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
-import { useAuth } from "../../../auth/AuthProvider";
+
 import PageHeader from "../../../components/ui/PageHeader";
 
 /* ── Types ───────────────────────────────────────────────────────── */
@@ -31,28 +31,13 @@ interface DraftGrade {
 /* ── Main Page ───────────────────────────────────────────────────── */
 
 export default function AIHub() {
-  const { leagueId } = useLeague();
+  const { leagueId, myTeamId } = useLeague();
   const gating = useSeasonGating();
-  const { user } = useAuth();
-
-  // Fetch user's team for features that require teamId
-  const [myTeamId, setMyTeamId] = useState<number | null>(null);
-  useEffect(() => {
-    if (!user || !leagueId) return;
-    fetchJsonApi<{ league: { teams: Array<{ id: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${leagueId}`)
-      .then(res => {
-        const uid = Number(user.id);
-        const mine = res.league?.teams?.find(t =>
-          t.ownerUserId === uid || (t.ownerships || []).some(o => o.userId === uid)
-        );
-        setMyTeamId(mine?.id ?? null);
-      })
-      .catch(() => setMyTeamId(null));
-  }, [user, leagueId]);
 
   // State for generating/viewing results
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AI responses have varied shapes per feature
   const [results, setResults] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -171,20 +156,34 @@ export default function AIHub() {
     },
   ];
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const generate = useCallback(async (feature: AIFeature) => {
     if (!feature.generateUrl || !leagueId) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(feature.id);
     setErrors(prev => ({ ...prev, [feature.id]: "" }));
     setActiveFeature(feature.id);
     try {
-      const data = await fetchJsonApi(`${API_BASE}${feature.generateUrl}`);
-      setResults(prev => ({ ...prev, [feature.id]: data }));
-    } catch (err: any) {
-      setErrors(prev => ({ ...prev, [feature.id]: err?.message || "Failed to generate" }));
+      const data = await fetchJsonApi(`${API_BASE}${feature.generateUrl}`, {
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) {
+        setResults(prev => ({ ...prev, [feature.id]: data }));
+      }
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return;
+      setErrors(prev => ({ ...prev, [feature.id]: (err as Error)?.message || "Failed to generate" }));
     } finally {
-      setLoading(null);
+      if (!controller.signal.aborted) setLoading(null);
     }
   }, [leagueId]);
+
+  // Abort in-flight request on unmount
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const categoryLabels: Record<string, string> = {
     draft: "Draft & Auction",

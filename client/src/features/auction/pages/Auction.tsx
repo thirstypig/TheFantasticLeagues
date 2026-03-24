@@ -13,7 +13,7 @@ import { useNominationQueue } from '../hooks/useNominationQueue';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useAuctionSounds } from '../hooks/useAuctionSounds';
 import { useToast } from "../../../contexts/ToastContext";
-import { useLeague } from "../../../contexts/LeagueContext";
+import { useLeague, findMyTeam } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import AuctionResults from "./AuctionResults";
 import AuctionDraftLog from '../components/AuctionDraftLog';
@@ -97,10 +97,7 @@ export default function Auction() {
 
                 const detail = await getLeague(currentLeagueId);
                 if (!mounted) return;
-                const teamsWithOwnership = detail.league.teams as Array<typeof detail.league.teams[number] & { ownerships?: { userId: number }[] }>;
-                const myTeam = teamsWithOwnership.find(t =>
-                  t.ownerUserId === fetchedUserId || (t.ownerships || []).some(o => o.userId === fetchedUserId)
-                );
+                const myTeam = fetchedUserId ? findMyTeam(detail.league.teams, fetchedUserId) : null;
                 if (myTeam) {
                     setMyTeamId(myTeam.id);
                 }

@@ -3,15 +3,15 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TableHead } from "./table";
 
-interface SortableHeaderProps {
+interface SortableHeaderProps<K extends string = string> {
   /** Column key used for sort comparison */
-  sortKey: string;
+  sortKey: K;
   /** Currently active sort key */
-  activeSortKey: string;
+  activeSortKey: K;
   /** Current sort direction */
   sortDesc: boolean;
   /** Callback when header is clicked */
-  onSort: (key: string) => void;
+  onSort: (key: K) => void;
   /** Header label */
   children: React.ReactNode;
   /** Text alignment */
@@ -23,10 +23,13 @@ interface SortableHeaderProps {
 }
 
 /**
- * SortableHeader — a table header cell with sort indicators.
- * Replaces inline sort logic repeated across Players, StatsTables, AuctionValues, etc.
+ * SortableHeader — an accessible, sortable table header cell.
+ *
+ * Uses a <button> inside <th> per WAI-ARIA APG sortable table pattern.
+ * Keyboard support (Enter/Space) is provided natively by the button element.
+ * aria-sort is set only on the active column; omitted on unsorted columns.
  */
-export function SortableHeader({
+export function SortableHeader<K extends string = string>({
   sortKey,
   activeSortKey,
   sortDesc,
@@ -35,7 +38,7 @@ export function SortableHeader({
   align = "left",
   className,
   title,
-}: SortableHeaderProps) {
+}: SortableHeaderProps<K>) {
   const isActive = activeSortKey === sortKey;
   const alignClass = { left: "text-left", center: "text-center", right: "text-right" }[align];
 
@@ -43,19 +46,27 @@ export function SortableHeader({
 
   return (
     <TableHead
-      onClick={() => onSort(sortKey)}
-      title={title}
-      className={cn(
-        alignClass,
-        "cursor-pointer select-none hover:text-[var(--lg-accent)] transition-colors",
-        isActive && "text-[var(--lg-accent)]",
-        className,
-      )}
+      className={cn(alignClass, className)}
+      {...(isActive ? { "aria-sort": sortDesc ? "descending" : "ascending" } : {})}
     >
-      <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        title={title}
+        className={cn(
+          "inline-flex items-center gap-1 cursor-pointer select-none",
+          "hover:text-[var(--lg-accent)] transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lg-tint)] focus-visible:rounded-sm",
+          isActive && "text-[var(--lg-accent)]",
+        )}
+      >
         {children}
-        <SortIcon size={12} className={cn("flex-shrink-0", isActive ? "opacity-80" : "opacity-30")} />
-      </span>
+        <SortIcon
+          size={12}
+          aria-hidden="true"
+          className={cn("flex-shrink-0", isActive ? "opacity-80" : "opacity-30")}
+        />
+      </button>
     </TableHead>
   );
 }

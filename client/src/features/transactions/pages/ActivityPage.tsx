@@ -13,7 +13,7 @@ import {
   TradeProposal,
 } from "../../trades/api";
 import { useAuth } from "../../../auth/AuthProvider";
-import { useLeague } from "../../../contexts/LeagueContext";
+import { useLeague, findMyTeam } from "../../../contexts/LeagueContext";
 import { useToast } from "../../../contexts/ToastContext";
 import AddDropTab from "../../roster/components/AddDropTab";
 import { TradeCard, LeagueTradeCard, CreateTradeForm } from "../../trades/pages/TradesPage";
@@ -88,9 +88,7 @@ export default function ActivityPage() {
 
         // Auto-detect user's team
         const uid = Number(authUser?.id);
-        const myTeam = loadedTeams.find(
-          (t: any) => t.ownerUserId === uid || (t.ownerships || []).some((o: any) => o.userId === uid)
-        );
+        const myTeam = findMyTeam(loadedTeams, uid);
         if (myTeam) {
           setSelectedTeamId(myTeam.id);
         } else if (loadedTeams.length > 0) {

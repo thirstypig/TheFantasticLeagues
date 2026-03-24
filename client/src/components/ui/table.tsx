@@ -15,18 +15,6 @@ export function TableDensityProvider({ density, children }: { density: TableDens
   return <TableDensityContext.Provider value={density}>{children}</TableDensityContext.Provider>;
 }
 
-// Backwards-compatible aliases for existing compact usage
-const TableCompactContext = React.createContext(false);
-export const useTableCompact = () => React.useContext(TableCompactContext);
-export function TableCompactProvider({ compact, children }: { compact: boolean; children: React.ReactNode }) {
-  return (
-    <TableCompactContext.Provider value={compact}>
-      <TableDensityProvider density={compact ? "compact" : "comfortable"}>
-        {children}
-      </TableDensityProvider>
-    </TableCompactContext.Provider>
-  );
-}
 
 const headStyles: Record<TableDensity, string> = {
   compact: "px-1.5 py-1.5 text-left align-middle text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]",

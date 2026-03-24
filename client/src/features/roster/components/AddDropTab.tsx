@@ -5,6 +5,7 @@ import { NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
 import { getMlbTeamAbbr } from '../../../lib/playerDisplay';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+import { SortableHeader } from '../../../components/ui/SortableHeader';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import { useLeague } from '../../../contexts/LeagueContext';
@@ -262,29 +263,24 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop }: A
                 <ThemedTable bare>
                     <ThemedThead sticky>
                         <ThemedTr>
-                            <ThemedTh className="pl-8 py-3" onClick={() => handleSort('name')}>
-                                Name {sortKey === 'name' && (sortDesc ? '▼' : '▲')}
-                            </ThemedTh>
-
-                            <ThemedTh align="center" className="w-16" onClick={() => handleSort('mlb_team')}>
-                                MLB {sortKey === 'mlb_team' && (sortDesc ? '▼' : '▲')}
-                            </ThemedTh>
+                            <SortableHeader sortKey="name" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} className="pl-8 py-3">Name</SortableHeader>
+                            <SortableHeader sortKey="mlb_team" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">MLB</SortableHeader>
 
                             {viewGroup === 'hitters' ? (
                                 <>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('R')}>R {sortKey === 'R' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('HR')}>HR {sortKey === 'HR' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('RBI')}>RBI {sortKey === 'RBI' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('SB')}>SB {sortKey === 'SB' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('AVG')}>AVG {sortKey === 'AVG' && (sortDesc ? '▼' : '▲')}</ThemedTh>
+                                    <SortableHeader sortKey="R" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">R</SortableHeader>
+                                    <SortableHeader sortKey="HR" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">HR</SortableHeader>
+                                    <SortableHeader sortKey="RBI" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">RBI</SortableHeader>
+                                    <SortableHeader sortKey="SB" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">SB</SortableHeader>
+                                    <SortableHeader sortKey="AVG" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">AVG</SortableHeader>
                                 </>
                             ) : (
                                 <>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('W')}>W {sortKey === 'W' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('SV')}>SV {sortKey === 'SV' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-16" onClick={() => handleSort('K')}>K {sortKey === 'K' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-20" onClick={() => handleSort('ERA')}>ERA {sortKey === 'ERA' && (sortDesc ? '▼' : '▲')}</ThemedTh>
-                                    <ThemedTh align="center" className="w-20" onClick={() => handleSort('WHIP')}>WHIP {sortKey === 'WHIP' && (sortDesc ? '▼' : '▲')}</ThemedTh>
+                                    <SortableHeader sortKey="W" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">W</SortableHeader>
+                                    <SortableHeader sortKey="SV" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">SV</SortableHeader>
+                                    <SortableHeader sortKey="K" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">K</SortableHeader>
+                                    <SortableHeader sortKey="ERA" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-20">ERA</SortableHeader>
+                                    <SortableHeader sortKey="WHIP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-20">WHIP</SortableHeader>
                                 </>
                             )}
 

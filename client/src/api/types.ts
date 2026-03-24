@@ -75,14 +75,21 @@ export type TeamDetailResponse = {
   }>;
 };
 
+export interface TeamOwnership {
+  userId: number;
+}
+
+export type LeagueTeam = {
+  id: number;
+  name: string;
+  code: string;
+  ownerUserId?: number | null;
+  owner?: string | null;
+  ownerships?: TeamOwnership[];
+};
+
 export type LeagueDetail = LeagueSummary & {
-  teams: Array<{
-    id: number;
-    name: string;
-    code: string;
-    ownerUserId?: number | null;
-    owner?: string | null;
-  }>;
+  teams: LeagueTeam[];
 };
 
 export type AdminCreateLeagueInput = {

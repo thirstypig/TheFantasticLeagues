@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getMe, getLeague } from '../../../api';
-import { useLeague } from '../../../contexts/LeagueContext';
+import { useLeague, findMyTeam } from '../../../contexts/LeagueContext';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import type { ClientAuctionState } from '../hooks/useAuctionState';
 import AuctionComplete from '../components/AuctionComplete';
@@ -33,9 +33,7 @@ export default function AuctionResults() {
         if (myUserId) {
           const detail = await getLeague(leagueId);
           if (!mounted) return;
-          const myTeam = detail.league.teams.find((t: any) =>
-            t.ownerUserId === myUserId || (t.ownerships || []).some((o: any) => o.userId === myUserId)
-          );
+          const myTeam = findMyTeam(detail.league.teams, myUserId);
           if (myTeam) setMyTeamId(myTeam.id);
         }
       } catch (e: any) {

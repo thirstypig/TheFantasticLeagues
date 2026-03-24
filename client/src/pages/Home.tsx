@@ -6,7 +6,7 @@ import { fetchJsonApi, API_BASE, yyyyMmDd, addDays } from "../api/base";
 import { ChevronLeft, ChevronRight, Gavel, Trophy, Users, Calendar } from "lucide-react";
 import { joinLeague } from "../features/leagues/api";
 import { useToast } from "../contexts/ToastContext";
-import { useLeague } from "../contexts/LeagueContext";
+import { useLeague, findMyTeam } from "../contexts/LeagueContext";
 import { useSeasonGating } from "../hooks/useSeasonGating";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -199,12 +199,9 @@ export default function Home() {
     if (!user || !currentLeagueId) { setHasTeam(null); setDash(null); return; }
     fetchJsonApi<{ league: { name: string; season: number; teams: Array<{ id: number; name: string; budget: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
       .then(res => {
-        const uid = Number(user.id);
         const league = res.league;
         const teams = league?.teams || [];
-        const mine = teams.find(t =>
-          t.ownerUserId === uid || (t.ownerships || []).some(o => o.userId === uid)
-        );
+        const mine = findMyTeam(teams, Number(user.id));
         setHasTeam(!!mine);
         setDash({
           leagueName: league?.name || '',

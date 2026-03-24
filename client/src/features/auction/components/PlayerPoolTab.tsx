@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import { getLastName } from '../../../lib/baseballUtils';
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
+import { SortableHeader } from '../../../components/ui/SortableHeader';
 import { Star } from 'lucide-react';
 
 import {
@@ -287,9 +288,6 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
       }
   };
 
-  /** Sort indicator arrow */
-  const sortArrow = (key: StatKey) =>
-    sortKey === key ? (sortDesc ? ' ▾' : ' ▴') : '';
 
   // Focus nom input when it appears
   useEffect(() => {
@@ -401,30 +399,30 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <ThemedTable bare compact>
+        <ThemedTable bare density="compact">
             <ThemedThead sticky>
                 <ThemedTr>
                     {onToggleStar && <ThemedTh className="w-6 px-0.5"> </ThemedTh>}
-                    {hasRankings && <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('rank')} title="My Rank (from imported rankings)">#R{sortArrow('rank')}</ThemedTh>}
-                    <ThemedTh className="px-2 tracking-wide" onClick={() => handleHeaderClick('name')}>Player{sortArrow('name')}</ThemedTh>
+                    {hasRankings && <SortableHeader sortKey="rank" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="My Rank (from imported rankings)">#R</SortableHeader>}
+                    <SortableHeader sortKey="name" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} className="px-2 tracking-wide">Player</SortableHeader>
                     {viewGroup === 'hitters' ? (
                         <>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('R')} title="Runs">R{sortArrow('R')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('HR')} title="Home Runs">HR{sortArrow('HR')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('RBI')} title="Runs Batted In">RBI{sortArrow('RBI')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('SB')} title="Stolen Bases">SB{sortArrow('SB')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('AVG')} title="Batting Average">AVG{sortArrow('AVG')}</ThemedTh>
+                             <SortableHeader sortKey="R" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Runs">R</SortableHeader>
+                             <SortableHeader sortKey="HR" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Home Runs">HR</SortableHeader>
+                             <SortableHeader sortKey="RBI" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Runs Batted In">RBI</SortableHeader>
+                             <SortableHeader sortKey="SB" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Stolen Bases">SB</SortableHeader>
+                             <SortableHeader sortKey="AVG" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title="Batting Average">AVG</SortableHeader>
                         </>
                     ) : (
                         <>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('W')} title="Wins">W{sortArrow('W')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('SV')} title="Saves">SV{sortArrow('SV')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-8" onClick={() => handleHeaderClick('K')} title="Strikeouts">K{sortArrow('K')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('ERA')} title="Earned Run Average (lower is better)">ERA{sortArrow('ERA')}</ThemedTh>
-                             <ThemedTh align="center" className="px-1 w-10" onClick={() => handleHeaderClick('WHIP')} title="Walks + Hits per Inning Pitched (lower is better)">WHIP{sortArrow('WHIP')}</ThemedTh>
+                             <SortableHeader sortKey="W" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Wins">W</SortableHeader>
+                             <SortableHeader sortKey="SV" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Saves">SV</SortableHeader>
+                             <SortableHeader sortKey="K" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Strikeouts">K</SortableHeader>
+                             <SortableHeader sortKey="ERA" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title="Earned Run Average (lower is better)">ERA</SortableHeader>
+                             <SortableHeader sortKey="WHIP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title="Walks + Hits per Inning Pitched (lower is better)">WHIP</SortableHeader>
                         </>
                     )}
-                    <ThemedTh align="center" className="px-1 w-10 cursor-help" onClick={() => handleHeaderClick('val')} title={myTeamId ? "Personalized value based on your roster needs, budget, and position scarcity. Green = high value to your team. Red = low value or position full. Blank = no projection." : "Projected auction value. Green ($10+) = high value. Red ($0 or negative) = below replacement. Blank = no projection."}>{myTeamId ? 'My Val' : 'Val'}{sortArrow('val')}</ThemedTh>
+                    <SortableHeader sortKey="val" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title={myTeamId ? "Personalized value based on your roster needs, budget, and position scarcity." : "Projected auction value."}>{myTeamId ? 'My Val' : 'Val'}</SortableHeader>
                     <ThemedTh className="w-14 px-1" title="Click Nom to nominate a player for auction"> </ThemedTh>
                 </ThemedTr>
             </ThemedThead>

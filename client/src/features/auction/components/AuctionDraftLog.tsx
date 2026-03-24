@@ -88,7 +88,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
                 No players drafted yet.
               </div>
             )}
-            <ThemedTable bare compact>
+            <ThemedTable bare density="compact">
               <ThemedThead sticky>
                 <ThemedTr>
                   <ThemedTh align="center" className="w-8">#</ThemedTh>
