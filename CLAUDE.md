@@ -162,12 +162,12 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/api/base.ts` — fetchJsonApi, API_BASE config
 - `client/src/api/types.ts` — shared API response/request types
 - `client/src/components/ui/` — shadcn-style UI primitives (table.tsx has 3-tier density: compact/default/comfortable)
-- `client/src/components/ui/SortableHeader.tsx` — reusable sort header with direction indicators
+- `client/src/components/ui/SortableHeader.tsx` — accessible sortable header (`<button>` in `<th>`, `aria-sort`, generic `<K extends string>`)
 - `client/src/components/ui/ThemedTable.tsx` — ThemedTable supports `density` and `zebra` props
 - `client/src/components/AppShell.tsx` — app shell
 - `client/src/components/shared/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players); includes fielding stats (games by position)
 - `client/src/components/shared/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
-- `client/src/contexts/LeagueContext.tsx` — app-wide league context (leagueId, outfieldMode, seasonStatus, leagues list)
+- `client/src/contexts/LeagueContext.tsx` — app-wide league context (leagueId, outfieldMode, seasonStatus, myTeamId, leagues list); value memoized, exports `findMyTeam<T>` helper
 - `client/src/hooks/useSeasonGating.ts` — `useSeasonGating()` hook returning feature availability flags based on season status
 - `client/src/lib/sportConfig.ts` — baseball constants, position utilities, `isPitcher()`, `mapPosition()`, `normalizePosition()`, `getMlbTeamAbbr()`, stat formatting
 - `client/src/lib/playerDisplay.ts` — thin re-export layer over `sportConfig.ts` (kept for backwards compatibility)

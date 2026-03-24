@@ -547,6 +547,11 @@ const buildJournal = [
     title: "Session 35: Live Auction Production Fixes & Code Quality Sweep",
     detail: "Critical production fixes during live auction draft. Auction showed 0 teams — root cause: useAuctionState.ts used hardcoded /api/ paths instead of ${API_BASE}, routing through Cloudflare instead of direct to Render. Fixed 49 hardcoded paths across 22 files (complete API_BASE migration). Player names in Teams tab — server now sends mlbId/playerName in roster data. Force-assigned players immediately marked as taken via enrichedPlayers useMemo overlaying auction state. Position dropdown shows MI/CI roster slots via positionToSlots(). Ohtani two-way stats split — pitcher row shows pitching stats only. Position matrix colors reversed (green=full, not red). 5-agent code review (security, architecture, performance, simplicity, patterns) resolved all 5 P2 findings: server type drift, duplicate players.find(), unnecessary as-any cast, || to ?? nullish coalescing, inline constant dedup. Compound learning docs: deployment checklist, production outage post-mortem, UX fixes. Pre-deploy audit memory saved. 660 tests passing.",
   },
+  {
+    date: "Mar 2026",
+    title: "Session 38: Code Review P2 Cleanup — Context, Accessibility, SortableHeader",
+    detail: "Resolved all 5 P2 findings from Session 37's 5-agent code review via 9-agent deepened plan. Added myTeamId to LeagueContext (merged with existing outfieldMode fetch, useMemo on value object, useCallback on setLeagueId, cancellation flag for race conditions). Generic findMyTeam<T> helper eliminates 7 duplicate team-finding patterns across 6 files. AbortController on AIHub generate callback (signal.aborted check, abort on unmount). SortableHeader made WAI-ARIA accessible (<button> inside <th>, aria-sort on active column only, generic <K extends string>, focus ring). Removed compact prop + TableCompactProvider dead code. Adopted SortableHeader in Players.tsx, PlayerPoolTab.tsx, AddDropTab.tsx — 30+ inline sort headers replaced. LeagueDetail type now includes ownerships field. Visual spot-check via Playwright (dark, light, mobile 390px). AI APIs funded (Gemini + Anthropic). 680 tests passing.",
+  },
 ];
 
 const workflowSteps = [

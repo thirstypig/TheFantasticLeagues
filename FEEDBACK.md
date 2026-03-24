@@ -4,6 +4,67 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-03-23 (Session 38) — Code Review P2 Cleanup: Context, Accessibility, SortableHeader Adoption
+
+### Summary
+Resolved all 5 P2 findings from the Session 37 five-agent code review. Added `myTeamId` to LeagueContext (merged with existing fetch, memoized value), AbortController to AIHub, WAI-ARIA accessible SortableHeader with generic types, removed dead `compact` prop infrastructure, and adopted SortableHeader across 3 pages (30+ inline sort headers replaced). 9-agent deepened plan guided implementation. Visual spot-check passed (dark, light, mobile 390px). AI APIs funded (Gemini + Anthropic).
+
+### Completed — LeagueContext myTeamId (Task 1)
+- **`findMyTeam<T>` generic helper** — typed team ownership matching, single source of truth
+- **Merged outfieldMode + myTeamId** into single `GET /leagues/:id` fetch with cancellation flag
+- **Memoized context value** — `useMemo` on entire provider value object, `useCallback` on `setLeagueId` (fixes pre-existing 29-consumer re-render issue)
+- **Reset to null synchronously** on league switch — prevents stale cross-league race condition
+- **`LeagueDetail` type** now includes `ownerships` field (was untyped)
+- **6 consumer files** updated: AIHub, Home, Auction, AuctionResults, TradesPage, ActivityPage
+- Removed TradesPage email-based fallback (`t.owner === user?.email`) — all teams have `ownerUserId`
+
+### Completed — AIHub AbortController (Task 2)
+- **AbortController ref** on generate callback — aborts previous request on new generate, aborts on unmount
+- **`signal.aborted` check** instead of `instanceof DOMException` (works in Node.js test environments)
+- Removed team fetch useEffect (replaced by context `myTeamId`)
+- Removed unused `useAuth` import
+
+### Completed — SortableHeader Accessibility (Task 3)
+- **`<button>` inside `<th>`** per WAI-ARIA APG sortable table pattern (native keyboard support)
+- **`aria-sort`** only on active column, omitted entirely on unsorted (not `"none"`)
+- **`aria-hidden="true"`** on sort icon
+- **Generic `<K extends string = string>`** for typed sort keys
+- **Focus ring** via `focus-visible:ring-2 ring-[var(--lg-tint)]`
+
+### Completed — Compact Prop Deprecation (Task 4)
+- Migrated 2 callers (PlayerPoolTab, AuctionDraftLog) to `density="compact"`
+- Removed `compact` prop from ThemedTable interface
+- Removed `TableCompactProvider`, `TableCompactContext`, `useTableCompact` from table.tsx
+- Simplified ThemedTable body (removed nested conditional wrapping)
+
+### Completed — SortableHeader Adoption (Task 5)
+- **Players.tsx** — 13 inline sort headers replaced with SortableHeader + `handleSort` function
+- **PlayerPoolTab.tsx** — 13+ inline headers replaced, `sortArrow` helper removed
+- **AddDropTab.tsx** — 12 inline headers replaced (found by Pattern Recognition agent — was missed in original plan)
+
+### Completed — Other
+- **`splitTwoWayStats` JSDoc** — added in-place mutation warning
+- **AI API funded** — both Gemini and Anthropic on paid plans
+- **Visual spot-check** — dark mode, light mode, mobile 390px all verified via Playwright
+- **9-agent deepened plan** — TypeScript Reviewer, Performance Oracle, Code Simplicity, Pattern Recognition, Architecture Strategist, Frontend Races, Best Practices, Learnings, Codebase Explorer
+
+### Test Results
+- Server: 493 passing
+- Client: 187 passing
+- **Total: 680 tests** (MCP: 50 additional)
+- TypeScript: clean (client + server)
+
+### Pending / Next Session
+1. **SaaS Phase 1A** — begin snake draft implementation (deferred)
+2. **Adopt `--lg-positive`/`--lg-negative` tokens** — added Session 37 but unused
+3. **Remove `syncNLPlayers`** — superseded by `syncAllPlayers`
+
+### Concerns / Tech Debt
+- `Player.posList` is global (not per-league) — if leagues diverge on GP threshold, would need per-league eligibility model
+- LeagueContext is at architectural ceiling — a third user-derived field should trigger context split
+
+---
+
 ## Session 2026-03-23 (Session 37) — AI Insights Fixes, Table Density, Code Quality, SaaS Planning
 
 ### Summary

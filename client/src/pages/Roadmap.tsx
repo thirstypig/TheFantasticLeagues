@@ -33,7 +33,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "March 23, 2026 (Session 37)";
+const LAST_UPDATED = "March 23, 2026 (Session 38)";
 
 // ─── Product Roadmap ───
 
@@ -115,11 +115,11 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Modern Table Redesign",
-        description: "3-tier density system (compact/default/comfortable), SortableHeader component, zebra striping, semantic value tokens. Applied to Players, StatsTables, AuctionValues.",
+        description: "3-tier density system (compact/default/comfortable), accessible SortableHeader with WAI-ARIA (<button> in <th>, aria-sort, generics), zebra striping. Adopted in Players, PlayerPoolTab, AddDropTab. Compact prop removed.",
         icon: Layers,
         effort: "Large",
-        status: "in-progress",
-        tags: ["ux", "tables"],
+        status: "done",
+        tags: ["ux", "tables", "a11y"],
       },
       {
         title: "Player News Feed",

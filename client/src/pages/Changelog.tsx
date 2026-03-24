@@ -30,6 +30,29 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.38.0",
+    date: "Mar 23, 2026",
+    session: "Session 38",
+    title: "Code Review P2 Cleanup: Context, Accessibility, SortableHeader Adoption",
+    highlights: [
+      "Added myTeamId to LeagueContext — eliminates 7 duplicate team-finding patterns, memoized context value",
+      "SortableHeader now WAI-ARIA accessible with <button> in <th>, aria-sort, generic types, focus ring",
+      "Adopted SortableHeader across 3 pages (Players, PlayerPoolTab, AddDropTab) — 30+ inline headers replaced",
+      "9-agent deepened plan guided implementation — TypeScript, Performance, Architecture, Races, and more",
+    ],
+    changes: [
+      { type: "refactor", description: "LeagueContext: myTeamId from merged outfieldMode fetch, useMemo on value object, useCallback on setLeagueId" },
+      { type: "refactor", description: "Generic findMyTeam<T> helper — typed team ownership matching, single source of truth" },
+      { type: "refactor", description: "LeagueDetail type now includes ownerships field — was untyped across 7 consumer files" },
+      { type: "feat", description: "SortableHeader: WAI-ARIA <button> inside <th>, aria-sort on active column only, generic <K extends string>" },
+      { type: "feat", description: "AbortController on AIHub generate callback — aborts previous request, cleans up on unmount" },
+      { type: "refactor", description: "Adopted SortableHeader in Players.tsx, PlayerPoolTab.tsx, AddDropTab.tsx — 30+ inline sort headers replaced" },
+      { type: "refactor", description: "Removed compact prop + TableCompactProvider/Context/useTableCompact dead code from table system" },
+      { type: "docs", description: "splitTwoWayStats JSDoc: added in-place mutation warning" },
+      { type: "docs", description: "9-agent deepened plan: docs/plans/2026-03-23-refactor-session-37-code-review-p2-cleanup-plan.md" },
+    ],
+  },
+  {
     version: "0.37.0",
     date: "Mar 23, 2026",
     session: "Session 37",
