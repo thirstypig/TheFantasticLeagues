@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Search } from "lucide-react";
 import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type PeriodStatRow, fmtRate } from '../../../api';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 import { POS_ORDER, getPrimaryPosition, getLastName } from '../../../lib/baseballUtils';
@@ -392,11 +394,7 @@ export default function Players() {
            </div>
            
            {filteredPlayers.length === 0 && (
-                <div className="flex flex-col items-center justify-center p-32 text-center opacity-40">
-                    <div className="text-4xl mb-6">📡</div>
-                    <div className="text-[var(--lg-text-muted)] text-lg font-medium uppercase">No Players Found</div>
-                    <p className="text-xs font-medium mt-3">Try adjusting your search or filters.</p>
-                </div>
+                <EmptyState icon={Search} title="No players found" description="Try adjusting your search or filters." />
             )}
 
        {selectedPlayer && (

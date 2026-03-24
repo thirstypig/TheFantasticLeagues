@@ -1,6 +1,8 @@
 // client/src/pages/ArchivePage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
+import { Archive } from "lucide-react";
 import { getArchiveSeasons, getArchivePeriods, getArchivePeriodStats, getArchiveDraftResults, updateArchiveTeamName, fmtRate } from '../../../api';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
 import { useAuth } from '../../../auth/AuthProvider';
@@ -630,7 +632,7 @@ export default function ArchivePage() {
             {draftLoading ? (
               <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading draft data...</div>
             ) : draftPlayers.length === 0 ? (
-              <div className="text-center py-20 text-[var(--lg-text-muted)] italic opacity-40">No player records found for {selectedYear}.</div>
+              <EmptyState icon={Archive} title={`No player records for ${selectedYear}`} description="Import historical data to see draft results here." compact />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.keys(OGBA_TEAM_NAMES).sort().map(teamCode => {
@@ -918,7 +920,7 @@ export default function ArchivePage() {
             {loading ? (
               <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading...</div>
             ) : stats.length === 0 && selectedYear && selectedPeriod ? (
-              <div className="text-center py-20 text-[var(--lg-text-muted)] italic opacity-40">No records found.</div>
+              <EmptyState icon={Archive} title="No records found" description="Select a year and period to view statistics." compact />
             ) : (
               <div className="space-y-8">
                 <div className="flex items-center gap-4 bg-[var(--lg-tint)] p-4 rounded-3xl border border-[var(--lg-border-subtle)] shadow-lg justify-center w-fit mx-auto mb-12">

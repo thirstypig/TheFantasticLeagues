@@ -53,6 +53,10 @@ vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: vi.fn(), confirm: vi.fn().mockResolvedValue(true) }),
 }));
 
+vi.mock("../../../components/ui/EmptyState", () => ({
+  EmptyState: ({ title }: any) => <div>{title}</div>,
+}));
+
 vi.mock("../components/TradeAssetSelector", () => ({
   TradeAssetSelector: () => <div data-testid="trade-asset-selector" />,
 }));
@@ -66,6 +70,7 @@ vi.mock("lucide-react", () => ({
   Plus: () => <span>Plus</span>,
   Sparkles: () => <span>Sparkles</span>,
   Loader2: () => <span>Loader2</span>,
+  ArrowLeftRight: () => <span>ArrowLeftRight</span>,
 }));
 
 import { TradesPage, TradeCard, LeagueTradeCard } from "../pages/TradesPage";
@@ -144,7 +149,7 @@ describe("TradesPage", () => {
     mockGetTrades.mockResolvedValue({ trades: [] });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("No active trade proposals.")).toBeInTheDocument();
+      expect(screen.getByText("No active trade proposals")).toBeInTheDocument();
     });
   });
 
@@ -171,12 +176,12 @@ describe("TradesPage", () => {
     mockGetTrades.mockResolvedValue({ trades: [] });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("No active trade proposals.")).toBeInTheDocument();
+      expect(screen.getByText("No active trade proposals")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText("League Activity"));
 
-    expect(screen.getByText("No league trades found.")).toBeInTheDocument();
+    expect(screen.getByText("No league trades found")).toBeInTheDocument();
   });
 });
 

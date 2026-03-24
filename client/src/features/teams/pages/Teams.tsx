@@ -8,8 +8,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { Users } from "lucide-react";
 import { getPlayerSeasonStats, type PlayerSeasonStat } from "../../../api";
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
+import { EmptyState } from "../../../components/ui/EmptyState";
 import { isPitcher } from "../../../lib/playerDisplay";
 import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
@@ -101,7 +103,7 @@ export default function Teams() {
       {loading ? (
         <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse text-sm">Loading teams…</div>
       ) : teams.length === 0 ? (
-        <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic text-sm">No teams found.</div>
+        <EmptyState icon={Users} title="No teams found" description="Teams will appear here once they're added to the league." compact />
       ) : (
         <div className="lg-card p-0 overflow-hidden">
           <ThemedTable bare>

@@ -22,7 +22,8 @@ import ActivityWaiversTab from "../components/ActivityWaiversTab";
 import ActivityHistoryTab from "../components/ActivityHistoryTab";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/button";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, ArrowLeftRight } from "lucide-react";
+import { EmptyState } from "../../../components/ui/EmptyState";
 
 type ActivityTab = "add_drop" | "trades" | "waivers" | "history";
 
@@ -284,9 +285,7 @@ export default function ActivityPage() {
                 </h2>
               </div>
               {activeTrades.length === 0 ? (
-                <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                  No active trade proposals.
-                </div>
+                <EmptyState icon={ArrowLeftRight} title="No active trade proposals" description="Trades, waivers, and roster moves will appear here." compact />
               ) : (
                 <div className="grid gap-6">
                   {activeTrades.map((t) => (

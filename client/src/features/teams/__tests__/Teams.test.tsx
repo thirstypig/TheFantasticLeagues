@@ -101,7 +101,7 @@ describe("Teams", () => {
     renderWithRouter(<Teams />);
 
     await waitFor(() => {
-      expect(screen.getByText("No teams found.")).toBeInTheDocument();
+      expect(screen.getByText("No teams found")).toBeInTheDocument();
     });
   });
 

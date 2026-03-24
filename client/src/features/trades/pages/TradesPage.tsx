@@ -16,7 +16,8 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague, findMyTeam } from "../../../contexts/LeagueContext";
 import { TradeAssetSelector } from "../components/TradeAssetSelector";
 import TeamRosterView from "../../teams/components/TeamRosterView";
-import { Eye, Plus, Sparkles, Loader2 } from "lucide-react";
+import { Eye, Plus, Sparkles, Loader2, ArrowLeftRight } from "lucide-react";
+import { EmptyState } from "../../../components/ui/EmptyState";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../contexts/ToastContext";
@@ -141,9 +142,7 @@ export function TradesPage() {
                 <h2 className="text-2xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">Active Trades</h2>
             </div>
             {myActive.length === 0 && (
-              <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                No active trade proposals.
-              </div>
+              <EmptyState icon={ArrowLeftRight} title="No active trade proposals" description="Propose a trade to get started." compact />
             )}
             <div className="grid gap-6">
               {myActive.map((t) => (
@@ -158,9 +157,7 @@ export function TradesPage() {
                 <h2 className="text-2xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)] opacity-60">Trade History</h2>
             </div>
             {myHistory.length === 0 && (
-              <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                No past trades.
-              </div>
+              <EmptyState icon={ArrowLeftRight} title="No past trades" description="Completed and rejected trades will appear here." compact />
             )}
             <div className="grid gap-6">
               {myHistory.map((t) => (
@@ -179,9 +176,7 @@ export function TradesPage() {
                 <h2 className="text-2xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">League Trades</h2>
             </div>
           {leagueTrades.length === 0 && (
-            <div className="lg-card p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-              No league trades found.
-            </div>
+            <EmptyState icon={ArrowLeftRight} title="No league trades found" compact />
           )}
           {leagueTrades.map((t) => (
             <LeagueTradeCard 
