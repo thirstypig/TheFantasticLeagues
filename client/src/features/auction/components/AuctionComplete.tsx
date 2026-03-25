@@ -148,26 +148,46 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
       });
     }
 
-    // Reconcile: add any players from team roster that are missing from the WIN log
-    // This catches force-assigns and other roster entries not recorded in the log
+    // Reconcile: add auction-source roster entries missing from the WIN log
+    // This catches force-assigns that didn't create a WIN event (like Konnor Griffin)
+    // Skip keepers (source: prior_season, import with isKeeper) — they weren't auctioned
     for (const team of auctionState.teams || []) {
       const result = teamMap.get(team.id);
       if (!result || !team.roster) continue;
-      const existingPlayerIds = new Set(result.roster.map(r => r.playerId));
+      const existingPlayerIds = new Set(result.roster.map(r => String(r.playerId)));
       for (const r of team.roster) {
         const pid = String(r.playerId);
         if (existingPlayerIds.has(pid)) continue;
-        // This player is in the DB roster but not in the WIN log — add it
-        const pInfo = playerInfoMap.get(pid);
+        // Only add if this looks like an auction pick (source contains "auction" or "force")
+        // Skip keepers and trade-ins — they aren't auction results
+        const source = String((r as any).source || '').toLowerCase();
+        if (source.includes('prior') || source.includes('keeper') || source.includes('trade') || source.includes('waiver')) continue;
         result.roster.push({
           playerId: pid,
-          playerName: pInfo?.name || (r as any).playerName || `Player #${r.playerId}`,
+          playerName: (r as any).playerName || `Player #${r.playerId}`,
           price: r.price || 0,
-          positions: pInfo?.position || (r as any).assignedPosition || '',
+          positions: (r as any).posPrimary || (r as any).assignedPosition || '',
           isPitcher: false,
-          mlbTeam: pInfo?.mlbTeam || (r as any).mlbTeam || '',
+          mlbTeam: (r as any).mlbTeam || '',
         });
         result.totalSpent += r.price || 0;
+      }
+    }
+
+    // Also enrich ALL roster entries with position/mlbTeam from team roster data
+    for (const team of auctionState.teams || []) {
+      const result = teamMap.get(team.id);
+      if (!result) continue;
+      const rosterLookup = new Map<string, any>();
+      for (const r of team.roster || []) rosterLookup.set(String(r.playerId), r);
+      for (const entry of result.roster) {
+        const dbRoster = rosterLookup.get(String(entry.playerId));
+        if (!dbRoster) continue;
+        if (!entry.positions) entry.positions = (dbRoster as any).posPrimary || (dbRoster as any).assignedPosition || '';
+        if (!entry.mlbTeam) entry.mlbTeam = (dbRoster as any).mlbTeam || '';
+        if (entry.playerName === `Player #${entry.playerId}` && (dbRoster as any).playerName) {
+          entry.playerName = (dbRoster as any).playerName;
+        }
       }
     }
 

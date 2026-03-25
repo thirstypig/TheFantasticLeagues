@@ -218,7 +218,8 @@ const refreshTeams = async (state: AuctionState) => {
           posPrimary: r.player?.posPrimary ?? null,
           mlbTeam: r.player?.mlbTeam ?? null,
           price: Number(r.price),
-          assignedPosition: r.assignedPosition
+          assignedPosition: r.assignedPosition,
+          source: r.source ?? null,
       }))
     };
   });
