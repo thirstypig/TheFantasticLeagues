@@ -32,16 +32,19 @@ interface RosterGridProps {
   rosters?: RosterItem[];
   className?: string;
   canRelease?: boolean;
+  canEditPrice?: boolean;
   onRelease?: () => void;
 }
 
-export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, onRelease }: RosterGridProps) {
+export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, canEditPrice, onRelease }: RosterGridProps) {
   const { outfieldMode, leagueId: contextLeagueId } = useLeague();
   const { toast, confirm } = useToast();
   const [teams, setTeams] = useState<Team[]>(initialTeams || []);
   const [rosters, setRosters] = useState<RosterItem[]>(initialRosters || []);
   const [loading, setLoading] = useState(!initialTeams || !initialRosters);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editPrice, setEditPrice] = useState("");
 
   useEffect(() => {
     // If props update, sync state
@@ -93,6 +96,24 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
   }, {} as Record<number, RosterItem[]>);
 
   const effectiveLeagueId = leagueId || contextLeagueId;
+
+  const handleSavePrice = async (rosterId: number, playerName: string) => {
+    if (!effectiveLeagueId) return;
+    const newPrice = Number(editPrice);
+    if (!Number.isFinite(newPrice) || newPrice < 0) { toast("Invalid price", "error"); return; }
+    try {
+      await fetchJsonApi(`${API_BASE}/commissioner/${effectiveLeagueId}/roster/${rosterId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ price: newPrice }),
+      });
+      setRosters(prev => prev.map(r => r.id === rosterId ? { ...r, price: newPrice } : r));
+      toast(`Updated ${playerName} price to $${newPrice}`, "success");
+      setEditingId(null);
+      onRelease?.();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : "Edit failed", "error");
+    }
+  };
 
   const handleRelease = async (rosterId: number, playerName: string) => {
     if (!effectiveLeagueId) return;
@@ -146,7 +167,27 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                        <span className="text-[var(--lg-text-primary)] truncate group-hover:text-sky-300 transition-colors">{r.player.name}</span>
                                    </div>
                                    <div className="flex items-center gap-1.5">
-                                        <span className="font-semibold text-amber-400 w-6 text-right">${r.price}</span>
+                                        {canEditPrice && editingId === r.id ? (
+                                          <form onSubmit={(e) => { e.preventDefault(); handleSavePrice(r.id, r.player.name); }} className="flex items-center gap-1">
+                                            <span className="text-amber-400">$</span>
+                                            <input
+                                              type="number"
+                                              value={editPrice}
+                                              onChange={(e) => setEditPrice(e.target.value)}
+                                              className="w-10 bg-[var(--lg-bg-card)] border border-[var(--lg-accent)] rounded px-1 py-0.5 text-xs text-[var(--lg-text-primary)] text-right outline-none"
+                                              autoFocus
+                                              onBlur={() => setEditingId(null)}
+                                              onKeyDown={(e) => { if (e.key === "Escape") setEditingId(null); }}
+                                              min={0}
+                                            />
+                                          </form>
+                                        ) : (
+                                          <span
+                                            className={`font-semibold text-amber-400 w-6 text-right ${canEditPrice ? "cursor-pointer hover:text-amber-300" : ""}`}
+                                            onClick={() => { if (canEditPrice) { setEditingId(r.id); setEditPrice(String(r.price)); } }}
+                                            title={canEditPrice ? "Click to edit price" : undefined}
+                                          >${r.price}</span>
+                                        )}
                                         {canRelease && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleRelease(r.id, r.player.name); }}
