@@ -4,29 +4,32 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
-## Session 48 (2026-03-25) — Verify All Open Items + Trade Guard + Data Fixes
+## Session 48 (2026-03-25) — Open Items + Position Dropdown Fix + Sync Preservation (4 commits)
 
 ### Summary
-Worked through all 6 open items from Session 47. Browser-verified position dropdowns, position persistence, Draft Report, and add/drop flow. Added trade processing race condition guard. Fixed Period 1 date bug and created pre-draft trade history record.
+Verified all 6 Session 47 open items, then discovered and fixed two critical bugs: (1) position dropdown changes in auction results didn't persist in the UI due to missing `onRefresh` prop and controlled component race condition, (2) daily `syncAllPlayers` cron was wiping multi-position eligibility data set by `syncPositionEligibility`. Added trade guard, updated CLAUDE.md with mandatory browser verification checklist.
 
 ### Completed
-- **Item 1**: Position dropdowns verified — O'Hearn shows 1B/CM/OF/DH, all multi-position players correct
-- **Item 2**: Position change persistence — changed O'Hearn to CM, reloaded, confirmed DB persistence, reverted
-- **Item 3**: Draft Report verified — 8 team reports with grades, expandable H/P rosters, sortable columns, K badges, surplus
-- **Item 4**: Trade guard — added `SELECT FOR UPDATE` row lock in processing transaction to prevent double-processing race condition
-- **Item 5a**: Add/Drop flow verified — search, filters, stats, ADD buttons all functional
-- **Item 5b**: Scoring/standings verified — fixed Period 1 endDate bug (was March 22, before startDate March 25), updated to April 6. All teams show 45 roto points (correct for tied standings with no games played)
-- **Item 5c**: Pre-draft trade history — created Trade #17: DLC sent Mullins → Devil Dawgs, Devil Dawgs sent $75 → DLC (dated March 20)
-- **Item 6**: Position eligibility 2026 — daily cron properly wired, no 2026 fielding data yet (season started today), will auto-update
+- **Item 1-3**: Browser-verified position dropdowns (O'Hearn 1B/CM/OF/DH), position persistence, Draft Report (grades, expandable H/P rosters, sortable columns, K badges)
+- **Item 4**: Trade guard — `SELECT FOR UPDATE` row lock in processing transaction to prevent double-processing race condition
+- **Item 5a-5c**: Add/Drop flow verified, Period 1 endDate bug fixed (was March 22 < startDate March 25), pre-draft trade #17 created (DLC→Mullins, Devil Dawgs→$75)
+- **Item 6**: Position eligibility 2026 — cron wired, no 2026 data yet, will auto-update
+- **Position dropdown fix** — `AuctionResults` wasn't passing `onRefresh` to `AuctionComplete`; added optimistic `positionOverrides` state for immediate UI feedback; position sort also uses overrides
+- **Sync preservation fix** — `syncAllPlayers` now preserves enriched `Player.posList` instead of overwriting with just the primary position; only overwrites when posList equals posPrimary (not enriched)
+- **CLAUDE.md** — added mandatory "Browser Verification" section before Session End Checklist; documented syncAllPlayers/posList preservation behavior under Daily Cron Jobs
+- **Memory** — saved `feedback_browser_verify_every_change.md` and `feedback_check_cross_feature_side_effects.md`
 
 ### Pending / Next Session
 - **Stats will populate** once MLB games are played and daily cron runs (13:00 UTC syncs stats)
 - **Position eligibility** will auto-update as 2026 fielding data accumulates (20-game threshold)
 - **Verify standings differentiate** after first period's stats sync
+- **Add period creation validation** — prevent endDate before startDate
 
 ### Concerns / Process Improvements
-- Supabase session expires frequently during Playwright testing — causes redirects to landing page
-- Period 1 was created with endDate before startDate — need validation on period creation to prevent this
+- **Build-break cycle**: Must always browser-verify with Playwright interaction after code changes, not just TypeScript/tests. Added to CLAUDE.md and memory.
+- **Cron/data conflicts**: The syncAllPlayers→posList wipe went undetected because the eligibility data was set in a previous session and the cron hadn't run yet. Now documented and protected.
+- **Supabase session expiry**: Sessions expire frequently during Playwright testing — causes redirects to landing page. Need to investigate session TTL.
+- **AuctionResults vs AuctionComplete**: Two separate code paths render the auction page depending on season status (DRAFT vs IN_SEASON). Both must be kept in sync for features like position editing.
 
 ### Test Results
 - Server: 493 passing
