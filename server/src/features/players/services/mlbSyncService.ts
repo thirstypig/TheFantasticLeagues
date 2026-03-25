@@ -63,14 +63,14 @@ async function fetchTeamRoster(
  * Pre-load all existing players into a lookup map by mlbId.
  * Eliminates N+1 queries during roster sync.
  */
-async function buildPlayerLookup(): Promise<Map<number, { id: number; mlbTeam: string | null }>> {
+async function buildPlayerLookup(): Promise<Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null }>> {
   const players = await prisma.player.findMany({
     where: { mlbId: { not: null } },
-    select: { id: true, mlbId: true, mlbTeam: true },
+    select: { id: true, mlbId: true, mlbTeam: true, posPrimary: true, posList: true },
   });
-  const map = new Map<number, { id: number; mlbTeam: string | null }>();
+  const map = new Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null }>();
   for (const p of players) {
-    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam });
+    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam, posPrimary: p.posPrimary, posList: p.posList });
   }
   return map;
 }
@@ -128,16 +128,20 @@ export async function syncNLPlayers(season: number): Promise<{
       const existing = playerLookup.get(mlbId);
 
       if (existing) {
+        // Preserve enriched posList from syncPositionEligibility — only overwrite
+        // if the existing posList is just the old primary (not enriched by fielding stats)
+        const existingPosList = existing.posList || '';
+        const shouldUpdatePosList = !existingPosList || existingPosList === existing.posPrimary || existingPosList === posAbbr;
         await prisma.player.update({
           where: { id: existing.id },
-          data: { name, mlbTeam: abbr, posPrimary: posAbbr, posList },
+          data: { name, mlbTeam: abbr, posPrimary: posAbbr, ...(shouldUpdatePosList ? { posList } : {}) },
         });
         updated++;
       } else {
         const created_ = await prisma.player.create({
           data: { mlbId, name, mlbTeam: abbr, posPrimary: posAbbr, posList },
         });
-        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr, posPrimary: posAbbr, posList });
         created++;
       }
     }
@@ -225,9 +229,13 @@ export async function syncAllPlayers(season: number): Promise<{
           );
         }
 
+        // Preserve enriched posList from syncPositionEligibility — only overwrite
+        // if the existing posList is just the old primary (not enriched by fielding stats)
+        const existingPosList = existing.posList || '';
+        const shouldUpdatePosList = !existingPosList || existingPosList === existing.posPrimary || existingPosList === posAbbr;
         await prisma.player.update({
           where: { id: existing.id },
-          data: { name, mlbTeam: abbr, posPrimary: posAbbr, posList },
+          data: { name, mlbTeam: abbr, posPrimary: posAbbr, ...(shouldUpdatePosList ? { posList } : {}) },
         });
         existing.mlbTeam = abbr; // Update lookup for subsequent teams
         updated++;
@@ -235,7 +243,7 @@ export async function syncAllPlayers(season: number): Promise<{
         const created_ = await prisma.player.create({
           data: { mlbId, name, mlbTeam: abbr, posPrimary: posAbbr, posList },
         });
-        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr, posPrimary: posAbbr, posList });
         created++;
       }
     }
@@ -539,7 +547,7 @@ export async function syncAAARosters(season: number): Promise<{
         const created_ = await prisma.player.create({
           data: { mlbId, name, mlbTeam: parentAbbr, posPrimary: posAbbr, posList: posAbbr },
         });
-        playerLookup.set(mlbId, { id: created_.id, mlbTeam: parentAbbr });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: parentAbbr, posPrimary: posAbbr, posList: posAbbr });
         created++;
       }
     }
