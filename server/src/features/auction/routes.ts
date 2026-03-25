@@ -215,6 +215,8 @@ const refreshTeams = async (state: AuctionState) => {
           playerId: r.playerId,
           mlbId: r.player?.mlbId ?? null,
           playerName: r.player?.name ?? null,
+          posPrimary: r.player?.posPrimary ?? null,
+          mlbTeam: r.player?.mlbTeam ?? null,
           price: Number(r.price),
           assignedPosition: r.assignedPosition
       }))

@@ -148,20 +148,26 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
       });
     }
 
-    // Also enrich from team roster data if available (when log is empty)
+    // Reconcile: add any players from team roster that are missing from the WIN log
+    // This catches force-assigns and other roster entries not recorded in the log
     for (const team of auctionState.teams || []) {
       const result = teamMap.get(team.id);
-      if (!result) continue;
-      if (result.roster.length === 0 && team.roster && team.roster.length > 0) {
-        result.totalSpent = team.roster.reduce((sum: number, r: any) => sum + (r.price || 0), 0);
-        result.roster = team.roster.map((r: any) => ({
-          playerId: String(r.playerId),
-          playerName: r.playerName || `Player #${r.playerId}`,
+      if (!result || !team.roster) continue;
+      const existingPlayerIds = new Set(result.roster.map(r => r.playerId));
+      for (const r of team.roster) {
+        const pid = String(r.playerId);
+        if (existingPlayerIds.has(pid)) continue;
+        // This player is in the DB roster but not in the WIN log — add it
+        const pInfo = playerInfoMap.get(pid);
+        result.roster.push({
+          playerId: pid,
+          playerName: pInfo?.name || (r as any).playerName || `Player #${r.playerId}`,
           price: r.price || 0,
-          positions: r.assignedPosition || '',
+          positions: pInfo?.position || (r as any).assignedPosition || '',
           isPitcher: false,
-          mlbTeam: r.mlbTeam || '',
-        }));
+          mlbTeam: pInfo?.mlbTeam || (r as any).mlbTeam || '',
+        });
+        result.totalSpent += r.price || 0;
       }
     }
 
