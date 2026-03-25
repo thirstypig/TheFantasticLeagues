@@ -105,6 +105,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         { to: "/season", label: "Season", show: true },
         { to: "/players", label: "Players", show: true },
         { to: "/auction", label: "Auction", show: true, disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
+        { to: "/draft", label: "Draft", show: true, disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
+        { to: "/matchup", label: "Matchup", show: gating.isH2H },
         { to: "/activity", label: "Activity", show: true },
       ],
     },

@@ -41,6 +41,7 @@ const DraftReportPage = React.lazy(() => import("./features/ai/pages/DraftReport
 const Landing = React.lazy(() => import("./features/auth/pages/Landing"));
 const CreateLeague = React.lazy(() => import("./features/leagues/pages/CreateLeague"));
 const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
+const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
@@ -92,6 +93,7 @@ export default function App() {
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
                     <Route path="/draft" element={<ErrorBoundary name="draft"><Draft /></ErrorBoundary>} />
+                    <Route path="/matchup" element={<MatchupPage />} />
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/guide" element={<GuidePage />} />
