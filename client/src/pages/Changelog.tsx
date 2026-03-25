@@ -30,6 +30,31 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.41.0",
+    date: "Mar 25, 2026",
+    session: "Session 47",
+    title: "Auction & Draft Report Overhaul — Expandable Rows, Position Eligibility, Ohtani Split",
+    highlights: [
+      "Auction page: Keepers/Auction/Total/Left budget columns, expandable player rows with stats, position dropdowns for multi-eligible players",
+      "Draft Report: H/P split tables, stats columns (HR/RBI/SB/AVG, W/K/ERA/WHIP), sortable headers, expandable detail rows",
+      "Season page: sortable standings matrix with SortableHeader across all stat columns",
+      "Position eligibility: 20-game rule synced daily from MLB fielding stats via syncPositionEligibility in cron",
+    ],
+    changes: [
+      { type: "feat", description: "Auction page budget columns: Keepers/Auction/Total/Left per team, expandable player rows with season stats" },
+      { type: "feat", description: "Auction page position dropdowns for multi-position-eligible players (based on 20-game fielding rule)" },
+      { type: "feat", description: "Draft Report H/P split — separate hitter and pitcher tables with stats columns (HR/RBI/SB/AVG, W/K/ERA/WHIP)" },
+      { type: "feat", description: "Draft Report sortable headers and expandable detail rows per player" },
+      { type: "feat", description: "Season page sortable standings matrix — SortableHeader on all stat/category columns" },
+      { type: "feat", description: "Position eligibility: 20-game rule synced daily from MLB fielding stats (syncPositionEligibility added to daily cron)" },
+      { type: "feat", description: "Ohtani two-way stats split — pitcher stats attributed to pitching team, hitter stats to hitting team" },
+      { type: "feat", description: "Waiver priority: inverse-standings tiebreaker for same-FAAB-amount claims" },
+      { type: "fix", description: "Roster duplication bug — prevented duplicate roster entries on auction finish and keeper import" },
+      { type: "fix", description: "Keeper sort pinning — keepers now pinned to top of roster sort regardless of sort column" },
+      { type: "fix", description: "DH eligibility — DH no longer incorrectly granted via fielding stats (excluded from position sync)" },
+    ],
+  },
+  {
     version: "0.40.0",
     date: "Mar 24, 2026",
     session: "Sessions 40–44",

@@ -201,6 +201,10 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `WaiverClaim.aiAnalysis` — JSON, auto-generated post-waiver analysis (fire-and-forget on processing)
 - `AuctionSession.state.draftReport` — JSON, persisted Draft Report (generated once, survives restarts)
 
+### Daily Cron Jobs (server/src/index.ts)
+- **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 20)` — updates multi-position eligibility from fielding stats (20+ games = qualified)
+- **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods
+
 ## Development
 
 ### Port Assignments (per MASTER-PORTS.md — DO NOT CHANGE without updating all references)
