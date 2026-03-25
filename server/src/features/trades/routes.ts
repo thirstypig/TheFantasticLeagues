@@ -490,5 +490,79 @@ router.post("/analyze", requireAuth, validateBody(tradeAnalyzeSchema), requireLe
   res.json(result.result);
 }));
 
+// POST /api/trades/:id/reverse — Reverse a processed trade (commissioner only)
+router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+
+  const trade = await prisma.trade.findUnique({
+    where: { id },
+    include: {
+      items: {
+        include: {
+          player: { select: { id: true, name: true } },
+          sender: { select: { id: true, name: true, leagueId: true, budget: true } },
+          recipient: { select: { id: true, name: true, budget: true } },
+        },
+      },
+    },
+  });
+
+  if (!trade) return res.status(404).json({ error: "Trade not found" });
+  if (trade.status !== "PROCESSED") return res.status(400).json({ error: "Can only reverse PROCESSED trades" });
+
+  // Verify commissioner/admin
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: trade.leagueId, userId: req.user!.id } },
+  });
+  if (!membership || (membership.role !== "COMMISSIONER" && !req.user!.isAdmin)) {
+    return res.status(403).json({ error: "Commissioner access required" });
+  }
+
+  // Reverse each item in a transaction (swap sender/recipient)
+  await prisma.$transaction(async (tx) => {
+    for (const item of trade.items) {
+      if (item.assetType === "PLAYER" && item.playerId) {
+        // Release from recipient (who received the player)
+        await tx.roster.updateMany({
+          where: { teamId: item.recipientId, playerId: item.playerId, releasedAt: null },
+          data: { releasedAt: new Date(), source: "TRADE_REVERSE" },
+        });
+        // Create new roster entry on original sender
+        await tx.roster.create({
+          data: {
+            teamId: item.senderId,
+            playerId: item.playerId,
+            price: item.amount || 0,
+            source: "TRADE_REVERSE",
+            acquiredAt: new Date(),
+          },
+        });
+      } else if (item.assetType === "BUDGET") {
+        const amount = item.amount || 0;
+        // Reverse: take from recipient, give to sender
+        await tx.team.update({ where: { id: item.recipientId }, data: { budget: { decrement: amount } } });
+        await tx.team.update({ where: { id: item.senderId }, data: { budget: { increment: amount } } });
+      }
+    }
+
+    // Mark trade as reversed
+    await tx.trade.update({
+      where: { id },
+      data: { status: "REVERSED" as any },
+    });
+  }, { timeout: 30_000 });
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "TRADE_REVERSE",
+    resourceType: "Trade",
+    resourceId: id,
+    metadata: { leagueId: trade.leagueId, itemCount: trade.items.length },
+  });
+
+  logger.info({ tradeId: id, leagueId: trade.leagueId }, "Trade reversed");
+  res.json({ success: true, tradeId: id });
+}));
+
 export const tradesRouter = router;
 export default tradesRouter;

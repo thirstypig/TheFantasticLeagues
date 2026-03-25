@@ -6,6 +6,7 @@ import {
   cancelTrade,
   vetoTrade,
   processTrade,
+  reverseTrade,
   TradeProposal,
   getLeague,
   analyzeTrade,
@@ -548,6 +549,22 @@ export function LeagueTradeCard({
             className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded text-sm font-semibold"
           >
             Process Trade
+          </button>
+        </div>
+      )}
+
+      {/* Commissioner Controls — reverse PROCESSED trades */}
+      {isAdmin && trade.status === "PROCESSED" && (
+        <div className="flex justify-end border-t border-[var(--lg-border-subtle)] pt-3 mt-3">
+          <button
+            onClick={async () => {
+              if (!confirm("Reverse this trade? All players and budget will be moved back to their original teams.")) return;
+              await reverseTrade(trade.id);
+              onRefresh();
+            }}
+            className="px-3 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold"
+          >
+            Reverse Trade
           </button>
         </div>
       )}

@@ -124,6 +124,12 @@ export async function processTrade(tradeId: number): Promise<{ success: boolean 
     });
 }
 
+export async function reverseTrade(tradeId: number): Promise<{ success: boolean }> {
+    return fetchJsonApi(`${API_BASE}/trades/${tradeId}/reverse`, {
+        method: 'POST',
+    });
+}
+
 // --- AI Trade Analysis ---
 
 export interface TradeAnalysisItem {
