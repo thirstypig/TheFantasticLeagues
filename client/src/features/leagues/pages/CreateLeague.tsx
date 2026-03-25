@@ -10,12 +10,13 @@ export default function CreateLeague() {
   const nav = useNavigate();
   const { toast } = useToast();
 
-  const [form, setForm] = useState<CreateLeagueInput>({
+  const [form, setForm] = useState<CreateLeagueInput & { scoringFormat: string }>({
     name: "",
     season: new Date().getFullYear(),
     leagueType: "NL",
     draftMode: "AUCTION",
     isPublic: false,
+    scoringFormat: "ROTO",
   });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ leagueId: number; inviteCode: string } | null>(null);
@@ -64,6 +65,28 @@ export default function CreateLeague() {
               {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? "Copied" : "Copy"}
             </Button>
+          </div>
+        </div>
+
+        {/* Setup Checklist */}
+        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 mb-6">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">Next Steps</div>
+          <div className="space-y-2">
+            {[
+              { done: true, label: "Create league" },
+              { done: false, label: "Invite members (share code above)" },
+              { done: false, label: "Configure rules & roster settings" },
+              { done: false, label: "Start the draft" },
+            ].map(step => (
+              <div key={step.label} className="flex items-center gap-2.5 text-xs">
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  step.done ? "bg-emerald-500/20 text-emerald-500" : "border border-[var(--lg-border-faint)] text-[var(--lg-text-muted)]"
+                }`}>
+                  {step.done ? <Check size={10} /> : <span className="w-1.5 h-1.5 rounded-full bg-current opacity-30" />}
+                </span>
+                <span className={step.done ? "text-[var(--lg-text-muted)] line-through" : "text-[var(--lg-text-primary)]"}>{step.label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -127,35 +150,66 @@ export default function CreateLeague() {
           </div>
         </div>
 
-        {/* Format */}
+        {/* Scoring Format */}
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-4">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Format</div>
-
-          <div>
-            <label className="block text-xs font-medium text-[var(--lg-text-secondary)] mb-2">Draft Type</label>
-            <div className="grid grid-cols-2 gap-3">
-              {(["AUCTION", "DRAFT"] as const).map(mode => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, draftMode: mode }))}
-                  className={`p-3 rounded-xl border text-left transition-colors ${
-                    form.draftMode === mode
+          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Scoring Format</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {([
+              { id: "ROTO", name: "Rotisserie", desc: "Season-long stats across 10 categories. Classic format.", available: true },
+              { id: "H2H_CATEGORIES", name: "H2H Categories", desc: "Weekly matchups — win more categories than your opponent.", available: false },
+              { id: "H2H_POINTS", name: "H2H Points", desc: "Weekly matchups — highest total points wins each week.", available: false },
+            ] as const).map(fmt => (
+              <button
+                key={fmt.id}
+                type="button"
+                onClick={() => fmt.available && setForm(f => ({ ...f, scoringFormat: fmt.id }))}
+                disabled={!fmt.available}
+                className={`p-3 rounded-xl border text-left transition-colors relative ${
+                  !fmt.available
+                    ? "border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] opacity-50 cursor-not-allowed"
+                    : form.scoringFormat === fmt.id
                       ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]"
                       : "border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] hover:border-[var(--lg-accent)]/30"
-                  }`}
-                >
-                  <div className="text-sm font-semibold">{mode === "AUCTION" ? "Auction" : "Snake Draft"}</div>
-                  <div className="text-[10px] mt-0.5 opacity-70">
-                    {mode === "AUCTION" ? "Budget-based bidding on all players" : "Turn-based pick order"}
-                  </div>
-                </button>
-              ))}
-            </div>
+                }`}
+              >
+                <div className="text-sm font-semibold">{fmt.name}</div>
+                <div className="text-[10px] mt-0.5 opacity-70">{fmt.desc}</div>
+                {!fmt.available && (
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
+                )}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <div className="text-[10px] text-[var(--lg-text-muted)] italic">
-            Scoring: 10-category Rotisserie (R, HR, RBI, SB, AVG | W, SV, K, ERA, WHIP)
+        {/* Draft Type */}
+        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-4">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Draft Type</div>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              { id: "AUCTION" as const, name: "Auction Draft", desc: "Budget-based bidding on all players. Most strategic.", available: true },
+              { id: "DRAFT" as const, name: "Snake Draft", desc: "Turn-based picks. Order reverses each round.", available: false },
+            ]).map(dt => (
+              <button
+                key={dt.id}
+                type="button"
+                onClick={() => dt.available && setForm(f => ({ ...f, draftMode: dt.id }))}
+                disabled={!dt.available}
+                className={`p-3 rounded-xl border text-left transition-colors relative ${
+                  !dt.available
+                    ? "border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] opacity-50 cursor-not-allowed"
+                    : form.draftMode === dt.id
+                      ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]"
+                      : "border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] hover:border-[var(--lg-accent)]/30"
+                }`}
+              >
+                <div className="text-sm font-semibold">{dt.name}</div>
+                <div className="text-[10px] mt-0.5 opacity-70">{dt.desc}</div>
+                {!dt.available && (
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 

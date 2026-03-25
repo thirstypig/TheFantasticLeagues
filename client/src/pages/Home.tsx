@@ -308,29 +308,37 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Invite code banner (only if no team) */}
+      {/* Invite code banner + Create League CTA (only if no team) */}
       {hasTeam === false && (
-        <div className="rounded-xl border border-[var(--lg-accent)]/20 bg-[var(--lg-accent)]/5 p-4 flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 text-sm text-[var(--lg-text-primary)]">
-            <strong>Join a League</strong> — enter your invite code to get started
+        <div className="rounded-xl border border-[var(--lg-accent)]/20 bg-[var(--lg-accent)]/5 p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex-1 text-sm text-[var(--lg-text-primary)]">
+              <strong>Join a League</strong> — enter your invite code to get started
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                onKeyDown={e => { if (e.key === 'Enter') handleJoin(); }}
+                placeholder="Invite code"
+                maxLength={32}
+                className="w-32 px-3 py-1.5 text-sm font-mono text-center rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+              />
+              <button
+                onClick={handleJoin}
+                disabled={joining || !inviteCode.trim()}
+                className="px-4 py-1.5 text-sm font-semibold rounded-lg bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
+              >
+                {joining ? "..." : "Join"}
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inviteCode}
-              onChange={e => setInviteCode(e.target.value.toUpperCase())}
-              onKeyDown={e => { if (e.key === 'Enter') handleJoin(); }}
-              placeholder="ABC123"
-              maxLength={10}
-              className="w-24 px-3 py-1.5 text-sm font-mono text-center rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
-            />
-            <button
-              onClick={handleJoin}
-              disabled={joining || !inviteCode.trim()}
-              className="px-4 py-1.5 text-sm font-semibold rounded-lg bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-            >
-              {joining ? "..." : "Join"}
-            </button>
+          <div className="flex items-center gap-2 pt-1 border-t border-[var(--lg-accent)]/10">
+            <span className="text-xs text-[var(--lg-text-muted)]">Or</span>
+            <Link to="/create-league" className="text-xs font-semibold text-[var(--lg-accent)] hover:underline">
+              Create a New League →
+            </Link>
           </div>
         </div>
       )}

@@ -655,6 +655,71 @@ router.post(
 );
 
 /**
+ * PATCH /api/commissioner/:leagueId/roster/:rosterId
+ * Edit a roster entry (price, position, source). Used to fix auction mistakes.
+ */
+const rosterEditSchema = z.object({
+  price: z.number().int().min(0).optional(),
+  assignedPosition: z.string().max(5).nullable().optional(),
+  source: z.string().max(50).optional(),
+});
+
+router.patch(
+  "/commissioner/:leagueId/roster/:rosterId",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  validateBody(rosterEditSchema),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const rosterId = Number(req.params.rosterId);
+
+    // Verify roster belongs to this league
+    const roster = await prisma.roster.findUnique({
+      where: { id: rosterId },
+      include: { team: { select: { leagueId: true } }, player: { select: { name: true } } },
+    });
+    if (!roster || roster.team.leagueId !== leagueId) {
+      return res.status(404).json({ error: "Roster entry not found" });
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (req.body.price !== undefined) updates.price = req.body.price;
+    if (req.body.assignedPosition !== undefined) updates.assignedPosition = req.body.assignedPosition;
+    if (req.body.source !== undefined) updates.source = req.body.source;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
+    // If price changes, adjust team budget accordingly
+    if (updates.price !== undefined) {
+      const priceDiff = (updates.price as number) - roster.price;
+      if (priceDiff !== 0) {
+        await prisma.team.update({
+          where: { id: roster.teamId },
+          data: { budget: { decrement: priceDiff } },
+        });
+      }
+    }
+
+    const updated = await prisma.roster.update({
+      where: { id: rosterId },
+      data: updates,
+    });
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "ROSTER_EDIT",
+      resourceType: "Roster",
+      resourceId: String(rosterId),
+      metadata: { leagueId, playerName: roster.player.name, updates },
+    });
+
+    return res.json({ success: true, roster: updated });
+  })
+);
+
+/**
  * GET /api/commissioner/:leagueId/rosters
  * Get ALl active rosters for the league
  */

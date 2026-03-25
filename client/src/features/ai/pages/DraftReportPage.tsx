@@ -67,6 +67,7 @@ interface DraftReport {
 }
 
 import { gradeColor } from "../../../lib/sportConfig";
+import { POS_ORDER } from "../../../lib/baseballUtils";
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 
@@ -91,6 +92,7 @@ function StatPill({ label, value, sub }: { label: string; value: string; sub?: s
 
 function TeamCard({ team, leagueAvgH, leagueAvgP }: { team: DraftReportTeam; leagueAvgH: number; leagueAvgP: number }) {
   const [expanded, setExpanded] = useState(false);
+  const [rosterSort, setRosterSort] = useState<"price" | "position">("price");
 
   return (
     <div className="rounded-xl border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] overflow-hidden">
@@ -210,6 +212,14 @@ function TeamCard({ team, leagueAvgH, leagueAvgP }: { team: DraftReportTeam; lea
 
       {expanded && (
         <div className="px-5 pb-4 overflow-x-auto">
+          <div className="flex justify-end mb-1">
+            <button
+              onClick={() => setRosterSort(s => s === "price" ? "position" : "price")}
+              className="text-[10px] font-medium text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
+            >
+              Sort: {rosterSort === "price" ? "Price ↓" : "Position"}
+            </button>
+          </div>
           <ThemedTable>
             <ThemedThead>
               <ThemedTr>
@@ -222,7 +232,10 @@ function TeamCard({ team, leagueAvgH, leagueAvgP }: { team: DraftReportTeam; lea
               </ThemedTr>
             </ThemedThead>
             <ThemedTbody>
-              {[...team.roster].sort((a, b) => b.price - a.price).map(r => (
+              {[...team.roster].sort((a, b) => rosterSort === "position"
+                ? (POS_ORDER.indexOf(a.position) === -1 ? 99 : POS_ORDER.indexOf(a.position)) - (POS_ORDER.indexOf(b.position) === -1 ? 99 : POS_ORDER.indexOf(b.position))
+                : b.price - a.price
+              ).map(r => (
                 <ThemedTr key={r.playerName}>
                   <ThemedTd className="font-medium text-[var(--lg-text-primary)]">{r.playerName}</ThemedTd>
                   <ThemedTd className="text-[var(--lg-text-muted)]">{r.position}</ThemedTd>

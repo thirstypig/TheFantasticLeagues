@@ -21,6 +21,7 @@ export class CommissionerService {
     season: number;
     draftMode: "AUCTION" | "DRAFT";
     draftOrder?: "SNAKE" | "LINEAR";
+    scoringFormat?: string;
     isPublic: boolean;
     publicSlug?: string;
     copyFromLeagueId?: number;
@@ -31,6 +32,7 @@ export class CommissionerService {
       season,
       draftMode,
       draftOrder,
+      scoringFormat,
       isPublic,
       publicSlug: publicSlugInput,
       copyFromLeagueId,
@@ -77,6 +79,7 @@ export class CommissionerService {
         season,
         draftMode,
         draftOrder: draftOrder || undefined,
+        scoringFormat: scoringFormat || "ROTO",
         isPublic,
         publicSlug: publicSlug || undefined,
         franchiseId,

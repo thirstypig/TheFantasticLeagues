@@ -23,6 +23,14 @@ export interface SeasonGating {
   isReadOnly: boolean;
   /** Human-readable guidance for current phase */
   phaseGuidance: string;
+  /** League uses Rotisserie scoring */
+  isRoto: boolean;
+  /** League uses Head-to-Head scoring (categories or points) */
+  isH2H: boolean;
+  /** League has playoffs (H2H only) */
+  hasPlayoffs: boolean;
+  /** League has weekly matchups (H2H only) */
+  hasWeeklyMatchups: boolean;
 }
 
 const PHASE_GUIDANCE: Record<SeasonStatus, string> = {
@@ -33,10 +41,11 @@ const PHASE_GUIDANCE: Record<SeasonStatus, string> = {
 };
 
 export function useSeasonGating(): SeasonGating {
-  const { seasonStatus } = useLeague();
+  const { seasonStatus, scoringFormat } = useLeague();
 
   return useMemo(() => {
     const s = seasonStatus;
+    const fmt = scoringFormat || "ROTO";
     return {
       seasonStatus: s,
       canAuction: s === "DRAFT",
@@ -48,6 +57,10 @@ export function useSeasonGating(): SeasonGating {
       canKeepers: s === "SETUP" || s === "DRAFT",
       isReadOnly: s === "COMPLETED",
       phaseGuidance: s ? PHASE_GUIDANCE[s] : "Create a new season to get started.",
+      isRoto: fmt === "ROTO",
+      isH2H: fmt === "H2H_CATEGORIES" || fmt === "H2H_POINTS",
+      hasPlayoffs: fmt !== "ROTO",
+      hasWeeklyMatchups: fmt !== "ROTO",
     };
-  }, [seasonStatus]);
+  }, [seasonStatus, scoringFormat]);
 }

@@ -19,6 +19,7 @@ interface LeagueContextType {
   setLeagueId: (id: number) => void;
   leagues: LeagueListItem[];
   outfieldMode: string;
+  scoringFormat: string;
   currentLeagueName: string;
   currentSeason: number;
   currentFranchiseId: number;
@@ -35,6 +36,7 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
   const [outfieldMode, setOutfieldMode] = useState("OF");
+  const [scoringFormat, setScoringFormat] = useState("ROTO");
   const [myTeamId, setMyTeamId] = useState<number | null>(null);
   const [leagueId, setLeagueIdState] = useState<number>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -79,13 +81,15 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
 
     // Reset synchronously to prevent stale cross-league contamination
     setOutfieldMode("OF");
+    setScoringFormat("ROTO");
     setMyTeamId(null);
 
-    fetchJsonApi<{ league: { outfieldMode?: string; teams?: LeagueTeam[] } }>(
+    fetchJsonApi<{ league: { outfieldMode?: string; scoringFormat?: string; teams?: LeagueTeam[] } }>(
       `${API_BASE}/leagues/${leagueId}`
     ).then(res => {
       if (canceled) return;
       setOutfieldMode(res?.league?.outfieldMode || "OF");
+      setScoringFormat(res?.league?.scoringFormat || "ROTO");
       const mine = findMyTeam(res?.league?.teams ?? [], Number(user.id));
       setMyTeamId(mine?.id ?? null);
     }).catch(() => {
@@ -127,10 +131,10 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   );
 
   const contextValue = useMemo(() => ({
-    leagueId, setLeagueId, leagues, outfieldMode,
+    leagueId, setLeagueId, leagues, outfieldMode, scoringFormat,
     currentLeagueName, currentSeason, currentFranchiseId,
     leagueSeasons, seasonStatus, myTeamId,
-  }), [leagueId, setLeagueId, leagues, outfieldMode,
+  }), [leagueId, setLeagueId, leagues, outfieldMode, scoringFormat,
        currentLeagueName, currentSeason, currentFranchiseId,
        leagueSeasons, seasonStatus, myTeamId]);
 

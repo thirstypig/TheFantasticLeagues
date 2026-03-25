@@ -6,6 +6,7 @@ import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../..
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
+import { POS_ORDER } from '../../../lib/baseballUtils';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
@@ -33,6 +34,7 @@ interface DraftGrade {
 
 export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompleteProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
+  const [rosterSort, setRosterSort] = useState<"price" | "position">("price");
   const [draftGrades, setDraftGrades] = useState<DraftGrade[] | null>(null);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [gradesError, setGradesError] = useState<string | null>(null);
@@ -379,6 +381,14 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
 
                 {isExpanded && team.roster.length > 0 && (
                   <div className="border-t border-[var(--lg-border-faint)] animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex justify-end px-3 pt-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setRosterSort(s => s === "price" ? "position" : "price"); }}
+                        className="text-[10px] font-medium text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
+                      >
+                        Sort: {rosterSort === "price" ? "Price ↓" : "Position"}
+                      </button>
+                    </div>
                     <ThemedTable>
                       <ThemedThead>
                         <ThemedTr>
@@ -389,8 +399,15 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                         </ThemedTr>
                       </ThemedThead>
                       <tbody className="divide-y divide-[var(--lg-divide)]">
-                        {team.roster
-                          .sort((a, b) => b.price - a.price)
+                        {[...team.roster]
+                          .sort((a, b) => {
+                            if (rosterSort === "position") {
+                              const posA = (a.positions || "").split(",")[0]?.trim() || "";
+                              const posB = (b.positions || "").split(",")[0]?.trim() || "";
+                              return (POS_ORDER.indexOf(posA) === -1 ? 99 : POS_ORDER.indexOf(posA)) - (POS_ORDER.indexOf(posB) === -1 ? 99 : POS_ORDER.indexOf(posB));
+                            }
+                            return b.price - a.price;
+                          })
                           .map((player, idx) => {
                             const isOnTradeBlock = isMe
                               ? tradeBlockSelections.has(player.playerId)
