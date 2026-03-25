@@ -7,6 +7,8 @@ import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { SortableHeader } from "../../../components/ui/SortableHeader";
 import { isPitcher as isPitcherPos, mapPosition } from "../../../lib/sportConfig";
+import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
+import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -96,8 +98,9 @@ function StatPill({ label, value, sub }: { label: string; value: string; sub?: s
 
 type RosterSortKey = "name" | "pos" | "price" | "value" | "surplus" | "R" | "HR" | "RBI" | "SB" | "AVG" | "W" | "SV" | "K" | "ERA" | "WHIP";
 
-function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode }: { team: DraftReportTeam; leagueAvgH: number; leagueAvgP: number; outfieldMode?: string }) {
+function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }: { team: DraftReportTeam; leagueAvgH: number; leagueAvgP: number; outfieldMode?: string; onSelectPlayer?: (p: PlayerSeasonStat) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [viewGroup, setViewGroup] = useState<"hitters" | "pitchers">("hitters");
   const [sortKey, setSortKey] = useState<RosterSortKey>("price");
   const [sortDesc, setSortDesc] = useState(true);
@@ -311,8 +314,16 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode }: { team: DraftR
               {filteredRoster.map(r => {
                 const s = r.stat;
                 const pos = mapPosition(r.position, outfieldMode);
+                const rowKey = `${team.teamId}-${r.playerName}`;
+                const isRowExpanded = expandedPlayerId === rowKey;
+                const isPitch = isPitcherPos(r.position);
+                const playerObj: PlayerSeasonStat = s ?? { mlb_id: '', player_name: r.playerName, positions: r.position, is_pitcher: isPitch } as PlayerSeasonStat;
                 return (
-                  <ThemedTr key={r.playerName}>
+                  <React.Fragment key={rowKey}>
+                  <ThemedTr
+                    className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
+                    onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
+                  >
                     <ThemedTd className="px-2">
                       <span className="font-medium text-[var(--lg-text-primary)]">{r.playerName}</span>
                       {r.isKeeper && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">K</span>}
@@ -341,6 +352,16 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode }: { team: DraftR
                       {r.surplus !== null ? `${r.surplus >= 0 ? "+" : ""}${r.surplus}` : "—"}
                     </ThemedTd>
                   </ThemedTr>
+                  {isRowExpanded && (
+                    <PlayerExpandedRow
+                      player={playerObj}
+                      isTaken={true}
+                      ownerName={team.teamName}
+                      colSpan={10}
+                      onViewDetail={onSelectPlayer}
+                    />
+                  )}
+                  </React.Fragment>
                 );
               })}
             </ThemedTbody>
@@ -359,6 +380,7 @@ export default function DraftReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
   const loadingMessages = [
     "Analyzing 8 teams across 184 roster spots...",
     "Cross-referencing projected values with auction prices...",
@@ -516,7 +538,7 @@ export default function DraftReportPage() {
           {/* Team cards */}
           <div className="space-y-4 mb-10">
             {sortedTeams.map(team => (
-              <TeamCard key={team.teamId} team={team} leagueAvgH={report.leagueSummary.avgHitterPrice} leagueAvgP={report.leagueSummary.avgPitcherPrice} outfieldMode={outfieldMode} />
+              <TeamCard key={team.teamId} team={team} leagueAvgH={report.leagueSummary.avgHitterPrice} leagueAvgP={report.leagueSummary.avgPitcherPrice} outfieldMode={outfieldMode} onSelectPlayer={setSelectedPlayer} />
             ))}
           </div>
 
@@ -554,6 +576,8 @@ export default function DraftReportPage() {
           </div>
         </>
       )}
+
+      {selectedPlayer && <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
     </div>
   );
 }

@@ -12,6 +12,8 @@ import { getPlayerSeasonStats, type PlayerSeasonStat } from '../../../api';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
+import PlayerExpandedRow from './PlayerExpandedRow';
+import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 
 interface AuctionCompleteProps {
   auctionState: ClientAuctionState;
@@ -38,6 +40,8 @@ interface DraftGrade {
 
 export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompleteProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
   const [rosterSort, setRosterSort] = useState<string>("position");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const toggleSort = (col: string) => {
@@ -590,8 +594,15 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                             if (slots.size > 0) slots.add('DH');
                             return MATRIX_POSITIONS.filter(s => slots.has(s));
                           })();
+                          const rowKey = `${team.id}-${player.playerId}-H`;
+                          const isRowExpanded = expandedPlayerId === rowKey;
+                          const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: player.positions, is_pitcher: false } as unknown as PlayerSeasonStat);
                           return (
-                            <ThemedTr key={player.playerId || player.playerName}>
+                            <React.Fragment key={rowKey}>
+                            <ThemedTr
+                              className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
+                              onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
+                            >
                               <ThemedTd className="py-1.5">
                                 <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
                                   {player.playerName}
@@ -620,6 +631,16 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
                             </ThemedTr>
+                            {isRowExpanded && (
+                              <PlayerExpandedRow
+                                player={playerObj}
+                                isTaken={true}
+                                ownerName={team.name}
+                                colSpan={9}
+                                onViewDetail={(p) => setSelectedPlayer(p)}
+                              />
+                            )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -646,8 +667,15 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                       <tbody className="divide-y divide-[var(--lg-divide)]">
                         {pitchers.map(player => {
                           const stats = getPlayerStats(player.playerName || '', true);
+                          const rowKey = `${team.id}-${player.playerId}-P`;
+                          const isRowExpanded = expandedPlayerId === rowKey;
+                          const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: 'P', is_pitcher: true } as unknown as PlayerSeasonStat);
                           return (
-                            <ThemedTr key={player.playerId || player.playerName}>
+                            <React.Fragment key={rowKey}>
+                            <ThemedTr
+                              className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
+                              onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
+                            >
                               <ThemedTd className="py-1.5">
                                 <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
                                   {player.playerName}
@@ -663,6 +691,16 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
                             </ThemedTr>
+                            {isRowExpanded && (
+                              <PlayerExpandedRow
+                                player={playerObj}
+                                isTaken={true}
+                                ownerName={team.name}
+                                colSpan={9}
+                                onViewDetail={(p) => setSelectedPlayer(p)}
+                              />
+                            )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -709,6 +747,7 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
           })}
         </div>
       </div>
+      {selectedPlayer && <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
     </div>
   );
 }
