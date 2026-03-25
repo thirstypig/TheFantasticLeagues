@@ -7,6 +7,7 @@ import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
 import { POS_ORDER } from '../../../lib/baseballUtils';
+import { mapPosition } from '../../../lib/sportConfig';
 import { getPlayerSeasonStats, type PlayerSeasonStat } from '../../../api';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
@@ -23,7 +24,7 @@ interface TeamResult {
   code: string;
   budget: number;
   totalSpent: number;
-  roster: { playerId: string; playerName: string; price: number; positions: string; isPitcher: boolean; mlbTeam?: string }[];
+  roster: { playerId: string; playerName: string; price: number; positions: string; isPitcher: boolean; mlbTeam?: string; isKeeper?: boolean }[];
 }
 
 interface DraftGrade {
@@ -40,7 +41,7 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
   const [gradesLoading, setGradesLoading] = useState(false);
   const [gradesError, setGradesError] = useState<string | null>(null);
   const [showReplay, setShowReplay] = useState(false);
-  const { leagueId } = useLeague();
+  const { leagueId, outfieldMode } = useLeague();
 
   // Player stats from CSV (for stat columns)
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
@@ -124,28 +125,18 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
     const totalLots = wins.length;
     const totalSpent = wins.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    // Compute auction budget per team:
-    // dbBudget = raw team budget from DB (includes pre-draft trade adjustments like +$75)
-    // keeperCost = sum of keeper (prior_season) roster prices
-    // auctionBudget = dbBudget - keeperCost
-    const keeperSpendByTeam = new Map<number, number>();
-    for (const team of auctionState.teams || []) {
-      const keeperCost = (team.roster || [])
-        .filter((r: any) => (r.source || '').includes('prior'))
-        .reduce((s: number, r: any) => s + (r.price || 0), 0);
-      keeperSpendByTeam.set(team.id, keeperCost);
-    }
-
     // Build team results from auction state teams + log
+    // budget = full team DB budget (includes pre-draft trade adjustments)
+    // totalSpent = keepers + auction picks (accumulated below)
+    // Remaining = budget - totalSpent
     const teamMap = new Map<number, TeamResult>();
     for (const team of auctionState.teams || []) {
       const teamDbBudget = (team as any).dbBudget || auctionState.config?.budgetCap || 400;
-      const auctionBudget = teamDbBudget - (keeperSpendByTeam.get(team.id) || 0);
       teamMap.set(team.id, {
         id: team.id,
         name: team.name,
         code: team.code,
-        budget: auctionBudget,
+        budget: teamDbBudget,
         totalSpent: 0,
         roster: [],
       });
@@ -207,15 +198,16 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
       }
     }
 
-    // Add force-assigned players missing from the log (e.g. Konnor Griffin)
-    // WIN log entries don't have playerId — match by playerName instead
+    // Add keepers and force-assigned players missing from the log
+    // Keepers (source: prior_season) + force-assigns (source: auction_*)
     for (const team of auctionState.teams || []) {
       const result = teamMap.get(team.id);
       if (!result || !team.roster) continue;
       const loggedNames = new Set(result.roster.map(r => (r.playerName || '').toLowerCase()));
       for (const r of team.roster) {
         const src = String((r as any).source || '').toLowerCase();
-        if (!src.includes('auction')) continue; // only auction-source entries
+        const isKeeper = src.includes('prior');
+        if (!src.includes('auction') && !isKeeper) continue; // auction + keeper entries only
         const name = ((r as any).playerName || '').toLowerCase();
         if (!name || loggedNames.has(name)) continue;
         const rPos = ((r as any).posPrimary || (r as any).assignedPosition || '').toUpperCase();
@@ -226,7 +218,9 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
           positions: rPos || '',
           isPitcher: rPos === 'P' || rPos === 'SP' || rPos === 'RP' || rPos === 'CL' || rPos === 'TWP',
           mlbTeam: (r as any).mlbTeam || '',
+          isKeeper,
         });
+        if (isKeeper) result.totalSpent += r.price || 0;
         result.totalSpent += r.price || 0;
       }
     }
@@ -462,12 +456,17 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                 {isExpanded && team.roster.length > 0 && (() => {
                   const hitters = team.roster.filter(p => !p.isPitcher)
                     .sort((a, b) => {
-                      const posA = POS_ORDER.indexOf((a.positions || "").split(",")[0]?.trim() || "");
-                      const posB = POS_ORDER.indexOf((b.positions || "").split(",")[0]?.trim() || "");
-                      return (posA === -1 ? 99 : posA) - (posB === -1 ? 99 : posB);
+                      // Sort keepers first, then by position
+                      if (a.isKeeper !== b.isKeeper) return a.isKeeper ? -1 : 1;
+                      const posA = mapPosition((a.positions || "").split(",")[0]?.trim() || "", outfieldMode);
+                      const posB = mapPosition((b.positions || "").split(",")[0]?.trim() || "", outfieldMode);
+                      return (POS_ORDER.indexOf(posA) === -1 ? 99 : POS_ORDER.indexOf(posA)) - (POS_ORDER.indexOf(posB) === -1 ? 99 : POS_ORDER.indexOf(posB));
                     });
                   const pitchers = team.roster.filter(p => p.isPitcher)
-                    .sort((a, b) => b.price - a.price);
+                    .sort((a, b) => {
+                      if (a.isKeeper !== b.isKeeper) return a.isKeeper ? -1 : 1;
+                      return b.price - a.price;
+                    });
 
                   const fmtAvg = (v: any) => { const n = Number(v); return n > 0 && n < 1 ? n.toFixed(3).replace(/^0/, '') : n > 0 ? n.toFixed(3) : '—'; };
                   const fmtRate = (v: any) => { const n = Number(v); return n > 0 ? n.toFixed(2) : '—'; };
@@ -499,9 +498,12 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                           return (
                             <ThemedTr key={player.playerId || player.playerName}>
                               <ThemedTd className="py-1.5">
-                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs">{player.playerName}</span>
+                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
+                                  {player.playerName}
+                                  {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                </span>
                               </ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{player.positions?.split(",")[0]?.trim() || "—"}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "", outfieldMode) || "—"}</ThemedTd>
                               <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                               <ThemedTd align="right" className="py-1.5 text-xs font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
@@ -539,9 +541,12 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                           return (
                             <ThemedTr key={player.playerId || player.playerName}>
                               <ThemedTd className="py-1.5">
-                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs">{player.playerName}</span>
+                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
+                                  {player.playerName}
+                                  {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                </span>
                               </ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{player.positions?.split(",")[0]?.trim() || "P"}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
                               <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                               <ThemedTd align="right" className="py-1.5 text-xs font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
