@@ -162,6 +162,9 @@ model League {
   seasons           Season[]
   periods           Period[]
   auctionSession    AuctionSession?
+  snakeDraftSession SnakeDraftSession?
+  draftPicks        DraftPick[]
+  matchups          Matchup[]
   invites           LeagueInvite[]
   playerValues      PlayerValue[]
   aiInsights        AiInsight[]
@@ -266,6 +269,11 @@ model Team {
   // AI Insights
   aiInsights AiInsight[]
 
+  // Snake Draft + H2H Matchups
+  draftPicks    DraftPick[]
+  matchupsAsA   Matchup[]   @relation("matchupTeamA")
+  matchupsAsB   Matchup[]   @relation("matchupTeamB")
+
   @@unique([leagueId, name])
   @@unique([leagueId, code])
   @@index([leagueId])
@@ -295,6 +303,7 @@ model Player {
   waiverClaimsDrop WaiverClaim[]      @relation("ClaimDrop")
   periodStats      PlayerStatsPeriod[]
   playerValues     PlayerValue[]
+  draftPicks       DraftPick[]
 
   @@index([name])
 }
@@ -739,6 +748,56 @@ model AuctionSession {
   updatedAt DateTime @default(now()) @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
+// ─── Snake Draft ───
+
+model SnakeDraftSession {
+  id        Int      @id @default(autoincrement())
+  leagueId  Int      @unique
+  state     Json     // { pickOrder, currentPickIndex, picks, timerExpiresAt, status, config }
+  updatedAt DateTime @default(now()) @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
+model DraftPick {
+  id         Int      @id @default(autoincrement())
+  leagueId   Int
+  round      Int
+  pickNum    Int      // Overall pick number (1-based)
+  teamId     Int
+  playerId   Int?     // null if skipped
+  pickedAt   DateTime @default(now())
+  isAutoPick Boolean  @default(false)
+
+  league League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  team   Team    @relation(fields: [teamId], references: [id])
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@unique([leagueId, round, pickNum])
+  @@index([leagueId])
+  @@index([teamId])
+}
+
+// ─── H2H Matchups ───
+
+model Matchup {
+  id           Int      @id @default(autoincrement())
+  leagueId     Int
+  week         Int      // Scoring period (1-based)
+  teamAId      Int
+  teamBId      Int
+  result       Json?    // { teamA: { catWins, catLosses, catTies, points }, teamB: { ... } }
+  isPlayoff    Boolean  @default(false)
+  playoffRound Int?     // 1=quarterfinal, 2=semifinal, 3=final
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamA  Team   @relation("matchupTeamA", fields: [teamAId], references: [id])
+  teamB  Team   @relation("matchupTeamB", fields: [teamBId], references: [id])
+
+  @@unique([leagueId, week, teamAId, teamBId])
+  @@index([leagueId, week])
 }
 
 model AiInsight {
