@@ -107,6 +107,16 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
     const totalLots = wins.length;
     const totalSpent = wins.reduce((sum, e) => sum + (e.amount || 0), 0);
 
+    // Compute keeper spend per team (pre-auction costs that reduce the auction budget)
+    const budgetCap = auctionState.config?.budgetCap || 400;
+    const keeperSpendByTeam = new Map<number, number>();
+    for (const team of auctionState.teams || []) {
+      const keeperCost = (team.roster || [])
+        .filter((r: any) => (r.source || '').includes('prior'))
+        .reduce((s: number, r: any) => s + (r.price || 0), 0);
+      keeperSpendByTeam.set(team.id, keeperCost);
+    }
+
     // Build team results from auction state teams + log
     const teamMap = new Map<number, TeamResult>();
     for (const team of auctionState.teams || []) {
@@ -114,7 +124,7 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
         id: team.id,
         name: team.name,
         code: team.code,
-        budget: team.budget,
+        budget: budgetCap - (keeperSpendByTeam.get(team.id) || 0), // auction budget = cap minus keepers
         totalSpent: 0,
         roster: [],
       });
@@ -208,7 +218,7 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
       Team: t.name,
       'Players': t.roster.length,
       'Total Spent': t.totalSpent,
-      'Budget Remaining': t.budget,
+      'Budget Remaining': t.budget - t.totalSpent,
       'Avg Cost': t.roster.length > 0 ? Math.round(t.totalSpent / t.roster.length) : 0,
     }));
     xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(summaryData), 'Summary');
@@ -415,7 +425,7 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Remaining</span>
-                      <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">${team.budget}</span>
+                      <span className={`font-semibold tabular-nums ${(team.budget - team.totalSpent) < 0 ? 'text-red-400' : 'text-[var(--lg-text-primary)]'}`}>${team.budget - team.totalSpent}</span>
                     </div>
                     <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -438,9 +448,13 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                         <ThemedTr>
                           <ThemedTh className="w-10">#</ThemedTh>
                           <ThemedTh>Player</ThemedTh>
-                          <ThemedTh className="w-12">Pos</ThemedTh>
+                          <ThemedTh className="w-12 cursor-pointer hover:text-[var(--lg-accent)]" onClick={() => setRosterSort("position")}>
+                            Pos {rosterSort === "position" && "↓"}
+                          </ThemedTh>
                           <ThemedTh className="w-12">MLB</ThemedTh>
-                          <ThemedTh align="right" className="pr-6">Price</ThemedTh>
+                          <ThemedTh align="right" className="pr-6 cursor-pointer hover:text-[var(--lg-accent)]" onClick={() => setRosterSort("price")}>
+                            Price {rosterSort === "price" && "↓"}
+                          </ThemedTh>
                           <ThemedTh align="center" className="w-12">Trade</ThemedTh>
                         </ThemedTr>
                       </ThemedThead>
