@@ -7,6 +7,7 @@ import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
 import { POS_ORDER } from '../../../lib/baseballUtils';
+import { getPlayerSeasonStats, type PlayerSeasonStat } from '../../../api';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
@@ -40,6 +41,22 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
   const [gradesError, setGradesError] = useState<string | null>(null);
   const [showReplay, setShowReplay] = useState(false);
   const { leagueId } = useLeague();
+
+  // Player stats from CSV (for stat columns)
+  const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
+  useEffect(() => {
+    getPlayerSeasonStats(leagueId).then(setPlayerStats).catch(() => {});
+  }, [leagueId]);
+
+  // Build stats lookup by player name (case-insensitive)
+  const statsLookup = useMemo(() => {
+    const map = new Map<string, PlayerSeasonStat>();
+    for (const s of playerStats) {
+      const name = (s.player_name || (s as any).name || '').toLowerCase();
+      if (name) map.set(name, s);
+    }
+    return map;
+  }, [playerStats]);
 
   // Trade block state
   const [tradeBlockSelections, setTradeBlockSelections] = useState<Set<string>>(new Set());
@@ -162,27 +179,31 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
       });
     }
 
-    // Enrich log-based roster entries with position/mlbTeam from team roster DB data
-    // Build lookup by BOTH playerId and playerName (log doesn't have playerId)
-    const rosterByName = new Map<string, any>(); // teamId:playerName → roster entry
+    // Enrich log-based roster entries with position/mlbTeam from GLOBAL player lookup
+    // Global = across ALL teams, so traded players (Riley, Fairbanks) get their data
+    const globalPlayerByName = new Map<string, any>();
     for (const team of auctionState.teams || []) {
       for (const r of team.roster || []) {
         const name = ((r as any).playerName || '').toLowerCase();
-        if (name) rosterByName.set(`${team.id}:${name}`, { ...r, teamId: team.id });
+        if (name && !globalPlayerByName.has(name)) {
+          globalPlayerByName.set(name, { ...r, teamId: team.id });
+        }
       }
     }
 
-    // Enrich existing entries with position/mlbTeam
+    // Enrich existing entries with position/mlbTeam + set isPitcher
     for (const [, result] of teamMap) {
       for (const entry of result.roster) {
-        const key = `${result.id}:${(entry.playerName || '').toLowerCase()}`;
-        const dbEntry = rosterByName.get(key);
+        const dbEntry = globalPlayerByName.get((entry.playerName || '').toLowerCase());
         if (!dbEntry) continue;
         if (!entry.positions) entry.positions = dbEntry.posPrimary || dbEntry.assignedPosition || '';
         if (!entry.mlbTeam) entry.mlbTeam = dbEntry.mlbTeam || '';
         if (!entry.playerName || entry.playerName.startsWith('Player #')) {
           entry.playerName = dbEntry.playerName || entry.playerName;
         }
+        // Set isPitcher from position data
+        const pos = (entry.positions || '').toUpperCase();
+        entry.isPitcher = pos === 'P' || pos === 'SP' || pos === 'RP' || pos === 'CL' || pos === 'TWP';
       }
     }
 
@@ -197,12 +218,13 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
         if (!src.includes('auction')) continue; // only auction-source entries
         const name = ((r as any).playerName || '').toLowerCase();
         if (!name || loggedNames.has(name)) continue;
+        const rPos = ((r as any).posPrimary || (r as any).assignedPosition || '').toUpperCase();
         result.roster.push({
           playerId: String(r.playerId),
           playerName: (r as any).playerName || `Player #${r.playerId}`,
           price: r.price || 0,
-          positions: (r as any).posPrimary || (r as any).assignedPosition || '',
-          isPitcher: false,
+          positions: rPos || '',
+          isPitcher: rPos === 'P' || rPos === 'SP' || rPos === 'RP' || rPos === 'CL' || rPos === 'TWP',
           mlbTeam: (r as any).mlbTeam || '',
         });
         result.totalSpent += r.price || 0;
@@ -437,91 +459,102 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                   </div>
                 </div>
 
-                {isExpanded && team.roster.length > 0 && (
+                {isExpanded && team.roster.length > 0 && (() => {
+                  const hitters = team.roster.filter(p => !p.isPitcher)
+                    .sort((a, b) => {
+                      const posA = POS_ORDER.indexOf((a.positions || "").split(",")[0]?.trim() || "");
+                      const posB = POS_ORDER.indexOf((b.positions || "").split(",")[0]?.trim() || "");
+                      return (posA === -1 ? 99 : posA) - (posB === -1 ? 99 : posB);
+                    });
+                  const pitchers = team.roster.filter(p => p.isPitcher)
+                    .sort((a, b) => b.price - a.price);
+
+                  const fmtAvg = (v: any) => { const n = Number(v); return n > 0 && n < 1 ? n.toFixed(3).replace(/^0/, '') : n > 0 ? n.toFixed(3) : '—'; };
+                  const fmtRate = (v: any) => { const n = Number(v); return n > 0 ? n.toFixed(2) : '—'; };
+                  const num = (v: any) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0; };
+
+                  return (
                   <div className="border-t border-[var(--lg-border-faint)] animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex justify-end px-3 pt-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setRosterSort(s => s === "price" ? "position" : "price"); }}
-                        className="text-[10px] font-medium text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
-                      >
-                        Sort: {rosterSort === "price" ? "Price ↓" : "Position"}
-                      </button>
+                    {/* HITTERS */}
+                    <div className="px-3 pt-3 pb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Hitters ({hitters.length})</span>
                     </div>
                     <ThemedTable>
                       <ThemedThead>
                         <ThemedTr>
-                          <ThemedTh className="w-10">#</ThemedTh>
                           <ThemedTh>Player</ThemedTh>
-                          <ThemedTh className="w-12 cursor-pointer hover:text-[var(--lg-accent)]" onClick={() => setRosterSort("position")}>
-                            Pos {rosterSort === "position" && "↓"}
-                          </ThemedTh>
-                          <ThemedTh className="w-12">MLB</ThemedTh>
-                          <ThemedTh align="right" className="pr-6 cursor-pointer hover:text-[var(--lg-accent)]" onClick={() => setRosterSort("price")}>
-                            Price {rosterSort === "price" && "↓"}
-                          </ThemedTh>
-                          <ThemedTh align="center" className="w-12">Trade</ThemedTh>
+                          <ThemedTh className="w-10">Pos</ThemedTh>
+                          <ThemedTh className="w-10">MLB</ThemedTh>
+                          <ThemedTh align="right" className="w-12">$</ThemedTh>
+                          <ThemedTh align="center" className="w-10">R</ThemedTh>
+                          <ThemedTh align="center" className="w-10">HR</ThemedTh>
+                          <ThemedTh align="center" className="w-10">RBI</ThemedTh>
+                          <ThemedTh align="center" className="w-10">SB</ThemedTh>
+                          <ThemedTh align="center" className="w-12">AVG</ThemedTh>
                         </ThemedTr>
                       </ThemedThead>
                       <tbody className="divide-y divide-[var(--lg-divide)]">
-                        {[...team.roster]
-                          .sort((a, b) => {
-                            if (rosterSort === "position") {
-                              const posA = (a.positions || "").split(",")[0]?.trim() || "";
-                              const posB = (b.positions || "").split(",")[0]?.trim() || "";
-                              return (POS_ORDER.indexOf(posA) === -1 ? 99 : POS_ORDER.indexOf(posA)) - (POS_ORDER.indexOf(posB) === -1 ? 99 : POS_ORDER.indexOf(posB));
-                            }
-                            return b.price - a.price;
-                          })
-                          .map((player, idx) => {
-                            const isOnTradeBlock = isMe
-                              ? tradeBlockSelections.has(player.playerId)
-                              : (leagueTradeBlocks[team.id]?.has(player.playerId) ?? false);
-
-                            return (
-                              <ThemedTr key={player.playerId}>
-                                <ThemedTd className="py-2 text-[var(--lg-text-muted)] text-xs">{idx + 1}</ThemedTd>
-                                <ThemedTd className="py-2">
-                                  <span className="inline-flex items-center gap-1.5">
-                                    <span className="font-semibold text-[var(--lg-text-primary)]">{player.playerName}</span>
-                                    {!isMe && isOnTradeBlock && (
-                                      <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="Available for trade">
-                                        <ArrowLeftRight size={10} className="inline -mt-px" /> TB
-                                      </span>
-                                    )}
-                                  </span>
-                                </ThemedTd>
-                                <ThemedTd className="py-2 text-xs text-[var(--lg-text-muted)] font-mono">{player.positions?.split(",")[0]?.trim() || "—"}</ThemedTd>
-                                <ThemedTd className="py-2 text-xs text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
-                                <ThemedTd align="right" className="py-2 pr-6">
-                                  <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</span>
-                                </ThemedTd>
-                                <ThemedTd align="center" className="py-2">
-                                  {isMe ? (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleTradeBlock(player.playerId);
-                                      }}
-                                      className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
-                                        isOnTradeBlock
-                                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                                          : 'bg-transparent text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:border-orange-500/30 hover:text-orange-400'
-                                      }`}
-                                      title={isOnTradeBlock ? 'Remove from trade block' : 'Add to trade block'}
-                                    >
-                                      <ArrowLeftRight size={12} />
-                                    </button>
-                                  ) : isOnTradeBlock ? (
-                                    <ArrowLeftRight size={12} className="text-orange-400 mx-auto" />
-                                  ) : (
-                                    <span className="text-[var(--lg-text-muted)] opacity-30">--</span>
-                                  )}
-                                </ThemedTd>
-                              </ThemedTr>
-                            );
-                          })}
+                        {hitters.map(player => {
+                          const stats = statsLookup.get((player.playerName || '').toLowerCase());
+                          return (
+                            <ThemedTr key={player.playerId || player.playerName}>
+                              <ThemedTd className="py-1.5">
+                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs">{player.playerName}</span>
+                              </ThemedTd>
+                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{player.positions?.split(",")[0]?.trim() || "—"}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                              <ThemedTd align="right" className="py-1.5 text-xs font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
+                            </ThemedTr>
+                          );
+                        })}
                       </tbody>
                     </ThemedTable>
+
+                    {/* PITCHERS */}
+                    <div className="px-3 pt-3 pb-1 border-t border-[var(--lg-border-faint)]">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Pitchers ({pitchers.length})</span>
+                    </div>
+                    <ThemedTable>
+                      <ThemedThead>
+                        <ThemedTr>
+                          <ThemedTh>Player</ThemedTh>
+                          <ThemedTh className="w-10">Pos</ThemedTh>
+                          <ThemedTh className="w-10">MLB</ThemedTh>
+                          <ThemedTh align="right" className="w-12">$</ThemedTh>
+                          <ThemedTh align="center" className="w-10">W</ThemedTh>
+                          <ThemedTh align="center" className="w-10">SV</ThemedTh>
+                          <ThemedTh align="center" className="w-10">K</ThemedTh>
+                          <ThemedTh align="center" className="w-12">ERA</ThemedTh>
+                          <ThemedTh align="center" className="w-12">WHIP</ThemedTh>
+                        </ThemedTr>
+                      </ThemedThead>
+                      <tbody className="divide-y divide-[var(--lg-divide)]">
+                        {pitchers.map(player => {
+                          const stats = statsLookup.get((player.playerName || '').toLowerCase());
+                          return (
+                            <ThemedTr key={player.playerId || player.playerName}>
+                              <ThemedTd className="py-1.5">
+                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs">{player.playerName}</span>
+                              </ThemedTd>
+                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{player.positions?.split(",")[0]?.trim() || "P"}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                              <ThemedTd align="right" className="py-1.5 text-xs font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
+                            </ThemedTr>
+                          );
+                        })}
+                      </tbody>
+                    </ThemedTable>
+
                     {/* Save Trade Block button for own team */}
                     {isMe && (
                       <div className="px-4 md:px-6 py-3 flex items-center justify-between border-t border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50">
@@ -556,7 +589,8 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}
