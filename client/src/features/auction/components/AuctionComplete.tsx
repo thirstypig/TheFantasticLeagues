@@ -22,7 +22,7 @@ interface TeamResult {
   code: string;
   budget: number;
   totalSpent: number;
-  roster: { playerId: string; playerName: string; price: number; positions: string; isPitcher: boolean }[];
+  roster: { playerId: string; playerName: string; price: number; positions: string; isPitcher: boolean; mlbTeam?: string }[];
 }
 
 interface DraftGrade {
@@ -120,33 +120,47 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
       });
     }
 
+    // Build a player info lookup from team rosters (has position data)
+    const playerInfoMap = new Map<string, { name: string; position: string; mlbTeam: string }>();
+    for (const team of auctionState.teams || []) {
+      for (const r of team.roster || []) {
+        playerInfoMap.set(String(r.playerId), {
+          name: (r as any).playerName || r.playerName || `Player #${r.playerId}`,
+          position: (r as any).assignedPosition || (r as any).posPrimary || '',
+          mlbTeam: (r as any).mlbTeam || '',
+        });
+      }
+    }
+
     for (const win of wins) {
       if (!win.teamId) continue;
       const team = teamMap.get(win.teamId);
       if (!team) continue;
+      const pInfo = playerInfoMap.get(win.playerId || '');
       team.totalSpent += win.amount || 0;
       team.roster.push({
         playerId: win.playerId || '',
-        playerName: win.playerName || 'Unknown',
+        playerName: win.playerName || pInfo?.name || 'Unknown',
         price: win.amount || 0,
-        positions: '',
+        positions: pInfo?.position || '',
         isPitcher: false,
+        mlbTeam: pInfo?.mlbTeam || '',
       });
     }
 
-    // Also enrich from team roster data if available
+    // Also enrich from team roster data if available (when log is empty)
     for (const team of auctionState.teams || []) {
       const result = teamMap.get(team.id);
       if (!result) continue;
-      // If log-based roster is empty but team has roster data, use that
       if (result.roster.length === 0 && team.roster && team.roster.length > 0) {
         result.totalSpent = team.roster.reduce((sum: number, r: any) => sum + (r.price || 0), 0);
         result.roster = team.roster.map((r: any) => ({
           playerId: String(r.playerId),
-          playerName: `Player #${r.playerId}`,
+          playerName: r.playerName || `Player #${r.playerId}`,
           price: r.price || 0,
           positions: r.assignedPosition || '',
           isPitcher: false,
+          mlbTeam: r.mlbTeam || '',
         }));
       }
     }
@@ -394,6 +408,8 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                         <ThemedTr>
                           <ThemedTh className="w-10">#</ThemedTh>
                           <ThemedTh>Player</ThemedTh>
+                          <ThemedTh className="w-12">Pos</ThemedTh>
+                          <ThemedTh className="w-12">MLB</ThemedTh>
                           <ThemedTh align="right" className="pr-6">Price</ThemedTh>
                           <ThemedTh align="center" className="w-12">Trade</ThemedTh>
                         </ThemedTr>
@@ -426,6 +442,8 @@ export default function AuctionComplete({ auctionState, myTeamId }: AuctionCompl
                                     )}
                                   </span>
                                 </ThemedTd>
+                                <ThemedTd className="py-2 text-xs text-[var(--lg-text-muted)] font-mono">{player.positions?.split(",")[0]?.trim() || "—"}</ThemedTd>
+                                <ThemedTd className="py-2 text-xs text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                                 <ThemedTd align="right" className="py-2 pr-6">
                                   <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${player.price}</span>
                                 </ThemedTd>
