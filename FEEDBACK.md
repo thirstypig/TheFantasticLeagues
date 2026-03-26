@@ -4,6 +4,38 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 48 (2026-03-25/26) — Open Items + Position Dropdown Fix + Sync Preservation + Position Plan (7 commits)
+
+### Summary (Continued)
+Extended session to add position dropdowns to Draft Report and Team pages, fix position eligibility data wipe by daily cron, and research/plan Yahoo-style roster slot management.
+
+### Additional Completed
+- **Position dropdowns on Draft Report** — added `rosterId`, `posList`, `assignedPosition` to server draft-report API; added position select dropdowns to DraftReportPage TeamCard
+- **Position dropdowns on Team page** — threaded `_rosterId` through roster merge; added ELIG column dropdowns with optimistic UI for multi-position players
+- **syncAllPlayers posList preservation** — daily cron was wiping enriched multi-position data; now preserves `posList` when already enriched by `syncPositionEligibility`
+- **Position eligibility restored** — re-ran `syncPositionEligibility(2025, 20)` to restore 171 players' multi-position data
+- **Yahoo-style roster slot plan** — comprehensive plan at `docs/plans/2026-03-25-feat-yahoo-style-roster-slot-management-plan.md` covering slot-based UI, server validation, compliance indicators, migration script, and auto-assignment
+
+### Pending / Next Session
+1. **Implement Phase 1A** — Make Draft Report positions read-only, sourced from auction assignedPosition
+2. **Implement Phase 1B** — Server-side PATCH validation (eligibility + slot capacity + auto-displace)
+3. **Implement Phase 1C** — Slot-based Team page UI with green/amber/red indicators
+4. **Implement Phase 1D** — Auto-assignment migration script for existing roster data
+5. **Regenerate Draft Report** — click Regenerate to refresh cached report with new `rosterId`/`posList` fields
+6. **Verify position dropdowns in browser** — Draft Report and Team page (Playwright was blocked by Chrome conflict)
+
+### Concerns / Process Improvements
+- **Playwright Chrome conflict** — cannot launch browser test when user's Chrome is open; need to configure separate user data dir or use headless mode
+- **Draft Report cached data** — old cached reports don't have `rosterId`/`posList` fields; requires manual Regenerate click
+- **Position data integrity** — daily cron (`syncAllPlayers`) was silently wiping `posList`; now fixed but need integration test to prevent regression
+
+### Test Results
+- Server: 493 passing
+- Client: 187 passing
+- Total: 680 passing, TypeScript clean on both sides
+
+---
+
 ## Session 48 (2026-03-25) — Open Items + Position Dropdown Fix + Sync Preservation (4 commits)
 
 ### Summary
