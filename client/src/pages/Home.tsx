@@ -445,43 +445,45 @@ export default function Home() {
               const hitters = rosterStats.players.filter((p: any) => !p.isPitcher);
               if (hitters.length === 0) return null;
               return (
-                <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
-                  <div className="text-[9px] font-bold uppercase text-[var(--lg-text-muted)] px-2 py-1 border-b border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)]/50">Hitters</div>
-                  <div className="divide-y divide-[var(--lg-border-faint)]">
-                    {hitters.map((p: any, idx: number) => {
-                      const h = p.hitting;
-                      const hasStats = !!h;
-                      const isLive = p.gameStatus === "In Progress";
-                      // Compact display: POS NAME then stats summary
-                      const statParts: string[] = [];
-                      if (h) {
-                        if (h.H > 0 || h.AB > 0) statParts.push(`${h.H}-${h.AB}`);
-                        if (h.R > 0) statParts.push(`${h.R}R`);
-                        if (h.HR > 0) statParts.push(`${h.HR}HR`);
-                        if (h.RBI > 0) statParts.push(`${h.RBI}RBI`);
-                        if (h.SB > 0) statParts.push(`${h.SB}SB`);
-                      }
-                      const statLine = statParts.length > 0 ? statParts.join(', ') : (hasStats ? '0-0' : '');
-                      return (
-                        <div key={`h-${idx}`} className={`flex items-center justify-between px-2 py-1 text-xs ${isLive ? 'bg-emerald-500/5' : ''}`}>
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="text-[9px] font-mono font-semibold text-[var(--lg-accent)] w-5 shrink-0">{p.position}</span>
-                            <span className="font-medium text-[var(--lg-text-primary)] truncate">{p.playerName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ml-1">
-                            {statLine && (
-                              <span className={`text-[10px] tabular-nums font-medium ${h?.HR > 0 ? 'text-amber-400' : h?.H > 0 ? 'text-emerald-400' : 'text-[var(--lg-text-secondary)]'}`}>
-                                {statLine}
-                              </span>
-                            )}
-                            <span className={`text-[9px] w-12 text-right ${isLive ? 'text-emerald-400 animate-pulse font-semibold' : 'text-[var(--lg-text-muted)]'}`}>
-                              {p.gameToday ? (isLive ? 'LIVE' : p.gameStatus === 'Final' ? 'Final' : `${p.homeAway === 'home' ? 'v' : '@'}${p.opponent}`) : '—'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[9px] font-bold uppercase text-[var(--lg-text-muted)] border-b border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)]/50">
+                        <th className="px-1.5 py-1 text-left w-7">POS</th>
+                        <th className="px-1 py-1 text-left">HITTER</th>
+                        <th className="px-1 py-1 text-center w-6">AB</th>
+                        <th className="px-1 py-1 text-center w-5">H</th>
+                        <th className="px-1 py-1 text-center w-5">R</th>
+                        <th className="px-1 py-1 text-center w-5">HR</th>
+                        <th className="px-1 py-1 text-center w-6">RBI</th>
+                        <th className="px-1 py-1 text-center w-5">SB</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--lg-border-faint)]">
+                      {hitters.map((p: any, idx: number) => {
+                        const h = p.hitting;
+                        const hasStats = !!h;
+                        const isLive = p.gameStatus === "In Progress";
+                        const dim = 'text-[var(--lg-text-muted)] opacity-30';
+                        return (
+                          <tr key={`h-${idx}`} className={isLive ? 'bg-emerald-500/5' : ''}>
+                            <td className="px-1.5 py-1"><span className="text-[9px] font-mono font-semibold text-[var(--lg-accent)]">{p.position}</span></td>
+                            <td className="px-1 py-1 truncate max-w-[120px]">
+                              <span className="font-medium text-[var(--lg-text-primary)]">{p.playerName}</span>
+                              {!p.gameToday && <span className="ml-1 text-[8px] text-[var(--lg-text-muted)] opacity-50">off</span>}
+                              {isLive && <span className="ml-1 text-[8px] text-emerald-400 animate-pulse font-bold">LIVE</span>}
+                            </td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${hasStats ? '' : dim}`}>{h?.AB ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${h?.H > 0 ? 'text-emerald-400 font-semibold' : hasStats ? '' : dim}`}>{h?.H ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${h?.R > 0 ? 'text-blue-400 font-semibold' : hasStats ? '' : dim}`}>{h?.R ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${h?.HR > 0 ? 'text-amber-400 font-semibold' : hasStats ? '' : dim}`}>{h?.HR ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${h?.RBI > 0 ? 'text-purple-400 font-semibold' : hasStats ? '' : dim}`}>{h?.RBI ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${h?.SB > 0 ? 'text-cyan-400 font-semibold' : hasStats ? '' : dim}`}>{h?.SB ?? '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               );
             })()}
@@ -492,41 +494,45 @@ export default function Home() {
               if (pitchers.length === 0) return null;
               return (
                 <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
-                  <div className="text-[9px] font-bold uppercase text-[var(--lg-text-muted)] px-2 py-1 border-b border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)]/50">Pitchers</div>
-                  <div className="divide-y divide-[var(--lg-border-faint)]">
-                    {pitchers.map((p: any, idx: number) => {
-                      const s = p.pitching;
-                      const hasStats = !!s;
-                      const isLive = p.gameStatus === "In Progress";
-                      const wl = s ? (s.W > 0 ? 'W' : s.L > 0 ? 'L' : s.SV > 0 ? 'SV' : '') : '';
-                      const statParts: string[] = [];
-                      if (s) {
-                        statParts.push(`${s.IP}IP`);
-                        if (s.K > 0) statParts.push(`${s.K}K`);
-                        if (s.ER > 0) statParts.push(`${s.ER}ER`);
-                        if (wl) statParts.push(wl);
-                      }
-                      const statLine = statParts.length > 0 ? statParts.join(', ') : '';
-                      return (
-                        <div key={`p-${idx}`} className={`flex items-center justify-between px-2 py-1 text-xs ${isLive ? 'bg-emerald-500/5' : ''}`}>
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="text-[9px] font-mono font-semibold text-[var(--lg-accent)] w-5 shrink-0">P</span>
-                            <span className="font-medium text-[var(--lg-text-primary)] truncate">{p.playerName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ml-1">
-                            {statLine && (
-                              <span className={`text-[10px] tabular-nums font-medium ${wl === 'W' || wl === 'SV' ? 'text-emerald-400' : wl === 'L' ? 'text-red-400' : 'text-[var(--lg-text-secondary)]'}`}>
-                                {statLine}
-                              </span>
-                            )}
-                            <span className={`text-[9px] w-12 text-right ${isLive ? 'text-emerald-400 animate-pulse font-semibold' : 'text-[var(--lg-text-muted)]'}`}>
-                              {p.gameToday ? (isLive ? 'LIVE' : p.gameStatus === 'Final' ? 'Final' : `${p.homeAway === 'home' ? 'v' : '@'}${p.opponent}`) : '—'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[9px] font-bold uppercase text-[var(--lg-text-muted)] border-b border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)]/50">
+                        <th className="px-1.5 py-1 text-left w-7">POS</th>
+                        <th className="px-1 py-1 text-left">PITCHER</th>
+                        <th className="px-1 py-1 text-center w-6">IP</th>
+                        <th className="px-1 py-1 text-center w-5">H</th>
+                        <th className="px-1 py-1 text-center w-5">ER</th>
+                        <th className="px-1 py-1 text-center w-5">K</th>
+                        <th className="px-1 py-1 text-center w-5">BB</th>
+                        <th className="px-1 py-1 text-center w-6">DEC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--lg-border-faint)]">
+                      {pitchers.map((p: any, idx: number) => {
+                        const s = p.pitching;
+                        const hasStats = !!s;
+                        const isLive = p.gameStatus === "In Progress";
+                        const wl = s ? (s.W > 0 ? 'W' : s.L > 0 ? 'L' : s.SV > 0 ? 'SV' : '—') : '—';
+                        const dim = 'text-[var(--lg-text-muted)] opacity-30';
+                        return (
+                          <tr key={`p-${idx}`} className={isLive ? 'bg-emerald-500/5' : ''}>
+                            <td className="px-1.5 py-1"><span className="text-[9px] font-mono font-semibold text-[var(--lg-accent)]">P</span></td>
+                            <td className="px-1 py-1 truncate max-w-[120px]">
+                              <span className="font-medium text-[var(--lg-text-primary)]">{p.playerName}</span>
+                              {!p.gameToday && <span className="ml-1 text-[8px] text-[var(--lg-text-muted)] opacity-50">off</span>}
+                              {isLive && <span className="ml-1 text-[8px] text-emerald-400 animate-pulse font-bold">LIVE</span>}
+                            </td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${hasStats ? '' : dim}`}>{s?.IP ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${hasStats ? '' : dim}`}>{s?.H ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${s?.ER > 0 ? 'text-red-400' : hasStats ? '' : dim}`}>{s?.ER ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${s?.K > 0 ? 'text-emerald-400 font-semibold' : hasStats ? '' : dim}`}>{s?.K ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${hasStats ? '' : dim}`}>{s?.BB ?? '—'}</td>
+                            <td className={`px-1 py-1 text-center tabular-nums ${wl === 'W' || wl === 'SV' ? 'text-emerald-400 font-semibold' : wl === 'L' ? 'text-red-400' : hasStats ? '' : dim}`}>{wl}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               );
             })()}
