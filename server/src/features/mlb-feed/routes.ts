@@ -511,6 +511,45 @@ router.get("/reddit-baseball", requireAuth, requireLeagueMember("leagueId"), asy
   }
 }));
 
+// ─── GET /yahoo-sports — Yahoo Sports MLB RSS feed ───
+
+router.get("/yahoo-sports", requireAuth, asyncHandler(async (_req, res) => {
+  try {
+    const response = await fetch("https://sports.yahoo.com/mlb/rss/", {
+      headers: { "User-Agent": "FBST/1.0 Fantasy Baseball App" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return res.json({ articles: [] });
+    const xml = await response.text();
+
+    const articles: { title: string; link: string; pubDate: string; description: string }[] = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null && articles.length < 15) {
+      const block = match[1];
+      const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
+        ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
+      const link = block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
+      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
+      const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
+        ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";
+      if (title && link) {
+        articles.push({
+          title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
+          link,
+          pubDate,
+          description: desc.replace(/<[^>]*>/g, "").slice(0, 150),
+        });
+      }
+    }
+
+    res.json({ articles });
+  } catch (err) {
+    logger.warn({ error: String(err) }, "Failed to fetch Yahoo Sports MLB RSS");
+    res.json({ articles: [] });
+  }
+}));
+
 // ─── GET /roster-stats-today — Full roster with today's real-time game stats ───
 
 router.get("/roster-stats-today", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {

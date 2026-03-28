@@ -230,6 +230,10 @@ export default function Home() {
   const [redditLoading, setRedditLoading] = useState(true);
   const [redditFilter, setRedditFilter] = useState<string>('ALL'); // default: all posts
 
+  // Yahoo Sports MLB feed
+  const [yahooArticles, setYahooArticles] = useState<any[]>([]);
+  const [yahooLoading, setYahooLoading] = useState(true);
+
   // Derive list of fantasy teams from roster data
   const fantasyTeams = useMemo(() => {
     const teams = new Set<string>();
@@ -366,6 +370,15 @@ export default function Home() {
       .catch(() => setRedditPosts([]))
       .finally(() => setRedditLoading(false));
   }, [currentLeagueId]);
+
+  // Fetch Yahoo Sports MLB feed
+  useEffect(() => {
+    setYahooLoading(true);
+    fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/yahoo-sports`)
+      .then(res => setYahooArticles(res.articles || []))
+      .catch(() => setYahooArticles([]))
+      .finally(() => setYahooLoading(false));
+  }, []);
 
   // Auto-refresh scores when live games
   useEffect(() => {
@@ -752,7 +765,49 @@ export default function Home() {
         )}
       </div>
 
-      {/* MLB Trade Rumors */}
+      {/* ─── YouTube Shorts ─── */}
+      {!videosLoading && playerVideos.length > 0 && (
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            <TrendingUp size={12} className="inline -mt-0.5 mr-1 text-red-500" />
+            YouTube Shorts
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {playerVideos.map((v: any, i: number) => (
+              <button
+                key={`yt-${i}`}
+                onClick={() => setActiveVideo({ videoId: v.videoId, title: v.title })}
+                className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden hover:border-[var(--lg-accent)]/30 transition-colors group text-left"
+              >
+                <div className="relative aspect-video bg-black">
+                  <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <div className="w-0 h-0 border-l-[10px] border-l-white border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent ml-1" />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <div className="text-[11px] font-medium text-[var(--lg-text-primary)] leading-snug line-clamp-2">{v.title}</div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {v.matchedPlayer && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-accent)]/20 text-[var(--lg-accent)] font-semibold border border-[var(--lg-accent)]/30">
+                        {v.matchedPlayer}
+                      </span>
+                    )}
+                    <span className="text-[9px] text-[var(--lg-text-muted)]">{v.channelTitle || v.source}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── News Feeds: Trade Rumors | Reddit | Yahoo — side by side ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+      {/* MLBTradeRumors.com */}
       <div>
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">
@@ -905,52 +960,11 @@ export default function Home() {
         })()}
       </div>
 
-      {/* YouTube Player Highlights */}
-      {!videosLoading && playerVideos.length > 0 && (
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
-            <TrendingUp size={12} className="inline -mt-0.5 mr-1 text-red-500" />
-            Player Highlights
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {playerVideos.map((v: any, i: number) => (
-              <button
-                key={`yt-${i}`}
-                onClick={() => setActiveVideo({ videoId: v.videoId, title: v.title })}
-                className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden hover:border-[var(--lg-accent)]/30 transition-colors group text-left"
-              >
-                <div className="relative aspect-video bg-black">
-                  <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <div className="w-0 h-0 border-l-[10px] border-l-white border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent ml-1" />
-                    </div>
-                  </div>
-                </div>
-                <div className="p-2">
-                  <div className="text-[11px] font-medium text-[var(--lg-text-primary)] leading-snug line-clamp-2">{v.title}</div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {v.matchedPlayer && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-accent)]/20 text-[var(--lg-accent)] font-semibold border border-[var(--lg-accent)]/30">
-                        {v.matchedPlayer}
-                      </span>
-                    )}
-                    <span className="text-[9px] text-[var(--lg-text-muted)]">{v.channelTitle || v.source}</span>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Reddit Baseball Feed */}
-      {!redditLoading && redditPosts.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">
-              <ArrowLeftRight size={12} className="inline -mt-0.5 mr-1 text-orange-500" />
-              Reddit r/baseball + r/fantasybaseball
+      {/* Reddit */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-[9px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">
+            Reddit r/baseball
             </h2>
             <div className="flex items-center gap-2">
               <select
@@ -1009,7 +1023,37 @@ export default function Home() {
             })}
           </div>
         </div>
-      )}
+
+      {/* Yahoo Sports MLB */}
+      <div>
+        <h2 className="text-[9px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-1">Yahoo Sports MLB</h2>
+        {yahooLoading ? (
+          <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-6 rounded bg-[var(--lg-tint)] animate-pulse" />)}</div>
+        ) : yahooArticles.length === 0 ? (
+          <div className="text-center py-4 text-[10px] text-[var(--lg-text-muted)] opacity-50">No articles</div>
+        ) : (
+          <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] divide-y divide-[var(--lg-border-faint)] max-h-[350px] overflow-y-auto">
+            {yahooArticles.map((a: any, i: number) => {
+              const ago = a.pubDate ? (() => {
+                const ms = Date.now() - new Date(a.pubDate).getTime();
+                const hours = Math.floor(ms / 3_600_000);
+                if (hours < 1) return "just now";
+                if (hours < 24) return `${hours}h ago`;
+                return `${Math.floor(hours / 24)}d ago`;
+              })() : "";
+              return (
+                <a key={`yh-${i}`} href={a.link} target="_blank" rel="noopener noreferrer"
+                  className="block px-2.5 py-2 hover:bg-[var(--lg-tint-hover)] transition-colors">
+                  <div className="text-[11px] font-medium text-[var(--lg-text-primary)] leading-snug line-clamp-2">{a.title}</div>
+                  <div className="text-[9px] text-[var(--lg-text-muted)] mt-0.5">{ago}</div>
+                </a>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      </div>{/* end 3-column grid */}
 
       {/* YouTube Video Modal */}
       {activeVideo && (
