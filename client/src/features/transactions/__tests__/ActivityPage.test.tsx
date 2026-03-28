@@ -63,6 +63,12 @@ vi.mock("../components/ActivityWaiversTab", () => ({
 vi.mock("../components/ActivityHistoryTab", () => ({
   default: () => <div data-testid="history-tab">HistoryTab</div>,
 }));
+vi.mock("../../../components/ui/PageHeader", () => ({
+  default: ({ title }: any) => <div data-testid="page-header">{title}</div>,
+}));
+vi.mock("../../../components/ui/EmptyState", () => ({
+  EmptyState: ({ message }: any) => <div data-testid="empty-state">{message}</div>,
+}));
 
 // Mock lucide-react
 vi.mock("lucide-react", () => ({

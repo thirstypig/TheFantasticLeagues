@@ -290,10 +290,16 @@ router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), async
     select: { player: { select: { name: true, posPrimary: true } }, assignedPosition: true },
   });
 
-  const playerNames = roster
+  // Include both hitters and pitchers for YouTube search
+  const hitterNames = roster
     .filter(r => !["P", "SP", "RP"].includes((r.assignedPosition || r.player.posPrimary || "").toUpperCase()))
     .map(r => r.player.name)
-    .slice(0, 5); // Limit to top 5 hitters to conserve API quota
+    .slice(0, 4); // Top 4 hitters
+  const pitcherNames = roster
+    .filter(r => ["P", "SP", "RP"].includes((r.assignedPosition || r.player.posPrimary || "").toUpperCase()))
+    .map(r => r.player.name)
+    .slice(0, 2); // Top 2 pitchers
+  const playerNames = [...hitterNames, ...pitcherNames]; // 6 total searches
 
   if (!YOUTUBE_API_KEY) {
     // No API key — use YouTube channel RSS from multiple channels (free, no auth)
