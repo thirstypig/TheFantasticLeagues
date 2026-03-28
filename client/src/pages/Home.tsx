@@ -464,7 +464,14 @@ export default function Home() {
               Real-Time Stats · {rosterStats.teamName}
             </h2>
             <span className="text-[10px] text-[var(--lg-text-muted)]">
-              {new Date(rosterStats.date + "T12:00:00").toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {(() => {
+                const statsDate = new Date(rosterStats.date + "T12:00:00");
+                const today = new Date();
+                today.setHours(12, 0, 0, 0);
+                const isYesterday = statsDate.getTime() < today.getTime() - 12 * 3600 * 1000;
+                const label = statsDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                return isYesterday ? `Last Night · ${label}` : label;
+              })()}
             </span>
           </div>
 

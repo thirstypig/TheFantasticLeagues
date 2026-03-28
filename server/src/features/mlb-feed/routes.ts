@@ -61,11 +61,18 @@ interface MyPlayerToday {
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+/** MLB "game day" date in YYYY-MM-DD format, Pacific time.
+ *  Before noon PST/PDT, returns YESTERDAY's date so last night's stats remain visible.
+ *  After noon, returns today's date for upcoming/live games. */
 function todayDateStr(): string {
-  // Use Pacific time for MLB dates — games that start at 10 PM ET / 7 PM PT
-  // should show on that day's date, not flip to tomorrow at midnight UTC.
-  // US/Pacific is UTC-7 (PDT) or UTC-8 (PST). Using America/Los_Angeles.
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const now = new Date();
+  const pacificHour = Number(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hour12: false }));
+  if (pacificHour < 12) {
+    // Before noon PST — show yesterday's games (last night's stats)
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return yesterday.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  }
+  return now.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
 
 // NL/AL team sets for transaction filtering
@@ -289,45 +296,59 @@ router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), async
     .slice(0, 5); // Limit to top 5 hitters to conserve API quota
 
   if (!YOUTUBE_API_KEY) {
-    // No API key — use YouTube channel RSS as fallback (free, no auth)
+    // No API key — use YouTube channel RSS from multiple channels (free, no auth)
     const videos: any[] = [];
-    try {
-      // MLB official channel RSS
-      const mlbRss = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=UCoLrcjPV5PbUrUyXq6TIGtg", {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (mlbRss.ok) {
-        const xml = await mlbRss.text();
+    const channels = [
+      { id: "UCoLrcjPV5PbUrUyXq6TIGtg", name: "MLB" },
+      { id: "UCl9E4Zxa8KGW5GRR93lt6mg", name: "Jomboy Media" },
+    ];
+
+    for (const channel of channels) {
+      try {
+        const rssRes = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channel.id}`, {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!rssRes.ok) continue;
+        const xml = await rssRes.text();
         const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
         let match;
-        while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
+        while ((match = entryRegex.exec(xml)) !== null && videos.length < 12) {
           const block = match[1];
           const title = block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
           const videoId = block.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] ?? "";
           const published = block.match(/<published>(.*?)<\/published>/)?.[1] ?? "";
-          const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+          if (!videoId) continue;
 
-          // Filter: only include videos mentioning a rostered player
-          const lowerTitle = title.toLowerCase();
+          const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+          const decodedTitle = title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+
+          // Check if title mentions a rostered player
+          const lowerTitle = decodedTitle.toLowerCase();
           const matchedPlayer = playerNames.find(name => lowerTitle.includes(name.toLowerCase()));
 
-          if (videoId && (matchedPlayer || videos.length < 6)) {
-            videos.push({
-              videoId,
-              title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"),
-              thumbnail,
-              published,
-              source: "MLB",
-              matchedPlayer: matchedPlayer || null,
-            });
-          }
+          videos.push({
+            videoId,
+            title: decodedTitle,
+            thumbnail,
+            published,
+            channelTitle: channel.name,
+            source: "rss",
+            matchedPlayer: matchedPlayer || null,
+          });
         }
+      } catch (err) {
+        logger.warn({ error: String(err), channel: channel.name }, "Failed to fetch YouTube channel RSS");
       }
-    } catch (err) {
-      logger.warn({ error: String(err) }, "Failed to fetch YouTube MLB RSS");
     }
 
-    return res.json({ videos, teamName: team.name, source: "rss" });
+    // Sort by published date desc, prioritize matched players
+    videos.sort((a, b) => {
+      if (a.matchedPlayer && !b.matchedPlayer) return -1;
+      if (!a.matchedPlayer && b.matchedPlayer) return 1;
+      return new Date(b.published).getTime() - new Date(a.published).getTime();
+    });
+
+    return res.json({ videos: videos.slice(0, 12), teamName: team.name, source: "rss" });
   }
 
   // With API key — search for player highlights
