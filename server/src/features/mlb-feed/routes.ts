@@ -252,6 +252,226 @@ router.get("/injuries", requireAuth, asyncHandler(async (_req, res) => {
   }
 }));
 
+// ─── GET /player-videos — YouTube highlights for rostered players ───
+
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "";
+const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
+
+// Cache: player name → { videos, fetchedAt }
+const videoCache = new Map<string, { videos: any[]; fetchedAt: number }>();
+const VIDEO_CACHE_TTL = 6 * 3600 * 1000; // 6 hours
+
+router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
+
+  const userId = req.user!.id;
+
+  // Find user's team
+  const team = await prisma.team.findFirst({
+    where: { leagueId, OR: [{ ownerUserId: userId }, { ownerships: { some: { userId } } }] },
+    select: { id: true, name: true },
+  });
+  if (!team) return res.json({ videos: [], teamName: "" });
+
+  // Get rostered player names
+  const roster = await prisma.roster.findMany({
+    where: { teamId: team.id, releasedAt: null },
+    select: { player: { select: { name: true, posPrimary: true } }, assignedPosition: true },
+  });
+
+  const playerNames = roster
+    .filter(r => !["P", "SP", "RP"].includes((r.assignedPosition || r.player.posPrimary || "").toUpperCase()))
+    .map(r => r.player.name)
+    .slice(0, 5); // Limit to top 5 hitters to conserve API quota
+
+  if (!YOUTUBE_API_KEY) {
+    // No API key — use YouTube channel RSS as fallback (free, no auth)
+    const videos: any[] = [];
+    try {
+      // MLB official channel RSS
+      const mlbRss = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=UCoLrcjPV5PbUrUyXq6TIGtg", {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (mlbRss.ok) {
+        const xml = await mlbRss.text();
+        const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+        let match;
+        while ((match = entryRegex.exec(xml)) !== null && videos.length < 10) {
+          const block = match[1];
+          const title = block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
+          const videoId = block.match(/<yt:videoId>(.*?)<\/yt:videoId>/)?.[1] ?? "";
+          const published = block.match(/<published>(.*?)<\/published>/)?.[1] ?? "";
+          const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+
+          // Filter: only include videos mentioning a rostered player
+          const lowerTitle = title.toLowerCase();
+          const matchedPlayer = playerNames.find(name => lowerTitle.includes(name.toLowerCase()));
+
+          if (videoId && (matchedPlayer || videos.length < 6)) {
+            videos.push({
+              videoId,
+              title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"),
+              thumbnail,
+              published,
+              source: "MLB",
+              matchedPlayer: matchedPlayer || null,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn({ error: String(err) }, "Failed to fetch YouTube MLB RSS");
+    }
+
+    return res.json({ videos, teamName: team.name, source: "rss" });
+  }
+
+  // With API key — search for player highlights
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const publishedAfter = threeMonthsAgo.toISOString();
+
+  const allVideos: any[] = [];
+
+  for (const playerName of playerNames) {
+    // Check cache
+    const cached = videoCache.get(playerName);
+    if (cached && Date.now() - cached.fetchedAt < VIDEO_CACHE_TTL) {
+      allVideos.push(...cached.videos);
+      continue;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        part: "snippet",
+        q: `${playerName} MLB highlights 2026`,
+        type: "video",
+        order: "date",
+        publishedAfter,
+        maxResults: "3",
+        videoDuration: "short",
+        key: YOUTUBE_API_KEY,
+      });
+
+      const ytRes = await fetch(`${YOUTUBE_SEARCH_URL}?${params}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (ytRes.ok) {
+        const data = await ytRes.json() as any;
+        const videos = (data.items || []).map((item: any) => ({
+          videoId: item.id?.videoId ?? "",
+          title: item.snippet?.title ?? "",
+          thumbnail: item.snippet?.thumbnails?.medium?.url ?? "",
+          published: item.snippet?.publishedAt ?? "",
+          channelTitle: item.snippet?.channelTitle ?? "",
+          source: "search",
+          matchedPlayer: playerName,
+        }));
+        videoCache.set(playerName, { videos, fetchedAt: Date.now() });
+        allVideos.push(...videos);
+      }
+
+      // Rate limit: small delay between searches
+      await new Promise(r => setTimeout(r, 200));
+    } catch (err) {
+      logger.warn({ error: String(err), player: playerName }, "Failed YouTube search");
+    }
+  }
+
+  // Sort by published date descending
+  allVideos.sort((a, b) => new Date(b.published).getTime() - new Date(a.published).getTime());
+
+  res.json({ videos: allVideos.slice(0, 12), teamName: team.name, source: "api" });
+}));
+
+// ─── GET /reddit-baseball — Reddit baseball feed with player cross-referencing ───
+
+router.get("/reddit-baseball", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
+
+  try {
+    // Fetch r/baseball RSS
+    const rssUrl = "https://www.reddit.com/r/baseball/hot.json?limit=25";
+    const response = await fetch(rssUrl, {
+      headers: { "User-Agent": "FBST/1.0 Fantasy Baseball App" },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!response.ok) {
+      return res.json({ posts: [] });
+    }
+
+    const data = await response.json() as any;
+
+    // Get all rostered player names in the league for cross-referencing
+    const allRosters = await prisma.roster.findMany({
+      where: { team: { leagueId }, releasedAt: null },
+      select: { player: { select: { name: true } }, team: { select: { name: true } } },
+    });
+    const rosterMap = new Map<string, string>(); // lowercase last name → fantasy team
+    for (const r of allRosters) {
+      const parts = r.player.name.split(" ");
+      const lastName = parts[parts.length - 1].toLowerCase();
+      // Only map last names that are 4+ chars to avoid false positives (e.g., "Lee", "May")
+      if (lastName.length >= 4) {
+        rosterMap.set(lastName, r.team.name);
+      }
+      // Also map full name
+      rosterMap.set(r.player.name.toLowerCase(), r.team.name);
+    }
+
+    const posts = (data.data?.children || [])
+      .filter((child: any) => child.kind === "t3" && !child.data.stickied)
+      .slice(0, 20)
+      .map((child: any) => {
+        const post = child.data;
+        const title = post.title || "";
+        const url = post.url || "";
+        const permalink = `https://reddit.com${post.permalink}`;
+        const score = post.score || 0;
+        const numComments = post.num_comments || 0;
+        const createdUtc = post.created_utc || 0;
+        const thumbnail = post.thumbnail && post.thumbnail.startsWith("http") ? post.thumbnail : null;
+        const flair = post.link_flair_text || "";
+
+        // Cross-reference: check if title mentions any rostered player
+        const lowerTitle = title.toLowerCase();
+        const matchedPlayers: { name: string; fantasyTeam: string }[] = [];
+        for (const [key, team] of rosterMap) {
+          if (lowerTitle.includes(key)) {
+            // Find the full player name for display
+            const fullName = allRosters.find(r =>
+              r.player.name.toLowerCase() === key || r.player.name.split(" ").pop()?.toLowerCase() === key
+            )?.player.name ?? key;
+            if (!matchedPlayers.some(mp => mp.name === fullName)) {
+              matchedPlayers.push({ name: fullName, fantasyTeam: team });
+            }
+          }
+        }
+
+        return {
+          title,
+          url,
+          permalink,
+          score,
+          numComments,
+          createdUtc,
+          thumbnail,
+          flair,
+          matchedPlayers,
+        };
+      });
+
+    res.json({ posts });
+  } catch (err) {
+    logger.warn({ error: String(err) }, "Failed to fetch Reddit baseball feed");
+    res.json({ posts: [] });
+  }
+}));
+
 // ─── GET /roster-stats-today — Full roster with today's real-time game stats ───
 
 router.get("/roster-stats-today", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {

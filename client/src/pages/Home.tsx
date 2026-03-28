@@ -218,6 +218,14 @@ export default function Home() {
   // All rostered players in the league for cross-referencing with trade rumors
   const [leagueRoster, setLeagueRoster] = useState<Map<string, string>>(new Map()); // lowercase name → fantasy team name
 
+  // YouTube player videos
+  const [playerVideos, setPlayerVideos] = useState<any[]>([]);
+  const [videosLoading, setVideosLoading] = useState(true);
+
+  // Reddit baseball feed
+  const [redditPosts, setRedditPosts] = useState<any[]>([]);
+  const [redditLoading, setRedditLoading] = useState(true);
+
   // Derive list of fantasy teams from roster data
   const fantasyTeams = useMemo(() => {
     const teams = new Set<string>();
@@ -266,6 +274,8 @@ export default function Home() {
           teamCount: teams.length,
           myTeam: mine ? { name: mine.name, id: mine.id, budget: mine.budget, rosterCount: 0 } : null,
         });
+        // Default trade rumors filter to user's team
+        if (mine) setRumorsFantasyTeam(mine.name);
       })
       .catch(() => { setHasTeam(null); setDash(null); });
 
@@ -333,6 +343,26 @@ export default function Home() {
       .catch(() => setRumors([]))
       .finally(() => setRumorsLoading(false));
   }, []);
+
+  // Fetch YouTube player videos
+  useEffect(() => {
+    if (!currentLeagueId) { setVideosLoading(false); return; }
+    setVideosLoading(true);
+    fetchJsonApi<{ videos: any[] }>(`${API_BASE}/mlb/player-videos?leagueId=${currentLeagueId}`)
+      .then(res => setPlayerVideos(res.videos || []))
+      .catch(() => setPlayerVideos([]))
+      .finally(() => setVideosLoading(false));
+  }, [currentLeagueId]);
+
+  // Fetch Reddit baseball feed
+  useEffect(() => {
+    if (!currentLeagueId) { setRedditLoading(false); return; }
+    setRedditLoading(true);
+    fetchJsonApi<{ posts: any[] }>(`${API_BASE}/mlb/reddit-baseball?leagueId=${currentLeagueId}`)
+      .then(res => setRedditPosts(res.posts || []))
+      .catch(() => setRedditPosts([]))
+      .finally(() => setRedditLoading(false));
+  }, [currentLeagueId]);
 
   // Auto-refresh scores when live games
   useEffect(() => {
@@ -864,6 +894,93 @@ export default function Home() {
           );
         })()}
       </div>
+
+      {/* YouTube Player Highlights */}
+      {!videosLoading && playerVideos.length > 0 && (
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            <TrendingUp size={12} className="inline -mt-0.5 mr-1 text-red-500" />
+            Player Highlights
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {playerVideos.map((v: any, i: number) => (
+              <a
+                key={`yt-${i}`}
+                href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden hover:border-[var(--lg-accent)]/30 transition-colors group"
+              >
+                <div className="relative aspect-video bg-black">
+                  <img src={v.thumbnail} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center">
+                      <div className="w-0 h-0 border-l-[10px] border-l-white border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent ml-1" />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <div className="text-[11px] font-medium text-[var(--lg-text-primary)] leading-snug line-clamp-2">{v.title}</div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {v.matchedPlayer && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-accent)]/20 text-[var(--lg-accent)] font-semibold border border-[var(--lg-accent)]/30">
+                        {v.matchedPlayer}
+                      </span>
+                    )}
+                    <span className="text-[9px] text-[var(--lg-text-muted)]">{v.channelTitle || v.source}</span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reddit Baseball Feed */}
+      {!redditLoading && redditPosts.length > 0 && (
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
+            <ArrowLeftRight size={12} className="inline -mt-0.5 mr-1 text-orange-500" />
+            r/baseball
+          </h2>
+          <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] divide-y divide-[var(--lg-border-faint)] max-h-[350px] overflow-y-auto">
+            {redditPosts.map((post: any, i: number) => {
+              const ago = post.createdUtc ? (() => {
+                const ms = Date.now() - post.createdUtc * 1000;
+                const hours = Math.floor(ms / 3_600_000);
+                if (hours < 1) return "just now";
+                if (hours < 24) return `${hours}h ago`;
+                return `${Math.floor(hours / 24)}d ago`;
+              })() : "";
+              return (
+                <a
+                  key={`rd-${i}`}
+                  href={post.permalink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-start gap-2 px-3 py-2 hover:bg-[var(--lg-tint-hover)] transition-colors ${
+                    post.matchedPlayers?.length > 0 ? 'border-l-2 border-l-[var(--lg-accent)]' : ''
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-[var(--lg-text-primary)] leading-relaxed">{post.title}</div>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {(post.matchedPlayers || []).map((mp: any, mi: number) => (
+                        <span key={`rmp-${mi}`} className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-accent)]/20 text-[var(--lg-accent)] font-semibold border border-[var(--lg-accent)]/30">
+                          {mp.name} · {mp.fantasyTeam}
+                        </span>
+                      ))}
+                      {post.flair && <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 font-medium">{post.flair}</span>}
+                      <span className="text-[9px] text-[var(--lg-text-muted)]">{post.score} pts · {post.numComments} comments</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-[var(--lg-text-muted)] shrink-0 mt-0.5">{ago}</span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
