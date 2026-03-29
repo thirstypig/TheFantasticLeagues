@@ -31,10 +31,10 @@ export default function Players() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterTeam, setFilterTeam] = useState<string>('ALL'); // MLB Team
+  const [filterTeam, setFilterTeam] = useState<string>('ALL_NL'); // Default NL teams for NL-only league
   const [filterFantasyTeam, setFilterFantasyTeam] = useState<string>('ALL'); // OGBA Team
   const [filterPos, setFilterPos] = useState<string>('ALL');
-  const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('ALL');
+  const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('NL'); // Default NL for NL-only league
 
   // Sort State
   const [sortKey, setSortKey] = useState<string>('name');
@@ -102,7 +102,9 @@ export default function Players() {
         if (viewGroup === 'pitchers' && !p.is_pitcher) return false;
         if (viewMode === 'remaining' && (p.ogba_team_code || p.team)) return false;
         if (searchQuery && !p.player_name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-        if (filterTeam !== 'ALL' && (p.mlb_team || 'FA') !== filterTeam) return false;
+        if (filterTeam === 'ALL_NL') { if (!NL_TEAMS.has(p.mlb_team || '')) return false; }
+        else if (filterTeam === 'ALL_AL') { if (!AL_TEAMS.has(p.mlb_team || '')) return false; }
+        else if (filterTeam !== 'ALL' && (p.mlb_team || 'FA') !== filterTeam) return false;
         if (filterFantasyTeam !== 'ALL' && (p.ogba_team_code || 'FA') !== filterFantasyTeam) return false;
         
         if (filterPos !== 'ALL') {
@@ -259,6 +261,8 @@ export default function Players() {
                       className="lg-input w-auto min-w-[140px] font-medium text-xs py-2.5"
                   >
                       <option value="ALL">All MLB Teams</option>
+                      <option value="ALL_NL">All NL Teams</option>
+                      <option value="ALL_AL">All AL Teams</option>
                       {uniqueMLBTeams.filter(t => t!=='ALL').map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
 

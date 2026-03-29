@@ -195,7 +195,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
         <ThemedThead>
           <ThemedTr>
             <ThemedTh className="px-8 py-5">Team</ThemedTh>
-            <ThemedTh align="center">GP</ThemedTh>
+            {/* GP hidden — not meaningful for roto standings */}
             {categories.map((cat) => (
               <ThemedTh key={cat} align="center">{cat}</ThemedTh>
             ))}
@@ -218,9 +218,6 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
                   >
                     {row.teamName}
                   </Link>
-                </ThemedTd>
-                <ThemedTd align="center">
-                  {row.gamesPlayed}
                 </ThemedTd>
                 {categories.map((cat) => (
                   <ThemedTd
