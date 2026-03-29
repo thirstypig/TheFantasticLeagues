@@ -174,7 +174,7 @@ describe("syncAllPlayers", () => {
     expect(result.teams).toBe(1);
   });
 
-  it("resolves TWP position to DH for two-way players (Ohtani)", async () => {
+  it.skip("OBSOLETE: Ohtani split — resolves TWP position to DH for two-way players (Ohtani)", async () => {
     mockMlbGetJson
       .mockResolvedValueOnce(mockTeams)
       .mockResolvedValueOnce({
@@ -198,7 +198,7 @@ describe("syncAllPlayers", () => {
     });
   });
 
-  it("resolves TWP position on update for two-way players", async () => {
+  it.skip("OBSOLETE: Ohtani split — resolves TWP position on update for two-way players", async () => {
     mockMlbGetJson
       .mockResolvedValueOnce(mockTeams)
       .mockResolvedValueOnce({
@@ -333,7 +333,7 @@ describe("syncPositionEligibility", () => {
     expect(mockPrisma.player.update).not.toHaveBeenCalled();
   });
 
-  it("adds P to posList for two-way players even without fielding data", async () => {
+  it.skip("OBSOLETE: Ohtani split — adds P to posList for two-way players even without fielding data", async () => {
     mockPrisma.player.findMany.mockResolvedValue([
       { id: 3, mlbId: 660271, posPrimary: "DH", posList: "DH" },
     ]);

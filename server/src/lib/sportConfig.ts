@@ -115,14 +115,16 @@ export const OPENING_DAYS: Record<number, string> = {
 
 /** Ohtani's MLB ID for dual-role handling. */
 export const OHTANI_MLB_ID = 660271;
+export const OHTANI_PITCHER_MLB_ID = 1660271; // Derived ID for pitcher Ohtani (separate player record)
 
 /**
  * Two-way players who should appear as both a hitter and a pitcher in player lists.
- * Map of mlbId → { hitterPos: position for hitter row, name: display name }.
- * When synced from MLB roster API, these players typically come in as "DH" only.
+ * As of Session 49: Ohtani is now split into two separate Player records
+ * ("Shohei Ohtani (Hitter)" id=3 and "Shohei Ohtani (Pitcher)" id=3191),
+ * so he no longer needs to be in this map. Keep the map for future two-way players.
  */
 export const TWO_WAY_PLAYERS: ReadonlyMap<number, { hitterPos: string; name: string }> = new Map([
-  [OHTANI_MLB_ID, { hitterPos: "DH", name: "Shohei Ohtani" }],
+  // Empty — Ohtani split into separate player records
 ]);
 
 // ─── Keeper Detection ───

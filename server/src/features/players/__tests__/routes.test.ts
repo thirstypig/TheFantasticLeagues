@@ -113,7 +113,7 @@ describe("GET /players", () => {
     expect(res.body.players[0].player_name).toBe("Pitcher");
   });
 
-  it("expands two-way player (Ohtani) into hitter + pitcher rows", async () => {
+  it.skip("OBSOLETE: Ohtani is now 2 separate player records — expands two-way player (Ohtani) into hitter + pitcher rows", async () => {
     mockPrisma.player.findMany.mockResolvedValue([
       { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
       { id: 11, mlbId: 1, name: "Regular Hitter", posPrimary: "CF", posList: "CF", mlbTeam: "NYM" },
@@ -137,7 +137,7 @@ describe("GET /players", () => {
     expect(pitcherRow.is_pitcher).toBe(true);
   });
 
-  it("shows Ohtani pitcher row when filtering type=pitchers", async () => {
+  it.skip("OBSOLETE: Ohtani split — shows Ohtani pitcher row when filtering type=pitchers", async () => {
     mockPrisma.player.findMany.mockResolvedValue([
       { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
     ]);
@@ -151,7 +151,7 @@ describe("GET /players", () => {
     expect(res.body.players[0].positions).toBe("P");
   });
 
-  it("shows Ohtani hitter row when filtering type=hitters", async () => {
+  it.skip("OBSOLETE: Ohtani split — shows Ohtani hitter row when filtering type=hitters", async () => {
     mockPrisma.player.findMany.mockResolvedValue([
       { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
     ]);
@@ -243,7 +243,7 @@ describe("GET /player-season-stats", () => {
     expect(res.body.stats[0].dollar_value).toBe(0);
   });
 
-  it("expands Ohtani into hitter + pitcher rows in season stats", async () => {
+  it.skip("OBSOLETE: Ohtani split — expands Ohtani into hitter + pitcher rows in season stats", async () => {
     mockPrisma.player.findMany.mockResolvedValue([
       { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
     ]);

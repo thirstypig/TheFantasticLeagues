@@ -284,7 +284,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
             <ThemedTr key={row.teamId} className="group hover:bg-[var(--lg-tint)] transition-colors">
               <ThemedTd className="px-8 py-3">
                 <Link
-                  to={`/teams/${row.teamId}`}
+                  to={`/teams/${(row as any).teamCode || row.teamId}`}
                   className="font-bold text-[var(--lg-text-heading)] text-base hover:text-[var(--lg-accent)] transition-all tracking-tight"
                 >
                   {row.teamName}

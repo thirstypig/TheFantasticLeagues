@@ -451,7 +451,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
               {mappedFieldingRows.length > 0 && (
                 <div className={sectionCls}>
                   <div className={sectionHeadCls}>
-                    <div className={sectionTitleCls}>Fielding — Games by Position</div>
+                    <div className={sectionTitleCls}>2026 Positions — Games Played</div>
                   </div>
                   <div className={sectionBodyCls}>
                     <div className="p-6">
