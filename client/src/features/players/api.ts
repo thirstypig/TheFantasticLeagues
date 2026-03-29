@@ -464,15 +464,14 @@ export interface FieldingStatRow {
 }
 
 /** Returns the most recent completed MLB season (before ~April, use prior year) */
-function lastCompletedSeason(): number {
-  const now = new Date();
-  const year = now.getFullYear();
-  // MLB season runs April–October; before April, last completed is year - 1
-  return now.getMonth() < 3 ? year - 1 : year;
+function currentSeason(): number {
+  // Always return current year — the season starts in late March,
+  // and we want to show current year's data once games begin.
+  return new Date().getFullYear();
 }
 
 export async function getPlayerFieldingStats(mlbId: string, season?: number): Promise<FieldingStatRow[]> {
-  const effectiveSeason = season ?? lastCompletedSeason();
+  const effectiveSeason = season ?? currentSeason();
   const id = String(mlbId ?? "").trim();
   if (!id) return [];
 

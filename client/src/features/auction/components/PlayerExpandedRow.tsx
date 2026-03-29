@@ -86,7 +86,7 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
 
                 {/* Positional Usage */}
                 <div className="flex items-center gap-2 text-xs flex-wrap">
-                    <span className="font-semibold text-[var(--lg-text-muted)]">{new Date().getFullYear()} POSITIONS:</span>
+                    <span className="font-semibold text-[var(--lg-text-muted)]">{new Date().getFullYear()} Positions Played:</span>
                     {mappedFielding.length > 0 ? (
                         mappedFielding.map((f, i) => (
                             <span key={i} className="font-mono bg-[var(--lg-glass-bg-hover)] px-2 py-0.5 rounded border border-[var(--lg-table-border)] text-[var(--lg-text-primary)]">

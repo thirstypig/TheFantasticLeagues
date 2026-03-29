@@ -27,6 +27,7 @@ export default function Players() {
 
   const [periodStats, setPeriodStats] = useState<PeriodStatRow[]>([]);
   const [periods, setPeriods] = useState<number[]>([]);
+  const [periodNameMap, setPeriodNameMap] = useState<Record<number, string>>({});
 
 
   // Filters
@@ -61,7 +62,14 @@ export default function Players() {
         setPeriodStats(per);
 
         const pSet = new Set(per.map(x => x.periodId).filter(n => typeof n === 'number'));
-        setPeriods(Array.from(pSet).sort((a,b) => b-a));
+        setPeriods(Array.from(pSet).sort((a,b) => a-b)); // ascending order
+
+        // Build period name map from the period stats response
+        const nameMap: Record<number, string> = {};
+        for (const stat of per) {
+          if (stat.periodId && stat.periodName) nameMap[Number(stat.periodId)] = String(stat.periodName);
+        }
+        setPeriodNameMap(nameMap);
 
       } catch (err: unknown) {
         console.error(err);
@@ -249,9 +257,9 @@ export default function Players() {
                       onChange={(e) => setStatsMode(e.target.value)}
                       className="lg-input w-auto min-w-[140px] font-medium text-xs py-2.5"
                   >
-                      <option value="season">Season</option>
-                      {periods.map(p => (
-                           <option key={p} value={`period-${p}`}>Period {p}</option>
+                      <option value="season">Season Total</option>
+                      {periods.map((p, idx) => (
+                           <option key={p} value={`period-${p}`}>{periodNameMap[p] || `Period ${idx + 1}`}</option>
                       ))}
                   </select>
 
