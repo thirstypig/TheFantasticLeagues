@@ -42,6 +42,7 @@ export interface CategoryPeriodRow {
 export interface CategoryPeriodTableProps {
   periodId: string;
   categoryId: CategoryId;
+  categoryLabel?: string;
   rows: CategoryPeriodRow[];
 }
 
@@ -166,7 +167,7 @@ const formatStatForCategory = (categoryId: string, value: number): string => {
   const id = categoryId.toUpperCase();
 
   if (id === "AVG") return fmtRate(value);
-  if (id === "ERA") return value.toFixed(2);
+  if (id === "ERA" || id === "WHIP") return value.toFixed(2);
 
   return Math.round(value).toString();
 };
@@ -255,15 +256,17 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
 export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
   periodId,
   categoryId,
+  categoryLabel,
   rows,
 }) => {
+  const label = categoryLabel || categoryId;
   const sortedRows = [...rows].sort((a, b) => b.points - a.points);
 
   return (
     <div className="mt-8">
       <h3 className="text-xs font-medium tracking-wide text-[var(--lg-text-muted)] mb-4 flex items-center gap-3 opacity-60">
         <span className="w-4 h-[1px] bg-[var(--lg-accent)] opacity-40"></span>
-        {categoryId} Metric – {periodId}
+        {label} – {periodId}
       </h3>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
@@ -271,7 +274,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
         <ThemedThead>
           <ThemedTr>
             <ThemedTh className="px-8 py-4">Team</ThemedTh>
-            <ThemedTh align="center">Value</ThemedTh>
+            <ThemedTh align="center">{categoryId}</ThemedTh>
             <ThemedTh align="center">Points</ThemedTh>
             <ThemedTh align="center" className="px-8 py-4" title="Change from previous standings computation">Chg</ThemedTh>
           </ThemedTr>

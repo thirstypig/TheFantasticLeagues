@@ -93,6 +93,7 @@ const SeasonPage: React.FC = () => {
   const [periodSummaryRows, setPeriodSummaryRows] = useState<TeamPeriodSummaryRow[]>([]);
   const [periodCategoryRows, setPeriodCategoryRows] = useState<Record<string, CategoryPeriodRow[]>>({});
   const [categoryGroups, setCategoryGroups] = useState<Record<string, string>>({}); // key → "H" or "P"
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({}); // key → display label
 
   // Season matrix sort state
   const [matrixSortKey, setMatrixSortKey] = useState<string>("total");
@@ -199,16 +200,19 @@ const SeasonPage: React.FC = () => {
         const teamSummaryMap = new Map<string, TeamPeriodSummaryRow>();
 
         const groupMap: Record<string, string> = {};
+        const labelMap: Record<string, string> = {};
         const totalDelta: Record<number, number> = resp.totalDelta || {};
 
         (resp.categories || []).forEach((cat: any) => {
           const catKey = cat.key || cat.id;
-          // Include pointsDelta from server in each row
+          // Map server `value` → client `periodStat`, include pointsDelta
           catMap[catKey] = (cat.rows || []).map((row: any) => ({
             ...row,
+            periodStat: toNum(row.value),
             pointsDelta: toNum(row.pointsDelta),
           }));
           if (cat.group) groupMap[catKey] = cat.group;
+          if (cat.label) labelMap[catKey] = cat.label;
 
           (cat.rows || []).forEach((row: any) => {
             const code = row.teamCode;
@@ -233,6 +237,7 @@ const SeasonPage: React.FC = () => {
 
         setPeriodCategoryRows(catMap);
         setCategoryGroups(groupMap);
+        setCategoryLabels(labelMap);
         setPeriodSummaryRows(Array.from(teamSummaryMap.values()).sort((a, b) => b.totalPoints - a.totalPoints));
       } catch (err: unknown) {
         console.error("Failed to load period standings", err);
@@ -446,6 +451,7 @@ const SeasonPage: React.FC = () => {
                           key={catKey}
                           periodId={periodNames[periodIds.indexOf(selectedPeriodId!)]?.replace("Period ", "P") ?? `P${periodIds.indexOf(selectedPeriodId!) + 1}`}
                           categoryId={catKey}
+                          categoryLabel={categoryLabels[catKey]}
                           rows={periodCategoryRows[catKey]}
                         />
                       ))}
@@ -460,6 +466,7 @@ const SeasonPage: React.FC = () => {
                           key={catKey}
                           periodId={periodNames[periodIds.indexOf(selectedPeriodId!)]?.replace("Period ", "P") ?? `P${periodIds.indexOf(selectedPeriodId!) + 1}`}
                           categoryId={catKey}
+                          categoryLabel={categoryLabels[catKey]}
                           rows={periodCategoryRows[catKey]}
                         />
                       ))}
