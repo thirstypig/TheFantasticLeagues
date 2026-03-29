@@ -92,6 +92,7 @@ const SeasonPage: React.FC = () => {
   const [periodLoading, setPeriodLoading] = useState(false);
   const [periodSummaryRows, setPeriodSummaryRows] = useState<TeamPeriodSummaryRow[]>([]);
   const [periodCategoryRows, setPeriodCategoryRows] = useState<Record<string, CategoryPeriodRow[]>>({});
+  const [categoryGroups, setCategoryGroups] = useState<Record<string, string>>({}); // key → "H" or "P"
 
   // Season matrix sort state
   const [matrixSortKey, setMatrixSortKey] = useState<string>("total");
@@ -197,9 +198,11 @@ const SeasonPage: React.FC = () => {
         // Use a map to build summary rows by team
         const teamSummaryMap = new Map<string, TeamPeriodSummaryRow>();
 
+        const groupMap: Record<string, string> = {};
         (resp.categories || []).forEach((cat: any) => {
           const catKey = cat.key || cat.id;
           catMap[catKey] = cat.rows || [];
+          if (cat.group) groupMap[catKey] = cat.group;
 
           (cat.rows || []).forEach((row: any) => {
             const code = row.teamCode;
@@ -223,6 +226,7 @@ const SeasonPage: React.FC = () => {
         });
 
         setPeriodCategoryRows(catMap);
+        setCategoryGroups(groupMap);
         setPeriodSummaryRows(Array.from(teamSummaryMap.values()).sort((a, b) => b.totalPoints - a.totalPoints));
       } catch (err: unknown) {
         console.error("Failed to load period standings", err);
@@ -424,15 +428,36 @@ const SeasonPage: React.FC = () => {
                     rows={periodSummaryRows}
                     categories={Object.keys(periodCategoryRows)}
                 />
+                {/* Hitters (left) + Pitchers (right) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-                   {Object.keys(periodCategoryRows).map(catKey => (
-                      <CategoryPeriodTable
+                  {/* Hitters column */}
+                  <div className="space-y-6">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--lg-text-muted)] border-b border-[var(--lg-border-subtle)] pb-1">Hitting Categories</div>
+                    {Object.keys(periodCategoryRows)
+                      .filter(catKey => categoryGroups[catKey] === "H" || ["R", "HR", "RBI", "SB", "AVG"].includes(catKey))
+                      .map(catKey => (
+                        <CategoryPeriodTable
                           key={catKey}
                           periodId={periodNames[periodIds.indexOf(selectedPeriodId!)]?.replace("Period ", "P") ?? `P${periodIds.indexOf(selectedPeriodId!) + 1}`}
                           categoryId={catKey}
                           rows={periodCategoryRows[catKey]}
-                      />
-                  ))}
+                        />
+                      ))}
+                  </div>
+                  {/* Pitchers column */}
+                  <div className="space-y-6">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--lg-text-muted)] border-b border-[var(--lg-border-subtle)] pb-1">Pitching Categories</div>
+                    {Object.keys(periodCategoryRows)
+                      .filter(catKey => categoryGroups[catKey] === "P" || ["W", "SV", "ERA", "WHIP", "K"].includes(catKey))
+                      .map(catKey => (
+                        <CategoryPeriodTable
+                          key={catKey}
+                          periodId={periodNames[periodIds.indexOf(selectedPeriodId!)]?.replace("Period ", "P") ?? `P${periodIds.indexOf(selectedPeriodId!) + 1}`}
+                          categoryId={catKey}
+                          rows={periodCategoryRows[catKey]}
+                        />
+                      ))}
+                  </div>
                 </div>
               </div>
             )}

@@ -199,7 +199,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
               <ThemedTh key={cat} align="center">{cat}</ThemedTh>
             ))}
             <ThemedTh align="center">Total</ThemedTh>
-            <ThemedTh align="center" className="px-8 py-5">Delta</ThemedTh>
+            <ThemedTh align="center" className="px-8 py-5" title="Change from previous standings computation">Chg</ThemedTh>
           </ThemedTr>
         </ThemedThead>
         <tbody className="divide-y divide-[var(--lg-divide)]">
@@ -233,9 +233,13 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
                   {formatNumber(row.totalPoints, 1)}
                 </ThemedTd>
                 <ThemedTd align="center" className="px-8 py-5">
-                  <span className={row.totalPointsDelta >= 0 ? "text-emerald-400" : "text-rose-400"}>
-                    {formatSigned(row.totalPointsDelta, 1)}
-                  </span>
+                  {row.totalPointsDelta === 0 ? (
+                    <span className="text-[var(--lg-text-muted)] opacity-30">—</span>
+                  ) : (
+                    <span className={row.totalPointsDelta > 0 ? "text-emerald-400" : "text-rose-400"}>
+                      {formatSigned(row.totalPointsDelta, 1)}
+                    </span>
+                  )}
                 </ThemedTd>
               </ThemedTr>
             );
@@ -269,7 +273,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
             <ThemedTh className="px-8 py-4">Team</ThemedTh>
             <ThemedTh align="center">Value</ThemedTh>
             <ThemedTh align="center">Points</ThemedTh>
-            <ThemedTh align="center" className="px-8 py-4">Delta</ThemedTh>
+            <ThemedTh align="center" className="px-8 py-4" title="Change from previous standings computation">Chg</ThemedTh>
           </ThemedTr>
         </ThemedThead>
         <tbody className="divide-y divide-[var(--lg-divide)]">
@@ -290,9 +294,13 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
                 {formatNumber(row.points, 1)}
               </ThemedTd>
               <ThemedTd align="center" className="px-8 py-3">
-                <span className={row.pointsDelta >= 0 ? "text-emerald-400" : "text-rose-400"}>
-                  {formatSigned(row.pointsDelta, 1)}
-                </span>
+                {row.pointsDelta === 0 ? (
+                  <span className="text-[var(--lg-text-muted)] opacity-30">—</span>
+                ) : (
+                  <span className={row.pointsDelta > 0 ? "text-emerald-400" : "text-rose-400"}>
+                    {formatSigned(row.pointsDelta, 1)}
+                  </span>
+                )}
               </ThemedTd>
             </ThemedTr>
           ))}

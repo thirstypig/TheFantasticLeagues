@@ -66,6 +66,7 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     key: cfg.key,
     label: cfg.label,
     lowerIsBetter: cfg.lowerIsBetter,
+    group: cfg.group, // "H" = hitter, "P" = pitcher
     rows: computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter),
   }));
 
