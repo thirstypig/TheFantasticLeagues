@@ -354,7 +354,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         AB: ss?.AB ?? 0, H: ss?.H ?? 0, R: ss?.R ?? 0, HR: ss?.HR ?? 0,
         RBI: ss?.RBI ?? 0, SB: ss?.SB ?? 0, AVG: ss?.AVG ?? 0,
         GS: 0, W: ss?.W ?? 0, SV: ss?.SV ?? 0, K: ss?.K ?? 0,
-        ERA: ss?.ERA ?? 0, WHIP: ss?.WHIP ?? 0, SO: 0,
+        IP: ss?.IP ?? 0, ERA: ss?.ERA ?? 0, WHIP: ss?.WHIP ?? 0, SO: 0,
         mlb_team: mlbTeam,
         mlbTeam: mlbTeam,
         fantasy_value: roster?.price,
