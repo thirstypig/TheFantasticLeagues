@@ -4,6 +4,84 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 51 (2026-03-30) — Stats Attribution, Weekly Insights, Railway Migration, Marketing Site, CSP Fixes
+
+### Summary
+Massive infrastructure session: (1) date-aware stats attribution system with PlayerStatsDaily, next-day effective dates, and dual-path aggregation, (2) weekly insights overhaul with performance-focused prompts and human-readable week labels, (3) migrated hosting from Render to Railway ($5/mo, always-on), (4) separated marketing site to Astro + Tina.io on GitHub Pages, (5) DNS moved to Cloudflare, (6) fixed multiple CSP issues for Google OAuth, YouTube, fonts, PostHog.
+
+### Completed
+- **Stats Attribution**: PlayerStatsDaily model, nextDayEffective() utility, soft-delete drops, date-aware computeTeamStatsFromDb(), period roster endpoint + UI, backfill script
+- **Weekly Insights**: "Week of 3/30" labels, "Updated Every Monday", 3 player-focused insights (Hot Bats, Pitching, Roster Alert), comparative grading, removed budget/auction talk
+- **Activity Tabs**: Reordered to Waivers > Add/Drop > Trades > History
+- **Railway Migration**: Deployed at app.thefantasticleagues.com, always-on, no cold starts, Node 20 pinned
+- **Marketing Site**: thefantasticleagues-www repo, Astro + Tina.io, deployed to GitHub Pages at www.thefantasticleagues.com
+- **DNS**: Moved to Cloudflare, apex + www → GitHub Pages, app → Railway
+- **Auth Fix**: Unauthenticated users redirect to /login (not landing page), AuthRedirect component preserves OAuth hash fragment
+- **CSP Fixes**: Added Google, fonts, YouTube, PostHog to Content Security Policy for new domain
+- **Supabase Fix**: Updated Site URL and redirect URLs, fixed VITE_SUPABASE_ANON_KEY (was wrong project)
+- **Season Page**: Added "Updated [date] at [time]" timestamps to Season and Period views
+
+### Pending / Next Session
+1. **Category tables: season-to-date stats** — Show cumulative season stats alongside period stats in category tables
+2. **Team page: Games + IP columns** — Add Games column for hitters, IP column for pitchers
+3. **Weekly Insights: projection/hot take box** — Add a 4th insight about next-week projections and trends
+4. **Test season** — Create a separate test season with short periods to verify waiver/trade processing with date-aware stats
+5. **Run daily stats backfill** — `npx tsx server/src/scripts/backfill-daily-stats.ts`
+6. **Decommission Render** — Turn off old Render service
+7. **Rotate credentials** — DB password and service role key were shared in chat
+8. **Remove marketing pages from app** — Landing, Guide, About, Changelog, Roadmap, Status still bundled in React SPA (lazy loaded but unnecessary)
+
+### Concerns / Process Improvements
+- **Service worker caching** — sw.js caches old CSP headers, causing persistent issues after server changes. Consider disabling SW in production or using network-first for API calls.
+- **VITE_ build-time vars** — VITE_SUPABASE_ANON_KEY was wrong because it was copied from another project. Railway needs these set correctly BEFORE the build step.
+- **CSP maintenance** — Every new external service requires CSP updates. Consider a more permissive connectSrc or documenting required domains.
+
+### Test Results
+- Server: 486 passing, 7 skipped
+- Client: 182 passing, 5 failing (pre-existing @/lib/utils alias)
+- TypeScript: Clean on both client and server
+
+---
+
+## Session 50 (2026-03-30) — Ohtani Profile Fix, Recent Stats Fix, Trade Assets, Waiver Priority, Code Review
+
+### Summary
+Major session covering 4 areas: (1) fixed Ohtani pitcher derived ID so player profile/stats load correctly, (2) fixed MLB API deprecation of last7Days/last15Days/last30Days stat types — replaced with byDateRange, (3) added 3 new trade asset types (FUTURE_BUDGET, WAIVER_PRIORITY, PICK processing), (4) switched waiver priority from season-wide stats to period-based standings.
+
+### Completed
+- **Ohtani Pitcher ID resolution**: `resolveRealMlbId()` maps derived 1660271 → real 660271 at 3 layers (modal, API functions, server routes). All 5 API calls now work for Ohtani Pitcher.
+- **Recent Stats fix**: MLB API deprecated `last7Days`/`last15Days`/`last30Days`. Replaced with `byDateRange` + date arithmetic. Now shows 7d/14d/21d/YTD rows for all players.
+- **YouTube Spanish filter**: Added `relevanceLanguage: "en"` to YouTube Data API search params.
+- **Trade asset types**: Added `FUTURE_BUDGET` and `WAIVER_PRIORITY` to AssetType enum. Full server processing + client UI (TradeAssetSelector, TradesPage, CommissionerTradeTool).
+- **FUTURE_BUDGET**: Deferred budget adjustments applied on season DRAFT transition via `seasonService.ts`.
+- **WAIVER_PRIORITY**: Swaps `waiverPriorityOverride` between teams. Overrides cleared atomically inside waiver processing transaction.
+- **Waiver priority by period**: Replaced `TeamStatsSeason` cumulative sum with proper roto standings from most recent completed period. Falls back to season stats if no completed period.
+- **Schema migration**: Added `FUTURE_BUDGET`, `WAIVER_PRIORITY` to AssetType, `season Int?` to TradeItem, `waiverPriorityOverride Int?` to Team.
+- **Trade validation**: Added Zod `.refine()` for per-asset-type required field validation. Fixed `season` field not persisted in trade proposals (bug found by security review).
+- **Position sort**: Added position sort logic to Players page.
+- **Code review**: 3-agent parallel review (security, performance, simplicity). Fixed all P1/P2 findings.
+- **Compound docs**: Documented MLB API deprecation and Ohtani ID resolution in `docs/solutions/`.
+- **Brainstorm**: Home page improvements brainstorm — period countdown + standings snapshot + unified player alert feed.
+
+### Pending / Next Session
+1. **Home page improvements** — Implement period countdown + standings snapshot + player alert feed (brainstorm at `docs/brainstorms/2026-03-30-home-page-improvements-brainstorm.md`)
+2. **Weekly Digest tabs** — Past weeks in tabs (infrastructure ready)
+3. **Deploy to production** — All changes ready for Render deployment
+4. **Commissioner waiver override UI** — `waiverPriorityOverride` exists but no commissioner UI to set it manually
+5. **Pre-draft trade record** — Devil Dawgs → DLC (Mullins + $75 for Kyle Tucker) via Commissioner Trade Tool
+
+### Concerns / Process Improvements
+- **Playwright auth flaky** — Dev-login session doesn't persist across Playwright page navigations; requires manual Supabase signInWithPassword workaround
+- **5 pre-existing client test failures** — All caused by `@/lib/utils` vitest path alias issue (ActivityPage × 2, TradesPage × 1, same root cause)
+- **Season transition atomicity** — Future budget adjustments in `seasonService.ts` not wrapped in a single transaction with the season update (P3 from performance review)
+
+### Test Results
+- Server: 486 passing, 7 skipped
+- Client: 182 passing, 5 failing (all pre-existing `@/lib/utils` alias)
+- TypeScript: Clean on both client and server
+
+---
+
 ## Session 49 (2026-03-27/29) — Performance, Season, Positions, Home Page, YouTube/Reddit/Yahoo, Waiver/Trade, Ohtani Split, Stat Fixes (25 commits)
 
 ### Summary
