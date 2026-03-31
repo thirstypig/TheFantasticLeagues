@@ -35,6 +35,7 @@ export interface CategoryPeriodRow {
   teamId: string;
   teamName: string;
   periodStat: number; // raw stat (AVG/ERA already calculated)
+  seasonStat?: number; // season-to-date cumulative stat
   points: number;
   pointsDelta: number; // vs previous day for this category
 }
@@ -272,6 +273,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
           <ThemedTr>
             <ThemedTh className="px-8 py-4">Team</ThemedTh>
             <ThemedTh align="center">{categoryId}</ThemedTh>
+            <ThemedTh align="center" title="Season-to-date cumulative">Season</ThemedTh>
             <ThemedTh align="center">Points</ThemedTh>
             <ThemedTh align="center" className="px-8 py-4" title="Change from previous standings computation">Chg</ThemedTh>
           </ThemedTr>
@@ -289,6 +291,11 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
               </ThemedTd>
               <ThemedTd align="center">
                 {formatStatForCategory(categoryId, row.periodStat)}
+              </ThemedTd>
+              <ThemedTd align="center">
+                <span className="text-[var(--lg-text-muted)] opacity-70">
+                  {row.seasonStat != null ? formatStatForCategory(categoryId, row.seasonStat) : "—"}
+                </span>
               </ThemedTd>
               <ThemedTd align="center">
                 {formatNumber(row.points, 1)}

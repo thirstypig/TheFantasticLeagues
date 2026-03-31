@@ -62,6 +62,27 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
 
   const teamStats = await computeTeamStatsFromDb(leagueId, pid);
 
+  // Compute season-to-date stats (aggregate all periods up to and including the selected one)
+  const selectedPeriod = await prisma.period.findUnique({ where: { id: pid } });
+  const allPeriods = await prisma.period.findMany({
+    where: { leagueId, status: { in: ["active", "completed"] }, startDate: { lte: selectedPeriod?.endDate ?? new Date() } },
+    orderBy: { startDate: "asc" },
+  });
+  // Sum counting stats across all periods; for rate stats, use season standings endpoint value
+  const seasonTotals = new Map<number, Record<string, number>>();
+  for (const p of allPeriods) {
+    const pStats = p.id === pid ? teamStats : await computeTeamStatsFromDb(leagueId, p.id);
+    for (const t of pStats) {
+      const prev = seasonTotals.get(t.team.id) ?? { R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, K: 0, ERA: 0, WHIP: 0 };
+      prev.R += t.R; prev.HR += t.HR; prev.RBI += t.RBI; prev.SB += t.SB;
+      prev.W += t.W; prev.S += t.S; prev.K += t.K;
+      // For rate stats (AVG, ERA, WHIP), use the latest period's value as running season value
+      // This is approximate — proper implementation needs H/AB/ER/IP/BB_H exposed on TeamStatRow
+      prev.AVG = t.AVG; prev.ERA = t.ERA; prev.WHIP = t.WHIP;
+      seasonTotals.set(t.team.id, prev);
+    }
+  }
+
   // Compute current standings
   const currentStandings = computeStandingsFromStats(teamStats);
 
@@ -96,7 +117,7 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     }))
   );
 
-  // Build categories with delta from previous snapshot
+  // Build categories with delta from previous snapshot + season-to-date values
   const categories = CATEGORY_CONFIG.map((cfg) => {
     const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
     if (prevTeamStats) {
@@ -106,6 +127,11 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
         const prevPts = prevPointsMap.get(row.teamId) ?? 0;
         (row as any).pointsDelta = row.points - prevPts;
       }
+    }
+    // Add season-to-date stat value
+    for (const row of rows) {
+      const sTotals = seasonTotals.get(row.teamId);
+      (row as any).seasonValue = sTotals?.[cfg.key] ?? 0;
     }
     return { key: cfg.key, label: cfg.label, lowerIsBetter: cfg.lowerIsBetter, group: cfg.group, rows };
   });

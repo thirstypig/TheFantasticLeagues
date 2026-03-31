@@ -214,6 +214,7 @@ const SeasonPage: React.FC = () => {
           catMap[catKey] = (cat.rows || []).map((row: any) => ({
             ...row,
             periodStat: toNum(row.value),
+            seasonStat: row.seasonValue != null ? toNum(row.seasonValue) : undefined,
             pointsDelta: toNum(row.pointsDelta),
           }));
           if (cat.group) groupMap[catKey] = cat.group;
