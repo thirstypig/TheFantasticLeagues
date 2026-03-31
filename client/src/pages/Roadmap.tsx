@@ -584,6 +584,18 @@ interface CompletedGroup {
 
 const completedFeatures: CompletedGroup[] = [
   {
+    label: "Session 51 (cont.) — Period Stats Fix, Data Audit, Security Review",
+    items: [
+      { title: "Period-to-Date Stats Fixed", description: "Daily stats path was showing 1 day instead of cumulative totals. Now requires 80% daily coverage before using daily path, falls back to PlayerStatsPeriod.", session: "51" },
+      { title: "Period Tab Stats/Points Toggle", description: "Switch between raw stat values (R, HR, AVG, ERA, etc.) and roto points in the Period view. Stats mode sorts by stat value, Points mode shows roto allocation.", session: "51" },
+      { title: "Weekly Insights Data-Backed", description: "AI now receives actual per-player stat lines. Players with 0 IP shown as 'HAS NOT PITCHED'. No more hallucinated performance claims.", session: "51" },
+      { title: "Team Table Column Corrections", description: "Hitters: POS, PLAYER, TM, G, AB, R, HR, RBI, SB, AVG. Pitchers: removed SO. Standard baseball column order.", session: "51" },
+      { title: "Security Review Fixes", description: "4 fixes: period-roster auth, DST bug in nextDayEffective, claim drop releasedAt filter, trade reverse effective dates.", session: "51" },
+      { title: "Performance Review Fixes", description: "count→findFirst, batched upserts, deduplicated prevTeamStats computation.", session: "51" },
+      { title: "YouTube Embed Fix", description: "Error 153 resolved: origin param, expanded CSP, non-embeddable videos filtered server-side.", session: "51" },
+    ],
+  },
+  {
     label: "Session 51 — Stats Attribution, Railway Migration, Marketing Site",
     items: [
       { title: "Date-Aware Stats Attribution", description: "PlayerStatsDaily model, nextDayEffective() utility, dual-path aggregation. Mid-period trades/drops correctly split stats between teams.", session: "51" },

@@ -30,6 +30,38 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.46.0",
+    date: "Mar 31, 2026",
+    session: "Session 51 (cont.)",
+    title: "Period Stats Fix, Data Integrity Audit, Column Corrections, Security Review",
+    highlights: [
+      "Period-to-date stats now display correctly — fixed daily stats path using incomplete data instead of cumulative totals",
+      "Period tab Stats/Points toggle — switch between raw stat values and roto points in category tables",
+      "Weekly Insights now use actual per-player stat lines — no more hallucinated performance claims",
+      "Security review: 4 critical fixes (auth, DST, roster queries, trade reverse dates)",
+    ],
+    changes: [
+      { type: "fix", description: "Period stats showed 1 day instead of cumulative — daily stats path now requires 80% coverage, falls back to PlayerStatsPeriod" },
+      { type: "fix", description: "Saves category season-to-date: KEY_TO_DB_FIELD mapping (SV→S) was missing, showing 0 for all teams" },
+      { type: "feat", description: "Period tab Stats/Points toggle — Stats shows raw values sorted by stat, Points shows roto points" },
+      { type: "feat", description: "Period Totals table shows real stat values in Stats mode (was always showing points)" },
+      { type: "fix", description: "Summary table renamed 'Season Totals' → 'Period Totals', columns 'Period to Date' and 'Season to Date'" },
+      { type: "feat", description: "Hitter columns corrected: POS, PLAYER, TM, G, AB, R, HR, RBI, SB, AVG (added G+AB, removed GS)" },
+      { type: "feat", description: "Pitcher columns: removed SO (shutouts), kept W, SV, K, IP, ERA, WHIP" },
+      { type: "feat", description: "Player modal: Positions Played moved above Recent Stats" },
+      { type: "feat", description: "Weekly Insights: AI receives actual stat lines per player, cannot hallucinate performance" },
+      { type: "feat", description: "League Digest: removed auction price references, strengthened keeper exclusion in trade proposals" },
+      { type: "fix", description: "YouTube Error 153: added origin param, expanded CSP, filter non-embeddable videos" },
+      { type: "security", description: "Period roster endpoint: added league membership check" },
+      { type: "security", description: "nextDayEffective() DST fix: en-CA locale with noon UTC parse" },
+      { type: "security", description: "Transaction claim drop: added releasedAt null filter" },
+      { type: "security", description: "Trade reverse: uses nextDayEffective() consistently" },
+      { type: "perf", description: "Daily stats existence check: count() → findFirst() (short-circuits)" },
+      { type: "perf", description: "TeamStatsPeriod upserts: sequential → batched $transaction" },
+      { type: "perf", description: "prevTeamStats computed once, reused for total and category deltas" },
+    ],
+  },
+  {
     version: "0.45.0",
     date: "Mar 30, 2026",
     session: "Session 51",
