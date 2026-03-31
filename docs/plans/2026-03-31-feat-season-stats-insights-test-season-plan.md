@@ -1,7 +1,7 @@
 ---
 title: "feat: Season-to-Date Stats, Team G/IP Columns, Insights Projection, Test Season"
 type: feat
-status: active
+status: phases-1-3-complete
 date: 2026-03-31
 ---
 

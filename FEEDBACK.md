@@ -4,6 +4,43 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 51 continued (2026-03-31) — Data Integrity Crisis, Period Stats Fix, Digest Overhaul
+
+### CRITICAL: Data Integrity Issues Found
+1. **League confusion**: League 1 = OGBA 2025 (archived), League 20 = OGBA 2026 (live). App may show wrong league.
+2. **Stale import roster entries deleted**: 182 `source=import` entries on League 1 were deleted. These were 2025 roster data. The 2025 archive (HistoricalPlayerStat 10,640 rows, HistoricalStanding 16 rows) is INTACT.
+3. **Roster overlap query bug**: `computeTeamStatsFromDb` includes players released on the same day the period starts (Pete Fairbanks had 2 phantom saves counted for Los Doyers). Fix needed: tighten the `releasedAt > period.startDate` check.
+4. **Daily stats path was showing 1 day instead of period-to-date**: Fixed — now requires 80% daily coverage before using daily path, falls back to cumulative PlayerStatsPeriod.
+
+### Completed
+- **Period tab Stats/Points toggle**: Stats mode shows real stat values, Points mode shows roto points
+- **Period Totals label**: Renamed from "Season Totals" to "Period Totals"
+- **Category column headers**: "Period to Date" and "Season to Date" (not just "Period" and "Season")
+- **Season value SV→S mapping fix**: KEY_TO_DB_FIELD used for correct field lookup
+- **Daily stats coverage check**: 80% threshold prevents incomplete daily data from being used
+- **Weekly Insights**: AI prompt now includes actual per-player stat lines, forbids hallucination
+- **League Digest prompt**: Removed auction prices/budget, strengthened keeper exclusion
+- **Hitter columns**: POS, PLAYER, TM, G, AB, R, HR, RBI, SB, AVG (removed GS, added G+AB)
+- **Pitcher columns**: Removed SO (shutouts)
+- **Player modal**: Positions Played moved above Recent Stats
+- **YouTube Error 153**: Added origin param + expanded CSP, filter non-embeddable videos
+- **Security fixes**: Auth on period-roster, DST fix, claim drop filter, trade reverse dates
+- **Performance fixes**: count→findFirst, batch upserts, deduplicate prevTeamStats
+
+### CRITICAL Next Session TODOs
+1. **Re-import 2025 roster data** for League 1 archive (deleted accidentally)
+2. **Fix roster overlap query** — exclude players released on period start date
+3. **Audit all 8 teams on League 20** — verify roster, keepers, positions match auction data
+4. **Weekly Digest tabs** — show previous weeks, no week numbers
+5. **Weekly Digest accuracy** — grades must match actual standings (A+ team should be #1)
+6. **Test season** — create and verify waiver/trade flows
+
+### Test Results
+- Server: 486 passing, 7 skipped
+- Client: 182 passing, 5 failing (pre-existing)
+
+---
+
 ## Session 51 (2026-03-30) — Stats Attribution, Weekly Insights, Railway Migration, Marketing Site, CSP Fixes
 
 ### Summary
