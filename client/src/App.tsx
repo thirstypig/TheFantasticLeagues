@@ -46,6 +46,32 @@ const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup")
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
 
+/**
+ * Handles unauthenticated routing. If the URL has a Supabase auth hash
+ * (#access_token=...), wait for Supabase to process it before redirecting.
+ * Otherwise redirect to /login immediately.
+ */
+function AuthRedirect() {
+  const [waiting, setWaiting] = React.useState(() => window.location.hash.includes("access_token"));
+
+  React.useEffect(() => {
+    if (!waiting) return;
+    // Give Supabase up to 5s to process the hash and trigger onAuthStateChange
+    const timer = setTimeout(() => setWaiting(false), 5000);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+
+  if (waiting) {
+    return (
+      <div className="min-h-screen bg-[var(--lg-bg-page)] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return <Navigate to="/login" replace />;
+}
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -123,15 +149,8 @@ export default function App() {
             ) : (
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  {/* Root path: if URL has auth hash (#access_token=...), render nothing
-                      so Supabase JS can process the OAuth callback. Otherwise redirect to login. */}
-                  <Route path="/" element={
-                    window.location.hash.includes("access_token")
-                      ? <PageLoader />
-                      : <Navigate to="/login" replace />
-                  } />
                   <Route path="/create-league" element={<Navigate to="/signup" replace />} />
-                  <Route path="*" element={<Navigate to="/login" replace />} />
+                  <Route path="*" element={<AuthRedirect />} />
                 </Routes>
               </Suspense>
             )
