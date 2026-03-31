@@ -640,9 +640,7 @@ export default function Home() {
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
               <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Digest</span>
-              {digest.weekKey && (
-                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">{digest.weekKey}</span>
-              )}
+              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
               {digest.generatedAt && (
                 <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
                   · {new Date(digest.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}

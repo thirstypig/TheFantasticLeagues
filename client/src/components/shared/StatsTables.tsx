@@ -192,7 +192,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
     <div className="mb-12">
       <h2 className="text-xl font-semibold tracking-tight text-[var(--lg-text-heading)] mb-4 flex items-center gap-4">
         <span className="w-1.5 h-6 bg-[var(--lg-accent)] rounded-full"></span>
-        Season Totals – {periodId}
+        Period Totals – {periodId}
       </h2>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
         <div className="overflow-x-auto">
@@ -290,10 +290,10 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
         <ThemedThead>
           <ThemedTr>
             <ThemedTh className="px-8 py-4">Team</ThemedTh>
-            <ThemedTh align="center" title="Period-to-date stat value">Period</ThemedTh>
-            <ThemedTh align="center" title="Season-to-date cumulative">Season</ThemedTh>
+            <ThemedTh align="center" title="Period-to-date cumulative stat">Period to Date</ThemedTh>
+            <ThemedTh align="center" title="Season-to-date cumulative">Season to Date</ThemedTh>
             {viewMode === "points" && <ThemedTh align="center">Points</ThemedTh>}
-            <ThemedTh align="center" className="px-8 py-4" title="Day-over-day change">{viewMode === "points" ? "Chg" : "Chg"}</ThemedTh>
+            <ThemedTh align="center" className="px-8 py-4" title="Day-over-day change">Chg</ThemedTh>
           </ThemedTr>
         </ThemedThead>
         <tbody className="divide-y divide-[var(--lg-divide)]">

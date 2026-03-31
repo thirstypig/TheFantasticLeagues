@@ -176,58 +176,57 @@ export class AIAnalysisService {
         ? `\nLast week's proposed trade received ${previousVotes.yes} "yes" and ${previousVotes.no} "no" votes.${previousVotes.no > previousVotes.yes ? ' Owners felt it was unrealistic — aim for a more practical, mutually beneficial trade this week.' : previousVotes.yes > previousVotes.no ? ' Owners liked the idea — this week, try something in a similar vein.' : ''}`
         : '';
 
-      const prompt = `You are a fantasy baseball league analyst writing a weekly digest for the "${leagueName}" ${season} season (${leagueTypeLabel}, ${teams.length} teams, 10-cat roto).
-
-Week ${weekNumber} of the season.
+      const prompt = `You are a fantasy baseball league analyst writing a weekly performance digest for "${leagueName}" ${season} (${leagueTypeLabel}, ${teams.length} teams, 10-cat roto).
 
 TEAMS:
-${teams.map(t => `
-${t.name} (Waiver Budget: $${t.budget}):
-  Roster highlights: ${t.rosterHighlights}
-  Keepers (DO NOT TRADE): ${t.keeperNames || 'None'}
-  Recent moves: ${t.recentMoves || 'None'}
-`).join('')}
+${teams.map(t => {
+  // Separate keepers from tradeable players
+  const keeperList = t.keeperNames || 'None';
+  return `${t.name}:
+  Players: ${t.rosterHighlights}
+  KEEPERS (UNTOUCHABLE — cannot be traded under ANY circumstances): ${keeperList}
+  Recent moves: ${t.recentMoves || 'None'}`;
+}).join('\n\n')}
 
-GRADING GUIDELINES:
-- Grades should reflect realistic competitive outlook, NOT just star power
-- Factor in roster depth, pitching reliability, injury risk, and budget flexibility
-- Teams overly reliant on injury-prone players or unproven prospects should be graded lower
-- Teams with strong depth and balanced rosters grade higher
-- Use the full range: A+ is reserved for genuinely elite rosters, D/F for teams with major holes
-- Be honest and differentiated — not every team is a B
+CRITICAL RULES:
+- Do NOT mention auction prices, draft costs, or budget amounts. Those are irrelevant during the season.
+- Do NOT mention how much teams paid for players. Focus on PERFORMANCE.
+- Grade teams based on their ACTUAL STATS and category standings, not roster names.
+- Be honest — reference real production, not projections or pre-season expectations.
 
-TRADE PROPOSAL RULES:
-1. NEVER include keeper players in trades. Keepers are listed above for each team — these players have emotional value and owners will not trade them. Work around keepers.
-2. POSITIONS MUST MATCH: If one side sends a pitcher, the other side must also send a pitcher (or include additional players to balance). You cannot trade a pitcher straight up for a hitter — both sides must end up with balanced rosters.
-3. Include waiver budget dollars in trades to balance value if needed.
-4. The trade must be something owners would ACTUALLY CONSIDER — realistic, addressing real category needs for both teams.
-5. Reference specific category gaps: "Team A needs SV, Team B needs SB" — show WHY both teams benefit.
+GRADING: Use the full A+ to F range. A+ = genuinely dominating. C = average. F = major holes. Be differentiated.
+
+TRADE PROPOSAL — ABSOLUTE RULES:
+1. KEEPER PLAYERS ARE COMPLETELY OFF LIMITS. If a player is listed as a KEEPER above, they CANNOT appear in any trade proposal. This is non-negotiable. If you include a keeper, the entire digest is invalid.
+2. Only propose trades involving NON-KEEPER players currently on rosters.
+3. Both sides must benefit — reference specific category needs ("Team A needs SV, Team B needs SB").
+4. Positions should roughly balance (don't trade a pitcher for a hitter without compensation).
 ${voteContext}
 
-Produce a weekly league digest. Return ONLY a valid JSON object (no markdown, no code blocks):
+Return ONLY valid JSON:
 {
-  "overview": "2 sentences summarizing the overall league state — who's competitive, any emerging narratives, general league health",
-  "teamGrades": [{"teamName": string, "grade": "A+ through F", "trend": "1 sentence on their trajectory or key storyline"}],
-  "hotTeam": {"name": string, "reason": "1 sentence why they're the team to watch this week"},
-  "coldTeam": {"name": string, "reason": "1 sentence why they're struggling"},
+  "overview": "2 sentences on league state — who's competitive, emerging narratives",
+  "teamGrades": [{"teamName": string, "grade": "A+ through F", "trend": "1 sentence on trajectory based on actual stats"}],
+  "hotTeam": {"name": string, "reason": "1 sentence — cite actual stat performance"},
+  "coldTeam": {"name": string, "reason": "1 sentence — cite actual stat performance"},
   "proposedTrade": {
     "style": "${tradeStyle}",
-    "title": "Short catchy title for the trade",
-    "description": "1 sentence pitch for this trade",
+    "title": "Catchy trade title",
+    "description": "1 sentence pitch",
     "teamA": "Team name",
-    "teamAGives": "Players/budget they send (include draft dollar costs). MUST NOT include keepers.",
+    "teamAGives": "Non-keeper players only. NO KEEPERS.",
     "teamB": "Team name",
-    "teamBGives": "Players/budget they send. MUST NOT include keepers. Positions must balance.",
-    "reasoning": "2 sentences: why this helps EACH team specifically — reference specific category needs"
+    "teamBGives": "Non-keeper players only. NO KEEPERS.",
+    "reasoning": "2 sentences: why each team benefits — reference category needs"
   }
 }
 
-For the proposed trade, use the "${tradeStyle}" style:
-${tradeStyle === "conservative" ? "- Keep it safe: swap mid-tier role players or budget to address small category needs. Both teams clearly benefit. Think depth pieces, not stars." : ""}
-${tradeStyle === "outrageous" ? "- Go bigger: involve high-value non-keeper players. Make it dramatic and fun to debate, but still POSSIBLE — owners must have a reason to say yes." : ""}
-${tradeStyle === "fun" ? "- Be creative: suggest an unexpected angle that makes people think. Maybe a 3-for-2, or a budget dump, or targeting a specific category swing." : ""}
+Trade style: "${tradeStyle}"
+${tradeStyle === "conservative" ? "Swap mid-tier role players to address small category needs." : ""}
+${tradeStyle === "outrageous" ? "Involve high-value non-keeper players. Dramatic but possible." : ""}
+${tradeStyle === "fun" ? "Creative angle — unexpected 3-for-2 or targeting a category swing." : ""}
 
-IMPORTANT: The trade must involve ACTUAL PLAYERS currently on these teams' rosters. Include their draft dollar costs. NEVER trade keepers.`;
+FINAL CHECK: Before generating, verify NO keeper players appear in the trade. If a player is in the KEEPERS list, they CANNOT be traded.`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
