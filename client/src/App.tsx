@@ -38,7 +38,6 @@ const GuideFaq = React.lazy(() => import("./pages/guide/GuideFaq"));
 const About = React.lazy(() => import("./pages/About"));
 const AIHub = React.lazy(() => import("./features/ai/pages/AIHub"));
 const DraftReportPage = React.lazy(() => import("./features/ai/pages/DraftReportPage"));
-const Landing = React.lazy(() => import("./features/auth/pages/Landing"));
 const CreateLeague = React.lazy(() => import("./features/leagues/pages/CreateLeague"));
 const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
 const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));

@@ -379,14 +379,15 @@ export async function computeTeamStatsFromDb(
     },
   });
 
-  // Check if daily stats exist for this period (enables precise date-aware attribution)
-  const dailyStatsCount = await prisma.playerStatsDaily.count({
+  // Check if daily stats exist for this period (short-circuits after one row found)
+  const hasDailyStats = await prisma.playerStatsDaily.findFirst({
     where: {
       gameDate: { gte: period.startDate, lte: period.endDate },
     },
+    select: { id: true },
   });
 
-  if (dailyStatsCount > 0) {
+  if (hasDailyStats) {
     return computeWithDailyStats(teams, rosters, period);
   } else {
     return computeWithPeriodStats(teams, rosters, periodId);
