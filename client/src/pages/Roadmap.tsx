@@ -584,6 +584,19 @@ interface CompletedGroup {
 
 const completedFeatures: CompletedGroup[] = [
   {
+    label: "Session 51 — Stats Attribution, Railway Migration, Marketing Site",
+    items: [
+      { title: "Date-Aware Stats Attribution", description: "PlayerStatsDaily model, nextDayEffective() utility, dual-path aggregation. Mid-period trades/drops correctly split stats between teams.", session: "51" },
+      { title: "Weekly Insights Overhaul", description: "Player-focused: Hot Bats, Pitching, Roster Alert. Comparative grading relative to rivals. 'Week of 3/30' labels, 'Updated Every Monday'.", session: "51" },
+      { title: "Railway Migration", description: "Moved from Render to Railway ($5/mo). Always-on containers, no cold starts, WebSocket support, native cron.", session: "51" },
+      { title: "Marketing Site Separation", description: "www.thefantasticleagues.com on Astro + Tina.io (GitHub Pages). app.thefantasticleagues.com on Railway. Two repos, two hosts.", session: "51" },
+      { title: "DNS Migration to Cloudflare", description: "Full DNS control. Apex + www → GitHub Pages, app → Railway. No more Squarespace proxy interference.", session: "51" },
+      { title: "Period Roster View", description: "Team page period selector shows all players who were on the team during a period, including traded/dropped with status badges.", session: "51" },
+      { title: "Activity Tabs Reorder", description: "Waivers > Add/Drop > Trades > History. Default tab: Waivers.", session: "51" },
+      { title: "Trade Asset Types", description: "FUTURE_BUDGET (deferred budget on draft transition) and WAIVER_PRIORITY (override swap) with full server + client processing.", session: "50-51" },
+    ],
+  },
+  {
     label: "Session 33 — Production Deploy & Hardening",
     items: [
       { title: "Production Deployment", description: "Render config overhauled: production domain, VITE_* build-time vars, Node 20 pinned, 60s graceful shutdown.", session: "33" },

@@ -113,7 +113,9 @@ const techStack = [
   {
     category: "Infrastructure & Deployment",
     items: [
-      { name: "Render", desc: "Hosting with SSL termination" },
+      { name: "Railway", desc: "App hosting (always-on, $5/mo)" },
+      { name: "GitHub Pages", desc: "Marketing site hosting (Astro + Tina.io)" },
+      { name: "Cloudflare", desc: "DNS management" },
       { name: "Supabase", desc: "Managed PostgreSQL + Auth + Storage" },
       { name: "Git / GitHub", desc: "Version control, PRs, CI" },
       { name: "MCP (Model Context Protocol)", desc: "Tool server for Claude Code CLI integration" },
@@ -440,7 +442,8 @@ const tools = [
   { name: "Claude Opus 4", desc: "The model powering Claude Code — handles architecture decisions, multi-file refactors, test writing" },
   { name: "GitHub", desc: "Source control, pull requests, code review" },
   { name: "Supabase Dashboard", desc: "Database management, auth config, SQL editor" },
-  { name: "Render Dashboard", desc: "Deployment, monitoring, environment variables" },
+  { name: "Railway Dashboard", desc: "App deployment, monitoring, environment variables" },
+  { name: "Cloudflare Dashboard", desc: "DNS management, SSL, domain routing" },
   { name: "Prisma Studio", desc: "Database GUI for development and data inspection" },
   { name: "Postman", desc: "API testing and debugging" },
   { name: "Chrome DevTools", desc: "Frontend debugging, network inspection, responsive testing" },
