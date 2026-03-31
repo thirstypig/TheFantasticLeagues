@@ -95,6 +95,10 @@ const SeasonPage: React.FC = () => {
   const [categoryGroups, setCategoryGroups] = useState<Record<string, string>>({}); // key → "H" or "P"
   const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({}); // key → display label
 
+  // Last updated timestamps
+  const [seasonUpdatedAt, setSeasonUpdatedAt] = useState<Date | null>(null);
+  const [periodUpdatedAt, setPeriodUpdatedAt] = useState<Date | null>(null);
+
   // Season matrix sort state
   const [matrixSortKey, setMatrixSortKey] = useState<string>("total");
   const [matrixSortDesc, setMatrixSortDesc] = useState(true);
@@ -171,6 +175,7 @@ const SeasonPage: React.FC = () => {
 
         const normalized = (data.rows || []).map(r => normalizeSeasonRow(r as any, data.periodIds));
         setRows(normalized);
+        setSeasonUpdatedAt(new Date());
 
         if (data.periodIds?.length > 0) {
           setSelectedPeriodId(data.periodIds[data.periodIds.length - 1]);
@@ -239,6 +244,7 @@ const SeasonPage: React.FC = () => {
         setCategoryGroups(groupMap);
         setCategoryLabels(labelMap);
         setPeriodSummaryRows(Array.from(teamSummaryMap.values()).sort((a, b) => b.totalPoints - a.totalPoints));
+        setPeriodUpdatedAt(new Date());
       } catch (err: unknown) {
         console.error("Failed to load period standings", err);
       } finally {
@@ -306,7 +312,14 @@ const SeasonPage: React.FC = () => {
             <div className="mb-6 flex items-center justify-between px-2">
                <div>
                   <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Point Matrix</h2>
-                  <div className="mt-1 text-sm font-medium text-[var(--lg-text-secondary)]">Cumulative results across all completed periods.</div>
+                  <div className="mt-1 text-sm font-medium text-[var(--lg-text-secondary)]">
+                    Cumulative results across all completed periods.
+                    {seasonUpdatedAt && (
+                      <span className="ml-2 text-[10px] text-[var(--lg-text-muted)] opacity-60">
+                        Updated {seasonUpdatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at {seasonUpdatedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
                </div>
             </div>
 
@@ -411,21 +424,28 @@ const SeasonPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6 md:space-y-12">
-            <div className="flex items-center gap-4 lg-card p-4 justify-center">
-               <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Select Period</span>
-               <div className="flex gap-2">
-                 {periodIds.map((pid, idx) => (
-                   <Button
-                    key={pid}
-                    onClick={() => setSelectedPeriodId(pid)}
-                    variant={selectedPeriodId === pid ? "default" : "secondary"}
-                    size="sm"
-                    className="min-w-[40px] h-10 px-2"
-                   >
-                     {idx + 1}
-                   </Button>
-                 ))}
-               </div>
+            <div className="flex flex-col items-center gap-2 lg-card p-4">
+              <div className="flex items-center gap-4 justify-center">
+                <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Select Period</span>
+                <div className="flex gap-2">
+                  {periodIds.map((pid, idx) => (
+                    <Button
+                      key={pid}
+                      onClick={() => setSelectedPeriodId(pid)}
+                      variant={selectedPeriodId === pid ? "default" : "secondary"}
+                      size="sm"
+                      className="min-w-[40px] h-10 px-2"
+                    >
+                      {idx + 1}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {periodUpdatedAt && (
+                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
+                  Updated {periodUpdatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at {periodUpdatedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                </span>
+              )}
             </div>
 
             {periodLoading ? (
