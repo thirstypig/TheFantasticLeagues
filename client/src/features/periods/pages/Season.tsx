@@ -246,7 +246,8 @@ const SeasonPage: React.FC = () => {
             team.totalPoints += toNum(row.points);
             team.categories.push({
               categoryId: catKey,
-              points: toNum(row.points)
+              points: toNum(row.points),
+              statValue: toNum(row.value),
             });
           });
         });
@@ -477,6 +478,7 @@ const SeasonPage: React.FC = () => {
                     periodId={periodNames[periodIds.indexOf(selectedPeriodId!)]?.replace("Period ", "P") ?? `P${periodIds.indexOf(selectedPeriodId!) + 1}`}
                     rows={periodSummaryRows}
                     categories={Object.keys(periodCategoryRows)}
+                    viewMode={periodViewMode}
                 />
                 {/* Hitters (left) + Pitchers (right) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">

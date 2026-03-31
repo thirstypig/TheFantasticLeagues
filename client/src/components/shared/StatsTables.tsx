@@ -14,6 +14,7 @@ export type CategoryId = string;
 export interface TeamPeriodCategoryPoints {
   categoryId: CategoryId;
   points: number;
+  statValue?: number; // raw stat value for stats mode
 }
 
 export interface TeamPeriodSummaryRow {
@@ -29,6 +30,7 @@ export interface PeriodSummaryTableProps {
   periodId: string;
   rows: TeamPeriodSummaryRow[];
   categories: CategoryId[];
+  viewMode?: 'points' | 'stats';
 }
 
 export interface CategoryPeriodRow {
@@ -182,6 +184,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
   periodId,
   rows,
   categories,
+  viewMode = 'stats',
 }) => {
   const sortedRows = [...rows].sort((a, b) => b.totalPoints - a.totalPoints);
 
@@ -211,6 +214,10 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
               row.categories.map((c) => [c.categoryId, c.points])
             );
 
+            const statMap = new Map(
+              row.categories.map((c) => [c.categoryId, c.statValue ?? 0])
+            );
+
             return (
               <ThemedTr key={row.teamId} className="group hover:bg-[var(--lg-tint)] transition-colors">
                 <ThemedTd className="px-8 py-5">
@@ -226,7 +233,10 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
                     key={cat}
                     align="center"
                   >
-                    {formatNumber(catMap.get(cat) ?? 0, 1)}
+                    {viewMode === "stats"
+                      ? formatStatForCategory(cat, statMap.get(cat) ?? 0)
+                      : formatNumber(catMap.get(cat) ?? 0, 1)
+                    }
                   </ThemedTd>
                 ))}
                 <ThemedTd align="center">
