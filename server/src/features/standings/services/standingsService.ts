@@ -379,15 +379,16 @@ export async function computeTeamStatsFromDb(
     },
   });
 
-  // Check if daily stats exist for this period (short-circuits after one row found)
-  const hasDailyStats = await prisma.playerStatsDaily.findFirst({
-    where: {
-      gameDate: { gte: period.startDate, lte: period.endDate },
-    },
-    select: { id: true },
+  // Use daily stats path ONLY when we have complete coverage (>= 80% of period days).
+  // Otherwise fall back to cumulative PlayerStatsPeriod which always has the full picture.
+  const periodDays = Math.max(1, Math.ceil((period.endDate.getTime() - period.startDate.getTime()) / 86400000));
+  const dailyStatDays = await prisma.playerStatsDaily.groupBy({
+    by: ["gameDate"],
+    where: { gameDate: { gte: period.startDate, lte: period.endDate } },
   });
+  const coverageRatio = dailyStatDays.length / periodDays;
 
-  if (hasDailyStats) {
+  if (coverageRatio >= 0.8) {
     return computeWithDailyStats(teams, rosters, period);
   } else {
     return computeWithPeriodStats(teams, rosters, periodId);
