@@ -45,6 +45,7 @@ export interface CategoryPeriodTableProps {
   categoryId: CategoryId;
   categoryLabel?: string;
   rows: CategoryPeriodRow[];
+  viewMode?: 'points' | 'stats'; // points shows roto points, stats shows raw stat values
 }
 
 export interface PeriodMeta {
@@ -256,9 +257,16 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
   categoryId,
   categoryLabel,
   rows,
+  viewMode = 'stats',
 }) => {
   const label = categoryLabel || categoryId;
-  const sortedRows = [...rows].sort((a, b) => b.points - a.points);
+  const isLower = ["ERA", "WHIP"].includes(categoryId);
+  // In stats mode, sort by stat value (best first). In points mode, sort by points.
+  const sortedRows = [...rows].sort((a, b) =>
+    viewMode === "stats"
+      ? (isLower ? a.periodStat - b.periodStat : b.periodStat - a.periodStat)
+      : b.points - a.points
+  );
 
   return (
     <div className="mt-8">
@@ -272,34 +280,39 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
         <ThemedThead>
           <ThemedTr>
             <ThemedTh className="px-8 py-4">Team</ThemedTh>
-            <ThemedTh align="center">{categoryId}</ThemedTh>
+            <ThemedTh align="center" title="Period-to-date stat value">Period</ThemedTh>
             <ThemedTh align="center" title="Season-to-date cumulative">Season</ThemedTh>
-            <ThemedTh align="center">Points</ThemedTh>
-            <ThemedTh align="center" className="px-8 py-4" title="Change from previous standings computation">Chg</ThemedTh>
+            {viewMode === "points" && <ThemedTh align="center">Points</ThemedTh>}
+            <ThemedTh align="center" className="px-8 py-4" title="Day-over-day change">{viewMode === "points" ? "Chg" : "Chg"}</ThemedTh>
           </ThemedTr>
         </ThemedThead>
         <tbody className="divide-y divide-[var(--lg-divide)]">
-          {sortedRows.map((row) => (
+          {sortedRows.map((row, idx) => (
             <ThemedTr key={row.teamId} className="group hover:bg-[var(--lg-tint)] transition-colors">
               <ThemedTd className="px-8 py-3">
-                <Link
-                  to={`/teams/${(row as any).teamCode || row.teamId}`}
-                  className="font-bold text-[var(--lg-text-heading)] text-base hover:text-[var(--lg-accent)] transition-all tracking-tight"
-                >
-                  {row.teamName}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-[var(--lg-text-muted)] opacity-40 w-4">{idx + 1}</span>
+                  <Link
+                    to={`/teams/${(row as any).teamCode || row.teamId}`}
+                    className="font-bold text-[var(--lg-text-heading)] text-base hover:text-[var(--lg-accent)] transition-all tracking-tight"
+                  >
+                    {row.teamName}
+                  </Link>
+                </div>
               </ThemedTd>
               <ThemedTd align="center">
-                {formatStatForCategory(categoryId, row.periodStat)}
+                <span className="font-semibold">{formatStatForCategory(categoryId, row.periodStat)}</span>
               </ThemedTd>
               <ThemedTd align="center">
                 <span className="text-[var(--lg-text-muted)] opacity-70">
                   {row.seasonStat != null ? formatStatForCategory(categoryId, row.seasonStat) : "—"}
                 </span>
               </ThemedTd>
-              <ThemedTd align="center">
-                {formatNumber(row.points, 1)}
-              </ThemedTd>
+              {viewMode === "points" && (
+                <ThemedTd align="center">
+                  {formatNumber(row.points, 1)}
+                </ThemedTd>
+              )}
               <ThemedTd align="center" className="px-8 py-3">
                 {row.pointsDelta === 0 ? (
                   <span className="text-[var(--lg-text-muted)] opacity-30">—</span>

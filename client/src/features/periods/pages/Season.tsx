@@ -102,10 +102,11 @@ const SeasonPage: React.FC = () => {
   const [seasonUpdatedAt, setSeasonUpdatedAt] = useState<Date | null>(null);
   const [periodUpdatedAt, setPeriodUpdatedAt] = useState<Date | null>(null);
 
-  // Season matrix mode: points (roto) vs stats (raw values)
-  const [matrixMode, setMatrixMode] = useState<'points' | 'stats'>('points');
-  const [selectedStatCat, setSelectedStatCat] = useState<string>("R");
+  // Category keys from season API
   const [categoryKeys, setCategoryKeys] = useState<string[]>([]);
+
+  // Period view mode: points (roto) vs stats (raw values)
+  const [periodViewMode, setPeriodViewMode] = useState<'points' | 'stats'>('stats');
 
   // Season matrix sort state
   const [matrixSortKey, setMatrixSortKey] = useState<string>("total");
@@ -148,7 +149,7 @@ const SeasonPage: React.FC = () => {
     }
   }, [expandedTeamId, teamRosters]);
 
-  // Sort logic for matrix (handles both points and stats mode)
+  // Sort logic for season matrix (always points)
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
       let va: number | string;
@@ -158,21 +159,11 @@ const SeasonPage: React.FC = () => {
         vb = b.teamName.toLowerCase();
       } else if (matrixSortKey.startsWith("p_")) {
         const idx = Number(matrixSortKey.slice(2));
-        if (matrixMode === "stats" && selectedStatCat) {
-          va = a.periodStats?.[selectedStatCat]?.[idx] ?? 0;
-          vb = b.periodStats?.[selectedStatCat]?.[idx] ?? 0;
-        } else {
-          va = a.periodPoints[idx] ?? 0;
-          vb = b.periodPoints[idx] ?? 0;
-        }
+        va = a.periodPoints[idx] ?? 0;
+        vb = b.periodPoints[idx] ?? 0;
       } else {
-        if (matrixMode === "stats" && selectedStatCat) {
-          va = (a.periodStats?.[selectedStatCat] ?? []).reduce((s, v) => s + v, 0);
-          vb = (b.periodStats?.[selectedStatCat] ?? []).reduce((s, v) => s + v, 0);
-        } else {
-          va = a.totalPoints;
-          vb = b.totalPoints;
-        }
+        va = a.totalPoints;
+        vb = b.totalPoints;
       }
       const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
       return matrixSortDesc ? -cmp : cmp;
@@ -468,6 +459,14 @@ const SeasonPage: React.FC = () => {
               )}
             </div>
 
+            {/* Points / Stats toggle for period view */}
+            <div className="flex justify-center mt-4 mb-2">
+              <div className="lg-card p-1 flex gap-1">
+                <Button onClick={() => setPeriodViewMode("stats")} variant={periodViewMode === "stats" ? "default" : "ghost"} size="sm" className="px-5">Stats</Button>
+                <Button onClick={() => setPeriodViewMode("points")} variant={periodViewMode === "points" ? "default" : "ghost"} size="sm" className="px-5">Points</Button>
+              </div>
+            </div>
+
             {periodLoading ? (
                <div className="text-center py-20">
                   <div className="text-[var(--lg-text-muted)] text-lg font-medium italic animate-pulse">Loading stats...</div>
@@ -493,6 +492,7 @@ const SeasonPage: React.FC = () => {
                           categoryId={catKey}
                           categoryLabel={categoryLabels[catKey]}
                           rows={periodCategoryRows[catKey]}
+                          viewMode={periodViewMode}
                         />
                       ))}
                   </div>
@@ -508,6 +508,7 @@ const SeasonPage: React.FC = () => {
                           categoryId={catKey}
                           categoryLabel={categoryLabels[catKey]}
                           rows={periodCategoryRows[catKey]}
+                          viewMode={periodViewMode}
                         />
                       ))}
                   </div>
