@@ -7,19 +7,21 @@ import { validateBody } from "../../middleware/validate.js";
 
 const router = Router();
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 const createPeriodSchema = z.object({
   leagueId: z.number().int().positive(),
   seasonId: z.number().int().positive(),
   name: z.string().min(1).max(50),
-  startDate: z.string().min(1),
-  endDate: z.string().min(1),
+  startDate: z.string().regex(DATE_REGEX, "Use YYYY-MM-DD format"),
+  endDate: z.string().regex(DATE_REGEX, "Use YYYY-MM-DD format"),
   status: z.string().default("pending"),
 });
 
 const updatePeriodSchema = z.object({
   name: z.string().min(1).max(50).optional(),
-  startDate: z.string().min(1).optional(),
-  endDate: z.string().min(1).optional(),
+  startDate: z.string().regex(DATE_REGEX, "Use YYYY-MM-DD format").optional(),
+  endDate: z.string().regex(DATE_REGEX, "Use YYYY-MM-DD format").optional(),
   status: z.string().optional(),
 });
 
@@ -66,6 +68,11 @@ router.post("/", requireAuth, validateBody(createPeriodSchema), asyncHandler(asy
     }
   }
 
+  // Validate date ordering
+  if (new Date(endDate) <= new Date(startDate)) {
+    return res.status(400).json({ error: "End date must be after start date" });
+  }
+
   // Verify season belongs to league
   const season = await prisma.season.findUnique({ where: { id: seasonId } });
   if (!season || season.leagueId !== leagueId) {
@@ -105,6 +112,13 @@ router.patch("/:id", requireAuth, validateBody(updatePeriodSchema), asyncHandler
     if (!membership || membership.role !== "COMMISSIONER") {
       return res.status(403).json({ error: "Commissioner only" });
     }
+  }
+
+  // Validate date ordering if both dates provided (or one date + existing)
+  const effectiveStart = req.body.startDate ? new Date(req.body.startDate) : period.startDate;
+  const effectiveEnd = req.body.endDate ? new Date(req.body.endDate) : period.endDate;
+  if (effectiveEnd <= effectiveStart) {
+    return res.status(400).json({ error: "End date must be after start date" });
   }
 
   const updateData: any = {};

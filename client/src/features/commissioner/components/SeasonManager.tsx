@@ -71,6 +71,12 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
 
+  // Edit period form
+  const [editingPeriodId, setEditingPeriodId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+
   async function load() {
     setLoading(true);
     setError(null);
@@ -153,6 +159,33 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
     try {
       await updatePeriod(periodId, { status });
       await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update period");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function startEditPeriod(p: { id: number; name: string; startDate: string; endDate: string }) {
+    setEditingPeriodId(p.id);
+    setEditName(p.name);
+    // Convert ISO datetime to YYYY-MM-DD for date input
+    setEditStart(new Date(p.startDate).toISOString().slice(0, 10));
+    setEditEnd(new Date(p.endDate).toISOString().slice(0, 10));
+  }
+
+  async function onSaveEditPeriod() {
+    if (!editingPeriodId || !editName || !editStart || !editEnd) return;
+    if (new Date(editEnd) <= new Date(editStart)) {
+      toast("End date must be after start date", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      await updatePeriod(editingPeriodId, { name: editName, startDate: editStart, endDate: editEnd });
+      setEditingPeriodId(null);
+      await load();
+      toast("Period updated", "success");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update period");
     } finally {
@@ -309,40 +342,100 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
             ) : (
               <div className="space-y-2">
                 {currentSeason.periods.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3 group"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{p.name}</div>
-                      <div className="text-xs text-[var(--lg-text-muted)]">
-                        {new Date(p.startDate).toLocaleDateString()} – {new Date(p.endDate).toLocaleDateString()}
+                  <div key={p.id}>
+                    {editingPeriodId === p.id ? (
+                      /* Edit form */
+                      <div className="rounded-xl border border-[var(--lg-accent)]/30 bg-[var(--lg-bg-surface)] px-4 py-3 space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Name</label>
+                            <input
+                              className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-1.5 text-sm text-[var(--lg-text-primary)] outline-none"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Start Date</label>
+                            <input
+                              type="date"
+                              className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-1.5 text-sm text-[var(--lg-text-primary)] outline-none"
+                              value={editStart}
+                              onChange={(e) => setEditStart(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">End Date</label>
+                            <input
+                              type="date"
+                              className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-1.5 text-sm text-[var(--lg-text-primary)] outline-none"
+                              value={editEnd}
+                              onChange={(e) => setEditEnd(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setEditingPeriodId(null)}
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={onSaveEditPeriod}
+                            disabled={busy || !editName || !editStart || !editEnd}
+                            className={cls(
+                              "rounded-lg bg-[var(--lg-accent)] px-4 py-1.5 text-xs font-semibold text-white",
+                              (busy || !editName || !editStart || !editEnd) && "opacity-60 cursor-not-allowed"
+                            )}
+                          >
+                            Save
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={p.status}
-                        onChange={(e) => onUpdatePeriodStatus(p.id, e.target.value)}
-                        disabled={busy}
-                        className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-2 py-1 text-xs text-[var(--lg-text-primary)] outline-none"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="active">Active</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                      {p.status === "pending" && (
-                        <button
-                          onClick={() => onDeletePeriod(p.id)}
-                          disabled={busy}
-                          className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Delete Period"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+                    ) : (
+                      /* Display row */
+                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3 group">
+                        <div>
+                          <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{p.name}</div>
+                          <div className="text-xs text-[var(--lg-text-muted)]">
+                            {new Date(p.startDate).toLocaleDateString()} – {new Date(p.endDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {p.status === "pending" && (
+                            <button
+                              onClick={() => startEditPeriod(p)}
+                              className="text-xs text-[var(--lg-accent)] hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <select
+                            value={p.status}
+                            onChange={(e) => onUpdatePeriodStatus(p.id, e.target.value)}
+                            disabled={busy}
+                            className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-2 py-1 text-xs text-[var(--lg-text-primary)] outline-none"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                          {p.status === "pending" && (
+                            <button
+                              onClick={() => onDeletePeriod(p.id)}
+                              disabled={busy}
+                              className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Delete Period"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
