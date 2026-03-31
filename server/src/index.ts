@@ -97,7 +97,7 @@ async function main() {
           imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https:"],
           fontSrc: ["'self'", "https:", "data:"],
-          frameSrc: ["'self'", "https://accounts.google.com", "https://www.youtube.com", "https://youtube.com"],
+          frameSrc: ["'self'", "https://accounts.google.com", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com", "https://www.google.com"],
           mediaSrc: ["'self'", "https://www.youtube.com"],
         },
       },
