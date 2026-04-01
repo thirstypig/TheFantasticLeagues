@@ -73,8 +73,11 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     return res.status(400).json({ error: "Missing leagueId or teamId" });
   }
 
-  // Check DB for persisted insight this week
-  const weekKey = getWeekKey();
+  // Allow admin to backfill a specific week (e.g., ?weekOverride=2026-W13 for Opening Day)
+  const weekOverride = req.query.weekOverride as string | undefined;
+  const weekKey = weekOverride && /^\d{4}-W\d{2}$/.test(weekOverride) && (req.user as any)?.isAdmin
+    ? weekOverride
+    : getWeekKey();
   const persisted = await prisma.aiInsight.findUnique({
     where: { type_leagueId_teamId_weekKey: { type: "weekly", leagueId, teamId, weekKey } },
   });
