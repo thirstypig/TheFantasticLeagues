@@ -44,6 +44,10 @@ vi.mock("../services/standingsService.js", () => ({
     { key: "WHIP", label: "WHIP", lowerIsBetter: true },
     { key: "K", label: "Strikeouts", lowerIsBetter: false },
   ],
+  KEY_TO_DB_FIELD: {
+    R: "R", HR: "HR", RBI: "RBI", SB: "SB", AVG: "AVG",
+    W: "W", SV: "S", ERA: "ERA", WHIP: "WHIP", K: "K",
+  } as Record<string, string>,
 }));
 
 import { prisma } from "../../../db/prisma.js";
