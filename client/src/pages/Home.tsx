@@ -571,36 +571,76 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Daily Headlines ─── */}
+      {/* ─── The Daily Diamond (Your Team's Newspaper) ─── */}
       {!rosterStatsLoading && rosterStats.players.length > 0 && (() => {
-        // Score each player by impact
+        // Score and filter to players who actually did something
         const scored = rosterStats.players
           .filter((p: any) => p.gameToday && (p.hitting || p.pitching))
           .map((p: any) => {
             const h = p.hitting || {};
             const pt = p.pitching || {};
-            // Hitter score: HR*4 + RBI*2 + R*2 + SB*3 + H*1
             const hitScore = (h.HR || 0) * 4 + (h.RBI || 0) * 2 + (h.R || 0) * 2 + (h.SB || 0) * 3 + (h.H || 0);
-            // Pitcher score: W*5 + SV*5 + K*1 + (IP >= 5 && ER <= 2 ? 5 : 0)
-            const pitchScore = (pt.W || 0) * 5 + (pt.SV || 0) * 5 + (pt.K || 0) + ((pt.IP || 0) >= 5 && (pt.ER || 0) <= 2 ? 5 : 0);
+            const pitchScore = (pt.W || 0) * 5 + (pt.SV || 0) * 5 + (pt.K || 0) + (parseFloat(pt.IP || "0") >= 5 && (pt.ER || 0) <= 2 ? 5 : 0);
             return { ...p, score: hitScore + pitchScore };
           })
+          .filter((p: any) => p.score > 0) // Only players who did something
           .sort((a: any, b: any) => b.score - a.score);
 
-        const top2 = scored.slice(0, 2);
+        if (scored.length === 0) return null;
 
-        // Generate headline text for a player
-        const headline = (p: any) => {
+        // Generate fun, punchy headlines — each player gets a unique one
+        const pick = (arr: string[], seed: number) => arr[seed % arr.length];
+        const makeHeadline = (p: any, idx: number): string => {
+          const h = p.hitting || {};
+          const pt = p.pitching || {};
+          const last = p.playerName.split(" ").slice(-1)[0];
+          const first = p.playerName.split(" ")[0];
+          const seed = new Date().getDate() * 7 + idx * 13 + ((p.mlbId || 0) % 11);
+
+          if (p.isPitcher && pt.IP) {
+            if (pt.W && pt.K >= 10) return pick([`${last} Just Embarrassed ${pt.K} Hitters`, `${pt.K} K's?! ${last} Chose Violence`, `${last} Went Full Video Game Mode`, `${pt.K} Punchouts. Goodnight, ${p.opponent}.`], seed);
+            if (pt.W && pt.K >= 8) return pick([`${last} Made ${p.opponent} Look Silly — ${pt.K} K's`, `${pt.K} Punchouts. ${last} Was Filthy.`, `${last} Put On a Clinic Tonight`, `Sit Down. All of You. — ${last}, Probably`], seed);
+            if (pt.W && (pt.ER || 0) === 0) return pick([`${last} Threw a Masterpiece`, `Zero Runs Allowed. ${last} Was That Guy.`, `Unhittable: ${last} Blanks ${p.opponent}`, `${last} Pitched a Shutout Gem`, `${p.opponent} Scored Zero. ${last} Scored a W.`], seed);
+            if (pt.W && (pt.ER || 0) <= 1) return pick([`${last} Carving Up ${p.opponent}`, `${last} Dealt. ${p.opponent} Had No Answers.`, `Quality Beatdown by ${last}`, `${last} Was Painting Corners All Night`], seed);
+            if (pt.SV) return pick([`${last} Slammed the Door Shut`, `Save Secured. ${last} Is Ice Cold.`, `Lights Out: ${last} Locks It Down`, `${last} Closed It Like a Boss`], seed);
+            if (pt.W) return pick([`W for ${last}. That's the Tweet.`, `${last} Gets It Done on the Mound`, `Another Day, Another Dub for ${last}`, `${last} Handed ${p.opponent} an L`], seed);
+            if (pt.K >= 7) return pick([`${last} Struck Out ${pt.K} and Didn't Even Flinch`, `${pt.K} Whiffs. ${last} Was Nasty Tonight.`, `${last} Had ${p.opponent} Swinging at Air — ${pt.K} K's`], seed);
+            if (pt.K >= 4) return pick([`${last} Racking Up K's — ${pt.K} Punchouts`, `${last} Had the Stuff Tonight`, `${pt.K} Strikeouts for ${last}. Not Bad.`], seed);
+            return pick([`${last} Putting in Work — ${pt.IP} IP`, `${last} Grinding Through ${pt.IP} Frames`, `${last} Logged ${pt.IP} Solid Innings`], seed);
+          }
+          if (h.HR >= 3) return pick([`${last} Just Hit THREE Dingers`, `Three Bombs?! ${last} Is Unreal`, `${last} Went Nuclear — ${h.HR} HR Night`], seed);
+          if (h.HR === 2) return pick([`${last} Went Bridge Twice`, `Two Moonshots for ${last}`, `${last} Can't Stop Going Yard`, `${last} Made It Look Easy — 2 Homers`], seed);
+          if (h.HR && h.RBI >= 4) return pick([`${last} Woke Up and Chose Destruction`, `${h.RBI} RBI?! ${last} Ate Today.`, `Absolute Damage by ${last}`], seed);
+          if (h.HR && h.SB) return pick([`Homer AND a Steal? ${last} Does It All`, `${last} With the Power-Speed Combo`, `Five-Tool Alert: ${last} Homered and Stole a Bag`], seed);
+          if (h.HR) return pick([`${last} Took One Deep vs ${p.opponent}`, `${last} Launched One Into Orbit`, `Bomb Alert: ${last} Goes Yard`, `${last} Just Dented a Car in the Parking Lot`, `See Ya! ${last} Crushes One`, `That Ball Had a Family, ${last}`], seed);
+          if (h.SB >= 3) return pick([`${last} Just Stole Everything Not Bolted Down`, `${h.SB} Steals?! ${last} Was Running a Track Meet`], seed);
+          if (h.SB >= 2) return pick([`${last} Running Wild — ${h.SB} Steals`, `Can't Catch ${last}: ${h.SB} Bags Swiped`, `Speed Kills. ${last} Swiped ${h.SB}.`], seed);
+          if (h.RBI >= 4) return pick([`${last} Drove In ${h.RBI}. You're Welcome.`, `${h.RBI} RBI Night for ${last}. Sheeeesh.`, `${last} Was a One-Man Rally — ${h.RBI} RBI`], seed);
+          if (h.RBI >= 3) return pick([`${last} Plates ${h.RBI} — Clutch Gene Activated`, `Big Bat Energy: ${last} Drives In ${h.RBI}`], seed);
+          if (h.H >= 4) return pick([`${last} Went ${h.H}-for-${h.AB}. That's Disgusting.`, `${last} Couldn't Miss — ${h.H} Hits Tonight`], seed);
+          if (h.H >= 3) return pick([`${last} Spraying Hits Everywhere`, `${h.H} Knocks for ${last}. Lineup Spot Justified.`, `${last} Was a Hit Machine — ${h.H}-for-${h.AB}`], seed);
+          if (h.R >= 3) return pick([`${last} Scored ${h.R} Times. That's Called Hustling.`, `${h.R} Runs Scored. ${last} Kept Touching Home.`], seed);
+          if (h.H >= 2 && h.RBI >= 1) return pick([`Solid Night for ${last}: ${h.H}-for-${h.AB}`, `${last} Quietly Having a Night`, `${last} Collecting Hits and RBIs`], seed);
+          if (h.H >= 2) return pick([`Solid Night for ${last}: ${h.H}-for-${h.AB}`, `${last} Staying Hot — ${h.H} Hits`, `${h.H} Knocks for ${last}. Nice and Steady.`], seed);
+          if (h.R >= 2) return pick([`${last} Scored ${h.R}. He Keeps Finding Home.`, `${last} Touching Home Plate Like It's His Job`], seed);
+          if (h.RBI >= 1 && h.H >= 1) return pick([`${last} Did ${last} Things Tonight`, `Productive Night for ${last}`, `${last} Came Through When It Mattered`], seed);
+          if (h.H >= 1) return pick([`${last} With a Knock vs ${p.opponent}`, `${last} Gets on the Board`, `${first} Checks In Tonight`], seed);
+          if (h.R >= 1) return pick([`${last} Crossed the Plate`, `${last} Scored One for the Squad`], seed);
+          return `${last} Made an Appearance`;
+        };
+
+        // Compact stat line
+        const statLine = (p: any) => {
           const h = p.hitting || {};
           const pt = p.pitching || {};
           if (p.isPitcher && pt.IP) {
             const parts: string[] = [];
-            if (pt.W) parts.push(`${pt.W}W`);
-            if (pt.SV) parts.push(`${pt.SV}SV`);
-            if (pt.K) parts.push(`${pt.K}K`);
-            parts.push(`${pt.IP}IP`);
-            if (pt.ER !== undefined) parts.push(`${pt.ER}ER`);
-            return parts.join(", ");
+            if (pt.W) parts.push("W");
+            if (pt.SV) parts.push("SV");
+            parts.push(`${pt.IP} IP`);
+            if (pt.K) parts.push(`${pt.K} K`);
+            if (pt.ER !== undefined) parts.push(`${pt.ER} ER`);
+            return parts.join(" / ");
           }
           const parts: string[] = [];
           if (h.AB) parts.push(`${h.H || 0}-for-${h.AB}`);
@@ -608,98 +648,236 @@ export default function Home() {
           if (h.RBI) parts.push(`${h.RBI} RBI`);
           if (h.R) parts.push(`${h.R} R`);
           if (h.SB) parts.push(`${h.SB} SB`);
-          return parts.join(", ") || "In lineup";
+          return parts.join(" / ") || "In lineup";
         };
-
-        // Fun captions for top performers
-        const hitterCaptions = [
-          "Crushed it.",
-          "Built different.",
-          "Statement game.",
-          "On a tear.",
-          "That's my guy.",
-          "Carrying the squad.",
-          "League notice incoming.",
-          "Fantasy gold.",
-        ];
-        const pitcherCaptions = [
-          "Dealing.",
-          "Unhittable today.",
-          "Ace things.",
-          "Locked in.",
-          "Filthy stuff.",
-          "Mound dominance.",
-        ];
-
-        // Wild card box content (rotates daily)
-        const wildCards = [
-          () => {
-            // League standings tease
-            const teamName = rosterStats.teamName;
-            return { title: "League Pulse", text: `${teamName} — early season vibes. Check the Season tab for standings.`, emoji: "📊" };
-          },
-          () => {
-            // Random opponent callout
-            const opponents = rosterStats.players.filter((p: any) => p.gameToday && p.opponent).map((p: any) => p.opponent);
-            const opp = opponents[0];
-            return opp
-              ? { title: "Matchup Watch", text: `Your guys face ${opp} today. Keep an eye on the scoreboard.`, emoji: "👀" }
-              : { title: "Off Day?", text: "Light schedule today. Good time to scout the waiver wire.", emoji: "🔍" };
-          },
-          () => ({ title: "Waiver Wire", text: "Check the Players page for trending free agents. Someone's breakout is your pickup.", emoji: "🎯" }),
-          () => ({ title: "Hot Take", text: "It's early, but the standings don't lie. Every category point matters in roto.", emoji: "🔥" }),
-          () => ({ title: "Pro Tip", text: "Streaming pitchers on favorable matchups is free real estate. Check the schedule.", emoji: "💡" }),
-          () => ({ title: "Trash Talk", text: "Reminder: the other owners are watching your moves. Make them sweat.", emoji: "😤" }),
-        ];
-        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-        const wildCard = wildCards[dayOfYear % wildCards.length]();
-        const captionIdx = dayOfYear % hitterCaptions.length;
 
         const mlbHeadshot = (mlbId: number) =>
           `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
 
-        if (top2.length === 0) return null;
+        const hero = scored[0];
+        const sideStories = scored.slice(1);
+        const scoredIds = new Set(scored.map((p: any) => p.mlbId));
+        const onDeck = rosterStats.players.filter((p: any) => p.gameToday && !scoredIds.has(p.mlbId));
+        const hasSidebar = true; // always show sidebar: stories, on-deck, pulse, or daily column
+        const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
         return (
           <div className="mb-6">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">
-              <Sparkles size={12} className="inline -mt-0.5 mr-1 text-yellow-400" />
-              Daily Headlines · {rosterStats.teamName}
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {top2.map((p: any, i: number) => {
-                const caption = p.isPitcher
-                  ? pitcherCaptions[(captionIdx + i) % pitcherCaptions.length]
-                  : hitterCaptions[(captionIdx + i) % hitterCaptions.length];
+            {/* Newspaper masthead */}
+            <div className="flex items-end justify-between border-b-2 border-[var(--lg-text-primary)] pb-1.5 mb-3">
+              <div>
+                <h2 className="text-lg md:text-xl font-bold tracking-tight text-[var(--lg-text-primary)]" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+                  The Daily Diamond
+                </h2>
+                <p className="text-[10px] text-[var(--lg-text-muted)] tracking-wide uppercase">
+                  {rosterStats.teamName} Edition
+                </p>
+              </div>
+              <p className="text-[10px] text-[var(--lg-text-muted)] tracking-wide uppercase">
+                {dateStr}
+              </p>
+            </div>
+
+            <div className={`grid grid-cols-1 ${hasSidebar ? "md:grid-cols-3" : ""} gap-0 md:gap-4`}>
+              {/* Hero story */}
+              <div className={hasSidebar ? "md:col-span-2 pb-4 md:pb-0 md:pr-4 md:border-r border-b md:border-b-0 border-[var(--lg-divide)] flex flex-col" : "flex flex-col"}>
+                <div className="relative w-full h-40 sm:h-52 md:flex-1 md:min-h-[200px] rounded-lg overflow-hidden mb-3 bg-[var(--lg-bg-card)]">
+                  <img
+                    src={hero.thumbnail || mlbHeadshot(hero.mlbId)}
+                    alt={hero.playerName}
+                    className={hero.thumbnail
+                      ? "absolute inset-0 w-full h-full object-cover object-top"
+                      : "absolute inset-0 w-full h-full object-contain object-center bg-[var(--lg-bg-card)]"}
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!img.dataset.fallback) {
+                        img.dataset.fallback = "1";
+                        img.src = mlbHeadshot(hero.mlbId);
+                        img.className = "absolute inset-0 w-full h-full object-contain object-center bg-[var(--lg-bg-card)]";
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <span className="inline-block text-[9px] font-bold uppercase tracking-widest text-amber-400 mb-1">
+                      Top Performer
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white leading-tight" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+                      {makeHeadline(hero, 0)}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <img
+                    src={mlbHeadshot(hero.mlbId)}
+                    alt={hero.playerName}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[var(--lg-text-primary)]">
+                      {hero.playerName}
+                      <span className="font-normal text-[var(--lg-text-muted)] ml-1.5 text-xs">{hero.position} · {hero.mlbTeam}</span>
+                    </p>
+                    <p className="text-xs text-[var(--lg-text-secondary)] mt-0.5">
+                      vs {hero.opponent} — <span className="font-semibold text-[var(--lg-accent)]">{statLine(hero)}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sidebar: stories + on deck + daily column */}
+              {hasSidebar && (() => {
+                const fmtTime = (t: string) => {
+                  if (!t) return "";
+                  try { return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Los_Angeles" }); }
+                  catch { return ""; }
+                };
+                const isFinal = (p: any) => {
+                  const s = (p.gameStatus || "").toLowerCase();
+                  return s.includes("final") || s.includes("over") || s.includes("game over");
+                };
+                const isLive = (p: any) => {
+                  const s = (p.gameStatus || "").toLowerCase();
+                  return s.includes("progress") || s.includes("live");
+                };
+                // Only show upcoming or live — not final
+                const onDeckFiltered = onDeck.filter((p: any) => !isFinal(p));
+
+                // Today's pulse stats
+                const allToday = rosterStats.players.filter((p: any) => p.gameToday);
+                const liveCount = allToday.filter(isLive).length;
+                const doneCount = allToday.filter(isFinal).length;
+                const upcomingCount = allToday.length - liveCount - doneCount;
+
+                // Rotating daily column
+                const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+                const columns = [
+                  { title: "The Commissioner's Corner", text: "The other owners are watching your moves. Act accordingly." },
+                  { title: "Scout's Notebook", text: "Stream a pitcher on a favorable matchup day. It's basically free money." },
+                  { title: "Fantasy Mailbag", text: "Q: Should I panic about my underperformers? A: It's been one week. Relax." },
+                  { title: "The Hot Take", text: "Every category point matters in roto. The teams that sweat the small stuff win it all." },
+                  { title: "Waiver Wire Wisdom", text: "The best pickups happen when everyone else is asleep. Set those early-morning alarms." },
+                  { title: "Trade Desk", text: "Buy low on cold starters. Sell high on one-week wonders. This is the way." },
+                  { title: "The Gut Check", text: "Trust your draft. You picked these guys for a reason. Don't blow it up in April." },
+                  { title: "Press Box Notes", text: "Check the depth charts. One injury away from opportunity is closer than you think." },
+                ];
+                const dailyCol = columns[dayOfYear % columns.length];
+
                 return (
-                  <div key={i} className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-3 flex items-center gap-3 group hover:border-[var(--lg-accent)]/30 transition-colors">
-                    <img
-                      src={mlbHeadshot(p.mlbId)}
-                      alt={p.playerName}
-                      className="w-12 h-12 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate">{p.playerName}</div>
-                      <div className="text-[10px] text-[var(--lg-text-muted)]">{p.position} · {p.mlbTeam} vs {p.opponent}</div>
-                      <div className="text-[11px] font-semibold text-[var(--lg-accent)] mt-0.5">{headline(p)}</div>
-                      <div className="text-[9px] text-[var(--lg-text-muted)] italic mt-0.5 opacity-70">{caption}</div>
+                  <div className="pt-4 md:pt-0 flex flex-col justify-between h-full">
+                    {/* Headline stories */}
+                    {sideStories.length > 0 && (
+                      <div className="space-y-0 divide-y divide-[var(--lg-divide)]">
+                        {sideStories.map((p: any, i: number) => (
+                          <div key={i} className="flex items-start gap-2.5 py-2.5 first:pt-0 group">
+                            {p.thumbnail ? (
+                              <img
+                                src={p.thumbnail}
+                                alt={p.playerName}
+                                className="w-14 h-9 rounded object-cover flex-shrink-0 bg-[var(--lg-bg-card)] mt-0.5"
+                                onError={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  img.src = mlbHeadshot(p.mlbId);
+                                  img.className = "w-9 h-9 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)] mt-0.5";
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={mlbHeadshot(p.mlbId)}
+                                alt={p.playerName}
+                                className="w-9 h-9 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)] mt-0.5"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                              />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-[12px] font-semibold text-[var(--lg-text-primary)] leading-snug group-hover:text-[var(--lg-accent)] transition-colors" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+                                {makeHeadline(p, i + 1)}
+                              </h4>
+                              <p className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">
+                                {p.playerName} · <span className="text-[var(--lg-accent)] font-medium">{statLine(p)}</span>
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* On Deck — only live or upcoming, not final */}
+                    {onDeckFiltered.length > 0 && (
+                      <div className={sideStories.length > 0 ? "mt-3 pt-3 border-t border-[var(--lg-divide)]" : ""}>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">On Deck</p>
+                        <div className="space-y-1.5">
+                          {onDeckFiltered.slice(0, 6).map((p: any, i: number) => {
+                            const live = isLive(p);
+                            const label = live ? "LIVE" : (fmtTime(p.gameTime) || "Today");
+                            return (
+                              <div key={i} className="flex items-center gap-2">
+                                <img
+                                  src={mlbHeadshot(p.mlbId)}
+                                  alt={p.playerName}
+                                  className="w-6 h-6 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-[11px] font-medium text-[var(--lg-text-primary)]">
+                                    {p.playerName.split(" ").slice(-1)[0]}
+                                  </span>
+                                  <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">vs {p.opponent}</span>
+                                </div>
+                                <span className={`text-[9px] font-bold uppercase ${live ? "text-green-400" : "text-[var(--lg-text-muted)] opacity-60"}`}>
+                                  {label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {onDeckFiltered.length > 6 && (
+                            <p className="text-[10px] text-[var(--lg-text-muted)] italic">
+                              +{onDeckFiltered.length - 6} more upcoming
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Today's Pulse + Daily Column — fills remaining space */}
+                    <div className="mt-auto pt-3 border-t border-[var(--lg-divide)] space-y-3">
+                      {/* Pulse */}
+                      <div className="flex items-center gap-3 text-[10px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                          <span className="text-[var(--lg-text-muted)]">{liveCount} live</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--lg-text-muted)] opacity-40 inline-block" />
+                          <span className="text-[var(--lg-text-muted)]">{doneCount} done</span>
+                        </div>
+                        {upcomingCount > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--lg-accent)] opacity-60 inline-block" />
+                            <span className="text-[var(--lg-text-muted)]">{upcomingCount} upcoming</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Daily Column */}
+                      <div className="bg-[var(--lg-tint)] rounded-lg p-2.5 border border-[var(--lg-border-faint)]">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-accent)] mb-1" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+                          {dailyCol.title}
+                        </p>
+                        <p className="text-[11px] text-[var(--lg-text-secondary)] leading-relaxed italic">
+                          {dailyCol.text}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 );
-              })}
-
-              {/* Wild card box */}
-              <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-3 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-2xl">
-                  {wildCard.emoji}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-[var(--lg-text-primary)]">{wildCard.title}</div>
-                  <div className="text-[11px] text-[var(--lg-text-secondary)] mt-0.5 leading-relaxed">{wildCard.text}</div>
-                </div>
-              </div>
+              })()}
             </div>
+
+            {/* Bottom rule */}
+            <div className="border-b border-[var(--lg-divide)] mt-4" />
           </div>
         );
       })()}

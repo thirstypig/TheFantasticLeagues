@@ -887,6 +887,30 @@ router.get("/roster-stats-today", requireAuth, requireLeagueMember("leagueId"), 
     }
   }
 
+  // Fetch highlight thumbnails for roster players from game content API
+  const playerThumbnails = new Map<number, string>();
+  const uniqueGamePks = [...new Set(relevantGames.map(g => g.gamePk))];
+
+  await Promise.allSettled(
+    uniqueGamePks.slice(0, 6).map(async (gamePk) => {
+      try {
+        const content = await mlbGetJson(`https://statsapi.mlb.com/api/v1/game/${gamePk}/content`, 300);
+        const items = content?.highlights?.highlights?.items || [];
+        for (const item of items) {
+          const playerKws = (item.keywordsAll || []).filter((k: any) => k.type === "player_id");
+          if (playerKws.length === 0) continue;
+          const mlbId = Number(playerKws[0].value);
+          if (!mlbId || playerThumbnails.has(mlbId)) continue;
+          const cuts = item.image?.cuts || [];
+          const cut = Array.isArray(cuts)
+            ? (cuts.find((c: any) => c.width === 640) || cuts.find((c: any) => c.width === 720) || cuts[cuts.length - 1])
+            : null;
+          if (cut?.src) playerThumbnails.set(mlbId, cut.src);
+        }
+      } catch { /* skip — thumbnails are optional */ }
+    })
+  );
+
   // Build response
   const PITCHER_POS = new Set(["P", "SP", "RP", "CL"]);
   const players = rosterEntries.map(r => {
@@ -908,6 +932,7 @@ router.get("/roster-stats-today", requireAuth, requireLeagueMember("leagueId"), 
       gameTime: schedule?.gameTime || "",
       hitting: stats?.hitting || null,
       pitching: stats?.pitching || null,
+      thumbnail: (p.mlbId ? playerThumbnails.get(p.mlbId) : null) || null,
     };
   });
 
@@ -1152,6 +1177,175 @@ router.post("/league-digest/vote", requireAuth, validateBody(voteSchema), requir
   const noCount = Object.values(votes).filter(v => v === "no").length;
 
   res.json({ yes: yesCount, no: noCount, myVote: vote });
+}));
+
+// ─── GET /league-headlines — Top performer from each fantasy team with highlight thumbnails ───
+
+router.get("/league-headlines", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
+
+  const today = todayDateStr();
+
+  // Get all teams in the league with rosters
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    select: {
+      id: true,
+      name: true,
+      rosters: {
+        where: { releasedAt: null },
+        include: { player: { select: { id: true, name: true, mlbId: true, mlbTeam: true, posPrimary: true } } },
+      },
+    },
+  });
+
+  // Get today's schedule
+  const scheduleUrl = `https://statsapi.mlb.com/api/v1/schedule?date=${today}&sportId=1`;
+  const scheduleData = await mlbGetJson(scheduleUrl, 120);
+  const teamsMap = await fetchMlbTeamsMap();
+
+  // Build schedule maps + collect live game PKs
+  const teamScheduleMap = new Map<string, { opponent: string; homeAway: string; gamePk: number }>();
+  const liveGamePks: { gamePk: number; awayAbbr: string; homeAbbr: string; detailedState: string }[] = [];
+
+  for (const dateEntry of scheduleData.dates || []) {
+    for (const game of dateEntry.games || []) {
+      const status = game.status?.abstractGameState || "Preview";
+      const detailedState = game.status?.detailedState || status;
+      const awayAbbr = game.teams?.away?.team?.abbreviation ?? (game.teams?.away?.team?.id ? teamsMap[game.teams.away.team.id] : "") ?? "";
+      const homeAbbr = game.teams?.home?.team?.abbreviation ?? (game.teams?.home?.team?.id ? teamsMap[game.teams.home.team.id] : "") ?? "";
+
+      if (awayAbbr) teamScheduleMap.set(awayAbbr, { opponent: homeAbbr, homeAway: "away", gamePk: game.gamePk });
+      if (homeAbbr) teamScheduleMap.set(homeAbbr, { opponent: awayAbbr, homeAway: "home", gamePk: game.gamePk });
+
+      if (status === "Live" || status === "Final") {
+        liveGamePks.push({ gamePk: game.gamePk, awayAbbr, homeAbbr, detailedState });
+      }
+    }
+  }
+
+  // Collect all rostered MLB team abbreviations
+  const allRosterTeams = new Set<string>();
+  for (const team of teams) {
+    for (const r of team.rosters) {
+      if (r.player.mlbTeam) allRosterTeams.add(r.player.mlbTeam);
+    }
+  }
+
+  // Fetch boxscores for relevant games
+  const playerStatsMap = new Map<number, { hitting?: any; pitching?: any; opponent: string; detailedState: string }>();
+  const relevantGames = liveGamePks.filter(g => allRosterTeams.has(g.awayAbbr) || allRosterTeams.has(g.homeAbbr));
+
+  for (const game of relevantGames) {
+    try {
+      const liveFeed = await mlbGetJson(`https://statsapi.mlb.com/api/v1.1/game/${game.gamePk}/feed/live`, 120);
+      const boxscore = liveFeed.liveData?.boxscore;
+      if (!boxscore) continue;
+
+      for (const side of ["away", "home"] as const) {
+        const teamPlayers = boxscore.teams?.[side]?.players;
+        if (!teamPlayers) continue;
+        const oppAbbr = side === "away" ? game.homeAbbr : game.awayAbbr;
+
+        for (const [_key, player] of Object.entries(teamPlayers) as [string, any][]) {
+          const mlbId = player.person?.id;
+          if (!mlbId) continue;
+
+          const hitting = player.stats?.batting;
+          const pitching = player.stats?.pitching;
+
+          playerStatsMap.set(mlbId, {
+            hitting: hitting && (hitting.atBats > 0 || hitting.runs > 0 || hitting.walks > 0) ? {
+              AB: hitting.atBats || 0, H: hitting.hits || 0, R: hitting.runs || 0,
+              HR: hitting.homeRuns || 0, RBI: hitting.rbi || 0, SB: hitting.stolenBases || 0,
+            } : undefined,
+            pitching: pitching && pitching.inningsPitched && pitching.inningsPitched !== "0.0" ? {
+              IP: pitching.inningsPitched || "0.0", H: pitching.hits || 0, ER: pitching.earnedRuns || 0,
+              K: pitching.strikeOuts || 0, W: pitching.wins || 0, L: pitching.losses || 0, SV: pitching.saves || 0,
+            } : undefined,
+            opponent: oppAbbr,
+            detailedState: game.detailedState,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn({ error: String(err), gamePk: game.gamePk }, "Failed to fetch live feed for league headlines");
+    }
+  }
+
+  // Fetch highlight thumbnails per game — build mlbId → thumbnail map
+  const playerThumbnails = new Map<number, string>();
+  const uniqueGamePks = [...new Set(relevantGames.map(g => g.gamePk))];
+
+  // Fetch content in parallel (up to 8 games)
+  const contentResults = await Promise.allSettled(
+    uniqueGamePks.slice(0, 8).map(async (gamePk) => {
+      const content = await mlbGetJson(`https://statsapi.mlb.com/api/v1/game/${gamePk}/content`, 300); // 5-min cache
+      const items = content?.highlights?.highlights?.items || [];
+      for (const item of items) {
+        const playerKws = (item.keywordsAll || []).filter((k: any) => k.type === "player_id");
+        if (playerKws.length === 0) continue;
+        const mlbId = Number(playerKws[0].value);
+        if (!mlbId || playerThumbnails.has(mlbId)) continue; // first highlight wins
+        const cuts = item.image?.cuts || [];
+        // Prefer 640w, fall back to any available
+        const cut = (Array.isArray(cuts)
+          ? cuts.find((c: any) => c.width === 640) || cuts.find((c: any) => c.width === 720) || cuts[cuts.length - 1]
+          : null);
+        if (cut?.src) playerThumbnails.set(mlbId, cut.src);
+      }
+    })
+  );
+
+  // Score each roster player and pick the top performer per fantasy team
+  const PITCHER_POS = new Set(["P", "SP", "RP", "CL"]);
+  const headlines: any[] = [];
+
+  for (const team of teams) {
+    let best: any = null;
+    let bestScore = -1;
+
+    for (const r of team.rosters) {
+      const p = r.player;
+      const isPitcher = PITCHER_POS.has((p.posPrimary ?? "").toUpperCase());
+      const stats = p.mlbId ? playerStatsMap.get(p.mlbId) : undefined;
+      if (!stats || (!stats.hitting && !stats.pitching)) continue;
+
+      const h = stats.hitting || {};
+      const pt = stats.pitching || {};
+      const hitScore = (h.HR || 0) * 4 + (h.RBI || 0) * 2 + (h.R || 0) * 2 + (h.SB || 0) * 3 + (h.H || 0);
+      const pitchScore = (pt.W || 0) * 5 + (pt.SV || 0) * 5 + (pt.K || 0) + (parseFloat(pt.IP || "0") >= 5 && (pt.ER || 0) <= 2 ? 5 : 0);
+      const score = hitScore + pitchScore;
+
+      if (score > bestScore) {
+        bestScore = score;
+        const schedule = p.mlbTeam ? teamScheduleMap.get(p.mlbTeam) : undefined;
+        best = {
+          teamName: team.name,
+          teamId: team.id,
+          playerName: p.name,
+          mlbId: p.mlbId,
+          mlbTeam: p.mlbTeam || "",
+          position: r.assignedPosition || p.posPrimary || "",
+          isPitcher,
+          opponent: stats.opponent || "",
+          gameStatus: stats.detailedState || "",
+          hitting: stats.hitting || null,
+          pitching: stats.pitching || null,
+          thumbnail: (p.mlbId ? playerThumbnails.get(p.mlbId) : null) || null,
+          score,
+        };
+      }
+    }
+
+    if (best) headlines.push(best);
+  }
+
+  // Sort by score descending — best performer across the league first
+  headlines.sort((a, b) => b.score - a.score);
+
+  res.json({ date: today, headlines });
 }));
 
 export const mlbFeedRouter = router;

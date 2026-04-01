@@ -33,7 +33,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "March 26, 2026 (Session 48)";
+const LAST_UPDATED = "April 1, 2026 (Session 55)";
 
 // ─── Product Roadmap ───
 
@@ -144,6 +144,14 @@ const productRoadmap: RoadmapPhase[] = [
         effort: "Large",
         status: "done",
         tags: ["roster", "ux", "feature"],
+      },
+      {
+        title: "The Daily Diamond — Newspaper Headlines (Session 55)",
+        description: "Newspaper-style Daily Diamond widget on Dashboard: serif masthead, hero card with real MLB highlight thumbnails from game content API, fun auto-generated headlines (60+ templates), On Deck section for upcoming/live games, pulse bar, rotating daily editorial column. Fully responsive.",
+        icon: Sparkles,
+        effort: "Large",
+        status: "done",
+        tags: ["home", "ux", "data", "feature"],
       },
       {
         title: "Home Page Redesign (Session 49)",

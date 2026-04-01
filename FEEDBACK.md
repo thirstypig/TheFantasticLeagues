@@ -4,6 +4,34 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-01 (Session 55) — Daily Diamond Newspaper Redesign, Highlight Thumbnails, Solution Docs
+
+### Completed
+- **Daily Diamond redesign**: Complete newspaper-style overhaul of Daily Headlines widget on Dashboard
+  - Serif masthead ("The Daily Diamond · Los Doyers Edition") with date
+  - Hero card: top performer with MLB highlight thumbnail (real game-day action photo from `/game/{gamePk}/content` API), gradient overlay, punchy generated headline
+  - Sidebar stories: other performers with headshots + creative headlines
+  - On Deck section: upcoming/live roster players (excludes FINAL games), shows opponent + game time
+  - Pulse bar: live/done/upcoming game counts with colored dots
+  - Rotating daily editorial column (8 options: Commissioner's Corner, Scout's Notebook, Trade Desk, etc.)
+  - Fully responsive: 2/3 + 1/3 grid on desktop, stacks on mobile, no empty space
+- **Fun headline generator**: 60+ unique headline templates organized by stat bracket (multi-HR, HR+RBI, steals, quality starts, saves, etc.) with deterministic per-player rotation (no duplicates within same day)
+- **MLB highlight thumbnails on backend**: Added to `roster-stats-today` endpoint — fetches `/game/{gamePk}/content` API in parallel (5-min cache), maps player IDs to 640px game-day thumbnails, falls back to headshots
+- **League-wide headlines endpoint**: `GET /api/mlb/league-headlines` — top performer per fantasy team (backend complete, frontend uses team-only view)
+- **Solution doc**: `docs/solutions/logic-errors/waiver-priority-league-and-sort-fix.md` — documented the leagueId default bug pattern via /ce:compound
+
+### Pending / Next Steps
+- YouTube videos not playing on production (works on localhost)
+- Top 100 prospects sync (syncAllPlayers only does 40-man rosters)
+- Watchlist + Trading Block UI (backend from Session 54)
+- Daily Headlines newspaper redesign (current: needs more punchy styling per user feedback)
+
+### Test Results
+- Server: 486 passing (7 skipped)
+- Client: 182 passing, 5 pre-existing failures (StatsTables, TradesPage, ActivityPage)
+
+---
+
 ## Session 2026-04-01 (Session 54) — Multi-Sport Vision, Watchlist & Trading Block, AI Transparency, Daily Headlines
 
 ### Completed
