@@ -1,113 +1,172 @@
 # C.P.L.A.N. — FBST SaaS Evolution
 
-> From single-league tool to multi-sport fantasy SaaS platform with sneaker-model branding
+> From single-league baseball tool to multi-sport fantasy SaaS platform
+> **Primary launch target: Football draft season, August 2026**
+
+*Last updated: 2026-03-31 (Session 54) — pivoted to football-first strategy*
+*Detailed implementation: [multi-sport-platform-plan](2026-03-31-feat-multi-sport-platform-and-business-agent-plan.md)*
 
 ---
 
 ## C — Context
 
-### Where We Are
+### Where We Are (Session 53)
 - **19 feature modules** (client/server mirrored), 730 tests, 60K+ LOC
 - **Auction-first**: 14 components, 5 hooks, real-time bidding, AI bid advice, spending pace, value overlays
 - **8 AI features** powered by Gemini 2.5 Flash + Claude Sonnet 4 (league-context-aware — ahead of every major platform)
 - **Commissioner superpowers**: franchise model, season lifecycle, roster import, financial tracking, audit logs
 - **Archive**: multi-year historical data import (Excel + CSV)
 - **Design system**: liquid glass, dark/light mode, `--lg-*` CSS tokens, Inter font, responsive
+- **Marketing site**: Astro + Tina.io at `www.thefantasticleagues.com` (GitHub Pages)
+- **Hosting**: Railway ($5/mo), PostgreSQL on Supabase, Cloudflare CDN
+- **PostHog analytics**: integrated (18 events tracked, SPA-aware pageviews)
 - **Stack**: React 18 + Vite + Tailwind + shadcn + Express + Prisma + Supabase + PostgreSQL
 
 ### What We're Missing for SaaS
 - No self-service onboarding (admin creates leagues)
 - No snake draft engine (~60% of baseball leagues use snake)
-- No H2H matchup system (~40% of leagues)
-- No public landing/marketing pages (About.tsx is post-login)
+- No multi-sport support (football is 4x the market)
 - No pricing tiers or payment integration
-- Dev pages (Changelog, Roadmap, Status) locked behind admin
 - No mobile bottom nav (hamburger only)
-- No multi-sport support yet
 - No league migration tools (import from Yahoo/ESPN)
+
+### The Pivot (Session 54)
+**Baseball season 2026 is NOT the launch target.** The current 8-user private league continues as beta. **Football draft season (August 2026)** is the real launch window because:
+- Fantasy football has ~40M US players vs ~10M for baseball
+- Football draft season creates urgent demand (new leagues every August)
+- AI differentiation translates directly to football with a sport config swap
+- Content marketing (draft kits, demo videos) has clear viral potential in football
 
 ### Competitive Landscape
 | Platform | Strengths | Weaknesses | Our Edge |
 |----------|-----------|------------|----------|
-| Yahoo | Largest user base, mature baseball | Dated UI, weak auction, clunky mobile | Auction UX, AI, commissioner tools |
+| Yahoo | Largest user base, all 4 major sports | Dated UI, weak auction, clunky mobile | Auction UX, AI, commissioner tools |
 | ESPN | Brand trust, media integration | Buggy, weak commissioner tools | Reliability, customization |
-| Sleeper | Best mobile UX, social/chat | Limited baseball, auction is secondary | Baseball depth, auction-first |
+| Sleeper | Best mobile UX, social/chat, NFL+NBA | Limited baseball, auction is secondary | Baseball depth, auction-first, AI layer |
 | Fantrax | Most customizable scoring | Ugly UI, poor mobile | Design quality, AI layer |
-| Ottoneu | Analytics-savvy, loyal niche | Tiny user base, dated UX | Modern UX + same depth |
+| Ottoneu | Analytics-savvy, loyal niche | Tiny user base, dated UX, baseball only | Modern UX + multi-sport |
 
 ---
 
 ## P — Phases
 
-### Phase 1: Polish & Foundation (Sessions 40-45)
-**Goal:** Make the existing product SaaS-ready for baseball auction/roto leagues.
+### Phase 1: Sport Abstraction Layer (Apr 1–21, 3 weeks)
+**Goal:** Decouple baseball-specific code into pluggable sport modules. Zero regressions on existing baseball functionality.
 
-- [ ] **Code review fixes** — resolve 14 findings from Session 39 review (1 P1, 8 P2, 5 P3)
-- [ ] **Sidebar redesign** — reorganize nav for two audiences (member vs commissioner)
-  - Core Nav: Home, Season, Players, Auction, Activity
-  - AI section: League Digest, Draft Report, Team Insights, Trade Advisor
-  - League: Rules, Payouts, Archive, Keepers
-  - Manage: Commissioner, Admin (role-gated)
-  - Product: Changelog, Roadmap, Status (public-accessible)
-- [ ] **Mobile bottom tab nav** — 5 tabs (Home, My Team, Players, Activity, More)
-- [ ] **Empty states** — design proper empty states for every page with contextual CTAs
-- [ ] **Public pages layer** — Changelog, Roadmap, Status accessible without admin role
-- [ ] **Self-service league creation** — commissioner creates franchise + league via wizard
-- [ ] **Member onboarding flow** — accept invite → create account → team setup → quick tour
-- [ ] **Weekly insights history** (done ✅) — tab-based week navigation on team page
+- [ ] **`SportConfig` interface** — positions, categories, roster slots, default rules per sport
+- [ ] **Sport registry** — `getSportConfig("BASEBALL")` returns current config; `getSportConfig("FOOTBALL")` returns stub
+- [ ] **Extract baseball config** — move constants from `sportConfig.ts` to `sports/baseball/config.ts`, re-export for backward compat
+- [ ] **Add `sport` column** to League (default BASEBALL) and Player (default BASEBALL)
+- [ ] **Add `externalId` column** to Player (new, alongside existing `mlbId` — DO NOT rename `mlbId`)
+- [ ] **Extend `LeagueContext`** — add `sportCode` and `sportConfig` (NOT a separate SportContext)
+- [ ] **`SportDataProvider` interface** — `syncPlayers`, `syncStats`, `syncSchedule`, `getInjuryReport`
+- [ ] **Wrap MLB in `MlbDataProvider`** — no behavior change, just implements interface
+- [ ] **Parameterize cron jobs** by sport
+- [ ] **Parameterize standings service** — read categories from `SportConfig`
+- [ ] **All 730+ tests must pass** — zero regressions
 
-### Phase 2: Format Expansion (Sessions 46-52)
-**Goal:** Support snake draft and H2H to capture 70%+ of the baseball market.
+**Critical:** `mlbId` stays as-is. Football uses `externalId`. Rename later as a dedicated refactor.
 
-- [ ] **Snake draft engine** — pick order generation, auto-pick, draft board UI, pick trading
-- [ ] **H2H categories matchup system** — weekly matchups, win/loss tracking, playoff bracket
-- [ ] **H2H points scoring** — configurable point values per stat category
-- [ ] **League format selector** — wizard step: Roto vs H2H Categories vs H2H Points
-- [ ] **Draft type selector** — Auction vs Snake (separate draft room UIs)
-- [ ] **Yahoo/ESPN import** — CSV import tool for league migration (rosters, standings, history)
-- [ ] **Best Ball mode** — auto-optimized lineups, no weekly management
+### Phase 2: Football Core (Apr 22 – May 26, 5 weeks)
+**Goal:** Full fantasy football — snake draft, auction draft, roster management, weekly scoring, trades, waivers, AI.
 
-### Phase 3: AI & Engagement (Sessions 53-58)
-**Goal:** Make AI the killer feature and add social/engagement layers.
+- [ ] **Football sport config** — QB/RB/WR/TE/K/DEF/FLEX, PPR/Standard/Half-PPR scoring
+- [ ] **NFL data provider** — Sleeper API (primary, free) + ESPN API (supplement, free)
+- [ ] **NFL MCP server** — `mcp-servers/nfl-data/` with same caching/rate-limiting pattern as MLB
+- [ ] **Football stat tables** — `FootballPlayerStats`, `FootballTeamStats` (sport-specific, NOT renaming baseball tables)
+- [ ] **Points-based scoring engine** — compute fantasy points from stats using league scoring rules
+- [ ] **Weekly lineup setting** — per-game kickoff lock (Thursday lock ≠ Sunday lock ≠ Monday lock)
+- [ ] **`GameSlate` concept** — groups of games with per-slate lock times (TNF, SUN_EARLY, SUN_LATE, SNF, MNF)
+- [ ] **H2H weekly matchups** — leverage existing Matchup model, round-robin schedule
+- [ ] **Bye week handling** — flag players on bye, warn before lineup lock
+- [ ] **Waiver wire** — FAAB (reuse baseball system) + inverse-record priority option
+- [ ] **Football AI** — start/sit recommendations, trade analyzer, weekly digest, draft advice
+- [ ] **NFL cron schedule** — weekly stats sync (post-game), daily roster/injury sync
 
-- [ ] **AI Chat Assistant** — persistent panel: "Should I trade X for Y?", "Who should I target on waivers?"
-- [ ] **Inline AI signals** — "Buy Low" / "Sell High" / "Injury Risk" badges on player rows
-- [ ] **AI-powered trade suggestions** — proactive: "Team X needs SB, you have surplus — propose this trade"
-- [ ] **Reactions on transactions** — emoji reactions (fire, clown, trophy) on trades/waivers in activity feed
-- [ ] **League chat** — Discord-style chat per league, integrated with transaction notifications
-- [ ] **Achievement badges** — earned via activity (Best Draft Pick, Dynasty, Steal of the Draft, etc.)
-- [ ] **Weekly email digest** — via Resend, linking back to app (drives re-engagement)
-- [ ] **Push notifications** — trade proposals, waiver results, your-player alerts
-- [ ] **Spark-line mini charts** — tiny trend lines next to key stats on player and team pages
+**Scope reduction:** Ship with points-only scoring (no H2H categories for football at launch). Most football leagues use points anyway.
 
-### Phase 4: Monetization & Sneaker Model (Sessions 59-65)
-**Goal:** Launch pricing tiers with sneaker-model scarcity mechanics.
+### Phase 3: Revenue & Launch Prep (May 27 – Jul 7, 6 weeks)
+**Goal:** Stripe payments, self-service signup, content marketing, newsletter — everything needed to accept money by August.
 
-- [ ] **Pricing tiers**:
-  - Free (General Release): standard leagues, basic stats, manual draft
-  - Pro ($9.99/mo — Limited Edition): AI features, weekly insights, trade analyzer, early access
-  - Elite ($29.99/mo — Collab Drop): custom AI models, white-label, priority support, invite-only
-- [ ] **Season Pass** ($19.99/season): progression rewards, seasonal badges, exclusive content
-- [ ] **Payment integration** — Stripe for subscriptions, league dues escrow
-- [ ] **Commissioner reputation system** — Rookie → Verified → Elite → Ambassador
-- [ ] **Badge/trophy system** — time-limited seasonal badges, rarity tiers, trophy case on profiles
-- [ ] **League format drops** — exclusive formats released seasonally with limited availability
-- [ ] **Waitlist mechanics** — capped Pro tier, "Got 'Em" notification when spot opens
-- [ ] **Per-league theming** — commissioner picks accent colors, uploads league logo
-- [ ] **Financial payout management** — configurable rules (top 3, weekly prizes, category bonuses)
-- [ ] **Venmo/PayPal integration** — pre-filled payment links for league dues
+**Monetization:**
+- [ ] **Stripe Checkout** (hosted) — Pro ($9.99/mo) and Season Pass ($19.99/season)
+- [ ] **Webhook handler** — signature verification, idempotency table, mount BEFORE `express.json()`
+- [ ] **`requirePro` middleware** — gate AI features, auction draft, keeper tools, unlimited leagues
+- [ ] **Billing portal** — Stripe Customer Portal for self-service management
+- [ ] **Free tier** — snake draft, basic standings, transactions, 1 league
+- [ ] **7-day free trial** for Pro
 
-### Phase 5: Multi-Sport Expansion (Sessions 66+)
-**Goal:** Reuse the core platform for football, brackets, squares, and pick'em.
+**Self-Service:**
+- [ ] **League creation wizard** — sport selector → format → settings → invite
+- [ ] **Public league directory** — browse open leagues by sport, join
+- [ ] **Rate limiting** — 5 leagues/hour per user, CAPTCHA on public creation
 
-- [ ] **Sport-agnostic core** — abstract position config, scoring, roster slots into sport modules
-- [ ] **Fantasy Football** — H2H points, snake draft (reuse draft engine), weekly matchups
-- [ ] **Super Bowl Squares** — 10x10 grid component, random number assignment, quarter payouts
-- [ ] **March Madness Brackets** — 64-team bracket UI, confidence points, Calcutta auction variant
-- [ ] **Pick'em / Props** — daily player prop cards (over/under), streak tracking, leaderboards
-- [ ] **Year-round engagement** — one league group, multiple games across sports
-- [ ] **Sport-specific AI models** — retrain prompts and projections per sport
-- [ ] **NFL data integration** — NFL API or stats provider for football
+**Content Marketing (starts June):**
+- [ ] **AI-generated football draft kit** — free PDF download, email-gated (lead gen)
+- [ ] **Live auction demo video** — record baseball auction with AI bid advice visible
+- [ ] **Public weekly digest** — "NFL Offseason AI Analysis" on marketing site (SEO)
+- [ ] **Marketing site updates** — football-focused landing page, pricing page
+
+**Newsletter:**
+- [ ] **Email templates** — weekly digest teaser + link back to app (via Resend)
+- [ ] **Subscriber preferences** — `User.emailPreferences` JSON column
+- [ ] **Signed unsubscribe tokens** — HMAC-based, CAN-SPAM compliant
+- [ ] **Physical mailing address** in email footer (CAN-SPAM requirement)
+
+**Business Dashboard:**
+- [ ] **Admin-only page** at `/admin/business` — PostHog metrics + Stripe revenue
+- [ ] **Signup funnel**, feature usage heatmap, sport breakdown, churn metrics
+
+### Phase 4: Polish & Football Launch (Jul 8 – Aug 4, 4 weeks)
+**Goal:** Load testing, mobile optimization, marketing campaign, launch.
+
+- [ ] **Load testing** — 100 concurrent WebSocket draft rooms (requires Redis + Railway Pro)
+- [ ] **Infrastructure scaling** — Railway Pro ($20/mo), Redis for WS pub/sub, Supabase Pro for connection pooling
+- [ ] **Mobile optimization** — all football pages responsive at 390px
+- [ ] **Onboarding flow** — first-time user experience, guided league creation
+- [ ] **Error tracking** — Sentry integration
+- [ ] **Monitoring** — uptime, WebSocket health, NFL sync health, Stripe webhook delivery
+- [ ] **`FOOTBALL_ENABLED` feature flag** — kill switch for football without affecting baseball
+- [ ] **Marketing campaign** — Reddit (r/fantasyfootball), podcast outreach, Twitter/X, email drip
+
+**🚀 FOOTBALL LAUNCH — August 2026 Draft Season**
+
+### Phase 5: Growth & Expansion (Aug 5+, ongoing)
+**Goal:** Basketball, event games, predictive analytics, social features, engagement.
+
+**Basketball (Oct 2026):**
+- [ ] **Basketball sport config** — PTS, REB, AST, STL, BLK, FG%, FT%, 3PM, TO
+- [ ] **NBA data provider** — ESPN or NBA Stats API
+- [ ] **Daily lineup setting** — basketball plays daily, not weekly
+
+**Event Games (Feb–Mar 2027):**
+- [ ] **Super Bowl squares** — 10x10 grid, random number assignment, payment tracking
+- [ ] **Super Bowl prop pool** — list of props, user picks, result calculation
+- [ ] **March Madness brackets** — 64-team tournament bracket, round-by-round scoring
+- [ ] **March Madness Calcutta auction** — same auction engine, teams as "players" (95% code reuse)
+- [ ] **Event model** — `Event` + `EventEntry` tables, `EventType` enum (BRACKET, SQUARES, PROP_POOL, CALCUTTA)
+
+**Predictive Analytics:**
+- [ ] **Trade simulator** — LLM projects standings impact of proposed trades
+- [ ] **Playoff odds** — Monte Carlo simulation from current standings
+- [ ] **Hot/cold streak prediction** — rolling performance trends
+- [ ] **Injury risk badges** — LLM analysis of player injury history + workload
+
+**Social & Content AI:**
+- [ ] **League storylines** — AI tracks narratives across the season
+- [ ] **Social sharing cards** — Satori/Vercel OG for trades, draft picks, standings
+- [ ] **Audio recaps** — TTS-powered 2-minute weekly audio (ElevenLabs)
+
+**Engagement:**
+- [ ] **Achievement badges** — "First Trade", "Waiver Wire Wizard", "Auction Shark"
+- [ ] **Push notifications** — trade proposed, waiver processed, player alerts
+- [ ] **League chat** — Discord-style, integrated with transaction notifications
+
+**Business Agent (`/ce:business`):**
+- [ ] **Revenue analyst** sub-agent — scans codebase for monetization hooks
+- [ ] **Competitive intel** sub-agent — web-searches competitors, builds comparison matrix
+- [ ] **Trend radar** sub-agent — sports tech trends, emerging formats
+- [ ] **Monthly cron pulse** — auto-commits `docs/business/monthly-pulse.md`
 
 ---
 
@@ -120,12 +179,15 @@
 | Auth + Users + Franchises | 100% | Sport-agnostic |
 | League CRUD + Rules engine | 90% | Rules schema needs sport config |
 | Auction engine (14 components) | 95% | Budget/bid logic is universal — March Madness Calcutta reuse! |
+| Snake draft engine | 95% | Pick mechanics are sport-agnostic |
 | Trade engine | 95% | Works for any sport with roster-based trading |
 | Waiver/FAAB engine | 95% | Universal claim priority + budget system |
 | Commissioner tools | 90% | Role management, season lifecycle universal |
 | AI analysis framework | 70% | Prompts are sport-specific, but service layer reusable |
 | Design system (`--lg-*` tokens) | 100% | Already sport-neutral |
-| Archive/History | 85% | Schema may need sport-specific stat columns |
+| PostHog analytics | 100% | Just add `sport` property to events |
+| Email (Resend) | 100% | Templates need sport-specific content |
+| Archive/History | 85% | Schema needs sport-specific stat columns |
 
 ### The Calcutta Insight
 The March Madness Calcutta auction is the same mechanic as our baseball auction: instead of auctioning players, you auction tournament teams. Same bidding, same budget management, same real-time UX — different sport. This is the sneaker model: **same silhouette, different colorway**.
@@ -133,105 +195,176 @@ The March Madness Calcutta auction is the same mechanic as our baseball auction:
 ### Our Moat
 **League-context AI that compounds over time.** Every existing AI tool gives generic advice. FBST's AI knows your league's scoring, your roster, your opponents' tendencies, your auction history. This gets better every season — creating compounding lock-in that's impossible to replicate without the data.
 
+### Two Game Types
+1. **Leagues** (season-long): Fantasy football, basketball, baseball — full draft, trades, waivers, weekly scoring
+2. **Events** (one-off): March Madness brackets, Super Bowl squares/props — casual, viral, low commitment
+
+Events are the casual on-ramp; leagues are the retention engine. Both live under "My Games" in the app.
+
 ---
 
 ## A — Architecture Decisions
 
-### Decision 1: Sport Config Modules
+### Decision 1: Single App, Sport Selector
+One app at `app.thefantasticleagues.com`. User picks sport when creating a league. Shared auth, shared infrastructure, sport-specific modules.
+
+### Decision 2: Sport Config Registry (not Strategy pattern, not DI)
 ```
 server/src/sports/
+├── index.ts              # SportConfig interface, SPORT_CONFIGS registry, getSportConfig()
 ├── baseball/
-│   ├── positions.ts      # P, C, 1B, 2B, SS, 3B, OF, DH, UT
-│   ├── scoring.ts        # Roto categories, H2H points
-│   ├── rules.ts          # Default rules, roster sizes
-│   └── ai-prompts.ts     # Baseball-specific AI prompt templates
+│   ├── config.ts         # positions, categories, roster slots, default rules
+│   ├── dataProvider.ts   # MlbDataProvider (wraps MLB Stats API)
+│   ├── aiPrompts.ts      # Baseball-specific AI prompt templates
+│   └── sync.ts           # MLB player/stat sync cron jobs
 ├── football/
-│   ├── positions.ts      # QB, RB, WR, TE, K, DEF, FLEX
-│   ├── scoring.ts        # Standard, PPR, half-PPR
-│   ├── rules.ts
-│   └── ai-prompts.ts
-└── index.ts              # Sport registry: getSportConfig("baseball")
+│   ├── config.ts         # QB/RB/WR/TE/K/DEF/FLEX, PPR/Standard scoring
+│   ├── dataProvider.ts   # NflDataProvider (Sleeper + ESPN APIs)
+│   ├── aiPrompts.ts      # Football-specific AI prompt templates
+│   └── sync.ts           # NFL player/stat sync cron jobs
+└── basketball/
+    └── ...               # Phase 5
+```
+Plain `Record<SportCode, SportConfig>` registry — not class hierarchy. Works identically on client and server. Yahoo Fantasy uses the same pattern (`game_key` discriminator).
+
+### Decision 3: Sport-Specific Stat Tables (not EAV, not JSON blob)
+```
+BaseballPlayerStats    (existing PlayerStatsPeriod, keep as-is)
+FootballPlayerStats    (new: passYds, passTD, rushYds, rushTD, rec, recYds, recTD...)
+BasketballPlayerStats  (new: PTS, REB, AST, STL, BLK, FG%, FT%, 3PM, TO)
+```
+Each sport gets its own stat tables (~3-5 per sport). Avoids migrating existing baseball data. SQL-level type safety and indexing. EAV is universally discouraged by PostgreSQL community.
+
+### Decision 4: Player Model — Add, Don't Rename
+```prisma
+model Player {
+  sport      SportCode @default(BASEBALL)  // discriminator
+  externalId String?                       // NEW: for football/basketball
+  mlbId      Int?      @unique             // KEEP: for baseball (826+ references)
+  proTeam    String?                       // renamed from mlbTeam (simpler, fewer references)
+  @@unique([sport, externalId])
+}
+```
+Football uses `externalId`. Baseball keeps `mlbId`. Rename `mlbId` → `externalId` as a future dedicated refactor, NOT during the sport abstraction phase.
+
+### Decision 5: Extend LeagueContext (NOT separate SportContext)
+Sport is derived from the league. One context, one source of truth:
+```typescript
+// LeagueContext extended:
+const contextValue = {
+  leagueId, setLeagueId, leagues, outfieldMode, scoringFormat,
+  seasonStatus, myTeamId,
+  sportCode,    // NEW: "BASEBALL" | "FOOTBALL" | "BASKETBALL"
+  sportConfig,  // NEW: full SportConfig object, memoized
+};
 ```
 
-### Decision 2: Draft Engine Abstraction
-The auction engine is already feature-rich. Snake draft is a new engine that shares:
-- **Shared**: Player pool, roster management, team state, UI chrome (sidebar, player cards)
+### Decision 6: NFL Data — Sleeper (primary) + ESPN (supplement)
+- **Sleeper API** (free, documented): player database, weekly stats, projections, injury status, trending
+- **ESPN API** (free, undocumented): schedule, live scoreboard, bye weeks
+- **Paid upgrade path**: MySportsFeeds ($10-25/mo) or SportsData.io ($50/mo) when revenue justifies it
+
+### Decision 7: Draft Engine Abstraction
+Auction and snake draft share infrastructure:
+- **Shared**: Player pool, roster management, team state, UI chrome, WebSocket infra
 - **Auction-specific**: Bidding, budget, nomination queue, spending pace
 - **Snake-specific**: Pick order, round tracking, auto-pick, pick trading
 
-Both implement a `DraftEngine` interface with common hooks (`useDraftState`, `usePlayerPool`, `useDraftActions`).
+Both implement a `DraftEngine` interface with common hooks.
 
-### Decision 3: Matchup System (for H2H)
-New `Matchup` model in Prisma:
-```
-model Matchup {
-  id        Int    @id @default(autoincrement())
-  leagueId  Int
-  period    Int    // Week number
-  teamAId   Int
-  teamBId   Int
-  result    Json?  // { teamA: { wins: 5, losses: 4, ties: 1 }, teamB: ... }
-}
-```
-Schedule generation algorithm: round-robin for N teams across M weeks.
-
-### Decision 4: Sidebar Architecture
-Replace static nav config with a dynamic `useNavItems()` hook that:
-- Reads user role (member, commissioner, admin)
-- Reads season status (SETUP, DRAFT, IN_SEASON, COMPLETED)
-- Reads feature flags (SaaS tier)
-- Returns filtered, ordered nav items with badges
-
-### Decision 5: Per-League Theming
-Leverage existing CSS custom property system:
-```tsx
-// LeagueContext provides theme overrides
-<div style={{ '--lg-accent': league.accentColor, '--lg-accent-rgb': league.accentRgb }}>
-  <Outlet />
-</div>
-```
-Commissioners pick from a curated palette (like sneaker colorways). No arbitrary hex input — controlled quality.
+### Decision 8: Per-Game Lineup Lock (Football)
+Football locks lineups per-kickoff, not per-period:
+- **GameSlate** concept: THU, SUN_EARLY, SUN_LATE, SUN_NIGHT, MNF
+- Per-player lock derived from their team's game start time
+- Thursday starters lock Thursday; Sunday starters stay editable until Sunday
 
 ---
 
 ## N — Next Steps (Immediate)
 
-### This Session (Session 40)
-1. ~~Weekly insights history tabs~~ ✅ (done)
-2. Resolve code review P1 finding (isPitcher/PITCHER_CODES "CL" divergence)
-3. Resolve code review P2 quick wins (vote auth, unused variable, dynamic import, empty catch)
-4. Update CLAUDE.md, FEEDBACK.md, docs pages
+### Session 54 (Current)
+1. ~~CI fix: standings test mock~~ ✅
+2. ~~Brainstorm: business agent + feature ideas~~ ✅
+3. ~~Plan: multi-sport platform~~ ✅
+4. ~~Update CPLAN with football-first pivot~~ ✅
 
-### Next Session (Session 41)
-1. Sidebar redesign — reorganize nav sections, add AI cluster
-2. Mobile bottom tab nav implementation
-3. Public pages layer (Changelog, Roadmap, Status without admin gate)
+### Session 55 (Next)
+1. Fix P1/P2 findings from code review (waiver round field disconnect, commissioner date parsing, dead budget state)
+2. Begin Phase 1: create `SportConfig` interface and `sports/baseball/config.ts`
+3. Add `sport` column to League and Player models (migration)
 
-### Session 42-43
-1. Empty states for all pages
-2. Commissioner league creation wizard (self-service)
-3. Member onboarding flow (invite → account → team → tour)
+### Sessions 56-57
+1. Complete Phase 1: extract all baseball config, wrap in registry, parameterize standings
+2. All 730+ tests passing with abstraction layer in place
 
-### Session 44-45
-1. Landing page / marketing page (pre-login)
-2. Snake draft engine (start)
-3. H2H matchup system (start)
+### Sessions 58-62
+1. Phase 2: Football sport config, NFL data provider, football stat tables
+2. Phase 2: Points scoring engine, weekly lineup setting, H2H matchups
+
+---
+
+## Timeline Summary
+
+```
+Apr 2026  ████████████████████ Phase 1: Sport Abstraction (3 weeks)
+May 2026  ████████████████████████████████████████ Phase 2: Football Core (5 weeks)
+Jun 2026  ████████████████████████████████████████████████ Phase 3: Revenue + Launch Prep (6 weeks)
+Jul 2026  ████████████████████████████████ Phase 4: Polish + Launch (4 weeks)
+Aug 2026  🚀 FOOTBALL LAUNCH — Draft Season
+Sep 2026+ Phase 5: Basketball, Events, Predictive Analytics, Business Agent
+```
+
+## Sport Priority & Audience
+
+| Sport | Type | Target Launch | US Audience |
+|-------|------|--------------|-------------|
+| **Football** | League | **Aug 2026** (PRIMARY) | ~40M players |
+| **Basketball** | League | Oct 2026 | ~15M players |
+| **Super Bowl** | Event | Feb 2027 | 100M+ viewers |
+| **March Madness** | Event | Mar 2027 | ~70M brackets/year |
+| **Baseball** | League | Already live (private beta) | ~10M players |
+
+---
+
+## Revenue Model
+
+| Tier | Price | Features |
+|------|-------|----------|
+| **Free** | $0 | Snake draft, basic standings, transactions, 1 league |
+| **Pro** | $9.99/mo | Auction draft, AI insights, trade analyzer, keeper tools, unlimited leagues |
+| **Season Pass** | $19.99/season | Same as Pro, single-season payment |
+
+**Go-to-Market:** Content marketing (draft kits, demo videos, public digests) → Reddit/podcasts/Twitter → email capture → conversion funnel
+
+**Success Metrics (by Oct 2026):** 500+ users, 50+ paying, 100+ leagues, $500+ MRR
 
 ---
 
 ## Appendix: The Sneaker Model Calendar
 
-| Month | Fantasy Moment | Sneaker-Model Event |
-|-------|---------------|---------------------|
-| Nov | Hot Stove begins | "Market Watch" content drops — how FA signings affect values |
-| Dec | Winter Meetings | Exclusive league format preview ("The Gauntlet" teaser) |
-| Jan | Offseason | Draft Lab opens (Pro users get 2-week early access) |
-| Feb | Spring Training | Projection updates, badge reveal for upcoming season |
-| Mar | Opening Day prep | League format drops, Draft Day special UI activated |
-| Apr | Season begins | In-season AI features unlock, weekly digest emails start |
-| Jul | Trade Deadline | Platform event — Trade Analyzer Pro, countdown UI, special badges |
-| Sep | Playoff push | Championship dashboard, clinch celebrations, "clutch" badges |
-| Oct | Season ends | Annual Awards ceremony — MVP, Best Draft, Trade of the Year |
+| Month | Fantasy Moment | Platform Event |
+|-------|---------------|----------------|
+| Jun | NFL offseason | Draft kit release, email capture campaign |
+| Jul | Training camp | Projection updates, early access for Pro |
+| Aug | Football draft season | 🚀 LAUNCH — League creation surge |
+| Sep | NFL regular season | In-season AI features, weekly digest emails |
+| Oct | NBA season starts | Basketball launch, second sport wave |
+| Feb | Super Bowl | Super Bowl squares + props (event games launch) |
+| Mar | March Madness | Bracket + Calcutta auction (event games) |
+| Apr | MLB Opening Day | Baseball season (existing, now public) |
+| Jul | MLB Trade Deadline | Trade Analyzer Pro, countdown UI |
+
+---
+
+## Appendix: Infrastructure Budget
+
+| Phase | Monthly Cost | What |
+|-------|-------------|------|
+| Current (baseball beta) | $5 | Railway Hobby |
+| Phase 1-2 (development) | $5-10 | Railway Hobby + Redis |
+| Phase 3 (pre-launch) | $30-40 | Railway Pro + Redis + Stripe test mode |
+| Phase 4 (launch month) | $75-100 | Railway Pro (2 instances) + Redis + Supabase Pro |
+| Phase 5 (growth) | $100-150 | Scale based on user count |
 
 ---
 
@@ -239,16 +372,8 @@ Commissioners pick from a curated palette (like sneaker colorways). No arbitrary
 
 ### Brand Identity Evolution
 - **Current**: Baseball emoji logo, "TFL" header, dark liquid glass
-- **Near-term**: Professional wordmark, sport-neutral but premium. Bold condensed typography. Named features ("The Gauntlet," "Draft Lab," "Trade Radar")
-- **Long-term**: Each sport/format gets its own visual identity (colorway). Seasonal themes. Edition numbering ("Season 1 Inaugural")
-
-### UI Priorities
-1. Bento grid home dashboard (variable-sized tiles)
-2. Inline AI signals (badges on player rows)
-3. Spark-line mini charts on stats
-4. Draft day special UI (distinct visual treatment)
-5. Achievement trophy case on profiles
-6. Per-league accent color theming
+- **Near-term**: Professional wordmark, sport-neutral but premium. Bold condensed typography.
+- **Long-term**: Each sport gets its own visual identity (colorway). Seasonal themes.
 
 ### Mobile Priorities
 1. Bottom tab navigation (5 tabs)
