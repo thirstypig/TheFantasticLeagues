@@ -4,7 +4,7 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
-## Session 2026-03-31 (Session 53) — Code Review Remediation, Dashboard Overhaul, Depth Charts
+## Session 2026-03-31 (Session 53) — Code Review Remediation, Dashboard Overhaul, Depth Charts, Trade UI, Local DB
 
 ### Completed
 - **6-agent code review**: TypeScript, Security, Performance, Architecture, Simplicity, Learnings reviewers ran in parallel — 17 findings synthesized
@@ -23,18 +23,35 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - [ ] Weekly Digest — add AI attribution/source
 - [ ] Commissioner Seasons tab — edit/add periods for 2026
 - [ ] Create test season for trades/waivers testing
+- **Period editing**: Commissioner can now add/edit periods during IN_SEASON (not just SETUP/DRAFT)
+- **Period date timezone fix**: Dates stored as noon UTC to prevent Pacific timezone shift
+- **Trade UI overhaul**: Removed waiver budget, renamed to "Future Auction Dollars", waiver position by round (1st/2nd/3rd)
+- **Trade leagueId bug fix**: `proposeTrade()` was missing `leagueId` — all proposals returned 400
+- **Production cleanup**: Deleted 2 test trades from League 20, deleted test League 21
+- **Local dev DB setup**: `.env.local` support, `fbst_dev` PostgreSQL created (schema push pending)
+
+### Pending / Next Steps
+- [ ] Finish local DB schema push (`prisma db push --force-reset`)
+- [ ] Seed local DB with test data
+- [ ] Deploy to production (Railway) + Cloudflare cache purge
+- [ ] AI Insights page — remove Generate button, show prompts for transparency
+- [ ] Weekly Digest — add AI attribution/source
 - [ ] Home.tsx decomposition (Phase 3B) — extract sub-components
 - [ ] Auto-refresh interval stabilization (Phase 3C)
+- [ ] Test season: create on local DB, test trades/waivers/add-drops
+- [ ] Supabase custom domain (fixes Google OAuth consent screen showing random ID)
 
 ### Concerns / Tech Debt
-- Home.tsx still 1,390 lines (grew with depth charts + nav); Phase 3B extraction still needed
-- 3 RSS endpoint handlers duplicate the same XML parsing logic — could extract shared `parseRssFeed()` helper
-- Depth chart default is hardcoded to LAD (119); could auto-detect from user's rostered players' MLB teams
+- Home.tsx still ~1,390 lines; Phase 3B extraction still needed
+- 5 RSS endpoint handlers duplicate XML parsing logic — extract shared `parseRssFeed()` helper
+- Depth chart default hardcoded to LAD (119); could auto-detect from user's rostered players
+- Trade processing migration path: broken `ClaimStatus` enum migration (20260312) — use `db push` not `migrate deploy` for new DBs
+- Production and local shared same DB until this session — now isolated via `.env.local`
 
 ### Test Results
 - Server: 484 passing, 2 pre-existing failures (standings/routes.test.ts)
 - Client: TypeScript compiles clean
-- Both servers verified running on 4010/3010
+- Server: TypeScript compiles clean
 
 ---
 
