@@ -37,7 +37,7 @@ const stats = [
   { label: "Server (Node/TS)", value: "33,479", icon: Server },
   { label: "Test Coverage", value: "9,800+ lines", icon: TestTube },
   { label: "Database Models", value: "30", icon: Database },
-  { label: "API Endpoints", value: "119", icon: Plug },
+  { label: "API Endpoints", value: "121", icon: Plug },
   { label: "Feature Modules", value: "19", icon: Layers },
   { label: "Git Commits", value: "348+", icon: GitCommit },
   { label: "Tests Passing", value: "680", icon: TestTube },
@@ -142,7 +142,7 @@ const featureModules = [
   { name: "archive", desc: "Historical data import/export" },
   { name: "periods", desc: "Period standings & payouts" },
   { name: "franchises", desc: "Organization-level settings & membership" },
-  { name: "mlb-feed", desc: "Live MLB scores, transactions, my-players-today" },
+  { name: "mlb-feed", desc: "Live MLB scores, transactions, roster stats, league headlines, highlight thumbnails, news feeds, depth charts, digest" },
 ];
 
 const erdDiagrams: { label: string; chart: string }[] = [

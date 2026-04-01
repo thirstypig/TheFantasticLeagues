@@ -30,6 +30,28 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.47.0",
+    date: "Apr 1, 2026",
+    session: "Session 55",
+    title: "The Daily Diamond — Newspaper-Style Dashboard Headlines with MLB Highlight Thumbnails",
+    highlights: [
+      "Complete newspaper redesign of Daily Headlines — serif masthead, hero action photo, sidebar stories, On Deck, daily editorial column",
+      "Real game-day highlight thumbnails from MLB Content API — not stock photos, actual broadcast screenshots from today's games",
+      "60+ fun, creative headline templates that rotate daily per player — no duplicates, context-aware based on stats",
+      "On Deck section shows upcoming/live roster players; pulse bar shows live/done/upcoming counts",
+    ],
+    changes: [
+      { type: "feat", description: "Daily Diamond newspaper layout: hero (2/3) + sidebar (1/3) with serif typography, gradient overlays, responsive stacking" },
+      { type: "feat", description: "MLB highlight thumbnails: backend fetches /game/{gamePk}/content in parallel, maps player IDs to 640px game-day thumbnails (5-min cache)" },
+      { type: "feat", description: "Headline generator: 60+ punchy templates (multi-HR, steals, quality starts, saves, etc.) with deterministic per-player daily rotation" },
+      { type: "feat", description: "On Deck section: upcoming/live roster players with opponent + game time; FINAL games excluded" },
+      { type: "feat", description: "Daily editorial column: 8 rotating columns (Commissioner's Corner, Scout's Notebook, Trade Desk, etc.)" },
+      { type: "feat", description: "Pulse bar: colored dots showing live/done/upcoming game counts for your roster" },
+      { type: "feat", description: "League-wide headlines endpoint: GET /api/mlb/league-headlines — top performer per fantasy team with thumbnails" },
+      { type: "docs", description: "Solution doc: waiver priority leagueId default bug pattern (docs/solutions/logic-errors/)" },
+    ],
+  },
+  {
     version: "0.46.0",
     date: "Mar 31, 2026",
     session: "Session 51 (cont.)",
