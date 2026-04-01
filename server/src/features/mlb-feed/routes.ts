@@ -213,7 +213,8 @@ router.get("/trade-rumors", requireAuth, asyncHandler(async (_req, res) => {
       const block = match[1];
       const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
         ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
+      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
+        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
       const categories: string[] = [];
       const catRegex = /<category><!\[CDATA\[(.*?)\]\]><\/category>/g;
@@ -620,7 +621,8 @@ router.get("/yahoo-sports", requireAuth, asyncHandler(async (_req, res) => {
       const block = match[1];
       const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
         ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
+      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
+        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
       const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
         ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";
@@ -659,7 +661,8 @@ router.get("/mlb-news", requireAuth, asyncHandler(async (_req, res) => {
       const block = match[1];
       const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
         ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
+      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
+        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
       const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
         ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";
@@ -698,7 +701,8 @@ router.get("/espn-news", requireAuth, asyncHandler(async (_req, res) => {
       const block = match[1];
       const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
         ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
+      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
+        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
       const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
       const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
         ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";

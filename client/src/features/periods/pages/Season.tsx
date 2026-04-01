@@ -380,7 +380,16 @@ const SeasonPage: React.FC = () => {
                               <svg className={`w-3 h-3 text-[var(--lg-text-muted)] transition-transform ${expandedTeamId === row.teamId ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
-                              <span className="text-sm font-semibold text-[var(--lg-text-primary)]">{row.teamName}</span>
+                              {row.teamCode ? (
+                                <span
+                                  className="text-sm font-semibold text-[var(--lg-accent)] hover:underline cursor-pointer"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/teams/${encodeURIComponent(row.teamCode!)}`); }}
+                                >
+                                  {row.teamName}
+                                </span>
+                              ) : (
+                                <span className="text-sm font-semibold text-[var(--lg-text-primary)]">{row.teamName}</span>
+                              )}
                             </div>
                           </ThemedTd>
 

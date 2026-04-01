@@ -1,7 +1,6 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import { Sparkles, Lock, Loader2, ExternalLink, BarChart3, Trophy, TrendingUp, ArrowLeftRight, Users, Gavel, BookOpen, Rewind, Brain } from "lucide-react";
+import React, { useState } from "react";
+import { Lock, ExternalLink, Trophy, TrendingUp, ArrowLeftRight, Users, Gavel, BookOpen, Rewind, Brain, ChevronDown, ChevronUp, Eye, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
-import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 
@@ -18,45 +17,29 @@ interface AIFeature {
   available: boolean;
   lockReason?: string;
   navigateTo?: string;
-  generateUrl?: string;
+  scope: "team" | "league" | "player";
+  trigger: string;
+  model: string;
+  promptSummary: string;
+  dataUsed: string[];
 }
 
 
 /* ── Main Page ───────────────────────────────────────────────────── */
 
 export default function AIHub() {
-  const { leagueId, myTeamId } = useLeague();
+  const { leagueId } = useLeague();
   const gating = useSeasonGating();
 
-  // State for generating/viewing results
-  const [activeFeature, setActiveFeature] = useState<string | null>(null);
-  const [loading, setLoading] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AI responses have varied shapes per feature
-  const [results, setResults] = useState<Record<string, any>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Loading messages for animation
-  const loadingMessages = [
-    "Crunching the numbers...",
-    "Analyzing roster composition...",
-    "Comparing league-wide trends...",
-    "Generating insights...",
-  ];
-  const [msgIdx, setMsgIdx] = React.useState(0);
-  React.useEffect(() => {
-    if (!loading) return;
-    const interval = setInterval(() => setMsgIdx(i => (i + 1) % loadingMessages.length), 2500);
-    return () => clearInterval(interval);
-  }, [loading]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const hasAuctionCompleted = gating.canViewAuctionResults || gating.seasonStatus === "COMPLETED";
   const isInSeason = gating.seasonStatus === "IN_SEASON";
   const isDraft = gating.canAuction;
-
   const hasRosterData = hasAuctionCompleted || isInSeason || gating.seasonStatus === "COMPLETED";
 
   const features: AIFeature[] = [
-    // Draft
+    // Draft & Auction
     {
       id: "draft-report",
       title: "Draft Report",
@@ -66,6 +49,17 @@ export default function AIHub() {
       available: hasRosterData,
       lockReason: "Available after rosters are drafted",
       navigateTo: "/draft-report",
+      scope: "league",
+      trigger: "Generated once after the auction completes. Persists across sessions — view anytime.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Grades each team's draft on auction efficiency (surplus = projected value minus price paid). Factors in NL-only scarcity, injury discounts (15–30%), and ~5% projection uncertainty. Keepers are assessed separately from auction picks.",
+      dataUsed: [
+        "All team rosters with player names, positions, and auction prices",
+        "Projected auction values from scouting data (843 players)",
+        "Keeper designations and costs ($5 above prior price)",
+        "Auction log (every bid, win event, and timestamp)",
+        "League rules (budget cap, roster size, NL-only/mixed)",
+      ],
     },
     {
       id: "bid-advice",
@@ -76,8 +70,20 @@ export default function AIHub() {
       available: isDraft,
       lockReason: "Available during the live auction draft",
       navigateTo: "/auction",
+      scope: "team",
+      trigger: "On-demand during live auction. Appears inline on the auction page when a player is nominated.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Calculates marginal value of the nominated player for YOUR team specifically. Considers your budget remaining, open roster slots, category needs vs. league average, and scarcity of remaining alternatives at the position.",
+      dataUsed: [
+        "Your team's current roster and budget",
+        "Player's projected stats and dollar value",
+        "Current bid amount",
+        "Available alternatives at the same position",
+        "Your team's projected category totals (R, HR, RBI, SB, AVG, W, SV, K, ERA, WHIP)",
+        "League scoring format and roster requirements",
+      ],
     },
-    // Season
+    // In-Season
     {
       id: "weekly-insights",
       title: "Weekly Team Insights",
@@ -86,7 +92,17 @@ export default function AIHub() {
       category: "season",
       available: isInSeason,
       lockReason: "Available during the active season",
-      generateUrl: myTeamId ? `/teams/ai-insights?leagueId=${leagueId}&teamId=${myTeamId}` : undefined,
+      navigateTo: leagueId ? `/teams` : undefined,
+      scope: "team",
+      trigger: "Auto-generates when you visit your Team page. Cached weekly — one fresh analysis per week.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Analyzes your team's performance in the current scoring period. Identifies hot/cold bats, pitching concerns, roster alerts, and a 'hot take' prediction. Grades your team A+ through F relative to the league.",
+      dataUsed: [
+        "Your roster with current period stats (AB, H, R, HR, RBI, SB, W, SV, K, IP, ER)",
+        "Your category standings and rankings vs. other teams",
+        "Recent transactions (trades, waiver claims, drops)",
+        "League type (NL-only, AL-only, or mixed)",
+      ],
     },
     {
       id: "trade-analysis",
@@ -97,16 +113,36 @@ export default function AIHub() {
       available: isInSeason,
       lockReason: "Available during the active season when proposing trades",
       navigateTo: "/activity",
+      scope: "league",
+      trigger: "Auto-generates when a trade is processed by the commissioner. Fire-and-forget — appears inline on the Activity page.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Evaluates trade fairness by comparing the projected value and category impact of assets exchanged. Rates as fair, slightly unfair, or unfair, and identifies the winning team.",
+      dataUsed: [
+        "Trade items (players, future auction dollars, waiver position)",
+        "Both teams' current rosters and standings",
+        "Player projected values and category contributions",
+        "League scoring format",
+      ],
     },
     {
       id: "waiver-advice",
-      title: "Waiver Bid Advisor",
-      description: "AI suggests optimal FAAB bid amounts based on player value and your team needs.",
+      title: "Waiver Claim Analysis",
+      description: "AI assesses each processed waiver claim — bid grade, category impact, and roster fit.",
       icon: Users,
       category: "season",
       available: isInSeason,
       lockReason: "Available during the active season when claiming players",
       navigateTo: "/activity",
+      scope: "team",
+      trigger: "Auto-generates when a waiver claim is processed. Fire-and-forget — appears inline on the Activity page.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Grades the waiver bid (A+ to F) based on bid amount vs. projected value. Assesses whether the claimed player fills a category need and whether the dropped player was expendable.",
+      dataUsed: [
+        "Claimed player name, position, and projected value",
+        "Bid amount and remaining budget after claim",
+        "Dropped player (if any)",
+        "Team's current roster composition",
+      ],
     },
     // Planning
     {
@@ -118,70 +154,78 @@ export default function AIHub() {
       available: gating.canKeepers,
       lockReason: "Available during pre-draft keeper selection",
       navigateTo: leagueId ? `/leagues/${leagueId}/keepers` : undefined,
+      scope: "team",
+      trigger: "On-demand from the Keeper Selection page. Generates fresh recommendations each time.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Ranks every player on your roster by keeper value. Keeper cost = prior price + $5. Weighs projected value surplus, positional scarcity (NL-only context), age/trajectory, injury risk (15–30% discount), and budget impact.",
+      dataUsed: [
+        "Your full roster with current prices",
+        "Keeper cost formula (price + $5 per year kept)",
+        "Projected auction values for upcoming season",
+        "League rules (budget cap, max keepers, roster size)",
+        "NL-only scarcity context",
+      ],
     },
     // Historical
     {
-      id: "historical-trends",
-      title: "Season Trends (Archive)",
-      description: "Historical AI analysis of past seasons — team trajectory, period-over-period performance. Current season trends are on the Home page.",
+      id: "league-digest",
+      title: "Weekly League Digest",
+      description: "League-wide weekly recap with power rankings, hot/cold teams, stat highlights, and a bold prediction.",
       icon: TrendingUp,
       category: "historical",
       available: true,
-      navigateTo: "/archive",
+      navigateTo: "/",
+      scope: "league",
+      trigger: "Auto-generates weekly on the Home page. Past weeks browsable via tabs. Cached — one digest per week per league.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Produces a 7-section weekly digest: headline, power rankings, hot team, cold team, stat of the week, category movers, proposed trade of the week, and a bold prediction. Post-draft week may discuss auction results; all subsequent weeks are stats-only (no auction prices).",
+      dataUsed: [
+        "All teams' period stats and category standings",
+        "Recent transactions (trades, waivers, add/drops)",
+        "Keeper designations (excluded from trade proposals)",
+        "League standings and point totals",
+        "Team roster compositions",
+      ],
     },
     {
-      id: "historical-draft",
-      title: "Draft Report (Archive)",
-      description: "Per-team grades, strategy analysis, and projected stats — locked in after each auction as a historical record.",
+      id: "historical-trends",
+      title: "Season Trends (Archive)",
+      description: "Historical AI analysis of past seasons — team trajectory and period-over-period performance.",
       icon: Rewind,
       category: "historical",
-      available: hasRosterData,
-      navigateTo: "/draft-report",
+      available: true,
+      navigateTo: "/archive",
+      scope: "team",
+      trigger: "On-demand from the Archive page. Select a team and season to generate analysis.",
+      model: "Gemini 2.5 Flash (primary) / Claude Sonnet 4 (fallback)",
+      promptSummary: "Analyzes a team's performance arc across a historical season. Identifies peak periods, slumps, category strengths/weaknesses, and the overall trajectory narrative.",
+      dataUsed: [
+        "Historical period-by-period stats for the selected team",
+        "Historical standings for the selected season",
+        "Team roster for that season",
+      ],
     },
   ];
-
-  const abortRef = useRef<AbortController | null>(null);
-
-  const generate = useCallback(async (feature: AIFeature) => {
-    if (!feature.generateUrl || !leagueId) return;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(feature.id);
-    setErrors(prev => ({ ...prev, [feature.id]: "" }));
-    setActiveFeature(feature.id);
-    try {
-      const data = await fetchJsonApi(`${API_BASE}${feature.generateUrl}`, {
-        signal: controller.signal,
-      });
-      if (!controller.signal.aborted) {
-        setResults(prev => ({ ...prev, [feature.id]: data }));
-      }
-    } catch (err: unknown) {
-      if (controller.signal.aborted) return;
-      setErrors(prev => ({ ...prev, [feature.id]: (err as Error)?.message || "Failed to generate" }));
-    } finally {
-      if (!controller.signal.aborted) setLoading(null);
-    }
-  }, [leagueId]);
-
-  // Abort in-flight request on unmount
-  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const categoryLabels: Record<string, string> = {
     draft: "Draft & Auction",
     season: "In-Season",
     planning: "Planning",
-    historical: "Historical",
+    historical: "Historical & Digest",
   };
   const categories = ["draft", "season", "planning", "historical"];
+
+  const scopeLabels: Record<string, { label: string; color: string }> = {
+    team: { label: "Your Team", color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+    league: { label: "League-Wide", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+    player: { label: "Per Player", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
       <PageHeader
         title="AI Insights"
-        subtitle="AI-powered analysis across every phase of your fantasy baseball season."
+        subtitle="AI-powered analysis across every phase of your fantasy baseball season. Expand any card to see exactly what the AI analyzes."
       />
 
       {/* Status bar */}
@@ -189,7 +233,7 @@ export default function AIHub() {
         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
         <span className="font-medium">AI Available</span>
         <span className="opacity-50">•</span>
-        <span className="opacity-50">Powered by Gemini / Claude</span>
+        <span className="opacity-50">Powered by Google Gemini & Anthropic Claude</span>
       </div>
 
       {categories.map(cat => {
@@ -204,18 +248,16 @@ export default function AIHub() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {catFeatures.map(feature => {
                 const isLocked = !feature.available;
-                const isLoading = loading === feature.id;
-                const hasResult = !!results[feature.id];
-                const hasError = !!errors[feature.id];
-                const isExpanded = activeFeature === feature.id;
+                const isExpanded = expandedId === feature.id;
                 const Icon = feature.icon;
+                const scopeInfo = scopeLabels[feature.scope];
 
                 return (
                   <div
                     key={feature.id}
-                    className={`liquid-glass rounded-2xl p-5 transition-all duration-300 relative ${
-                      isLocked ? "opacity-50 grayscale-[30%]" : "hover:scale-[1.01]"
-                    }`}
+                    className={`liquid-glass rounded-2xl p-5 transition-all duration-300 relative flex flex-col ${
+                      isLocked ? "opacity-50 grayscale-[30%]" : ""
+                    } ${isExpanded ? "ring-1 ring-[var(--lg-accent)]/30" : ""}`}
                   >
                     {/* Lock badge */}
                     {isLocked && (
@@ -234,8 +276,13 @@ export default function AIHub() {
                       }`}>
                         <Icon size={18} className={isLocked ? "text-[var(--lg-text-muted)]" : "text-blue-400"} />
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-[var(--lg-text-primary)] leading-tight">{feature.title}</h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-[var(--lg-text-primary)] leading-tight">{feature.title}</h3>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${scopeInfo.color}`}>
+                            {scopeInfo.label}
+                          </span>
+                        </div>
                         <p className="text-xs text-[var(--lg-text-muted)] mt-1 leading-relaxed">{feature.description}</p>
                       </div>
                     </div>
@@ -246,38 +293,16 @@ export default function AIHub() {
                     )}
 
                     {/* Action area */}
-                    <div className="flex items-center gap-2 mt-4 pl-12">
-                      {isLocked ? (
-                        <button
-                          disabled
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--lg-tint)] text-[var(--lg-text-muted)] opacity-40 cursor-not-allowed border border-[var(--lg-border-faint)]"
-                        >
-                          Locked
-                        </button>
-                      ) : feature.generateUrl ? (
-                        <button
-                          onClick={() => generate(feature)}
-                          disabled={isLoading}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 size={12} className="animate-spin" />
-                              Generating...
-                            </>
-                          ) : hasResult ? (
-                            <>
-                              <Sparkles size={12} />
-                              Regenerate
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={12} />
-                              Generate
-                            </>
-                          )}
-                        </button>
-                      ) : null}
+                    <div className="flex items-center gap-3 mt-auto pt-3 pl-12">
+                      {/* Expand/collapse for prompt transparency */}
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : feature.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)] transition-colors flex items-center gap-1.5 border border-[var(--lg-border-faint)]"
+                      >
+                        <Eye size={12} />
+                        {isExpanded ? "Hide Details" : "How It Works"}
+                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
 
                       {feature.navigateTo && !isLocked && (
                         <Link
@@ -289,64 +314,49 @@ export default function AIHub() {
                       )}
                     </div>
 
-                    {/* Loading state */}
-                    {isLoading && (
-                      <div className="mt-4 pl-12 flex items-center gap-2 text-xs text-[var(--lg-text-muted)] animate-pulse">
-                        <Sparkles size={12} className="text-blue-400" />
-                        {loadingMessages[msgIdx]}
-                      </div>
-                    )}
-
-                    {/* Error state */}
-                    {hasError && !isLoading && (
-                      <div className="mt-3 pl-12 text-xs text-rose-400">{errors[feature.id]}</div>
-                    )}
-
-                    {/* Draft Report now has its own page at /draft-report */}
-
-                    {/* Results: Weekly Insights */}
-                    {feature.id === "weekly-insights" && hasResult && !isLoading && isExpanded && (
-                      <div className="mt-4 border-t border-[var(--lg-border-faint)] pt-4 space-y-2">
-                        {/* Mode indicator */}
-                        {results["weekly-insights"]?.mode && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                              results["weekly-insights"].mode === "in-season"
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                            }`}>
-                              {results["weekly-insights"].mode}
-                            </span>
-                            <span className="text-[10px] text-[var(--lg-text-muted)]">
-                              Grade: <span className="font-bold text-[var(--lg-text-primary)]">{results["weekly-insights"].overallGrade}</span>
-                            </span>
+                    {/* Expanded prompt transparency section */}
+                    {isExpanded && (
+                      <div className="mt-4 border-t border-[var(--lg-border-faint)] pt-4 space-y-3 animate-in fade-in duration-200">
+                        {/* Trigger */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Zap size={11} className="text-amber-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">When It Runs</span>
                           </div>
-                        )}
-                        {(results["weekly-insights"]?.insights || []).map((insight: any, i: number) => (
-                          <div key={i} className="text-xs flex gap-2">
-                            {insight.priority && (
-                              <span className={`flex-shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full ${
-                                insight.priority === "high" ? "bg-red-400" :
-                                insight.priority === "medium" ? "bg-amber-400" : "bg-[var(--lg-text-muted)]"
-                              }`} />
-                            )}
-                            <div>
-                              <span className="font-bold text-[var(--lg-text-primary)]">{insight.title}</span>
-                              <span className="text-[var(--lg-text-muted)] ml-1">{insight.detail}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed pl-4">{feature.trigger}</p>
+                        </div>
 
-                    {/* Toggle expand for results */}
-                    {hasResult && !isLoading && (
-                      <button
-                        onClick={() => setActiveFeature(isExpanded ? null : feature.id)}
-                        className="mt-2 pl-12 text-[11px] font-medium text-[var(--lg-accent)] hover:underline"
-                      >
-                        {isExpanded ? "Collapse" : "Show results"}
-                      </button>
+                        {/* Prompt summary */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Brain size={11} className="text-purple-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">What the AI Does</span>
+                          </div>
+                          <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed pl-4">{feature.promptSummary}</p>
+                        </div>
+
+                        {/* Data used */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Eye size={11} className="text-blue-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Data It Sees</span>
+                          </div>
+                          <ul className="text-xs text-[var(--lg-text-secondary)] leading-relaxed pl-4 space-y-0.5">
+                            {feature.dataUsed.map((item, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <span className="text-[var(--lg-text-muted)] mt-0.5 flex-shrink-0">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Model */}
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <span className="text-[10px] text-[var(--lg-text-muted)]">Model:</span>
+                          <span className="text-[10px] text-[var(--lg-text-secondary)] font-medium">{feature.model}</span>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );

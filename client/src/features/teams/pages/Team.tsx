@@ -357,7 +357,7 @@ export default function Team() {
         )}
         {aiInsights && (() => {
           // Determine which insight data to display based on selected week tab
-          const activeInsight: any = selectedWeekKey && insightHistory.length > 1
+          const activeInsight: any = selectedWeekKey && insightHistory.length >= 1
             ? insightHistory.find(w => w.weekKey === selectedWeekKey) || aiInsights
             : aiInsights;
           const activeGrade = activeInsight?.overallGrade || aiInsights.overallGrade;
@@ -389,8 +389,8 @@ export default function Team() {
             {/* Expandable content */}
             {aiExpanded && (
               <div className="px-4 pb-4 md:px-5 md:pb-5">
-                {/* Week tabs — only show when there are multiple weeks */}
-                {insightHistory.length > 1 && (
+                {/* Week tabs — always show when history exists (like league digest) */}
+                {insightHistory.length >= 1 && (
                   <div className="mb-4 flex gap-1 overflow-x-auto pb-1 scrollbar-thin">
                     {insightHistory.map((week) => {
                       // Convert ISO week key (e.g., "2026-W14") to "Week of M/D"
