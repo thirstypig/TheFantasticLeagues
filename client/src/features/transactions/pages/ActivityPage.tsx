@@ -75,7 +75,7 @@ export default function ActivityPage() {
         getTransactions({ leagueId: currentLeagueId, take: 100 }),
         getPlayerSeasonStats(currentLeagueId),
         getLeague(currentLeagueId),
-        getSeasonStandings(),
+        getSeasonStandings(currentLeagueId),
         getTrades(currentLeagueId, "all"),
       ]);
 
@@ -165,14 +165,19 @@ export default function ActivityPage() {
     }
   };
 
-  // Waiver Order: Reverse Standings
+  // Waiver Order: Reverse standings — worst team gets first waiver pick
   const sortedWaiverOrder = useMemo(() => {
     const standingMap = new Map(standings.map((s) => [s.teamId, s]));
-    const teamsWithRank = teams.map((t) => {
+    const teamsWithPoints = teams.map((t) => {
       const s = standingMap.get(t.id);
-      return { ...t, rank: s?.rank || 999, points: s?.points || 0 };
+      return { ...t, rank: 0, points: s?.totalPoints || s?.points || 0 };
     });
-    return teamsWithRank.sort((a: any, b: any) => b.rank - a.rank);
+    // Sort by points ASC (fewest points = worst team = first waiver pick)
+    teamsWithPoints.sort((a, b) => a.points - b.points);
+    // Assign standing rank for display (1 = best, N = worst)
+    const byPointsDesc = [...teamsWithPoints].sort((a, b) => b.points - a.points);
+    byPointsDesc.forEach((t, i) => { t.rank = i + 1; });
+    return teamsWithPoints;
   }, [teams, standings]);
 
   // Trade categorization

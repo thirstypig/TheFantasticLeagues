@@ -98,27 +98,24 @@ export default function TransactionsPage() {
       }
   };
 
-  // Waiver Order: Reverse Standings logic
-  // Standings are returned ranked 1..N (1 is best).
-  // So sorting by rank DESC gives N..1 (worst to best).
+  // Waiver Order: Reverse standings — worst team gets first waiver pick.
+  // Uses totalPoints from season standings (cumulative roto points).
   const sortedWaiverOrder = React.useMemo(() => {
-      // 1. Create a map of teamId -> standing data
       const standingMap = new Map(standings.map(s => [s.teamId, s]));
-
-      // 2. Map teams to include rank info
-      const teamsWithRank = teams.map(t => {
+      const teamsWithPoints = teams.map(t => {
           const s = standingMap.get(t.id);
           return {
               ...t,
-              rank: s?.rank || 999,
-              points: s?.points || 0
+              totalPoints: s?.totalPoints || 0,
+              standingRank: 0, // will be computed after sort
           };
       });
-
-      // 3. Sort by rank DESC (higher rank number = worse team = better waiver priority)
-      // Rank 1 (Best) -> Priority Last
-      // Rank 8 (Worst) -> Priority First
-      return teamsWithRank.sort((a: any, b: any) => b.rank - a.rank);
+      // Sort by totalPoints ASC (fewest points = worst team = first waiver pick)
+      teamsWithPoints.sort((a, b) => a.totalPoints - b.totalPoints);
+      // Assign standing rank (1 = best, N = worst) for display
+      const byPointsDesc = [...teamsWithPoints].sort((a, b) => b.totalPoints - a.totalPoints);
+      byPointsDesc.forEach((t, i) => { t.standingRank = i + 1; });
+      return teamsWithPoints;
   }, [teams, standings]);
 
   if (loading) return <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse text-sm">Loading roster moves...</div>;
@@ -172,34 +169,42 @@ export default function TransactionsPage() {
 
           {activeTab === 'waivers' && (
               <div className="max-w-xl mx-auto space-y-6">
-                  <div className="text-center mb-12">
-                    <h3 className="text-4xl font-semibold uppercase text-[var(--lg-text-heading)] mb-2">Waiver Priority</h3>
-                    <p className="text-xs text-[var(--lg-text-muted)] uppercase font-medium opacity-40">Based on Reverse Standings</p>
+                  <div className="text-center mb-8">
+                    <h3 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)] mb-2">Waiver Priority</h3>
+                    <p className="text-xs text-[var(--lg-text-muted)] uppercase font-medium opacity-50">Inverse Standings — Worst Record Picks First</p>
+                    <p className="text-[10px] text-[var(--lg-text-muted)] mt-1 opacity-40">
+                      Updated {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · Based on current season standings
+                    </p>
                   </div>
-                  
+
                   <div className="lg-card p-0 overflow-hidden divide-y divide-[var(--lg-divide)]">
-                      {sortedWaiverOrder.map((t, idx) => (
-                          <div key={t.id} className="flex items-center justify-between p-8 hover:bg-[var(--lg-tint)] transition-colors group">
-                               <div className="flex items-center gap-8">
-                                  <span className="text-3xl font-bold text-[var(--lg-text-muted)] opacity-10 w-12 tabular-nums group-hover:opacity-30 transition-opacity">{idx + 1}</span>
+                      {sortedWaiverOrder.map((t: any, idx: number) => {
+                          const isMyTeam = teams.find((tm: any) => tm.id === t.id && (tm.ownerUserId === Number(authUser?.id) || (tm.ownerships || []).some((o: any) => o.userId === Number(authUser?.id))));
+                          return (
+                          <div key={t.id} className={`flex items-center justify-between p-6 hover:bg-[var(--lg-tint)] transition-colors group ${isMyTeam ? 'border-l-2 border-l-[var(--lg-accent)]' : ''}`}>
+                               <div className="flex items-center gap-6">
+                                  <span className="text-2xl font-bold text-[var(--lg-text-muted)] opacity-15 w-10 tabular-nums group-hover:opacity-30 transition-opacity text-center">{idx + 1}</span>
                                   <div>
-                                      <div className="font-semibold text-2xl text-[var(--lg-text-primary)]">{t.name}</div>
-                                      <div className="text-xs text-[var(--lg-text-muted)] font-medium uppercase mt-1 opacity-60">{t.owner || 'No Owner'}</div>
+                                      <div className="font-semibold text-lg text-[var(--lg-text-primary)] flex items-center gap-2">
+                                        {t.name}
+                                        {isMyTeam && <span className="text-[9px] font-bold uppercase text-[var(--lg-accent)] bg-[var(--lg-accent)]/10 px-1.5 py-0.5 rounded border border-[var(--lg-accent)]/20">You</span>}
+                                      </div>
                                   </div>
                               </div>
                               <div className="text-right">
-                                  <div className="text-xl font-semibold text-[var(--lg-accent)]">
-                                      {t.rank === 999 ? '—' : `POS ${t.rank}`}
+                                  <div className="text-sm font-semibold text-[var(--lg-text-secondary)]">
+                                      {t.standingRank > 0 ? `#${t.standingRank} in standings` : '—'}
                                   </div>
-                                  <div className="text-xs font-medium text-[var(--lg-text-muted)] mt-1 uppercase opacity-40">
-                                      {t.points.toFixed(1)} Pts
+                                  <div className="text-xs font-medium text-[var(--lg-text-muted)] mt-0.5 opacity-50">
+                                      {t.totalPoints.toFixed(1)} pts
                                   </div>
                               </div>
                           </div>
-                      ))}
+                          );
+                      })}
                   </div>
-                  <div className="text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase mt-12 bg-[var(--lg-tint)] p-6 rounded-3xl border border-[var(--lg-border-subtle)] opacity-60">
-                      Waiver priority is based on reverse standings order. Claims are processed at scheduled times.
+                  <div className="text-center text-[11px] font-medium text-[var(--lg-text-muted)] uppercase mt-8 bg-[var(--lg-tint)] p-4 rounded-2xl border border-[var(--lg-border-subtle)] opacity-50">
+                      Worst-performing team gets first waiver pick. Priority updates with each period's standings.
                   </div>
 
                   {/* Commissioner Process Button */}
