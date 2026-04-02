@@ -1,5 +1,5 @@
 // Service Worker — minimal, network-first with cache fallback
-const CACHE_NAME = 'tfl-v2';
+const CACHE_NAME = 'tfl-v3';
 const SHELL_URLS = ['/'];
 
 // Install: cache the app shell
@@ -26,8 +26,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Skip non-GET and API requests
+  // Skip non-GET, API requests, and external URLs (CDN images, fonts, analytics, etc.)
   if (request.method !== 'GET' || request.url.includes('/api/')) return;
+  const isSameOrigin = new URL(request.url).origin === self.location.origin;
+  if (!isSameOrigin) return;
 
   event.respondWith(
     fetch(request)
