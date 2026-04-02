@@ -466,6 +466,9 @@ router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), async
         }));
         videoCache.set(playerName, { videos, fetchedAt: Date.now() });
         allVideos.push(...videos);
+      } else {
+        const errBody = await ytRes.text().catch(() => "");
+        logger.warn({ status: ytRes.status, player: playerName, body: errBody.slice(0, 200) }, "YouTube API returned non-OK");
       }
 
       // Rate limit: small delay between searches
@@ -493,6 +496,9 @@ router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), async
             .map((item: any) => item.id)
         );
         embeddableVideos = allVideos.filter(v => embeddableIds.has(v.videoId));
+        logger.info({ total: allVideos.length, embeddable: embeddableVideos.length }, "YouTube embeddability check");
+      } else {
+        logger.warn({ status: statusRes.status }, "YouTube embeddability check failed — returning all videos");
       }
     } catch (err) {
       logger.warn({ error: String(err) }, "Failed to check video embeddability — returning all videos");
