@@ -382,13 +382,13 @@ const SeasonPage: React.FC = () => {
                               </svg>
                               {row.teamCode ? (
                                 <span
-                                  className="text-sm font-semibold text-[var(--lg-accent)] hover:underline cursor-pointer"
+                                  className="text-[11px] font-semibold text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer"
                                   onClick={(e) => { e.stopPropagation(); navigate(`/teams/${encodeURIComponent(row.teamCode!)}`); }}
                                 >
                                   {row.teamName}
                                 </span>
                               ) : (
-                                <span className="text-sm font-semibold text-[var(--lg-text-primary)]">{row.teamName}</span>
+                                <span className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{row.teamName}</span>
                               )}
                             </div>
                           </ThemedTd>

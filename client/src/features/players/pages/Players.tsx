@@ -193,7 +193,7 @@ export default function Players() {
   );
 
   return (
-    <div className="h-[100svh] flex flex-col overflow-hidden scrollbar-hide">
+    <div className="flex flex-col min-h-0 w-full max-w-[100vw] overflow-x-hidden scrollbar-hide" style={{ height: '100svh' }}>
        {/* Page Header */}
        <div className="max-w-6xl mx-auto px-4 pt-6 md:px-6 md:pt-10">
          <PageHeader 
@@ -302,8 +302,8 @@ export default function Players() {
        </div>
 
        {/* Results Table */}
-       <div className="flex-1 overflow-auto max-w-6xl mx-auto px-4 pb-8 md:px-6 md:pb-12 custom-scrollbar">
-           <div className="lg-card p-0 bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700">
+       <div className="flex-1 overflow-auto max-w-6xl w-full mx-auto px-4 pb-8 md:px-6 md:pb-12 custom-scrollbar">
+           <div className="lg-card p-0 bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700 overflow-x-auto">
                    <ThemedTable bare density="compact" zebra>
                        <ThemedThead sticky>
                             <ThemedTr>

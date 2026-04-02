@@ -196,7 +196,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           onLogout={onLogout}
         />
 
-        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden transition-all duration-300">
+        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip transition-all duration-300">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--lg-border-faint)] px-4 py-3 lg:hidden bg-[var(--lg-bg-page)]/80 backdrop-blur-3xl" style={{ minHeight: '56px' }}>
             <button
               onClick={() => setMobileOpen(true)}

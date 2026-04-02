@@ -31,7 +31,7 @@ export function ThemedTable({ children, className = '', bare = false, density = 
   const zebraClass = zebra ? "lg-table" : "";
 
   const tableEl = (
-    <table className={cn("w-full caption-bottom text-sm", zebraClass, bare ? className : "")}>
+    <table className={cn("w-full min-w-[600px] caption-bottom text-sm", zebraClass, bare ? className : "")}>
       {children}
     </table>
   );

@@ -223,7 +223,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
                 <ThemedTd>
                   <Link
                     to={`/teams/${row.teamId}`}
-                    className="font-semibold text-[var(--lg-text-heading)] text-[11px] hover:text-[var(--lg-accent)] transition-all tracking-tight"
+                    className="font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight"
                   >
                     {row.teamName}
                   </Link>
@@ -304,7 +304,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
                   <span className="text-[10px] font-bold text-[var(--lg-text-muted)] opacity-40 w-4">{idx + 1}</span>
                   <Link
                     to={`/teams/${(row as any).teamCode || row.teamId}`}
-                    className="font-semibold text-[var(--lg-text-heading)] text-[11px] hover:text-[var(--lg-accent)] transition-all tracking-tight"
+                    className="font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight"
                   >
                     {row.teamName}
                   </Link>
@@ -380,7 +380,7 @@ export const SeasonTable: React.FC<SeasonTableProps> = ({
                   <ThemedTd>
                     <Link
                       to={`/teams/${row.teamId}`}
-                      className="font-semibold text-[var(--lg-text-heading)] text-[11px] hover:text-[var(--lg-accent)] transition-all tracking-tight"
+                      className="font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight"
                     >
                       {row.teamName}
                     </Link>
