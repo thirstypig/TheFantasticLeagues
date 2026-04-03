@@ -32,18 +32,20 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "72,400+", icon: FileCode },
-  { label: "Client (React/TS)", value: "37,200", icon: Monitor },
-  { label: "Server (Node/TS)", value: "35,200", icon: Server },
-  { label: "Test Coverage", value: "10,500+ lines", icon: TestTube },
-  { label: "Database Models", value: "32", icon: Database },
-  { label: "API Endpoints", value: "139", icon: Plug },
-  { label: "Feature Modules", value: "21", icon: Layers },
-  { label: "Git Commits", value: "375+", icon: GitCommit },
-  { label: "Tests Passing", value: "673", icon: TestTube },
-  { label: "DB Schema Lines", value: "960", icon: Braces },
-  { label: "DB Migrations", value: "10", icon: Database },
-  { label: "Est. Tokens Used", value: "~90M+", icon: Bot },
+  { label: "Total Lines of Code", value: "78,400+", icon: FileCode },
+  { label: "Client (React/TS)", value: "38,100", icon: Monitor },
+  { label: "Server (Node/TS)", value: "36,600", icon: Server },
+  { label: "MCP Server", value: "1,370", icon: Server },
+  { label: "Test Coverage", value: "12,800+ lines", icon: TestTube },
+  { label: "Database Models", value: "39", icon: Database },
+  { label: "API Route Handlers", value: "203", icon: Plug },
+  { label: "Feature Modules", value: "22", icon: Layers },
+  { label: "Git Commits", value: "440+", icon: GitCommit },
+  { label: "Tests Passing", value: "723", icon: TestTube },
+  { label: "DB Schema Lines", value: "955", icon: Braces },
+  { label: "DB Migrations", value: "14", icon: Database },
+  { label: "Development Sessions", value: "56", icon: Bot },
+  { label: "Est. Tokens Used", value: "~95M+", icon: Bot },
 ];
 
 const techStack = [
@@ -67,7 +69,7 @@ const techStack = [
     items: [
       { name: "Node.js + Express", desc: "REST API server" },
       { name: "TypeScript (ESM)", desc: "Strict mode, ES modules" },
-      { name: "Prisma ORM", desc: "Type-safe database access with 30 models" },
+      { name: "Prisma ORM", desc: "Type-safe database access with 39 models" },
       { name: "Zod", desc: "Runtime request validation" },
       { name: "Helmet", desc: "Security headers" },
       { name: "express-rate-limit", desc: "API rate limiting" },
@@ -94,7 +96,7 @@ const techStack = [
       { name: "MCP MLB Data Proxy", desc: "Local MCP server with SQLite cache, rate limiter, circuit breaker (8 tools)" },
       { name: "Google Gemini 2.5 Flash", desc: "Primary AI model — draft grades, league digest, trade analysis, weekly insights" },
       { name: "Anthropic Claude Sonnet 4", desc: "Fallback AI model — automatic failover when Gemini is unavailable" },
-      { name: "Resend", desc: "Transactional email for league invites" },
+      { name: "Resend", desc: "Transactional email — league invites, trade/waiver notifications" },
       { name: "xlsx", desc: "Excel file parsing for archive imports" },
       { name: "csv-parse", desc: "CSV data processing for stats" },
       { name: "better-sqlite3", desc: "Persistent MLB API cache (WAL mode)" },
@@ -107,7 +109,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "691 tests", desc: "454 server + 187 client + 50 MCP tests" },
+      { name: "723 tests", desc: "486 server + 187 client + 50 MCP tests" },
     ],
   },
   {
@@ -621,41 +623,43 @@ const lessons = [
 
 const costComparison = {
   aiCost: {
-    tokens: "~85M+",
-    apiCost: "$150–250",
+    tokens: "~95M+",
+    apiCost: "$150–300",
     subscriptionCost: "$100–200/mo",
-    totalRange: "$200–$2,400",
-    note: "Claude Code subscription + API tokens over 49 sessions (Nov 2025–Mar 2026)",
+    totalRange: "$200–$2,800",
+    note: "Claude Code subscription + API tokens over 56 sessions (Nov 2025–Apr 2026). ~6 months of development.",
   },
   usDevShop: {
     rateRange: "$150–250/hr",
-    hoursLow: 800,
-    hoursHigh: 1200,
-    totalLow: "$120K",
-    totalHigh: "$300K",
-    timeline: "6–12 months",
-    note: "Full-stack agency (NY/SF/Austin). Includes PM, design, frontend, backend, QA, DevOps. Based on 18 feature modules, 119 API endpoints, 30 DB models, real-time WebSocket, OAuth, live MLB data integration.",
+    hoursLow: 1000,
+    hoursHigh: 1500,
+    totalLow: "$150K",
+    totalHigh: "$375K",
+    timeline: "8–14 months",
+    note: "Full-stack agency (NY/SF/Austin). Includes PM, design, frontend, backend, QA, DevOps. Based on 22 feature modules, 203 API route handlers, 39 DB models, real-time WebSocket, OAuth, live MLB data integration, email notifications, AI system with 8 features.",
   },
   offshore: {
     rateRange: "$25–60/hr",
-    hoursLow: 800,
-    hoursHigh: 1200,
-    totalLow: "$20K",
-    totalHigh: "$72K",
-    timeline: "4–9 months",
-    note: "Offshore team (India/China). Lower hourly rate but often requires more hours due to communication overhead, timezone gaps, and iteration cycles. PM/QA often separate line items.",
+    hoursLow: 1000,
+    hoursHigh: 1500,
+    totalLow: "$25K",
+    totalHigh: "$90K",
+    timeline: "6–12 months",
+    note: "Offshore team (India/Eastern Europe). Lower hourly rate but often requires more hours due to communication overhead, timezone gaps, and iteration cycles. PM/QA often separate line items.",
   },
   scope: [
-    "70,850+ lines of TypeScript (strict mode)",
-    "18 mirrored client/server feature modules",
-    "119 API endpoints + WebSocket real-time auction",
-    "30 Prisma database models with 10 migrations",
-    "710 automated tests (unit + integration)",
+    "78,400+ lines of TypeScript (strict mode)",
+    "22 mirrored client/server feature modules",
+    "203 API route handlers + WebSocket real-time auction",
+    "39 Prisma database models with 14 migrations",
+    "723 automated tests (unit + integration + MCP)",
     "OAuth integration (Google/Yahoo via Supabase)",
-    "Live MLB Stats API integration with caching proxy",
-    "MCP server with 8 tools, rate limiter, circuit breaker",
-    "Excel/CSV import, AI-powered player analysis",
-    "Full design system with light/dark mode",
+    "Live MLB Stats API with caching MCP proxy (8 tools)",
+    "Email notifications via Resend (trades, waivers)",
+    "8 AI features (Gemini + Claude) — drafts, trades, insights, digest",
+    "Excel/CSV import, 20+ year archive system",
+    "Full design system: light/dark mode, ADA compliant tables, frozen columns",
+    "56 development sessions, 440+ commits",
   ],
 };
 
@@ -1045,7 +1049,7 @@ function CostEstimate() {
                 {c.aiCost.totalRange}
               </div>
               <div className="text-xs text-[var(--lg-text-muted)] mb-3">
-                {c.aiCost.tokens} tokens &middot; 49 sessions &middot; 5 months
+                {c.aiCost.tokens} tokens &middot; 56 sessions &middot; 6 months
               </div>
               <div className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">
                 {c.aiCost.note}
@@ -1181,7 +1185,7 @@ export default function Tech() {
         <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
           A look at what it took to build The Fantastic Leagues — the tools, the process,
           the decisions, and the numbers. Built from November 2025 to present across
-          49 sessions, 70,850+ lines of TypeScript, and an estimated 85 million+ AI tokens.
+          56 sessions, 78,400+ lines of TypeScript, and an estimated 95 million+ AI tokens.
         </p>
         <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
           Last updated: March 20, 2026
@@ -1222,7 +1226,7 @@ export default function Tech() {
         </h2>
         <p className="text-sm text-[var(--lg-text-secondary)] mb-4">
           Building a 57K-line full-stack app through conversational AI requires structure.
-          Here's the system that made it work across 49 sessions.
+          Here's the system that made it work across 56 sessions.
         </p>
         <div className="space-y-3">
           {workflowSteps.map((step) => (
@@ -1441,7 +1445,7 @@ export default function Tech() {
 
       {/* Footer note */}
       <p className="text-xs text-[var(--lg-text-muted)] text-center pb-4">
-        Built with Claude Code — estimated 85M+ tokens across 49 sessions |{" "}
+        Built with Claude Code — estimated 95M+ tokens across 56 sessions |{" "}
         <Link to="/roadmap" className="text-[var(--lg-accent)] hover:underline">
           Roadmap
         </Link>
