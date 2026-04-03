@@ -104,11 +104,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         { to: "/", label: "Home", show: true },
         { to: "/season", label: "Season", show: true },
         { to: "/players", label: "Players", show: true },
-        { to: "/auction", label: "Auction", show: true, disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
-        { to: "/draft", label: "Draft", show: true, disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
         { to: "/matchup", label: "Matchup", show: gating.isH2H },
         { to: "/activity", label: "Activity", show: true },
         { to: "/trading-block", label: "Trading Block", show: gating.canTrade },
+      ],
+    },
+    {
+      title: "Preseason",
+      collapsible: true,
+      defaultOpen: false,
+      items: [
+        { to: "/auction", label: "Auction", show: true, disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
+        { to: "/draft", label: "Draft", show: true, disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
+        { to: "/rules", label: "Rules", show: true },
+        ...(leagueId ? [{ to: `/leagues/${leagueId}/keepers`, label: "Keepers", show: true }] : []),
       ],
     },
     {
@@ -125,10 +134,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       collapsible: true,
       defaultOpen: false,
       items: [
-        { to: "/rules", label: "Rules", show: true },
         { to: "/payouts", label: "Payouts", show: true },
         { to: "/archive", label: "Archive", show: true },
-        ...(leagueId ? [{ to: `/leagues/${leagueId}/keepers`, label: "Keepers", show: true }] : []),
         { to: "/about", label: "About", show: true },
         { to: "/guide", label: "Guide", show: true },
       ],

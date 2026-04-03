@@ -25,8 +25,9 @@ import PageHeader from "../../../components/ui/PageHeader";
 import { Button } from "../../../components/ui/button";
 import { Plus, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { EmptyState } from "../../../components/ui/EmptyState";
+import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
 
-type ActivityTab = "add_drop" | "trades" | "waivers" | "history";
+type ActivityTab = "add_drop" | "trades" | "waivers" | "history" | "trading_block";
 
 export default function ActivityPage() {
   const { me } = useAuth();
@@ -238,6 +239,14 @@ export default function ActivityPage() {
                 >
                   History
                 </Button>
+                <Button
+                  onClick={() => setActiveTab("trading_block")}
+                  variant={activeTab === "trading_block" ? "default" : "ghost"}
+                  size="sm"
+                  className="px-6"
+                >
+                  Trading Block
+                </Button>
               </div>
             </div>
           }
@@ -371,6 +380,11 @@ export default function ActivityPage() {
             completedTrades={completedTrades}
             transactions={transactions}
           />
+        )}
+
+        {/* Trading Block Tab */}
+        {activeTab === "trading_block" && (
+          <TradingBlockPanel leagueWide />
         )}
       </div>
 
