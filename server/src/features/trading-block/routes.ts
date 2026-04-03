@@ -134,10 +134,19 @@ router.post(
       where: { teamId_playerId: { teamId, playerId } },
       update: { askingFor: askingFor ?? null },
       create: { teamId, playerId, askingFor: askingFor ?? null },
+      include: {
+        player: {
+          select: { id: true, name: true, posPrimary: true, mlbTeam: true, mlbId: true },
+        },
+      },
     });
 
+    // Enrich with team info for client TradingBlockItem shape
+    const team = await prisma.team.findUnique({ where: { id: teamId }, select: { name: true, code: true } });
+    const result = { ...entry, teamName: team?.name ?? "", teamCode: team?.code ?? "" };
+
     logger.info({ teamId, playerId }, "Trading block: player added");
-    return res.status(201).json(entry);
+    return res.status(201).json(result);
   }),
 );
 
@@ -170,6 +179,11 @@ router.patch(
     const updated = await prisma.tradingBlock.update({
       where: { id },
       data: { askingFor },
+      include: {
+        player: {
+          select: { id: true, name: true, posPrimary: true, mlbTeam: true, mlbId: true },
+        },
+      },
     });
 
     return res.json(updated);

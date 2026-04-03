@@ -40,16 +40,19 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
       if (leagueWide) {
         const res = await getTradingBlock(leagueId);
         setItems(res.items ?? []);
-      } else if (effectiveTeamId) {
+      } else if (effectiveTeamId && isMyTeam) {
         const res = await getMyTradingBlock(effectiveTeamId);
         setItems(res.items ?? []);
+      } else {
+        // Non-owner viewing a team page — don't fetch (owner-only endpoint)
+        setItems([]);
       }
     } catch (e: any) {
       setError(e.message || "Failed to load trading block");
     } finally {
       setLoading(false);
     }
-  }, [leagueId, effectiveTeamId, leagueWide]);
+  }, [leagueId, effectiveTeamId, leagueWide, isMyTeam]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -196,15 +199,15 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                       {group.items.map((item) => (
                         <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                           <ThemedTd frozen>
-                            <span className="font-semibold text-[11px]">{item.player.name}</span>
+                            <span className="font-semibold text-[11px]">{item.player?.name ?? "Unknown"}</span>
                           </ThemedTd>
                           <ThemedTd>
                             <span className="px-1 py-px rounded text-[8px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                              {item.player.posPrimary}
+                              {item.player?.posPrimary ?? "—"}
                             </span>
                           </ThemedTd>
                           <ThemedTd>
-                            <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">{item.player.mlbTeam || "FA"}</span>
+                            <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
                           </ThemedTd>
                           <ThemedTd>
                             <span className="text-[10px] text-[var(--lg-text-secondary)] italic">
@@ -242,15 +245,15 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                 {items.map((item) => (
                   <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                     <ThemedTd frozen>
-                      <span className="font-semibold text-[11px]">{item.player.name}</span>
+                      <span className="font-semibold text-[11px]">{item.player?.name ?? "Unknown"}</span>
                     </ThemedTd>
                     <ThemedTd>
                       <span className="px-1 py-px rounded text-[8px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                        {item.player.posPrimary}
+                        {item.player?.posPrimary ?? "—"}
                       </span>
                     </ThemedTd>
                     <ThemedTd>
-                      <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">{item.player.mlbTeam || "FA"}</span>
+                      <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
                     </ThemedTd>
                     <ThemedTd>
                       {isMyTeam && editingId === item.id ? (
@@ -281,7 +284,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                       <ThemedTd align="center">
                         <button
                           type="button"
-                          onClick={() => handleRemove(item.player.id)}
+                          onClick={() => handleRemove(item.player?.id ?? item.id)}
                           className="text-[var(--lg-text-muted)] hover:text-[var(--lg-error)] transition-colors"
                           title="Remove from trading block"
                         >

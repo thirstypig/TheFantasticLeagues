@@ -70,7 +70,7 @@ function posEligible(p: any, ofMode: string = "OF"): string {
 export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
-  const { leagueId, outfieldMode, seasonStatus } = useLeague();
+  const { leagueId, outfieldMode, seasonStatus, myTeamId } = useLeague();
   // Positions are locked on the Team page during the season for everyone.
   // Commissioners manage position changes from the Commissioner page Roster tab.
   const positionsLocked = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
@@ -860,24 +860,16 @@ export default function Team() {
         )}
 
         {/* Watchlist & Trading Block (own team only during IN_SEASON) */}
-        {dbTeamId && seasonStatus === "IN_SEASON" && (
+        {dbTeamId && seasonStatus === "IN_SEASON" && myTeamId === dbTeamId && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
             <div className="lg-card p-4">
-              <WatchlistPanel
-                teamId={dbTeamId}
-                availablePlayers={players.filter(p => !p.ogba_team_code && !p.team).map(p => ({
-                  id: (p as any)._dbPlayerId ?? (p as any).id ?? 0,
-                  name: p.mlb_full_name || p.player_name || "",
-                  posPrimary: (p.positions || (p.is_pitcher ? "P" : "UT")).toString().split(/[/,]/)[0] || "UT",
-                  mlbTeam: (p.mlb_team || p.mlbTeam || null) as string | null,
-                }))}
-              />
+              <WatchlistPanel teamId={dbTeamId} />
             </div>
             <div className="lg-card p-4">
               <TradingBlockPanel
                 teamId={dbTeamId}
-                rosterPlayers={players.filter(p => p.ogba_team_code || p.team).map(p => ({
-                  id: (p as any)._dbPlayerId ?? (p as any).id ?? 0,
+                rosterPlayers={players.filter(p => (p as any)._dbPlayerId > 0).map(p => ({
+                  id: (p as any)._dbPlayerId,
                   name: p.mlb_full_name || p.player_name || "",
                   posPrimary: (p.positions || (p.is_pitcher ? "P" : "UT")).toString().split(/[/,]/)[0] || "UT",
                   mlbTeam: (p.mlb_team || p.mlbTeam || null) as string | null,

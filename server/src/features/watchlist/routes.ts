@@ -54,7 +54,7 @@ router.get(
       orderBy: { createdAt: "desc" },
     });
 
-    return res.json(items);
+    return res.json({ items });
   }),
 );
 
