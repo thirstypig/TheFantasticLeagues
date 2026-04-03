@@ -4,6 +4,42 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-03 (Session 56 cont.) — Email Notifications, AAA Sync, 7-Agent Review, Competitive Analysis, Roadmap Rewrite
+
+### Completed
+- **Email notifications**: Trade proposed/processed/vetoed + waiver results via Resend. `notifyTeamOwners()` helper, `sanitizeSubject()` security, List-Unsubscribe header
+- **Weekly AAA prospects sync**: Monday 14:00 UTC cron. Position overwrite bug fixed. Admin manual trigger
+- **7-agent code review**: TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native, Learnings — 18 findings, all 8 P2s resolved
+- **All 673 tests passing**: 5 pre-existing client failures fixed (findMyTeam mock, label updates). 486 server + 187 client
+- **Shared components**: PlayerNameCell, TeamNameLink extracted. `displayPos()` centralized in playerDisplay.ts
+- **Watchlist search fixed**: _dbId added to players API, client-side search with 2,277 players
+- **Trading Block tab in Activity**: 5th tab renders league-wide TradingBlockPanel
+- **Preseason sidebar section**: Auction, Draft, Rules, Keepers grouped under collapsible "Preseason"
+- **Competitive analysis brainstorm**: 4-agent research — competitors (Yahoo/ESPN/Sleeper/Fantrax), paid APIs, remote UX, pricing
+- **Roadmap rewrite**: 5 phases (In-Season, Paid APIs, Scoring, Monetization, Platform Evolution), 27 planned items
+- **Under the Hood hard audit**: All 14 metrics verified against actual codebase. Cost estimate updated
+- **Solution doc**: service-worker-immutable-cache-headers.md
+- **Browser audit**: 0 console errors across all 7 tested pages
+
+### Pending / Next Steps
+- **In-app league chat** — #1 engagement gap vs Sleeper (P1 from competitive analysis)
+- **Push notifications** — Web Push API for PWA (P1 from competitive analysis)
+- **Local timezone display** — auto-detect + countdown timers
+- **FanGraphs projection import** — $15/mo, best ROI data add
+- **H2H + Points scoring** — required for market expansion beyond roto
+- **Seasonal pricing implementation** — Free / Pro $29/season / Commissioner $49/season
+- **P3 review findings** (10 items) — table virtualization, search debounce, barrel files, etc.
+- Deploy latest to Railway (20 commits since last deploy)
+
+### Test Results
+- Server: 486 passing, 7 skipped
+- Client: 187 passing, 0 failures
+- MCP: 50 passing
+- Total: 723 tests, 0 failures
+- TypeScript: clean (both client and server)
+
+---
+
 ## Session 2026-04-02 (Session 56) — ADA Compliance, Frozen Columns, Filter Consolidation, Watchlist & Trading Block, SW Cache Fix
 
 ### Completed
