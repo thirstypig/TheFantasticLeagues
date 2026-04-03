@@ -5,8 +5,17 @@ import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../..
 import { Button } from "../../../components/ui/button";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
+import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
 
 const TAG_OPTIONS = ["trade-target", "add-drop", "monitor"] as const;
+
+/** Normalize TWP (two-way player) to DH/P for display */
+const displayPos = (pos: string | undefined | null): string => {
+  if (!pos) return "—";
+  const p = pos.toUpperCase();
+  if (p === "TWP") return "DH/P";
+  return p;
+};
 
 interface WatchlistPanelProps {
   teamId: number;
@@ -32,6 +41,9 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
   const [addNote, setAddNote] = useState("");
   const [addTags, setAddTags] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
+
+  // Player detail modal
+  const [selectedMlbId, setSelectedMlbId] = useState<number | null>(null);
 
   // Edit note inline
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -188,7 +200,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                   className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--lg-tint)] transition-colors text-[var(--lg-text-primary)]"
                 >
                   <span className="font-semibold">{p.name}</span>
-                  <span className="ml-2 text-[var(--lg-text-muted)]">{p.posPrimary} · {p.mlbTeam || "FA"}</span>
+                  <span className="ml-2 text-[var(--lg-text-muted)]">{displayPos(p.posPrimary)} · {p.mlbTeam || "FA"}</span>
                 </button>
               ))}
             </div>
@@ -249,11 +261,18 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
               {items.map((item) => (
                 <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                   <ThemedTd frozen>
-                    <span className="font-semibold text-[11px] text-[var(--lg-text-primary)]">{item.player?.name ?? "Unknown"}</span>
+                    <button
+                      type="button"
+                      onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)}
+                      className="font-semibold text-[11px] text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left"
+                      title="View player details"
+                    >
+                      {item.player?.name ?? "Unknown"}
+                    </button>
                   </ThemedTd>
                   <ThemedTd>
                     <span className="px-1 py-px rounded text-[8px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {item.player?.posPrimary ?? "—"}
+                      {displayPos(item.player?.posPrimary)}
                     </span>
                   </ThemedTd>
                   <ThemedTd>
@@ -315,6 +334,12 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
             </tbody>
           </ThemedTable>
         </div>
+      )}
+      {selectedMlbId && (
+        <PlayerDetailModal
+          player={{ mlb_id: String(selectedMlbId), mlbId: selectedMlbId } as any}
+          onClose={() => setSelectedMlbId(null)}
+        />
       )}
     </div>
   );
