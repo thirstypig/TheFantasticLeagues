@@ -640,6 +640,30 @@ interface CompletedGroup {
 
 const completedFeatures: CompletedGroup[] = [
   {
+    label: "Session 56 — Watchlist & Trading Block, Email Notifications, ADA, 7-Agent Review",
+    items: [
+      { title: "Watchlist UI", description: "Private per-team watchlist: player search across 2,277 players, inline notes, tag toggles (trade-target, add-drop, monitor), PlayerDetailModal on name click.", session: "56" },
+      { title: "Trading Block UI", description: "Public league-wide trading block: 'asking for' field, grouped by team in league view. /trading-block page + sidebar link. Ownership gating via myTeamId.", session: "56" },
+      { title: "Email Notifications", description: "Trade proposed/processed/vetoed + waiver results via Resend. notifyTeamOwners() helper, sanitizeSubject() security, List-Unsubscribe header, fire-and-forget.", session: "56" },
+      { title: "Weekly AAA Prospects Sync", description: "syncAAARosters() on Monday 14:00 UTC cron. Position overwrite bug fixed (no longer overwrites posPrimary on update). Admin manual trigger.", session: "56" },
+      { title: "ADA Table Compliance", description: "scope='col' on all <th>, aria-label on all ThemedTable, aria-sort='none' on unsorted columns, caption prop, focus ring upgrade to --lg-accent.", session: "56" },
+      { title: "Frozen First Column", description: "'frozen' prop on ThemedTh/ThemedTd: sticky left-0 with opaque bg + separator. --lg-table-sticky-col-bg design token (light + dark).", session: "56" },
+      { title: "Shared Components", description: "PlayerFilterBar (~180 LOC deduped from Players + AddDropTab), PlayerNameCell, TeamNameLink. displayPos() centralized in playerDisplay.ts.", session: "56" },
+      { title: "SW Cache Fix", description: "Production sw.js cached with max-age=1y immutable. Dedicated /sw.js route with no-cache headers. updateViaCache='none'. Bumped v2→v4.", session: "56" },
+      { title: "7-Agent Code Review", description: "TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native, Learnings. 18 findings, all 8 P2s resolved.", session: "56" },
+      { title: "Test Fixes", description: "5 pre-existing client test failures fixed (findMyTeam mock, label updates). 486 server + 187 client = 673 tests, 0 failures.", session: "56" },
+    ],
+  },
+  {
+    label: "Session 55 — Daily Diamond, Table Standardization, Mobile Scroll Fix",
+    items: [
+      { title: "Daily Diamond Newspaper Layout", description: "Serif masthead, hero card with MLB highlight thumbnails, 60+ headline templates, On Deck section, pulse bar, 30 rotating editorial columns.", session: "55" },
+      { title: "Table Density Standardization", description: "All tables use compact density from centralized table.tsx. Removed 40+ per-cell padding overrides.", session: "55" },
+      { title: "Mobile Table Scroll Fix", description: "overflow-x-hidden → overflow-x-clip on AppShell. min-w-[600px] on ThemedTable. max-w-[100vw] on Players page.", session: "55" },
+      { title: "Service Worker External URL Fix", description: "SW was intercepting all external URLs (MLB images, YouTube, Google Fonts). Added isSameOrigin guard.", session: "55" },
+    ],
+  },
+  {
     label: "Session 51 (cont.) — Period Stats Fix, Data Audit, Security Review",
     items: [
       { title: "Period-to-Date Stats Fixed", description: "Daily stats path was showing 1 day instead of cumulative totals. Now requires 80% daily coverage before using daily path, falls back to PlayerStatsPeriod.", session: "51" },
