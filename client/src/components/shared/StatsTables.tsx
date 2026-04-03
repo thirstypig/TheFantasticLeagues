@@ -1,9 +1,9 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { getPrimaryPosition } from "../../lib/baseballUtils";
 import { fmtRate } from "../../api/base";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../ui/ThemedTable";
 import { Badge } from "../ui/Badge";
+import { TeamNameLink } from "./TeamNameLink";
 
 /**
  * SHARED TYPES
@@ -221,12 +221,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
             return (
               <ThemedTr key={row.teamId} className="group hover:bg-[var(--lg-tint)] transition-colors">
                 <ThemedTd frozen>
-                  <Link
-                    to={`/teams/${row.teamId}`}
-                    className="font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight"
-                  >
-                    {row.teamName}
-                  </Link>
+                  <TeamNameLink teamId={row.teamId} name={row.teamName} />
                 </ThemedTd>
                 {categories.map((cat) => (
                   <ThemedTd
@@ -302,12 +297,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
               <ThemedTd frozen>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-[var(--lg-text-muted)] opacity-40 w-4">{idx + 1}</span>
-                  <Link
-                    to={`/teams/${(row as any).teamCode || row.teamId}`}
-                    className="font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight"
-                  >
-                    {row.teamName}
-                  </Link>
+                  <TeamNameLink teamId={(row as any).teamCode || row.teamId} name={row.teamName} />
                 </div>
               </ThemedTd>
               <ThemedTd align="center">
@@ -378,12 +368,7 @@ export const SeasonTable: React.FC<SeasonTableProps> = ({
               {sortedRows.map((row) => (
                 <ThemedTr key={row.teamId} className="hover:bg-[var(--lg-tint)] transition-colors duration-150">
                   <ThemedTd frozen>
-                    <Link
-                      to={`/teams/${row.teamId}`}
-                      className="font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight"
-                    >
-                      {row.teamName}
-                    </Link>
+                    <TeamNameLink teamId={row.teamId} name={row.teamName} />
                   </ThemedTd>
                   {periods.map((p) => (
                     <ThemedTd

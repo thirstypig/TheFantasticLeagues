@@ -12,6 +12,7 @@ import PageHeader from '../../../components/ui/PageHeader';
 import { ThemedTable, ThemedThead, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
 import { SortableHeader } from '../../../components/ui/SortableHeader';
 import { getMlbTeamAbbr } from '../../../lib/playerDisplay';
+import { PlayerNameCell } from '../../../components/shared/PlayerNameCell';
 import { useLeague } from '../../../contexts/LeagueContext';
 
 export default function Players() {
@@ -273,14 +274,7 @@ export default function Players() {
                                            onClick={() => toggleExpand(p.row_id ?? '')}
                         >
                                             <ThemedTd frozen className="pl-2 min-w-[140px]">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className={`px-1 py-px rounded text-[8px] font-bold uppercase tracking-wide flex-shrink-0 ${p.is_pitcher ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
-                                                        {pos}
-                                                    </span>
-                                                    <span className="font-semibold text-[var(--lg-text-primary)] text-[11px] tracking-tight group-hover:text-[var(--lg-accent)] transition-colors leading-tight truncate">
-                                                        {p.mlb_full_name || p.player_name}
-                                                    </span>
-                                                </div>
+                                                <PlayerNameCell position={pos} name={p.mlb_full_name || p.player_name} isPitcher={p.is_pitcher} />
                                             </ThemedTd>
 
                                             <ThemedTd align="center">

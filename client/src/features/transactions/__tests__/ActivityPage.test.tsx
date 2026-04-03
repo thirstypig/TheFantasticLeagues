@@ -32,6 +32,8 @@ vi.mock("../../../auth/AuthProvider", () => ({
 // Mock LeagueContext
 vi.mock("../../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 1 }),
+  findMyTeam: <T extends { ownerUserId?: number | null; ownerships?: { userId: number }[] }>(teams: T[], userId: number): T | null =>
+    teams.find(t => t.ownerUserId === userId || (t.ownerships ?? []).some(o => o.userId === userId)) ?? null,
 }));
 
 // Mock ToastContext
@@ -64,7 +66,7 @@ vi.mock("../components/ActivityHistoryTab", () => ({
   default: () => <div data-testid="history-tab">HistoryTab</div>,
 }));
 vi.mock("../../../components/ui/PageHeader", () => ({
-  default: ({ title }: any) => <div data-testid="page-header">{title}</div>,
+  default: ({ title, rightElement }: any) => <div data-testid="page-header">{title}{rightElement}</div>,
 }));
 vi.mock("../../../components/ui/EmptyState", () => ({
   EmptyState: ({ message }: any) => <div data-testid="empty-state">{message}</div>,
@@ -74,6 +76,7 @@ vi.mock("../../../components/ui/EmptyState", () => ({
 vi.mock("lucide-react", () => ({
   Plus: () => <span>Plus</span>,
   ChevronDown: () => <span>ChevronDown</span>,
+  ArrowLeftRight: () => <span>ArrowLeftRight</span>,
 }));
 
 import { getTransactions, getPlayerSeasonStats, getLeague, getSeasonStandings } from "../../../api";
@@ -121,17 +124,17 @@ describe("ActivityPage", () => {
     });
   });
 
-  it("shows commissioner-only message for Add/Drop when user is OWNER", async () => {
+  it("defaults to waivers tab", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/commissioner-only/i)).toBeInTheDocument();
+      expect(screen.getByTestId("waivers-tab")).toBeInTheDocument();
     });
   });
 
-  it("renders subtitle text", async () => {
+  it("does not show add/drop tab content by default", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/Manage roster moves/)).toBeInTheDocument();
+      expect(screen.queryByTestId("add-drop-tab")).not.toBeInTheDocument();
     });
   });
 

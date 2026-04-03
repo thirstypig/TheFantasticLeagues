@@ -94,7 +94,7 @@ describe("CategoryPeriodTable", () => {
 
   it("renders category metric label", () => {
     renderWithRouter(<CategoryPeriodTable {...props} />);
-    expect(screen.getByText(/AVG Metric/)).toBeInTheDocument();
+    expect(screen.getByText(/AVG – P1/)).toBeInTheDocument();
   });
 
   it("formats AVG stat as rate (leading dot)", () => {

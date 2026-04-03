@@ -47,6 +47,8 @@ vi.mock("../../../auth/AuthProvider", () => ({
 
 vi.mock("../../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 1 }),
+  findMyTeam: <T extends { ownerUserId?: number | null; ownerships?: { userId: number }[] }>(teams: T[], userId: number): T | null =>
+    teams.find(t => t.ownerUserId === userId || (t.ownerships ?? []).some(o => o.userId === userId)) ?? null,
 }));
 
 vi.mock("../../../contexts/ToastContext", () => ({
@@ -228,7 +230,7 @@ describe("TradeCard", () => {
     expect(screen.getAllByText(/Bombers/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("PROPOSED")).toBeInTheDocument();
     expect(screen.getByText("CF Mike Trout")).toBeInTheDocument();
-    expect(screen.getByText("$5 Budget")).toBeInTheDocument();
+    expect(screen.getByText("$5 Waiver Budget")).toBeInTheDocument();
   });
 
   it("shows Cancel button for the proposer on pending trade", () => {
