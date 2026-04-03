@@ -89,6 +89,7 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
       const roster = rosterMap.get(p.id);
       const isPitcher = (p.posPrimary ?? "").toUpperCase() === "P";
       return {
+        _dbId: p.id,
         mlb_id: String(p.mlbId ?? p.id),
         player_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",

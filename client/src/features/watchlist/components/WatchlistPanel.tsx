@@ -13,18 +13,20 @@ interface WatchlistPanelProps {
 }
 
 export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
-  const { myTeamId } = useLeague();
+  const { myTeamId, leagueId } = useLeague();
   const isMyTeam = teamId === myTeamId;
 
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // All players cache (loaded once for search)
+  const [allPlayers, setAllPlayers] = useState<{ id: number; name: string; posPrimary: string; mlbTeam: string | null }[]>([]);
+  const [playersLoaded, setPlayersLoaded] = useState(false);
+
   // Add player form
   const [showAdd, setShowAdd] = useState(false);
   const [addSearch, setAddSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<{ id: number; name: string; posPrimary: string; mlbTeam: string | null }[]>([]);
-  const [searching, setSearching] = useState(false);
   const [addPlayerId, setAddPlayerId] = useState<number | null>(null);
   const [addPlayerName, setAddPlayerName] = useState("");
   const [addNote, setAddNote] = useState("");
@@ -50,34 +52,23 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Server-side player search with debounce
+  // Load all players once when Add form opens (for client-side search)
   useEffect(() => {
-    if (!addSearch || addSearch.length < 2) { setSearchResults([]); return; }
-    const timer = setTimeout(async () => {
+    if (!showAdd || playersLoaded) return;
+    (async () => {
       try {
-        setSearching(true);
-        const { leagueId } = useLeagueRef.current;
-        const res = await fetchJsonApi<any>(`${API_BASE}/players?leagueId=${leagueId}&search=${encodeURIComponent(addSearch)}&limit=10`);
-        const players = (res.players ?? res ?? []).slice(0, 10);
-        setSearchResults(players.map((p: any) => ({
-          id: p.id ?? p.playerId ?? 0,
-          name: p.name ?? p.player_name ?? p.mlb_full_name ?? "",
-          posPrimary: p.posPrimary ?? p.positions?.split?.(/[/,]/)?.[0] ?? "UT",
-          mlbTeam: p.mlbTeam ?? p.mlb_team ?? null,
-        })).filter((p: any) => p.id > 0));
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [addSearch]);
-
-  // Ref to avoid stale closure in debounced search
-  const leagueCtx = useLeague();
-  const useLeagueRef = React.useRef(leagueCtx);
-  useLeagueRef.current = leagueCtx;
+        const res = await fetchJsonApi<any>(`${API_BASE}/players?leagueId=${leagueId}`);
+        const mapped = (res.players ?? []).map((p: any) => ({
+          id: Number(p._dbId ?? p.id ?? 0),
+          name: p.player_name ?? p.name ?? "",
+          posPrimary: (p.positions ?? p.posPrimary ?? "UT").toString().split(/[/,]/)[0] || "UT",
+          mlbTeam: p.mlb_team ?? p.mlbTeam ?? null,
+        })).filter((p: any) => p.id > 0 && p.name);
+        setAllPlayers(mapped);
+        setPlayersLoaded(true);
+      } catch { /* player search won't work without API */ }
+    })();
+  }, [showAdd, playersLoaded, leagueId]);
 
   const handleAdd = async () => {
     if (!addPlayerId) return;
@@ -92,8 +83,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
       setAddPlayerName("");
       setAddNote("");
       setAddTags([]);
-      setSearchResults([]);
-    } catch (e: any) {
+          } catch (e: any) {
       setError(e.message);
     } finally {
       setAdding(false);
@@ -132,10 +122,14 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
     }
   };
 
-  // Filter out players already on watchlist from search results
-  const filteredResults = searchResults.filter(
-    (p) => !items.some((i) => i?.playerId === p.id)
-  );
+  // Client-side search: filter all players by name, exclude already-on-watchlist
+  const searchLower = addSearch.toLowerCase();
+  const filteredResults = addSearch.length >= 2
+    ? allPlayers
+        .filter((p) => p.name.toLowerCase().includes(searchLower))
+        .filter((p) => !items.some((i) => i?.playerId === p.id))
+        .slice(0, 10)
+    : [];
 
   // Non-owners don't see watchlist at all (it's private)
   if (!isMyTeam) return null;
@@ -183,7 +177,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
             className="lg-input w-full"
             aria-label="Search players to add to watchlist"
           />
-          {searching && <div className="text-[10px] text-[var(--lg-text-muted)] animate-pulse">Searching...</div>}
+          {showAdd && !playersLoaded && <div className="text-[10px] text-[var(--lg-text-muted)] animate-pulse">Loading players...</div>}
           {addSearch.length >= 2 && filteredResults.length > 0 && !addPlayerId && (
             <div className="max-h-40 overflow-y-auto divide-y divide-[var(--lg-divide)] rounded-lg border border-[var(--lg-border-subtle)]">
               {filteredResults.map((p) => (
@@ -226,7 +220,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
             <Button size="sm" onClick={handleAdd} disabled={!addPlayerId || adding}>
               {adding ? "Adding..." : "Add to Watchlist"}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setAddSearch(""); setAddPlayerId(null); setAddPlayerName(""); setSearchResults([]); }}>
+            <Button variant="ghost" size="sm" onClick={() => { setShowAdd(false); setAddSearch(""); setAddPlayerId(null); setAddPlayerName(""); }}>
               Cancel
             </Button>
           </div>
