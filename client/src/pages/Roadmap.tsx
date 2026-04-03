@@ -33,7 +33,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 2, 2026 (Session 56)";
+const LAST_UPDATED = "April 3, 2026 (Session 56)";
 
 // ─── Product Roadmap ───
 
@@ -178,6 +178,30 @@ const productRoadmap: RoadmapPhase[] = [
         tags: ["infrastructure", "fix"],
       },
       {
+        title: "Email Notifications (Session 56)",
+        description: "Trade proposed/processed/vetoed + waiver result emails via Resend. notifyTeamOwners() helper resolves multi-owner teams. sanitizeSubject() prevents header injection. Fire-and-forget with 100ms rate limiting.",
+        icon: Bell,
+        effort: "Medium",
+        status: "done",
+        tags: ["notifications", "feature"],
+      },
+      {
+        title: "Weekly AAA Prospects Sync (Session 56)",
+        description: "syncAAARosters() added to Monday 14:00 UTC cron (2hrs after daily MLB sync). Fixed position overwrite bug. Admin manual trigger at POST /api/admin/sync-prospects. ~800 players per sync.",
+        icon: RefreshCw,
+        effort: "Small",
+        status: "done",
+        tags: ["players", "data", "automation"],
+      },
+      {
+        title: "7-Agent Code Review + P2 Fixes (Session 56)",
+        description: "TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native, Learnings reviewers found 18 findings. All 8 P2s resolved: sanitizeSubject, notifyTeamOwners helper, displayPos centralized, catch(e: unknown), requireSeasonStatus on write endpoints.",
+        icon: Shield,
+        effort: "Medium",
+        status: "done",
+        tags: ["quality", "security"],
+      },
+      {
         title: "Home Page Redesign (Session 49)",
         description: "Real-Time Stats Today with live boxscore data (side-by-side hitters/pitchers). MLB Trade Rumors RSS with NL/AL filter, fantasy team dropdown, roster cross-referencing. Weekly Digest collapsed by default, auto-expand Mondays.",
         icon: Globe,
@@ -260,11 +284,11 @@ const productRoadmap: RoadmapPhase[] = [
         tags: ["trades", "ai"],
       },
       {
-        title: "Notification System",
-        description: "Email and/or in-app notifications for: trade proposals, waiver results, period rollovers, commissioner announcements.",
+        title: "Notification System (Email — Session 56)",
+        description: "Email notifications for trade proposals, trade processed/vetoed, and waiver results via Resend. Fire-and-forget pattern. Period rollovers and commissioner announcements deferred (require underlying features).",
         icon: Bell,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["notifications"],
       },
       {

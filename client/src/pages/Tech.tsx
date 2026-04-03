@@ -32,18 +32,18 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "70,200+", icon: FileCode },
-  { label: "Client (React/TS)", value: "36,100", icon: Monitor },
-  { label: "Server (Node/TS)", value: "34,100", icon: Server },
-  { label: "Test Coverage", value: "10,000+ lines", icon: TestTube },
+  { label: "Total Lines of Code", value: "72,400+", icon: FileCode },
+  { label: "Client (React/TS)", value: "37,200", icon: Monitor },
+  { label: "Server (Node/TS)", value: "35,200", icon: Server },
+  { label: "Test Coverage", value: "10,500+ lines", icon: TestTube },
   { label: "Database Models", value: "32", icon: Database },
-  { label: "API Endpoints", value: "130", icon: Plug },
+  { label: "API Endpoints", value: "139", icon: Plug },
   { label: "Feature Modules", value: "21", icon: Layers },
-  { label: "Git Commits", value: "360+", icon: GitCommit },
-  { label: "Tests Passing", value: "730", icon: TestTube },
+  { label: "Git Commits", value: "375+", icon: GitCommit },
+  { label: "Tests Passing", value: "673", icon: TestTube },
   { label: "DB Schema Lines", value: "960", icon: Braces },
   { label: "DB Migrations", value: "10", icon: Database },
-  { label: "Est. Tokens Used", value: "~85M+", icon: Bot },
+  { label: "Est. Tokens Used", value: "~90M+", icon: Bot },
 ];
 
 const techStack = [
@@ -568,8 +568,8 @@ const buildJournal = [
   },
   {
     date: "Apr 2026",
-    title: "Session 56: ADA Compliance, Frozen Columns, Watchlist & Trading Block, SW Cache Fix",
-    detail: "WCAG AA table compliance across all 8+ table instances: scope='col' on all <th>, aria-label on every ThemedTable, aria-sort='none' on unsorted columns, caption support, focus ring upgrade to --lg-accent. Frozen first column on mobile: 'frozen' prop on ThemedTh/ThemedTd (sticky left-0, opaque bg, separator line, z-index hierarchy). New --lg-table-sticky-col-bg design token (light + dark). Shared PlayerFilterBar component extracted from Players.tsx + AddDropTab.tsx (~180 LOC deduped) with ToggleGroup sub-component. Watchlist & Trading Block UI: WatchlistPanel (private per-team, add/remove, inline notes, tag toggles) + TradingBlockPanel (public league-wide, 'asking for' field, grouped by team). /trading-block page + route + sidebar link. Root cause found for production YouTube/image failures: Express was serving sw.js with max-age=1y immutable — browsers permanently cached the broken v2 SW that intercepted external requests. Fixed with dedicated /sw.js route (no-cache headers) + updateViaCache='none' on registration. Solution doc: overflow-hidden-blocks-child-horizontal-scroll.md. 730 tests passing.",
+    title: "Session 56: Watchlist & Trading Block, Email Notifications, 7-Agent Review, 17 Commits",
+    detail: "Massive session: 17 commits, 2,000+ LOC added. Built Watchlist (private per-team: player search across 2,277 players, notes, tags, PlayerDetailModal) and Trading Block (public league-wide: 'asking for' field, grouped by team, /trading-block page + sidebar). 17-bug QA audit found and fixed auth gaps, null safety, API contract mismatches, and empty search results. Email notification system via Resend: trade proposed/processed/vetoed + waiver results with HTML templates, notifyTeamOwners helper, sanitizeSubject security, List-Unsubscribe header. Weekly AAA prospects sync cron (Monday 14:00 UTC) with position overwrite bug fix. ADA table compliance (scope, aria-label, aria-sort, caption). Frozen first column on mobile (sticky left-0 with opaque bg). Shared PlayerFilterBar (~180 LOC deduped), PlayerNameCell, TeamNameLink components. SW cache fix: Express was serving sw.js with max-age=1y immutable — dedicated /sw.js route with no-cache headers. 7-agent code review (TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native, Learnings) found 18 findings — all 8 P2s resolved. 5 pre-existing client test failures fixed. 486 server + 187 client = 673 tests, 0 failures. 2 solution docs written.",
   },
 ];
 
