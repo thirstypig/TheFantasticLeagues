@@ -90,7 +90,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
   };
 
   const availableToAdd = (rosterPlayers ?? []).filter(
-    (p) => !items.some((i) => i.player.id === p.id)
+    (p) => !items.some((i) => i.player?.id === p.id)
   );
 
   if (loading) {

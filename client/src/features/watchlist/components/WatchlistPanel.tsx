@@ -91,7 +91,7 @@ export default function WatchlistPanel({ teamId, availablePlayers }: WatchlistPa
   };
 
   const filteredAvailable = (availablePlayers ?? []).filter(
-    (p) => !items.some((i) => i.playerId === p.id) && (!addSearch || p.name.toLowerCase().includes(addSearch.toLowerCase()))
+    (p) => !items.some((i) => i?.playerId === p.id) && (!addSearch || p.name.toLowerCase().includes(addSearch.toLowerCase()))
   );
 
   if (loading) {
