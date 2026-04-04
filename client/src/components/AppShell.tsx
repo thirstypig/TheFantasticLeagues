@@ -154,6 +154,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       collapsible: true,
       defaultOpen: false,
       items: [
+        { to: "/concepts", label: "Concepts Lab", show: true },
         { to: "/pricing", label: "Pricing", show: true },
         { to: "/changelog", label: "Changelog", show: true },
         { to: "/roadmap", label: "Roadmap", show: true },

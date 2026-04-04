@@ -43,6 +43,7 @@ const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
 const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));
 const TradingBlockPage = React.lazy(() => import("./features/trading-block/pages/TradingBlockPage"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
+const Concepts = React.lazy(() => import("./pages/Concepts"));
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
@@ -143,6 +144,7 @@ export default function App() {
                     <Route path="/docs" element={<Docs />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/concepts" element={<Concepts />} />
                     <Route path="/ai" element={<AIHub />} />
                     <Route path="/draft-report" element={<DraftReportPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
