@@ -934,5 +934,94 @@ router.post(
   })
 );
 
+// ─── League Health Dashboard ───────────────────────────────────────────────
+
+router.get("/commissioner/:leagueId/health", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.params.leagueId);
+
+  // Get all teams with owners
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    include: {
+      ownerUser: { select: { id: true, name: true, email: true, updatedAt: true } },
+      ownerships: { include: { user: { select: { id: true, name: true, updatedAt: true } } } },
+    },
+  });
+
+  // Get current season for period count
+  const season = await prisma.season.findFirst({
+    where: { leagueId },
+    orderBy: { year: "desc" },
+  });
+
+  const totalPeriods = season
+    ? await prisma.period.count({ where: { seasonId: season.id } })
+    : 0;
+
+  // Aggregate activity counts per team
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+
+  const health = await Promise.all(teams.map(async (team) => {
+    const ownerName = team.ownerships?.[0]?.user?.name ?? team.ownerUser?.name ?? team.owner ?? "Unknown";
+    const lastLogin = team.ownerships?.[0]?.user?.updatedAt ?? team.ownerUser?.updatedAt ?? null;
+
+    // Count waiver claims this season
+    const waiverClaims = await prisma.waiverClaim.count({
+      where: { teamId: team.id, createdAt: { gte: thirtyDaysAgo } },
+    });
+
+    // Count trades (as proposer or party)
+    const trades = await prisma.trade.count({
+      where: {
+        leagueId,
+        OR: [
+          { proposerId: team.id },
+          { items: { some: { OR: [{ senderId: team.id }, { recipientId: team.id }] } } },
+        ],
+        createdAt: { gte: thirtyDaysAgo },
+      },
+    });
+
+    // Count periods with roster entries
+    const periodsWithRoster = season
+      ? await prisma.roster.count({
+          where: { teamId: team.id, releasedAt: null },
+        }).then(c => c > 0 ? totalPeriods : 0) // simplified: has roster = all periods
+      : 0;
+
+    // Engagement score (0-100)
+    const daysSinceLogin = lastLogin ? Math.floor((now.getTime() - new Date(lastLogin).getTime()) / 86400000) : 999;
+    const loginScore = daysSinceLogin <= 7 ? 30 : daysSinceLogin <= 14 ? 20 : daysSinceLogin <= 30 ? 10 : 0;
+    const waiverScore = waiverClaims >= 3 ? 25 : waiverClaims >= 1 ? 15 : 0;
+    const tradeScore = trades >= 2 ? 20 : trades >= 1 ? 10 : 0;
+    const lineupRate = totalPeriods > 0 ? periodsWithRoster / totalPeriods : 1;
+    const lineupScore = lineupRate >= 1 ? 25 : lineupRate >= 0.8 ? 20 : lineupRate >= 0.5 ? 10 : 0;
+    const engagementScore = Math.min(100, loginScore + waiverScore + tradeScore + lineupScore);
+
+    const status = engagementScore >= 70 ? "active" : engagementScore >= 40 ? "at-risk" : "inactive";
+
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      teamCode: team.code ?? "",
+      ownerName,
+      lastLogin: lastLogin?.toISOString() ?? null,
+      daysSinceLogin: daysSinceLogin === 999 ? null : daysSinceLogin,
+      waiverClaimsThisSeason: waiverClaims,
+      tradesThisSeason: trades,
+      periodsWithLineupSet: periodsWithRoster,
+      totalPeriods,
+      engagementScore,
+      status,
+    };
+  }));
+
+  // Sort by score ascending (at-risk first)
+  health.sort((a, b) => a.engagementScore - b.engagementScore);
+
+  res.json({ health, leagueHealthScore: Math.round(health.reduce((s, h) => s + h.engagementScore, 0) / (health.length || 1)) });
+}));
+
 export const commissionerRouter = router;
 export default commissionerRouter;

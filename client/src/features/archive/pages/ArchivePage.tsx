@@ -10,6 +10,8 @@ import EditPlayerNameModal from '../../players/components/EditPlayerNameModal';
 import EditTeamNameModal from '../../teams/components/EditTeamNameModal';
 
 import ArchiveAdminPanel from '../../admin/components/ArchiveAdminPanel';
+import TrophyCaseTab from '../components/TrophyCaseTab';
+import { useLeague } from '../../../contexts/LeagueContext';
 import { Button } from "../../../components/ui/button";
 import AIInsightsModal from '../../../components/AIInsightsModal';
 import PageHeader from '../../../components/ui/PageHeader';
@@ -66,7 +68,7 @@ interface DraftTrade {
   note: string;
 }
 
-type TabType = 'stats' | 'standings' | 'period-results' | 'draft';
+type TabType = 'stats' | 'standings' | 'period-results' | 'draft' | 'trophy-case';
 
 // Keepers for 2024 and 2025
 const KEEPER_MAP: Record<number, Record<string, string[]>> = {
@@ -97,6 +99,7 @@ const KEEPER_MAP: Record<number, Record<string, string[]>> = {
 export default function ArchivePage() {
   const { user, isAdmin } = useAuth();
   const { toast, confirm } = useToast();
+  const { leagueId } = useLeague();
 
   const [seasons, setSeasons] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -555,6 +558,13 @@ export default function ArchivePage() {
               className="px-8"
             >
               Draft Results
+            </Button>
+            <Button
+              onClick={() => setActiveTab('trophy-case')}
+              variant={activeTab === 'trophy-case' ? 'default' : 'ghost'}
+              className="px-8"
+            >
+              Trophy Case
             </Button>
             {canEdit && (
               <Button
@@ -1049,6 +1059,13 @@ export default function ArchivePage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Trophy Case Tab Content */}
+        {activeTab === 'trophy-case' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <TrophyCaseTab leagueId={leagueId} />
           </div>
         )}
 

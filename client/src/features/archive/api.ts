@@ -40,3 +40,46 @@ export async function updateArchivePlayerStat(id: number, data: Partial<{ fullNa
         body: JSON.stringify(data)
     });
 }
+
+// Trophy Case
+export interface ChampionshipEntry {
+  year: number;
+  teamName: string;
+  teamCode: string;
+}
+
+export interface AllTimeStandingEntry {
+  teamCode: string;
+  teamName: string;
+  totalPoints: number;
+  seasons: number;
+  avgRank: number;
+  avgScore: number;
+}
+
+export interface DynastyScoreEntry {
+  teamCode: string;
+  teamName: string;
+  score: number;
+  championships: number;
+  seasons: number;
+  avgRank: number;
+}
+
+export interface TrophyCaseRecords {
+  bestSeason: { year: number; teamCode: string; teamName: string; totalScore: number } | null;
+  worstSeason: { year: number; teamCode: string; teamName: string; totalScore: number } | null;
+  mostChampionships: { teamCode: string; teamName: string; count: number } | null;
+  bestCategoryBySeason: Record<string, { year: number; teamCode: string; teamName: string; value: number }>;
+}
+
+export interface TrophyCaseData {
+  championships: ChampionshipEntry[];
+  allTimeStandings: AllTimeStandingEntry[];
+  records: TrophyCaseRecords;
+  dynastyScores: DynastyScoreEntry[];
+}
+
+export async function getTrophyCase(leagueId: number): Promise<TrophyCaseData> {
+    return fetchJsonApi(`${API_BASE}/archive/trophy-case?leagueId=${leagueId}`);
+}

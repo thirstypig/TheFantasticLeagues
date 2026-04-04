@@ -9,6 +9,7 @@ import { useToast } from "../contexts/ToastContext";
 import { useLeague, findMyTeam } from "../contexts/LeagueContext";
 import { gradeColor } from "../lib/sportConfig";
 import { useSeasonGating } from "../hooks/useSeasonGating";
+import { formatLocalDate, formatLocalTime, formatEventTime, safeParseDate } from "../lib/timeUtils";
 import type { DigestResponse, PowerRanking, CategoryMover, TeamGrade } from "./home/types";
 
 // Map MLB Trade Rumors team name tags to abbreviations for NL/AL filtering
@@ -67,7 +68,7 @@ interface MlbTransaction {
 function DateNavigator({ date, onChange }: { date: string; onChange: (d: string) => void }) {
   const today = yyyyMmDd(new Date());
   const isToday = date === today;
-  const displayDate = isToday ? "Today" : new Date(date + "T12:00:00").toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const displayDate = isToday ? "Today" : formatLocalDate(safeParseDate(date), { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
     <div className="flex items-center justify-center gap-3 mb-4">
@@ -96,7 +97,7 @@ function GameCard({ game }: { game: GameScore }) {
   const isFinal = game.status === "Final";
   const isPreview = game.status === "Preview";
 
-  const gameTime = new Date(game.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const gameTime = formatLocalTime(game.startTime).replace(/\s[A-Z]{2,4}$/, ''); // strip timezone abbreviation for compact display
 
   const statusText = isLive
     ? `${game.inningState || ''} ${game.inning || ''}`
@@ -659,7 +660,7 @@ export default function Home() {
         const scoredIds = new Set(scored.map((p: any) => p.mlbId));
         const onDeck = rosterStats.players.filter((p: any) => p.gameToday && !scoredIds.has(p.mlbId));
         const hasSidebar = true; // always show sidebar: stories, on-deck, pulse, or daily column
-        const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+        const dateStr = formatLocalDate(new Date(), { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
         return (
           <div className="mb-6">
@@ -731,7 +732,7 @@ export default function Home() {
               {hasSidebar && (() => {
                 const fmtTime = (t: string) => {
                   if (!t) return "";
-                  try { return new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Los_Angeles" }); }
+                  try { return formatLocalTime(t); }
                   catch { return ""; }
                 };
                 const isFinal = (p: any) => {
@@ -919,7 +920,7 @@ export default function Home() {
                 const today = new Date();
                 today.setHours(12, 0, 0, 0);
                 const isYesterday = statsDate.getTime() < today.getTime() - 12 * 3600 * 1000;
-                const label = statsDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const label = formatLocalDate(statsDate, { weekday: 'short', month: 'short', day: 'numeric' });
                 return isYesterday ? `Last Night · ${label}` : label;
               })()}
             </span>
@@ -1074,7 +1075,7 @@ export default function Home() {
               <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
               {digest?.generatedAt && (
                 <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
-                  · {new Date(digest.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  · {formatLocalDate(digest.generatedAt)}
                 </span>
               )}
             </div>
@@ -1687,7 +1688,7 @@ export default function Home() {
             </table>
             <div className="px-2 py-1.5 border-t border-[var(--lg-border-faint)] text-[8px] text-[var(--lg-text-muted)] opacity-50 flex justify-between">
               <span>Source: MLB Stats API · {depthPlayerCount} players</span>
-              <span>{depthCachedAt && new Date(depthCachedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+              <span>{depthCachedAt && formatLocalDate(depthCachedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
             </div>
           </div>
         )}

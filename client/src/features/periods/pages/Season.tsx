@@ -14,6 +14,7 @@ import { getCurrentSeason, type Season } from "../../seasons/api";
 import { getTeamDetails } from "../../teams/api";
 import { POS_ORDER } from "../../../lib/baseballUtils";
 import { mapPosition } from "../../../lib/sportConfig";
+import { formatLocalDate, formatLocalTime } from "../../../lib/timeUtils";
 
 type SeasonStandingsApiRow = {
   teamId: number;
@@ -328,7 +329,7 @@ const SeasonPage: React.FC = () => {
                     Cumulative roto points across all periods.
                     {seasonUpdatedAt && (
                       <span className="ml-2 text-[10px] text-[var(--lg-text-muted)] opacity-60">
-                        Updated {seasonUpdatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at {seasonUpdatedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                        Updated {formatLocalDate(seasonUpdatedAt)} at {formatLocalTime(seasonUpdatedAt)}
                       </span>
                     )}
                   </div>
@@ -464,7 +465,7 @@ const SeasonPage: React.FC = () => {
               </div>
               {periodUpdatedAt && (
                 <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
-                  Updated {periodUpdatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} at {periodUpdatedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                  Updated {formatLocalDate(periodUpdatedAt)} at {formatLocalTime(periodUpdatedAt)}
                 </span>
               )}
             </div>

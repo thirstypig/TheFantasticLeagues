@@ -24,6 +24,7 @@ import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
+import LeagueHealthTab from "../components/LeagueHealthTab";
 import KeeperPrepDashboard from "../../keeper-prep/components/KeeperPrepDashboard";
 import SeasonManager from "../components/SeasonManager";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -186,13 +187,14 @@ export default function Commissioner() {
   const gating = useSeasonGating();
 
   // Tab definitions with season-aware gating
-  type TabKey = 'league' | 'members' | 'teams' | 'season' | 'trades';
+  type TabKey = 'league' | 'members' | 'teams' | 'season' | 'trades' | 'health';
   const TABS: { key: TabKey; label: string; icon: string; enabled: boolean; reason?: string }[] = [
     { key: 'league', label: 'League', icon: 'building', enabled: true },
     { key: 'members', label: 'Members', icon: 'users', enabled: true },
     { key: 'teams', label: 'Teams', icon: 'trophy', enabled: true },
     { key: 'season', label: 'Season', icon: 'calendar', enabled: true },
     { key: 'trades', label: 'Trades', icon: 'arrows', enabled: !gating.isReadOnly, reason: 'Season is completed' },
+    { key: 'health', label: 'Health', icon: 'activity', enabled: true },
   ];
 
   // Tabs
@@ -642,6 +644,9 @@ export default function Commissioner() {
                         )}
                         {tab.icon === 'arrows' && (
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+                        )}
+                        {tab.icon === 'activity' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
                         )}
                         {tab.label}
                     </button>
@@ -1144,6 +1149,13 @@ export default function Commissioner() {
                           teams={overview.teams}
                         />
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'health' && (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">League Health</h2>
+                    <LeagueHealthTab leagueId={lid} />
                 </div>
             )}
 

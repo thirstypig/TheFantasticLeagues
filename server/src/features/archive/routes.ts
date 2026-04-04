@@ -56,6 +56,7 @@ import multer from 'multer';
 import { ArchiveImportService } from './services/archiveImportService.js';
 import { ArchiveExportService } from './services/archiveExportService.js';
 import { ArchiveStatsService, type MlbSearchPerson, type MlbSearchResponse } from './services/archiveStatsService.js';
+import { computeTrophyCase } from './services/trophyCaseService.js';
 
 const archiver = new ArchiveExportService();
 const statsService = new ArchiveStatsService();
@@ -719,6 +720,19 @@ router.post('/archive/:year/auto-match', requireAuth, requireAdmin, asyncHandler
     unmatched: result.unmatched,
     message: `Matched ${result.matched} players, ${result.unmatched} could not be matched automatically`
   });
+}));
+
+/**
+ * GET /api/archive/trophy-case?leagueId=X
+ * Returns all-time trophy case: championships, all-time standings, records, dynasty scores.
+ */
+router.get('/archive/trophy-case', requireAuth, asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isFinite(leagueId)) {
+    return res.status(400).json({ error: 'Invalid leagueId' });
+  }
+  const result = await computeTrophyCase(leagueId);
+  return res.json(result);
 }));
 
 // ==============================
