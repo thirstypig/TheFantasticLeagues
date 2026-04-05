@@ -471,5 +471,126 @@ router.post("/", requireAuth, validateBody(createLeagueSchema), asyncHandler(asy
   });
 }));
 
+// ���── Public League Discovery ──────────────────────────────────────────
+
+/**
+ * GET /api/leagues/public
+ * Returns all leagues that are PUBLIC or OPEN visibility for the community board.
+ * No auth required.
+ */
+// NOTE: New fields (visibility, maxTeams, etc.) require `npx prisma generate` after migration.
+// Using `as any` until the Prisma client is regenerated.
+router.get("/leagues/public", asyncHandler(async (_req, res) => {
+  const leagues = await (prisma.league as any).findMany({
+    where: {
+      visibility: { in: ["PUBLIC", "OPEN"] },
+    },
+    select: {
+      id: true,
+      name: true,
+      season: true,
+      sport: true,
+      scoringFormat: true,
+      draftMode: true,
+      visibility: true,
+      maxTeams: true,
+      description: true,
+      entryFee: true,
+      entryFeeNote: true,
+      teams: { select: { id: true } },
+      memberships: {
+        where: { role: "COMMISSIONER" },
+        select: { user: { select: { name: true } } },
+        take: 1,
+      },
+    },
+    orderBy: [{ season: "desc" }, { name: "asc" }],
+  });
+
+  const result = (leagues as any[]).map((l: any) => ({
+    id: l.id,
+    name: l.name,
+    season: l.season,
+    sport: l.sport,
+    scoringFormat: l.scoringFormat,
+    draftMode: l.draftMode,
+    visibility: l.visibility,
+    maxTeams: l.maxTeams,
+    teamsFilled: l.teams.length,
+    description: l.description,
+    entryFee: l.entryFee,
+    entryFeeNote: l.entryFeeNote,
+    commissioner: l.memberships[0]?.user?.name ?? null,
+  }));
+
+  return res.json({ leagues: result });
+}));
+
+/**
+ * GET /api/leagues/join-info/:inviteCode
+ * Returns public info about a league/franchise for the join landing page.
+ * No auth required.
+ */
+router.get("/leagues/join-info/:inviteCode", asyncHandler(async (req, res) => {
+  const { inviteCode } = req.params;
+
+  // Look up invite code on Franchise first, then fall back to League
+  let league: any = null;
+
+  const franchise = await prisma.franchise.findUnique({
+    where: { inviteCode },
+    select: { id: true, name: true },
+  });
+
+  const joinInfoSelect = {
+    id: true,
+    name: true,
+    season: true,
+    sport: true,
+    scoringFormat: true,
+    draftMode: true,
+    visibility: true,
+    maxTeams: true,
+    description: true,
+    entryFee: true,
+    entryFeeNote: true,
+    teams: { select: { id: true } },
+  };
+
+  if (franchise) {
+    league = await (prisma.league as any).findFirst({
+      where: { franchiseId: franchise.id },
+      orderBy: { season: "desc" },
+      select: joinInfoSelect,
+    });
+  } else {
+    league = await (prisma.league as any).findUnique({
+      where: { inviteCode },
+      select: joinInfoSelect,
+    });
+  }
+
+  if (!league) {
+    return res.status(404).json({ error: "Invalid invite code." });
+  }
+
+  return res.json({
+    league: {
+      id: league.id,
+      name: league.name,
+      season: league.season,
+      sport: league.sport,
+      scoringFormat: league.scoringFormat,
+      draftMode: league.draftMode,
+      description: league.description,
+      entryFee: league.entryFee,
+      entryFeeNote: league.entryFeeNote,
+      teamsFilled: league.teams.length,
+      maxTeams: league.maxTeams,
+      isFull: league.teams.length >= league.maxTeams,
+    },
+  });
+}));
+
 export const leaguesRouter = router;
 export default leaguesRouter;

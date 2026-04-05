@@ -10,6 +10,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { addMemberSchema } from "../../lib/schemas.js";
+import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.js";
 
 // --- Zod Schemas ---
 
@@ -140,7 +141,9 @@ router.post("/commissioner/create-season", requireAuth, asyncHandler(async (req,
 router.get("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
 
-    const league = await prisma.league.findUnique({
+    // NOTE: New fields (waiver*, visibility, maxTeams, description, entryFee, entryFeeNote)
+    // require `npx prisma generate` after migration. Using `as any` until then.
+    const league = await (prisma.league as any).findUnique({
       where: { id: leagueId },
       select: {
         id: true,
@@ -150,6 +153,28 @@ router.get("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(),
         draftOrder: true,
         isPublic: true,
         publicSlug: true,
+        scoringFormat: true,
+        pointsConfig: true,
+        playoffWeeks: true,
+        playoffTeams: true,
+        regularSeasonWeeks: true,
+        tradeReviewPolicy: true,
+        vetoThreshold: true,
+        waiverType: true,
+        faabBudget: true,
+        faabMinBid: true,
+        waiverPeriodDays: true,
+        processingFreq: true,
+        faabTiebreaker: true,
+        acquisitionLimit: true,
+        conditionalClaims: true,
+        tradeDeadline: true,
+        rosterLockTime: true,
+        visibility: true,
+        maxTeams: true,
+        description: true,
+        entryFee: true,
+        entryFeeNote: true,
       },
     });
     if (!league) return res.status(404).json({ error: "League not found" });
@@ -237,7 +262,7 @@ router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommission
 
 /**
  * PATCH /api/commissioner/:leagueId
- * Update league details (e.g., name)
+ * Update league details — enforces rule lock tiers based on season status.
  */
 const updateLeagueSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -246,37 +271,87 @@ const updateLeagueSchema = z.object({
   playoffWeeks: z.number().int().min(0).max(10).optional(),
   playoffTeams: z.number().int().min(2).max(16).optional(),
   regularSeasonWeeks: z.number().int().min(1).max(30).optional(),
+  // Waiver configuration
+  waiverType: z.enum(["FAAB", "ROLLING_PRIORITY", "REVERSE_STANDINGS", "FREE_AGENT"]).optional(),
+  faabBudget: z.number().int().min(50).max(1000).optional(),
+  faabMinBid: z.number().int().min(0).max(1).optional(),
+  waiverPeriodDays: z.number().int().min(0).max(7).optional(),
+  processingFreq: z.enum(["DAILY", "WEEKLY_MON", "WEEKLY_WED", "WEEKLY_FRI", "WEEKLY_SUN"]).optional(),
+  faabTiebreaker: z.enum(["ROLLING_PRIORITY", "REVERSE_STANDINGS", "RANDOM"]).optional(),
+  acquisitionLimit: z.number().int().min(0).max(999).nullable().optional(),
+  conditionalClaims: z.boolean().optional(),
+  tradeDeadline: z.string().nullable().optional(), // ISO date string or null
+  rosterLockTime: z.enum(["GAME_TIME", "DAILY_LOCK"]).nullable().optional(),
+  // League discovery
+  visibility: z.enum(["PRIVATE", "PUBLIC", "OPEN"]).optional(),
+  maxTeams: z.number().int().min(4).max(30).optional(),
+  description: z.string().max(500).nullable().optional(),
+  entryFee: z.number().min(0).max(10000).nullable().optional(),
+  entryFeeNote: z.string().max(200).nullable().optional(),
+  // Trade settings
+  tradeReviewPolicy: z.enum(["COMMISSIONER", "LEAGUE_VOTE"]).optional(),
+  vetoThreshold: z.number().int().min(1).max(20).optional(),
 });
 
 router.patch("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(), validateBody(updateLeagueSchema), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
-    const { name, scoringFormat, pointsConfig, playoffWeeks, playoffTeams, regularSeasonWeeks } = req.body;
+    const body = req.body;
 
-    // Scoring format can only be changed during SETUP
-    if (scoringFormat) {
-      const season = await prisma.season.findFirst({
-        where: { leagueId },
-        orderBy: { year: "desc" },
-        select: { status: true },
-      });
-      if (season && season.status !== "SETUP" && season.status !== "DRAFT") {
-        return res.status(400).json({ error: "Scoring format can only be changed during SETUP or DRAFT phase" });
+    // Get current season status for rule lock checks
+    const season = await prisma.season.findFirst({
+      where: { leagueId },
+      orderBy: { year: "desc" },
+      select: { status: true },
+    });
+    const seasonStatus = season?.status ?? null;
+
+    // Check all submitted fields against rule locks
+    const lockedViolations: string[] = [];
+    for (const field of Object.keys(body)) {
+      if (body[field] === undefined) continue;
+      if (isRuleLocked(field, seasonStatus)) {
+        lockedViolations.push(field);
       }
     }
 
-    const league = await commissionerService.updateLeague(leagueId, {
-      name, scoringFormat, pointsConfig, playoffWeeks, playoffTeams, regularSeasonWeeks,
-    });
+    if (lockedViolations.length > 0) {
+      return res.status(400).json({
+        error: `These settings are locked and cannot be changed: ${lockedViolations.join(", ")}. ${lockMessage(lockedViolations[0])}`,
+        lockedFields: lockedViolations,
+      });
+    }
+
+    const league = await commissionerService.updateLeague(leagueId, body);
 
     writeAuditLog({
       userId: req.user!.id,
       action: "LEAGUE_UPDATE",
       resourceType: "League",
       resourceId: String(leagueId),
-      metadata: { leagueId, name },
+      metadata: { leagueId, fields: Object.keys(body).filter(k => body[k] !== undefined) },
     });
 
     return res.json({ league });
+}));
+
+/**
+ * GET /api/commissioner/:leagueId/locked-fields
+ * Returns list of fields that are currently locked based on season status.
+ */
+router.get("/commissioner/:leagueId/locked-fields", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+
+    const season = await prisma.season.findFirst({
+      where: { leagueId },
+      orderBy: { year: "desc" },
+      select: { status: true },
+    });
+    const seasonStatus = season?.status ?? null;
+
+    return res.json({
+      seasonStatus,
+      lockedFields: getLockedFields(seasonStatus),
+    });
 }));
 
 /**

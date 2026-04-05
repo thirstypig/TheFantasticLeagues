@@ -1,10 +1,12 @@
-import React, { useState } from "react";
-import { MessageCircle, Megaphone, ShoppingBag, Users } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageCircle, Megaphone, ShoppingBag, Users, Globe } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
+import { getPublicLeagues, type PublicLeagueListItem } from "../features/leagues/api";
 
-/* ── Channel config ──────────────────────────────────────────── */
+/* -- Channel config --------------------------------------------------------- */
 
-type ChannelId = "announcements" | "marketplace" | "general";
+type ChannelId = "leagues" | "announcements" | "marketplace" | "general";
 
 const CHANNELS: {
   id: ChannelId;
@@ -14,6 +16,14 @@ const CHANNELS: {
   accentBg: string;
   description: string;
 }[] = [
+  {
+    id: "leagues",
+    label: "Open Leagues",
+    icon: Globe,
+    accent: "text-blue-500",
+    accentBg: "bg-blue-500/10",
+    description: "Browse public and open leagues looking for new members",
+  },
   {
     id: "announcements",
     label: "Announcements",
@@ -40,7 +50,7 @@ const CHANNELS: {
   },
 ];
 
-/* ── Sample cards ────────────────────────────────────────────── */
+/* -- Sample cards for non-leagues channels ---------------------------------- */
 
 const SAMPLE_CARDS = [
   {
@@ -58,10 +68,22 @@ const SAMPLE_CARDS = [
   },
 ];
 
-/* ── Component ───────────────────────────────────────────────── */
+/* -- Component -------------------------------------------------------------- */
 
 export default function ProductBoard() {
-  const [activeChannel, setActiveChannel] = useState<ChannelId>("marketplace");
+  const [activeChannel, setActiveChannel] = useState<ChannelId>("leagues");
+  const [publicLeagues, setPublicLeagues] = useState<PublicLeagueListItem[]>([]);
+  const [leaguesLoading, setLeaguesLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (activeChannel !== "leagues") return;
+    setLeaguesLoading(true);
+    getPublicLeagues()
+      .then((resp) => setPublicLeagues(resp.leagues ?? []))
+      .catch(() => setPublicLeagues([]))
+      .finally(() => setLeaguesLoading(false));
+  }, [activeChannel]);
 
   const channelCards = SAMPLE_CARDS.filter((c) => c.channel === activeChannel);
 
@@ -72,9 +94,6 @@ export default function ProductBoard() {
           title="Community"
           subtitle="Connect with fantasy sports managers across TFL"
         />
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 self-start mt-1">
-          Coming Soon
-        </span>
       </div>
 
       {/* Channel tabs */}
@@ -108,71 +127,153 @@ export default function ProductBoard() {
         ) : null;
       })()}
 
-      {/* Cards */}
-      <div className="space-y-4">
-        {channelCards.map((card, i) => (
-          <div
-            key={i}
-            className="rounded-2xl p-4 border border-[var(--lg-border-faint)] bg-[var(--lg-glass-bg)]"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              {card.type === "league_listing" && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                  League Listing
-                </span>
-              )}
-              {card.type === "announcement" && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                  Announcement
-                </span>
-              )}
+      {/* Leagues Channel */}
+      {activeChannel === "leagues" && (
+        <div className="space-y-4">
+          {leaguesLoading ? (
+            <div className="text-center py-16 text-sm text-[var(--lg-text-muted)]">Loading leagues...</div>
+          ) : publicLeagues.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-4xl mb-3 opacity-30">
+                <Globe className="w-12 h-12 mx-auto opacity-30" />
+              </div>
+              <p className="text-sm text-[var(--lg-text-muted)]">
+                No public leagues available yet.
+              </p>
+              <p className="text-xs text-[var(--lg-text-muted)] mt-1 opacity-60">
+                Create a league and set visibility to "Public" or "Open" to list it here.
+              </p>
             </div>
+          ) : (
+            publicLeagues.map((lg) => {
+              const spotsLeft = lg.maxTeams - lg.teamsFilled;
+              return (
+                <div
+                  key={lg.id}
+                  className="rounded-2xl p-4 border border-[var(--lg-border-faint)] bg-[var(--lg-glass-bg)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          lg.visibility === "OPEN"
+                            ? "bg-green-500/15 text-green-600 dark:text-green-400"
+                            : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                        }`}>
+                          {lg.visibility === "OPEN" ? "Open — Join Now" : "Public — Request to Join"}
+                        </span>
+                        {lg.entryFee != null && lg.entryFee > 0 && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                            ${lg.entryFee} entry
+                          </span>
+                        )}
+                      </div>
 
-            <h3 className="text-sm font-semibold text-[var(--lg-text-primary)] mb-1">
-              {card.title}
-            </h3>
-            <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed mb-3">
-              {card.body}
-            </p>
+                      <h3 className="text-sm font-semibold text-[var(--lg-text-primary)] mb-1">
+                        {lg.name} ({lg.season})
+                      </h3>
 
-            {card.metadata && (
-              <div className="flex flex-wrap gap-3 text-[10px] text-[var(--lg-text-muted)]">
-                {card.metadata.sport && (
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {card.metadata.sport}
+                      {lg.description && (
+                        <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed mb-2">
+                          {lg.description}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-3 text-[10px] text-[var(--lg-text-muted)]">
+                        <span className="capitalize">{lg.sport}</span>
+                        <span>{lg.scoringFormat?.replace("_", " ")}</span>
+                        <span>{lg.draftMode}</span>
+                        <span>{lg.teamsFilled}/{lg.maxTeams} teams</span>
+                        {lg.commissioner && <span>Commish: {lg.commissioner}</span>}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {spotsLeft > 0 ? (
+                        <button
+                          onClick={() => navigate(`/join/${lg.id}`)}
+                          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-colors"
+                        >
+                          {lg.visibility === "OPEN" ? "Join Now" : "Request"}
+                        </button>
+                      ) : (
+                        <span className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-tint)] text-[var(--lg-text-muted)]">
+                          Full
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Other channel cards */}
+      {activeChannel !== "leagues" && (
+        <div className="space-y-4">
+          {channelCards.map((card, i) => (
+            <div
+              key={i}
+              className="rounded-2xl p-4 border border-[var(--lg-border-faint)] bg-[var(--lg-glass-bg)]"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {card.type === "league_listing" && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                    League Listing
                   </span>
                 )}
-                {card.metadata.format && (
-                  <span>{card.metadata.format}</span>
-                )}
-                {card.metadata.buyIn && (
-                  <span className="font-medium">Buy-in: {card.metadata.buyIn}</span>
-                )}
-                {card.metadata.spotsOpen !== undefined && (
-                  <span className={card.metadata.spotsOpen > 0 ? "text-emerald-500 font-semibold" : "text-[var(--lg-text-muted)]"}>
-                    {card.metadata.spotsOpen > 0 ? `${card.metadata.spotsOpen} spots open` : "Full"}
+                {card.type === "announcement" && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                    Announcement
                   </span>
                 )}
               </div>
-            )}
-          </div>
-        ))}
 
-        {channelCards.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-3 opacity-30">
-              {activeChannel === "announcements" ? "📢" : activeChannel === "marketplace" ? "🏪" : "💬"}
+              <h3 className="text-sm font-semibold text-[var(--lg-text-primary)] mb-1">
+                {card.title}
+              </h3>
+              <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed mb-3">
+                {card.body}
+              </p>
+
+              {card.metadata && (
+                <div className="flex flex-wrap gap-3 text-[10px] text-[var(--lg-text-muted)]">
+                  {card.metadata.sport && (
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {card.metadata.sport}
+                    </span>
+                  )}
+                  {card.metadata.format && (
+                    <span>{card.metadata.format}</span>
+                  )}
+                  {card.metadata.buyIn && (
+                    <span className="font-medium">Buy-in: {card.metadata.buyIn}</span>
+                  )}
+                  {card.metadata.spotsOpen !== undefined && (
+                    <span className={card.metadata.spotsOpen > 0 ? "text-emerald-500 font-semibold" : "text-[var(--lg-text-muted)]"}>
+                      {card.metadata.spotsOpen > 0 ? `${card.metadata.spotsOpen} spots open` : "Full"}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="text-sm text-[var(--lg-text-muted)]">
-              No posts in this channel yet.
-            </p>
-            <p className="text-xs text-[var(--lg-text-muted)] mt-1 opacity-60">
-              This feature is coming soon.
-            </p>
-          </div>
-        )}
-      </div>
+          ))}
+
+          {channelCards.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-sm text-[var(--lg-text-muted)]">
+                No posts in this channel yet.
+              </p>
+              <p className="text-xs text-[var(--lg-text-muted)] mt-1 opacity-60">
+                This feature is coming soon.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

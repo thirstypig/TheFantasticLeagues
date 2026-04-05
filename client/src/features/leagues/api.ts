@@ -109,3 +109,44 @@ export async function createLeague(input: CreateLeagueInput): Promise<CreateLeag
   track("league_created", { leagueId: result.league.id, name: result.league.name });
   return result;
 }
+
+// ─── Public League Discovery ───
+
+export interface PublicLeagueListItem {
+  id: number;
+  name: string;
+  season: number;
+  sport: string;
+  scoringFormat: string;
+  draftMode: string;
+  visibility: string;
+  maxTeams: number;
+  teamsFilled: number;
+  description: string | null;
+  entryFee: number | null;
+  entryFeeNote: string | null;
+  commissioner: string | null;
+}
+
+export async function getPublicLeagues(): Promise<{ leagues: PublicLeagueListItem[] }> {
+  return fetchJsonApi(`${API_BASE}/leagues/public`);
+}
+
+export interface JoinInfoLeague {
+  id: number;
+  name: string;
+  season: number;
+  sport: string;
+  scoringFormat: string;
+  draftMode: string;
+  description: string | null;
+  entryFee: number | null;
+  entryFeeNote: string | null;
+  teamsFilled: number;
+  maxTeams: number;
+  isFull: boolean;
+}
+
+export async function getJoinInfo(inviteCode: string): Promise<{ league: JoinInfoLeague }> {
+  return fetchJsonApi(`${API_BASE}/leagues/join-info/${inviteCode}`);
+}

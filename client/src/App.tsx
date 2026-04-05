@@ -21,6 +21,7 @@ const AuctionResults = React.lazy(() => import("./features/auction/pages/Auction
 const KeeperSelection = React.lazy(() => import("./features/keeper-prep/pages/KeeperSelection"));
 const Rules = React.lazy(() => import("./features/leagues/pages/Rules"));
 const Profile = React.lazy(() => import("./features/auth/pages/Profile"));
+const ProfilePage = React.lazy(() => import("./features/profiles/pages/ProfilePage"));
 const Payouts = React.lazy(() => import("./features/periods/pages/Payouts"));
 const Signup = React.lazy(() => import("./features/auth/pages/Signup"));
 const ForgotPassword = React.lazy(() => import("./features/auth/pages/ForgotPassword"));
@@ -39,6 +40,7 @@ const About = React.lazy(() => import("./pages/About"));
 const AIHub = React.lazy(() => import("./features/ai/pages/AIHub"));
 const DraftReportPage = React.lazy(() => import("./features/ai/pages/DraftReportPage"));
 const CreateLeague = React.lazy(() => import("./features/leagues/pages/CreateLeague"));
+const JoinLeague = React.lazy(() => import("./features/leagues/pages/JoinLeague"));
 const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
 const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));
 const TradingBlockPage = React.lazy(() => import("./features/trading-block/pages/TradingBlockPage"));
@@ -138,7 +140,10 @@ export default function App() {
                     <Route path="/period" element={<Navigate to="/season" replace />} />
                     <Route path="/leagues" element={<Navigate to="/" replace />} />
                     <Route path="/create-league" element={<CreateLeague />} />
-                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/join/:inviteCode" element={<JoinLeague />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/profile/:userId" element={<ProfilePage />} />
+                    <Route path="/profile/legacy" element={<Profile />} />
                     <Route path="/payouts" element={<Payouts />} />
                     <Route path="/rules" element={<Rules />} />
                     <Route path="/tech" element={<Tech />} />

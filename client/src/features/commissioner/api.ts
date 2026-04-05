@@ -93,11 +93,35 @@ export async function updateLeague(leagueId: number, data: {
   playoffWeeks?: number;
   playoffTeams?: number;
   regularSeasonWeeks?: number;
+  // Waiver configuration
+  waiverType?: string;
+  faabBudget?: number;
+  faabMinBid?: number;
+  waiverPeriodDays?: number;
+  processingFreq?: string;
+  faabTiebreaker?: string;
+  acquisitionLimit?: number | null;
+  conditionalClaims?: boolean;
+  tradeDeadline?: string | null;
+  rosterLockTime?: string | null;
+  // League discovery
+  visibility?: string;
+  maxTeams?: number;
+  description?: string | null;
+  entryFee?: number | null;
+  entryFeeNote?: string | null;
+  // Trade settings
+  tradeReviewPolicy?: string;
+  vetoThreshold?: number;
 }): Promise<{ league: CommissionerLeague }> {
   return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+export async function getLockedFields(leagueId: number): Promise<{ seasonStatus: string | null; lockedFields: string[] }> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/locked-fields`);
 }
 
 export async function createTeam(leagueId: number, payload: {

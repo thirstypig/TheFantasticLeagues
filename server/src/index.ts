@@ -43,6 +43,7 @@ import { boardRouter } from "./features/board/index.js";
 import { notificationsRouter } from "./features/notifications/index.js";
 import { chatRouter } from "./features/chat/index.js";
 import { attachChatWs } from "./features/chat/services/chatWsService.js";
+import { profilesRouter } from "./features/profiles/index.js";
 
 import rateLimit from "express-rate-limit";
 import { attachUser } from "./middleware/auth.js";
@@ -212,6 +213,7 @@ async function main() {
   app.use("/api/board", boardRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/chat", chatRouter);
+  app.use("/api", profilesRouter);
 
   // Daily MLB player sync at 5:00 AM PT (12:00 UTC during PDT, 13:00 UTC during PST)
   // Using 12:00 UTC as a reasonable default for PT mornings

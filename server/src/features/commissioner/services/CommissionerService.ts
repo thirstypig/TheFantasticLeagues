@@ -829,14 +829,48 @@ export class CommissionerService {
     playoffWeeks?: number;
     playoffTeams?: number;
     regularSeasonWeeks?: number;
+    // Waiver configuration
+    waiverType?: string;
+    faabBudget?: number;
+    faabMinBid?: number;
+    waiverPeriodDays?: number;
+    processingFreq?: string;
+    faabTiebreaker?: string;
+    acquisitionLimit?: number | null;
+    conditionalClaims?: boolean;
+    tradeDeadline?: string | null;
+    rosterLockTime?: string | null;
+    // League discovery
+    visibility?: string;
+    maxTeams?: number;
+    description?: string | null;
+    entryFee?: number | null;
+    entryFeeNote?: string | null;
+    // Trade settings
+    tradeReviewPolicy?: string;
+    vetoThreshold?: number;
   }) {
     const updateData: Record<string, any> = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.scoringFormat !== undefined) updateData.scoringFormat = data.scoringFormat;
-    if (data.pointsConfig !== undefined) updateData.pointsConfig = data.pointsConfig;
-    if (data.playoffWeeks !== undefined) updateData.playoffWeeks = data.playoffWeeks;
-    if (data.playoffTeams !== undefined) updateData.playoffTeams = data.playoffTeams;
-    if (data.regularSeasonWeeks !== undefined) updateData.regularSeasonWeeks = data.regularSeasonWeeks;
+
+    // Simple pass-through fields
+    const directFields = [
+      "name", "scoringFormat", "pointsConfig", "playoffWeeks", "playoffTeams",
+      "regularSeasonWeeks", "waiverType", "faabBudget", "faabMinBid",
+      "waiverPeriodDays", "processingFreq", "faabTiebreaker", "acquisitionLimit",
+      "conditionalClaims", "rosterLockTime", "visibility", "maxTeams",
+      "description", "entryFee", "entryFeeNote", "tradeReviewPolicy", "vetoThreshold",
+    ] as const;
+
+    for (const field of directFields) {
+      if ((data as any)[field] !== undefined) {
+        updateData[field] = (data as any)[field];
+      }
+    }
+
+    // Handle tradeDeadline (string → DateTime)
+    if (data.tradeDeadline !== undefined) {
+      updateData.tradeDeadline = data.tradeDeadline ? new Date(data.tradeDeadline) : null;
+    }
 
     return prisma.league.update({
       where: { id: leagueId },

@@ -18,6 +18,7 @@ import {
   cancelInvite as apiCancelInvite,
   changeMemberRole as apiChangeMemberRole,
   removeMember as apiRemoveMember,
+  getLockedFields as apiGetLockedFields,
 } from "../api";
 import type { PendingInvite } from "../api";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
@@ -127,6 +128,151 @@ function teamExists(teams: CommissionerTeam[], teamId: number) {
   return teams.some((t) => t.id === teamId);
 }
 
+// ─── Padlock Icon SVG ───
+function PadlockIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 shrink-0">
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  );
+}
+
+// ─── SettingsSection — renders a card of settings fields with lock indicators ───
+type SettingsFieldDef = {
+  key: string;
+  label: string;
+  type: "readonly" | "select" | "number" | "text" | "toggle" | "date";
+  options?: Array<{ value: string | number; label: string }>;
+  format?: (v: any) => string;
+  min?: number;
+  max?: number;
+  nullable?: boolean;
+};
+
+function SettingsSection({
+  title,
+  league,
+  lockedFields,
+  busy,
+  onUpdate,
+  fields,
+}: {
+  title: string;
+  league: Record<string, any>;
+  lockedFields: string[];
+  busy: boolean;
+  onUpdate: (field: string, value: any) => Promise<void>;
+  fields: SettingsFieldDef[];
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+      <div className="mb-3 text-lg font-semibold text-[var(--lg-text-heading)]">{title}</div>
+      <div className="space-y-3">
+        {fields.map((f) => {
+          const locked = lockedFields.includes(f.key);
+          const value = league[f.key];
+
+          return (
+            <div
+              key={f.key}
+              className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3"
+            >
+              <div className="flex items-center gap-2 text-sm text-[var(--lg-text-muted)]">
+                {locked && (
+                  <span title="Locked — cannot be changed during the current season phase">
+                    <PadlockIcon />
+                  </span>
+                )}
+                {f.label}
+              </div>
+
+              {f.type === "readonly" ? (
+                <div className="text-sm font-medium text-[var(--lg-text-primary)]">
+                  {f.format ? f.format(value) : String(value ?? "—")}
+                </div>
+              ) : f.type === "select" ? (
+                <select
+                  value={value ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    // Try to coerce to number if the options are numbers
+                    const isNumOpt = f.options?.some(o => typeof o.value === "number");
+                    onUpdate(f.key, isNumOpt ? Number(raw) : raw);
+                  }}
+                  disabled={locked || busy}
+                  className="text-sm font-medium text-[var(--lg-text-primary)] bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {f.options?.map((o) => (
+                    <option key={String(o.value)} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              ) : f.type === "number" ? (
+                <input
+                  type="number"
+                  value={value ?? ""}
+                  min={f.min}
+                  max={f.max}
+                  disabled={locked || busy}
+                  onChange={() => {}}
+                  onBlur={(e) => {
+                    const num = e.target.value === "" ? (f.nullable ? null : undefined) : Number(e.target.value);
+                    if (num === undefined) return;
+                    if (num !== value) onUpdate(f.key, num);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-24 text-right text-sm font-medium text-[var(--lg-text-primary)] bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              ) : f.type === "text" ? (
+                <input
+                  type="text"
+                  defaultValue={value ?? ""}
+                  disabled={locked || busy}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim() || null;
+                    if (v !== (value ?? null)) onUpdate(f.key, v);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  }}
+                  className="flex-1 max-w-[200px] text-sm font-medium text-[var(--lg-text-primary)] bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              ) : f.type === "toggle" ? (
+                <button
+                  onClick={() => onUpdate(f.key, !value)}
+                  disabled={locked || busy}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    value
+                      ? "bg-green-500/15 text-green-500"
+                      : "bg-[var(--lg-tint-hover)] text-[var(--lg-text-muted)]"
+                  }`}
+                >
+                  {value ? "Enabled" : "Disabled"}
+                </button>
+              ) : f.type === "date" ? (
+                <input
+                  type="date"
+                  defaultValue={value ? new Date(value).toISOString().split("T")[0] : ""}
+                  disabled={locked || busy}
+                  onBlur={(e) => {
+                    const v = e.target.value || null;
+                    onUpdate(f.key, v);
+                  }}
+                  className="text-sm font-medium text-[var(--lg-text-primary)] bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Commissioner() {
   const { leagueId } = useParams();
   const lid = Number(leagueId);
@@ -182,6 +328,9 @@ export default function Commissioner() {
 
   // Pending invites
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+
+  // Rule lock fields
+  const [lockedFields, setLockedFields] = useState<string[]>([]);
 
   // Season gating
   const gating = useSeasonGating();
@@ -260,7 +409,7 @@ export default function Commissioner() {
       const priorTeamsList = await getPriorTeams(lid);
       setPriorTeams(priorTeamsList);
 
-      // Fetch invite code + pending invites
+      // Fetch invite code, pending invites, and locked fields
       try {
         const ic = await getInviteCode(lid);
         setInviteCodeValue(ic.inviteCode);
@@ -269,6 +418,10 @@ export default function Commissioner() {
         const invites = await apiGetInvites(lid);
         setPendingInvites(invites.filter(i => i.status === "PENDING"));
       } catch { /* ignore if no permission */ }
+      try {
+        const lf = await apiGetLockedFields(lid);
+        setLockedFields(lf.lockedFields ?? []);
+      } catch { /* ignore */ }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load commissioner data.");
     } finally {
@@ -682,48 +835,116 @@ export default function Commissioner() {
                   </div>
 
                   {/* League Settings */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 text-lg font-semibold text-[var(--lg-text-heading)]">League Settings</div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
-                        <div className="text-sm text-[var(--lg-text-muted)]">Draft Mode</div>
-                        <div className="text-sm font-medium text-[var(--lg-text-primary)]">
-                          {league.draftMode}
-                          {league.draftMode === "DRAFT" ? ` (${league.draftOrder ?? "—"})` : null}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
-                        <div className="text-sm text-[var(--lg-text-muted)]">Scoring Format</div>
-                        <select
-                          value={(league as any).scoringFormat ?? "ROTO"}
-                          onChange={async (e) => {
-                            try {
-                              await apiUpdateLeague(lid, { scoringFormat: e.target.value });
-                              toast(`Scoring format updated to ${e.target.value.replace("_", " ")}`, "success");
-                              loadAll();
-                            } catch (err: any) {
-                              toast(err?.message || "Failed to update scoring format", "error");
-                            }
-                          }}
-                          className="text-sm font-medium text-[var(--lg-text-primary)] bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-1"
-                        >
-                          <option value="ROTO">Roto</option>
-                          <option value="H2H_CATEGORIES">H2H Categories</option>
-                          <option value="H2H_POINTS">H2H Points</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
-                        <div className="text-sm text-[var(--lg-text-muted)]">Public</div>
-                        <div className="text-sm font-medium text-[var(--lg-text-primary)]">{league.isPublic ? "Yes" : "No"}</div>
-                      </div>
-                      {league.publicSlug && (
-                        <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
-                          <div className="text-sm text-[var(--lg-text-muted)]">Slug</div>
-                          <div className="text-sm font-medium text-[var(--lg-text-primary)]">{league.publicSlug}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <SettingsSection
+                    title="League Settings"
+                    league={league as any}
+                    lockedFields={lockedFields}
+                    busy={busy}
+                    onUpdate={async (field, value) => {
+                      try {
+                        await apiUpdateLeague(lid, { [field]: value });
+                        toast(`${field} updated.`, "success");
+                        await refreshOverviewOnly();
+                      } catch (err: any) {
+                        toast(err?.message || `Failed to update ${field}`, "error");
+                      }
+                    }}
+                    fields={[
+                      { key: "draftMode", label: "Draft Mode", type: "readonly", format: (v: any) => `${v}${(league as any).draftOrder ? ` (${(league as any).draftOrder})` : ""}` },
+                      { key: "scoringFormat", label: "Scoring Format", type: "select", options: [
+                        { value: "ROTO", label: "Roto" },
+                        { value: "H2H_CATEGORIES", label: "H2H Categories" },
+                        { value: "H2H_POINTS", label: "H2H Points" },
+                      ]},
+                      { key: "maxTeams", label: "Max Teams", type: "number", min: 4, max: 30 },
+                      { key: "playoffWeeks", label: "Playoff Weeks", type: "number", min: 0, max: 10 },
+                      { key: "playoffTeams", label: "Playoff Teams", type: "number", min: 2, max: 16 },
+                      { key: "regularSeasonWeeks", label: "Regular Season Weeks", type: "number", min: 1, max: 30 },
+                      { key: "visibility", label: "Visibility", type: "select", options: [
+                        { value: "PRIVATE", label: "Private" },
+                        { value: "PUBLIC", label: "Public" },
+                        { value: "OPEN", label: "Open" },
+                      ]},
+                      { key: "description", label: "Description", type: "text" },
+                      { key: "entryFee", label: "Entry Fee ($)", type: "number", min: 0, max: 10000 },
+                      { key: "entryFeeNote", label: "Entry Fee Note", type: "text" },
+                    ]}
+                  />
+
+                  {/* Waiver Configuration */}
+                  <SettingsSection
+                    title="Waiver Configuration"
+                    league={league as any}
+                    lockedFields={lockedFields}
+                    busy={busy}
+                    onUpdate={async (field, value) => {
+                      try {
+                        await apiUpdateLeague(lid, { [field]: value });
+                        toast(`${field} updated.`, "success");
+                        await refreshOverviewOnly();
+                      } catch (err: any) {
+                        toast(err?.message || `Failed to update ${field}`, "error");
+                      }
+                    }}
+                    fields={[
+                      { key: "waiverType", label: "Waiver Type", type: "select", options: [
+                        { value: "FAAB", label: "FAAB" },
+                        { value: "ROLLING_PRIORITY", label: "Rolling Priority" },
+                        { value: "REVERSE_STANDINGS", label: "Reverse Standings" },
+                        { value: "FREE_AGENT", label: "Free Agent" },
+                      ]},
+                      { key: "faabBudget", label: "FAAB Budget ($)", type: "number", min: 50, max: 1000 },
+                      { key: "faabMinBid", label: "FAAB Min Bid ($)", type: "select", options: [
+                        { value: 0, label: "$0" },
+                        { value: 1, label: "$1" },
+                      ]},
+                      { key: "waiverPeriodDays", label: "Waiver Period (days)", type: "number", min: 0, max: 7 },
+                      { key: "processingFreq", label: "Processing Frequency", type: "select", options: [
+                        { value: "DAILY", label: "Daily" },
+                        { value: "WEEKLY_MON", label: "Weekly (Mon)" },
+                        { value: "WEEKLY_WED", label: "Weekly (Wed)" },
+                        { value: "WEEKLY_FRI", label: "Weekly (Fri)" },
+                        { value: "WEEKLY_SUN", label: "Weekly (Sun)" },
+                      ]},
+                      { key: "faabTiebreaker", label: "FAAB Tiebreaker", type: "select", options: [
+                        { value: "ROLLING_PRIORITY", label: "Rolling Priority" },
+                        { value: "REVERSE_STANDINGS", label: "Reverse Standings" },
+                        { value: "RANDOM", label: "Random" },
+                      ]},
+                      { key: "acquisitionLimit", label: "Acquisition Limit", type: "number", min: 0, max: 999, nullable: true },
+                      { key: "conditionalClaims", label: "Conditional Claims", type: "toggle" },
+                    ]}
+                  />
+
+                  {/* Trade Settings */}
+                  <SettingsSection
+                    title="Trade Settings"
+                    league={league as any}
+                    lockedFields={lockedFields}
+                    busy={busy}
+                    onUpdate={async (field, value) => {
+                      try {
+                        await apiUpdateLeague(lid, { [field]: value });
+                        toast(`${field} updated.`, "success");
+                        await refreshOverviewOnly();
+                      } catch (err: any) {
+                        toast(err?.message || `Failed to update ${field}`, "error");
+                      }
+                    }}
+                    fields={[
+                      { key: "tradeReviewPolicy", label: "Trade Review", type: "select", options: [
+                        { value: "COMMISSIONER", label: "Commissioner Review" },
+                        { value: "LEAGUE_VOTE", label: "League Vote" },
+                      ]},
+                      { key: "vetoThreshold", label: "Veto Threshold", type: "number", min: 1, max: 20 },
+                      { key: "tradeDeadline", label: "Trade Deadline", type: "date" },
+                      { key: "rosterLockTime", label: "Roster Lock Time", type: "select", options: [
+                        { value: "", label: "None" },
+                        { value: "GAME_TIME", label: "Game Time" },
+                        { value: "DAILY_LOCK", label: "Daily Lock" },
+                      ]},
+                    ]}
+                  />
 
                   {/* Invite Code */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
