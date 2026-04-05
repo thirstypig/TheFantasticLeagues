@@ -40,6 +40,7 @@ import { mlbFeedRouter } from "./features/mlb-feed/index.js";
 import { watchlistRouter } from "./features/watchlist/index.js";
 import { tradingBlockRouter } from "./features/trading-block/index.js";
 import { boardRouter } from "./features/board/index.js";
+import { notificationsRouter } from "./features/notifications/index.js";
 
 import rateLimit from "express-rate-limit";
 import { attachUser } from "./middleware/auth.js";
@@ -206,6 +207,7 @@ async function main() {
   app.use("/api/watchlist", watchlistRouter);
   app.use("/api/trading-block", tradingBlockRouter);
   app.use("/api/board", boardRouter);
+  app.use("/api/notifications", notificationsRouter);
 
   // Daily MLB player sync at 5:00 AM PT (12:00 UTC during PDT, 13:00 UTC during PST)
   // Using 12:00 UTC as a reasonable default for PT mornings

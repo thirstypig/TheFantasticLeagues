@@ -11,6 +11,7 @@ import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { logger } from "../../lib/logger.js";
 import { nextDayEffective } from "../../lib/utils.js";
 import { sendTradeProposedEmail, sendTradeProcessedEmail, sendTradeVetoedEmail, notifyTeamOwners } from "../../lib/emailService.js";
+import { sendPushToTeamOwners, sendPushToLeague } from "../../lib/pushService.js";
 
 /**
  * Auto-generate AI analysis after a trade is processed.
@@ -207,6 +208,16 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
         leagueId,
       }),
     ).catch(err => logger.warn({ err }, "Email notification failed"));
+
+    // Push notifications (fire-and-forget)
+    for (const cId of counterpartyIds) {
+      sendPushToTeamOwners(cId, {
+        title: "Trade Proposal",
+        body: `${pTeam?.name ?? "A team"} has proposed a trade in ${lg?.name ?? "your league"}`,
+        tag: `trade-${trade.id}`,
+        url: `/activity?leagueId=${leagueId}`,
+      }, "tradeProposal", req.user!.id).catch(err => logger.warn({ err }, "Push notification failed"));
+    }
   }
 
   res.json(trade);
@@ -511,6 +522,14 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
       leagueName: tradeLeague?.name ?? "", leagueId: trade.leagueId,
     }),
   ).catch(err => logger.warn({ err }, "Email notification failed"));
+
+  // Push notification to entire league (fire-and-forget)
+  sendPushToLeague(trade.leagueId, {
+    title: "Trade Executed",
+    body: `A trade with ${trade.items.length} assets has been processed in ${tradeLeague?.name ?? "your league"}`,
+    tag: `trade-processed-${id}`,
+    url: `/activity?leagueId=${trade.leagueId}`,
+  }, "tradeResult", req.user!.id).catch(err => logger.warn({ err }, "Push notification failed"));
 
   res.json({ success: true });
 }));

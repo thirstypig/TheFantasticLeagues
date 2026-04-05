@@ -12,7 +12,8 @@ import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { assertPlayerAvailable, assertRosterLimit } from "../../lib/rosterGuard.js";
 import { computeTeamStatsFromDb, computeStandingsFromStats } from "../standings/services/standingsService.js";
 import { nextDayEffective } from "../../lib/utils.js";
-import { sendWaiverResultEmail, notifyTeamOwners } from "../../lib/emailService.js";
+import { sendWaiverResultEmail, notifyTeamOwners, getTeamOwnerEmails } from "../../lib/emailService.js";
+import { sendPushToUser } from "../../lib/pushService.js";
 
 /**
  * Auto-generate AI analysis after a waiver claim is processed.
@@ -364,6 +365,22 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
         leagueName: waiverLeague?.name ?? "", leagueId,
       }),
     ).catch(err => logger.warn({ err }, "Email notification failed"));
+
+    // Push notification to team owners (fire-and-forget)
+    getTeamOwnerEmails(claim.teamId).then(owners => {
+      for (const owner of owners) {
+        if (owner.userId === req.user!.id) continue;
+        const pName = claim.player?.name ?? "a player";
+        sendPushToUser(owner.userId, {
+          title: isSuccess ? "Waiver Claim Won" : "Waiver Claim Failed",
+          body: isSuccess
+            ? `You won ${pName} for $${claim.bidAmount}!`
+            : `Your bid of $${claim.bidAmount} for ${pName} was not successful`,
+          tag: `waiver-${claim.id}`,
+          url: `/activity?leagueId=${leagueId}`,
+        }, "waiverResult").catch(err => logger.warn({ err }, "Push notification failed"));
+      }
+    }).catch(err => logger.warn({ err }, "Push owner lookup failed"));
   }
 
   res.json({ success: true, logs });

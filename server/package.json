@@ -33,6 +33,7 @@
     "node-cron": "^4.2.1",
     "resend": "^6.9.4",
     "tsx": "^4.19.2",
+    "web-push": "^3.6.7",
     "ws": "^8.19.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
@@ -45,6 +46,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.2",
     "@types/node-cron": "^3.0.11",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.18",
     "prisma": "^6.19.1",

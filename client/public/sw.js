@@ -1,5 +1,5 @@
 // Service Worker — minimal, network-first with cache fallback
-const CACHE_NAME = 'tfl-v4';
+const CACHE_NAME = 'tfl-v5';
 const SHELL_URLS = ['/'];
 
 // Install: cache the app shell
@@ -51,5 +51,38 @@ self.addEventListener('fetch', (event) => {
               : new Response('Offline', { status: 503, statusText: 'Offline' }))
         )
       )
+  );
+});
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const { title, body, tag, url } = data;
+  event.waitUntil(
+    self.registration.showNotification(title || 'The Fantastic Leagues', {
+      body: body || '',
+      icon: '/icon-192.png',
+      badge: '/badge-72.png',
+      tag: tag,
+      renotify: true,
+      data: { url: url || '/' },
+    })
+  );
+});
+
+// Notification click handler — navigate to the relevant page
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
   );
 });

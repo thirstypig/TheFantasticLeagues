@@ -130,6 +130,9 @@ model User {
   productBoardCards      ProductBoardCard[]  @relation("ProductBoardCards")
   productBoardReplies    ProductBoardReply[] @relation("ProductBoardReplies")
 
+  pushSubscriptions      PushSubscription[]
+  notificationPreference NotificationPreference?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -1045,4 +1048,36 @@ model ProductBoardReply {
   user User             @relation("ProductBoardReplies", fields: [userId], references: [id])
 
   @@index([cardId])
+}
+
+// ======================
+//  Push Notifications
+// ======================
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id                   Int     @id @default(autoincrement())
+  userId               Int     @unique
+  tradeProposal        Boolean @default(true)
+  tradeResult          Boolean @default(true)
+  waiverResult         Boolean @default(true)
+  lineupReminder       Boolean @default(true)
+  commissionerAnnounce Boolean @default(true)
+  boardReply           Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
