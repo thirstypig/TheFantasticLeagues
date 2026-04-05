@@ -285,10 +285,10 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
         <ThemedThead>
           <ThemedTr>
             <ThemedTh frozen>Team</ThemedTh>
-            <ThemedTh align="center" title="Period-to-date cumulative stat">Period to Date</ThemedTh>
-            <ThemedTh align="center" title="Season-to-date cumulative">Season to Date</ThemedTh>
+            <ThemedTh align="center" title="Season-to-date cumulative">Season</ThemedTh>
+            <ThemedTh align="center" title="Period-to-date cumulative stat">Period</ThemedTh>
             {viewMode === "points" && <ThemedTh align="center">Points</ThemedTh>}
-            <ThemedTh align="center" title="Day-over-day change">Chg</ThemedTh>
+            <ThemedTh align="center" title="Change from previous standings computation">Chg</ThemedTh>
           </ThemedTr>
         </ThemedThead>
         <tbody className="divide-y divide-[var(--lg-divide)]">
@@ -301,12 +301,12 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
                 </div>
               </ThemedTd>
               <ThemedTd align="center">
-                <span className="font-semibold">{formatStatForCategory(categoryId, row.periodStat)}</span>
-              </ThemedTd>
-              <ThemedTd align="center">
                 <span className="text-[var(--lg-text-muted)] opacity-70">
                   {row.seasonStat != null ? formatStatForCategory(categoryId, row.seasonStat) : "—"}
                 </span>
+              </ThemedTd>
+              <ThemedTd align="center">
+                <span className="font-semibold">{formatStatForCategory(categoryId, row.periodStat)}</span>
               </ThemedTd>
               {viewMode === "points" && (
                 <ThemedTd align="center">
