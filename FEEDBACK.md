@@ -22,15 +22,27 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - **Competitive analysis brainstorm**: 4-agent research — competitors, APIs, pricing, remote UX
 - **Roadmap rewrite**: 5 phases, 27 items, seasonal pricing model
 
+- **Smart Deadline Warnings**: DeadlineWarnings component with countdown pills (blue/amber/red urgency), dismissible, period end + next period + season end alerts
+- **Push Notifications**: web-push with VAPID keys, PushSubscription + NotificationPreference models, sw.js handlers, /api/notifications routes, NotificationSettings component, wired into trades + waivers
+- **H2H Category Scoring**: ScoringEngine interface with Roto/H2HCategory/Points implementations, Matchup generation, configurable fantasy points, Matchups tab on Season page
+- **Points-Based Scoring**: Configurable pointsConfig on League, DEFAULT_POINTS_CONFIG (R=1, HR=4, etc.)
+- **Snake Draft Mode**: DraftBoard grid, WebSocket at /ws/draft, auto-pick, pause/resume, "On the Clock" indicator
+- **In-App League Chat**: ChatMessage model, WebSocket at /ws/chat, ChatPanel (slide-over desktop, full-screen mobile), unread badges, system messages on trade/waiver processing
+- **Conditional Waiver Claims**: conditionType/conditionPlayerId fields, ONLY_IF_UNAVAILABLE/ONLY_IF_AVAILABLE/PAIR_WITH, evaluateCondition() in processing, FAILED_CONDITION status
+- **Sport Engine Phase 2**: League.sport wired through API → LeagueContext → standings, auction stores sport in config
+
 ### Pending / Next Steps
-- Run `npx prisma migrate dev` for BoardCard + ProductBoardCard tables
-- Push notifications (Web Push API with VAPID keys)
-- In-app real-time chat (extend existing WebSocket)
-- H2H + Points scoring formats
-- Smart deadline warnings
+- Run `npx prisma migrate dev` for BoardCard + ProductBoardCard + ChatMessage + PushSubscription + NotificationPreference + Matchup tables
 - Deploy to Railway (30+ commits pending)
+- FanGraphs projection import ($15/mo, best ROI data add)
+- Stripe payment integration for seasonal pricing
+- P3 review findings (10 items) — table virtualization, search debounce, barrel files
 
 ### Test Results
+- Server: 493 passing
+- Client: 187 passing
+- MCP: 50 passing
+- Total: 730 tests, 0 failures
 - TypeScript: clean (both client and server)
 - All features browser-verified on localhost
 

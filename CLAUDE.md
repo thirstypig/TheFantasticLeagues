@@ -22,7 +22,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 23 feature modules mirrored client/server
+- 25 feature modules mirrored client/server
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -64,7 +64,7 @@ fbst/
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-### Current Feature Modules (23)
+### Current Feature Modules (25)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -91,6 +91,10 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `trading-block` | routes | 1 page, 1 component, api | Public league-wide trading block ("asking for" field) |
 | `board` | routes | 1 page, 3 components, api | League Board: Commissioner/Trade Block/Banter cards with threads |
 | `community` | routes | 1 page, api | Product Board placeholder: Announcements, Marketplace, General |
+| `chat` | routes, WebSocket | 1 component, api | In-app league chat: ChatPanel, unread badges, system messages on trade/waiver events |
+| `notifications` | routes | 1 component, api | Push notifications: web-push VAPID, PushSubscription, NotificationPreference, per-type settings |
+| `draft` | routes, WebSocket | 1 page, 3 components, api | Snake draft: DraftBoard grid, auto-pick, pause/resume, On the Clock indicator |
+| `matchups` | routes | — | H2H matchup generation: round-robin scheduling, ScoringEngine (Roto/H2H/Points) |
 
 ### Feature Module Pattern
 ```
@@ -137,6 +141,10 @@ Some features import from other features' services or components.
 - `mlb-feed/services/digestService` imports `standings/services/standingsService` (dynamic, for digest context)
 - `mlb-feed/services/digestService` imports `lib/sportConfig` (dynamic, `isKeeperRoster`)
 - `mlb-feed/routes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
+- `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
+- `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
+- `matchups/routes.ts` imports `standings/services/standingsService` (H2H scoring from category stats)
+- `draft/routes.ts` imports `seasons/services/seasonService` (auto-transition on draft completion)
 
 **Client (component imports):**
 - `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
@@ -158,6 +166,8 @@ Some features import from other features' services or components.
 - `teams/pages/Team` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `pages/Home` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `board/pages/Board` imports `trading-block/api` (auto-synced Trade Block cards)
+- `periods/pages/Season` imports `matchups/api` (Matchups tab for H2H scoring)
+- `pages/Home` imports `chat/components/ChatPanel` (league chat slide-over)
 
 When adding cross-feature imports, document them here to maintain visibility.
 
@@ -203,7 +213,7 @@ When adding cross-feature imports, document them here to maintain visibility.
 ## Database
 - Schema at `prisma/schema.prisma`
 - Never run migrations without explicit confirmation
-- Key models: Franchise, FranchiseMembership, User, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat
+- Key models: Franchise, FranchiseMembership, User, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat, ChatMessage, PushSubscription, NotificationPreference, Matchup
 - `AiInsight` — persisted AI-generated analyses (type: "weekly" for team insights, "league_digest" for home page digest; deduped by weekKey)
 - `Trade.aiAnalysis` — JSON, auto-generated post-trade analysis (fire-and-forget on processing)
 - `WaiverClaim.aiAnalysis` — JSON, auto-generated post-waiver analysis (fire-and-forget on processing)
@@ -286,7 +296,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (493 server + 187 client + 50 MCP = 730 tests)
+### Current Test Coverage (493 server + 187 client + 50 MCP = 730 tests, 25 feature modules)
 
 **Server (493 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)

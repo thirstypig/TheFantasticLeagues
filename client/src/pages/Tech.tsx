@@ -32,18 +32,18 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "79,000+", icon: FileCode },
-  { label: "Client (React/TS)", value: "41,200", icon: Monitor },
-  { label: "Server (Node/TS)", value: "37,800", icon: Server },
+  { label: "Total Lines of Code", value: "82,800+", icon: FileCode },
+  { label: "Client (React/TS)", value: "43,500", icon: Monitor },
+  { label: "Server (Node/TS)", value: "39,300", icon: Server },
   { label: "MCP Server", value: "1,370", icon: Server },
-  { label: "Test Coverage", value: "12,800+ lines", icon: TestTube },
-  { label: "Database Models", value: "44", icon: Database },
-  { label: "API Route Handlers", value: "213", icon: Plug },
-  { label: "Feature Modules", value: "23", icon: Layers },
-  { label: "Git Commits", value: "456+", icon: GitCommit },
-  { label: "Tests Passing", value: "723", icon: TestTube },
-  { label: "DB Schema Lines", value: "1,048", icon: Braces },
-  { label: "DB Migrations", value: "14", icon: Database },
+  { label: "Test Coverage", value: "12,900+ lines", icon: TestTube },
+  { label: "Database Models", value: "48", icon: Database },
+  { label: "API Route Handlers", value: "222", icon: Plug },
+  { label: "Feature Modules", value: "25", icon: Layers },
+  { label: "Git Commits", value: "460+", icon: GitCommit },
+  { label: "Tests Passing", value: "730", icon: TestTube },
+  { label: "DB Schema Lines", value: "1,131", icon: Braces },
+  { label: "DB Migrations", value: "15", icon: Database },
   { label: "Development Sessions", value: "57", icon: Bot },
   { label: "Est. Tokens Used", value: "~100M+", icon: Bot },
 ];
@@ -69,13 +69,14 @@ const techStack = [
     items: [
       { name: "Node.js + Express", desc: "REST API server" },
       { name: "TypeScript (ESM)", desc: "Strict mode, ES modules" },
-      { name: "Prisma ORM", desc: "Type-safe database access with 44 models" },
+      { name: "Prisma ORM", desc: "Type-safe database access with 48 models" },
       { name: "Zod", desc: "Runtime request validation" },
       { name: "Helmet", desc: "Security headers" },
       { name: "express-rate-limit", desc: "API rate limiting" },
       { name: "Multer", desc: "File upload handling (Excel/CSV imports)" },
       { name: "node-cron", desc: "Scheduled jobs" },
-      { name: "WebSocket (ws)", desc: "Real-time auction updates" },
+      { name: "WebSocket (ws)", desc: "Real-time auction, draft, and chat" },
+      { name: "web-push", desc: "VAPID-based push notifications" },
     ],
   },
   {
@@ -109,7 +110,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "723 tests", desc: "486 server + 187 client + 50 MCP tests passing" },
+      { name: "730 tests", desc: "493 server + 187 client + 50 MCP tests passing" },
     ],
   },
   {
@@ -147,6 +148,10 @@ const featureModules = [
   { name: "mlb-feed", desc: "Live MLB scores, transactions, roster stats, league headlines, highlight thumbnails, news feeds, depth charts, digest" },
   { name: "board", desc: "League Board: Commissioner announcements, Trade Block (auto-synced), Banter cards with threads" },
   { name: "community", desc: "Product Board placeholder: Announcements, Marketplace, General channels" },
+  { name: "chat", desc: "In-app league chat: WebSocket /ws/chat, ChatPanel, unread badges, system messages" },
+  { name: "notifications", desc: "Push notifications: web-push VAPID, PushSubscription, per-type preferences" },
+  { name: "draft", desc: "Snake draft: DraftBoard grid, WebSocket /ws/draft, auto-pick, On the Clock" },
+  { name: "matchups", desc: "H2H matchup generation: round-robin scheduling, category scoring, Points scoring" },
 ];
 
 const erdDiagrams: { label: string; chart: string }[] = [

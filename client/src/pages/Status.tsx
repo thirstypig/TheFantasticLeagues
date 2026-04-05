@@ -251,10 +251,10 @@ export default function Status() {
             { label: "API Server", value: "Express + TypeScript (:4010)" },
             { label: "Database", value: "PostgreSQL (Supabase)" },
             { label: "Auth", value: "Supabase Auth (Google/Yahoo OAuth)" },
-            { label: "Real-time", value: "WebSocket (auction)" },
+            { label: "Real-time", value: "WebSocket (auction, draft, chat)" },
             { label: "Cache", value: "SQLite (MLB API proxy)" },
-            { label: "Tests", value: "723 passing (486 server + 187 client + 50 MCP)" },
-            { label: "API Endpoints", value: "213 route handlers across 23 modules" },
+            { label: "Tests", value: "730 passing (493 server + 187 client + 50 MCP)" },
+            { label: "API Endpoints", value: "222 route handlers across 25 modules" },
           ].map((item) => (
             <div key={item.label} className="flex items-baseline gap-2 text-sm py-1">
               <span className="text-[var(--lg-text-muted)] font-medium w-24 shrink-0">{item.label}</span>
