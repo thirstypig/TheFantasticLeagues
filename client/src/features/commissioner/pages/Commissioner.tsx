@@ -693,6 +693,26 @@ export default function Commissioner() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
+                        <div className="text-sm text-[var(--lg-text-muted)]">Scoring Format</div>
+                        <select
+                          value={(league as any).scoringFormat ?? "ROTO"}
+                          onChange={async (e) => {
+                            try {
+                              await apiUpdateLeague(lid, { scoringFormat: e.target.value });
+                              toast(`Scoring format updated to ${e.target.value.replace("_", " ")}`, "success");
+                              loadAll();
+                            } catch (err: any) {
+                              toast(err?.message || "Failed to update scoring format", "error");
+                            }
+                          }}
+                          className="text-sm font-medium text-[var(--lg-text-primary)] bg-[var(--lg-bg-surface)] border border-[var(--lg-border-subtle)] rounded-lg px-2 py-1"
+                        >
+                          <option value="ROTO">Roto</option>
+                          <option value="H2H_CATEGORIES">H2H Categories</option>
+                          <option value="H2H_POINTS">H2H Points</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3">
                         <div className="text-sm text-[var(--lg-text-muted)]">Public</div>
                         <div className="text-sm font-medium text-[var(--lg-text-primary)]">{league.isPublic ? "Yes" : "No"}</div>
                       </div>

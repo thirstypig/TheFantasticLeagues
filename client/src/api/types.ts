@@ -25,6 +25,7 @@ export type LeagueSummary = {
   id: number;
   name: string;
   season: number;
+  sport: string;
   draftMode: "AUCTION" | "DRAFT";
   draftOrder: "SNAKE" | "LINEAR" | null;
   isPublic: boolean;

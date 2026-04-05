@@ -63,6 +63,7 @@ export function createDefaultState(leagueId: number): AuctionState {
     queue: [],
     queueIndex: 0,
     config: {
+      sport: "baseball",
       bidTimer: 15, // seconds
       nominationTimer: 30,
       budgetCap: 400,
@@ -83,6 +84,7 @@ async function getState(leagueId: number): Promise<AuctionState> {
     const persisted = await loadState(leagueId);
     if (persisted) {
       // Backfill config fields for states persisted before this change
+      if (!persisted.config.sport) persisted.config.sport = "baseball";
       if (!persisted.config.budgetCap) persisted.config.budgetCap = 400;
       if (!persisted.config.rosterSize) persisted.config.rosterSize = 23;
       if (!persisted.config.positionLimits) {
@@ -641,7 +643,11 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
   const { budgetCap, rosterSize, pitcherCount, batterCount, bidTimer, nominationTimer } = await loadLeagueConfig(leagueId);
   const positionLimits = await loadPositionLimits(leagueId);
 
+  // Load league sport for sport-aware position checking
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { sport: true } });
+
   const state = createDefaultState(leagueId);
+  state.config.sport = league?.sport ?? "baseball";
   state.config.budgetCap = budgetCap;
   state.config.rosterSize = rosterSize;
   state.config.pitcherCount = pitcherCount;
@@ -955,8 +961,8 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
     clearAutoFinishTimer(leagueId);
     clearNominationTimer(leagueId);
 
-    // Look up league season for the source tag
-    const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+    // Look up league season and sport for the source tag
+    const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true, sport: true } });
     const season = league?.season ?? new Date().getFullYear();
     const auctionSource = `auction_${season}`;
 
@@ -981,6 +987,7 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
     const positionLimits = await loadPositionLimits(leagueId);
 
     const state = createDefaultState(leagueId);
+    state.config.sport = league?.sport ?? "baseball";
     state.config.budgetCap = budgetCap;
     state.config.rosterSize = rosterSize;
     state.config.pitcherCount = pitcherCount;

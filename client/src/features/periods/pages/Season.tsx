@@ -12,6 +12,7 @@ import { ThemedTable, ThemedThead, ThemedTr, ThemedTh, ThemedTd } from "../../..
 import { SortableHeader } from "../../../components/ui/SortableHeader";
 import { getCurrentSeason, type Season } from "../../seasons/api";
 import { getTeamDetails } from "../../teams/api";
+import { getMatchups, getH2HStandings, type MatchupEntry, type StandingEntry } from "../../matchups/api";
 import { POS_ORDER } from "../../../lib/baseballUtils";
 import { mapPosition } from "../../../lib/sportConfig";
 import { formatLocalDate, formatLocalTime } from "../../../lib/timeUtils";
@@ -76,12 +77,28 @@ function normalizeSeasonRow(row: SeasonStandingsApiRow, periodIds: number[]): No
   };
 }
 
+// H2H standings row from API
+type H2HStandingRow = {
+  teamId: number;
+  teamName: string;
+  teamCode: string;
+  points: number;
+  rank: number;
+  record?: string;
+  wins?: number;
+  losses?: number;
+  ties?: number;
+  pct?: number;
+  gb?: number;
+};
+
 const SeasonPage: React.FC = () => {
   const navigate = useNavigate();
   useTheme();
-  const { leagueId, outfieldMode } = useLeague();
+  const { leagueId, outfieldMode, scoringFormat: ctxScoringFormat } = useLeague();
 
-  const [viewMode, setViewMode] = useState<'season' | 'period'>('season');
+  const isH2H = ctxScoringFormat === "H2H_CATEGORIES" || ctxScoringFormat === "H2H_POINTS";
+  const [viewMode, setViewMode] = useState<'season' | 'period' | 'matchups'>(isH2H ? 'matchups' : 'season');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentSeasonData, setCurrentSeasonData] = useState<Season | null>(null);
@@ -108,6 +125,13 @@ const SeasonPage: React.FC = () => {
 
   // Period view mode: points (roto) vs stats (raw values)
   const [periodViewMode, setPeriodViewMode] = useState<'points' | 'stats'>('stats');
+
+  // H2H state
+  const [h2hStandings, setH2hStandings] = useState<H2HStandingRow[]>([]);
+  const [h2hMatchups, setH2hMatchups] = useState<MatchupEntry[]>([]);
+  const [h2hWeek, setH2hWeek] = useState(1);
+  const [h2hLoading, setH2hLoading] = useState(false);
+  const [apiScoringFormat, setApiScoringFormat] = useState<string>("ROTO");
 
   // Season matrix sort state
   const [matrixSortKey, setMatrixSortKey] = useState<string>("total");
@@ -188,6 +212,10 @@ const SeasonPage: React.FC = () => {
         if (data.categoryKeys) setCategoryKeys(data.categoryKeys);
         setSeasonUpdatedAt(new Date());
 
+        // Capture scoring format and H2H standings from API
+        if ((data as any).scoringFormat) setApiScoringFormat((data as any).scoringFormat);
+        if ((data as any).h2hStandings) setH2hStandings((data as any).h2hStandings);
+
         if (data.periodIds?.length > 0) {
           setSelectedPeriodId(data.periodIds[data.periodIds.length - 1]);
         }
@@ -199,6 +227,32 @@ const SeasonPage: React.FC = () => {
     }
     loadSeason();
   }, [leagueId]);
+
+  // Load H2H matchups when matchups tab selected
+  useEffect(() => {
+    if (viewMode !== 'matchups' || !isH2H) return;
+    setH2hLoading(true);
+    Promise.all([
+      getMatchups(leagueId, h2hWeek).catch(() => ({ matchups: [] as MatchupEntry[] })),
+      getH2HStandings(leagueId).catch(() => ({ standings: [] as StandingEntry[] })),
+    ]).then(([m, s]) => {
+      setH2hMatchups(m.matchups);
+      // Map StandingEntry to H2HStandingRow format
+      setH2hStandings(s.standings.map((st: StandingEntry) => ({
+        teamId: st.teamId,
+        teamName: st.teamName,
+        teamCode: "",
+        points: st.points,
+        rank: st.rank,
+        record: `${st.wins}-${st.losses}-${st.ties}`,
+        wins: st.wins,
+        losses: st.losses,
+        ties: st.ties,
+        pct: st.pct,
+        gb: st.gb,
+      })));
+    }).finally(() => setH2hLoading(false));
+  }, [viewMode, leagueId, h2hWeek, isH2H]);
 
   // Load Period Details
   useEffect(() => {
@@ -282,9 +336,22 @@ const SeasonPage: React.FC = () => {
               )}
             </span>
           }
-          subtitle="Roto points distribution for the full season or specific periods. Higher totals indicate stronger performance across categories."
+          subtitle={isH2H
+            ? "Head-to-head matchup standings and weekly results."
+            : "Roto points distribution for the full season or specific periods. Higher totals indicate stronger performance across categories."
+          }
           rightElement={
              <div className="lg-card p-1">
+                {isH2H && (
+                  <Button
+                      onClick={() => setViewMode('matchups')}
+                      variant={viewMode === 'matchups' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="px-6"
+                  >
+                      Matchups
+                  </Button>
+                )}
                 <Button
                     onClick={() => setViewMode('season')}
                     variant={viewMode === 'season' ? 'default' : 'ghost'}
@@ -320,7 +387,116 @@ const SeasonPage: React.FC = () => {
           </div>
         )}
 
-        {viewMode === 'season' ? (
+        {viewMode === 'matchups' && isH2H ? (
+          <div className="mt-8 space-y-8">
+            {/* H2H Season Standings */}
+            <div>
+              <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)] mb-4">Standings</h2>
+              {h2hStandings.length === 0 ? (
+                <div className="text-center py-12 text-[var(--lg-text-muted)] italic">No standings yet. Matchups need to be scored first.</div>
+              ) : (
+                <div className="rounded-xl border border-[var(--lg-border-subtle)] overflow-hidden">
+                  <ThemedTable>
+                    <ThemedThead>
+                      <ThemedTr>
+                        <ThemedTh className="w-10">#</ThemedTh>
+                        <ThemedTh>Team</ThemedTh>
+                        <ThemedTh align="center">W</ThemedTh>
+                        <ThemedTh align="center">L</ThemedTh>
+                        <ThemedTh align="center">T</ThemedTh>
+                        <ThemedTh align="center">PCT</ThemedTh>
+                        <ThemedTh align="center">GB</ThemedTh>
+                        {ctxScoringFormat === "H2H_POINTS" && <ThemedTh align="center">PTS</ThemedTh>}
+                      </ThemedTr>
+                    </ThemedThead>
+                    <tbody className="divide-y divide-[var(--lg-divide)]">
+                      {h2hStandings.map((s, i) => (
+                        <ThemedTr key={s.teamId}>
+                          <ThemedTd className="tabular-nums text-[var(--lg-text-muted)]">{s.rank}</ThemedTd>
+                          <ThemedTd className="font-semibold text-[var(--lg-text-primary)]">
+                            {s.teamName}
+                            {i < 4 && <span className="ml-2 text-[9px] font-bold uppercase text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded">Playoff</span>}
+                          </ThemedTd>
+                          <ThemedTd align="center" className="tabular-nums font-semibold">{s.wins ?? 0}</ThemedTd>
+                          <ThemedTd align="center" className="tabular-nums">{s.losses ?? 0}</ThemedTd>
+                          <ThemedTd align="center" className="tabular-nums text-[var(--lg-text-muted)]">{s.ties ?? 0}</ThemedTd>
+                          <ThemedTd align="center" className="tabular-nums font-semibold">{(s.pct ?? 0).toFixed(3)}</ThemedTd>
+                          <ThemedTd align="center" className="tabular-nums text-[var(--lg-text-muted)]">{s.gb === 0 ? "\u2014" : s.gb}</ThemedTd>
+                          {ctxScoringFormat === "H2H_POINTS" && <ThemedTd align="center" className="tabular-nums">{s.points}</ThemedTd>}
+                        </ThemedTr>
+                      ))}
+                    </tbody>
+                  </ThemedTable>
+                </div>
+              )}
+            </div>
+
+            {/* Weekly Matchups */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Week {h2hWeek} Matchups</h2>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setH2hWeek(w => Math.max(1, w - 1))} disabled={h2hWeek <= 1}>Prev</Button>
+                  <span className="text-sm font-semibold text-[var(--lg-text-primary)] tabular-nums min-w-[60px] text-center">Week {h2hWeek}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setH2hWeek(w => w + 1)}>Next</Button>
+                </div>
+              </div>
+
+              {h2hLoading ? (
+                <div className="text-center py-12"><span className="text-[var(--lg-text-muted)] italic animate-pulse">Loading matchups...</span></div>
+              ) : h2hMatchups.length === 0 ? (
+                <div className="text-center py-12 text-[var(--lg-text-muted)] italic">No matchups for this week.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {h2hMatchups.map(m => (
+                    <div key={m.id} className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
+                      <div className="flex items-center justify-between p-4">
+                        <div className="text-center flex-1">
+                          <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{m.teamA.name}</div>
+                          {m.result && (
+                            <div className="text-xl font-bold mt-1 tabular-nums text-[var(--lg-text-heading)]">
+                              {m.result.teamA.totalPoints > 0 ? m.result.teamA.totalPoints : `${m.result.teamA.catWins}-${m.result.teamA.catLosses}-${m.result.teamA.catTies}`}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs font-bold uppercase text-[var(--lg-text-muted)] px-3">VS</div>
+                        <div className="text-center flex-1">
+                          <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{m.teamB.name}</div>
+                          {m.result && (
+                            <div className="text-xl font-bold mt-1 tabular-nums text-[var(--lg-text-heading)]">
+                              {m.result.teamB.totalPoints > 0 ? m.result.teamB.totalPoints : `${m.result.teamB.catWins}-${m.result.teamB.catLosses}-${m.result.teamB.catTies}`}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Category breakdown for H2H Categories */}
+                      {m.result?.categories && m.result.categories.length > 0 && (
+                        <div className="border-t border-[var(--lg-border-faint)] px-4 py-2">
+                          <div className="grid grid-cols-5 gap-1 text-[10px]">
+                            {m.result.categories.map(cat => (
+                              <div key={cat.stat} className="text-center">
+                                <div className="text-[var(--lg-text-muted)] font-bold">{cat.stat}</div>
+                                <div className={`font-semibold ${cat.winner === "A" ? "text-emerald-400" : cat.winner === "B" ? "text-red-400" : "text-[var(--lg-text-muted)]"}`}>
+                                  {typeof cat.teamAVal === "number" && ["AVG", "ERA", "WHIP"].includes(cat.stat) ? cat.teamAVal.toFixed(3) : cat.teamAVal}
+                                </div>
+                                <div className={`font-semibold ${cat.winner === "B" ? "text-emerald-400" : cat.winner === "A" ? "text-red-400" : "text-[var(--lg-text-muted)]"}`}>
+                                  {typeof cat.teamBVal === "number" && ["AVG", "ERA", "WHIP"].includes(cat.stat) ? cat.teamBVal.toFixed(3) : cat.teamBVal}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {!m.result && (
+                        <div className="border-t border-[var(--lg-border-faint)] p-3 text-center text-xs text-[var(--lg-text-muted)]">Not scored yet</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : viewMode === 'season' ? (
           <div className="mt-8">
             <div className="mb-6 flex items-center justify-between px-2">
                <div>

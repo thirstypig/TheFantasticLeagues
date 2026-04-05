@@ -57,6 +57,7 @@ enum ClaimStatus {
   SUCCESS
   FAILED_OUTBID
   FAILED_INVALID
+  FAILED_CONDITION
   CANCELLED
 }
 
@@ -132,6 +133,7 @@ model User {
 
   pushSubscriptions      PushSubscription[]
   notificationPreference NotificationPreference?
+  chatMessages           ChatMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,12 +147,16 @@ model League {
   draftOrder DraftOrder?
   createdAt  DateTime    @default(now())
 
+  // Sport type — "baseball", "football", "basketball"
+  sport      String      @default("baseball")
+
   isPublic   Boolean @default(false)
   publicSlug String? @unique
   inviteCode String? @unique
 
   // Scoring Format (ROTO default protects existing leagues like OGBA)
   scoringFormat      String @default("ROTO")  // "ROTO" | "H2H_CATEGORIES" | "H2H_POINTS"
+  pointsConfig       Json?  // Points scoring weights: { "R": 1, "HR": 4, "RBI": 1, "SB": 2, ... }
   playoffWeeks       Int    @default(3)
   playoffTeams       Int    @default(4)
   regularSeasonWeeks Int    @default(20)
@@ -179,6 +185,7 @@ model League {
   playerValues      PlayerValue[]
   aiInsights        AiInsight[]
   boardCards        BoardCard[]
+  chatMessages      ChatMessage[]
 
   @@unique([name, season])
 }
@@ -318,8 +325,9 @@ model Player {
   aliases          PlayerAlias[]
   transactions     TransactionEvent[]
   tradeItems       TradeItem[]
-  waiverClaimsAdd  WaiverClaim[]      @relation("ClaimAdd")
-  waiverClaimsDrop WaiverClaim[]      @relation("ClaimDrop")
+  waiverClaimsAdd       WaiverClaim[]      @relation("ClaimAdd")
+  waiverClaimsDrop      WaiverClaim[]      @relation("ClaimDrop")
+  waiverClaimsCondition WaiverClaim[]      @relation("ClaimCondition")
   periodStats      PlayerStatsPeriod[]
   dailyStats       PlayerStatsDaily[]
   playerValues     PlayerValue[]
@@ -422,6 +430,7 @@ model Period {
 
   teamStats   TeamStatsPeriod[]
   playerStats PlayerStatsPeriod[]
+  matchups    Matchup[]
 
   @@unique([seasonId, name])
   @@index([leagueId])
@@ -660,9 +669,15 @@ model WaiverClaim {
   createdAt    DateTime    @default(now())
   aiAnalysis   Json?
 
-  team       Team    @relation(fields: [teamId], references: [id])
-  player     Player  @relation("ClaimAdd", fields: [playerId], references: [id])
-  dropPlayer Player? @relation("ClaimDrop", fields: [dropPlayerId], references: [id])
+  // Conditional claim fields
+  conditionType      String?  // "ONLY_IF_UNAVAILABLE", "ONLY_IF_AVAILABLE", "PAIR_WITH"
+  conditionPlayerId  Int?     // the player the condition references
+  conditionNote      String?  // human-readable condition description
+
+  team            Team    @relation(fields: [teamId], references: [id])
+  player          Player  @relation("ClaimAdd", fields: [playerId], references: [id])
+  dropPlayer      Player? @relation("ClaimDrop", fields: [dropPlayerId], references: [id])
+  conditionPlayer Player? @relation("ClaimCondition", fields: [conditionPlayerId], references: [id])
 
   @@index([teamId])
   @@index([status])
@@ -844,6 +859,7 @@ model Matchup {
   id           Int      @id @default(autoincrement())
   leagueId     Int
   week         Int      // Scoring period (1-based)
+  periodId     Int?     // Links to Period for stats resolution
   teamAId      Int
   teamBId      Int
   result       Json?    // { teamA: { catWins, catLosses, catTies, points }, teamB: { ... } }
@@ -851,11 +867,13 @@ model Matchup {
   playoffRound Int?     // 1=quarterfinal, 2=semifinal, 3=final
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  period Period? @relation(fields: [periodId], references: [id])
   teamA  Team   @relation("matchupTeamA", fields: [teamAId], references: [id])
   teamB  Team   @relation("matchupTeamB", fields: [teamBId], references: [id])
 
   @@unique([leagueId, week, teamAId, teamBId])
   @@index([leagueId, week])
+  @@index([periodId])
 }
 
 model AiInsight {
@@ -1080,4 +1098,34 @@ model NotificationPreference {
   boardReply           Boolean @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ======================
+//  League Chat
+// ======================
+
+model ChatMessage {
+  id        Int       @id @default(autoincrement())
+  leagueId  Int
+  userId    Int
+  text      String    @db.Text
+  type      String    @default("user") // "user", "system"
+  metadata  Json?     // for system messages: { activityType, tradeId, etc. }
+  createdAt DateTime  @default(now())
+  deletedAt DateTime? // soft delete for moderation
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([leagueId, createdAt])
+}
+
+model ChatReadCursor {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  leagueId   Int
+  lastReadId Int
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, leagueId])
 }

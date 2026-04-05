@@ -9,6 +9,7 @@ import {
   CATEGORY_CONFIG,
   KEY_TO_DB_FIELD,
 } from "./services/standingsService.js";
+import { createScoringEngine } from "./services/scoringEngine.js";
 
 const router = Router();
 
@@ -63,13 +64,13 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
 
   const teamStats = await computeTeamStatsFromDb(leagueId, pid);
 
-  // Compute season-to-date stats (aggregate all periods up to and including the selected one)
+  // Compute season-to-date stats
   const selectedPeriod = await prisma.period.findUnique({ where: { id: pid } });
   const allPeriods = await prisma.period.findMany({
     where: { leagueId, status: { in: ["active", "completed"] }, startDate: { lte: selectedPeriod?.endDate ?? new Date() } },
     orderBy: { startDate: "asc" },
   });
-  // Sum counting stats across all periods; for rate stats, use season standings endpoint value
+
   const seasonTotals = new Map<number, Record<string, number>>();
   for (const p of allPeriods) {
     const pStats = p.id === pid ? teamStats : await computeTeamStatsFromDb(leagueId, p.id);
@@ -77,24 +78,19 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
       const prev = seasonTotals.get(t.team.id) ?? { R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, K: 0, ERA: 0, WHIP: 0 };
       prev.R += t.R; prev.HR += t.HR; prev.RBI += t.RBI; prev.SB += t.SB;
       prev.W += t.W; prev.S += t.S; prev.K += t.K;
-      // For rate stats (AVG, ERA, WHIP), use the latest period's value as running season value
-      // This is approximate — proper implementation needs H/AB/ER/IP/BB_H exposed on TeamStatRow
       prev.AVG = t.AVG; prev.ERA = t.ERA; prev.WHIP = t.WHIP;
       seasonTotals.set(t.team.id, prev);
     }
   }
 
-  // Compute current standings
   const currentStandings = computeStandingsFromStats(teamStats);
 
-  // Load previous snapshot from TeamStatsPeriod for delta calculation
   const snapshots = await prisma.teamStatsPeriod.findMany({
     where: { periodId: pid },
     select: { teamId: true, R: true, HR: true, RBI: true, SB: true, AVG: true, W: true, S: true, ERA: true, WHIP: true, K: true },
   });
   const snapshotMap = new Map(snapshots.map(s => [s.teamId, s]));
 
-  // Compute previous team stats from snapshots once (reused for both total and category deltas)
   let prevStandingsMap = new Map<number, number>();
   const prevTeamStats = snapshots.length > 0
     ? teamStats.map(t => {
@@ -109,7 +105,6 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     prevStandingsMap = new Map(prevStandings.map(s => [s.teamId, s.points]));
   }
 
-  // Save current stats as the new snapshot (batched in one transaction)
   await prisma.$transaction(
     teamStats.map(t => prisma.teamStatsPeriod.upsert({
       where: { teamId_periodId: { teamId: t.team.id, periodId: pid } },
@@ -118,7 +113,6 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     }))
   );
 
-  // Build categories with delta from previous snapshot + season-to-date values
   const categories = CATEGORY_CONFIG.map((cfg) => {
     const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
     if (prevTeamStats) {
@@ -129,7 +123,6 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
         (row as any).pointsDelta = row.points - prevPts;
       }
     }
-    // Add season-to-date stat value (use DB field name mapping: SV→S)
     const dbField = KEY_TO_DB_FIELD[cfg.key] || cfg.key;
     for (const row of rows) {
       const sTotals = seasonTotals.get(row.teamId);
@@ -138,7 +131,6 @@ router.get("/period-category-standings", requireAuth, asyncHandler(async (req, r
     return { key: cfg.key, label: cfg.label, lowerIsBetter: cfg.lowerIsBetter, group: cfg.group, rows };
   });
 
-  // Add total delta to each team's summary
   const totalDeltaMap = new Map<number, number>();
   for (const s of currentStandings) {
     const prevTotal = prevStandingsMap.get(s.teamId) ?? 0;
@@ -154,7 +146,6 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
-  // Get all periods for this league's season
   const periods = await prisma.period.findMany({
     where: { leagueId, status: { in: ["active", "completed"] } },
     orderBy: { startDate: "asc" },
@@ -163,7 +154,6 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
   const periodIds = periods.map((p) => p.id);
   const periodNames = periods.map((p) => p.name);
 
-  // Compute standings + raw stats per period
   const periodData = await Promise.all(
     periodIds.map(async (pid) => {
       const teamStats = await computeTeamStatsFromDb(leagueId, pid);
@@ -172,14 +162,12 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
     })
   );
 
-  // Build per-team rows with period point breakdowns + raw stats
   const teams = await prisma.team.findMany({
     where: { leagueId },
     select: { id: true, name: true, code: true },
     orderBy: { id: "asc" },
   });
 
-  // Category keys for stats view
   const categoryKeys = ["R", "HR", "RBI", "SB", "AVG", "W", "S", "K", "ERA", "WHIP"];
 
   const rows = teams.map((t) => {
@@ -189,7 +177,6 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
     });
     const totalPoints = periodPoints.reduce((sum, p) => sum + p, 0);
 
-    // Raw stats per period (for stats toggle view)
     const periodStatValues: Record<string, number[]> = {};
     for (const key of categoryKeys) {
       periodStatValues[key] = periodData.map(({ teamStats }) => {
@@ -208,10 +195,20 @@ router.get("/season", requireAuth, asyncHandler(async (req, res) => {
     };
   });
 
-  // Sort by totalPoints descending
   rows.sort((a, b) => b.totalPoints - a.totalPoints);
 
-  res.json({ periodIds, periodNames, categoryKeys, rows });
+  // Include scoring format so client can adapt display
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { scoringFormat: true } });
+  const scoringFormat = league?.scoringFormat ?? "ROTO";
+
+  // For H2H leagues, also include W-L-T season standings from matchups
+  let h2hStandings: any[] | undefined;
+  if (scoringFormat !== "ROTO") {
+    const engine = await createScoringEngine(leagueId);
+    h2hStandings = await engine.computeSeasonStandings(leagueId);
+  }
+
+  res.json({ periodIds, periodNames, categoryKeys, rows, scoringFormat, h2hStandings });
 }));
 
 // --- Settlement data: /api/standings/settlement/:leagueId ---
@@ -220,7 +217,6 @@ router.get("/standings/settlement/:leagueId", requireAuth, requireLeagueMember("
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
-  // Get payout rules
   const rules = await prisma.leagueRule.findMany({
     where: { leagueId, category: "payouts" },
   });
@@ -233,37 +229,12 @@ router.get("/standings/settlement/:leagueId", requireAuth, requireLeagueMember("
     if (pct > 0) payoutPcts[String(i)] = pct;
   }
 
-  // Get teams with owners
   const teams = await prisma.team.findMany({
     where: { leagueId },
     select: {
-      id: true,
-      name: true,
-      code: true,
-      ownerUser: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          venmoHandle: true,
-          zelleHandle: true,
-          paypalHandle: true,
-        },
-      },
-      ownerships: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              venmoHandle: true,
-              zelleHandle: true,
-              paypalHandle: true,
-            },
-          },
-        },
-      },
+      id: true, name: true, code: true,
+      ownerUser: { select: { id: true, name: true, email: true, venmoHandle: true, zelleHandle: true, paypalHandle: true } },
+      ownerships: { include: { user: { select: { id: true, name: true, email: true, venmoHandle: true, zelleHandle: true, paypalHandle: true } } } },
     },
     orderBy: { id: "asc" },
   });
@@ -271,20 +242,12 @@ router.get("/standings/settlement/:leagueId", requireAuth, requireLeagueMember("
   const totalPot = entryFee * teams.length;
 
   const teamsData = teams.map(t => {
-    // Combine legacy owner + multi-owner
     const owners: any[] = [];
     if (t.ownerUser) owners.push(t.ownerUser);
     for (const o of t.ownerships) {
-      if (!owners.some(existing => existing.id === o.user.id)) {
-        owners.push(o.user);
-      }
+      if (!owners.some(existing => existing.id === o.user.id)) owners.push(o.user);
     }
-    return {
-      id: t.id,
-      name: t.name,
-      code: t.code,
-      owners,
-    };
+    return { id: t.id, name: t.name, code: t.code, owners };
   });
 
   res.json({ leagueId, entryFee, totalPot, payoutPcts, teams: teamsData });

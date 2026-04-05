@@ -18,8 +18,10 @@ interface LeagueContextType {
   leagueId: number;
   setLeagueId: (id: number) => void;
   leagues: LeagueListItem[];
+  sport: string;
   outfieldMode: string;
   scoringFormat: string;
+  draftMode: "AUCTION" | "DRAFT";
   currentLeagueName: string;
   currentSeason: number;
   currentFranchiseId: number;
@@ -122,6 +124,8 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const currentLeagueName = currentLeague?.name ?? "";
   const currentSeason = currentLeague?.season ?? 0;
   const currentFranchiseId = currentLeague?.franchiseId ?? 0;
+  const sport = currentLeague?.sport ?? "baseball";
+  const draftMode: "AUCTION" | "DRAFT" = currentLeague?.draftMode === "DRAFT" ? "DRAFT" : "AUCTION";
 
   const leagueSeasons = useMemo(
     () => currentFranchiseId
@@ -131,10 +135,10 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   );
 
   const contextValue = useMemo(() => ({
-    leagueId, setLeagueId, leagues, outfieldMode, scoringFormat,
+    leagueId, setLeagueId, leagues, sport, outfieldMode, scoringFormat, draftMode,
     currentLeagueName, currentSeason, currentFranchiseId,
     leagueSeasons, seasonStatus, myTeamId,
-  }), [leagueId, setLeagueId, leagues, outfieldMode, scoringFormat,
+  }), [leagueId, setLeagueId, leagues, sport, outfieldMode, scoringFormat, draftMode,
        currentLeagueName, currentSeason, currentFranchiseId,
        leagueSeasons, seasonStatus, myTeamId]);
 

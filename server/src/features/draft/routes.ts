@@ -10,6 +10,7 @@ import { logger } from "../../lib/logger.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { generatePickOrder, pickRound, pickInRound, type DraftState, type DraftConfig, type DraftPickEntry } from "./types.js";
 import { saveState, loadState, clearState, deserializeState } from "./services/draftPersistence.js";
+import { broadcastDraftState, broadcastPick } from "./services/draftWsService.js";
 
 const router = Router();
 
@@ -119,6 +120,10 @@ async function executePick(
   // CRITICAL: Await persistence before confirming (P1 security)
   await saveState(leagueId, state);
 
+  // Broadcast pick + full state to all connected WS clients
+  broadcastPick(leagueId, entry);
+  broadcastDraftState(leagueId, state);
+
   // Record pick in audit table (fire-and-forget)
   prisma.draftPick.create({
     data: { leagueId, round, pickNum, teamId, playerId, isAutoPick },
@@ -166,6 +171,7 @@ router.post("/init", requireAuth, validateBody(initSchema), asyncHandler(async (
 
   await saveState(leagueId, state);
   draftStates.set(leagueId, state);
+  broadcastDraftState(leagueId, state);
 
   writeAuditLog({ userId: req.user!.id, action: "DRAFT_INIT", resourceType: "draft", resourceId: leagueId, metadata: { teamOrder, totalRounds, orderType } });
   logger.info({ leagueId, teamCount: teamOrder.length, totalRounds, orderType }, "Snake draft initialized");
@@ -185,6 +191,7 @@ router.post("/start", requireAuth, asyncHandler(async (req, res) => {
   scheduleAutoPick(leagueId, state.config.secondsPerPick * 1000);
 
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
   res.json({ success: true });
 }));
 
@@ -261,6 +268,7 @@ router.post("/pause", requireAuth, asyncHandler(async (req, res) => {
   state.timerExpiresAt = null;
   clearAutoPick(leagueId);
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
   res.json({ success: true });
 }));
 
@@ -274,6 +282,7 @@ router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
   state.timerExpiresAt = Date.now() + state.config.secondsPerPick * 1000;
   scheduleAutoPick(leagueId, state.config.secondsPerPick * 1000);
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
   res.json({ success: true });
 }));
 
@@ -294,6 +303,7 @@ router.post("/undo", requireAuth, asyncHandler(async (req, res) => {
   scheduleAutoPick(leagueId, state.config.secondsPerPick * 1000);
 
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
 
   // Delete audit record
   await prisma.draftPick.deleteMany({ where: { leagueId, pickNum: lastPick.pickNum } }).catch(() => {});
@@ -328,6 +338,7 @@ router.post("/skip", requireAuth, asyncHandler(async (req, res) => {
   }
 
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
   res.json({ success: true, pick: entry });
 }));
 
@@ -347,6 +358,7 @@ router.post("/auto-pick", requireAuth, validateBody(autoPickSchema), asyncHandle
   else (state.autoPickTeams as Set<number>).delete(teamId);
 
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
 
   // If it's this team's turn and auto-pick just enabled, fire immediately
   if (enabled && state.status === "active" && state.pickOrder[state.currentPickIndex] === teamId) {
@@ -404,6 +416,7 @@ router.post("/complete", requireAuth, asyncHandler(async (req, res) => {
   state.status = "completed";
   clearAutoPick(leagueId);
   await saveState(leagueId, state);
+  broadcastDraftState(leagueId, state);
 
   writeAuditLog({ userId: req.user!.id, action: "DRAFT_COMPLETE", resourceType: "draft", resourceId: leagueId, metadata: { picks: state.picks.length } });
   logger.info({ leagueId, picks: state.picks.length }, "Snake draft completed");

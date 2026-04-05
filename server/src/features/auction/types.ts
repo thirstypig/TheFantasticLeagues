@@ -66,6 +66,7 @@ export interface AuctionState {
   queueIndex: number;
 
   config: {
+    sport: string;
     bidTimer: number;
     nominationTimer: number;
     budgetCap: number;

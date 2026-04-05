@@ -14,6 +14,7 @@ import { computeTeamStatsFromDb, computeStandingsFromStats } from "../standings/
 import { nextDayEffective } from "../../lib/utils.js";
 import { sendWaiverResultEmail, notifyTeamOwners, getTeamOwnerEmails } from "../../lib/emailService.js";
 import { sendPushToUser } from "../../lib/pushService.js";
+import { postSystemChatMessage } from "../../lib/chatUtils.js";
 
 /**
  * Auto-generate AI analysis after a waiver claim is processed.
@@ -72,6 +73,10 @@ export const waiverClaimSchema = z.object({
   dropPlayerId: z.number().int().positive().optional(),
   bidAmount: z.number().int().nonnegative(),
   priority: z.number().int().positive().optional(),
+  // Conditional claim fields
+  conditionType: z.enum(["ONLY_IF_UNAVAILABLE", "ONLY_IF_AVAILABLE", "PAIR_WITH"]).optional(),
+  conditionPlayerId: z.number().int().positive().optional(),
+  conditionNote: z.string().max(200).optional(),
 });
 
 const router = Router();
@@ -98,7 +103,11 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
 
   const claims = await prisma.waiverClaim.findMany({
     where,
-    include: { player: true, dropPlayer: true },
+    include: {
+      player: true,
+      dropPlayer: true,
+      conditionPlayer: { select: { id: true, name: true, posPrimary: true } },
+    },
     orderBy: [{ bidAmount: "desc" }, { priority: "asc" }],
   });
 
@@ -107,7 +116,20 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/waivers - Submit a claim
 router.post("/", requireAuth, validateBody(waiverClaimSchema), requireSeasonStatus(["IN_SEASON"], "body.teamId"), requireTeamOwner("teamId"), asyncHandler(async (req, res) => {
-  const { teamId, playerId, dropPlayerId, bidAmount, priority } = req.body;
+  const { teamId, playerId, dropPlayerId, bidAmount, priority, conditionType, conditionPlayerId, conditionNote } = req.body;
+
+  // Validate conditionPlayerId exists if provided
+  if (conditionPlayerId) {
+    const condPlayer = await prisma.player.findUnique({ where: { id: conditionPlayerId }, select: { id: true } });
+    if (!condPlayer) {
+      return res.status(400).json({ error: "Condition player not found" });
+    }
+  }
+
+  // conditionType requires conditionPlayerId
+  if (conditionType && !conditionPlayerId) {
+    return res.status(400).json({ error: "conditionPlayerId is required when conditionType is set" });
+  }
 
   const claim = await prisma.waiverClaim.create({
     data: {
@@ -117,6 +139,9 @@ router.post("/", requireAuth, validateBody(waiverClaimSchema), requireSeasonStat
       bidAmount,
       priority: priority || 1,
       status: "PENDING",
+      conditionType: conditionType || null,
+      conditionPlayerId: conditionPlayerId || null,
+      conditionNote: conditionNote || null,
     },
     include: { player: true },
   });
@@ -233,7 +258,29 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
 
   const logs: string[] = [];
   const processedPlayerIds = new Set<number>(); // Players added
+  const processedResults = new Map<number, number>(); // playerId → winning teamId
   const teamDropMap = new Map<number, Set<number>>(); // teamId -> Set<droppedPlayerId>
+
+  // Evaluate whether a conditional claim should proceed
+  function evaluateCondition(claim: typeof claims[0]): boolean {
+    if (!claim.conditionType || !claim.conditionPlayerId) return true; // no condition
+
+    const conditionPlayerClaimed = processedResults.has(claim.conditionPlayerId);
+
+    switch (claim.conditionType) {
+      case "ONLY_IF_UNAVAILABLE":
+        // Claim only if the condition player was already claimed by someone else
+        return conditionPlayerClaimed;
+      case "ONLY_IF_AVAILABLE":
+        // Claim only if the condition player is still available (not yet claimed)
+        return !conditionPlayerClaimed;
+      case "PAIR_WITH":
+        // PAIR_WITH: only proceed if the paired claim was won by the SAME team
+        return processedResults.get(claim.conditionPlayerId) === claim.teamId;
+      default:
+        return true;
+    }
+  }
 
   await prisma.$transaction(async (tx) => {
     for (const claim of claims) {
@@ -243,6 +290,16 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
           where: { id: claim.id },
           data: { status: "FAILED_OUTBID", processedAt: new Date() },
         });
+        continue;
+      }
+
+      // Evaluate conditional claim
+      if (!evaluateCondition(claim)) {
+        await tx.waiverClaim.update({
+          where: { id: claim.id },
+          data: { status: "FAILED_CONDITION", processedAt: new Date() },
+        });
+        logs.push(`Claim ${claim.id} FAILED_CONDITION: condition not met for player ${claim.conditionPlayerId}`);
         continue;
       }
 
@@ -272,6 +329,7 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
 
       // Execute Success
       processedPlayerIds.add(claim.playerId);
+      processedResults.set(claim.playerId, claim.teamId);
 
       // Update Budget
       await tx.team.update({
@@ -382,6 +440,24 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
       }
     }).catch(err => logger.warn({ err }, "Push owner lookup failed"));
   }
+
+  // Fire-and-forget: post system messages to league chat for successful claims
+  (async () => {
+    try {
+      for (const claim of successClaims) {
+        const dropPlayer = claim.dropPlayerId
+          ? await prisma.player.findUnique({ where: { id: claim.dropPlayerId }, select: { name: true } })
+          : null;
+        const addName = claim.player?.name ?? "Unknown";
+        const teamName = claim.team?.name ?? "Unknown Team";
+        const dropText = dropPlayer ? `, dropping ${dropPlayer.name}` : "";
+        const text = `Waiver claim: ${teamName} adds ${addName} ($${claim.bidAmount})${dropText}`;
+        await postSystemChatMessage(leagueId, req.user!.id, text, { activityType: "waiver", claimId: claim.id });
+      }
+    } catch (err) {
+      logger.warn({ error: String(err), leagueId }, "Failed to post waiver chat messages");
+    }
+  })();
 
   res.json({ success: true, logs });
 }));

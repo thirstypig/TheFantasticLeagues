@@ -10,10 +10,15 @@ export interface WaiverClaim {
   dropPlayerId?: number | null;
   bidAmount: number;
   priority: number;
-  status: "PENDING" | "SUCCESS" | "FAILED_OUTBID" | "FAILED_INVALID";
+  status: "PENDING" | "SUCCESS" | "FAILED_OUTBID" | "FAILED_INVALID" | "FAILED_CONDITION" | "CANCELLED";
   processedAt?: string | null;
   player?: { id: number; name: string; posPrimary?: string };
   dropPlayer?: { id: number; name: string; posPrimary?: string } | null;
+  // Conditional claim fields
+  conditionType?: "ONLY_IF_UNAVAILABLE" | "ONLY_IF_AVAILABLE" | "PAIR_WITH" | null;
+  conditionPlayerId?: number | null;
+  conditionNote?: string | null;
+  conditionPlayer?: { id: number; name: string; posPrimary?: string } | null;
 }
 
 export interface WaiverProcessResult {
@@ -34,6 +39,9 @@ export async function submitWaiverClaim(data: {
   dropPlayerId?: number;
   bidAmount: number;
   priority?: number;
+  conditionType?: "ONLY_IF_UNAVAILABLE" | "ONLY_IF_AVAILABLE" | "PAIR_WITH";
+  conditionPlayerId?: number;
+  conditionNote?: string;
 }): Promise<WaiverClaim> {
   const result = await fetchJsonApi<WaiverClaim>(`${API_BASE}/waivers`, {
     method: "POST",

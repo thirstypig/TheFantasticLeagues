@@ -199,7 +199,7 @@ export const baseballConfig: SportConfig = {
   positions: baseballPositions,
   categories: baseballCategories,
   rosterSlots: { C: 2, "1B": 1, "2B": 1, "3B": 1, SS: 1, MI: 1, CM: 1, OF: 5, DH: 1, P: 9 },
-  scoringFormats: ["roto", "head-to-head"],
+  scoringFormats: ["ROTO", "H2H_CATEGORIES", "H2H_POINTS"],
   draftFormats: ["auction", "snake"],
   seasonMonths: [3, 9],
   dataProvider: "mlb-stats-api",

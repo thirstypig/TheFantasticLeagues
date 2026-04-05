@@ -241,13 +241,32 @@ router.get("/commissioner/:leagueId/prior-teams", requireAuth, requireCommission
  */
 const updateLeagueSchema = z.object({
   name: z.string().min(1).max(200).optional(),
+  scoringFormat: z.enum(["ROTO", "H2H_CATEGORIES", "H2H_POINTS"]).optional(),
+  pointsConfig: z.record(z.string(), z.number()).optional(),
+  playoffWeeks: z.number().int().min(0).max(10).optional(),
+  playoffTeams: z.number().int().min(2).max(16).optional(),
+  regularSeasonWeeks: z.number().int().min(1).max(30).optional(),
 });
 
 router.patch("/commissioner/:leagueId", requireAuth, requireCommissionerOrAdmin(), validateBody(updateLeagueSchema), asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
-    const { name } = req.body;
+    const { name, scoringFormat, pointsConfig, playoffWeeks, playoffTeams, regularSeasonWeeks } = req.body;
 
-    const league = await commissionerService.updateLeague(leagueId, { name });
+    // Scoring format can only be changed during SETUP
+    if (scoringFormat) {
+      const season = await prisma.season.findFirst({
+        where: { leagueId },
+        orderBy: { year: "desc" },
+        select: { status: true },
+      });
+      if (season && season.status !== "SETUP" && season.status !== "DRAFT") {
+        return res.status(400).json({ error: "Scoring format can only be changed during SETUP or DRAFT phase" });
+      }
+    }
+
+    const league = await commissionerService.updateLeague(leagueId, {
+      name, scoringFormat, pointsConfig, playoffWeeks, playoffTeams, regularSeasonWeeks,
+    });
 
     writeAuditLog({
       userId: req.user!.id,

@@ -34,7 +34,7 @@ router.get("/leagues", requireAuth, asyncHandler(async (req, res) => {
     select: {
       role: true,
       league: {
-        select: { id: true, name: true, season: true, draftMode: true, draftOrder: true, isPublic: true, publicSlug: true, franchiseId: true },
+        select: { id: true, name: true, season: true, draftMode: true, draftOrder: true, isPublic: true, publicSlug: true, franchiseId: true, sport: true },
       },
     },
     orderBy: [{ league: { name: "asc" } }, { league: { season: "desc" } }],
@@ -47,7 +47,7 @@ router.get("/leagues", requireAuth, asyncHandler(async (req, res) => {
 
   const publicLeaguesRaw = await prisma.league.findMany({
     where: { isPublic: true },
-    select: { id: true, name: true, season: true, draftMode: true, draftOrder: true, isPublic: true, publicSlug: true, franchiseId: true },
+    select: { id: true, name: true, season: true, draftMode: true, draftOrder: true, isPublic: true, publicSlug: true, franchiseId: true, sport: true },
     orderBy: [{ season: "desc" }, { name: "asc" }],
   });
 

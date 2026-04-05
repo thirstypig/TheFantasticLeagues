@@ -822,10 +822,25 @@ export class CommissionerService {
   /**
    * League Update
    */
-  async updateLeague(leagueId: number, data: { name?: string }) {
+  async updateLeague(leagueId: number, data: {
+    name?: string;
+    scoringFormat?: string;
+    pointsConfig?: Record<string, number> | null;
+    playoffWeeks?: number;
+    playoffTeams?: number;
+    regularSeasonWeeks?: number;
+  }) {
+    const updateData: Record<string, any> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.scoringFormat !== undefined) updateData.scoringFormat = data.scoringFormat;
+    if (data.pointsConfig !== undefined) updateData.pointsConfig = data.pointsConfig;
+    if (data.playoffWeeks !== undefined) updateData.playoffWeeks = data.playoffWeeks;
+    if (data.playoffTeams !== undefined) updateData.playoffTeams = data.playoffTeams;
+    if (data.regularSeasonWeeks !== undefined) updateData.regularSeasonWeeks = data.regularSeasonWeeks;
+
     return prisma.league.update({
       where: { id: leagueId },
-      data: { name: data.name },
+      data: updateData,
     });
   }
 

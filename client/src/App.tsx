@@ -46,6 +46,7 @@ const BoardPage = React.lazy(() => import("./features/board/pages/BoardPage"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
 const Concepts = React.lazy(() => import("./pages/Concepts"));
 const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
+const ChatPage = React.lazy(() => import("./features/chat/pages/ChatPage"));
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
@@ -121,6 +122,7 @@ export default function App() {
                     <Route path="/trades" element={<Navigate to="/activity" replace />} />
                     <Route path="/trading-block" element={<Navigate to="/board" replace />} />
                     <Route path="/board" element={<BoardPage />} />
+                    <Route path="/chat" element={<ChatPage />} />
                     <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />

@@ -86,7 +86,14 @@ export async function getCommissionerRosters(leagueId: number): Promise<RosterIt
   return resp.rosters ?? [];
 }
 
-export async function updateLeague(leagueId: number, data: { name?: string }): Promise<{ league: CommissionerLeague }> {
+export async function updateLeague(leagueId: number, data: {
+  name?: string;
+  scoringFormat?: string;
+  pointsConfig?: Record<string, number>;
+  playoffWeeks?: number;
+  playoffTeams?: number;
+  regularSeasonWeeks?: number;
+}): Promise<{ league: CommissionerLeague }> {
   return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}`, {
     method: "PATCH",
     body: JSON.stringify(data),

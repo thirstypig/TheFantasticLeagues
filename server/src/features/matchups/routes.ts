@@ -39,11 +39,21 @@ router.post("/generate", requireAuth, validateBody(generateSchema), asyncHandler
   // Clear existing matchups for this league
   await prisma.matchup.deleteMany({ where: { leagueId } });
 
+  // Link weeks to periods (if periods exist, week 1 → first period, etc.)
+  const periods = await prisma.period.findMany({
+    where: { leagueId },
+    orderBy: { startDate: "asc" },
+    select: { id: true },
+  });
+  const periodIdByWeek = new Map<number, number>();
+  periods.forEach((p, idx) => periodIdByWeek.set(idx + 1, p.id));
+
   // Create matchups in bulk
   await prisma.matchup.createMany({
     data: schedule.map(m => ({
       leagueId,
       week: m.week,
+      periodId: periodIdByWeek.get(m.week) ?? null,
       teamAId: m.teamAId,
       teamBId: m.teamBId,
     })),
@@ -101,34 +111,45 @@ router.get("/my-matchup", requireAuth, requireLeagueMember("leagueId"), asyncHan
 const scoreSchema = z.object({
   leagueId: z.number().int().positive(),
   week: z.number().int().positive(),
-  periodId: z.number().int().positive(),
+  periodId: z.number().int().positive().optional(),
 });
 
 router.post("/score", requireAuth, validateBody(scoreSchema), asyncHandler(async (req, res) => {
   const { leagueId, week, periodId } = req.body;
 
-  // Get league scoring format
-  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { scoringFormat: true } });
+  // Get league scoring format + points config
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { scoringFormat: true, pointsConfig: true },
+  });
   if (!league) return res.status(404).json({ error: "League not found" });
 
   const matchups = await prisma.matchup.findMany({ where: { leagueId, week } });
   if (matchups.length === 0) return res.status(404).json({ error: "No matchups for this week" });
 
+  // Resolve periodId: use provided value, or fall back to matchup's linked period
+  const resolvedPeriodId = periodId;
+
   const results: { matchupId: number; result: any }[] = [];
 
   for (const matchup of matchups) {
+    const pid = resolvedPeriodId || matchup.periodId;
+    if (!pid) {
+      results.push({ matchupId: matchup.id, result: null });
+      continue;
+    }
+
     let result;
     if (league.scoringFormat === "H2H_POINTS") {
-      // Default point values — in production, read from league rules
-      const pointValues: Record<string, number> = { R: 1, HR: 4, RBI: 1, SB: 2, W: 5, SV: 5, K: 1 };
-      result = await scoreH2HPoints(matchup.teamAId, matchup.teamBId, periodId, pointValues);
+      const pointValues = (league.pointsConfig as Record<string, number>) ?? { R: 1, HR: 4, RBI: 1, SB: 2, W: 7, SV: 5, K: 1 };
+      result = await scoreH2HPoints(matchup.teamAId, matchup.teamBId, pid, pointValues);
     } else {
-      result = await scoreH2HCategories(matchup.teamAId, matchup.teamBId, periodId);
+      result = await scoreH2HCategories(matchup.teamAId, matchup.teamBId, pid);
     }
 
     await prisma.matchup.update({
       where: { id: matchup.id },
-      data: { result: result as any },
+      data: { result: result as any, periodId: pid },
     });
 
     results.push({ matchupId: matchup.id, result });
