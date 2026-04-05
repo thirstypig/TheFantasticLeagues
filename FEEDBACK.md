@@ -4,6 +4,38 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-05 (Session 57) — 10 Features, League Board, Pricing, Sport Engine, Trophy Case
+
+### Completed
+- **Local Timezone Display**: timeUtils.ts with cached Intl.DateTimeFormat, three-tier display (countdown/relative/absolute), useCountdownSeconds hook. Applied to Home, Season pages
+- **League Health Dashboard**: Commissioner "Health" tab with per-team engagement scoring (0-100), status badges (active/at-risk/inactive), sorted by score ascending
+- **Period Awards & Engagement**: periodAwardsService.ts — Manager of Period, Pickup of Period, Category Kings. PeriodAwardsCard on Home page
+- **Pre-Trade AI Advisor**: Enhanced POST /api/trades/analyze with keeper detection, position scarcity, category impact. TradeAnalysisModal with "Analyze Before Proposing" button
+- **Sport-Agnostic Engine Phase 1**: server/src/lib/sports/ + client/src/lib/sports/ — SportConfig interface, baseball.ts extracted, getSportConfig() registry. Zero behavioral changes
+- **Historical Analytics & Trophy Case**: trophyCaseService.ts with dynasty scores, championships, records. TrophyCaseTab on Archive page
+- **Pricing Page**: Free / Pro $29/season / Commissioner $49/season. Founding member lifetime deal ($99). FAQ section. /pricing route + sidebar
+- **Concepts Lab**: Interactive League Board prototype at /concepts. Sample cards, reactions, polls
+- **League Board**: Card-based async communication (Commissioner/Trade Block/Banter). Trade Block auto-syncs from TradingBlock table. Thread/reply UX (slide-over desktop, inline mobile). /board route
+- **Product Board placeholder**: /community with Announcements, Marketplace, General channels. OGBA listing
+- **Batch AI Insights**: POST /api/teams/ai-insights/generate-all for all teams
+- **Category table columns**: Reordered to Team, Season, Period, Chg
+- **Competitive analysis brainstorm**: 4-agent research — competitors, APIs, pricing, remote UX
+- **Roadmap rewrite**: 5 phases, 27 items, seasonal pricing model
+
+### Pending / Next Steps
+- Run `npx prisma migrate dev` for BoardCard + ProductBoardCard tables
+- Push notifications (Web Push API with VAPID keys)
+- In-app real-time chat (extend existing WebSocket)
+- H2H + Points scoring formats
+- Smart deadline warnings
+- Deploy to Railway (30+ commits pending)
+
+### Test Results
+- TypeScript: clean (both client and server)
+- All features browser-verified on localhost
+
+---
+
 ## Session 2026-04-03 (Session 56 cont.) — Email Notifications, AAA Sync, 7-Agent Review, Competitive Analysis, Roadmap Rewrite
 
 ### Completed

@@ -30,6 +30,35 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.50.0",
+    date: "Apr 5, 2026",
+    session: "Session 57",
+    title: "League Board, Pricing, Sport Engine, Trophy Case, Period Awards, Pre-Trade AI",
+    highlights: [
+      "League Board: card-based async communication with Commissioner, Trade Block (auto-synced from rosters), and Banter columns. Thread replies, thumbs up/down reactions",
+      "Pricing page: seasonal pricing — Free / Pro $29/season / Commissioner $49/season with founding member lifetime deal",
+      "Sport-Agnostic Engine Phase 1: SportConfig interface, baseball config extracted, getSportConfig() registry — foundation for football + basketball",
+      "Trophy Case: dynasty scores, championship history, all-time records from 20+ years of archived data",
+      "6 more features: timezone display, league health dashboard, period awards, pre-trade AI advisor, concepts lab, batch AI insights",
+    ],
+    changes: [
+      { type: "feat", description: "League Board: 3-column card board (Commissioner/Trade Block/Banter) with thread replies, thumbs up/down, auto-synced trade block from roster" },
+      { type: "feat", description: "Pricing page at /pricing: Free / Pro $29/season / Commissioner $49/season. Founding member $99 lifetime deal. FAQ section" },
+      { type: "feat", description: "Sport-Agnostic Engine Phase 1: SportConfig interface + baseball.ts extracted + getSportConfig() registry (server + client)" },
+      { type: "feat", description: "Trophy Case: trophyCaseService with dynasty scores, championships, all-time standings, records. TrophyCaseTab on Archive page" },
+      { type: "feat", description: "Local Timezone Display: timeUtils.ts with cached Intl.DateTimeFormat, three-tier display, useCountdownSeconds hook" },
+      { type: "feat", description: "League Health Dashboard: commissioner engagement metrics (score 0-100, active/at-risk/inactive), LeagueHealthTab" },
+      { type: "feat", description: "Period Awards: Manager of Period, Pickup of Period, Category Kings. PeriodAwardsCard on Home page" },
+      { type: "feat", description: "Pre-Trade AI Advisor: enhanced /analyze with keeper detection, position scarcity, category impact. TradeAnalysisModal" },
+      { type: "feat", description: "Concepts Lab at /concepts: interactive League Board prototype with sample cards, reactions, polls" },
+      { type: "feat", description: "Product Board placeholder at /community: Announcements, Marketplace, General channels. OGBA listing" },
+      { type: "feat", description: "Batch AI Insights: POST /api/teams/ai-insights/generate-all for backfilling all teams" },
+      { type: "fix", description: "Category table columns reordered: Team → Season → Period → Chg" },
+      { type: "refactor", description: "Trading Block merged into League Board (auto-synced, read-only). Removed Trading Block tab from Activity page" },
+      { type: "docs", description: "Competitive analysis brainstorm, deepened plan (4 research agents), roadmap rewrite (5 phases, seasonal pricing)" },
+    ],
+  },
+  {
     version: "0.49.0",
     date: "Apr 3, 2026",
     session: "Session 56",

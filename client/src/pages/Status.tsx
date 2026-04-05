@@ -254,7 +254,7 @@ export default function Status() {
             { label: "Real-time", value: "WebSocket (auction)" },
             { label: "Cache", value: "SQLite (MLB API proxy)" },
             { label: "Tests", value: "723 passing (486 server + 187 client + 50 MCP)" },
-            { label: "API Endpoints", value: "203 route handlers across 22 modules" },
+            { label: "API Endpoints", value: "213 route handlers across 23 modules" },
           ].map((item) => (
             <div key={item.label} className="flex items-baseline gap-2 text-sm py-1">
               <span className="text-[var(--lg-text-muted)] font-medium w-24 shrink-0">{item.label}</span>

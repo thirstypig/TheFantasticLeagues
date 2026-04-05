@@ -32,20 +32,20 @@ import MermaidDiagram from "../components/MermaidDiagram";
 /* ── Data ────────────────────────────────────────────────────────── */
 
 const stats = [
-  { label: "Total Lines of Code", value: "78,400+", icon: FileCode },
-  { label: "Client (React/TS)", value: "38,100", icon: Monitor },
-  { label: "Server (Node/TS)", value: "36,600", icon: Server },
+  { label: "Total Lines of Code", value: "79,000+", icon: FileCode },
+  { label: "Client (React/TS)", value: "41,200", icon: Monitor },
+  { label: "Server (Node/TS)", value: "37,800", icon: Server },
   { label: "MCP Server", value: "1,370", icon: Server },
   { label: "Test Coverage", value: "12,800+ lines", icon: TestTube },
-  { label: "Database Models", value: "39", icon: Database },
-  { label: "API Route Handlers", value: "203", icon: Plug },
-  { label: "Feature Modules", value: "22", icon: Layers },
-  { label: "Git Commits", value: "440+", icon: GitCommit },
+  { label: "Database Models", value: "44", icon: Database },
+  { label: "API Route Handlers", value: "213", icon: Plug },
+  { label: "Feature Modules", value: "23", icon: Layers },
+  { label: "Git Commits", value: "456+", icon: GitCommit },
   { label: "Tests Passing", value: "723", icon: TestTube },
-  { label: "DB Schema Lines", value: "955", icon: Braces },
+  { label: "DB Schema Lines", value: "1,048", icon: Braces },
   { label: "DB Migrations", value: "14", icon: Database },
-  { label: "Development Sessions", value: "56", icon: Bot },
-  { label: "Est. Tokens Used", value: "~95M+", icon: Bot },
+  { label: "Development Sessions", value: "57", icon: Bot },
+  { label: "Est. Tokens Used", value: "~100M+", icon: Bot },
 ];
 
 const techStack = [
@@ -69,7 +69,7 @@ const techStack = [
     items: [
       { name: "Node.js + Express", desc: "REST API server" },
       { name: "TypeScript (ESM)", desc: "Strict mode, ES modules" },
-      { name: "Prisma ORM", desc: "Type-safe database access with 39 models" },
+      { name: "Prisma ORM", desc: "Type-safe database access with 44 models" },
       { name: "Zod", desc: "Runtime request validation" },
       { name: "Helmet", desc: "Security headers" },
       { name: "express-rate-limit", desc: "API rate limiting" },
@@ -109,7 +109,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "723 tests", desc: "486 server + 187 client + 50 MCP tests" },
+      { name: "723 tests", desc: "486 server + 187 client + 50 MCP tests passing" },
     ],
   },
   {
@@ -145,6 +145,8 @@ const featureModules = [
   { name: "periods", desc: "Period standings & payouts" },
   { name: "franchises", desc: "Organization-level settings & membership" },
   { name: "mlb-feed", desc: "Live MLB scores, transactions, roster stats, league headlines, highlight thumbnails, news feeds, depth charts, digest" },
+  { name: "board", desc: "League Board: Commissioner announcements, Trade Block (auto-synced), Banter cards with threads" },
+  { name: "community", desc: "Product Board placeholder: Announcements, Marketplace, General channels" },
 ];
 
 const erdDiagrams: { label: string; chart: string }[] = [
@@ -440,7 +442,7 @@ const erdDiagrams: { label: string; chart: string }[] = [
 ];
 
 const tools = [
-  { name: "Claude Code (CLI)", desc: "Primary development interface — AI pair programming in the terminal, authored ~95% of the codebase" },
+  { name: "Claude Code (CLI)", desc: "Primary development interface — AI pair programming in the terminal, authored ~95% of the codebase across 57 sessions" },
   { name: "Claude Opus 4", desc: "The model powering Claude Code — handles architecture decisions, multi-file refactors, test writing" },
   { name: "GitHub", desc: "Source control, pull requests, code review" },
   { name: "Supabase Dashboard", desc: "Database management, auth config, SQL editor" },
@@ -573,6 +575,11 @@ const buildJournal = [
     title: "Session 56: Watchlist & Trading Block, Email Notifications, 7-Agent Review, 17 Commits",
     detail: "Massive session: 17 commits, 2,000+ LOC added. Built Watchlist (private per-team: player search across 2,277 players, notes, tags, PlayerDetailModal) and Trading Block (public league-wide: 'asking for' field, grouped by team, /trading-block page + sidebar). 17-bug QA audit found and fixed auth gaps, null safety, API contract mismatches, and empty search results. Email notification system via Resend: trade proposed/processed/vetoed + waiver results with HTML templates, notifyTeamOwners helper, sanitizeSubject security, List-Unsubscribe header. Weekly AAA prospects sync cron (Monday 14:00 UTC) with position overwrite bug fix. ADA table compliance (scope, aria-label, aria-sort, caption). Frozen first column on mobile (sticky left-0 with opaque bg). Shared PlayerFilterBar (~180 LOC deduped), PlayerNameCell, TeamNameLink components. SW cache fix: Express was serving sw.js with max-age=1y immutable — dedicated /sw.js route with no-cache headers. 7-agent code review (TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native, Learnings) found 18 findings — all 8 P2s resolved. 5 pre-existing client test failures fixed. 486 server + 187 client = 673 tests, 0 failures. 2 solution docs written.",
   },
+  {
+    date: "Apr 2026",
+    title: "Session 57: 10 Features — League Board, Pricing, Sport Engine, Trophy Case",
+    detail: "10-feature session spanning engagement, monetization, and architecture. League Board: card-based async communication with Commissioner/Trade Block/Banter columns, thread replies, thumbs up/down reactions — Trade Block auto-syncs from TradingBlock table. Pricing page at /pricing with seasonal tiers (Free/Pro $29/Commissioner $49) and founding member $99 lifetime deal. Sport-Agnostic Engine Phase 1: SportConfig interface + baseball.ts extracted + getSportConfig() registry on both server and client — zero behavioral changes, foundation for football + basketball. Trophy Case: trophyCaseService with dynasty scores, championships, all-time records from 20+ years of archived data. Local Timezone Display: timeUtils.ts with cached Intl.DateTimeFormat, three-tier display (countdown/relative/absolute), useCountdownSeconds hook. League Health Dashboard: commissioner engagement scoring (0-100) with at-risk sorting. Period Awards: Manager/Pickup of Period + Category Kings on Home page. Pre-Trade AI Advisor with keeper detection and category impact. Concepts Lab prototype at /concepts. Product Board placeholder at /community. Batch AI Insights endpoint. Category table column reorder. Competitive analysis brainstorm (4 agents) and roadmap rewrite (5 phases, 27 items).",
+  },
 ];
 
 const workflowSteps = [
@@ -623,11 +630,11 @@ const lessons = [
 
 const costComparison = {
   aiCost: {
-    tokens: "~95M+",
+    tokens: "~100M+",
     apiCost: "$150–300",
     subscriptionCost: "$100–200/mo",
     totalRange: "$200–$2,800",
-    note: "Claude Code subscription + API tokens over 56 sessions (Nov 2025–Apr 2026). ~6 months of development.",
+    note: "Claude Code subscription + API tokens over 57 sessions (Nov 2025–Apr 2026). ~6 months of development.",
   },
   usDevShop: {
     rateRange: "$150–250/hr",
@@ -636,7 +643,7 @@ const costComparison = {
     totalLow: "$150K",
     totalHigh: "$375K",
     timeline: "8–14 months",
-    note: "Full-stack agency (NY/SF/Austin). Includes PM, design, frontend, backend, QA, DevOps. Based on 22 feature modules, 203 API route handlers, 39 DB models, real-time WebSocket, OAuth, live MLB data integration, email notifications, AI system with 8 features.",
+    note: "Full-stack agency (NY/SF/Austin). Includes PM, design, frontend, backend, QA, DevOps. Based on 23 feature modules, 213 API route handlers, 44 DB models, real-time WebSocket, OAuth, live MLB data integration, email notifications, AI system with 8 features.",
   },
   offshore: {
     rateRange: "$25–60/hr",
@@ -648,10 +655,10 @@ const costComparison = {
     note: "Offshore team (India/Eastern Europe). Lower hourly rate but often requires more hours due to communication overhead, timezone gaps, and iteration cycles. PM/QA often separate line items.",
   },
   scope: [
-    "78,400+ lines of TypeScript (strict mode)",
-    "22 mirrored client/server feature modules",
-    "203 API route handlers + WebSocket real-time auction",
-    "39 Prisma database models with 14 migrations",
+    "79,000+ lines of TypeScript (strict mode)",
+    "23 mirrored client/server feature modules",
+    "213 API route handlers + WebSocket real-time auction",
+    "44 Prisma database models with 14 migrations",
     "723 automated tests (unit + integration + MCP)",
     "OAuth integration (Google/Yahoo via Supabase)",
     "Live MLB Stats API with caching MCP proxy (8 tools)",
@@ -659,7 +666,8 @@ const costComparison = {
     "8 AI features (Gemini + Claude) — drafts, trades, insights, digest",
     "Excel/CSV import, 20+ year archive system",
     "Full design system: light/dark mode, ADA compliant tables, frozen columns",
-    "56 development sessions, 440+ commits",
+    "Sport-agnostic engine foundation (SportConfig interface, baseball.ts extracted)",
+    "57 development sessions, 456+ commits",
   ],
 };
 

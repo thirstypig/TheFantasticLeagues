@@ -22,7 +22,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 18 feature modules mirrored client/server
+- 23 feature modules mirrored client/server
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -64,7 +64,7 @@ fbst/
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-### Current Feature Modules (21)
+### Current Feature Modules (23)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -89,6 +89,8 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `ai` | — | 3 pages | AI Insights hub, Draft Report (`/draft-report`), league digest on Home page |
 | `watchlist` | routes | 1 component, api | Private per-team player watchlist (notes, tags) |
 | `trading-block` | routes | 1 page, 1 component, api | Public league-wide trading block ("asking for" field) |
+| `board` | routes | 1 page, 3 components, api | League Board: Commissioner/Trade Block/Banter cards with threads |
+| `community` | routes | 1 page, api | Product Board placeholder: Announcements, Marketplace, General |
 
 ### Feature Module Pattern
 ```
@@ -155,6 +157,7 @@ Some features import from other features' services or components.
 - `periods/pages/Season` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `teams/pages/Team` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `pages/Home` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
+- `board/pages/Board` imports `trading-block/api` (auto-synced Trade Block cards)
 
 When adding cross-feature imports, document them here to maintain visibility.
 

@@ -34,7 +34,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 3, 2026 (Session 56)";
+const LAST_UPDATED = "April 5, 2026 (Session 57)";
 
 // ─── Product Roadmap ───
 
@@ -87,7 +87,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "All times in user's local timezone via Intl.DateTimeFormat auto-detection. Countdown timers ('waiver closes in 3h 22m') instead of absolute times. Critical for multi-timezone leagues.",
         icon: Globe,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["ux", "remote"],
       },
       {
@@ -111,15 +111,15 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Commissioner view: last login per manager, lineup set rate, waiver activity, trade engagement. Proactively identify and re-engage managers dropping off mid-season.",
         icon: Activity,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["commissioner", "engagement"],
       },
       {
-        title: "Monthly Awards & Engagement Hooks",
-        description: "Auto-generated 'Manager of the Month', 'Pickup of the Week', 'Trade of the Month'. Keeps mid-season engagement high. Displayed on Home page and in weekly digest.",
+        title: "Period Awards & Engagement Hooks",
+        description: "Auto-generated 'Manager of the Period', 'Pickup of the Period', 'Category Kings'. Keeps mid-season engagement high. Displayed on Home page via PeriodAwardsCard.",
         icon: Sparkles,
         effort: "Small",
-        status: "planned",
+        status: "done",
         tags: ["engagement", "ai"],
       },
       {
@@ -211,7 +211,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "'Should I do this trade?' with projected category impact, surplus value analysis, and keeper implications. Extends existing post-trade analysis to pre-trade. Unique vs all competitors.",
         icon: Bot,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["ai", "trades"],
       },
       {
@@ -237,7 +237,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Free: full league hosting. Pro ($29/season): AI features, projections, Statcast, priority notifications. Commissioner ($49/season per league): league health dashboard, custom scoring, archive, announcement system.",
         icon: DollarSign,
         effort: "Medium",
-        status: "planned",
+        status: "done",
         tags: ["business", "saas"],
       },
       {
@@ -284,10 +284,10 @@ const productRoadmap: RoadmapPhase[] = [
       },
       {
         title: "Sport-Agnostic Engine",
-        description: "Abstract core engine (drafts, rosters, trades, standings, scoring) to support any sport via config. Pluggable data providers. Foundation for football, basketball, hockey.",
+        description: "Phase 1 complete: SportConfig interface, baseball.ts extracted, getSportConfig() registry (server + client). Foundation for football, basketball, hockey.",
         icon: Layers,
         effort: "Large",
-        status: "planned",
+        status: "in-progress",
         tags: ["architecture", "saas"],
       },
       {
@@ -303,7 +303,7 @@ const productRoadmap: RoadmapPhase[] = [
         description: "Multi-year owner analytics, draft tendencies, trade patterns. Season records, awards, cross-year performance tracking. Leverage 20+ years of archived data.",
         icon: TrendingUp,
         effort: "Large",
-        status: "planned",
+        status: "done",
         tags: ["archive", "ai"],
       },
       {
@@ -340,6 +340,21 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 57 — League Board, Pricing, Sport Engine, Trophy Case, 10 Features",
+    items: [
+      { title: "League Board", description: "Card-based async communication: Commissioner announcements, Trade Block (auto-synced from rosters), Banter. Thread replies, thumbs up/down reactions.", session: "57" },
+      { title: "Pricing Page", description: "Seasonal pricing: Free / Pro $29/season / Commissioner $49/season. Founding member lifetime deal ($99). FAQ.", session: "57" },
+      { title: "Sport-Agnostic Engine Phase 1", description: "SportConfig interface, baseball.ts extracted, getSportConfig() registry. Foundation for football (Aug 2027) and basketball (Oct 2027).", session: "57" },
+      { title: "Trophy Case", description: "Dynasty scores, championship history, all-time records from 20+ years of archived HistoricalStanding data.", session: "57" },
+      { title: "Local Timezone Display", description: "timeUtils.ts: cached Intl.DateTimeFormat, three-tier display (countdown/relative/absolute), useCountdownSeconds hook.", session: "57" },
+      { title: "League Health Dashboard", description: "Commissioner 'Health' tab: per-team engagement scoring (0-100), status badges, at-risk first sort.", session: "57" },
+      { title: "Period Awards", description: "Manager of Period, Pickup of Period, Category Kings. PeriodAwardsCard on Home page.", session: "57" },
+      { title: "Pre-Trade AI Advisor", description: "Enhanced /analyze with keeper detection, position scarcity, category impact. TradeAnalysisModal.", session: "57" },
+      { title: "Concepts Lab", description: "Interactive prototype page at /concepts for testing new features before building.", session: "57" },
+      { title: "Batch AI Insights", description: "POST /api/teams/ai-insights/generate-all for backfilling insights across all teams.", session: "57" },
+    ],
+  },
   {
     label: "Session 56 — Watchlist & Trading Block, Email Notifications, ADA, 7-Agent Review",
     items: [
@@ -646,7 +661,7 @@ function CompletedFeaturesSection() {
             Completed Features
           </h2>
           <p className="text-xs text-[var(--lg-text-muted)]">
-            {totalCompleted} features shipped across 33 sessions
+            {totalCompleted} features shipped across 34 sessions
           </p>
         </div>
         {open ? (
