@@ -106,7 +106,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         { to: "/players", label: "Players", show: true },
         { to: "/matchup", label: "Matchup", show: gating.isH2H },
         { to: "/activity", label: "Activity", show: true },
-        { to: "/trading-block", label: "Trading Block", show: gating.canTrade },
+        { to: "/board", label: "Board", show: true },
       ],
     },
     {

@@ -125,6 +125,8 @@ model User {
   ownedTeams             Team[]             @relation("TeamOwner")
   teamOwnerships         TeamOwnership[]
   auditLogs              AuditLog[]
+  boardCards             BoardCard[]
+  boardReplies           BoardCardReply[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -171,6 +173,7 @@ model League {
   invites           LeagueInvite[]
   playerValues      PlayerValue[]
   aiInsights        AiInsight[]
+  boardCards        BoardCard[]
 
   @@unique([name, season])
 }
@@ -952,4 +955,55 @@ model TradingBlock {
 
   @@unique([teamId, playerId])
   @@index([teamId])
+}
+
+// ======================
+//  League Board — card-based async communication
+// ======================
+model BoardCard {
+  id        Int      @id @default(autoincrement())
+  leagueId  Int
+  userId    Int?     // null for system-generated cards
+  column    String   // "pinned", "activity", "trade_block", "banter"
+  title     String
+  body      String?  @db.Text
+  type      String   // "user", "system", "trade", "waiver", "stat_alert", "award", "poll"
+  metadata  Json?    // for polls: { options, votes }, for trades: { tradeId }, etc.
+  pinned    Boolean  @default(false)
+  periodId  Int?     // for auto-archiving by period
+  expiresAt DateTime? // auto-expire (trade block posts expire at trade deadline)
+  thumbsUp  Int      @default(0)
+  thumbsDown Int     @default(0)
+  createdAt DateTime @default(now())
+  deletedAt DateTime? // soft delete
+
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+  replies   BoardCardReply[]
+
+  @@index([leagueId, column])
+  @@index([leagueId, periodId])
+  @@index([createdAt])
+}
+
+model BoardCardReply {
+  id       Int      @id @default(autoincrement())
+  cardId   Int
+  userId   Int
+  body     String
+  createdAt DateTime @default(now())
+
+  card     BoardCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@index([cardId])
+}
+
+model BoardVote {
+  id       Int    @id @default(autoincrement())
+  cardId   Int
+  userId   Int
+  vote     String // "up" or "down"
+
+  @@unique([cardId, userId])
 }
