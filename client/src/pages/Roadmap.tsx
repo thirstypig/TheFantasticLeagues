@@ -364,6 +364,7 @@ const completedFeatures: CompletedGroup[] = [
       { title: "Rule Lock Tiers", description: "Season-phase rule enforcement. 10 waiver config fields. Padlock icons on locked commissioner settings.", session: "57" },
       { title: "User Profiles", description: "Public profiles with bio, experience, preferred formats, payment handles. Edit mode + public view.", session: "57" },
       { title: "League Invites + Public Leagues", description: "/join/:inviteCode page, PRIVATE/PUBLIC/OPEN visibility, Community Board with real listings.", session: "57" },
+      { title: "7-Agent Code Review + P1 Fixes", description: "42 findings across TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native reviewers. 5 P1 security fixes deployed.", session: "57" },
     ],
   },
   {

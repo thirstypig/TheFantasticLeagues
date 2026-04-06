@@ -40,7 +40,7 @@ const stats = [
   { label: "Database Models", value: "49", icon: Database },
   { label: "API Route Handlers", value: "228", icon: Plug },
   { label: "Feature Modules", value: "26", icon: Layers },
-  { label: "Git Commits", value: "462+", icon: GitCommit },
+  { label: "Git Commits", value: "464+", icon: GitCommit },
   { label: "Tests Passing", value: "730", icon: TestTube },
   { label: "DB Schema Lines", value: "1,131", icon: Braces },
   { label: "DB Migrations", value: "15", icon: Database },
@@ -583,8 +583,8 @@ const buildJournal = [
   },
   {
     date: "Apr 2026",
-    title: "Session 57: 10 Features — League Board, Pricing, Sport Engine, Trophy Case",
-    detail: "10-feature session spanning engagement, monetization, and architecture. League Board: card-based async communication with Commissioner/Trade Block/Banter columns, thread replies, thumbs up/down reactions — Trade Block auto-syncs from TradingBlock table. Pricing page at /pricing with seasonal tiers (Free/Pro $29/Commissioner $49) and founding member $99 lifetime deal. Sport-Agnostic Engine Phase 1: SportConfig interface + baseball.ts extracted + getSportConfig() registry on both server and client — zero behavioral changes, foundation for football + basketball. Trophy Case: trophyCaseService with dynasty scores, championships, all-time records from 20+ years of archived data. Local Timezone Display: timeUtils.ts with cached Intl.DateTimeFormat, three-tier display (countdown/relative/absolute), useCountdownSeconds hook. League Health Dashboard: commissioner engagement scoring (0-100) with at-risk sorting. Period Awards: Manager/Pickup of Period + Category Kings on Home page. Pre-Trade AI Advisor with keeper detection and category impact. Concepts Lab prototype at /concepts. Product Board placeholder at /community. Batch AI Insights endpoint. Category table column reorder. Competitive analysis brainstorm (4 agents) and roadmap rewrite (5 phases, 27 items).",
+    title: "Session 57: 10 Features, P1 Security Fixes — League Board, Pricing, Sport Engine, Trophy Case",
+    detail: "10-feature session spanning engagement, monetization, and architecture. League Board: card-based async communication with Commissioner/Trade Block/Banter columns, thread replies, thumbs up/down reactions — Trade Block auto-syncs from TradingBlock table. Pricing page at /pricing with seasonal tiers (Free/Pro $29/Commissioner $49) and founding member $99 lifetime deal. Sport-Agnostic Engine Phase 1: SportConfig interface + baseball.ts extracted + getSportConfig() registry on both server and client — zero behavioral changes, foundation for football + basketball. Trophy Case: trophyCaseService with dynasty scores, championships, all-time records from 20+ years of archived data. Local Timezone Display: timeUtils.ts with cached Intl.DateTimeFormat, three-tier display (countdown/relative/absolute), useCountdownSeconds hook. League Health Dashboard: commissioner engagement scoring (0-100) with at-risk sorting. Period Awards: Manager/Pickup of Period + Category Kings on Home page. Pre-Trade AI Advisor with keeper detection and category impact. Concepts Lab prototype at /concepts. Product Board placeholder at /community. Batch AI Insights endpoint. Category table column reorder. Competitive analysis brainstorm (4 agents) and roadmap rewrite (5 phases, 27 items). 7-agent code review found 42 findings (5 P1, 12 P2, 25 P3) — all 5 P1 critical security fixes deployed: draft commissioner auth on 7 endpoints, chat league membership, board vote/reply membership, push subscription hijacking prevention, email exposure stripped from public endpoints.",
   },
 ];
 
@@ -673,7 +673,7 @@ const costComparison = {
     "Excel/CSV import, 20+ year archive system",
     "Full design system: light/dark mode, ADA compliant tables, frozen columns",
     "Sport-agnostic engine foundation (SportConfig interface, baseball.ts extracted)",
-    "57 development sessions, 462+ commits",
+    "57 development sessions, 464+ commits",
   ],
 };
 

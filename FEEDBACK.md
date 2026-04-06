@@ -34,12 +34,15 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - **User Profiles**: UserProfile model, /api/profiles routes, ProfilePage with edit mode + public view, payment handles (league-members-only)
 - **League Invites + Public Leagues**: /join/:inviteCode landing page, visibility (PRIVATE/PUBLIC/OPEN), maxTeams, Community Board with real public league listings
 
+- **7-Agent Code Review**: TypeScript, Security, Performance, Architecture, Simplicity, Agent-Native, Learnings — 42 findings (5 P1, 12 P2, 25 P3)
+- **5 P1 Security Fixes**: Draft commissioner auth (7 endpoints), chat league membership, board vote/reply membership, push subscription hijacking prevention, email exposure stripped from public endpoints
+
 ### Pending / Next Steps
 - Run `npx prisma migrate dev` for BoardCard + ProductBoardCard + ChatMessage + PushSubscription + NotificationPreference + Matchup tables
 - Deploy to Railway (30+ commits pending)
 - FanGraphs projection import ($15/mo, best ROI data add)
 - Stripe payment integration for seasonal pricing
-- P3 review findings (10 items) — table virtualization, search debounce, barrel files
+- P2/P3 review findings (12 P2, 25 P3) — table virtualization, search debounce, barrel files
 
 ### Test Results
 - Server: 493 passing

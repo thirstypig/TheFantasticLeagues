@@ -67,6 +67,7 @@ const changelog: ChangelogEntry[] = [
       { type: "feat", description: "Rule Lock Tiers: isRuleLocked() with season-phase enforcement. 10 waiver config fields. Commissioner UI with padlock icons on locked settings" },
       { type: "feat", description: "User Profiles: ProfilePage (/profile, /profile/:userId), bio, favorite team, experience, preferred formats, payment handles (league-members-only)" },
       { type: "feat", description: "League Invites + Public Leagues: /join/:inviteCode, visibility (PRIVATE/PUBLIC/OPEN), Community Board with real public league listings" },
+      { type: "security", description: "7-agent code review: 42 findings. Fixed 5 P1 criticals — draft commissioner auth, chat/board membership checks, push subscription hijacking, email exposure in public endpoints" },
     ],
   },
   {
