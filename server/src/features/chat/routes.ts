@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireCommissionerOrAdmin } from "../../middleware/auth.js";
+import { requireAuth, requireCommissionerOrAdmin, requireLeagueMember } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 
 const router = Router();
 
 // GET /api/chat/:leagueId/messages?limit=50&before=ID — paginated history
-router.get("/:leagueId/messages", requireAuth, asyncHandler(async (req, res) => {
+router.get("/:leagueId/messages", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
@@ -42,7 +42,7 @@ router.get("/:leagueId/messages", requireAuth, asyncHandler(async (req, res) => 
 }));
 
 // GET /api/chat/:leagueId/unread-count — unread message count for current user
-router.get("/:leagueId/unread-count", requireAuth, asyncHandler(async (req, res) => {
+router.get("/:leagueId/unread-count", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
@@ -66,7 +66,7 @@ router.get("/:leagueId/unread-count", requireAuth, asyncHandler(async (req, res)
 }));
 
 // POST /api/chat/:leagueId/read — mark messages as read (update ChatReadCursor)
-router.post("/:leagueId/read", requireAuth, asyncHandler(async (req, res) => {
+router.post("/:leagueId/read", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
@@ -90,8 +90,8 @@ router.post("/:leagueId/read", requireAuth, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// DELETE /api/chat/:leagueId/messages/:id — soft delete (commissioner only)
-router.delete("/:leagueId/messages/:id", requireAuth, requireCommissionerOrAdmin("leagueId"), asyncHandler(async (req, res) => {
+// DELETE /api/chat/:leagueId/messages/:id — soft delete (commissioner only, must be league member)
+router.delete("/:leagueId/messages/:id", requireAuth, requireLeagueMember("leagueId"), requireCommissionerOrAdmin("leagueId"), asyncHandler(async (req, res) => {
   const messageId = Number(req.params.id);
   if (!Number.isFinite(messageId)) return res.status(400).json({ error: "Invalid message ID" });
 

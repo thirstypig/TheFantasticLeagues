@@ -132,6 +132,26 @@ async function executePick(
   return entry;
 }
 
+// ─── Helpers ───
+
+/** Inline commissioner/admin check for draft write endpoints (leagueId in body). */
+async function assertCommissionerOrAdmin(req: import("express").Request, res: import("express").Response): Promise<boolean> {
+  const leagueId = Number(req.body.leagueId);
+  if (!Number.isFinite(leagueId)) {
+    res.status(400).json({ error: "Invalid leagueId" });
+    return false;
+  }
+  if (req.user!.isAdmin) return true;
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId, userId: req.user!.id } },
+  });
+  if (!membership || membership.role !== "COMMISSIONER") {
+    res.status(403).json({ error: "Commissioner access required" });
+    return false;
+  }
+  return true;
+}
+
 // ─── Routes ───
 
 // POST /api/draft/init — Initialize a snake draft session
@@ -181,6 +201,7 @@ router.post("/init", requireAuth, validateBody(initSchema), asyncHandler(async (
 
 // POST /api/draft/start — Start the draft (begin timer for first pick)
 router.post("/start", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   const state = await getState(leagueId);
   if (!state) return res.status(404).json({ error: "No draft session found" });
@@ -258,8 +279,9 @@ router.post("/pick", requireAuth, validateBody(pickSchema), asyncHandler(async (
   }
 }));
 
-// POST /api/draft/pause — Pause the draft
+// POST /api/draft/pause — Pause the draft (commissioner only)
 router.post("/pause", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   const state = await getState(leagueId);
   if (!state || state.status !== "active") return res.status(400).json({ error: "Draft not active" });
@@ -272,8 +294,9 @@ router.post("/pause", requireAuth, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// POST /api/draft/resume — Resume the draft
+// POST /api/draft/resume — Resume the draft (commissioner only)
 router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   const state = await getState(leagueId);
   if (!state || state.status !== "paused") return res.status(400).json({ error: "Draft not paused" });
@@ -288,6 +311,7 @@ router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/draft/undo — Undo last pick (commissioner only)
 router.post("/undo", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   const state = await getState(leagueId);
   if (!state || state.picks.length === 0) return res.status(400).json({ error: "Nothing to undo" });
@@ -313,6 +337,7 @@ router.post("/undo", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/draft/skip — Skip current pick (commissioner only)
 router.post("/skip", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   const state = await getState(leagueId);
   if (!state || state.status !== "active") return res.status(400).json({ error: "Draft not active" });
@@ -369,8 +394,9 @@ router.post("/auto-pick", requireAuth, validateBody(autoPickSchema), asyncHandle
   res.json({ success: true, enabled });
 }));
 
-// POST /api/draft/complete — Finalize draft, create rosters
+// POST /api/draft/complete — Finalize draft, create rosters (commissioner only)
 router.post("/complete", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   const state = await getState(leagueId);
   if (!state) return res.status(404).json({ error: "No draft session" });
@@ -426,6 +452,7 @@ router.post("/complete", requireAuth, asyncHandler(async (req, res) => {
 
 // POST /api/draft/reset — Clear draft state (commissioner only)
 router.post("/reset", requireAuth, asyncHandler(async (req, res) => {
+  if (!await assertCommissionerOrAdmin(req, res)) return;
   const leagueId = Number(req.body.leagueId);
   clearAutoPick(leagueId);
   draftStates.delete(leagueId);

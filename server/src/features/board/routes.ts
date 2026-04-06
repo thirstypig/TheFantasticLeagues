@@ -238,6 +238,14 @@ router.post(
     const card = await prisma.boardCard.findUnique({ where: { id: cardId }, select: { id: true, leagueId: true } });
     if (!card) return res.status(404).json({ error: "Card not found" });
 
+    // Verify league membership
+    if (!req.user!.isAdmin) {
+      const isMember = await prisma.leagueMembership.findFirst({
+        where: { leagueId: card.leagueId, userId: req.user!.id },
+      });
+      if (!isMember) return res.status(403).json({ error: "Not a member of this league" });
+    }
+
     // Check existing vote
     const existing = await prisma.boardVote.findUnique({
       where: { cardId_userId: { cardId, userId } },
@@ -298,6 +306,14 @@ router.post(
 
     const card = await prisma.boardCard.findUnique({ where: { id: cardId }, select: { id: true, leagueId: true } });
     if (!card) return res.status(404).json({ error: "Card not found" });
+
+    // Verify league membership
+    if (!req.user!.isAdmin) {
+      const isMember = await prisma.leagueMembership.findFirst({
+        where: { leagueId: card.leagueId, userId: req.user!.id },
+      });
+      if (!isMember) return res.status(403).json({ error: "Not a member of this league" });
+    }
 
     const { body } = req.body as z.infer<typeof replySchema>;
 

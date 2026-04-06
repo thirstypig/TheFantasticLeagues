@@ -35,6 +35,12 @@ router.post(
     const { endpoint, keys, userAgent } = req.body;
     const userId = req.user!.id;
 
+    // P1 SECURITY: Prevent endpoint hijacking — reject if already owned by a different user
+    const existing = await prisma.pushSubscription.findUnique({ where: { endpoint } });
+    if (existing && existing.userId !== userId) {
+      return res.status(409).json({ error: "Push endpoint already registered to another user" });
+    }
+
     // Upsert: update if endpoint already exists, create otherwise
     await prisma.pushSubscription.upsert({
       where: { endpoint },

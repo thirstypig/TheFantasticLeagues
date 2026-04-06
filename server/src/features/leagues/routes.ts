@@ -89,19 +89,7 @@ router.get("/leagues/:id", asyncHandler(async (req, res) => {
       },
     },
   });
-  // Strip sensitive fields from owner (passwordHash, resetToken, isAdmin, payment handles)
-  const league = leagueRaw ? {
-    ...leagueRaw,
-    teams: leagueRaw.teams.map(t => {
-      const o = t.owner as any;
-      return {
-        ...t,
-        owner: o ? { id: o.id, name: o.name, email: o.email, avatarUrl: o.avatarUrl } : null,
-      };
-    }),
-  } : null;
-
-  if (!league) return res.status(404).json({ error: "League not found" });
+  if (!leagueRaw) return res.status(404).json({ error: "League not found" });
 
   // Public or Member?
   let membership = null;
@@ -111,9 +99,29 @@ router.get("/leagues/:id", asyncHandler(async (req, res) => {
     });
   }
 
-  if (!league.isPublic && !membership && !req.user?.isAdmin) {
+  if (!leagueRaw.isPublic && !membership && !req.user?.isAdmin) {
     return res.status(403).json({ error: "Access denied" });
   }
+
+  const isMemberOrAdmin = !!membership || !!req.user?.isAdmin;
+
+  // Strip sensitive fields from owner (passwordHash, resetToken, isAdmin, payment handles)
+  // P1 SECURITY: Only include email for authenticated league members/admins
+  const league = {
+    ...leagueRaw,
+    teams: leagueRaw.teams.map(t => {
+      const o = t.owner as any;
+      return {
+        ...t,
+        owner: o ? {
+          id: o.id,
+          name: o.name,
+          avatarUrl: o.avatarUrl,
+          ...(isMemberOrAdmin ? { email: o.email } : {}),
+        } : null,
+      };
+    }),
+  };
 
   // Fetch outfield mode setting
   const outfieldRule = await prisma.leagueRule.findUnique({
