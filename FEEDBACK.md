@@ -4,6 +4,43 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-06 (Session 58) — Data Integrity, IL Report, IP Fix, Chat Removal, Digest Accuracy
+
+### Completed
+- **Digest accuracy fix**: Period query case mismatch (`"ACTIVE"` → `"active"`) caused AI to hallucinate entire digest from zero data. Fixed + prompt rewrite (accuracy-first rules, injury prominence, max 2-spot power ranking deviation)
+- **IL Report**: Accordion cards on Daily Diamond sidebar and Team page showing injury, placement date, eligible return, depth chart replacement
+- **IL filtering**: IL players removed from On Deck; roster-status switched from fullSeason to 40Man (catches 60-day IL like Burnes, Greene)
+- **IP parsing bug**: Baseball notation (5.2 = 5⅔) was treated as decimal 5.2 — wrong ERA/WHIP everywhere. Added `parseIP()` helper, fixed 143 stored records. Skenes ERA now matches MLB (9.53)
+- **Chat removal**: Board replaces chat. Routes, WebSocket, sidebar, slide-over all removed. /chat redirects to /board
+- **Depth chart**: 40-man IL players merged so recently-placed IL shows (Betts was missing)
+- **Ohtani pitcher stats mirror**: `mirrorTwoWayPitcherStats()` post-sync step copies pitching stats from real Ohtani to synthetic pitcher entry
+- **Stats timestamps**: `StatsUpdated` component on all stats tables (Home, Season, Team, Players, PlayerDetailModal)
+- **Daily Diamond**: Capped at 3 performers, On Deck capped at 3
+- **Feature module isolation audit**: 26 modules scanned, 0 circular deps, 1 page-to-page import violation identified
+- **3-agent code review**: Security (clean), Architecture (P1 type cast, P2 dead code), Simplicity (chat no-op removed)
+- **Solution documented**: `docs/solutions/logic-errors/silent-null-causes-llm-hallucination.md`
+
+### Pending / Next Steps
+- **DLC W=6 vs standings showing 5** — Ohtani pitcher stats may not count for DLC (assigned DH, not P)
+- **DLC F grade despite 1st place** — AI grading needs standings rank in prompt
+- **Ohtani display** — ensure `assignedPosition` used (DH on DLC, P on Skunk Dogs), not `posPrimary: TWP`
+- **Weekly insights gaps** — some teams missing week tabs (Devil Dawgs has 0)
+- **Minors Report** — same accordion pattern as IL: player, when sent down, MLB replacement (e.g., Dylan Crews)
+- **Automated data integrity audit** — `/audit-data` command for stats math, IP values, IL scoping, grades
+
+### Concerns / Tech Debt
+- `features/chat/` directory still exists as dead code — delete when convenient
+- `getCategoriesForSport()` in standingsService is unused (sport engine prep)
+- Period status field has no enum enforcement — `"active"` vs `"ACTIVE"` could recur
+- Page-to-page import: `transactions/ActivityPage` → `trades/pages/TradesPage` (should extract to component)
+
+### Test Results
+- Server: 473 passing, 2 failing (pre-existing: standings routes timeout, periods mock)
+- Client: not run separately this session
+- TypeScript: clean (both client and server)
+
+---
+
 ## Session 2026-04-05 (Session 57) — 10 Features, League Board, Pricing, Sport Engine, Trophy Case
 
 ### Completed
