@@ -41,8 +41,9 @@ import { watchlistRouter } from "./features/watchlist/index.js";
 import { tradingBlockRouter } from "./features/trading-block/index.js";
 import { boardRouter } from "./features/board/index.js";
 import { notificationsRouter } from "./features/notifications/index.js";
-import { chatRouter } from "./features/chat/index.js";
-import { attachChatWs } from "./features/chat/services/chatWsService.js";
+// Chat feature removed — Board replaces it
+// import { chatRouter } from "./features/chat/index.js";
+// import { attachChatWs } from "./features/chat/services/chatWsService.js";
 import { profilesRouter } from "./features/profiles/index.js";
 
 import rateLimit from "express-rate-limit";
@@ -212,7 +213,8 @@ async function main() {
   app.use("/api/trading-block", tradingBlockRouter);
   app.use("/api/board", boardRouter);
   app.use("/api/notifications", notificationsRouter);
-  app.use("/api/chat", chatRouter);
+  // Chat removed — Board replaces it
+  // app.use("/api/chat", chatRouter);
   app.use("/api", profilesRouter);
 
   // Daily MLB player sync at 5:00 AM PT (12:00 UTC during PDT, 13:00 UTC during PST)
@@ -355,12 +357,10 @@ async function main() {
     // Attach Snake Draft WebSocket server to the HTTP server
     attachDraftWs(server);
 
-    // Attach Chat WebSocket server to the HTTP server
-    chatWss = attachChatWs(server);
+    // Chat WebSocket removed — Board replaces it
   };
 
   let wss: import("ws").WebSocketServer | null = null;
-  let chatWss: import("ws").WebSocketServer | null = null;
 
   const isDev = process.env.NODE_ENV === "development";
   const hasCerts = fs.existsSync(keyPath) && fs.existsSync(certPath);
@@ -393,7 +393,6 @@ async function main() {
   function shutdown(signal: string) {
     logger.info({ signal }, "Shutdown signal received");
     if (wss) wss.close();
-    if (chatWss) chatWss.close();
     server.close(() => {
       prisma.$disconnect().then(() => process.exit(0));
     });

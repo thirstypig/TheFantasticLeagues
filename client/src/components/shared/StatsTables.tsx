@@ -6,6 +6,34 @@ import { Badge } from "../ui/Badge";
 import { TeamNameLink } from "./TeamNameLink";
 
 /**
+ * Small timestamp blurb for data freshness. Place above any stats table.
+ * - `source`: "live" | "synced" | "mlb-api" controls the label prefix
+ * - `timestamp`: ISO string or Date, shown as local time
+ * - `className`: optional extra classes
+ */
+export function StatsUpdated({ source = "synced", timestamp, className = "" }: {
+  source?: "live" | "synced" | "mlb-api";
+  timestamp?: string | Date | null;
+  className?: string;
+}) {
+  const prefix = source === "live" ? "Live" : source === "mlb-api" ? "Source: MLB" : "Stats synced";
+  let timeStr = "";
+  if (timestamp) {
+    try {
+      const d = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+      timeStr = d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    } catch { /* ignore */ }
+  } else {
+    timeStr = new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  return (
+    <div className={`text-[9px] text-[var(--lg-text-muted)] opacity-60 ${className}`}>
+      {prefix} · {timeStr}
+    </div>
+  );
+}
+
+/**
  * SHARED TYPES
  */
 

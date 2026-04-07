@@ -1,5 +1,6 @@
 // Fetch player stats from MLB API for each period's date range
 import { prisma } from '../db/prisma';
+import { parseIP } from '../lib/utils';
 
 const MLB_API_BASE = 'https://statsapi.mlb.com/api/v1';
 
@@ -131,7 +132,7 @@ async function populatePeriodStats() {
               K: p.strikeOuts ?? null,
               ERA: p.era ? parseFloat(p.era) : null,
               WHIP: p.whip ? parseFloat(p.whip) : null,
-              IP: p.inningsPitched ? parseFloat(p.inningsPitched) : null,
+              IP: p.inningsPitched ? parseIP(p.inningsPitched) : null,
               ER: p.earnedRuns ?? null,
             },
           });

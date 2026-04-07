@@ -142,7 +142,8 @@ async function fetchInjuryStatusForLeague(
 
       try {
         const data = await mlbGetJson(
-          `https://statsapi.mlb.com/api/v1/teams/${mlbTeamId}/roster?rosterType=fullSeason`,
+          // Use 40Man to include 60-day IL players (fullSeason misses them)
+          `https://statsapi.mlb.com/api/v1/teams/${mlbTeamId}/roster?rosterType=40Man`,
           21600 // 6-hour cache
         );
         for (const entry of (data as { roster?: Array<{ person?: { id?: number }; status?: { description?: string }; position?: { abbreviation?: string } }> }).roster || []) {
@@ -210,7 +211,7 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
       orderBy: { name: "asc" },
     }),
     prisma.aiInsight.findFirst({ where: { type: "league_digest", leagueId, weekKey: prevWeekKey } }),
-    prisma.period.findFirst({ where: { leagueId, status: "ACTIVE" }, orderBy: { startDate: "desc" } }),
+    prisma.period.findFirst({ where: { leagueId, status: "active" }, orderBy: { startDate: "desc" } }),
   ]);
 
   if (!league) return null;

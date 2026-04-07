@@ -29,8 +29,6 @@ export interface SidebarProps {
   onCloseMobile: () => void;
   onSetLeagueId: (id: number) => void;
   onLogout: () => void;
-  onChatToggle?: () => void;
-  chatOpen?: boolean;
 }
 
 // ─── Helpers ───
@@ -76,7 +74,6 @@ export default function Sidebar({
   user, loading, sidebarWidth, sidebarVisible, sidebarOpen, mobileOpen, isDragging,
   theme, navSections, leagues, leagueId, canAccessCommissioner,
   onToggleTheme, onToggleSidebar, onDragStart, onCloseMobile, onSetLeagueId, onLogout,
-  onChatToggle, chatOpen,
 }: SidebarProps) {
   const loc = useLocation();
   const nav = useNavigate();
@@ -102,10 +99,7 @@ export default function Sidebar({
   }, []);
 
   const renderNavLink = (item: NavItem) => {
-    // Chat item: intercept as button toggle
-    const isChatItem = item.to === "#chat";
-    const active = isChatItem ? !!chatOpen : isActive(loc.pathname, item.to);
-    const chatLabel = item.label.startsWith("Chat") ? item.label : "Chat";
+    const active = isActive(loc.pathname, item.to);
 
     if (item.disabled) {
       return (
@@ -119,25 +113,6 @@ export default function Sidebar({
           </svg>
           {sidebarOpen && <span className="truncate">{item.label}</span>}
         </span>
-      );
-    }
-
-    if (isChatItem) {
-      return (
-        <button
-          key="chat"
-          onClick={() => {
-            if (window.innerWidth < 1024) onCloseMobile();
-            onChatToggle?.();
-          }}
-          className={`lg-sidebar-item w-full ${active ? 'active' : ''} ${!sidebarOpen ? 'justify-center' : ''}`}
-          title={!sidebarOpen ? "Chat" : undefined}
-        >
-          <svg className={`w-5 h-5 flex-shrink-0 transition-transform ${active ? 'scale-110' : 'group-hover:scale-110'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {getNavIcon("Chat")}
-          </svg>
-          {sidebarOpen && <span className="truncate">{chatLabel}</span>}
-        </button>
       );
     }
 

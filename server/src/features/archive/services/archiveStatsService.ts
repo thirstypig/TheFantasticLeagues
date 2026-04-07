@@ -1,6 +1,7 @@
 import { prisma } from '../../../db/prisma.js';
 import { logger } from '../../../lib/logger.js';
 import { OPENING_DAYS } from '../../../lib/sportConfig.js';
+import { parseIP } from '../../../lib/utils.js';
 
 /** Shape of a player returned from the MLB Stats API people/search endpoint. */
 export interface MlbSearchPerson {
@@ -126,7 +127,7 @@ export class ArchiveStatsService {
               updateData.W = group.wins || 0;
               updateData.SV = group.saves || 0;
               updateData.K = group.strikeOuts || 0;
-              updateData.IP = group.inningsPitched ? parseFloat(group.inningsPitched) : 0;
+              updateData.IP = group.inningsPitched ? parseIP(group.inningsPitched) : 0;
               updateData.ER = group.earnedRuns || 0;
               updateData.ERA = group.era ? parseFloat(group.era) : 0;
               updateData.WHIP = group.whip ? parseFloat(group.whip) : 0;

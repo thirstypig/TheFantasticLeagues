@@ -1,7 +1,7 @@
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
-import { chunk } from "../../../lib/utils.js";
+import { chunk, parseIP } from "../../../lib/utils.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -92,8 +92,70 @@ export async function syncPeriodStats(periodId: number): Promise<{
     }
   }
 
+  // Mirror pitching stats for two-way player split entries (e.g., Ohtani Pitcher)
+  // The synthetic pitcher entry (mlbId 1660271) gets no MLB API data, so we copy
+  // pitching stats from the real player (mlbId 660271) to the pitcher-only entry.
+  await mirrorTwoWayPitcherStats(periodId);
+
   logger.info({ synced, skipped, errors, periodId }, "Period stats sync complete");
   return { synced, skipped, errors };
+}
+
+/**
+ * For two-way player split entries (synthetic pitcher records), copy pitching stats
+ * from the real player's record. The real Ohtani (660271) has both hitting + pitching;
+ * the pitcher entry (1660271) needs pitching-only stats mirrored.
+ */
+async function mirrorTwoWayPitcherStats(periodId: number): Promise<void> {
+  // Convention: synthetic pitcher mlbId = real mlbId + 1_000_000
+  const OFFSET = 1_000_000;
+
+  // Find roster entries with synthetic mlbIds (mlbId > 1_000_000)
+  const syntheticPitchers = await prisma.roster.findMany({
+    where: { releasedAt: null, player: { mlbId: { gte: OFFSET } } },
+    select: { player: { select: { id: true, mlbId: true } } },
+  });
+
+  for (const entry of syntheticPitchers) {
+    const syntheticMlbId = entry.player.mlbId!;
+    const realMlbId = syntheticMlbId - OFFSET;
+    const pitcherPlayerId = entry.player.id;
+
+    // Find the real player
+    const realPlayer = await prisma.player.findFirst({
+      where: { mlbId: realMlbId },
+      select: { id: true },
+    });
+    if (!realPlayer) continue;
+
+    // Get the real player's stats for this period
+    const realStats = await prisma.playerStatsPeriod.findUnique({
+      where: { playerId_periodId: { playerId: realPlayer.id, periodId } },
+    });
+    if (!realStats) continue;
+
+    // Mirror pitching-only stats (zero out hitting so standings count correctly)
+    await prisma.playerStatsPeriod.upsert({
+      where: { playerId_periodId: { playerId: pitcherPlayerId, periodId } },
+      create: {
+        playerId: pitcherPlayerId,
+        periodId,
+        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+        W: realStats.W, SV: realStats.SV, K: realStats.K,
+        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
+      },
+      update: {
+        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+        W: realStats.W, SV: realStats.SV, K: realStats.K,
+        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
+      },
+    });
+
+    logger.info(
+      { realMlbId, syntheticMlbId, pitcherPlayerId, periodId, W: realStats.W, K: realStats.K, IP: Number(realStats.IP) },
+      "Mirrored pitching stats for two-way player"
+    );
+  }
 }
 
 /**
@@ -133,7 +195,7 @@ function parsePlayerStats(person: any): {
       result.W = split.wins || 0;
       result.SV = split.saves || 0;
       result.K = split.strikeOuts || 0;
-      result.IP = split.inningsPitched ? parseFloat(split.inningsPitched) : 0;
+      result.IP = split.inningsPitched ? parseIP(split.inningsPitched) : 0;
       result.ER = split.earnedRuns || 0;
       // BB_H = walks + hits allowed (for WHIP = BB_H / IP)
       result.BB_H = (split.baseOnBalls || 0) + (split.hits || 0);
@@ -241,6 +303,52 @@ export async function syncDailyStats(dateStr: string): Promise<{
     }
   }
 
+  // Mirror daily pitching stats for two-way player split entries
+  await mirrorTwoWayDailyPitcherStats(targetDate);
+
   logger.info({ synced, skipped, errors, dateStr }, "Daily stats sync complete");
   return { synced, skipped, errors };
+}
+
+/**
+ * Mirror daily pitching stats for two-way player synthetic pitcher entries.
+ */
+async function mirrorTwoWayDailyPitcherStats(gameDate: Date): Promise<void> {
+  const OFFSET = 1_000_000;
+
+  const syntheticPitchers = await prisma.roster.findMany({
+    where: { releasedAt: null, player: { mlbId: { gte: OFFSET } } },
+    select: { player: { select: { id: true, mlbId: true } } },
+  });
+
+  for (const entry of syntheticPitchers) {
+    const realMlbId = entry.player.mlbId! - OFFSET;
+    const pitcherPlayerId = entry.player.id;
+
+    const realPlayer = await prisma.player.findFirst({
+      where: { mlbId: realMlbId },
+      select: { id: true },
+    });
+    if (!realPlayer) continue;
+
+    const realStats = await prisma.playerStatsDaily.findUnique({
+      where: { playerId_gameDate: { playerId: realPlayer.id, gameDate } },
+    });
+    if (!realStats || (realStats.W === 0 && realStats.SV === 0 && realStats.K === 0 && realStats.IP === 0)) continue;
+
+    await prisma.playerStatsDaily.upsert({
+      where: { playerId_gameDate: { playerId: pitcherPlayerId, gameDate } },
+      create: {
+        playerId: pitcherPlayerId, gameDate,
+        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+        W: realStats.W, SV: realStats.SV, K: realStats.K,
+        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
+      },
+      update: {
+        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+        W: realStats.W, SV: realStats.SV, K: realStats.K,
+        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
+      },
+    });
+  }
 }

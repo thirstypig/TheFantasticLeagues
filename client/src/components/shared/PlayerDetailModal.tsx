@@ -433,7 +433,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
               {/* Recent Stats */}
               <div className={sectionCls}>
                 <div className={sectionHeadCls}>
-                  <div className={sectionTitleCls}>Recent Stats <span className="text-[var(--lg-accent)] opacity-40 mx-2">|</span> 7 / 14 / 21 Days &amp; YTD</div>
+                  <div className={sectionTitleCls}>Recent Stats <span className="text-[var(--lg-accent)] opacity-40 mx-2">|</span> 7 / 14 / 21 Days &amp; YTD <span className="text-[9px] text-[var(--lg-text-muted)] opacity-60 ml-2 font-normal normal-case tracking-normal">Source: MLB · {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span></div>
                 </div>
                 <div className={sectionBodyCls}>
                   {recentRows.length ? (

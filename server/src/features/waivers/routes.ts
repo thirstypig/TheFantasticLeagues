@@ -14,7 +14,6 @@ import { computeTeamStatsFromDb, computeStandingsFromStats } from "../standings/
 import { nextDayEffective } from "../../lib/utils.js";
 import { sendWaiverResultEmail, notifyTeamOwners, getTeamOwnerEmails } from "../../lib/emailService.js";
 import { sendPushToUser } from "../../lib/pushService.js";
-import { postSystemChatMessage } from "../../lib/chatUtils.js";
 
 /**
  * Auto-generate AI analysis after a waiver claim is processed.
@@ -440,24 +439,6 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
       }
     }).catch(err => logger.warn({ err }, "Push owner lookup failed"));
   }
-
-  // Fire-and-forget: post system messages to league chat for successful claims
-  (async () => {
-    try {
-      for (const claim of successClaims) {
-        const dropPlayer = claim.dropPlayerId
-          ? await prisma.player.findUnique({ where: { id: claim.dropPlayerId }, select: { name: true } })
-          : null;
-        const addName = claim.player?.name ?? "Unknown";
-        const teamName = claim.team?.name ?? "Unknown Team";
-        const dropText = dropPlayer ? `, dropping ${dropPlayer.name}` : "";
-        const text = `Waiver claim: ${teamName} adds ${addName} ($${claim.bidAmount})${dropText}`;
-        await postSystemChatMessage(leagueId, req.user!.id, text, { activityType: "waiver", claimId: claim.id });
-      }
-    } catch (err) {
-      logger.warn({ error: String(err), leagueId }, "Failed to post waiver chat messages");
-    }
-  })();
 
   res.json({ success: true, logs });
 }));

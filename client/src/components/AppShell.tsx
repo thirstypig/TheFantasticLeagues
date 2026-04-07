@@ -10,8 +10,6 @@ import { useSeasonGating } from "../hooks/useSeasonGating";
 import { Logo } from "./ui/Logo";
 import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
-import ChatPanel from "../features/chat/components/ChatPanel";
-import { useChatUnread } from "../features/chat/hooks/useChatUnread";
 
 const SIDEBAR_MIN = 64;
 const SIDEBAR_COLLAPSED = 80;
@@ -93,28 +91,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [mobileOpen, sidebarOpen, setSidebarOpen]);
 
-  // Chat panel state
-  const [chatOpen, setChatOpen] = useState(false);
-  const { unreadCount: chatUnread, markAsRead: markChatRead, refresh: refreshChatUnread } = useChatUnread({ leagueId });
-
-  const handleChatToggle = useCallback(() => {
-    // On mobile, navigate to /chat instead
-    if (window.innerWidth < 1024) {
-      nav("/chat");
-      return;
-    }
-    setChatOpen(prev => !prev);
-  }, [nav]);
-
-  const handleChatClose = useCallback(() => {
-    setChatOpen(false);
-  }, []);
-
-  const handleChatMarkRead = useCallback(() => {
-    markChatRead();
-    refreshChatUnread();
-  }, [markChatRead, refreshChatUnread]);
-
   const canAccessCommissioner = useMemo(() => {
     if (Boolean(user?.isAdmin)) return true;
     const selected = (leagues ?? []).find((l: LeagueListItem) => l.id === leagueId);
@@ -130,7 +106,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         { to: "/players", label: "Players", show: true },
         { to: "/matchup", label: "Matchup", show: gating.isH2H },
         { to: "/activity", label: "Activity", show: true },
-        { to: "#chat", label: chatUnread > 0 ? `Chat (${chatUnread})` : "Chat", show: true },
         { to: "/board", label: "Board", show: true },
       ],
     },
@@ -230,8 +205,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           onCloseMobile={() => setMobileOpen(false)}
           onSetLeagueId={setLeagueId}
           onLogout={onLogout}
-          onChatToggle={handleChatToggle}
-          chatOpen={chatOpen}
+
         />
 
         <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip transition-all duration-300">
@@ -275,15 +249,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <BottomNav onMore={() => setMobileOpen(true)} />
         </div>
 
-        {/* Chat slide-over panel (desktop only) */}
-        {chatOpen && (
-          <ChatPanel
-            isOpen={chatOpen}
-            onClose={handleChatClose}
-            onMarkRead={handleChatMarkRead}
-            isCommissioner={canAccessCommissioner}
-          />
-        )}
       </div>
     </div>
   );

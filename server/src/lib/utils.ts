@@ -52,6 +52,20 @@ export function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Parse baseball innings pitched notation to true decimal.
+ * MLB uses "5.2" to mean 5⅔ innings (not 5.2 decimal).
+ * The fractional part represents thirds: .0=0, .1=⅓, .2=⅔.
+ */
+export function parseIP(v: unknown): number {
+  const s = String(v ?? "0").trim();
+  const n = parseFloat(s);
+  if (!Number.isFinite(n)) return 0;
+  const whole = Math.floor(n);
+  const frac = Math.round((n - whole) * 10); // .1 or .2
+  return whole + frac / 3;
+}
+
 export function toBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   if (typeof v === "string") {

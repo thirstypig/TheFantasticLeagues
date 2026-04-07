@@ -186,20 +186,26 @@ export class AIAnalysisService {
 
       const prompt = `You are a stat-obsessed league member in "${leagueName}" writing the weekly digest after Week ${weekNumber} of the ${season} season (${teams.length} teams, 10-cat roto: R, HR, RBI, SB, AVG | W, SV, K, ERA, WHIP).
 
-Write with personality — be opinionated, use trash talk, be specific. Use last names only ("Betts" not "Mookie Betts"). Do NOT use position labels (no "OF", "SP", "TWP" — just names). EVERY claim must cite a specific number from the data below.
+Write with personality — be opinionated, use trash talk, be specific. Use last names only ("Betts" not "Mookie Betts"). Do NOT use position labels (no "OF", "SP", "TWP" — just names).
+
+IMPORTANT — DATA FORMAT:
+The stats below are SEASON CUMULATIVE TOTALS with category rank in parentheses (e.g., "HR:12(3rd)" means 12 HR total this season, ranked 3rd).
+You do NOT have per-week stat breakdowns. Do NOT invent or estimate weekly numbers.
+You MUST only reference the cumulative totals and rank positions shown below.
+When discussing movement, reference rank changes (e.g., "climbed from 6th to 3rd in HR") — NOT invented weekly stat totals.
 
 TEAMS (sorted by current standings):
 ${teams
   .sort((a, b) => (a.overallRank ?? 99) - (b.overallRank ?? 99))
   .map(t => {
-    const rankLabel = t.overallRank ? `#${t.overallRank}, ${t.totalPoints} pts` : 'unranked';
+    const rankLabel = t.overallRank ? `#${t.overallRank} overall, ${t.totalPoints} pts` : 'unranked';
     const movementLabel = t.rankChange !== null && t.previousRank !== null
       ? t.rankChange > 0 ? `Last week: #${t.previousRank} (moved up ${t.rankChange} spots)`
         : t.rankChange < 0 ? `Last week: #${t.previousRank} (moved down ${Math.abs(t.rankChange)} spots)`
         : `Last week: #${t.previousRank} (steady)`
       : '';
     return `=== ${t.name} (${rankLabel}) ===
-${hasStats && t.statsLine ? `Current stats: ${t.statsLine}` : ''}
+${hasStats && t.statsLine ? `Season totals: ${t.statsLine}` : ''}
 ${movementLabel ? movementLabel : ''}
 Key players: ${t.keyPlayers}
 Injured/IL: ${t.injuredPlayers || 'None'}
@@ -210,37 +216,47 @@ ${narrativeHints && narrativeHints.length > 0 ? `
 INSIGHTS FROM THE DATA:
 ${narrativeHints.map(h => `- ${h}`).join('\n')}` : ''}
 
-CRITICAL RULES:
-1. EVERY statement must include specific numbers. Never say "crushing it" — say "hit 5 HR this week, moving from 6th to 3rd in the category."
-2. Power rankings MUST reflect actual standings. #1 in standings = #1 in power rankings unless there is a compelling stat-based reason to adjust by 1-2 spots.
-3. Power ranking commentary must reference THIS WEEK's performance — what happened in the last 7 days, not general season trends. Cite specific stat lines from the data above.
-4. Hot/Cold team reasons must cite at least 3 specific numbers (e.g., "hit .350 with 4 HR and 12 RBI this week").
-5. Category movers must show the exact stat AND rank movement (e.g., "jumped from 6th to 3rd in HR with 8 this week").
-6. Stat of the week must reference exact numbers, not vague claims.
-7. Do NOT mention auction prices, draft costs, budgets, or league type (everyone knows).
-8. Do NOT invent stats or project future performance. Only reference numbers from the data above.
-9. Do NOT use position abbreviations — just player last names.
-10. Bold prediction should be fun but grounded in a real trend from the data.
-11. Note injured/IL players that are affecting team performance. If a key player is on the IL, mention the impact on the team's category production.
-12. Note players in the minors who are not contributing — dead roster spots matter in roto.
-13. Power ranking "movement" field must reflect actual rank change from last week's standings data, not a guess. Cite which categories drove the rank change.
+CRITICAL RULES (in priority order):
+
+=== ACCURACY (HIGHEST PRIORITY) ===
+1. NEVER invent stats. You ONLY have season cumulative totals and category ranks. If you cannot find a specific number in the data above, do NOT make one up.
+2. When discussing category performance, cite the CUMULATIVE TOTAL and RANK from the data (e.g., "sitting at 12 HR, ranked 3rd"). Do NOT fabricate per-week numbers like "added 6 SB this week" — you don't have weekly breakdowns.
+3. When discussing movement, use rank changes: "climbed from 6th to 3rd in HR" — NOT invented weekly deltas.
+
+=== INJURIES (HIGH PRIORITY) ===
+4. If a team has a KEY player on the IL (listed under "Injured/IL"), this is MAJOR NEWS. It MUST be prominently discussed in that team's power ranking commentary. Star players on the IL directly hurt a team's category production — call it out as a real concern.
+5. Players in the minors are dead roster spots producing zero stats. Flag teams carrying multiple minors players as handicapped.
+
+=== POWER RANKINGS (STRICT RULES) ===
+6. Power rankings MUST closely mirror the actual standings order. Maximum deviation: 2 spots. If a team is #7 in standings, they CANNOT be ranked higher than #5 in power rankings. If a team is #1 in standings, they CANNOT be ranked lower than #3.
+7. The "movement" field must reflect ACTUAL rank change from last week's standings data shown above, not a guess.
+8. Commentary must cite 2+ specific numbers from the season totals. Explain WHY the team is at that rank — which categories are they strong/weak in?
+
+=== CONTENT RULES ===
+9. EVERY statement must include specific numbers from the data. Never say "crushing it" — say "leads the league with 12 HR, ranked 1st."
+10. Hot/Cold team reasons must cite at least 3 specific numbers (cumulative totals + ranks).
+11. Category movers must show the team's cumulative stat total AND current rank (e.g., "sitting at 45 RBI, up to 2nd from 5th last week"). Do NOT invent per-week numbers.
+12. Stat of the week must reference exact cumulative numbers and comparisons from the data.
+13. Do NOT mention auction prices, draft costs, budgets, or league type.
+14. Do NOT use position abbreviations — just player last names.
+15. Bold prediction should be fun but grounded in a real trend from the data.
 
 Return ONLY valid JSON (no markdown, no code blocks):
 {
-  "weekInOneSentence": "One punchy headline about the biggest story THIS WEEK (15-25 words, must include a number)",
+  "weekInOneSentence": "One punchy headline (15-25 words, must include a number from the data)",
   "powerRankings": [
-    {"rank": 1, "teamName": "Team", "movement": "up|down|steady", "commentary": "1-2 sentences about THIS WEEK's performance. Must cite 2+ specific stats from the data (e.g., 'Led the league in HR (8) and RBI (22) this week')."}
+    {"rank": 1, "teamName": "Team", "movement": "up|down|steady", "commentary": "1-2 sentences citing 2+ specific stats. Explain rank position. Mention IL players if applicable."}
   ],
-  "hotTeam": {"name": "Team", "reason": "2-3 sentences citing 3+ specific numbers from this week's stats. What categories did they dominate and by how much?"},
-  "coldTeam": {"name": "Team", "reason": "2-3 sentences citing 3+ specific numbers. What categories are they losing ground in? Cite rank drops."},
-  "statOfTheWeek": "2 sentences about a surprising stat — must include exact numbers and a comparison (e.g., 'Team X's 15 SB are more than the next two teams combined')",
+  "hotTeam": {"name": "Team", "reason": "2-3 sentences citing 3+ specific cumulative totals + ranks. What categories do they lead or dominate?"},
+  "coldTeam": {"name": "Team", "reason": "2-3 sentences citing 3+ specific numbers. What categories are they near the bottom in? Mention injuries/minors if relevant."},
+  "statOfTheWeek": "2 sentences about a surprising stat — cite exact cumulative totals and a comparison between teams",
   "categoryMovers": [
-    {"category": "HR", "team": "Team", "direction": "up|down", "detail": "Exact stat + rank change (e.g., 'Added 8 HR this week, jumping from 6th to 3rd')"}
+    {"category": "HR", "team": "Team", "direction": "up|down", "detail": "Cumulative total + current rank + rank change (e.g., 'Sitting at 18 HR (2nd), up from 5th last week')"}
   ],
-  "boldPrediction": "1 fun sentence predicting something for next week, grounded in a real trend from the data"
+  "boldPrediction": "1 fun sentence grounded in a real trend from the data"
 }
 
-FINAL CHECK: Every sentence in your response must contain at least one specific number from the data above. If you can't back a claim with data, remove it.`;
+FINAL CHECK: Re-read every sentence in your response. If ANY sentence contains a number that does not appear in the team data above, DELETE that sentence and rewrite it using only real numbers. This is non-negotiable.`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();

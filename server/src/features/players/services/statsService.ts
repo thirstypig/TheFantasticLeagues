@@ -8,7 +8,7 @@ import path from "path";
 import { prisma } from "../../../db/prisma.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { logger } from "../../../lib/logger.js";
-import { parseCsv, chunk } from "../../../lib/utils.js";
+import { parseCsv, chunk, parseIP } from "../../../lib/utils.js";
 import { TWO_WAY_PLAYERS } from "../../../lib/sportConfig.js";
 
 // --- Last-Season Stats (2025) from MLB API ---
@@ -46,7 +46,7 @@ function parseSeasonStats(person: any): SeasonStatEntry {
       entry.W = split.wins || 0;
       entry.SV = split.saves || 0;
       entry.K = split.strikeOuts || 0;
-      const ip = split.inningsPitched ? parseFloat(split.inningsPitched) : 0;
+      const ip = split.inningsPitched ? parseIP(split.inningsPitched) : 0;
       const er = split.earnedRuns || 0;
       const bbH = (split.baseOnBalls || 0) + (split.hitsAllowed ?? split.hits ?? 0);
       entry.IP = ip;

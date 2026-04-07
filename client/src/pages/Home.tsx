@@ -661,9 +661,13 @@ export default function Home() {
           `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
 
         const hero = scored[0];
-        const sideStories = scored.slice(1);
+        const sideStories = scored.slice(1, 3); // Cap at 2 side stories (3 total with hero)
         const scoredIds = new Set(scored.map((p: any) => p.mlbId));
-        const onDeck = rosterStats.players.filter((p: any) => p.gameToday && !scoredIds.has(p.mlbId));
+        // Filter IL players from on-deck using rosterAlerts
+        const ilMlbIds = new Set(rosterAlerts.filter((a: any) => a.isInjured).map((a: any) => a.mlbId));
+        const onDeck = rosterStats.players.filter((p: any) => p.gameToday && !scoredIds.has(p.mlbId) && !ilMlbIds.has(p.mlbId));
+        // IL players from rosterAlerts (enriched with dates and replacement)
+        const ilPlayers = rosterAlerts.filter((a: any) => a.isInjured);
         const hasSidebar = true; // always show sidebar: stories, on-deck, pulse, or daily column
         const dateStr = formatLocalDate(new Date(), { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
@@ -837,7 +841,7 @@ export default function Home() {
                       <div className={sideStories.length > 0 ? "mt-3 pt-3 border-t border-[var(--lg-divide)]" : ""}>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">On Deck</p>
                         <div className="space-y-1.5">
-                          {onDeckFiltered.slice(0, 6).map((p: any, i: number) => {
+                          {onDeckFiltered.slice(0, 3).map((p: any, i: number) => {
                             const live = isLive(p);
                             const label = live ? "LIVE" : (fmtTime(p.gameTime) || "Today");
                             return (
@@ -860,11 +864,57 @@ export default function Home() {
                               </div>
                             );
                           })}
-                          {onDeckFiltered.length > 6 && (
+                          {onDeckFiltered.length > 3 && (
                             <p className="text-[10px] text-[var(--lg-text-muted)] italic">
-                              +{onDeckFiltered.length - 6} more upcoming
+                              +{onDeckFiltered.length - 3} more upcoming
                             </p>
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* IL Report — accordion style */}
+                    {ilPlayers.length > 0 && (
+                      <div className={`${sideStories.length > 0 || onDeckFiltered.length > 0 ? "mt-3 pt-3 border-t border-[var(--lg-divide)]" : ""}`}>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-red-400 mb-2">IL Report</p>
+                        <div className="space-y-1">
+                          {ilPlayers.slice(0, 6).map((p: any, i: number) => {
+                            const ilMatch = (p.mlbStatus || "").match(/(\d+)/);
+                            const ilLabel = ilMatch ? `${ilMatch[1]}-Day IL` : "IL";
+                            const eligDate = p.ilEligibleReturn ? new Date(p.ilEligibleReturn + "T12:00:00") : null;
+                            const eligStr = eligDate ? eligDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+                            const placedDate = p.ilPlacedDate ? new Date(p.ilPlacedDate + "T12:00:00") : null;
+                            const placedStr = placedDate ? placedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+                            return (
+                              <details key={i} className="bg-red-500/5 border border-red-500/15 rounded-lg group">
+                                <summary className="flex items-center gap-2 p-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                                  <img
+                                    src={mlbHeadshot(p.mlbId)}
+                                    alt={p.playerName}
+                                    className="w-6 h-6 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-red-500/20 opacity-60"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{p.playerName}</span>
+                                    <span className="text-[9px] text-red-400 font-bold ml-1.5">{ilLabel}</span>
+                                  </div>
+                                  <svg className="w-3 h-3 text-[var(--lg-text-muted)] transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </summary>
+                                <div className="text-[10px] text-[var(--lg-text-muted)] space-y-0.5 px-2 pb-2 ml-8">
+                                  {p.ilInjury && <div className="text-red-300/80">{p.ilInjury}</div>}
+                                  {placedStr && <div>Placed: {placedStr}</div>}
+                                  {eligStr && <div>Eligible: <span className="text-[var(--lg-text-secondary)] font-medium">{eligStr}</span></div>}
+                                  {p.ilReplacement && (
+                                    <div className="text-[var(--lg-text-secondary)]">
+                                      Replacement: <span className="font-medium">{p.ilReplacement}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </details>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -926,7 +976,8 @@ export default function Home() {
                 today.setHours(12, 0, 0, 0);
                 const isYesterday = statsDate.getTime() < today.getTime() - 12 * 3600 * 1000;
                 const label = formatLocalDate(statsDate, { weekday: 'short', month: 'short', day: 'numeric' });
-                return isYesterday ? `Last Night · ${label}` : label;
+                const timeLabel = formatLocalTime(new Date().toISOString());
+                return isYesterday ? `Last Night · ${label}` : `Live · Updated ${timeLabel}`;
               })()}
             </span>
           </div>
@@ -1673,18 +1724,29 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--lg-border-faint)]">
-                {depthChart.map(pos => (
+                {depthChart.map(pos => {
+                  // Show first 4 visible slots, but also ensure all IL players appear
+                  const active = pos.players.filter((p: any) => !p.isInjured);
+                  const il = pos.players.filter((p: any) => p.isInjured);
+                  // Interleave: starter, backup, then IL players fill remaining visible slots
+                  const display = [...active.slice(0, 2)]; // starter + backup always active
+                  // Fill 3rd and 4th with active depth or IL players
+                  const remaining = [...active.slice(2), ...il];
+                  display.push(...remaining);
+                  const slots = display.slice(0, 4);
+
+                  return (
                   <tr key={pos.position}>
                     <td className="px-2 py-1.5">
                       <span className="text-[10px] font-mono font-bold text-[var(--lg-accent)]">{pos.position}</span>
                     </td>
                     {[0, 1, 2, 3].map(idx => (
                       <td key={idx} className={`px-2 py-1.5 ${idx >= 2 ? (idx >= 3 ? 'hidden md:table-cell' : 'hidden sm:table-cell') : ''}`}>
-                        {pos.players[idx] ? (
-                          <span className={pos.players[idx].isInjured ? 'text-red-400 line-through opacity-70' : 'text-[var(--lg-text-primary)]'}>
-                            {pos.players[idx].name}
-                            {pos.players[idx].isInjured && (
-                              <span className="ml-1 text-[8px] font-bold text-red-400 no-underline">{pos.players[idx].status.replace('Injured ', 'IL-').replace('-Day', '')}</span>
+                        {slots[idx] ? (
+                          <span className={slots[idx].isInjured ? 'text-red-400 line-through opacity-70' : 'text-[var(--lg-text-primary)]'}>
+                            {slots[idx].name}
+                            {slots[idx].isInjured && (
+                              <span className="ml-1 text-[8px] font-bold text-red-400 no-underline">{slots[idx].status.replace('Injured ', 'IL-').replace('-Day', '')}</span>
                             )}
                           </span>
                         ) : (
@@ -1693,7 +1755,8 @@ export default function Home() {
                       </td>
                     ))}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             <div className="px-2 py-1.5 border-t border-[var(--lg-border-faint)] text-[8px] text-[var(--lg-text-muted)] opacity-50 flex justify-between">

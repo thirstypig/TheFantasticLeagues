@@ -241,12 +241,12 @@ router.get("/roster-status", requireAuth, requireLeagueMember("leagueId"), async
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
   const userId = req.user!.id;
+  const requestedTeamId = req.query.teamId ? Number(req.query.teamId) : null;
 
-  // Find user's team and roster
-  const team = await prisma.team.findFirst({
-    where: { leagueId, OR: [{ ownerUserId: userId }, { ownerships: { some: { userId } } }] },
-    select: { id: true, name: true },
-  });
+  // Find team: use requested teamId (for viewing any league team) or default to user's team
+  const team = requestedTeamId
+    ? await prisma.team.findFirst({ where: { id: requestedTeamId, leagueId }, select: { id: true, name: true } })
+    : await prisma.team.findFirst({ where: { leagueId, OR: [{ ownerUserId: userId }, { ownerships: { some: { userId } } }] }, select: { id: true, name: true } });
   if (!team) return res.json({ players: [], teamName: "" });
 
   const roster = await prisma.roster.findMany({
@@ -270,7 +270,8 @@ router.get("/roster-status", requireAuth, requireLeagueMember("leagueId"), async
     if (!teamId) continue;
 
     try {
-      const data = await mlbGetJson(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=fullSeason`, 21600);
+      // Use 40Man roster to include 60-day IL players (fullSeason misses them)
+      const data = await mlbGetJson(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=40Man`, 21600);
       for (const entry of (data.roster || [])) {
         const mlbId = entry.person?.id;
         const status = entry.status?.description || "Unknown";
@@ -282,17 +283,112 @@ router.get("/roster-status", requireAuth, requireLeagueMember("leagueId"), async
     }
   }
 
+  // Fetch IL transaction dates for injured players and depth chart replacements
+  const ilTransactions = new Map<number, { placedDate: string; ilDays: number; injury: string }>();
+  const depthReplacements = new Map<number, string>(); // mlbId → replacement name
+
+  // Collect injured player IDs for enrichment
+  const injuredPlayers: { mlbId: number; mlbTeam: string; position: string }[] = [];
+  for (const r of roster) {
+    if (!r.player.mlbId) continue;
+    const st = mlbStatusMap.get(r.player.mlbId);
+    if (st?.status?.includes("Injured")) {
+      injuredPlayers.push({ mlbId: r.player.mlbId, mlbTeam: r.player.mlbTeam || "", position: st.position || r.player.posPrimary || "" });
+    }
+  }
+
+  if (injuredPlayers.length > 0) {
+    // Fetch recent IL transactions per team (cached 6 hours)
+    const teamsToFetchTx = new Set(injuredPlayers.map(p => p.mlbTeam));
+    for (const teamAbbr of teamsToFetchTx) {
+      const mlbTeamId = teamIdMap[teamAbbr];
+      if (!mlbTeamId) continue;
+      try {
+        const txData = await mlbGetJson(
+          `https://statsapi.mlb.com/api/v1/transactions?teamId=${mlbTeamId}&startDate=2026-01-01&endDate=${new Date().toISOString().slice(0, 10)}`,
+          21600
+        ) as { transactions?: Array<{ person?: { id?: number }; effectiveDate?: string; description?: string; typeCode?: string }> };
+        for (const tx of txData.transactions || []) {
+          const pid = tx.person?.id;
+          if (!pid) continue;
+          const desc = tx.description || "";
+          // Only IL placement transactions (not transfers or activations)
+          if (desc.toLowerCase().includes("injured list") && !desc.toLowerCase().includes("activated") && !desc.toLowerCase().includes("transferred")) {
+            const ilMatch = desc.match(/(\d+)-day/i);
+            const ilDays = ilMatch ? parseInt(ilMatch[1]) : 10;
+            const injuryMatch = desc.match(/\.\s*(.+?)\.?\s*$/);
+            const injury = injuryMatch ? injuryMatch[1].trim() : "";
+            // Keep the most recent placement per player
+            const existing = ilTransactions.get(pid);
+            if (!existing || (tx.effectiveDate && tx.effectiveDate > existing.placedDate)) {
+              ilTransactions.set(pid, {
+                placedDate: tx.effectiveDate || "",
+                ilDays,
+                injury: injury.replace(/\.$/, ""),
+              });
+            }
+          }
+        }
+      } catch (err) {
+        logger.warn({ error: String(err), teamAbbr }, "Failed to fetch IL transactions");
+      }
+    }
+
+    // Fetch depth charts for replacement info
+    const teamsToFetchDepth = new Set(injuredPlayers.map(p => p.mlbTeam));
+    for (const teamAbbr of teamsToFetchDepth) {
+      const mlbTeamId = teamIdMap[teamAbbr];
+      if (!mlbTeamId) continue;
+      try {
+        const dcData = await mlbGetJson(
+          `https://statsapi.mlb.com/api/v1/teams/${mlbTeamId}/roster/depthChart`,
+          3600
+        ) as { roster?: Array<{ person: { id: number; fullName: string }; position: { abbreviation: string }; status: { description: string } }> };
+        // For each injured player, find who's next at their position
+        const dcRoster = dcData.roster || [];
+        for (const ip of injuredPlayers.filter(p => p.mlbTeam === teamAbbr)) {
+          const samePos = dcRoster.filter(
+            d => d.position.abbreviation === ip.position && d.person.id !== ip.mlbId && !d.status.description.includes("Injured")
+          );
+          if (samePos.length > 0) {
+            depthReplacements.set(ip.mlbId, samePos[0].person.fullName);
+          }
+        }
+      } catch (err) {
+        logger.warn({ error: String(err), teamAbbr }, "Failed to fetch depth chart for replacements");
+      }
+    }
+  }
+
   // Cross-reference fantasy roster with MLB status
   const players = roster.map(r => {
     const mlbStatus = r.player.mlbId ? mlbStatusMap.get(r.player.mlbId) : undefined;
+    const isInjured = mlbStatus?.status?.includes("Injured") || false;
+    const ilInfo = r.player.mlbId && isInjured ? ilTransactions.get(r.player.mlbId) : undefined;
+    const replacement = r.player.mlbId && isInjured ? depthReplacements.get(r.player.mlbId) : undefined;
+
+    // Compute eligible return date
+    let eligibleReturn: string | null = null;
+    if (ilInfo?.placedDate && ilInfo.ilDays) {
+      const placed = new Date(ilInfo.placedDate + "T00:00:00");
+      placed.setDate(placed.getDate() + ilInfo.ilDays);
+      eligibleReturn = placed.toISOString().slice(0, 10);
+    }
+
     return {
       playerName: r.player.name,
       mlbId: r.player.mlbId,
       mlbTeam: r.player.mlbTeam || "",
       position: r.assignedPosition || r.player.posPrimary || "",
       mlbStatus: mlbStatus?.status || "Unknown",
-      isInjured: mlbStatus?.status?.includes("Injured") || false,
+      isInjured,
       isMinors: mlbStatus?.status?.includes("Minor") || mlbStatus?.status === "Reassigned" || false,
+      // IL enrichment
+      ilPlacedDate: ilInfo?.placedDate || null,
+      ilDays: ilInfo?.ilDays || null,
+      ilInjury: ilInfo?.injury || null,
+      ilEligibleReturn: eligibleReturn,
+      ilReplacement: replacement || null,
     };
   });
 
@@ -737,16 +833,30 @@ router.get("/depth-chart", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid teamId" });
   }
 
-  const data = await mlbGetJson(
-    `https://statsapi.mlb.com/api/v1/teams/${teamId}/roster/depthChart`,
-    3600 // 1-hour cache
-  );
+  // Fetch depth chart and 40-man roster in parallel
+  // The depth chart may lag behind on recently-placed IL players, so we
+  // merge IL players from the 40-man roster to ensure they appear.
+  const [dcData, rosterData] = await Promise.all([
+    mlbGetJson(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster/depthChart`, 3600),
+    mlbGetJson(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster?rosterType=40Man`, 3600),
+  ]);
 
-  const roster = (data.roster || []) as Array<{
+  type RosterEntry = {
     person: { id: number; fullName: string };
     position: { abbreviation: string; name: string; type: string };
     status: { code: string; description: string };
-  }>;
+  };
+
+  const roster = (dcData.roster || []) as RosterEntry[];
+  const fullRoster = (rosterData.roster || []) as RosterEntry[];
+
+  // Track which player IDs are already in the depth chart
+  const depthChartIds = new Set(roster.map(p => p.person.id));
+
+  // Find IL players from 40-man that are missing from the depth chart
+  const missingIL = fullRoster.filter(
+    p => p.status.description.includes("Injured") && !depthChartIds.has(p.person.id)
+  );
 
   // Group by position, preserving depth order from the API
   const positionOrder = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'SP', 'CP', 'P'];
@@ -764,6 +874,20 @@ router.get("/depth-chart", requireAuth, asyncHandler(async (req, res) => {
     });
   }
 
+  // Merge missing IL players into their position group (at the end, marked as IL)
+  for (const p of missingIL) {
+    const pos = p.position.abbreviation;
+    // Map pitchers to appropriate group
+    const effectivePos = ["P", "SP", "RP", "CL"].includes(pos) ? "P" : pos;
+    if (!grouped[effectivePos]) grouped[effectivePos] = [];
+    grouped[effectivePos].push({
+      name: p.person.fullName,
+      mlbId: p.person.id,
+      status: p.status.description,
+      isInjured: true,
+    });
+  }
+
   // Build ordered positions array
   const positions = positionOrder
     .filter(pos => grouped[pos]?.length)
@@ -773,10 +897,12 @@ router.get("/depth-chart", requireAuth, asyncHandler(async (req, res) => {
       players: grouped[pos],
     }));
 
+  const totalCount = roster.length + missingIL.length;
+
   res.json({
-    teamId: data.teamId,
+    teamId: dcData.teamId,
     positions,
-    playerCount: roster.length,
+    playerCount: totalCount,
     source: "MLB Stats API",
     cachedAt: new Date().toISOString(),
   });

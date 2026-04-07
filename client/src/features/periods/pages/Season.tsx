@@ -6,7 +6,7 @@ import { OGBA_TEAM_NAMES } from "../../../lib/ogbaTeams";
 import { useTheme } from "../../../contexts/ThemeContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import PageHeader from "../../../components/ui/PageHeader";
-import { PeriodSummaryTable, CategoryPeriodTable, TeamPeriodSummaryRow, CategoryPeriodRow } from "../../../components/shared/StatsTables";
+import { PeriodSummaryTable, CategoryPeriodTable, TeamPeriodSummaryRow, CategoryPeriodRow, StatsUpdated } from "../../../components/shared/StatsTables";
 import { Button } from "../../../components/ui/button";
 import { ThemedTable, ThemedThead, ThemedTr, ThemedTh, ThemedTd } from "../../../components/ui/ThemedTable";
 import { SortableHeader } from "../../../components/ui/SortableHeader";
@@ -391,7 +391,10 @@ const SeasonPage: React.FC = () => {
           <div className="mt-8 space-y-8">
             {/* H2H Season Standings */}
             <div>
-              <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)] mb-4">Standings</h2>
+              <div className="flex items-baseline justify-between mb-4">
+                <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Standings</h2>
+                <StatsUpdated source="synced" />
+              </div>
               {h2hStandings.length === 0 ? (
                 <div className="text-center py-12 text-[var(--lg-text-muted)] italic">No standings yet. Matchups need to be scored first.</div>
               ) : (

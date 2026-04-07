@@ -12,7 +12,6 @@ import { logger } from "../../lib/logger.js";
 import { nextDayEffective } from "../../lib/utils.js";
 import { sendTradeProposedEmail, sendTradeProcessedEmail, sendTradeVetoedEmail, notifyTeamOwners } from "../../lib/emailService.js";
 import { sendPushToTeamOwners, sendPushToLeague } from "../../lib/pushService.js";
-import { postSystemChatMessage } from "../../lib/chatUtils.js";
 
 /**
  * Auto-generate AI analysis after a trade is processed.
@@ -531,34 +530,6 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
     tag: `trade-processed-${id}`,
     url: `/activity?leagueId=${trade.leagueId}`,
   }, "tradeResult", req.user!.id).catch(err => logger.warn({ err }, "Push notification failed"));
-
-  // Fire-and-forget: post system message to league chat
-  (async () => {
-    try {
-      const tradeItems = await prisma.trade.findUnique({
-        where: { id },
-        include: {
-          items: {
-            include: {
-              player: { select: { name: true } },
-              sender: { select: { name: true } },
-              recipient: { select: { name: true } },
-            },
-          },
-        },
-      });
-      if (tradeItems) {
-        const descriptions = tradeItems.items.map(item => {
-          if (item.assetType === "BUDGET") return `$${item.amount} from ${item.sender.name} to ${item.recipient.name}`;
-          return `${item.player?.name ?? "Unknown"} from ${item.sender.name} to ${item.recipient.name}`;
-        });
-        const text = `Trade executed: ${descriptions.join("; ")}`;
-        await postSystemChatMessage(trade.leagueId, req.user!.id, text, { activityType: "trade", tradeId: id });
-      }
-    } catch (err) {
-      logger.warn({ error: String(err), tradeId: id }, "Failed to post trade chat message");
-    }
-  })();
 
   res.json({ success: true });
 }));

@@ -2,6 +2,7 @@
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, PITCHER_CODES } from "../../../lib/sportConfig.js";
+import { getSportConfig } from "../../../lib/sports/index.js";
 import type { PeriodStatRow } from "../../../types/stats.js";
 
 // --- Types ---
@@ -104,6 +105,20 @@ export { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../../../lib/sportConfig.js";
 export type { CategoryKey } from "../../../lib/sportConfig.js";
 import { CATEGORY_CONFIG, KEY_TO_DB_FIELD, type CategoryKey } from "../../../lib/sportConfig.js";
 
+/**
+ * Get category config for a given sport (defaults to baseball).
+ * Maps SportConfig.categories to the { key, lowerIsBetter } shape used by standings.
+ */
+export function getCategoriesForSport(sport: string = "baseball") {
+  const config = getSportConfig(sport);
+  return config.categories.map((c) => ({
+    key: c.id,
+    label: c.name,
+    lowerIsBetter: c.isLowerBetter ?? false,
+    group: c.group,
+  }));
+}
+
 export function computeCategoryRows(
   stats: TeamStatRow[],
   key: CategoryKey,
@@ -147,10 +162,20 @@ export function computeCategoryRows(
   }));
 }
 
-export function computeStandingsFromStats(stats: TeamStatRow[]): StandingsRow[] {
+/**
+ * Compute overall standings by ranking teams across all scoring categories.
+ * Accepts optional `categories` to support sport-agnostic scoring.
+ * Defaults to baseball's CATEGORY_CONFIG for backward compatibility.
+ */
+export function computeStandingsFromStats(
+  stats: TeamStatRow[],
+  categories?: ReadonlyArray<{ key: string; lowerIsBetter: boolean }>,
+): StandingsRow[] {
   if (stats.length === 0) {
     return [];
   }
+
+  const cats = categories ?? CATEGORY_CONFIG;
 
   const teamMap = new Map<
     number,
@@ -170,8 +195,8 @@ export function computeStandingsFromStats(stats: TeamStatRow[]): StandingsRow[] 
   }
 
   // For each category, rank and add points
-  for (const cfg of CATEGORY_CONFIG) {
-    const rows = computeCategoryRows(stats, cfg.key, cfg.lowerIsBetter);
+  for (const cfg of cats) {
+    const rows = computeCategoryRows(stats, cfg.key as CategoryKey, cfg.lowerIsBetter);
     for (const r of rows) {
       const team = teamMap.get(r.teamId);
       if (!team) continue;

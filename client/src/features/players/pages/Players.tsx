@@ -14,6 +14,7 @@ import { SortableHeader } from '../../../components/ui/SortableHeader';
 import { getMlbTeamAbbr } from '../../../lib/playerDisplay';
 import { PlayerNameCell } from '../../../components/shared/PlayerNameCell';
 import { useLeague } from '../../../contexts/LeagueContext';
+import { StatsUpdated } from '../../../components/shared/StatsTables';
 
 export default function Players() {
   const { leagueId, outfieldMode } = useLeague();
@@ -231,6 +232,7 @@ export default function Players() {
 
        {/* Results Table */}
        <div className="flex-1 overflow-auto max-w-6xl w-full mx-auto px-4 pb-8 md:px-6 md:pb-12 custom-scrollbar">
+           <StatsUpdated source="synced" className="text-right mb-1 px-1" />
            <div className="lg-card p-0 bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700 overflow-x-auto">
                    <ThemedTable bare density="compact" zebra aria-label="Player statistics">
                        <ThemedThead sticky>
