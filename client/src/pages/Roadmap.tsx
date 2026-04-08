@@ -341,15 +341,18 @@ interface CompletedGroup {
 
 const completedFeatures: CompletedGroup[] = [
   {
-    label: "Session 60 — 19-Item Backlog Blitz: Security, News, Trade Assets, Position Sort",
+    label: "Session 60 — 19-Item Backlog + 20-Finding Code Review + FanGraphs Audit (9 commits)",
     items: [
       { title: "Race Condition Fixes", description: "Advisory lock on waiver processing (409 on concurrent), SELECT FOR UPDATE on roster claims, client in-flight guards with disabled buttons.", session: "60" },
-      { title: "Player News in Modal", description: "usePlayerNews hook aggregates 5 RSS feeds (Trade Rumors, Reddit, ESPN, MLB.com, Yahoo) with client-side name matching. Recent News section in PlayerDetailModal.", session: "60" },
-      { title: "Trade Asset UI Complete", description: "Added Waiver Budget input and Draft Pick round/season selector to TradeAssetSelector. Trade reversal now handles WAIVER_PRIORITY re-swap.", session: "60" },
-      { title: "Position Sort Unified", description: "POS_ORDER includes SP/RP on client (matches server). DraftReportPage and AddDropTab fixed. Inline POS_ORDER in mlb-feed removed.", session: "60" },
-      { title: "TeamStatsSeason Deprecated", description: "6 consumers replaced with TeamStatsPeriod aggregation. Waiver tiebreaker added (most recent claim = lower priority).", session: "60" },
-      { title: "RSS Parser Extracted", description: "rssParser.ts utility replaces 4 duplicated parsing blocks. mlb-feed/routes.ts reduced by 120 lines. Link URL validation included.", session: "60" },
-      { title: "Stale Player Enrichment", description: "POST /api/admin/enrich-stale-players — batch MLB API lookup for players with null team/position data.", session: "60" },
+      { title: "Player News in Modal", description: "Server-side GET /api/mlb/player-news endpoint aggregates 4 cached RSS feeds. usePlayerNews simplified to single API call. Recent News section in PlayerDetailModal.", session: "60" },
+      { title: "Trade Asset UI + Waiver Toggle", description: "Added Waiver Budget + Draft Pick selectors. Waiver Priority changed from 3 round buttons to single toggle (FAAB has no rounds). Trade reversal handles WAIVER_PRIORITY re-swap.", session: "60" },
+      { title: "Position Sort + POS_ORDER Unified", description: "Client POS_ORDER includes SP/RP (matches server). DraftReportPage, AddDropTab, mlb-feed all fixed. Team.tsx as-any casts removed.", session: "60" },
+      { title: "Rate Stat Precision", description: "AVG 4 decimal places (.2576), WHIP 3 decimal places (1.077), ERA 2 (2.16) — matches FanGraphs OnRoto display format.", session: "60" },
+      { title: "God Module Extraction", description: "digestRoutes.ts extracted from mlb-feed (1,426→1,120 lines). RSS parser with 5-min cache, 2MB size limit, https-only links. Dead syncNLPlayers code removed.", session: "60" },
+      { title: "7-Agent Code Review", description: "20 findings (5 P1 + 6 P2 + 9 P3) all fixed: archive scope/rate stats, budget reversal check, typed MLB API, LockConflictError class, dead code removal.", session: "60" },
+      { title: "FanGraphs Audit Cadence", description: "Weekly morning comparison of all 10 stat categories vs OnRoto. ERA/WHIP diffs confirmed timing-based. Roto point logic verified correct.", session: "60" },
+      { title: "Railway Deployment Prep", description: "Zero-code migration verified. Deployment checklist at docs/RAILWAY-DEPLOY.md with env var mapping, OAuth URLs, rollback plan.", session: "60" },
+      { title: "Multi-League Plan", description: "4-phase plan: public league directory, join flow, data isolation audit, self-service creation. Feature module isolation pattern.", session: "60" },
     ],
   },
   {

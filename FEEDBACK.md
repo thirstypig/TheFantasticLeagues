@@ -29,22 +29,38 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - **G4 (Top 100 prospects)**: `syncAAARosters()` already covers this
 - **G7/G8**: QA-only tasks (browser check + button click)
 
+### Additional Work (second half of session)
+- **7-agent code review**: All 20 findings (5 P1 + 6 P2 + 9 P3) fixed and pushed
+- **Rate stat precision**: AVG 4dp (.2576), WHIP 3dp (1.077), ERA 2dp (2.16) — matches FanGraphs
+- **Hooks violation fixed**: `useLeague()` moved above early return in PlayerDetailModal
+- **Server-side player-news**: `GET /api/mlb/player-news?playerName=X` — aggregates cached RSS feeds (agent-native parity)
+- **usePlayerNews simplified**: 109 lines → 40 lines (1 API call instead of 5)
+- **fetchPlayerBatch typed**: returns `MlbPerson[]` instead of `any[]` — propagates to all consumers
+- **God module extraction**: digestRoutes.ts extracted (1,426 → 1,120 lines, -306 lines)
+- **Waiver priority toggle**: replaced 3 "round" buttons with single toggle (FAAB has no rounds)
+- **useFetchOnMount hook**: reusable stale-guard fetch pattern for simpler effects
+- **YouTube fallback**: "Watch on YouTube" link for videos that disable embedding
+- **Home.tsx stale guards**: all league-dependent fetches now have `ok` boolean cleanup
+- **FanGraphs audit**: 1/8 exact match (timing diff — FBST one day ahead). Roto logic verified correct.
+- **ERA/WHIP investigation**: diffs are timing-based, not calculation errors. No fix needed.
+- **Mobile audit**: all 5 main pages pass at 390px (Home, Season, Players, Activity, Team)
+- **Multi-league plan**: 4-phase plan with feature module isolation at `docs/plans/`
+- **Railway deploy checklist**: env var mapping, OAuth URLs, pre-deploy verification at `docs/RAILWAY-DEPLOY.md`
+
 ### Pending / Next Steps
-- Deploy to Railway (zero-code migration — operational only)
-- YouTube embed investigation on production (CSP confirmed OK — likely video-specific)
-- Further `as any` reduction across codebase (144 server, 133 client)
-- `mlbGetJson<T>()` generic adoption (currently returns `any` everywhere)
+- **Deploy to Railway** — checklist ready at `docs/RAILWAY-DEPLOY.md`, zero-code migration
+- Remaining `as any` reduction (gradual, ~140 server + ~130 client)
 
 ### Concerns / Tech Debt
-- `mlb-feed/routes.ts` still 1,378 lines — could extract scores/digest into sub-route files
-- WAIVER_PRIORITY "rounds" UI has no backend mapping — FAAB system has no rounds concept
+- `mlb-feed/routes.ts` at 1,120 lines — remaining routes tightly coupled, diminishing returns for further extraction
 - PICK trades are log-only on server (informational for auction leagues)
-- Home.tsx still has 9+ useEffects without AbortController (only 3 fixed this session)
+- Home.tsx complex effects (roster stats, digest) don't fit `useFetchOnMount` pattern cleanly
 
 ### Test Results
-- Server: TypeScript clean
-- Client: TypeScript clean
-- Full test suite: not run (manual TypeScript validation)
+- Server: TypeScript clean (all 9 commits)
+- Client: TypeScript clean (all 9 commits)
+- Browser: 10 items verified in Playwright (A2 news, C1 position sort, F1 add/drop, G1-G3 trade selectors, G5 pre-draft trade, E1 waiver priority, Changelog, mobile 390px)
+- FanGraphs audit: roto point allocation logic verified correct across all 10 categories
 
 ---
 
