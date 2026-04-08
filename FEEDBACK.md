@@ -4,6 +4,47 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-07 (Session 59) — P1 Data Fixes, AI Grading, Minors Report, Audit Enhancement
+
+### Completed
+- **Ohtani two-way stats isolation**: `mirrorTwoWayPitcherStats` now zeroes pitching stats on hitter record (prevents double-counting W across DLC + Skunk Dogs)
+- **POSITION_OVERRIDES map**: New narrow-purpose map for `resolvePosition()` — prevents daily sync overwriting "DH" back to "TWP". Keeps `TWO_WAY_PLAYERS` empty (protects 6+ code paths)
+- **Ohtani pitcher team**: Set `mlbTeam: "LAD"` on synthetic pitcher record (id=3191)
+- **AI standings fix**: Route now uses `TeamStatsPeriod` (real data) instead of empty `TeamStatsSeason`. Uses `computeStandingsFromStats` from standingsService with proper tie-handling
+- **Deterministic AI grading**: Grades anchored to standings position (1st-2nd = A range, 7th-8th = D range). LLM cannot override
+- **Weekly insights backfill**: `weekOverride` param on `generate-all` endpoint. All 24 insights regenerated (8 teams × 3 weeks). Cache key now includes weekKey
+- **Stale insights across teams**: Reset AI state on `dbTeamId` change in Team.tsx
+- **Null dedup promise**: Returns 503 instead of 200 with null body
+- **Team page period stats**: `teamService` now includes per-player `periodStats` from `PlayerStatsPeriod`. Team.tsx uses these for players without CSV match (e.g., Ohtani pitcher)
+- **Team totals ERA/WHIP**: Fixed via IP-weighted reverse computation from individual ERA/WHIP values
+- **Minors Report**: New amber accordion on Home + Team pages. Shared `RosterAlertAccordion` component + `useRosterStatus` hook. Detection expanded to include "Optioned" status
+- **Roster alerts cards**: Dashboard pills replaced with horizontal card grid (headshots, 4-across desktop, stacked mobile)
+- **IL headline feature**: New IL placements (today only) compete as Daily Diamond hero with "Injury Alert" label
+- **Season page**: Removed roster expansion on team click. Team name navigates to team page
+- **Audit script enhanced**: 4 new checks (ERA/WHIP math, IP format, TWP position, period coverage)
+- **Supabase MCP**: Added to project `.mcp.json`
+- **teamService period query**: Fixed to filter by `leagueId` (was finding wrong period from different league)
+
+### Pending / Next Steps
+- Player profile news links (wire tagged articles from news feeds into PlayerDetailModal)
+- AL player news inclusion (expand beyond NL-only)
+- Forward-compatible stats for AL + H2H scoring
+- IL replacement accuracy (SP vs RP from depth chart)
+- Position sort on remaining pages (Team, Season, Players, Draft Report)
+- Deploy to Railway
+
+### Concerns / Tech Debt
+- `TeamStatsSeason` has all zeros — unused but not removed. Should populate from period rollups or remove
+- IP stored in baseball notation in DB (`5.2` = 5⅔) — client must `parseIP()` before math
+- Ohtani hitter pitching stats can temporarily reappear between MLB sync and `mirrorTwoWayPitcherStats`
+
+### Test Results
+- Server: 473 passing, 2 failing (pre-existing: standings routes timeout, periods mock)
+- Client: 171 passing, 16 failing (pre-existing: ArchivePage test)
+- TypeScript: clean (both client and server)
+
+---
+
 ## Session 2026-04-06 (Session 58) — Data Integrity, IL Report, IP Fix, Chat Removal, Digest Accuracy
 
 ### Completed

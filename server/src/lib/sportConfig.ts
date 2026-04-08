@@ -16,6 +16,7 @@ export {
   OHTANI_MLB_ID,
   OHTANI_PITCHER_MLB_ID,
   TWO_WAY_PLAYERS,
+  POSITION_OVERRIDES,
   KEEPER_SOURCE,
   isKeeperRoster,
   isPitcher,

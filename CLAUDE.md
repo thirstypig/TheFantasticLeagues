@@ -146,6 +146,7 @@ Some features import from other features' services or components.
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
 - `matchups/routes.ts` imports `standings/services/standingsService` (H2H scoring from category stats)
 - `draft/routes.ts` imports `seasons/services/seasonService` (auto-transition on draft completion)
+- `teams/routes.ts` imports `standings/services/standingsService` (AI insights standings computation)
 
 **Client (component imports):**
 - `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
@@ -185,6 +186,8 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/components/ui/ThemedTable.tsx` — ThemedTable supports `density` and `zebra` props
 - `client/src/components/AppShell.tsx` — app shell
 - `client/src/components/shared/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players); includes fielding stats (games by position)
+- `client/src/components/shared/RosterAlertAccordion.tsx` — shared IL/Minors accordion (used by Home, Team pages); red for IL, amber for Minors
+- `client/src/hooks/useRosterStatus.ts` — shared hook for roster status (IL + minors players) with proper TypeScript interface
 - `client/src/components/shared/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
 - `client/src/contexts/LeagueContext.tsx` — app-wide league context (leagueId, outfieldMode, seasonStatus, myTeamId, leagues list); value memoized, exports `findMyTeam<T>` helper
 - `client/src/hooks/useSeasonGating.ts` — `useSeasonGating()` hook returning feature availability flags based on season status

@@ -8,6 +8,7 @@ import { requireAuth, requireTeamOwner, requireLeagueMember } from "../../middle
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
+import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
 
 const rosterUpdateSchema = z.object({
   assignedPosition: z.string().max(5).nullable(),
@@ -86,7 +87,7 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
   }
 
   // Check in-memory cache (for sub-hour re-requests)
-  const cacheKey = `${leagueId}:${teamId}`;
+  const cacheKey = `${leagueId}:${teamId}:${weekKey}`;
   const cached = insightsCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return res.json(cached.data);
@@ -97,6 +98,7 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
   const existing = insightsInFlight.get(inflightKey);
   if (existing) {
     const result = await existing;
+    if (!result) return res.status(503).json({ error: "Weekly insights temporarily unavailable" });
     return res.json(result);
   }
 
@@ -127,22 +129,60 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
   // Load projected auction values (cached singleton)
   const { lookupAuctionValue } = await import("../../lib/auctionValues.js");
 
-  // Check for actual season stats (TeamStatsSeason)
-  const teamSeasonStats = await prisma.teamStatsSeason.findFirst({ where: { teamId } });
-  const hasActualStats = !!teamSeasonStats;
+  // Get the active period's team stats (more reliable than TeamStatsSeason which may be stale)
+  const insightPeriod = await prisma.period.findFirst({
+    where: { leagueId, status: "active" },
+    orderBy: { id: "desc" },
+  });
 
-  // Build category rankings if we have actual stats
-  // Query team stats once and reuse for both category rankings and standings
-  let categoryRankings: { category: string; rank: number; value: number }[] | null = null;
-  let standings: { teamName: string; rank: number; totalScore: number }[];
+  // Try TeamStatsPeriod first (has real data), fall back to TeamStatsSeason
+  let allTeamStats: { teamId: number; team: { id: number; name: string }; R: number; HR: number; RBI: number; SB: number; AVG: number; W: number; S: number; K: number; ERA: number; WHIP: number }[] = [];
+  let hasActualStats = false;
 
-  if (hasActualStats) {
-    const allTeamStats = await prisma.teamStatsSeason.findMany({
+  if (insightPeriod) {
+    const periodStats = await prisma.teamStatsPeriod.findMany({
+      where: { periodId: insightPeriod.id },
+      include: { team: { select: { id: true, name: true } } },
+    });
+    if (periodStats.length > 0 && periodStats.some(ps => ps.R > 0 || ps.W > 0)) {
+      allTeamStats = periodStats;
+      hasActualStats = true;
+    }
+  }
+
+  if (!hasActualStats) {
+    const seasonStats = await prisma.teamStatsSeason.findMany({
       where: { team: { leagueId } },
       include: { team: { select: { id: true, name: true } } },
     });
+    if (seasonStats.length > 0 && seasonStats.some(ss => ss.R > 0 || ss.W > 0)) {
+      allTeamStats = seasonStats;
+      hasActualStats = true;
+    }
+  }
 
-    // Category rankings
+  // Build category rankings if we have actual stats
+  let categoryRankings: { category: string; rank: number; value: number }[] | null = null;
+  let standings: { teamName: string; rank: number; totalScore: number }[];
+  const teamSeasonStats = allTeamStats.find(ts => ts.teamId === teamId) ?? null;
+
+  if (hasActualStats) {
+
+    // Adapt Prisma rows to TeamStatRow for the standings service
+    const teamStatRows: TeamStatRow[] = allTeamStats.map(ts => ({
+      team: { id: ts.team.id, name: ts.team.name, code: (ts.team as any).code ?? "" },
+      R: Number(ts.R), HR: Number(ts.HR), RBI: Number(ts.RBI), SB: Number(ts.SB),
+      AVG: Number(ts.AVG), W: Number(ts.W), S: Number(ts.S), K: Number(ts.K),
+      ERA: Number(ts.ERA), WHIP: Number(ts.WHIP),
+    }));
+
+    // Compute real roto standings with proper tie-handling
+    const standingsRows = computeStandingsFromStats(teamStatRows);
+    standings = standingsRows.map(s => ({
+      teamName: s.teamName, totalScore: s.points, rank: s.rank,
+    }));
+
+    // Category rankings (derive from standings rows)
     if (allTeamStats.length > 0) {
       const cats = [
         { key: "R", field: "R", asc: false },
@@ -151,7 +191,7 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
         { key: "SB", field: "SB", asc: false },
         { key: "AVG", field: "AVG", asc: false },
         { key: "W", field: "W", asc: false },
-        { key: "SV", field: "SV", asc: false },
+        { key: "SV", field: "S", asc: false },
         { key: "K", field: "K", asc: false },
         { key: "ERA", field: "ERA", asc: true },
         { key: "WHIP", field: "WHIP", asc: true },
@@ -167,12 +207,6 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
         return { category: cat.key, rank, value: Math.round(value * 1000) / 1000 };
       });
     }
-
-    // Standings (reuse same query)
-    standings = allTeamStats
-      .map(ts => ({ teamName: ts.team.name, totalScore: 0, rank: 0 }))
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .map((s, i) => ({ ...s, rank: i + 1 }));
   } else {
     const allTeams = await prisma.team.findMany({ where: { leagueId }, select: { name: true } });
     standings = allTeams.map((t, i) => ({ teamName: t.name, rank: i + 1, totalScore: 0 }));
@@ -525,12 +559,19 @@ router.post("/ai-insights/generate-all", requireAuth, asyncHandler(async (req, r
     return res.status(400).json({ error: "Missing leagueId" });
   }
 
+  // Optional weekOverride (admin-only, validated format: YYYY-WNN)
+  const weekOverrideRaw = req.query.weekOverride as string | undefined;
+  const weekOverride = weekOverrideRaw && /^\d{4}-W\d{2}$/.test(weekOverrideRaw) ? weekOverrideRaw : undefined;
+  if (weekOverrideRaw && !weekOverride) {
+    return res.status(400).json({ error: "Invalid weekOverride format (expected YYYY-WNN)" });
+  }
+
   const teams = await prisma.team.findMany({
     where: { leagueId },
     select: { id: true, name: true },
   });
 
-  const weekKey = getWeekKey();
+  const weekKey = weekOverride || getWeekKey();
   const results: { teamId: number; teamName: string; status: string }[] = [];
 
   for (const team of teams) {
@@ -547,7 +588,7 @@ router.post("/ai-insights/generate-all", requireAuth, asyncHandler(async (req, r
     // Trigger generation by calling the same endpoint internally
     try {
       // Use a direct fetch to the insights endpoint to reuse the existing generation logic
-      const url = `http://localhost:${process.env.PORT || 4010}/api/teams/ai-insights?leagueId=${leagueId}&teamId=${team.id}`;
+      const url = `http://localhost:${process.env.PORT || 4010}/api/teams/ai-insights?leagueId=${leagueId}&teamId=${team.id}${weekOverride ? `&weekOverride=${weekOverride}` : ""}`;
       const token = req.headers.authorization;
       const resp = await fetch(url, { headers: { Authorization: token || "" } });
       if (resp.ok) {

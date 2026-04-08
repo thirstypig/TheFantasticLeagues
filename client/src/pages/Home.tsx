@@ -13,6 +13,7 @@ import { formatLocalDate, formatLocalTime, formatEventTime, safeParseDate } from
 import type { DigestResponse, PowerRanking, CategoryMover, TeamGrade } from "./home/types";
 import PeriodAwardsCard from "../features/periods/components/PeriodAwardsCard";
 import DeadlineWarnings from "../components/shared/DeadlineWarnings";
+import RosterAlertAccordion from "../components/shared/RosterAlertAccordion";
 
 // Map MLB Trade Rumors team name tags to abbreviations for NL/AL filtering
 const TEAM_NAME_TO_ABBR: Record<string, string> = {
@@ -592,7 +593,39 @@ export default function Home() {
           .filter((p: any) => p.score > 0) // Only players who did something
           .sort((a: any, b: any) => b.score - a.score);
 
-        if (scored.length === 0) return null;
+        // Inject IL placements as headline-worthy stories (recent IL moves are big news)
+        const recentIL = rosterAlerts
+          .filter((a: any) => a.isInjured && a.ilPlacedDate)
+          .map((a: any) => {
+            const placedDate = new Date(a.ilPlacedDate + "T12:00:00");
+            const daysSince = Math.floor((Date.now() - placedDate.getTime()) / 86400000);
+            if (daysSince > 1) return null; // Only feature NEW IL placements (today/yesterday)
+            const ilMatch = (a.mlbStatus || "").match(/(\d+)/);
+            const ilLabel = ilMatch ? `${ilMatch[1]}-Day IL` : "IL";
+            return {
+              playerName: a.playerName,
+              mlbId: a.mlbId,
+              mlbTeam: a.mlbTeam,
+              position: a.position,
+              opponent: ilLabel,
+              isPitcher: ["P", "SP", "RP", "CL"].includes(a.position),
+              gameToday: true,
+              score: daysSince === 0 ? 20 : 12, // Today's IL = top priority
+              _isILStory: true,
+              _ilInjury: a.ilInjury,
+              _ilLabel: ilLabel,
+              _daysSince: daysSince,
+              thumbnail: null,
+              hitting: null,
+              pitching: null,
+            };
+          })
+          .filter(Boolean);
+
+        // Merge IL stories into scored — they compete on score
+        const allStories = [...scored, ...recentIL].sort((a: any, b: any) => b.score - a.score);
+
+        if (allStories.length === 0) return null;
 
         // Generate fun, punchy headlines — each player gets a unique one
         const pick = (arr: string[], seed: number) => arr[seed % arr.length];
@@ -602,6 +635,12 @@ export default function Home() {
           const last = p.playerName.split(" ").slice(-1)[0];
           const first = p.playerName.split(" ")[0];
           const seed = new Date().getDate() * 7 + idx * 13 + ((p.mlbId || 0) % 11);
+
+          // IL story headlines
+          if (p._isILStory) {
+            const injury = p._ilInjury || "injury";
+            return pick([`BREAKING: ${last} Hits the ${p._ilLabel}`, `${last} Placed on ${p._ilLabel} — ${injury}`, `Down Goes ${last}: ${p._ilLabel} Stint Begins`, `${p._ilLabel} for ${last} — Who Steps Up?`], seed);
+          }
 
           if (p.isPitcher && pt.IP) {
             if (pt.W && pt.K >= 10) return pick([`${last} Just Embarrassed ${pt.K} Hitters`, `${pt.K} K's?! ${last} Chose Violence`, `${last} Went Full Video Game Mode`, `${pt.K} Punchouts. Goodnight, ${p.opponent}.`], seed);
@@ -657,17 +696,18 @@ export default function Home() {
           return parts.join(" / ") || "In lineup";
         };
 
-        const mlbHeadshot = (mlbId: number) =>
+        const mlbHeadshot = (mlbId: number | null | undefined) =>
           `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
 
-        const hero = scored[0];
-        const sideStories = scored.slice(1, 3); // Cap at 2 side stories (3 total with hero)
-        const scoredIds = new Set(scored.map((p: any) => p.mlbId));
+        const hero = allStories[0];
+        const sideStories = allStories.slice(1, 3); // Cap at 2 side stories (3 total with hero)
+        const scoredIds = new Set(allStories.map((p: any) => p.mlbId));
         // Filter IL players from on-deck using rosterAlerts
         const ilMlbIds = new Set(rosterAlerts.filter((a: any) => a.isInjured).map((a: any) => a.mlbId));
         const onDeck = rosterStats.players.filter((p: any) => p.gameToday && !scoredIds.has(p.mlbId) && !ilMlbIds.has(p.mlbId));
-        // IL players from rosterAlerts (enriched with dates and replacement)
+        // IL and Minors players from rosterAlerts
         const ilPlayers = rosterAlerts.filter((a: any) => a.isInjured);
+        const minorsPlayers = rosterAlerts.filter((a: any) => a.isMinors);
         const hasSidebar = true; // always show sidebar: stories, on-deck, pulse, or daily column
         const dateStr = formatLocalDate(new Date(), { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
@@ -709,8 +749,8 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <span className="inline-block text-[9px] font-bold uppercase tracking-widest text-amber-400 mb-1">
-                      Top Performer
+                    <span className={`inline-block text-[9px] font-bold uppercase tracking-widest mb-1 ${hero._isILStory ? 'text-red-400' : 'text-amber-400'}`}>
+                      {hero._isILStory ? 'Injury Alert' : 'Top Performer'}
                     </span>
                     <h3 className="text-xl sm:text-2xl font-bold text-white leading-tight" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                       {makeHeadline(hero, 0)}
@@ -731,7 +771,10 @@ export default function Home() {
                       <span className="font-normal text-[var(--lg-text-muted)] ml-1.5 text-xs">{hero.position} · {hero.mlbTeam}</span>
                     </p>
                     <p className="text-xs text-[var(--lg-text-secondary)] mt-0.5">
-                      vs {hero.opponent} — <span className="font-semibold text-[var(--lg-accent)]">{statLine(hero)}</span>
+                      {hero._isILStory
+                        ? <span className="font-semibold text-red-400">{hero._ilLabel} — {hero._ilInjury || "Injury"}</span>
+                        : <>vs {hero.opponent} — <span className="font-semibold text-[var(--lg-accent)]">{statLine(hero)}</span></>
+                      }
                     </p>
                   </div>
                 </div>
@@ -828,7 +871,10 @@ export default function Home() {
                                 {makeHeadline(p, i + 1)}
                               </h4>
                               <p className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">
-                                {p.playerName} · <span className="text-[var(--lg-accent)] font-medium">{statLine(p)}</span>
+                                {p.playerName} · {p._isILStory
+                                  ? <span className="text-red-400 font-medium">{p._ilLabel}</span>
+                                  : <span className="text-[var(--lg-accent)] font-medium">{statLine(p)}</span>
+                                }
                               </p>
                             </div>
                           </div>
@@ -873,49 +919,17 @@ export default function Home() {
                       </div>
                     )}
 
-                    {/* IL Report — accordion style */}
+                    {/* IL Report — shared accordion */}
                     {ilPlayers.length > 0 && (
                       <div className={`${sideStories.length > 0 || onDeckFiltered.length > 0 ? "mt-3 pt-3 border-t border-[var(--lg-divide)]" : ""}`}>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-red-400 mb-2">IL Report</p>
-                        <div className="space-y-1">
-                          {ilPlayers.slice(0, 6).map((p: any, i: number) => {
-                            const ilMatch = (p.mlbStatus || "").match(/(\d+)/);
-                            const ilLabel = ilMatch ? `${ilMatch[1]}-Day IL` : "IL";
-                            const eligDate = p.ilEligibleReturn ? new Date(p.ilEligibleReturn + "T12:00:00") : null;
-                            const eligStr = eligDate ? eligDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
-                            const placedDate = p.ilPlacedDate ? new Date(p.ilPlacedDate + "T12:00:00") : null;
-                            const placedStr = placedDate ? placedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
-                            return (
-                              <details key={i} className="bg-red-500/5 border border-red-500/15 rounded-lg group">
-                                <summary className="flex items-center gap-2 p-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                                  <img
-                                    src={mlbHeadshot(p.mlbId)}
-                                    alt={p.playerName}
-                                    className="w-6 h-6 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-red-500/20 opacity-60"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <span className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{p.playerName}</span>
-                                    <span className="text-[9px] text-red-400 font-bold ml-1.5">{ilLabel}</span>
-                                  </div>
-                                  <svg className="w-3 h-3 text-[var(--lg-text-muted)] transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </summary>
-                                <div className="text-[10px] text-[var(--lg-text-muted)] space-y-0.5 px-2 pb-2 ml-8">
-                                  {p.ilInjury && <div className="text-red-300/80">{p.ilInjury}</div>}
-                                  {placedStr && <div>Placed: {placedStr}</div>}
-                                  {eligStr && <div>Eligible: <span className="text-[var(--lg-text-secondary)] font-medium">{eligStr}</span></div>}
-                                  {p.ilReplacement && (
-                                    <div className="text-[var(--lg-text-secondary)]">
-                                      Replacement: <span className="font-medium">{p.ilReplacement}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </details>
-                            );
-                          })}
-                        </div>
+                        <RosterAlertAccordion players={ilPlayers} colorScheme="red" label="IL Report" mlbHeadshot={mlbHeadshot} />
+                      </div>
+                    )}
+
+                    {/* Minors Report — shared accordion */}
+                    {minorsPlayers.length > 0 && (
+                      <div className={`${ilPlayers.length > 0 ? "mt-2" : sideStories.length > 0 || onDeckFiltered.length > 0 ? "mt-3 pt-3 border-t border-[var(--lg-divide)]" : ""}`}>
+                        <RosterAlertAccordion players={minorsPlayers} colorScheme="amber" label="Minors Report" mlbHeadshot={mlbHeadshot} />
                       </div>
                     )}
 
@@ -1094,21 +1108,69 @@ export default function Home() {
         </div>
       )}
 
-      {/* Roster Alerts — IL / Minors */}
-      {rosterAlerts.length > 0 && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2">
-          <div className="text-[9px] font-bold uppercase text-red-400 mb-1">Roster Alerts</div>
-          <div className="flex flex-wrap gap-2">
-            {rosterAlerts.map((p: any, i: number) => (
-              <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                p.isInjured ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}>
-                {p.playerName} · {p.isInjured ? 'IL' : 'Minors'} · {p.mlbTeam}
-              </span>
-            ))}
+      {/* Roster Alerts — IL / Minors cards */}
+      {rosterAlerts.length > 0 && (() => {
+        const ilAlerts = rosterAlerts.filter((p: any) => p.isInjured);
+        const minorsAlerts = rosterAlerts.filter((p: any) => p.isMinors);
+        const headshotUrl = (mlbId: number | null) =>
+          `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
+        return (
+          <div className="space-y-3">
+            {ilAlerts.length > 0 && (
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-widest text-red-400 mb-2">Injured List ({ilAlerts.length})</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {ilAlerts.map((p: any, i: number) => {
+                    const ilMatch = (p.mlbStatus || "").match(/(\d+)/);
+                    const ilLabel = ilMatch ? `${ilMatch[1]}-Day IL` : "IL";
+                    return (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/15">
+                        <img
+                          src={headshotUrl(p.mlbId)}
+                          alt={p.playerName}
+                          className="w-7 h-7 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-red-500/20 opacity-70"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-semibold text-[var(--lg-text-primary)] truncate">{p.playerName}</div>
+                          <div className="text-[9px] text-[var(--lg-text-muted)]">
+                            <span className="text-red-400 font-bold">{ilLabel}</span>
+                            <span className="mx-1">·</span>{p.position} · {p.mlbTeam}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {minorsAlerts.length > 0 && (
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-widest text-amber-400 mb-2">Minors ({minorsAlerts.length})</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {minorsAlerts.map((p: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/15">
+                      <img
+                        src={headshotUrl(p.mlbId)}
+                        alt={p.playerName}
+                        className="w-7 h-7 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-amber-500/20 opacity-70"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-semibold text-[var(--lg-text-primary)] truncate">{p.playerName}</div>
+                        <div className="text-[9px] text-[var(--lg-text-muted)]">
+                          <span className="text-amber-400 font-bold">Minors</span>
+                          <span className="mx-1">·</span>{p.position} · {p.mlbTeam}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Weekly League Digest */}
       <div id="digest" />

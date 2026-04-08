@@ -1169,7 +1169,12 @@ Provide exactly 4 concise insights based ONLY on the stats above:
 
 Keep each insight to 1-2 sentences. Be factual — cite actual stat lines from the data above.
 
-GRADING: Grade RELATIVE to the other ${standings.length} teams based on actual production. Best=A+, average=C, worst=F.
+GRADING RULES — grade MUST correlate with standings position:
+- 1st-2nd place: A- to A+ (only A- if terrible week)
+- 3rd-4th place: B to A- (adjust based on weekly trajectory)
+- 5th-6th place: C to B (average production)
+- 7th-8th place: D to C (only give F if truly catastrophic)
+A 1st-place team CANNOT receive below B-. A last-place team CANNOT receive above B+.
 
 Return ONLY valid JSON:
 {

@@ -18,6 +18,8 @@ import { TableCard, Table, THead, Tr, Th, Td } from "../../../components/ui/Tabl
 import { Button } from "../../../components/ui/button";
 import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp } from "lucide-react";
 import { StatsUpdated } from "../../../components/shared/StatsTables";
+import RosterAlertAccordion from "../../../components/shared/RosterAlertAccordion";
+import { useRosterStatus } from "../../../hooks/useRosterStatus";
 
 function normCode(v: any): string {
   return String(v ?? "").trim().toUpperCase();
@@ -117,8 +119,8 @@ export default function Team() {
   // Trade block state
   const [tradeBlockIds, setTradeBlockIds] = useState<Set<number>>(new Set());
 
-  // IL report state
-  const [ilPlayers, setIlPlayers] = useState<any[]>([]);
+  // IL + Minors report via shared hook
+  const { ilPlayers, minorsPlayers } = useRosterStatus(leagueId ?? null, dbTeamId ?? undefined);
 
   // Period roster state (for viewing historical period rosters)
   const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
@@ -204,11 +206,14 @@ export default function Team() {
               };
             }
 
-            // No CSV match — build a minimal row from DB data
+            // No CSV match — build row from DB data + period stats if available
             const pitcherPos = ["P", "SP", "RP"];
             // For two-way players (Ohtani), use assignedPosition to determine pitcher status
             const assignedPos = r.assignedPosition || "";
             const effectiveIsPitcher = pitcherPos.includes(assignedPos) || pitcherPos.includes(posPrimary);
+            const ps = r.periodStats; // Per-player period stats from teamService
+            const rawIP = ps?.IP ?? 0;
+            const realIP = parseIP(rawIP); // Convert baseball notation (.1=⅓, .2=⅔) to real decimal
             return {
               _dbPlayerId: dbPlayerId,
               _rosterId: r.id,
@@ -221,8 +226,13 @@ export default function Team() {
               positions: assignedPos || posList || posPrimary || "UT",
               posPrimary: assignedPos || posPrimary,
               is_pitcher: effectiveIsPitcher,
-              R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0,
-              W: 0, SV: 0, K: 0, IP: 0, ERA: 0, WHIP: 0, BB_H: 0,
+              R: ps?.R ?? 0, HR: ps?.HR ?? 0, RBI: ps?.RBI ?? 0, SB: ps?.SB ?? 0,
+              H: ps?.H ?? 0, AB: ps?.AB ?? 0,
+              AVG: (ps?.AB ?? 0) > 0 ? (ps?.H ?? 0) / ps!.AB : 0,
+              W: ps?.W ?? 0, SV: ps?.SV ?? 0, K: ps?.K ?? 0,
+              IP: realIP, ER: ps?.ER ?? 0, BB_H: ps?.BB_H ?? 0,
+              ERA: realIP > 0 ? ((ps?.ER ?? 0) * 9) / realIP : 0,
+              WHIP: realIP > 0 ? (ps?.BB_H ?? 0) / realIP : 0,
               mlb_team_abbr: mlbTeam,
               price,
               isKeeper,
@@ -253,14 +263,15 @@ export default function Team() {
     };
   }, [code, leagueId]);
 
-  // Reset IL when team changes, then fetch
-  useEffect(() => { setIlPlayers([]); }, [code]);
+  // Reset AI state when team changes (prevents showing Team A's grade on Team B)
   useEffect(() => {
-    if (!dbTeamId || !leagueId) return;
-    fetchJsonApi<{ players: any[] }>(`${API_BASE}/mlb/roster-status?leagueId=${leagueId}&teamId=${dbTeamId}`)
-      .then(res => setIlPlayers((res.players || []).filter((p: any) => p.isInjured)))
-      .catch(() => setIlPlayers([]));
-  }, [dbTeamId, leagueId]);
+    setAiInsights(null);
+    setAiError(null);
+    setInsightHistory([]);
+    setHistoryLoaded(false);
+    setSelectedWeekKey(null);
+    setAiLoading(false);
+  }, [dbTeamId]);
 
   // Fetch AI insights + history in parallel once dbTeamId is available
   useEffect(() => {
@@ -848,12 +859,19 @@ export default function Team() {
                     const totW = pitchers.reduce((s, p) => s + asNum(p?.W), 0);
                     const totSV = pitchers.reduce((s, p) => s + asNum(p?.SV), 0);
                     const totK = pitchers.reduce((s, p) => s + asNum(p?.K), 0);
-                    // Use parseIP to convert baseball notation (5.2 = 5⅔) to true decimal
-                    const totIP = pitchers.reduce((s, p) => s + parseIP(p?.IP), 0);
-                    const totER = pitchers.reduce((s, p) => s + asNum(p?.ER), 0);
-                    const totBBH = pitchers.reduce((s, p) => s + asNum(p?.BB_H), 0);
-                    const teamERA = totIP > 0 ? (totER / totIP) * 9 : 0;
-                    const teamWHIP = totIP > 0 ? totBBH / totIP : 0;
+                    const totIP = pitchers.reduce((s, p) => s + asNum(p?.IP), 0);
+                    // Compute ERA/WHIP from individual pitcher ERA/WHIP weighted by IP
+                    // (more accurate than summing raw ER/BB_H which may not be on every player object)
+                    let weightedER = 0, weightedBBH = 0;
+                    for (const p of pitchers) {
+                      const pip = asNum(p?.IP);
+                      if (pip > 0) {
+                        weightedER += asNum(p?.ERA) * pip / 9; // reverse: ERA = ER*9/IP → ER = ERA*IP/9
+                        weightedBBH += asNum(p?.WHIP) * pip;   // reverse: WHIP = BBH/IP → BBH = WHIP*IP
+                      }
+                    }
+                    const teamERA = totIP > 0 ? (weightedER / totIP) * 9 : 0;
+                    const teamWHIP = totIP > 0 ? weightedBBH / totIP : 0;
                     return (
                       <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
                         <Td align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></Td>
@@ -877,47 +895,24 @@ export default function Team() {
         {/* IL Report */}
         {ilPlayers.length > 0 && (
           <div className="mt-10">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-red-400 mb-3">Injured List</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {ilPlayers.map((p: any, i: number) => {
-                const ilMatch = (p.mlbStatus || "").match(/(\d+)/);
-                const ilLabel = ilMatch ? `${ilMatch[1]}-Day IL` : "IL";
-                const eligDate = p.ilEligibleReturn ? new Date(p.ilEligibleReturn + "T12:00:00") : null;
-                const eligStr = eligDate ? eligDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
-                const placedDate = p.ilPlacedDate ? new Date(p.ilPlacedDate + "T12:00:00") : null;
-                const placedStr = placedDate ? placedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
-                return (
-                  <details key={i} className="bg-red-500/5 border border-red-500/15 rounded-lg group">
-                    <summary className="flex items-center gap-2.5 p-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                      <img
-                        src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${p.mlbId}/headshot/67/current`}
-                        alt={p.playerName}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 bg-[var(--lg-bg-card)] border border-red-500/20 opacity-60"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{p.playerName}</span>
-                        <span className="text-[9px] text-red-400 font-bold ml-1.5">{ilLabel}</span>
-                        <div className="text-[10px] text-[var(--lg-text-muted)]">{p.position} · {p.mlbTeam}</div>
-                      </div>
-                      <svg className="w-3.5 h-3.5 text-[var(--lg-text-muted)] transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </summary>
-                    <div className="text-[11px] text-[var(--lg-text-muted)] space-y-0.5 px-3 pb-3 ml-[42px]">
-                      {p.ilInjury && <div className="text-red-300/80">{p.ilInjury}</div>}
-                      {placedStr && <div>Placed: {placedStr}</div>}
-                      {eligStr && <div>Eligible: <span className="text-[var(--lg-text-secondary)] font-medium">{eligStr}</span></div>}
-                      {p.ilReplacement && (
-                        <div className="text-[var(--lg-text-secondary)]">
-                          Replacement: <span className="font-medium">{p.ilReplacement}</span>
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                );
-              })}
-            </div>
+            <RosterAlertAccordion
+              players={ilPlayers}
+              colorScheme="red"
+              label="Injured List"
+              mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
+            />
+          </div>
+        )}
+
+        {/* Minors Report */}
+        {minorsPlayers.length > 0 && (
+          <div className={ilPlayers.length > 0 ? "mt-4" : "mt-10"}>
+            <RosterAlertAccordion
+              players={minorsPlayers}
+              colorScheme="amber"
+              label="Minors Report"
+              mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
+            />
           </div>
         )}
 

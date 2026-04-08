@@ -382,7 +382,7 @@ router.get("/roster-status", requireAuth, requireLeagueMember("leagueId"), async
       position: r.assignedPosition || r.player.posPrimary || "",
       mlbStatus: mlbStatus?.status || "Unknown",
       isInjured,
-      isMinors: mlbStatus?.status?.includes("Minor") || mlbStatus?.status === "Reassigned" || false,
+      isMinors: mlbStatus?.status?.includes("Minor") || mlbStatus?.status?.includes("Optioned") || mlbStatus?.status === "Reassigned" || false,
       // IL enrichment
       ilPlacedDate: ilInfo?.placedDate || null,
       ilDays: ilInfo?.ilDays || null,

@@ -11,9 +11,7 @@ import { Button } from "../../../components/ui/button";
 import { ThemedTable, ThemedThead, ThemedTr, ThemedTh, ThemedTd } from "../../../components/ui/ThemedTable";
 import { SortableHeader } from "../../../components/ui/SortableHeader";
 import { getCurrentSeason, type Season } from "../../seasons/api";
-import { getTeamDetails } from "../../teams/api";
 import { getMatchups, getH2HStandings, type MatchupEntry, type StandingEntry } from "../../matchups/api";
-import { POS_ORDER } from "../../../lib/baseballUtils";
 import { mapPosition } from "../../../lib/sportConfig";
 import { formatLocalDate, formatLocalTime } from "../../../lib/timeUtils";
 
@@ -142,37 +140,7 @@ const SeasonPage: React.FC = () => {
     else { setMatrixSortKey(key); setMatrixSortDesc(key !== "team"); }
   }, [matrixSortKey]);
 
-  // Expandable team roster state
-  const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
-  const [teamRosters, setTeamRosters] = useState<Record<number, Array<{ id: number; name: string; posPrimary: string; assignedPosition?: string | null; price: number }>>>({});
-  const [rosterLoading, setRosterLoading] = useState(false);
-
-  const toggleTeamExpand = useCallback(async (teamId: number) => {
-    if (expandedTeamId === teamId) {
-      setExpandedTeamId(null);
-      return;
-    }
-    setExpandedTeamId(teamId);
-    if (!teamRosters[teamId]) {
-      setRosterLoading(true);
-      try {
-        const detail = await getTeamDetails(teamId);
-        const sorted = [...(detail.currentRoster || [])].sort((a, b) => {
-          // Prefer assignedPosition (roster slot) over posPrimary (MLB default)
-          const posA = (a as any).assignedPosition || a.posPrimary;
-          const posB = (b as any).assignedPosition || b.posPrimary;
-          const ia = POS_ORDER.indexOf(posA);
-          const ib = POS_ORDER.indexOf(posB);
-          return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-        });
-        setTeamRosters(prev => ({ ...prev, [teamId]: sorted }));
-      } catch {
-        setTeamRosters(prev => ({ ...prev, [teamId]: [] }));
-      } finally {
-        setRosterLoading(false);
-      }
-    }
-  }, [expandedTeamId, teamRosters]);
+  // (Roster expansion removed — users navigate to team page instead)
 
   // Sort logic for season matrix (always points)
   const sortedRows = useMemo(() => {
@@ -549,28 +517,19 @@ const SeasonPage: React.FC = () => {
                     </ThemedTr>
                   ) : (
                     sortedRows.map((row, idx) => (
-                      <React.Fragment key={row.teamId}>
-                        <ThemedTr
-                          className="group cursor-pointer hover:bg-[var(--lg-tint)]"
-                          onClick={() => toggleTeamExpand(row.teamId)}
-                        >
+                      <ThemedTr key={row.teamId} className="group hover:bg-[var(--lg-tint)]">
                           <ThemedTd align="center">{idx + 1}</ThemedTd>
                           <ThemedTd frozen>
-                            <div className="flex items-center gap-2">
-                              <svg className={`w-3 h-3 text-[var(--lg-text-muted)] transition-transform ${expandedTeamId === row.teamId ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                              {row.teamCode ? (
-                                <span
-                                  className="text-[11px] font-semibold text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/teams/${encodeURIComponent(row.teamCode!)}`); }}
-                                >
-                                  {row.teamName}
-                                </span>
-                              ) : (
-                                <span className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{row.teamName}</span>
-                              )}
-                            </div>
+                            {row.teamCode ? (
+                              <span
+                                className="text-[11px] font-semibold text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer"
+                                onClick={() => navigate(`/teams/${encodeURIComponent(row.teamCode!)}`)}
+                              >
+                                {row.teamName}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{row.teamName}</span>
+                            )}
                           </ThemedTd>
 
                           {periodIds.map((_pid, pIdx) => (
@@ -587,37 +546,14 @@ const SeasonPage: React.FC = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={(e) => { e.stopPropagation(); navigate(`/teams/${encodeURIComponent(row.teamCode!)}`); }}
+                                  onClick={() => navigate(`/teams/${encodeURIComponent(row.teamCode!)}`)}
                                   className="opacity-0 group-hover:opacity-100"
                                 >
                                   View →
                                 </Button>
                              ) : null}
                           </ThemedTd>
-                        </ThemedTr>
-                        {expandedTeamId === row.teamId && (
-                          <tr>
-                            <ThemedTd colSpan={periodIds.length + 4} className="p-0">
-                              <div className="bg-[var(--lg-bg-secondary)]/30 px-8 py-4">
-                                {rosterLoading && !teamRosters[row.teamId] ? (
-                                  <div className="text-xs text-[var(--lg-text-muted)] italic animate-pulse py-2">Loading roster...</div>
-                                ) : (teamRosters[row.teamId]?.length ?? 0) === 0 ? (
-                                  <div className="text-xs text-[var(--lg-text-muted)] italic py-2">No roster data available.</div>
-                                ) : (
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-1">
-                                    {teamRosters[row.teamId].map(p => (
-                                      <div key={p.id} className="flex items-center gap-2 text-xs py-0.5">
-                                        <span className="font-mono text-[var(--lg-text-muted)] w-5 text-center shrink-0">{mapPosition((p as any).assignedPosition || p.posPrimary, outfieldMode)}</span>
-                                        <span className="text-[var(--lg-text-primary)] truncate">{p.name}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </ThemedTd>
-                          </tr>
-                        )}
-                      </React.Fragment>
+                      </ThemedTr>
                     ))
                   )}
                 </tbody>

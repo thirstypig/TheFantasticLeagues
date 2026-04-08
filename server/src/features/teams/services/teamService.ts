@@ -67,6 +67,7 @@ export class TeamService {
       where: { id: teamId },
       select: {
         id: true,
+        leagueId: true,
         name: true,
         owner: true,
         budget: true,
@@ -79,11 +80,11 @@ export class TeamService {
 
     // Run independent DB queries in parallel
     const [period, seasonStats, periodRows, rosterRows, droppedRows] = await Promise.all([
-      // active period (first active, else id=1 fallback)
+      // active period for this team's league
       prisma.period.findFirst({
-        where: { status: "active" },
+        where: { status: "active", leagueId: team.leagueId },
         orderBy: { startDate: "asc" },
-      }).then((p) => p || prisma.period.findFirst({ where: { id: 1 } })),
+      }).then((p) => p || prisma.period.findFirst({ where: { leagueId: team.leagueId }, orderBy: { id: "desc" } })),
 
       prisma.teamStatsSeason.findUnique({
         where: { teamId: team.id },
@@ -158,6 +159,21 @@ export class TeamService {
         : 0);
 
     // ---------- Roster ----------
+    // Load per-player period stats for the active period (for players not in CSV, e.g., synthetic Ohtani pitcher)
+    const playerPeriodStatsMap = new Map<number, { W: number; SV: number; K: number; IP: number; ER: number; BB_H: number; R: number; HR: number; RBI: number; SB: number; AB: number; H: number }>();
+    if (period) {
+      const playerIds = rosterRows.map((r) => r.playerId);
+      const pStats = await prisma.playerStatsPeriod.findMany({
+        where: { playerId: { in: playerIds }, periodId: period.id },
+      });
+      for (const ps of pStats) {
+        playerPeriodStatsMap.set(ps.playerId, {
+          W: ps.W, SV: ps.SV, K: ps.K, IP: ps.IP as number, ER: ps.ER, BB_H: ps.BB_H,
+          R: ps.R, HR: ps.HR, RBI: ps.RBI, SB: ps.SB, AB: ps.AB, H: ps.H,
+        });
+      }
+    }
+
     const currentRoster = rosterRows.map((r) => ({
       id: r.id,
       playerId: r.playerId,
@@ -171,6 +187,7 @@ export class TeamService {
       assignedPosition: r.assignedPosition,
       isKeeper: r.isKeeper,
       gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList),
+      periodStats: playerPeriodStatsMap.get(r.playerId) ?? null,
     }));
 
     const droppedPlayers = droppedRows.map((r) => ({

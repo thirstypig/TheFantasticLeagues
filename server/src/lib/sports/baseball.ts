@@ -120,7 +120,19 @@ export const OHTANI_MLB_ID = 660271;
 export const OHTANI_PITCHER_MLB_ID = 1660271;
 
 export const TWO_WAY_PLAYERS: ReadonlyMap<number, { hitterPos: string; name: string }> = new Map([
-  // Empty — Ohtani split into separate player records
+  // Empty — Ohtani split into separate player records.
+  // Do NOT re-populate: this map gates expandTwoWayPlayers(), splitTwoWayStats(),
+  // and standings two-way attribution in 6+ code paths. Use POSITION_OVERRIDES below.
+]);
+
+/**
+ * Position overrides for the daily sync. Maps MLB ID → display position.
+ * Separate from TWO_WAY_PLAYERS (which gates stat expansion/splitting and must
+ * remain empty for the two-record Ohtani architecture).
+ * This map ONLY affects resolvePosition() in mlbSyncService.
+ */
+export const POSITION_OVERRIDES: ReadonlyMap<number, string> = new Map([
+  [660271, "DH"], // Ohtani hitter — MLB API returns "TWP", we want "DH"
 ]);
 
 // ─── Keeper Detection ───

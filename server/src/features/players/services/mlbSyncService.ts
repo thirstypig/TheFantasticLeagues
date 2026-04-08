@@ -2,7 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk } from "../../../lib/utils.js";
-import { TWO_WAY_PLAYERS } from "../../../lib/sportConfig.js";
+import { TWO_WAY_PLAYERS, POSITION_OVERRIDES } from "../../../lib/sportConfig.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -23,12 +23,18 @@ interface MlbRosterPerson {
 
 /**
  * Resolve position for a player. Two-way players (e.g. Ohtani) get their
- * hitter position from TWO_WAY_PLAYERS instead of the MLB API's "TWP".
+ * hitter position from TWO_WAY_PLAYERS or POSITION_OVERRIDES instead of
+ * the MLB API's "TWP".
  */
 function resolvePosition(mlbId: number, posAbbr: string): string {
   const twoWay = TWO_WAY_PLAYERS.get(mlbId);
   if (twoWay && (posAbbr === "TWP" || posAbbr === "Y")) {
     return twoWay.hitterPos;
+  }
+  // Check position overrides (e.g., Ohtani hitter → DH)
+  const override = POSITION_OVERRIDES.get(mlbId);
+  if (override && (posAbbr === "TWP" || posAbbr === "Y")) {
+    return override;
   }
   return posAbbr;
 }

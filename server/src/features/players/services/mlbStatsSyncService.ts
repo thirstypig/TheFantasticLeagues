@@ -151,9 +151,17 @@ async function mirrorTwoWayPitcherStats(periodId: number): Promise<void> {
       },
     });
 
+    // Zero out pitching stats on the HITTER record to prevent double-counting.
+    // The hitter record (real Ohtani) gets both hitting + pitching from MLB API sync.
+    // We want pitching only on the synthetic pitcher record, hitting only on the hitter.
+    await prisma.playerStatsPeriod.update({
+      where: { playerId_periodId: { playerId: realPlayer.id, periodId } },
+      data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 },
+    });
+
     logger.info(
       { realMlbId, syntheticMlbId, pitcherPlayerId, periodId, W: realStats.W, K: realStats.K, IP: Number(realStats.IP) },
-      "Mirrored pitching stats for two-way player"
+      "Mirrored pitching stats for two-way player (zeroed hitter pitching)"
     );
   }
 }
@@ -349,6 +357,12 @@ async function mirrorTwoWayDailyPitcherStats(gameDate: Date): Promise<void> {
         W: realStats.W, SV: realStats.SV, K: realStats.K,
         IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
       },
+    });
+
+    // Zero out pitching stats on the hitter record to prevent double-counting
+    await prisma.playerStatsDaily.update({
+      where: { playerId_gameDate: { playerId: realPlayer.id, gameDate } },
+      data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 },
     });
   }
 }
