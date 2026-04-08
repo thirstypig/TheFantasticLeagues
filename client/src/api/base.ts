@@ -148,6 +148,19 @@ export function fmtRate(v: number): string {
   return s.startsWith("0") ? s.slice(1) : s;
 }
 
+/** AVG with 4 decimal places (.2576) — matches FanGraphs display */
+export function fmtAvg4(v: number): string {
+  if (!Number.isFinite(v)) return ".0000";
+  const s = v.toFixed(4);
+  return s.startsWith("0") ? s.slice(1) : s;
+}
+
+/** WHIP with 3 decimal places (1.077) — matches FanGraphs display */
+export function fmtWhip(v: number): string {
+  if (!Number.isFinite(v)) return "0.000";
+  return v.toFixed(3);
+}
+
 export function yyyyMmDd(d: Date): string {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");

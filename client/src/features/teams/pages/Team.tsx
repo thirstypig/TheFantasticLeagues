@@ -838,7 +838,7 @@ export default function Team() {
                               {asNum(p?.IP) > 0 ? asNum(p.ERA).toFixed(2) : "—"}
                             </Td>
                             <Td align="center">
-                              {asNum(p?.IP) > 0 ? asNum(p.WHIP).toFixed(2) : "—"}
+                              {asNum(p?.IP) > 0 ? asNum(p.WHIP).toFixed(3) : "—"}
                             </Td>
                           </Tr>
                           {isExpanded && (
@@ -882,7 +882,7 @@ export default function Team() {
                         <Td align="center"><span className="font-bold">{totK}</span></Td>
                         <Td align="center"><span className="font-bold">{totIP > 0 ? totIP.toFixed(1) : "—"}</span></Td>
                         <Td align="center"><span className="font-bold">{totIP > 0 ? teamERA.toFixed(2) : "—"}</span></Td>
-                        <Td align="center"><span className="font-bold">{totIP > 0 ? teamWHIP.toFixed(2) : "—"}</span></Td>
+                        <Td align="center"><span className="font-bold">{totIP > 0 ? teamWHIP.toFixed(3) : "—"}</span></Td>
                       </tr>
                     );
                   })()}

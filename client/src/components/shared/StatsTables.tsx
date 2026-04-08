@@ -1,6 +1,6 @@
 import React from "react";
 import { getPrimaryPosition } from "../../lib/baseballUtils";
-import { fmtRate } from "../../api/base";
+import { fmtRate, fmtAvg4, fmtWhip } from "../../api/base";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../ui/ThemedTable";
 import { Badge } from "../ui/Badge";
 import { TeamNameLink } from "./TeamNameLink";
@@ -198,8 +198,9 @@ const formatStatForCategory = (categoryId: string, value: number): string => {
   if (!Number.isFinite(value)) return "-";
   const id = categoryId.toUpperCase();
 
-  if (id === "AVG") return fmtRate(value);
-  if (id === "ERA" || id === "WHIP") return value.toFixed(2);
+  if (id === "AVG") return fmtAvg4(value);
+  if (id === "ERA") return value.toFixed(2);
+  if (id === "WHIP") return fmtWhip(value);
 
   return Math.round(value).toString();
 };
@@ -533,7 +534,7 @@ export const TeamPeriodHittersTable: React.FC<TeamPeriodHittersProps> = ({
                   <ThemedTd align="center">{h.hr}</ThemedTd>
                   <ThemedTd align="center">{h.rbi}</ThemedTd>
                   <ThemedTd align="center">{h.sb}</ThemedTd>
-                  <ThemedTd align="center">{fmtRate(h.avg)}</ThemedTd>
+                  <ThemedTd align="center">{fmtAvg4(h.avg)}</ThemedTd>
                   <ThemedTd align="center">{h.ab}</ThemedTd>
                   <ThemedTd align="center">{h.gs}</ThemedTd>
                 </ThemedTr>
@@ -544,7 +545,7 @@ export const TeamPeriodHittersTable: React.FC<TeamPeriodHittersProps> = ({
                 <ThemedTd align="center">{totals.hr}</ThemedTd>
                 <ThemedTd align="center">{totals.rbi}</ThemedTd>
                 <ThemedTd align="center">{totals.sb}</ThemedTd>
-                <ThemedTd align="center">{fmtRate(teamAvg)}</ThemedTd>
+                <ThemedTd align="center">{fmtAvg4(teamAvg)}</ThemedTd>
                 <ThemedTd align="center">{totals.ab}</ThemedTd>
                 <ThemedTd align="center">{totals.gs}</ThemedTd>
               </ThemedTr>

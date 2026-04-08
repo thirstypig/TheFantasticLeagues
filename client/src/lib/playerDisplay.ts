@@ -9,7 +9,7 @@ export {
   sortByPosition,
 } from "./sportConfig";
 
-import { fmtRate } from "./sportConfig";
+import { fmtAvg4 } from "../api/base";
 
 /** Normalize TWP (two-way player) to DH/P for display; fallback to em-dash for nullish. */
 export const displayPos = (pos: string | undefined | null): string => {
@@ -19,9 +19,9 @@ export const displayPos = (pos: string | undefined | null): string => {
   return p;
 };
 
-/** Format a batting average value, coercing to number. Alias for fmtRate with coercion. */
+/** Format a batting average value with 4 decimal places (.2576) — matches FanGraphs display. */
 export function formatAvg(v: string | number | null | undefined): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return "";
-  return fmtRate(n);
+  return fmtAvg4(n);
 }
