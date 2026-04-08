@@ -39,6 +39,23 @@ function resolvePosition(mlbId: number, posAbbr: string): string {
   return posAbbr;
 }
 
+/** MLB person from the people?personIds= endpoint */
+interface MlbPerson {
+  id: number;
+  fullName: string;
+  primaryPosition?: { abbreviation: string; type: string };
+  currentTeam?: { id: number; abbreviation?: string };
+  stats?: Array<{
+    group?: { displayName: string };
+    type?: { displayName: string };
+    splits?: Array<{
+      stat: Record<string, number | string>;
+      team?: { abbreviation?: string };
+      position?: { abbreviation?: string };
+    }>;
+  }>;
+}
+
 /**
  * Fetch a single team's 40-man roster from MLB Stats API.
  */
@@ -200,13 +217,13 @@ export async function syncAllPlayers(season: number): Promise<{
 async function fetchPlayerBatch(
   mlbIds: number[],
   hydrateParam: string
-): Promise<any[]> {
+): Promise<MlbPerson[]> {
   const batches = chunk(mlbIds.map(String), 50);
-  const allPlayers: any[] = [];
+  const allPlayers: MlbPerson[] = [];
 
   for (const batch of batches) {
     const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=${hydrateParam}`;
-    const data = await mlbGetJson(url);
+    const data = await mlbGetJson<{ people?: MlbPerson[] }>(url);
     allPlayers.push(...(data.people || []));
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -221,7 +238,7 @@ async function fetchPlayerBatch(
 export async function fetchPlayerStats(
   mlbIds: number[],
   season: number
-): Promise<any[]> {
+): Promise<MlbPerson[]> {
   return fetchPlayerBatch(mlbIds, `currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`);
 }
 
@@ -232,7 +249,7 @@ export async function fetchPlayerStats(
 export async function fetchPlayerFieldingStats(
   mlbIds: number[],
   season: number
-): Promise<any[]> {
+): Promise<MlbPerson[]> {
   return fetchPlayerBatch(mlbIds, `stats(group=[fielding],type=[season],season=${season})`);
 }
 
@@ -249,15 +266,14 @@ function normalizePos(pos: string): string {
  * Extract games-per-position from MLB API fielding stats response for one player.
  * Aggregates across teams (traded players have separate splits per team).
  */
-function extractFieldingPositions(player: any): Map<string, number> {
+function extractFieldingPositions(player: MlbPerson): Map<string, number> {
   const posMap = new Map<string, number>();
 
   const statsGroups = player.stats ?? [];
   for (const group of statsGroups) {
     if (group.group?.displayName !== "fielding") continue;
     for (const split of group.splits ?? []) {
-      const pos: string | undefined =
-        split.stat?.position?.abbreviation ?? split.position?.abbreviation;
+      const pos: string | undefined = split.position?.abbreviation;
       const games = Number(split.stat?.games ?? split.stat?.gamesPlayed ?? 0);
       if (pos && games > 0) {
         posMap.set(pos, (posMap.get(pos) ?? 0) + games);

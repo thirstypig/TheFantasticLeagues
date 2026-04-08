@@ -200,6 +200,54 @@ router.get("/trade-rumors", requireAuth, asyncHandler(async (_req, res) => {
   res.json({ items: articles.map(a => ({ title: a.title, link: a.link, pubDate: a.pubDate, categories: a.categories })) });
 }));
 
+// ─── GET /player-news — Aggregated RSS news for a specific player ───
+
+router.get("/player-news", requireAuth, asyncHandler(async (req, res) => {
+  const playerName = typeof req.query.playerName === "string" ? req.query.playerName.trim() : "";
+  if (!playerName || playerName.length < 2) {
+    return res.json({ articles: [] });
+  }
+
+  const fullName = playerName.toLowerCase();
+  const parts = playerName.split(/\s+/);
+  const lastName = parts[parts.length - 1]?.toLowerCase() || "";
+  const canMatchByLast = lastName.length >= 5;
+
+  const matchesPlayer = (text: string): boolean => {
+    const lower = text.toLowerCase();
+    if (lower.includes(fullName)) return true;
+    if (canMatchByLast && lower.includes(lastName)) return true;
+    return false;
+  };
+
+  // Fetch all 5 feeds in parallel (cached via rssParser 5-min TTL)
+  const [rumors, yahoo, mlb, espn] = await Promise.all([
+    fetchRssFeed("https://www.mlbtraderumors.com/feed", { sourceName: "TradeRumors" }),
+    fetchRssFeed("https://sports.yahoo.com/mlb/rss/", { sourceName: "Yahoo" }),
+    fetchRssFeed("https://www.mlb.com/feeds/news/rss.xml", { sourceName: "MLB.com" }),
+    fetchRssFeed("https://www.espn.com/espn/rss/mlb/news", { sourceName: "ESPN" }),
+  ]);
+
+  const matched: { source: string; title: string; link: string; pubDate: string }[] = [];
+
+  for (const a of rumors) {
+    const catMatch = a.categories.some(c => c.toLowerCase().includes(lastName));
+    if (matchesPlayer(a.title) || (canMatchByLast && catMatch)) {
+      matched.push({ source: "Trade Rumors", title: a.title, link: a.link, pubDate: a.pubDate });
+    }
+  }
+  for (const a of [...yahoo, ...mlb, ...espn]) {
+    if (matchesPlayer(a.title)) {
+      const source = yahoo.includes(a) ? "Yahoo" : mlb.includes(a) ? "MLB.com" : "ESPN";
+      matched.push({ source, title: a.title, link: a.link, pubDate: a.pubDate });
+    }
+  }
+
+  // Sort by date descending, limit to 5
+  matched.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+  res.json({ articles: matched.slice(0, 5) });
+}));
+
 // ─── GET /roster-status — MLB roster status for user's fantasy players ───
 
 router.get("/roster-status", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {

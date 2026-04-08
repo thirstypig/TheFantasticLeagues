@@ -297,8 +297,10 @@ export default function Home() {
   // Check if user has a team + build dashboard
   useEffect(() => {
     if (!user || !currentLeagueId) { setHasTeam(null); setDash(null); return; }
+    let ok = true;
     fetchJsonApi<{ league: { name: string; season: number; teams: Array<{ id: number; name: string; budget: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
       .then(res => {
+        if (!ok) return;
         const league = res.league;
         const teams = league?.teams || [];
         const mine = findMyTeam(teams, Number(user.id));
@@ -309,10 +311,9 @@ export default function Home() {
           teamCount: teams.length,
           myTeam: mine ? { name: mine.name, id: mine.id, budget: mine.budget, rosterCount: 0 } : null,
         });
-        // Don't default to team — let NL/AL filter from league rules handle it
       })
-      .catch(() => { setHasTeam(null); setDash(null); });
-
+      .catch(() => { if (ok) { setHasTeam(null); setDash(null); } });
+    return () => { ok = false; };
   }, [user, currentLeagueId]);
 
   // Fetch scores
@@ -327,11 +328,13 @@ export default function Home() {
   // Fetch Real-Time Stats Today + league roster names (for trade rumors cross-reference)
   useEffect(() => {
     if (!currentLeagueId) { setRosterStatsLoading(false); return; }
+    let ok = true;
     setRosterStatsLoading(true);
     Promise.allSettled([
       fetchJsonApi<{ date: string; teamName: string; players: any[] }>(`${API_BASE}/mlb/roster-stats-today?leagueId=${currentLeagueId}`),
       fetchJsonApi<{ stats: any[] }>(`${API_BASE}/player-season-stats?leagueId=${currentLeagueId}`),
     ]).then(([statsRes, rosterRes]) => {
+      if (!ok) return;
       if (statsRes.status === "fulfilled") setRosterStats(statsRes.value);
       if (rosterRes.status === "fulfilled") {
         const m = new Map<string, string>();
@@ -343,7 +346,8 @@ export default function Home() {
         }
         setLeagueRoster(m);
       }
-    }).finally(() => setRosterStatsLoading(false));
+    }).finally(() => { if (ok) setRosterStatsLoading(false); });
+    return () => { ok = false; };
   }, [currentLeagueId]);
 
   // Auto-refresh roster stats every 2 minutes when games are live
@@ -425,15 +429,18 @@ export default function Home() {
   // Fetch depth chart when team selection changes
   useEffect(() => {
     if (!depthTeamId) return;
+    let ok = true;
     setDepthLoading(true);
     fetchJsonApi<{ positions: typeof depthChart; playerCount: number; cachedAt: string }>(`${API_BASE}/mlb/depth-chart?teamId=${depthTeamId}`)
       .then(res => {
+        if (!ok) return;
         setDepthChart(res.positions || []);
         setDepthPlayerCount(res.playerCount || 0);
         setDepthCachedAt(res.cachedAt || null);
       })
-      .catch(() => setDepthChart([]))
-      .finally(() => setDepthLoading(false));
+      .catch(() => { if (ok) setDepthChart([]); })
+      .finally(() => { if (ok) setDepthLoading(false); });
+    return () => { ok = false; };
   }, [depthTeamId]);
 
   // Auto-refresh scores when live games

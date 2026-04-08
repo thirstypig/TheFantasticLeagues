@@ -138,6 +138,7 @@ function CloseButton({ onClick }: { onClick: () => void }) {
 
 export default function PlayerDetailModal({ player, onClose, open }: Props) {
   const isVisible = open !== undefined ? open : !!player;
+  const { outfieldMode } = useLeague();
 
   const [tab, setTab] = useState<TabId>("stats");
 
@@ -249,7 +250,6 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
 
   if (!isVisible || !player) return null;
 
-  const { outfieldMode } = useLeague();
   const title = norm(player.player_name ?? (player as any).name ?? "Player");
   const pos = norm(player.positions ?? (player as any).pos ?? "");
   const fantasyTeam = norm((player as any).ogba_team_name ?? "");
