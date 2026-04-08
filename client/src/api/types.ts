@@ -241,6 +241,10 @@ export type PlayerSeasonStat = {
   name?: string;
   team?: string;
   isPitcher?: boolean;
+  // Added by Team page when merging roster data
+  assignedPosition?: string;
+  isKeeper?: boolean;
+  rosterId?: number;
 };
 
 export type CareerHittingRow = {

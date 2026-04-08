@@ -108,8 +108,10 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
   const season = league?.season ?? new Date().getFullYear();
 
-  // 4. Perform Transaction (Atomic)
+  // 4. Perform Transaction (Atomic) — lock team row to prevent concurrent roster limit bypass
   await prisma.$transaction(async (tx) => {
+    // Acquire row-level lock on the team to serialize concurrent claims
+    await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
     await assertPlayerAvailable(tx, playerId, leagueId);
     await assertRosterLimit(tx, teamId, !!dropPlayerId);
 

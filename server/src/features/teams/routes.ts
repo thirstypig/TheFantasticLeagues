@@ -151,13 +151,20 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
   }
 
   if (!hasActualStats) {
-    const seasonStats = await prisma.teamStatsSeason.findMany({
-      where: { team: { leagueId } },
-      include: { team: { select: { id: true, name: true } } },
+    // Fallback: try last completed period
+    const lastCompleted = await prisma.period.findFirst({
+      where: { leagueId, status: "completed" },
+      orderBy: { endDate: "desc" },
     });
-    if (seasonStats.length > 0 && seasonStats.some(ss => ss.R > 0 || ss.W > 0)) {
-      allTeamStats = seasonStats;
-      hasActualStats = true;
+    if (lastCompleted) {
+      const completedStats = await prisma.teamStatsPeriod.findMany({
+        where: { periodId: lastCompleted.id },
+        include: { team: { select: { id: true, name: true } } },
+      });
+      if (completedStats.length > 0 && completedStats.some(cs => cs.R > 0 || cs.W > 0)) {
+        allTeamStats = completedStats;
+        hasActualStats = true;
+      }
     }
   }
 

@@ -654,7 +654,16 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
         // Reverse: take from recipient, give to sender
         await tx.team.update({ where: { id: item.recipientId }, data: { budget: { decrement: amount } } });
         await tx.team.update({ where: { id: item.senderId }, data: { budget: { increment: amount } } });
+      } else if (item.assetType === "WAIVER_PRIORITY") {
+        // Re-swap waiver priority overrides back to original
+        const [sender, recipient] = await Promise.all([
+          tx.team.findUnique({ where: { id: item.senderId }, select: { waiverPriorityOverride: true } }),
+          tx.team.findUnique({ where: { id: item.recipientId }, select: { waiverPriorityOverride: true } }),
+        ]);
+        await tx.team.update({ where: { id: item.senderId }, data: { waiverPriorityOverride: recipient?.waiverPriorityOverride ?? null } });
+        await tx.team.update({ where: { id: item.recipientId }, data: { waiverPriorityOverride: sender?.waiverPriorityOverride ?? null } });
       }
+      // PICK and FUTURE_BUDGET are informational records — no state to reverse
     }
 
     // Mark trade as reversed

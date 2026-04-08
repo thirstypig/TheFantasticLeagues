@@ -41,38 +41,62 @@ export class ArchiveExportService {
       await prisma.historicalStanding.deleteMany({ where: { seasonId: historicalSeason.id } });
       await prisma.historicalPeriod.deleteMany({ where: { seasonId: historicalSeason.id } });
 
-      // 3. Migrate Standings
-      const teamStatsSeason = await prisma.teamStatsSeason.findMany({
-        where: { teamId: { in: league.teams.map(t => t.id) } },
-        include: { team: true }
+      // 3. Migrate Standings from TeamStatsPeriod aggregation
+      const allPeriods = await prisma.period.findMany({
+        where: { season: { leagueId } },
+        select: { id: true },
       });
 
-      // Sort by some heuristic or just migrate
-      const sortedStats = [...teamStatsSeason].sort((a, b) => b.gamesPlayed - a.gamesPlayed); // Placeholder sorting
+      const teamIds = league.teams.map(t => t.id);
+      const teamMap = new Map(league.teams.map(t => [t.id, t]));
 
-      for (let i = 0; i < sortedStats.length; i++) {
-        const ts = sortedStats[i];
-        await prisma.historicalStanding.create({
-          data: {
-            seasonId: historicalSeason.id,
-            teamCode: ts.team.code || ts.team.name.substring(0, 3).toUpperCase(),
-            teamName: ts.team.name,
-            totalScore: 0, // In actual system, we'd compute Roto points here
-            finalRank: i + 1,
-            R_score: ts.R,
-            HR_score: ts.HR,
-            RBI_score: ts.RBI,
-            SB_score: ts.SB,
-            AVG_score: Math.round((ts.AVG || 0) * 1000), // Standardize to 3 decimals as integer representation
-            W_score: ts.W,
-            SV_score: ts.S,
-            K_score: ts.K,
-            ERA_score: ts.ERA,
-            WHIP_score: ts.WHIP
-          }
+      if (allPeriods.length > 0) {
+        const periodStatsList = await prisma.teamStatsPeriod.findMany({
+          where: { periodId: { in: allPeriods.map(p => p.id) }, teamId: { in: teamIds } },
+          select: { teamId: true, R: true, HR: true, RBI: true, SB: true, AVG: true, W: true, S: true, K: true, ERA: true, WHIP: true, gamesPlayed: true },
         });
+
+        // Aggregate counting stats per team across all periods
+        const aggMap = new Map<number, { R: number; HR: number; RBI: number; SB: number; W: number; S: number; K: number; AVG: number; ERA: number; WHIP: number; gamesPlayed: number; count: number }>();
+        for (const stat of periodStatsList) {
+          const agg = aggMap.get(stat.teamId) || { R: 0, HR: 0, RBI: 0, SB: 0, W: 0, S: 0, K: 0, AVG: 0, ERA: 0, WHIP: 0, gamesPlayed: 0, count: 0 };
+          agg.R += stat.R; agg.HR += stat.HR; agg.RBI += stat.RBI; agg.SB += stat.SB;
+          agg.W += stat.W; agg.S += stat.S; agg.K += stat.K; agg.gamesPlayed += stat.gamesPlayed;
+          agg.AVG += stat.AVG; agg.ERA += stat.ERA; agg.WHIP += stat.WHIP; agg.count++;
+          aggMap.set(stat.teamId, agg);
+        }
+
+        // Sort by total counting stats (descending) for rank
+        const sortedTeams = [...aggMap.entries()].sort((a, b) => {
+          const strengthA = a[1].R + a[1].HR + a[1].RBI + a[1].SB + a[1].W + a[1].S + a[1].K;
+          const strengthB = b[1].R + b[1].HR + b[1].RBI + b[1].SB + b[1].W + b[1].S + b[1].K;
+          return strengthB - strengthA;
+        });
+
+        for (let i = 0; i < sortedTeams.length; i++) {
+          const [tId, agg] = sortedTeams[i];
+          const team = teamMap.get(tId);
+          if (!team) continue;
+          const avgDivisor = agg.count || 1;
+          await prisma.historicalStanding.create({
+            data: {
+              seasonId: historicalSeason.id,
+              teamCode: team.code || team.name.substring(0, 3).toUpperCase(),
+              teamName: team.name,
+              totalScore: agg.R + agg.HR + agg.RBI + agg.SB + agg.W + agg.S + agg.K,
+              finalRank: i + 1,
+              R_score: agg.R, HR_score: agg.HR, RBI_score: agg.RBI, SB_score: agg.SB,
+              AVG_score: Math.round((agg.AVG / avgDivisor) * 1000),
+              W_score: agg.W, SV_score: agg.S, K_score: agg.K,
+              ERA_score: agg.ERA / avgDivisor,
+              WHIP_score: agg.WHIP / avgDivisor,
+            }
+          });
+        }
+        log(`Migrated ${sortedTeams.length} team standings from period stats.`);
+      } else {
+        log(`No periods found — skipped standings migration.`);
       }
-      log(`Migrated ${sortedStats.length} team standings.`);
 
       // 4. Migrate Periods
       const periods = await prisma.period.findMany({

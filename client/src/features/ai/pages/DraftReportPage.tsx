@@ -6,7 +6,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { SortableHeader } from "../../../components/ui/SortableHeader";
-import { isPitcher as isPitcherPos, mapPosition, positionToSlots } from "../../../lib/sportConfig";
+import { isPitcher as isPitcherPos, mapPosition, positionToSlots, POS_ORDER } from "../../../lib/sportConfig";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
 import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
 
@@ -140,7 +140,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
       const s = r.stat;
       switch (sortKey) {
         case "name": return r.playerName.toLowerCase();
-        case "pos": return r.position;
+        case "pos": { const idx = POS_ORDER.indexOf(r.position); return idx === -1 ? 99 : idx; }
         case "price": return r.price;
         case "value": return r.projectedValue ?? -999;
         case "surplus": return r.surplus ?? -999;

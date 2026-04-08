@@ -17,9 +17,10 @@ interface AddDropTabProps {
     myTeamRoster?: PlayerSeasonStat[];
     onClaim: (player: PlayerSeasonStat, dropPlayerId?: number) => void;
     onDrop?: (player: PlayerSeasonStat) => void;
+    disabled?: boolean;
 }
 
-export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop }: AddDropTabProps) {
+export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled }: AddDropTabProps) {
     const { leagueId } = useLeague();
 
     // View state
@@ -133,6 +134,12 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop }: A
                 valA = getLastName(a.mlb_full_name || a.player_name);
                 valB = getLastName(b.mlb_full_name || b.player_name);
                 return sortDesc ? valB.toString().localeCompare(valA.toString()) : valA.toString().localeCompare(valB.toString());
+            } else if (sortKey === 'pos') {
+                const posA = getPrimaryPosition(a.positions);
+                const posB = getPrimaryPosition(b.positions);
+                const ia = POS_ORDER.indexOf(posA); const ib = POS_ORDER.indexOf(posB);
+                const cmp = (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+                return sortDesc ? -cmp : cmp;
             } else if (sortKey === 'mlb_team') {
                 valA = a.mlb_team || (a as any).mlbTeam || 'ZZZ';
                 valB = b.mlb_team || (b as any).mlbTeam || 'ZZZ';
@@ -196,6 +203,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop }: A
                     <ThemedThead sticky>
                         <ThemedTr>
                             <SortableHeader sortKey="name" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} frozen className="pl-2 min-w-[140px]">Name</SortableHeader>
+                            <SortableHeader sortKey="pos" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-14">Pos</SortableHeader>
                             <SortableHeader sortKey="mlb_team" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">MLB</SortableHeader>
 
                             {viewGroup === 'hitters' ? (
@@ -247,6 +255,10 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop }: A
                                         </ThemedTd>
 
                                         <ThemedTd align="center">
+                                            <span className="text-[10px] font-medium text-[var(--lg-text-muted)]">{pos}</span>
+                                        </ThemedTd>
+
+                                        <ThemedTd align="center">
                                             <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">
                                                 {mlbTeam || 'FA'}
                                             </span>
@@ -275,15 +287,17 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop }: A
                                                 {!isTaken && (
                                                     <button
                                                         onClick={() => onClaim(p)}
-                                                        className="px-2 py-px bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold uppercase transition-all"
+                                                        disabled={disabled}
+                                                        className="px-2 py-px bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
-                                                        Add
+                                                        {disabled ? "..." : "Add"}
                                                     </button>
                                                 )}
                                                 {isTaken && onDrop && (
                                                     <button
                                                         onClick={() => onDrop(p)}
-                                                        className="px-2 py-px bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[9px] font-bold uppercase transition-all"
+                                                        disabled={disabled}
+                                                        className="px-2 py-px bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[9px] font-bold uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         Drop
                                                     </button>

@@ -56,7 +56,8 @@ const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "
 
 export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23, pitcherMax, hitterMax, showPace = true, positionLimits, showPositionMatrix = true }: TeamListTabProps) {
   const { toast } = useToast();
-  const { leagueId } = useLeague();
+  const { leagueId, seasonStatus } = useLeague();
+  const priceDeemphasized = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailedRoster, setDetailedRoster] = useState<RosterEntry[] | null>(null);
   const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set());
@@ -313,7 +314,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                                 <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
                                                             <ThemedTd align="right" className="py-2 pr-6">
-                                                                <span className="font-semibold text-[var(--lg-accent)]">${entry.price}</span>
+                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-accent)]"}>${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (

@@ -40,7 +40,8 @@ interface RosterGridProps {
 }
 
 export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, canEditPrice, canEditPosition, onRelease }: RosterGridProps) {
-  const { outfieldMode, leagueId: contextLeagueId } = useLeague();
+  const { outfieldMode, leagueId: contextLeagueId, seasonStatus } = useLeague();
+  const priceDeemphasized = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
   const { toast, confirm } = useToast();
   const [teams, setTeams] = useState<Team[]>(initialTeams || []);
   const [rosters, setRosters] = useState<RosterItem[]>(initialRosters || []);
@@ -218,7 +219,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                           </form>
                                         ) : (
                                           <span
-                                            className={`font-semibold text-amber-400 w-6 text-right ${canEditPrice ? "cursor-pointer hover:text-amber-300" : ""}`}
+                                            className={`w-6 text-right ${priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-amber-400"} ${canEditPrice ? "cursor-pointer hover:text-amber-300" : ""}`}
                                             onClick={() => { if (canEditPrice) { setEditingId(r.id); setEditPrice(String(r.price)); } }}
                                             title={canEditPrice ? "Click to edit price" : undefined}
                                           >${r.price}</span>

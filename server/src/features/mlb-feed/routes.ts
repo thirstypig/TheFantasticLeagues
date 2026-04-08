@@ -6,6 +6,8 @@ import { validateBody } from "../../middleware/validate.js";
 import { mlbGetJson, fetchMlbTeamsMap } from "../../lib/mlbApi.js";
 import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
+import { POS_ORDER } from "../../lib/sportConfig.js";
+import { fetchRssFeed } from "./services/rssParser.js";
 
 const router = Router();
 
@@ -194,44 +196,8 @@ router.get(
 // ─── GET /trade-rumors — Parse MLB Trade Rumors RSS ───
 
 router.get("/trade-rumors", requireAuth, asyncHandler(async (_req, res) => {
-  try {
-    const feedUrl = "https://www.mlbtraderumors.com/feed";
-    const response = await fetch(feedUrl, {
-      headers: { "User-Agent": "FBST/1.0 Fantasy Baseball App" },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      return res.json({ items: [] });
-    }
-    const xml = await response.text();
-
-    // Simple RSS XML parser — extract <item> entries
-    const items: { title: string; link: string; pubDate: string; categories: string[] }[] = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && items.length < 15) {
-      const block = match[1];
-      const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
-        ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
-        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
-      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
-      const categories: string[] = [];
-      const catRegex = /<category><!\[CDATA\[(.*?)\]\]><\/category>/g;
-      let catMatch;
-      while ((catMatch = catRegex.exec(block)) !== null) {
-        categories.push(catMatch[1]);
-      }
-      if (title && link) {
-        items.push({ title, link, pubDate, categories });
-      }
-    }
-
-    res.json({ items });
-  } catch (err) {
-    logger.warn({ error: String(err) }, "Failed to fetch MLB Trade Rumors RSS");
-    res.json({ items: [] });
-  }
+  const articles = await fetchRssFeed("https://www.mlbtraderumors.com/feed", { sourceName: "TradeRumors" });
+  res.json({ items: articles.map(a => ({ title: a.title, link: a.link, pubDate: a.pubDate, categories: a.categories })) });
 }));
 
 // ─── GET /roster-status — MLB roster status for user's fantasy players ───
@@ -347,11 +313,25 @@ router.get("/roster-status", requireAuth, requireLeagueMember("leagueId"), async
         // For each injured player, find who's next at their position
         const dcRoster = dcData.roster || [];
         for (const ip of injuredPlayers.filter(p => p.mlbTeam === teamAbbr)) {
+          // For pitchers, the 40-man roster returns generic "P" while depth chart
+          // differentiates "SP", "CP", and "P" (relief). Match any pitcher type.
+          const PITCHER_POSITIONS = new Set(["P", "SP", "RP", "CP", "CL"]);
+          const isPitcher = PITCHER_POSITIONS.has(ip.position);
           const samePos = dcRoster.filter(
-            d => d.position.abbreviation === ip.position && d.person.id !== ip.mlbId && !d.status.description.includes("Injured")
+            d => {
+              const posMatch = isPitcher
+                ? PITCHER_POSITIONS.has(d.position.abbreviation)
+                : d.position.abbreviation === ip.position;
+              return posMatch && d.person.id !== ip.mlbId && !d.status.description.includes("Injured");
+            }
           );
           if (samePos.length > 0) {
-            depthReplacements.set(ip.mlbId, samePos[0].person.fullName);
+            // For pitchers, prefer depth chart entries matching the injured player's role
+            // SP depth chart entries first for SP injuries, RP/CP for RP injuries
+            const preferred = isPitcher
+              ? samePos.find(d => d.position.abbreviation === ip.position) || samePos[0]
+              : samePos[0];
+            depthReplacements.set(ip.mlbId, preferred.person.fullName);
           }
         }
       } catch (err) {
@@ -708,121 +688,22 @@ router.get("/reddit-baseball", requireAuth, requireLeagueMember("leagueId"), asy
 // ─── GET /yahoo-sports — Yahoo Sports MLB RSS feed ───
 
 router.get("/yahoo-sports", requireAuth, asyncHandler(async (_req, res) => {
-  try {
-    const response = await fetch("https://sports.yahoo.com/mlb/rss/", {
-      headers: { "User-Agent": "FBST/1.0 Fantasy Baseball App" },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return res.json({ articles: [] });
-    const xml = await response.text();
-
-    const articles: { title: string; link: string; pubDate: string; description: string }[] = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && articles.length < 15) {
-      const block = match[1];
-      const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
-        ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
-        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
-      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
-      const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
-        ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";
-      if (title && link) {
-        articles.push({
-          title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
-          link,
-          pubDate,
-          description: desc.replace(/<[^>]*>/g, "").slice(0, 150),
-        });
-      }
-    }
-
-    res.json({ articles });
-  } catch (err) {
-    logger.warn({ error: String(err) }, "Failed to fetch Yahoo Sports MLB RSS");
-    res.json({ articles: [] });
-  }
+  const articles = await fetchRssFeed("https://sports.yahoo.com/mlb/rss/", { sourceName: "Yahoo" });
+  res.json({ articles: articles.map(a => ({ title: a.title, link: a.link, pubDate: a.pubDate, description: a.description })) });
 }));
 
 // ─── GET /mlb-news — MLB.com official news RSS feed ───
 
 router.get("/mlb-news", requireAuth, asyncHandler(async (_req, res) => {
-  try {
-    const response = await fetch("https://www.mlb.com/feeds/news/rss.xml", {
-      headers: { "User-Agent": "FBST/1.0 Fantasy Baseball App" },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return res.json({ articles: [] });
-    const xml = await response.text();
-
-    const articles: { title: string; link: string; pubDate: string; description: string }[] = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && articles.length < 15) {
-      const block = match[1];
-      const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
-        ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
-        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
-      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
-      const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
-        ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";
-      if (title && link) {
-        articles.push({
-          title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
-          link,
-          pubDate,
-          description: desc.replace(/<[^>]*>/g, "").slice(0, 150),
-        });
-      }
-    }
-
-    res.json({ articles });
-  } catch (err) {
-    logger.warn({ error: String(err) }, "Failed to fetch MLB.com news RSS");
-    res.json({ articles: [] });
-  }
+  const articles = await fetchRssFeed("https://www.mlb.com/feeds/news/rss.xml", { sourceName: "MLB.com" });
+  res.json({ articles: articles.map(a => ({ title: a.title, link: a.link, pubDate: a.pubDate, description: a.description })) });
 }));
 
 // ─── GET /espn-news — ESPN MLB news RSS feed ───
 
 router.get("/espn-news", requireAuth, asyncHandler(async (_req, res) => {
-  try {
-    const response = await fetch("https://www.espn.com/espn/rss/mlb/news", {
-      headers: { "User-Agent": "FBST/1.0 Fantasy Baseball App" },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return res.json({ articles: [] });
-    const xml = await response.text();
-
-    const articles: { title: string; link: string; pubDate: string; description: string }[] = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && articles.length < 15) {
-      const block = match[1];
-      const title = block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1]
-        ?? block.match(/<title>(.*?)<\/title>/)?.[1] ?? "";
-      const link = block.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/)?.[1]
-        ?? block.match(/<link>(.*?)<\/link>/)?.[1] ?? "";
-      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
-      const desc = block.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/)?.[1]
-        ?? block.match(/<description>(.*?)<\/description>/)?.[1] ?? "";
-      if (title && link) {
-        articles.push({
-          title: title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"'),
-          link,
-          pubDate,
-          description: desc.replace(/<[^>]*>/g, "").slice(0, 150),
-        });
-      }
-    }
-
-    res.json({ articles });
-  } catch (err) {
-    logger.warn({ error: String(err) }, "Failed to fetch ESPN MLB news RSS");
-    res.json({ articles: [] });
-  }
+  const articles = await fetchRssFeed("https://www.espn.com/espn/rss/mlb/news", { sourceName: "ESPN" });
+  res.json({ articles: articles.map(a => ({ title: a.title, link: a.link, pubDate: a.pubDate, description: a.description })) });
 }));
 
 // ─── GET /depth-chart?teamId=N — MLB depth chart for a team ───
@@ -1068,14 +949,13 @@ router.get("/roster-stats-today", requireAuth, requireLeagueMember("leagueId"), 
     };
   });
 
-  // Sort: players with stats first, then by position
-  const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
+  // Sort: players with stats first, then by position (POS_ORDER imported from sportConfig)
   players.sort((a, b) => {
     // Hitters first, pitchers second
     if (a.isPitcher !== b.isPitcher) return a.isPitcher ? 1 : -1;
     // Within group, by position order
-    const ia = POS_ORDER.indexOf(a.position);
-    const ib = POS_ORDER.indexOf(b.position);
+    const ia = (POS_ORDER as readonly string[]).indexOf(a.position);
+    const ib = (POS_ORDER as readonly string[]).indexOf(b.position);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
   });
 

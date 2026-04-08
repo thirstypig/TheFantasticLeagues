@@ -188,6 +188,8 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/components/shared/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players); includes fielding stats (games by position)
 - `client/src/components/shared/RosterAlertAccordion.tsx` — shared IL/Minors accordion (used by Home, Team pages); red for IL, amber for Minors
 - `client/src/hooks/useRosterStatus.ts` — shared hook for roster status (IL + minors players) with proper TypeScript interface
+- `client/src/hooks/usePlayerNews.ts` — shared hook for player RSS news aggregation (5 feeds, client-side name matching)
+- `server/src/features/mlb-feed/services/rssParser.ts` — shared RSS XML parser with link URL validation (replaces 4 duplicated blocks)
 - `client/src/components/shared/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
 - `client/src/contexts/LeagueContext.tsx` — app-wide league context (leagueId, outfieldMode, seasonStatus, myTeamId, leagues list); value memoized, exports `findMyTeam<T>` helper
 - `client/src/hooks/useSeasonGating.ts` — `useSeasonGating()` hook returning feature availability flags based on season status

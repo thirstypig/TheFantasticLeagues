@@ -1,5 +1,6 @@
 // client/src/components/PlayerDetailModal.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import { usePlayerNews } from "../../hooks/usePlayerNews";
 
 import {
   getPlayerCareerStats,
@@ -77,6 +78,23 @@ function formatTransactionDate(dateStr: string): string {
   }
 }
 
+function formatRelativeDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    const now = Date.now();
+    const diffMs = now - d.getTime();
+    const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffH < 1) return "Just now";
+    if (diffH < 24) return `${diffH}h ago`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD === 1) return "Yesterday";
+    if (diffD < 7) return `${diffD}d ago`;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Liquid Glass Styles for Modal
  */
@@ -142,6 +160,10 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
   const [profileFailed, setProfileFailed] = useState(false);
   const [recentFailed, setRecentFailed] = useState(false);
   const [careerFailed, setCareerFailed] = useState(false);
+
+  // Fetch RSS feed articles mentioning this player
+  const playerNameForNews = isVisible ? (player?.player_name ?? (player as any)?.name ?? null) : null;
+  const { articles: feedArticles, loading: feedLoading } = usePlayerNews(playerNameForNews);
   useEffect(() => {
     setTab("stats");
     setErr("");
@@ -381,6 +403,43 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                     </div>
                   ) : (
                     <div className="text-sm text-[var(--lg-text-muted)] italic">No recent transactions</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent League News */}
+              <div className={sectionCls}>
+                <div className={sectionHeadCls}>
+                  <div className={sectionTitleCls}>Recent News</div>
+                  {feedLoading && <span className="text-xs text-[var(--lg-text-muted)] opacity-60">Loading...</span>}
+                </div>
+                <div className="p-6">
+                  {feedArticles.length > 0 ? (
+                    <div className="space-y-3">
+                      {feedArticles.map((item, i) => (
+                        <a
+                          key={i}
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block px-3 py-2.5 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] hover:bg-[var(--lg-bg-hover)] transition-colors"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                              {item.source}
+                            </span>
+                            {item.pubDate && (
+                              <span className="text-[10px] text-[var(--lg-text-muted)]">
+                                {formatRelativeDate(item.pubDate)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-[var(--lg-text-primary)] leading-relaxed">{item.title}</div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : feedLoading ? null : (
+                    <div className="text-sm text-[var(--lg-text-muted)] italic">No recent news</div>
                   )}
                 </div>
               </div>

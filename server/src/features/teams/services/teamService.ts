@@ -86,9 +86,8 @@ export class TeamService {
         orderBy: { startDate: "asc" },
       }).then((p) => p || prisma.period.findFirst({ where: { leagueId: team.leagueId }, orderBy: { id: "desc" } })),
 
-      prisma.teamStatsSeason.findUnique({
-        where: { teamId: team.id },
-      }),
+      // TeamStatsSeason deprecated — season totals derived from period summaries
+      Promise.resolve(null),
 
       prisma.teamStatsPeriod.findMany({
         where: { teamId: team.id },
@@ -153,10 +152,9 @@ export class TeamService {
       };
     });
 
-    const seasonTotal = TeamService.calculatePoints(seasonStats ? { ...seasonStats } as Record<string, unknown> : null) ||
-      (periodSummaries.length
-        ? periodSummaries[periodSummaries.length - 1].seasonPoints
-        : 0);
+    const seasonTotal = periodSummaries.length
+      ? periodSummaries[periodSummaries.length - 1].seasonPoints
+      : 0;
 
     // ---------- Roster ----------
     // Load per-player period stats for the active period (for players not in CSV, e.g., synthetic Ohtani pitcher)

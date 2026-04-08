@@ -370,21 +370,25 @@ export default function Home() {
   // Fetch YouTube player videos
   useEffect(() => {
     if (!currentLeagueId) { setVideosLoading(false); return; }
+    let ok = true;
     setVideosLoading(true);
     fetchJsonApi<{ videos: any[] }>(`${API_BASE}/mlb/player-videos?leagueId=${currentLeagueId}`)
-      .then(res => setPlayerVideos(res.videos || []))
-      .catch(() => setPlayerVideos([]))
-      .finally(() => setVideosLoading(false));
+      .then(res => { if (ok) setPlayerVideos(res.videos || []); })
+      .catch(() => { if (ok) setPlayerVideos([]); })
+      .finally(() => { if (ok) setVideosLoading(false); });
+    return () => { ok = false; };
   }, [currentLeagueId]);
 
   // Fetch Reddit baseball feed
   useEffect(() => {
     if (!currentLeagueId) { setRedditLoading(false); return; }
+    let ok = true;
     setRedditLoading(true);
     fetchJsonApi<{ posts: any[] }>(`${API_BASE}/mlb/reddit-baseball?leagueId=${currentLeagueId}`)
-      .then(res => setRedditPosts(res.posts || []))
-      .catch(() => setRedditPosts([]))
-      .finally(() => setRedditLoading(false));
+      .then(res => { if (ok) setRedditPosts(res.posts || []); })
+      .catch(() => { if (ok) setRedditPosts([]); })
+      .finally(() => { if (ok) setRedditLoading(false); });
+    return () => { ok = false; };
   }, [currentLeagueId]);
 
   // Fetch Yahoo Sports, MLB.com, ESPN feeds
@@ -411,9 +415,11 @@ export default function Home() {
   // Fetch roster status alerts (IL, minors)
   useEffect(() => {
     if (!currentLeagueId) return;
+    let ok = true;
     fetchJsonApi<{ players: any[] }>(`${API_BASE}/mlb/roster-status?leagueId=${currentLeagueId}`)
-      .then(res => setRosterAlerts((res.players || []).filter((p: any) => p.isInjured || p.isMinors)))
-      .catch(() => setRosterAlerts([]));
+      .then(res => { if (ok) setRosterAlerts((res.players || []).filter((p: any) => p.isInjured || p.isMinors)); })
+      .catch(() => { if (ok) setRosterAlerts([]); });
+    return () => { ok = false; };
   }, [currentLeagueId]);
 
   // Fetch depth chart when team selection changes

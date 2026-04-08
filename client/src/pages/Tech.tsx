@@ -583,6 +583,11 @@ const buildJournal = [
   },
   {
     date: "Apr 2026",
+    title: "Session 60: 19-Item Backlog Blitz — Security Fixes, Player News, Trade Assets, Position Sort",
+    detail: "21-agent plan review (12 review + 9 deep-dive) analyzed 19 backlog items — eliminated 5 (YAGNI, already done, no-ops), merged 2, corrected 3 misdiagnoses from Round 1. Security: advisory lock on waiver processing prevents double-processing (409 Conflict), SELECT FOR UPDATE on roster claims prevents concurrent roster limit bypass, RSS feed link URL validation prevents javascript: injection. Features: usePlayerNews hook aggregates 5 RSS feeds client-side with player name matching in PlayerDetailModal, BUDGET + PICK selectors added to TradeAssetSelector, trade reversal now handles WAIVER_PRIORITY re-swap. Quality: POS_ORDER unified (client matches server with SP/RP), 4 duplicated RSS parsing blocks extracted to rssParser.ts (120 lines removed from god module), 5 as-any casts removed from Team.tsx, stale data guards on Home.tsx league-dependent fetches, TeamStatsSeason deprecated across 6 consumers (replaced with TeamStatsPeriod aggregation), deterministic waiver tiebreaker via most recent claim timestamp.",
+  },
+  {
+    date: "Apr 2026",
     title: "Session 59: 18 Fixes — AI Grading, Ohtani Stats Isolation, Minors Report, Roster Alert Cards",
     detail: "Deepened plan with 10 review agents uncovered critical issues: TWO_WAY_PLAYERS map cannot be re-populated (gates 6+ code paths), TeamStatsSeason had all zeros (AI received random standings), insights cache key missing weekKey (backfill silently failed). Fixes: mirrorTwoWayPitcherStats now zeroes hitter pitching stats (prevents W double-counting), POSITION_OVERRIDES map for daily sync, AI insights use TeamStatsPeriod with computeStandingsFromStats for real roto points, deterministic grade anchoring (1st place cannot get F). New features: Minors Report amber accordion on Home + Team pages with shared RosterAlertAccordion component and useRosterStatus hook, roster alerts as horizontal headshot cards (4-across desktop), IL headline in Daily Diamond when player placed on IL today, audit script with 10 integrity checks. Season page roster expansion removed — team name navigates directly.",
   },

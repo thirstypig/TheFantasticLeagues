@@ -34,7 +34,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 7, 2026 (Session 59)";
+const LAST_UPDATED = "April 8, 2026 (Session 60)";
 
 // ─── Product Roadmap ───
 
@@ -340,6 +340,18 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 60 — 19-Item Backlog Blitz: Security, News, Trade Assets, Position Sort",
+    items: [
+      { title: "Race Condition Fixes", description: "Advisory lock on waiver processing (409 on concurrent), SELECT FOR UPDATE on roster claims, client in-flight guards with disabled buttons.", session: "60" },
+      { title: "Player News in Modal", description: "usePlayerNews hook aggregates 5 RSS feeds (Trade Rumors, Reddit, ESPN, MLB.com, Yahoo) with client-side name matching. Recent News section in PlayerDetailModal.", session: "60" },
+      { title: "Trade Asset UI Complete", description: "Added Waiver Budget input and Draft Pick round/season selector to TradeAssetSelector. Trade reversal now handles WAIVER_PRIORITY re-swap.", session: "60" },
+      { title: "Position Sort Unified", description: "POS_ORDER includes SP/RP on client (matches server). DraftReportPage and AddDropTab fixed. Inline POS_ORDER in mlb-feed removed.", session: "60" },
+      { title: "TeamStatsSeason Deprecated", description: "6 consumers replaced with TeamStatsPeriod aggregation. Waiver tiebreaker added (most recent claim = lower priority).", session: "60" },
+      { title: "RSS Parser Extracted", description: "rssParser.ts utility replaces 4 duplicated parsing blocks. mlb-feed/routes.ts reduced by 120 lines. Link URL validation included.", session: "60" },
+      { title: "Stale Player Enrichment", description: "POST /api/admin/enrich-stale-players — batch MLB API lookup for players with null team/position data.", session: "60" },
+    ],
+  },
   {
     label: "Session 57 — League Board, Pricing, Sport Engine, Trophy Case, 10 Features",
     items: [

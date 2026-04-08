@@ -4,6 +4,50 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-08 (Session 60) — 19-Item Backlog Blitz (Plan + Execute)
+
+### Completed
+- **Plan deepened**: 21 agents (12 review + 9 deep-dive) analyzed 19 items → 5 eliminated, 2 merged, 10 implemented
+- **A1: Stale player enrichment**: `POST /api/admin/enrich-stale-players` — batch MLB API lookup, `shouldUpdatePosList` guard replicated. 5 players enriched (Díaz, García, Cortes, Kershaw, Manea)
+- **A2: Player news in modal**: `usePlayerNews` hook aggregates 5 RSS feeds client-side, "Recent News" section in PlayerDetailModal Profile tab
+- **B2: IL SP/RP fix**: Depth chart replacement now matches any pitcher type (P/SP/CP/RP) when injured player is a pitcher
+- **C1: Position sort unified**: Client `POS_ORDER` now includes SP/RP (matches server). DraftReportPage and AddDropTab fixed. Inline POS_ORDER in mlb-feed removed.
+- **C2+E1: TeamStatsSeason deprecated**: 6 consumers replaced with `TeamStatsPeriod` aggregation. Table left in DB (no migration). Waiver priority tiebreaker added (most recent claim = lower priority).
+- **F1: Race conditions fixed**: `SELECT ... FOR UPDATE` on team row in add/drop claim. Advisory lock (`pg_try_advisory_xact_lock`) on waiver processing. Client in-flight guard with disabled buttons.
+- **G1-G3: Trade asset UI**: Added BUDGET input + PICK round/season selector to TradeAssetSelector. Trade reversal now handles WAIVER_PRIORITY re-swap.
+- **G5: Pre-draft trade**: Devil Dawgs → DLC trade record created (Mullins + $75 for Tucker)
+- **G6: De-emphasize prices**: RosterGrid + TeamListTab show muted prices during IN_SEASON
+- **IDOR investigation**: Commissioner roster assign already validated at service layer (line 726). No fix needed.
+- **Team.tsx type fix**: Removed 5 `as any` casts, added `assignedPosition`/`isKeeper`/`rosterId` to `PlayerSeasonStat` type
+- **RSS parser extracted**: `rssParser.ts` utility replaces 4 duplicated parsing blocks. mlb-feed/routes.ts reduced 1498→1378 lines. Link URL validation included.
+- **Home.tsx stale guards**: Added `ok` boolean cleanup to YouTube, Reddit, roster status useEffects
+- **Waiver tiebreaking**: Deterministic tie resolution via most recent successful claim timestamp
+
+### Eliminated (by 21-agent review)
+- **A3 (AL news)**: No NL filter exists — confirmed no-op
+- **B1 (AL+H2H)**: No AL/H2H leagues exist — YAGNI
+- **G4 (Top 100 prospects)**: `syncAAARosters()` already covers this
+- **G7/G8**: QA-only tasks (browser check + button click)
+
+### Pending / Next Steps
+- Deploy to Railway (zero-code migration — operational only)
+- YouTube embed investigation on production (CSP confirmed OK — likely video-specific)
+- Further `as any` reduction across codebase (144 server, 133 client)
+- `mlbGetJson<T>()` generic adoption (currently returns `any` everywhere)
+
+### Concerns / Tech Debt
+- `mlb-feed/routes.ts` still 1,378 lines — could extract scores/digest into sub-route files
+- WAIVER_PRIORITY "rounds" UI has no backend mapping — FAAB system has no rounds concept
+- PICK trades are log-only on server (informational for auction leagues)
+- Home.tsx still has 9+ useEffects without AbortController (only 3 fixed this session)
+
+### Test Results
+- Server: TypeScript clean
+- Client: TypeScript clean
+- Full test suite: not run (manual TypeScript validation)
+
+---
+
 ## Session 2026-04-07 (Session 59) — P1 Data Fixes, AI Grading, Minors Report, Audit Enhancement
 
 ### Completed

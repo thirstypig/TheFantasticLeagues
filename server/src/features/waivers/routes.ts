@@ -226,23 +226,50 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
     // Use proper roto standings from the most recent completed period
     const teamStats = await computeTeamStatsFromDb(leagueId, lastPeriod.id);
     const standings = computeStandingsFromStats(teamStats);
-    // Reverse: worst team (highest rank number / lowest points) gets priority 1
-    const sorted = [...standings].sort((a, b) => a.points - b.points);
+
+    // Tiebreaker: most recent successful waiver claim → lower priority (higher rank number)
+    const lastClaimDates = await prisma.waiverClaim.groupBy({
+      by: ["teamId"],
+      where: { team: { leagueId }, status: "SUCCESS" },
+      _max: { processedAt: true },
+    });
+    const lastClaimMap = new Map(lastClaimDates.map(c => [c.teamId, c._max.processedAt?.getTime() ?? 0]));
+
+    // Reverse: worst team (lowest points) gets priority 1. Ties broken by most recent claim (later = worse priority)
+    const sorted = [...standings].sort((a, b) => {
+      const ptsDiff = a.points - b.points;
+      if (ptsDiff !== 0) return ptsDiff;
+      // Tiebreak: team with more recent claim gets worse priority (higher number)
+      return (lastClaimMap.get(a.teamId) ?? 0) - (lastClaimMap.get(b.teamId) ?? 0);
+    });
     sorted.forEach((s, idx) => {
       // Override takes precedence if set
       waiverRank.set(s.teamId, overrideMap.get(s.teamId) ?? (idx + 1));
     });
   } else {
-    // Fallback: season-wide counting stats (Period 1 or no completed periods)
-    const seasonStats = await prisma.teamStatsSeason.findMany({
-      where: { team: { leagueId } },
-      select: { teamId: true, R: true, HR: true, RBI: true, SB: true, W: true, S: true, K: true },
+    // Fallback: aggregate all TeamStatsPeriod rows across all periods
+    const allPeriods = await prisma.period.findMany({
+      where: { season: { leagueId } },
+      select: { id: true },
     });
-    const strengthMap = new Map(seasonStats.map(s => [s.teamId, s.R + s.HR + s.RBI + s.SB + s.W + s.S + s.K]));
-    const teamsByStrength = [...strengthMap.entries()].sort((a, b) => a[1] - b[1]);
-    teamsByStrength.forEach(([teamId], idx) => {
-      waiverRank.set(teamId, overrideMap.get(teamId) ?? (idx + 1));
-    });
+    if (allPeriods.length > 0) {
+      const periodStatsList = await prisma.teamStatsPeriod.findMany({
+        where: { periodId: { in: allPeriods.map(p => p.id) } },
+        select: { teamId: true, R: true, HR: true, RBI: true, SB: true, W: true, S: true, K: true },
+      });
+      const strengthMap = new Map<number, number>();
+      for (const stat of periodStatsList) {
+        strengthMap.set(stat.teamId, (strengthMap.get(stat.teamId) ?? 0) + stat.R + stat.HR + stat.RBI + stat.SB + stat.W + stat.S + stat.K);
+      }
+      const teamsByStrength = [...strengthMap.entries()].sort((a, b) => a[1] - b[1]);
+      teamsByStrength.forEach(([teamId], idx) => {
+        waiverRank.set(teamId, overrideMap.get(teamId) ?? (idx + 1));
+      });
+    } else {
+      // No periods at all — equal priority for all teams (break ties by submission time)
+      const teams = await prisma.team.findMany({ where: { leagueId }, select: { id: true } });
+      teams.forEach(t => { waiverRank.set(t.id, overrideMap.get(t.id) ?? 1); });
+    }
   }
 
   // Sort: bid DESC, then waiver priority ASC (inverse standings), then submission time ASC
@@ -282,6 +309,14 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
   }
 
   await prisma.$transaction(async (tx) => {
+    // Advisory lock prevents concurrent waiver processing for the same league
+    const lockResult = await tx.$queryRaw<Array<{ pg_try_advisory_xact_lock: boolean }>>`
+      SELECT pg_try_advisory_xact_lock(hashtext(${'waiver_process_' + leagueId}))
+    `;
+    if (!lockResult[0]?.pg_try_advisory_xact_lock) {
+      throw new Error("Waiver processing already in progress for this league");
+    }
+
     for (const claim of claims) {
       // Check if player already taken in this batch
       if (processedPlayerIds.has(claim.playerId)) {
@@ -389,7 +424,15 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
         data: { waiverPriorityOverride: null },
       });
     }
-  }, { timeout: 30_000 });
+  }, { timeout: 30_000 }).catch(err => {
+    if (err instanceof Error && err.message.includes("already in progress")) {
+      res.status(409).json({ error: "Waiver processing already in progress for this league" });
+      return "LOCK_CONFLICT";
+    }
+    throw err;
+  });
+
+  if (res.headersSent) return;
 
   writeAuditLog({
     userId: req.user!.id,

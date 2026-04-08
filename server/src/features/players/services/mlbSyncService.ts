@@ -569,3 +569,104 @@ export async function syncAAARosters(season: number): Promise<{
 
   return { created, updated, skipped, aaaTeams: aaaTeams.length };
 }
+
+/**
+ * Enrich stale players — those with null/empty mlbTeam or posPrimary.
+ * Uses the MLB people?personIds= batch endpoint to fill in current team and position.
+ * Preserves enriched posList from syncPositionEligibility (same guard as syncAllPlayers).
+ */
+interface MlbPersonInfo {
+  id: number;
+  fullName: string;
+  primaryPosition?: { abbreviation: string; type: string };
+  currentTeam?: { id: number; abbreviation?: string };
+}
+
+export async function enrichStalePlayers(season: number): Promise<{
+  enriched: number;
+  notFound: number;
+  skipped: number;
+  errors: number;
+}> {
+  const stalePlayers = await prisma.player.findMany({
+    where: {
+      mlbId: { not: null },
+      OR: [
+        { mlbTeam: null },
+        { mlbTeam: "" },
+        { mlbTeam: "FA" },
+        { posPrimary: "" },
+      ],
+    },
+    select: { id: true, mlbId: true, name: true, mlbTeam: true, posPrimary: true, posList: true },
+  });
+
+  if (stalePlayers.length === 0) {
+    logger.info({}, "No stale players to enrich");
+    return { enriched: 0, notFound: 0, skipped: 0, errors: 0 };
+  }
+
+  logger.info({ count: stalePlayers.length }, "Enriching stale players");
+
+  // Batch lookup via MLB people endpoint
+  const mlbIds = stalePlayers.filter(p => p.mlbId).map(p => p.mlbId!);
+  const batches = chunk(mlbIds.map(String), 50);
+  const mlbDataMap = new Map<number, MlbPersonInfo>();
+
+  for (const batch of batches) {
+    try {
+      const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=currentTeam`;
+      const data = await mlbGetJson<{ people?: MlbPersonInfo[] }>(url, 86400);
+      for (const p of data.people || []) {
+        mlbDataMap.set(p.id, p);
+      }
+    } catch (err) {
+      logger.warn({ error: String(err), batchSize: batch.length }, "Batch enrichment fetch failed");
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  let enriched = 0, notFound = 0, skipped = 0, errors = 0;
+
+  for (const player of stalePlayers) {
+    const info = mlbDataMap.get(player.mlbId!);
+    if (!info) { notFound++; continue; }
+
+    const rawPos = info.primaryPosition?.abbreviation ?? "";
+    const posAbbr = resolvePosition(player.mlbId!, rawPos);
+    const teamAbbr = info.currentTeam?.abbreviation ?? "FA";
+
+    // Check if there's actually something to update
+    const needsTeam = !player.mlbTeam || player.mlbTeam === "" || player.mlbTeam === "FA";
+    const needsPos = !player.posPrimary || player.posPrimary === "";
+    if (!needsTeam && !needsPos) { skipped++; continue; }
+
+    try {
+      const updates: Record<string, string> = {};
+      if (needsTeam && teamAbbr) updates.mlbTeam = teamAbbr;
+      if (needsPos && posAbbr) {
+        updates.posPrimary = posAbbr;
+        // Replicate the shouldUpdatePosList guard from syncAllPlayers
+        const existingPosList = player.posList || "";
+        const shouldUpdatePosList = !existingPosList || existingPosList === player.posPrimary || existingPosList === posAbbr;
+        if (shouldUpdatePosList) {
+          updates.posList = buildPosList(player.mlbId!, posAbbr);
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await prisma.player.update({ where: { id: player.id }, data: updates });
+        logger.info({ playerId: player.id, name: player.name, updates }, "Enriched stale player");
+        enriched++;
+      } else {
+        skipped++;
+      }
+    } catch (err) {
+      logger.warn({ error: String(err), playerId: player.id, name: player.name }, "Failed to enrich player");
+      errors++;
+    }
+  }
+
+  logger.info({ enriched, notFound, skipped, errors }, "Stale player enrichment complete");
+  return { enriched, notFound, skipped, errors };
+}

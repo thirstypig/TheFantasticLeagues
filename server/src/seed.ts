@@ -117,29 +117,8 @@ async function main() {
 
   console.log("✅ Period stats upserted for all teams.");
 
-  // --- 5. Season stats (all zero for now) ---
-  for (const team of teams) {
-    await prisma.teamStatsSeason.upsert({
-      where: { teamId: team.id },
-      update: {},
-      create: {
-        teamId: team.id,
-        R: 0,
-        HR: 0,
-        RBI: 0,
-        SB: 0,
-        AVG: 0,
-        W: 0,
-        S: 0,
-        ERA: 0,
-        WHIP: 0,
-        K: 0,
-        gamesPlayed: 0,
-      },
-    });
-  }
-
-  console.log("✅ Season stats rows ensured for all teams.");
+  // --- 5. Season stats — deprecated (stats computed from TeamStatsPeriod on-demand) ---
+  console.log("⏭️  TeamStatsSeason seeding skipped (deprecated — stats from periods).");
 
   // --- 6. Sample players + roster for one team (Dodger Dawgs) ---
   const playersData = [

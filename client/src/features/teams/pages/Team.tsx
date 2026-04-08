@@ -323,20 +323,20 @@ export default function Team() {
   const hitters = useMemo(() => {
     const list = players.filter((p) => !isPitcher(p));
     list.sort((a, b) => {
-      const posA = (a as any).assignedPosition || "";
-      const posB = (b as any).assignedPosition || "";
+      const posA = a.assignedPosition || "";
+      const posB = b.assignedPosition || "";
       const ia = SLOT_ORDER.indexOf(posA);
       const ib = SLOT_ORDER.indexOf(posB);
       const slotDiff = (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
       if (slotDiff !== 0) return slotDiff;
       // Within same slot, sort by price descending
-      return ((b as any).price ?? 0) - ((a as any).price ?? 0);
+      return (b.price ?? 0) - (a.price ?? 0);
     });
     return list;
   }, [players]);
   const pitchers = useMemo(() => {
     const list = players.filter((p) => isPitcher(p));
-    list.sort((a, b) => ((b as any).isKeeper ? 1 : 0) - ((a as any).isKeeper ? 1 : 0));
+    list.sort((a, b) => (b.isKeeper ? 1 : 0) - (a.isKeeper ? 1 : 0));
     return list;
   }, [players]);
 

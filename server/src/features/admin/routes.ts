@@ -10,7 +10,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
-import { syncNLPlayers, syncAllPlayers, syncPositionEligibility, syncAAARosters } from "../players/services/mlbSyncService.js";
+import { syncNLPlayers, syncAllPlayers, syncPositionEligibility, syncAAARosters, enrichStalePlayers } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
 
 const createLeagueSchema = z.object({
@@ -180,7 +180,7 @@ router.delete("/admin/league/:leagueId", requireAuth, requireAdmin, asyncHandler
     prisma.waiverClaim.deleteMany({ where: { teamId: { in: teamIds } } }),
     prisma.transactionEvent.deleteMany({ where: { leagueId } }),
     prisma.teamStatsPeriod.deleteMany({ where: { teamId: { in: teamIds } } }),
-    prisma.teamStatsSeason.deleteMany({ where: { teamId: { in: teamIds } } }),
+    prisma.teamStatsSeason.deleteMany({ where: { teamId: { in: teamIds } } }), // deprecated but table still in DB
     prisma.team.deleteMany({ where: { leagueId } }),
     prisma.leagueMembership.deleteMany({ where: { leagueId } }),
     prisma.leagueRule.deleteMany({ where: { leagueId } }),
@@ -359,6 +359,30 @@ router.post("/admin/sync-prospects", requireAuth, requireAdmin, validateBody(syn
   writeAuditLog({
     userId: req.user!.id,
     action: "AAA_PROSPECT_SYNC",
+    resourceType: "Player",
+    metadata: { season, ...result },
+  });
+
+  return res.json({ success: true, season, ...result });
+}));
+
+/**
+ * POST /api/admin/enrich-stale-players
+ * Finds players with null/empty mlbTeam or posPrimary and enriches from MLB API.
+ * Body (optional): { season?: number }
+ */
+const enrichStaleSchema = z.object({
+  season: z.number().int().min(1900).max(2100).optional(),
+});
+
+router.post("/admin/enrich-stale-players", requireAuth, requireAdmin, validateBody(enrichStaleSchema), asyncHandler(async (req, res) => {
+  const season = Number(req.body?.season) || new Date().getFullYear();
+
+  const result = await enrichStalePlayers(season);
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "STALE_PLAYER_ENRICHMENT",
     resourceType: "Player",
     metadata: { season, ...result },
   });

@@ -25,6 +25,9 @@ export function TradeAssetSelector({ teamId, label, onAssetsChange }: Props) {
   const [futureBudgetAmount, setFutureBudgetAmount] = useState<string>("");
   const [futureBudgetSeason, setFutureBudgetSeason] = useState<number>(new Date().getFullYear() + 1);
   const [waiverRounds, setWaiverRounds] = useState<Set<number>>(new Set());
+  const [pickRound, setPickRound] = useState<string>("");
+  const [pickSeason, setPickSeason] = useState<number>(new Date().getFullYear() + 1);
+  const [budgetAmount, setBudgetAmount] = useState<string>("");
 
   useEffect(() => {
     if (teamId) fetchRoster();
@@ -78,6 +81,27 @@ export function TradeAssetSelector({ teamId, label, onAssetsChange }: Props) {
       });
     }
 
+    // Current Budget
+    const budAmt = parseInt(budgetAmount || "0", 10);
+    if (budAmt > 0) {
+      assets.push({
+        assetType: "BUDGET",
+        amount: budAmt,
+        label: `$${budAmt} Waiver Budget`
+      });
+    }
+
+    // Draft Pick
+    const pickRnd = parseInt(pickRound || "0", 10);
+    if (pickRnd > 0) {
+      assets.push({
+        assetType: "PICK",
+        round: pickRnd,
+        season: pickSeason,
+        label: `Round ${pickRnd} Draft Pick (${pickSeason})`
+      });
+    }
+
     // Waiver Position (per round)
     for (const round of [...waiverRounds].sort()) {
       const roundLabel = round === 1 ? "1st" : round === 2 ? "2nd" : `${round}rd`;
@@ -89,7 +113,7 @@ export function TradeAssetSelector({ teamId, label, onAssetsChange }: Props) {
     }
 
     onAssetsChange(assets);
-  }, [selectedPlayerIds, futureBudgetAmount, futureBudgetSeason, waiverRounds, roster]);
+  }, [selectedPlayerIds, futureBudgetAmount, futureBudgetSeason, budgetAmount, pickRound, pickSeason, waiverRounds, roster]);
 
   const togglePlayer = (pid: number) => {
     const next = new Set(selectedPlayerIds);
@@ -123,6 +147,61 @@ export function TradeAssetSelector({ teamId, label, onAssetsChange }: Props) {
       </div>
 
       <div className="mt-auto pt-4 border-t border-[var(--lg-border-faint)] space-y-4">
+        {/* Current Waiver Budget */}
+        <div>
+          <label className="block text-xs text-[var(--lg-text-muted)] uppercase mb-1">
+            Waiver Budget
+          </label>
+          <div className="flex items-center space-x-2">
+            <span className="text-[var(--lg-text-muted)] text-sm">$</span>
+            <input
+              type="number"
+              min="0"
+              max={budget}
+              className="bg-[var(--lg-tint-hover)] border-[var(--lg-border-subtle)] rounded px-2 py-1 text-[var(--lg-text-primary)] text-sm w-20 focus:outline-none focus:border-blue-500"
+              placeholder="0"
+              value={budgetAmount}
+              onChange={e => {
+                const val = Math.min(Number(e.target.value), budget);
+                setBudgetAmount(val > 0 ? String(val) : "");
+              }}
+            />
+            <span className="text-[10px] text-[var(--lg-text-muted)]">of ${budget}</span>
+          </div>
+        </div>
+
+        {/* Draft Pick */}
+        <div>
+          <label className="block text-xs text-[var(--lg-text-muted)] uppercase mb-1">
+            Draft Pick
+          </label>
+          <div className="flex items-center space-x-2">
+            <span className="text-[var(--lg-text-muted)] text-xs">Round</span>
+            <input
+              type="number"
+              min="0"
+              max="20"
+              className="bg-[var(--lg-tint-hover)] border-[var(--lg-border-subtle)] rounded px-2 py-1 text-[var(--lg-text-primary)] text-sm w-16 focus:outline-none focus:border-blue-500"
+              placeholder="#"
+              value={pickRound}
+              onChange={e => {
+                const val = Math.min(Number(e.target.value), 20);
+                setPickRound(val > 0 ? String(val) : "");
+              }}
+            />
+            <select
+              className="bg-[var(--lg-tint-hover)] border-[var(--lg-border-subtle)] rounded px-2 py-1 text-[var(--lg-text-primary)] text-sm focus:outline-none focus:border-blue-500"
+              value={pickSeason}
+              onChange={e => setPickSeason(Number(e.target.value))}
+            >
+              {[0, 1, 2, 3].map(offset => {
+                const yr = new Date().getFullYear() + offset;
+                return <option key={yr} value={yr}>{yr}</option>;
+              })}
+            </select>
+          </div>
+        </div>
+
         {/* Future Auction Dollars */}
         <div>
           <label className="block text-xs text-[var(--lg-text-muted)] uppercase mb-1">

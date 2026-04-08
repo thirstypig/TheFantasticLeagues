@@ -7,7 +7,7 @@ import type { SportConfig, PositionConfig, CategoryConfig } from "./types";
 
 // ─── Position Configuration ───
 
-export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "P", "DH"];
+export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "SP", "RP", "P", "DH"];
 
 export const POS_SCORE: Record<string, number> = Object.fromEntries(
   POS_ORDER.map((pos, index) => [pos, index])

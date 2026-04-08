@@ -48,6 +48,7 @@ export default function ActivityPage() {
   const [teams, setTeams] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [claimInFlight, setClaimInFlight] = useState(false);
 
   // Trade data
   const [trades, setTrades] = useState<TradeProposal[]>([]);
@@ -110,6 +111,7 @@ export default function ActivityPage() {
   }, [loadData]);
 
   const handleClaim = async (player: PlayerSeasonStat) => {
+    if (claimInFlight) return;
     if (!selectedTeamId || !currentLeagueId) {
       toast("Please select a team to claim for.", "warning");
       return;
@@ -118,6 +120,7 @@ export default function ActivityPage() {
     const confirmed = confirm(`Add ${player.player_name} to your roster?`);
     if (!confirmed) return;
 
+    setClaimInFlight(true);
     try {
       await fetchJsonApi(`${API_BASE}/transactions/claim`, {
         method: "POST",
@@ -134,10 +137,13 @@ export default function ActivityPage() {
       console.error("Claim error:", err);
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       toast(errMsg, "error");
+    } finally {
+      setClaimInFlight(false);
     }
   };
 
   const handleDrop = async (player: PlayerSeasonStat) => {
+    if (claimInFlight) return;
     if (!selectedTeamId || !currentLeagueId) {
       toast("Please select a team first.", "warning");
       return;
@@ -146,6 +152,7 @@ export default function ActivityPage() {
     const confirmed = confirm(`Drop ${player.player_name} from the roster?`);
     if (!confirmed) return;
 
+    setClaimInFlight(true);
     try {
       await fetchJsonApi(`${API_BASE}/transactions/drop`, {
         method: "POST",
@@ -161,6 +168,8 @@ export default function ActivityPage() {
       console.error("Drop error:", err);
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       toast(errMsg, "error");
+    } finally {
+      setClaimInFlight(false);
     }
   };
 
@@ -257,7 +266,7 @@ export default function ActivityPage() {
         {activeTab === "add_drop" && (
           <div className="liquid-glass rounded-3xl p-1 bg-[var(--lg-tint)]">
             {isCommissioner ? (
-              <AddDropTab players={players} onClaim={handleClaim} onDrop={handleDrop} />
+              <AddDropTab players={players} onClaim={handleClaim} onDrop={handleDrop} disabled={claimInFlight} />
             ) : selectedTeamId ? (
               <WaiverClaimForm
                 players={players}
