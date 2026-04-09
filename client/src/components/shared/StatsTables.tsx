@@ -16,7 +16,7 @@ export function StatsUpdated({ source = "synced", timestamp, className = "" }: {
   timestamp?: string | Date | null;
   className?: string;
 }) {
-  const prefix = source === "live" ? "Live" : source === "mlb-api" ? "Source: MLB" : "Stats synced";
+  const prefix = source === "live" ? "Live" : source === "mlb-api" ? "Source: MLB" : "Stats synced · statsapi.mlb.com";
   let timeStr = "";
   if (timestamp) {
     try {
