@@ -142,7 +142,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
 
 // --- Season (cumulative) standings: /api/standings/season ---
 
-router.get("/season", requireAuth, asyncHandler(async (req, res) => {
+router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 

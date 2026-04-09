@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireTeamOwner, requireCommissionerOrAdmin, isTeamOwner, getOwnedTeamIds } from "../../middleware/auth.js";
+import { requireAuth, requireTeamOwner, requireCommissionerOrAdmin, requireLeagueMember, isTeamOwner, getOwnedTeamIds } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
@@ -498,7 +498,7 @@ const waiverAdviceCache = new Map<string, { suggestedBid: number; confidence: st
 const WAIVER_CACHE_MAX = 500;
 
 // GET /api/waivers/ai-advice?leagueId=X&teamId=Y&playerId=Z
-router.get("/ai-advice", requireAuth, asyncHandler(async (req, res) => {
+router.get("/ai-advice", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   const teamId = Number(req.query.teamId);
   const playerId = Number(req.query.playerId);

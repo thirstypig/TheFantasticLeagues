@@ -1508,7 +1508,7 @@ router.post("/proxy-bid", requireAuth, validateBody(proxyBidSchema), requireSeas
 }));
 
 // GET /api/auction/my-proxy-bid?leagueId=N&teamId=N — get your current proxy bid
-router.get("/my-proxy-bid", requireAuth, asyncHandler(async (req, res) => {
+router.get("/my-proxy-bid", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 

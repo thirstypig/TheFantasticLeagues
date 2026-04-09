@@ -1,7 +1,7 @@
 import express from 'express';
 import { prisma } from '../../db/prisma.js';
 import { logger } from '../../lib/logger.js';
-import { requireAuth, requireAdmin } from '../../middleware/auth.js';
+import { requireAuth, requireAdmin, requireLeagueMember } from '../../middleware/auth.js';
 import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { validateBody } from '../../middleware/validate.js';
 import { z } from 'zod';
@@ -726,7 +726,7 @@ router.post('/archive/:year/auto-match', requireAuth, requireAdmin, asyncHandler
  * GET /api/archive/trophy-case?leagueId=X
  * Returns all-time trophy case: championships, all-time standings, records, dynasty scores.
  */
-router.get('/archive/trophy-case', requireAuth, asyncHandler(async (req, res) => {
+router.get('/archive/trophy-case', requireAuth, requireLeagueMember('leagueId'), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   if (!Number.isFinite(leagueId)) {
     return res.status(400).json({ error: 'Invalid leagueId' });
