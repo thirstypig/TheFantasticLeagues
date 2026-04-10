@@ -82,8 +82,11 @@
             "Review all 5 blog posts — apply formatting to posts 2-5",
             "Deploy marketing site to GitHub Pages",
             "Set up Monday blog deploy GitHub Action",
-            "Verify pricing section matches $0/$29/$49 seasonal model",
-            "Test email signup form end-to-end"
+            "Verify pricing section matches $0/$29/$49 seasonal model — DONE",
+            "Test email signup form end-to-end",
+            "Status page live at /status — DONE",
+            "Blog infrastructure + 5 posts written — DONE",
+            "Removed changelog and roadmap pages — DONE"
           ]
         }
       ]
