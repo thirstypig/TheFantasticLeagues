@@ -83,10 +83,8 @@ export default function DiscoverLeagues() {
                 key={league.id}
                 className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl p-5 hover:border-[var(--lg-accent)]/30 transition-colors cursor-pointer"
                 onClick={() => {
-                  if (!user) {
-                    navigate("/login");
-                  }
-                  // TODO: navigate to league detail page when built
+                  const slug = league.publicSlug || (league.name.toLowerCase().replace(/\s+/g, '-') + '-' + league.season);
+                  navigate(`/discover/${slug}`);
                 }}
               >
                 <div className="flex items-start justify-between mb-3">
