@@ -43,6 +43,11 @@ export default function DiscoverLeagues() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-10">
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 px-5 py-3 text-center">
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Early Access</span>
+          <span className="text-sm text-[var(--lg-text-secondary)] ml-2">The 2026 season is free for all features while we build out the platform.</span>
+        </div>
+
         <h1 className="text-3xl font-bold text-[var(--lg-accent)] mb-2">Discover Leagues</h1>
         <p className="text-[var(--lg-text-muted)] mb-8">Browse public fantasy baseball leagues and join the competition.</p>
 
