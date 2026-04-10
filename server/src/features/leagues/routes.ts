@@ -68,7 +68,10 @@ router.get("/leagues", requireAuth, asyncHandler(async (req, res) => {
  * GET /api/leagues/:id
  * Returns full details including teams.
  */
-router.get("/leagues/:id", asyncHandler(async (req, res) => {
+router.get("/leagues/:id", asyncHandler(async (req, res, next) => {
+  // Skip if :id matches a static route name (public, join-info) — those are registered later
+  if (["public", "join", "join-info"].includes(req.params.id)) return next();
+
   const userId = req.user?.id ? (req.user.id as number) : null;
   const leagueId = Number(req.params.id);
 
