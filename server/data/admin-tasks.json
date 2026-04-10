@@ -389,6 +389,97 @@
           "instructions": ["Timely content for mid-July", "Rank all NL teams by fantasy value of their roster", "Dodgers will likely be #1 — lean into it", "Include data from TFL standings", "Target date: Jul 14"]
         }
       ]
+    },
+    {
+      "id": "seo-technical",
+      "title": "SEO — Technical Setup & Analytics",
+      "description": "Technical SEO checklist, analytics stack, and tracking. All tools are free tier. Full plan at docs/plans/2026-04-10-seo-strategy-plan.md",
+      "tasks": [
+        {
+          "id": "seo-sitemap",
+          "title": "Install @astrojs/sitemap integration",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["npm install @astrojs/sitemap", "Add sitemap() to astro.config.mjs integrations array", "Builds sitemap-index.xml automatically", "5 min effort"]
+        },
+        {
+          "id": "seo-robots",
+          "title": "Create robots.txt for marketing site + app",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["Create public/robots.txt on marketing site: Allow: / + Sitemap reference", "Add robots.txt to Express app: Disallow /api/, /auction/, /teams/. Allow /login, /signup, /discover", "5-10 min effort"]
+        },
+        {
+          "id": "seo-og-tags",
+          "title": "Install astro-seo — OG tags, Twitter cards, canonical URLs",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["npm install astro-seo", "Replace manual meta tags in Base.astro with <SEO> component", "Pass og:image from blog post heroImage", "Add twitter:card=summary_large_image", "Create default OG image at public/og-default.png (1200x630)", "30 min effort"]
+        },
+        {
+          "id": "seo-jsonld",
+          "title": "Add JSON-LD structured data to all pages",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["Create src/components/JsonLd.astro helper", "Landing: Organization + SoftwareApplication schemas", "Blog listing: CollectionPage schema", "Blog posts: BlogPosting with author, date, image", "Status page: add noindex (skip schema)", "45 min effort"]
+        },
+        {
+          "id": "seo-fonts",
+          "title": "Self-host Inter font with font-display: swap",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["Download Inter woff2 from Google Fonts (400, 500, 600, 700, 800)", "Place in public/fonts/", "Add @font-face rules to global.css", "Preload regular weight in Base.astro <head>", "20 min effort"]
+        },
+        {
+          "id": "seo-gsc",
+          "title": "Set up Google Search Console + submit sitemap",
+          "status": "not_started",
+          "owner": "jimmy",
+          "instructions": ["Go to search.google.com/search-console", "Add domain property: thefantasticleagues.com", "Verify via DNS TXT record (add in Cloudflare DNS)", "Submit sitemap-index.xml after sitemap integration is deployed", "15 min effort"]
+        },
+        {
+          "id": "seo-ga4",
+          "title": "Add GA4 to marketing site",
+          "status": "not_started",
+          "owner": "jimmy",
+          "instructions": ["Create GA4 property: 'TFL Marketing'", "Add gtag.js snippet to Base.astro <head>", "Set up 4 custom events: signup_click, blog_read, pricing_view, cta_click", "Link Search Console to GA4 in Admin > Product Links", "DO NOT add GA4 to the React app — PostHog handles that", "30 min effort"]
+        },
+        {
+          "id": "seo-ahrefs",
+          "title": "Set up Ahrefs Webmaster Tools (free) + Ubersuggest",
+          "status": "not_started",
+          "owner": "jimmy",
+          "instructions": ["ahrefs.com/webmaster-tools — free, 100 keywords", "Track 25 initial keywords (see SEO plan for list)", "Ubersuggest free: 1 project, 25 keywords, 3 searches/day", "Monthly: export positions, compare month-over-month"]
+        },
+        {
+          "id": "seo-directories",
+          "title": "List on AlternativeTo + indie directories",
+          "status": "not_started",
+          "owner": "jimmy",
+          "instructions": ["AlternativeTo: list as alternative to Yahoo Fantasy, Fantrax, ESPN, Sleeper", "Also list on: Firsto, SideProjectors, LaunchingNext, StartupStash, SaaSPage", "Write clear description: AI-powered, auction draft, commissioner tools", "Total: ~1.5 hours for all directories"]
+        },
+        {
+          "id": "seo-landing-pages",
+          "title": "Build SEO landing pages (features + comparisons)",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["/features/auction-draft — target: fantasy baseball auction draft platform", "/features/ai-insights — target: AI fantasy baseball analysis tools", "/features/commissioner-tools — target: fantasy baseball commissioner tools", "/compare/yahoo — target: Yahoo fantasy baseball alternative", "/compare/fantrax — target: Fantrax alternative", "/learn/fantasy-baseball-glossary — 60-100 terms", "Each page: hero, problem, demo screenshot, 3-4 benefits, FAQ, CTA"]
+        },
+        {
+          "id": "seo-newsletter",
+          "title": "Set up beehiiv newsletter",
+          "status": "not_started",
+          "owner": "jimmy",
+          "instructions": ["beehiiv.com — free tier up to 2,500 subscribers", "Weekly during season, monthly offseason", "Content: 1 insight + 1 data point + 1 product update", "Use Recommendations feature to cross-promote with baseball newsletters"]
+        },
+        {
+          "id": "seo-lead-magnet",
+          "title": "Build Auction Value Calculator lead magnet",
+          "status": "not_started",
+          "owner": "dev",
+          "instructions": ["Free web tool: input league settings (NL/AL/Mixed, budget, roster size)", "Output custom dollar values per player", "Ungated for use, email-gated for saving/exporting results", "This directly showcases the product's strength", "4-6 hours effort"]
+        }
+      ]
     }
   ]
 }
