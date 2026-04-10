@@ -603,7 +603,6 @@ export default function Team() {
                     <Th align="center">POS</Th>
                     <Th align="center">PLAYER</Th>
                     <Th align="center">TM</Th>
-                    <Th align="center">G</Th>
                     <Th align="center">AB</Th>
                     <Th align="center">R</Th>
                     <Th align="center">HR</Th>
@@ -616,7 +615,7 @@ export default function Team() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--lg-text-muted)]">
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--lg-text-muted)]">
                         Loading roster…
                       </td>
                     </tr>
@@ -692,9 +691,6 @@ export default function Team() {
                               {tm || "—"}
                             </Td>
                             <Td align="center">
-                              {numFromAny(p, "G", "gamesPlayed", "games_played")}
-                            </Td>
-                            <Td align="center">
                               {asNum(p?.AB)}
                             </Td>
                             <Td align="center">
@@ -728,7 +724,6 @@ export default function Team() {
                   )}
                   {/* Totals row */}
                   {hitters.length > 0 && (() => {
-                    const totG = hitters.reduce((s, p) => s + numFromAny(p, "G", "gamesPlayed", "games_played"), 0);
                     const totR = hitters.reduce((s, p) => s + asNum(p?.R), 0);
                     const totHR = hitters.reduce((s, p) => s + asNum(p?.HR), 0);
                     const totRBI = hitters.reduce((s, p) => s + asNum(p?.RBI), 0);
@@ -741,7 +736,6 @@ export default function Team() {
                         <Td align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></Td>
                         <Td align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></Td>
                         <Td align="center">{""}</Td>
-                        <Td align="center"><span className="font-bold">{totG}</span></Td>
                         <Td align="center"><span className="font-bold">{totAB}</span></Td>
                         <Td align="center"><span className="font-bold">{totR}</span></Td>
                         <Td align="center"><span className="font-bold">{totHR}</span></Td>
@@ -768,6 +762,8 @@ export default function Team() {
                     <Th align="center">SV</Th>
                     <Th align="center">K</Th>
                     <Th align="center">IP</Th>
+                    <Th align="center">ER</Th>
+                    <Th align="center" title="Walks + Hits (WHIP numerator)">BB+H</Th>
                     <Th align="center">ERA</Th>
                     <Th align="center">WHIP</Th>
                   </Tr>
@@ -835,6 +831,12 @@ export default function Team() {
                               {asNum(p?.IP) > 0 ? asNum(p.IP).toFixed(1) : "—"}
                             </Td>
                             <Td align="center">
+                              {asNum(p?.ER) || "—"}
+                            </Td>
+                            <Td align="center">
+                              {asNum(p?.BB_H) || "—"}
+                            </Td>
+                            <Td align="center">
                               {asNum(p?.IP) > 0 ? asNum(p.ERA).toFixed(2) : "—"}
                             </Td>
                             <Td align="center">
@@ -860,6 +862,8 @@ export default function Team() {
                     const totSV = pitchers.reduce((s, p) => s + asNum(p?.SV), 0);
                     const totK = pitchers.reduce((s, p) => s + asNum(p?.K), 0);
                     const totIP = pitchers.reduce((s, p) => s + asNum(p?.IP), 0);
+                    const totER = pitchers.reduce((s, p) => s + asNum(p?.ER), 0);
+                    const totBB = pitchers.reduce((s, p) => s + asNum(p?.BB_H), 0);
                     // Compute ERA/WHIP from individual pitcher ERA/WHIP weighted by IP
                     // (more accurate than summing raw ER/BB_H which may not be on every player object)
                     let weightedER = 0, weightedBBH = 0;
@@ -881,6 +885,8 @@ export default function Team() {
                         <Td align="center"><span className="font-bold">{totSV}</span></Td>
                         <Td align="center"><span className="font-bold">{totK}</span></Td>
                         <Td align="center"><span className="font-bold">{totIP > 0 ? totIP.toFixed(1) : "—"}</span></Td>
+                        <Td align="center"><span className="font-bold">{totER}</span></Td>
+                        <Td align="center"><span className="font-bold">{totBB}</span></Td>
                         <Td align="center"><span className="font-bold">{totIP > 0 ? teamERA.toFixed(2) : "—"}</span></Td>
                         <Td align="center"><span className="font-bold">{totIP > 0 ? teamWHIP.toFixed(3) : "—"}</span></Td>
                       </tr>
