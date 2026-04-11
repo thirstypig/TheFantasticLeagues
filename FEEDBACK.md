@@ -4,6 +4,33 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-10 (Session 62) — Quick Wins: Auction Enrichment, Add/Drop Fix, Position Sort, Standings Verified
+
+### Completed
+- **Austin Riley enrichment** — `finishCurrentLot` and `force-assign` now set `mlbTeam` from nomination payload; backfills existing players with null mlbTeam
+- **Position sort everywhere** — verified DraftReport + Players already using POS_ORDER; Team.tsx updated to shared `POS_SCORE`, added pitcher position sort (SP before RP)
+- **Add/drop flow tested** — walked through in browser; found and fixed 500→400 error handling for roster limit and player availability guards
+- **Scoring/standings verified** — 7 periods, Period 1 active, 8 teams ranked correctly by roto points, stats realistic (AVG ~.250, ERA ~3-4)
+- **force-assign schema** — added `team` field to forceAssignSchema, client now sends `mlb_team`
+- **Transaction test mock** — added `$queryRaw` to mockTx (was missing, caused test failures)
+
+### Pending / Next Steps
+- Deploy marketing site to GitHub Pages
+- Blog formatting posts 2-5
+- GitHub Action for Monday auto-deploys
+- Orphaned `public.ts` slug endpoint cleanup (Todo 090)
+- Email subscribe backend
+- Stripe setup
+- Remaining outstanding items: waiver priority by period, draft report regen, trade PICK processing, YouTube on prod
+
+### Test Results
+- Server: TypeScript compiles clean
+- Client: TypeScript compiles clean
+- 91 tests passing for changed features (auction + transactions)
+- Pre-existing failures in standings/mlbSync/archive/periods/roster/waivers (not this session's changes)
+
+---
+
 ## Session 2026-04-10 (Session 61) — Code Review, Blog Launch, Admin Tasks, Login Redesign
 
 ### Completed

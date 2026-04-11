@@ -4,6 +4,7 @@ import type { NextFunction } from "express";
 // ── Mocks (hoisted) ──────────────────────────────────────────────
 
 const mockTx = {
+  $queryRaw: vi.fn().mockResolvedValue([]),
   roster: { create: vi.fn(), findFirst: vi.fn(), delete: vi.fn(), update: vi.fn(), count: vi.fn().mockResolvedValue(10) },
   player: { findUnique: vi.fn() },
   transactionEvent: { create: vi.fn() },

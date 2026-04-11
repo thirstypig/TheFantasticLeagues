@@ -517,12 +517,14 @@ async function finishCurrentLot(leagueId: number, userId?: number): Promise<Auct
 
     clearAutoFinishTimer(leagueId);
 
-    const { playerId, currentBid, highBidderTeamId, playerName, positions, lotId } = state.nomination;
+    const { playerId, currentBid, highBidderTeamId, playerName, positions, lotId, playerTeam } = state.nomination;
 
     // Look up league season for the source tag
     const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
     const season = league?.season ?? new Date().getFullYear();
     const auctionSource = `auction_${season}`;
+
+    const mlbTeamAbbr = playerTeam || undefined;
 
     let dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
     if (!dbPlayer) {
@@ -531,8 +533,15 @@ async function finishCurrentLot(leagueId: number, userId?: number): Promise<Auct
           mlbId: Number(playerId),
           name: playerName,
           posPrimary: positions.split('/')[0] || 'UT',
-          posList: positions.split('/').join(',')
+          posList: positions.split('/').join(','),
+          mlbTeam: mlbTeamAbbr,
         }
+      });
+    } else if (!dbPlayer.mlbTeam && mlbTeamAbbr) {
+      // Backfill mlbTeam on existing player if it was missing
+      dbPlayer = await prisma.player.update({
+        where: { id: dbPlayer.id },
+        data: { mlbTeam: mlbTeamAbbr },
       });
     }
 
@@ -1354,6 +1363,7 @@ const forceAssignSchema = z.object({
   playerName: z.string().min(1).max(200),
   price: z.number().int().min(0).max(999),
   positions: z.string().min(1).max(100),
+  team: z.string().max(10).optional().default(""),
   isPitcher: z.boolean(),
 });
 
@@ -1362,11 +1372,11 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
   if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
 
-  const { teamId, playerId, playerName, price, positions, isPitcher } = req.body;
+  const { teamId, playerId, playerName, price, positions, team: mlbTeamParam, isPitcher } = req.body;
 
   // Verify team belongs to this league
-  const team = await prisma.team.findFirst({ where: { id: teamId, leagueId } });
-  if (!team) return res.status(400).json({ error: "Team not found in this league" });
+  const teamRow = await prisma.team.findFirst({ where: { id: teamId, leagueId } });
+  if (!teamRow) return res.status(400).json({ error: "Team not found in this league" });
 
   // Verify player not already on a roster in this league
   const dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
@@ -1377,6 +1387,8 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
     if (existing) return res.status(400).json({ error: "Player already on a roster" });
   }
 
+  const mlbTeamAbbr = mlbTeamParam || undefined;
+
   // Find or create player record
   let player = dbPlayer;
   if (!player) {
@@ -1386,7 +1398,13 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
         name: playerName,
         posPrimary: positions.split('/')[0] || 'UT',
         posList: positions.split('/').join(','),
+        mlbTeam: mlbTeamAbbr,
       }
+    });
+  } else if (!player.mlbTeam && mlbTeamAbbr) {
+    player = await prisma.player.update({
+      where: { id: player.id },
+      data: { mlbTeam: mlbTeamAbbr },
     });
   }
 
@@ -1413,11 +1431,11 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
     state.log.unshift({
       type: 'WIN',
       teamId,
-      teamName: team.name,
+      teamName: teamRow.name,
       playerName,
       amount: price,
       timestamp: Date.now(),
-      message: `Commissioner assigned ${playerName} to ${team.name} for $${price}`
+      message: `Commissioner assigned ${playerName} to ${teamRow.name} for $${price}`
     });
     state.lastUpdate = Date.now();
     broadcastState(leagueId, state);
@@ -1432,7 +1450,7 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
     metadata: { leagueId, teamId, playerId: player.id, playerName, price },
   });
 
-  res.json({ success: true, playerName, teamName: team.name, price });
+  res.json({ success: true, playerName, teamName: teamRow.name, price });
 }));
 
 // POST /api/auction/proxy-bid — set a max/proxy bid (eBay-style)
