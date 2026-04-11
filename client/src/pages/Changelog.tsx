@@ -80,9 +80,6 @@ const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: "0.52.0",
-    date: "Apr 7, 2026",
-    session: "Session 59",
     version: "0.54.0",
     date: "Apr 10, 2026",
     session: "Session 61",

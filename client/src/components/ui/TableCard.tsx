@@ -94,14 +94,17 @@ export function Th({
   className,
   align = "center",
   w,
+  title,
 }: {
   children: React.ReactNode;
   className?: string;
   align?: Align;
   w?: number;
+  title?: string;
 }) {
   return (
     <th
+      title={title}
       style={w ? { width: w } : undefined}
       className={[
         "px-1.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]",
