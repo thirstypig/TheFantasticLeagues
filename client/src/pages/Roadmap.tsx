@@ -34,7 +34,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 8, 2026 (Session 60)";
+const LAST_UPDATED = "April 10, 2026 (Session 62)";
 
 // ─── Product Roadmap ───
 
@@ -340,6 +340,15 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 62 — Auction Enrichment, Add/Drop Fix, Position Sort, Standings Verified",
+    items: [
+      { title: "Auction Player Enrichment", description: "finishCurrentLot and force-assign now set mlbTeam from nomination payload when creating Player records. Backfills existing players with null mlbTeam.", session: "62" },
+      { title: "Add/Drop Error Handling", description: "Roster limit and player availability errors now return 400 with descriptive messages instead of opaque 500. try/catch wraps claim transaction.", session: "62" },
+      { title: "Team Page Position Sort", description: "Replaced local SLOT_ORDER with shared POS_SCORE constant. Pitchers now sorted by position (SP before RP) then price descending.", session: "62" },
+      { title: "Standings Verification", description: "8 teams, 7 periods, Period 1 active, roto points computed correctly with half-points for tied categories. Stats realistic (AVG ~.250, ERA ~3-4).", session: "62" },
+    ],
+  },
   {
     label: "Session 60 — 19-Item Backlog + 20-Finding Code Review + FanGraphs Audit (9 commits)",
     items: [

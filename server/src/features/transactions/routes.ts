@@ -109,6 +109,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   const season = league?.season ?? new Date().getFullYear();
 
   // 4. Perform Transaction (Atomic) — lock team row to prevent concurrent roster limit bypass
+  try {
   await prisma.$transaction(async (tx) => {
     // Acquire row-level lock on the team to serialize concurrent claims
     await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
@@ -164,6 +165,14 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       }
     }
   }, { timeout: 30_000 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Claim failed";
+    // Guard errors (roster limit, player unavailable) are user errors, not server errors
+    if (msg.includes("Roster limit") || msg.includes("already on")) {
+      return res.status(400).json({ error: msg });
+    }
+    throw err; // Re-throw unexpected errors for asyncHandler
+  }
 
   writeAuditLog({
     userId: req.user!.id,

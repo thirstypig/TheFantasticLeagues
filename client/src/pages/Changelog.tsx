@@ -30,6 +30,25 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.55.0",
+    date: "Apr 10, 2026",
+    session: "Session 62",
+    title: "Auction Player Enrichment, Add/Drop Error Handling, Position Sort, Standings Verified",
+    highlights: [
+      "Auction nomination and force-assign now populate mlbTeam on Player records — no more '—' for newly drafted players",
+      "Add/drop claim errors return proper 400 with descriptive messages instead of opaque 500",
+      "Team page roster sorted by shared POS_SCORE constant, pitchers now sorted by position (SP before RP)",
+      "Scoring and standings verified: 8 teams, 7 periods, roto points computed correctly",
+    ],
+    changes: [
+      { type: "fix", description: "finishCurrentLot: sets mlbTeam from nomination payload when creating new Player records" },
+      { type: "fix", description: "force-assign: added team field to schema, sets mlbTeam on create, backfills existing players with null mlbTeam" },
+      { type: "fix", description: "Add/drop claim: roster limit and player availability errors now return 400 instead of 500" },
+      { type: "fix", description: "Team.tsx: replaced local SLOT_ORDER with shared POS_SCORE, added pitcher position sort (SP before RP then price)" },
+      { type: "test", description: "Transaction test mock: added $queryRaw to mockTx (was missing, caused test failures)" },
+    ],
+  },
+  {
     version: "0.53.0",
     date: "Apr 8, 2026",
     session: "Session 60",

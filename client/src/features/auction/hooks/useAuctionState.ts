@@ -259,7 +259,7 @@ export function useAuctionState(leagueId?: number | null) {
         return data.maxBid;
     };
 
-    const forceAssign = async (payload: { teamId: number, playerId: string, playerName: string, price: number, positions: string, isPitcher: boolean }) => {
+    const forceAssign = async (payload: { teamId: number, playerId: string, playerName: string, price: number, positions: string, team?: string, isPitcher: boolean }) => {
         await fetchJsonApi(`${API_BASE}/auction/force-assign`, {
             method: 'POST',
             body: withLeagueId(payload)

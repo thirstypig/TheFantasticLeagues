@@ -257,6 +257,7 @@ export default function Auction() {
               playerName: player.player_name || 'Unknown',
               price,
               positions: player.positions || (player.is_pitcher ? 'P' : 'UT'),
+              team: player.mlb_team || '',
               isPitcher: Boolean(player.is_pitcher),
           });
           toast(`Assigned ${player.player_name} to team for $${price}`, "success");

@@ -12,7 +12,7 @@ import { getOgbaTeamName } from "../../../lib/ogbaTeams";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
 import { isPitcher, normalizePosition, formatAvg, getMlbTeamAbbr, sortByPosition } from "../../../lib/playerDisplay";
-import { mapPosition, positionToSlots } from "../../../lib/sportConfig";
+import { mapPosition, positionToSlots, POS_SCORE } from "../../../lib/sportConfig";
 import { fetchJsonApi, API_BASE, parseIP } from "../../../api/base";
 import { TableCard, Table, THead, Tr, Th, Td } from "../../../components/ui/TableCard";
 import { Button } from "../../../components/ui/button";
@@ -318,25 +318,28 @@ export default function Team() {
 
   const teamName = useMemo(() => getOgbaTeamName(code) || code, [code]);
 
-  // Sort hitters by roster slot order: C, 1B, 2B, 3B, SS, MI, CM, OF, DH
-  const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"];
+  // Sort hitters by roster slot order (POS_SCORE: C=0, 1B=1, … DH=11), then price desc
   const hitters = useMemo(() => {
     const list = players.filter((p) => !isPitcher(p));
     list.sort((a, b) => {
       const posA = a.assignedPosition || "";
       const posB = b.assignedPosition || "";
-      const ia = SLOT_ORDER.indexOf(posA);
-      const ib = SLOT_ORDER.indexOf(posB);
-      const slotDiff = (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      const slotDiff = (POS_SCORE[posA] ?? 99) - (POS_SCORE[posB] ?? 99);
       if (slotDiff !== 0) return slotDiff;
-      // Within same slot, sort by price descending
       return (b.price ?? 0) - (a.price ?? 0);
     });
     return list;
   }, [players]);
+  // Sort pitchers by position (SP before RP), then price desc
   const pitchers = useMemo(() => {
     const list = players.filter((p) => isPitcher(p));
-    list.sort((a, b) => (b.isKeeper ? 1 : 0) - (a.isKeeper ? 1 : 0));
+    list.sort((a, b) => {
+      const posA = a.assignedPosition || "";
+      const posB = b.assignedPosition || "";
+      const posDiff = (POS_SCORE[posA] ?? 99) - (POS_SCORE[posB] ?? 99);
+      if (posDiff !== 0) return posDiff;
+      return (b.price ?? 0) - (a.price ?? 0);
+    });
     return list;
   }, [players]);
 
