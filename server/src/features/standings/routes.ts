@@ -41,6 +41,47 @@ router.get("/period/current", requireAuth, requireLeagueMember("leagueId"), asyn
   res.json({ periodId: period.id, data });
 }));
 
+// --- Waiver priority standings: /api/standings/waiver-priority ---
+// Returns the standings used by waiver processing: most recent completed period,
+// or active period if no completed period exists. Matches server waiver logic.
+
+router.get("/waiver-priority", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+
+  // Prefer most recent completed period (matches waiver processing logic)
+  let period = await prisma.period.findFirst({
+    where: { leagueId, status: "completed" },
+    orderBy: { endDate: "desc" },
+  });
+
+  // Fall back to active period if no completed period yet
+  let source: "completed" | "active" = "completed";
+  if (!period) {
+    period = await prisma.period.findFirst({
+      where: { leagueId, status: "active" },
+      orderBy: { endDate: "desc" },
+    });
+    source = "active";
+  }
+
+  if (!period) {
+    return res.json({ periodId: null, periodName: null, source: "none", data: [] });
+  }
+
+  const teamStats = await computeTeamStatsFromDb(leagueId, period.id);
+  const standings = computeStandingsFromStats(teamStats);
+
+  const data = standings.map((s) => ({
+    teamId: s.teamId,
+    teamName: s.teamName,
+    teamCode: teamStats.find((t) => t.team.id === s.teamId)?.team.code ?? s.teamName.substring(0, 3).toUpperCase(),
+    points: s.points,
+  }));
+
+  res.json({ periodId: period.id, periodName: period.name, source, data });
+}));
+
 // --- Period category standings: /api/period-category-standings ---
 
 router.get("/period-category-standings", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {

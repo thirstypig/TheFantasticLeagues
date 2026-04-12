@@ -6,6 +6,17 @@ export async function getPeriodStandings(periodId?: number, leagueId?: number): 
   return fetchJsonApi(`${API_BASE}/period/current?leagueId=${lid}`);
 }
 
+export type WaiverPriorityStandings = {
+  periodId: number | null;
+  periodName: string | null;
+  source: "completed" | "active" | "none";
+  data: { teamId: number; teamName: string; teamCode: string; points: number }[];
+};
+
+export async function getWaiverPriorityStandings(leagueId: number): Promise<WaiverPriorityStandings> {
+  return fetchJsonApi<WaiverPriorityStandings>(`${API_BASE}/waiver-priority?leagueId=${leagueId}`);
+}
+
 export type SettlementOwner = {
   id: number;
   name: string | null;

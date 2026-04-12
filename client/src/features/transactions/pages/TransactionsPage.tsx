@@ -1,6 +1,7 @@
 // client/src/pages/TransactionsPage.tsx
 import React, { useEffect, useState } from "react";
 import { getTransactions, TransactionEvent, getPlayerSeasonStats, getLeague, PlayerSeasonStat, getSeasonStandings } from "../../../api";
+import { getWaiverPriorityStandings, type WaiverPriorityStandings } from "../../standings/api";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { processWaiverClaims } from "../../waivers/api";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -26,6 +27,7 @@ export default function TransactionsPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
+  const [waiverPriority, setWaiverPriority] = useState<WaiverPriorityStandings | null>(null);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -33,15 +35,17 @@ export default function TransactionsPage() {
 
   async function loadData() {
     try {
-      const [txResp, playersResp, lDetail, standingsResp] = await Promise.all([
+      const [txResp, playersResp, lDetail, standingsResp, waiverResp] = await Promise.all([
            getTransactions({ take: 100 }),
            getPlayerSeasonStats(),
            getLeague(leagueId),
-           getSeasonStandings()
+           getSeasonStandings(),
+           leagueId ? getWaiverPriorityStandings(leagueId).catch(() => null) : Promise.resolve(null),
       ]);
       setTransactions(txResp.transactions);
       setPlayers(playersResp || []);
       setStandings(standingsResp.rows || []);
+      setWaiverPriority(waiverResp);
 
       {
           const loadedTeams = lDetail.league.teams || [];
@@ -99,14 +103,22 @@ export default function TransactionsPage() {
   };
 
   // Waiver Order: Reverse standings — worst team gets first waiver pick.
-  // Uses totalPoints from season standings (cumulative roto points).
+  // Uses most recent COMPLETED period's standings (matches server processing).
+  // Falls back to active period if no completed period exists yet.
   const sortedWaiverOrder = React.useMemo(() => {
-      const standingMap = new Map(standings.map(s => [s.teamId, s]));
+      // Prefer period-based standings (matches server waiver processing logic).
+      // Fall back to season cumulative only if period data is unavailable.
+      const periodMap = new Map((waiverPriority?.data || []).map(s => [s.teamId, s]));
+      const seasonMap = new Map(standings.map(s => [s.teamId, s]));
+
       const teamsWithPoints = teams.map(t => {
-          const s = standingMap.get(t.id);
+          const p = periodMap.get(t.id);
+          const s = seasonMap.get(t.id);
+          // Use period points if available, otherwise fall back to season
+          const totalPoints = p?.points ?? s?.totalPoints ?? 0;
           return {
               ...t,
-              totalPoints: s?.totalPoints || 0,
+              totalPoints,
               standingRank: 0, // will be computed after sort
           };
       });
@@ -116,7 +128,7 @@ export default function TransactionsPage() {
       const byPointsDesc = [...teamsWithPoints].sort((a, b) => b.totalPoints - a.totalPoints);
       byPointsDesc.forEach((t, i) => { t.standingRank = i + 1; });
       return teamsWithPoints;
-  }, [teams, standings]);
+  }, [teams, standings, waiverPriority]);
 
   if (loading) return <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse text-sm">Loading roster moves...</div>;
 
@@ -173,7 +185,12 @@ export default function TransactionsPage() {
                     <h3 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)] mb-2">Waiver Priority</h3>
                     <p className="text-xs text-[var(--lg-text-muted)] uppercase font-medium opacity-50">Inverse Standings — Worst Record Picks First</p>
                     <p className="text-[10px] text-[var(--lg-text-muted)] mt-1 opacity-40">
-                      Updated {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · Based on current season standings
+                      Updated {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ·{" "}
+                      {waiverPriority?.source === "completed" && waiverPriority.periodName
+                        ? `Based on ${waiverPriority.periodName} standings (most recent completed)`
+                        : waiverPriority?.source === "active" && waiverPriority.periodName
+                        ? `Based on ${waiverPriority.periodName} standings (current period — no period completed yet)`
+                        : "Based on current season standings"}
                     </p>
                   </div>
 
