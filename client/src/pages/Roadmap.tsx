@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import AdminCrossNav from "../features/admin/components/AdminCrossNav";
 import {
   CheckCircle2,
   Circle,
@@ -780,6 +781,7 @@ export default function Roadmap() {
         <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
           Last updated: {LAST_UPDATED}
         </p>
+        <AdminCrossNav />
       </div>
 
       {/* Summary stats */}

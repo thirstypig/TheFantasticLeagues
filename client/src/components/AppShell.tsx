@@ -147,6 +147,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       items: [
         { to: `/commissioner/${leagueId}`, label: "Commissioner", show: canAccessCommissioner },
         { to: "/admin", label: "Admin", show: Boolean(user?.isAdmin) },
+        { to: "/todo", label: "Todo", show: Boolean(user?.isAdmin) },
       ],
     },
     {

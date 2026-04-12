@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import AdminCrossNav from "../features/admin/components/AdminCrossNav";
 import {
   GitCommit,
   ChevronDown,
@@ -1122,6 +1123,7 @@ export default function Changelog() {
           Release history across all development sessions. Each entry maps to a session
           in the build journal — features shipped, bugs fixed, and improvements made.
         </p>
+        <AdminCrossNav />
       </div>
 
       {/* Stats */}

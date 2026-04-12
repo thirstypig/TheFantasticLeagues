@@ -521,5 +521,122 @@ router.delete("/admin/tasks/:taskId", requireAuth, requireAdmin, asyncHandler(as
   return res.json({ success: true });
 }));
 
+// ── Todo Page (category-based micro-tasks, JSON file-backed) ──
+
+const TODO_FILE = path.join(process.cwd(), "data", "todo-tasks.json");
+
+function readTodos(): any {
+  if (!fs.existsSync(TODO_FILE)) return { categories: [] };
+  return JSON.parse(fs.readFileSync(TODO_FILE, "utf-8"));
+}
+
+function writeTodos(data: any): void {
+  fs.writeFileSync(TODO_FILE, JSON.stringify(data, null, 2), "utf-8");
+}
+
+/** GET /api/admin/todos — read all categories + todos */
+router.get("/admin/todos", requireAuth, requireAdmin, asyncHandler(async (_req, res) => {
+  return res.json(readTodos());
+}));
+
+/** PATCH /api/admin/todos/:todoId — update a todo */
+const updateTodoSchema = z.object({
+  status: z.enum(["not_started", "in_progress", "done"]).optional(),
+  title: z.string().min(1).max(500).optional(),
+  owner: z.string().max(100).optional(),
+  priority: z.enum(["p0", "p1", "p2", "p3"]).optional(),
+  targetDate: z.string().max(50).optional().nullable(),
+  notes: z.string().max(2000).optional(),
+  roadmapLink: z.string().max(200).optional().nullable(),
+  conceptLink: z.string().max(200).optional().nullable(),
+});
+
+router.patch("/admin/todos/:todoId", requireAuth, requireAdmin, validateBody(updateTodoSchema), asyncHandler(async (req, res) => {
+  const { todoId } = req.params;
+  const updates = req.body;
+  const data = readTodos();
+
+  let found = false;
+  for (const cat of data.categories) {
+    const todo = cat.tasks.find((t: any) => t.id === todoId);
+    if (todo) {
+      for (const key of Object.keys(updates)) {
+        (todo as any)[key] = (updates as any)[key];
+      }
+      todo.updatedAt = new Date().toISOString();
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) return res.status(404).json({ error: "Todo not found" });
+
+  writeTodos(data);
+  writeAuditLog({ userId: req.user!.id, action: "ADMIN_TODO_UPDATE", resourceType: "AdminTodo", resourceId: todoId, metadata: updates });
+  return res.json({ success: true });
+}));
+
+/** POST /api/admin/todos — add a new todo to a category */
+const addTodoSchema = z.object({
+  categoryId: z.string().min(1),
+  title: z.string().min(1).max(500),
+  priority: z.enum(["p0", "p1", "p2", "p3"]).optional().default("p2"),
+  owner: z.string().max(100).optional().default("dev"),
+  instructions: z.array(z.string()).optional().default([]),
+  targetDate: z.string().max(50).optional(),
+  roadmapLink: z.string().max(200).optional(),
+  conceptLink: z.string().max(200).optional(),
+});
+
+router.post("/admin/todos", requireAuth, requireAdmin, validateBody(addTodoSchema), asyncHandler(async (req, res) => {
+  const { categoryId, title, priority, owner, instructions, targetDate, roadmapLink, conceptLink } = req.body;
+  const data = readTodos();
+
+  const cat = data.categories.find((c: any) => c.id === categoryId);
+  if (!cat) return res.status(404).json({ error: "Category not found" });
+
+  const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "").substring(0, 60);
+  const newTodo: Record<string, any> = {
+    id,
+    title,
+    status: "not_started",
+    priority,
+    owner,
+    instructions,
+    createdAt: new Date().toISOString(),
+  };
+  if (targetDate) newTodo.targetDate = targetDate;
+  if (roadmapLink) newTodo.roadmapLink = roadmapLink;
+  if (conceptLink) newTodo.conceptLink = conceptLink;
+
+  cat.tasks.push(newTodo);
+
+  writeTodos(data);
+  writeAuditLog({ userId: req.user!.id, action: "ADMIN_TODO_CREATE", resourceType: "AdminTodo", resourceId: id, metadata: { categoryId, title } });
+  return res.json({ success: true, todo: newTodo });
+}));
+
+/** DELETE /api/admin/todos/:todoId — remove a todo */
+router.delete("/admin/todos/:todoId", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const { todoId } = req.params;
+  const data = readTodos();
+
+  let found = false;
+  for (const cat of data.categories) {
+    const idx = cat.tasks.findIndex((t: any) => t.id === todoId);
+    if (idx !== -1) {
+      cat.tasks.splice(idx, 1);
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) return res.status(404).json({ error: "Todo not found" });
+
+  writeTodos(data);
+  writeAuditLog({ userId: req.user!.id, action: "ADMIN_TODO_DELETE", resourceType: "AdminTodo", resourceId: todoId });
+  return res.json({ success: true });
+}));
+
 export const adminRouter = router;
 export default adminRouter;

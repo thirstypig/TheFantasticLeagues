@@ -15,6 +15,7 @@ import Login from "./features/auth/pages/Login";
 // Non-critical routes — lazy-loaded (code-split chunks)
 const Commissioner = React.lazy(() => import("./features/commissioner/pages/Commissioner"));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
+const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
 const Auction = React.lazy(() => import("./features/auction/pages/Auction"));
 const AuctionResults = React.lazy(() => import("./features/auction/pages/AuctionResults"));
@@ -134,6 +135,7 @@ export default function App() {
                     <Route path="/matchup" element={<MatchupPage />} />
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
+                    <Route path="/todo" element={<TodoPage />} />
                     <Route path="/guide" element={<GuidePage />} />
                     <Route path="/guide/account" element={<GuideAccount />} />
                     <Route path="/guide/auction" element={<GuideAuction />} />

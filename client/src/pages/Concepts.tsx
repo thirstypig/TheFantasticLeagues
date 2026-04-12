@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useLeague } from "../contexts/LeagueContext";
 import LeagueBoard from "../features/board/components/LeagueBoard";
+import AdminCrossNav from "../features/admin/components/AdminCrossNav";
 
 /* ── Coming Soon marketplace cards ──────────────────────────────── */
 
@@ -48,6 +49,7 @@ export default function Concepts() {
         <p className="text-sm text-[var(--lg-text-secondary)]">
           Live features and upcoming prototypes
         </p>
+        <AdminCrossNav />
       </div>
 
       {/* ── League Board (REAL) ─────────────────────────────────── */}

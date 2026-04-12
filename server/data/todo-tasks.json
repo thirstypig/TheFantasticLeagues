@@ -1,0 +1,286 @@
+{
+  "categories": [
+    {
+      "id": "deployment",
+      "title": "Deployment & Infrastructure",
+      "description": "Railway migration, marketing site, CI/CD, monitoring",
+      "tasks": [
+        {
+          "id": "deploy-marketing-site",
+          "title": "Deploy marketing site to GitHub Pages",
+          "status": "in_progress",
+          "priority": "p1",
+          "owner": "jimmy",
+          "instructions": [
+            "Push final marketing site build to thefantasticleagues-www repo",
+            "Configure GitHub Pages in repo settings (Settings → Pages → Source: GitHub Actions)",
+            "Add deploy workflow at .github/workflows/deploy.yml (Astro → gh-pages)",
+            "Point custom domain thefantasticleagues.com at GitHub Pages (CNAME file)",
+            "Verify HTTPS certificate provisioning and redirect from apex"
+          ],
+          "roadmapLink": "/roadmap#marketing",
+          "targetDate": "2026-04-15",
+          "updatedAt": "2026-04-12T22:19:46.596Z"
+        },
+        {
+          "id": "blog-monday-cron",
+          "title": "GitHub Action for Monday blog auto-deploys",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Create .github/workflows/monday-deploy.yml with cron schedule '0 13 * * 1' (6am PT Monday)",
+            "Trigger: workflow rebuilds the marketing site so date-gated blog posts appear",
+            "Verify in dry run with manual workflow_dispatch trigger"
+          ],
+          "roadmapLink": "/roadmap#marketing"
+        }
+      ]
+    },
+    {
+      "id": "monetization",
+      "title": "Monetization & Payments",
+      "description": "Stripe, pricing, subscriptions, feature gating",
+      "tasks": [
+        {
+          "id": "stripe-setup",
+          "title": "Stripe account + product setup",
+          "status": "not_started",
+          "priority": "p1",
+          "owner": "jimmy",
+          "instructions": [
+            "Create Stripe account (thefantasticleagues.com)",
+            "Create products: Pro ($29/season), Commissioner ($49/season)",
+            "Store STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY in Railway env vars",
+            "Add webhook endpoint signing secret STRIPE_WEBHOOK_SECRET"
+          ],
+          "roadmapLink": "/roadmap#monetization",
+          "conceptLink": "/concepts#pricing"
+        },
+        {
+          "id": "stripe-checkout-flow",
+          "title": "Stripe Checkout flow for Pro/Commissioner",
+          "status": "not_started",
+          "priority": "p1",
+          "owner": "dev",
+          "instructions": [
+            "Install @stripe/stripe-js and stripe (server) packages",
+            "Add POST /api/billing/checkout endpoint that creates a Stripe Checkout Session",
+            "Add webhook handler POST /api/billing/webhook to process checkout.session.completed",
+            "Update UserProfile schema with plan (free/pro/commissioner) and stripeCustomerId",
+            "Wire 'Upgrade' button on /pricing to Checkout",
+            "Add success/cancel return URLs (/pricing?success=1)"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        },
+        {
+          "id": "email-subscribe-backend",
+          "title": "Email subscribe backend (POST /api/auth/subscribe)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Add EmailSubscription Prisma model: email, source, createdAt, unsubscribedAt",
+            "POST /api/auth/subscribe route validates email + upserts by email",
+            "Rate limit: 5 req/min per IP",
+            "Wire 'Notify Me' form on marketing landing page to this endpoint",
+            "Add admin endpoint GET /api/admin/subscribers to export list"
+          ],
+          "roadmapLink": "/roadmap#marketing"
+        },
+        {
+          "id": "feature-gating",
+          "title": "Feature gating based on plan (free/pro/commissioner)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Create requirePlan(plan) middleware checking req.user.plan",
+            "Gate AI features (Weekly Insights, Draft Report) behind 'pro'",
+            "Gate Commissioner tools (auction admin, force-assign) behind 'commissioner'",
+            "Show upgrade prompt on gated features in UI"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": "Content & SEO",
+      "description": "Blog posts, SEO pages, marketing collateral",
+      "tasks": [
+        {
+          "id": "blog-formatting-posts-2-5",
+          "title": "Apply blog formatting to posts 2-5",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "jimmy",
+          "instructions": [
+            "Post 1 has TL;DR + short-paragraph treatment; apply same to posts 2-5",
+            "Files: src/content/blog/*.md in thefantasticleagues-www repo",
+            "Add TL;DR frontmatter block at top, break paragraphs to 2-3 sentences max"
+          ],
+          "conceptLink": "/concepts#seo-pages"
+        },
+        {
+          "id": "seo-technical",
+          "title": "SEO technical: sitemap, robots.txt, JSON-LD",
+          "status": "in_progress",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Generate sitemap.xml at build time (Astro @astrojs/sitemap)",
+            "Add robots.txt allowing all, pointing to sitemap",
+            "Add JSON-LD Organization schema on homepage",
+            "Add JSON-LD BlogPosting schema on each post",
+            "Verify in Google Rich Results Test"
+          ],
+          "roadmapLink": "/roadmap#marketing",
+          "conceptLink": "/concepts#seo-pages"
+        },
+        {
+          "id": "ga4-search-console",
+          "title": "GA4 + Google Search Console setup",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "jimmy",
+          "instructions": [
+            "Create GA4 property for thefantasticleagues.com",
+            "Add GA4 measurement ID as env var, inject via script tag",
+            "Verify ownership in Search Console via DNS TXT record",
+            "Submit sitemap.xml to Search Console",
+            "Set up conversion events (signup, subscribe, upgrade)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "title": "Feature Development",
+      "description": "Trade assets, league management, gameplay",
+      "tasks": [
+        {
+          "id": "trade-pick-processing",
+          "title": "Trade PICK asset processing (schema exists, silently ignored)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "TradeItem.assetType PICK exists in schema but processing is a no-op",
+            "Add DraftPick model or use TradeItem metadata for round/season",
+            "On trade process: transfer pick ownership in DraftPick table",
+            "UI: render PICK assets in TradePage with 'Round X / 2027' format",
+            "Add to trade reversal logic"
+          ],
+          "roadmapLink": "/roadmap#features"
+        },
+        {
+          "id": "future-draft-dollars-asset",
+          "title": "Future draft dollars as trade asset",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Add assetType FUTURE_BUDGET to TradeItem union",
+            "New field: seasonYear (e.g., 2027)",
+            "On trade process: create pending budget adjustment linked to a future Season",
+            "At season start: apply pending adjustments to team.budget",
+            "UI: 'Give/Get $X toward 2027 budget' in TradeAssetSelector"
+          ],
+          "roadmapLink": "/roadmap#features"
+        },
+        {
+          "id": "waiver-picks-tradeable",
+          "title": "Waiver priority positions as trade asset",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "WAIVER_PRIORITY swap already supported (single-toggle in TradeAssetSelector)",
+            "Extend: allow trading specific priority positions forward (Period N priority)",
+            "Add priorityPeriodId to TradeItem",
+            "Process: store override in Team.waiverPriorityOverride scoped to period"
+          ],
+          "roadmapLink": "/roadmap#features"
+        }
+      ]
+    },
+    {
+      "id": "code-quality",
+      "title": "Code Quality & Tests",
+      "description": "Type safety, test coverage, refactors",
+      "tasks": [
+        {
+          "id": "fix-pre-existing-test-failures",
+          "title": "Fix pre-existing test failures (standings, mlbSync, archive, etc.)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Run npm run test:server to list failures",
+            "Fix standings/__tests__/routes.test.ts: GET /season test cases (2 failures)",
+            "Fix players/__tests__/mlbSyncService.test.ts: syncPositionEligibility (5 failures)",
+            "Fix archive, periods, roster, waivers route tests",
+            "Goal: 0 failing tests in npm run test"
+          ]
+        },
+        {
+          "id": "reduce-as-any-casts",
+          "title": "Reduce `as any` casts (~140 server + ~130 client)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Grep: 'as any' in server/src and client/src",
+            "Prioritize hottest files (auction/routes, Team.tsx)",
+            "Add proper interfaces/types where needed"
+          ]
+        },
+        {
+          "id": "auction-routes-extraction",
+          "title": "Extract auction/routes.ts (~870 LOC) — TD-Q03 deferred",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Real-time stateful system with in-memory state + timers; 72+ tests pass",
+            "Split into: auction/routes.ts (HTTP), auction/services/stateManager.ts (in-memory), auction/services/timers.ts",
+            "Ensure tests still pass after refactor"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "Operations & Audits",
+      "description": "Cron jobs, data audits, monitoring",
+      "tasks": [
+        {
+          "id": "fangraphs-audit-automation",
+          "title": "Automate FanGraphs weekly audit (currently manual)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Write script fetching FBST team stats + FanGraphs NL team stats",
+            "Compare all 10 categories, flag diffs > 5% or stat > 10 units",
+            "Run weekly via cron, email/post to admin",
+            "Store audit results in AuditLog for history"
+          ]
+        },
+        {
+          "id": "public-slug-endpoint-verify",
+          "title": "Verify no other references to removed public slug endpoint",
+          "status": "done",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Already removed in Session 62",
+            "Grep client and server for /public/leagues/:slug — no refs found",
+            "Route removed from public.ts"
+          ]
+        }
+      ]
+    }
+  ]
+}
