@@ -40,7 +40,7 @@ const stats = [
   { label: "Database Models", value: "49", icon: Database },
   { label: "API Route Handlers", value: "228", icon: Plug },
   { label: "Feature Modules", value: "26", icon: Layers },
-  { label: "Git Commits", value: "466+", icon: GitCommit },
+  { label: "Git Commits", value: "470+", icon: GitCommit },
   { label: "Tests Passing", value: "730", icon: TestTube },
   { label: "DB Schema Lines", value: "1,131", icon: Braces },
   { label: "DB Migrations", value: "15", icon: Database },

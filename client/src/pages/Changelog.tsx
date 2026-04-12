@@ -27,9 +27,42 @@ interface ChangelogEntry {
   title: string;
   highlights: string[];
   changes: { type: "feat" | "fix" | "perf" | "refactor" | "test" | "docs" | "security"; description: string }[];
+  todoLink?: string;
+  roadmapLink?: string;
+  conceptLink?: string;
 }
 
 const changelog: ChangelogEntry[] = [
+  {
+    version: "0.56.0",
+    date: "Apr 12, 2026",
+    session: "Session 62 (cont.)",
+    title: "Admin System, Draft Report Regen, Waiver Priority by Period, YouTube Fix",
+    highlights: [
+      "New /todo page — category-based micro-task tracker with cross-links to Roadmap/Concepts",
+      "Concepts page rebuilt with 4 tabs: Strategic / SEO Pages / Integrations / UX Mockups",
+      "Waiver priority UI now uses period-based standings (matches server processing logic)",
+      "Draft Report regenerated with admin bypass — all 8 teams graded A- to F",
+      "YouTube embeds switched to youtube-nocookie.com (fixes prod playback)",
+    ],
+    changes: [
+      { type: "feat", description: "Todo page (/todo) with 6 categories, 15 tasks, priority badges, cross-links, filters, step-by-step expand" },
+      { type: "feat", description: "Server API: GET/POST/PATCH/DELETE /api/admin/todos (requireAdmin, JSON-backed, audit logged)" },
+      { type: "feat", description: "AdminCrossNav component added to /todo /roadmap /concepts /changelog (See Todo · Roadmap · Concepts · Changelog)" },
+      { type: "feat", description: "Concepts page: tabbed layout (Strategic/SEO/Integrations/UX Mockups) with real content" },
+      { type: "feat", description: "Changelog entries now support todoLink/roadmapLink/conceptLink fields rendered as Related badges" },
+      { type: "feat", description: "GET /api/waiver-priority endpoint returns standings from most recent completed period (or active fallback)" },
+      { type: "fix", description: "Waiver priority UI: uses period-based standings, shows source indicator (completed/active/season fallback)" },
+      { type: "feat", description: "Draft Report admin bypass: ?force=true during IN_SEASON allows admin-only regeneration" },
+      { type: "feat", description: "regen-draft-report.ts script for direct AI regeneration outside HTTP flow" },
+      { type: "perf", description: "AI timeouts increased: Gemini 60s→90s, Anthropic 30s→90s, max_tokens 4096→8192" },
+      { type: "fix", description: "YouTube embed: switched to youtube-nocookie.com, removed origin= parameter (fixes prod playback)" },
+      { type: "refactor", description: "Orphaned GET /api/public/leagues/:slug endpoint removed (LeagueDetail page deleted in Session 61)" },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+    conceptLink: "/concepts",
+  },
   {
     version: "0.55.0",
     date: "Apr 10, 2026",
@@ -48,6 +81,8 @@ const changelog: ChangelogEntry[] = [
       { type: "fix", description: "Team.tsx: replaced local SLOT_ORDER with shared POS_SCORE, added pitcher position sort (SP before RP then price)" },
       { type: "test", description: "Transaction test mock: added $queryRaw to mockTx (was missing, caused test failures)" },
     ],
+    todoLink: "/todo#code-quality",
+    roadmapLink: "/roadmap",
   },
   {
     version: "0.53.0",
@@ -1037,6 +1072,26 @@ function ChangelogRelease({ entry }: { entry: ChangelogEntry }) {
               </div>
             );
           })}
+          {(entry.todoLink || entry.roadmapLink || entry.conceptLink) && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 pl-3">
+              <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Related:</span>
+              {entry.todoLink && (
+                <Link to={entry.todoLink} className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20">
+                  → Todo
+                </Link>
+              )}
+              {entry.roadmapLink && (
+                <Link to={entry.roadmapLink} className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20">
+                  → Roadmap
+                </Link>
+              )}
+              {entry.conceptLink && (
+                <Link to={entry.conceptLink} className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30 hover:bg-fuchsia-500/20">
+                  → Concept
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

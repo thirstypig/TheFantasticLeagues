@@ -4,6 +4,23 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-12 (Session 62 cont.) — Admin System, Draft Report, Waiver Priority, YouTube Fix
+
+### Completed
+- **Admin interconnected system** — new `/todo` page (category-based micro-tasks), Concepts rebuilt with 4 tabs (Strategic/SEO/Integrations/UX Mockups), AdminCrossNav shared across all 4 admin pages, Changelog cross-links
+- **Waiver priority by period** — server already used most-recent-completed-period; UI was wrong (showing season cumulative). New GET /api/waiver-priority endpoint + UI match
+- **Draft Report regenerated** — admin bypass for IN_SEASON force=true, AI timeouts 60s→90s, max_tokens 4096→8192, regen script
+- **YouTube on production** — switched to youtube-nocookie.com, removed origin= param (fixed prod playback)
+- **Orphaned slug endpoint removed** — GET /api/public/leagues/:slug cleaned up (LeagueDetail page removed in Session 61)
+- **Top 100 prospects sync** — verified already working via syncAAARosters (Konnor Griffin in DB with full data)
+
+### Test Results
+- Server: TypeScript clean
+- Client: TypeScript clean
+- Commits: 5 (cd26316, 182ab9a, c70bd35, 18111c0, 2359d73)
+
+---
+
 ## Session 2026-04-10 (Session 62) — Quick Wins: Auction Enrichment, Add/Drop Fix, Position Sort, Standings Verified
 
 ### Completed
