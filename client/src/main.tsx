@@ -12,6 +12,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 import { LeagueProvider } from "./contexts/LeagueContext";
 import { PostHogTracker } from "./components/PostHogTracker";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import ErrorProvider from "./components/ErrorProvider";
 import { initPostHog } from "./lib/posthog";
 
 // Initialize PostHog before render
@@ -20,18 +21,20 @@ initPostHog();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary name="root">
-      <BrowserRouter>
-        <AuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <LeagueProvider>
-                <PostHogTracker />
-                <App />
-              </LeagueProvider>
-            </ToastProvider>
-          </ThemeProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <ErrorProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <LeagueProvider>
+                  <PostHogTracker />
+                  <App />
+                </LeagueProvider>
+              </ToastProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ErrorProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

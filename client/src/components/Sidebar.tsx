@@ -8,7 +8,14 @@ import { Logo } from "./ui/Logo";
 // ─── Types ───
 
 type NavItem = { to: string; label: string; show?: boolean; disabled?: boolean; disabledTip?: string };
-type NavSection = { title: string; items: NavItem[]; collapsible?: boolean; defaultOpen?: boolean };
+type NavSubgroup = { title: string; items: NavItem[] };
+type NavSection = {
+  title: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  items?: NavItem[];
+  groups?: NavSubgroup[];
+};
 
 export interface SidebarProps {
   user: { name?: string | null; email?: string | null; avatarUrl?: string | null; isAdmin?: boolean } | null;
@@ -230,8 +237,13 @@ export default function Sidebar({
 
         <nav className="flex-1 space-y-1 overflow-y-auto" aria-label="Main navigation">
           {navSections.map((section) => {
-            const visibleItems = section.items.filter((item) => item.show !== false);
-            if (visibleItems.length === 0) return null;
+            // Normalize: flat items OR grouped items
+            const flatItems = (section.items ?? []).filter((item) => item.show !== false);
+            const visibleGroups = (section.groups ?? [])
+              .map((g) => ({ ...g, items: g.items.filter((i) => i.show !== false) }))
+              .filter((g) => g.items.length > 0);
+            const totalVisible = flatItems.length + visibleGroups.reduce((n, g) => n + g.items.length, 0);
+            if (totalVisible === 0) return null;
 
             const isCollapsible = section.collapsible && sidebarOpen;
             const isOpen = !isCollapsible || !(collapsedSections[section.title] ?? !section.defaultOpen);
@@ -261,7 +273,26 @@ export default function Sidebar({
                 )}
                 {isOpen && (
                   <div className="space-y-0.5">
-                    {visibleItems.map(renderNavLink)}
+                    {flatItems.map(renderNavLink)}
+                    {visibleGroups.map((group, gi) => (
+                      <div key={group.title} className={gi > 0 || flatItems.length > 0 ? "pt-2 mt-2" : ""}>
+                        {sidebarOpen ? (
+                          <>
+                            {(gi > 0 || flatItems.length > 0) && (
+                              <div className="h-px bg-[var(--lg-border-faint)] mx-2 mb-2" />
+                            )}
+                            <div className="text-[10px] uppercase tracking-wider text-[var(--lg-text-muted)] px-3 py-1 opacity-70">
+                              {group.title}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="h-px bg-[var(--lg-border-faint)] mx-2 my-1" />
+                        )}
+                        <div className="space-y-0.5">
+                          {group.items.map(renderNavLink)}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

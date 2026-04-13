@@ -55,6 +55,7 @@ import { syncAllPlayers, syncAAARosters } from './features/players/services/mlbS
 import { attachAuctionWs } from './features/auction/services/auctionWsService.js';
 import { attachDraftWs } from './features/draft/services/draftWsService.js';
 import { syncAllActivePeriods, syncDailyStats } from './features/players/services/mlbStatsSyncService.js';
+import * as errorBuffer from './lib/errorBuffer.js';
 
 // Validate required env vars at startup
 const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET"];
@@ -118,10 +119,17 @@ async function main() {
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
-  // Request ID tracking (validate format: alphanumeric + dashes, max 64 chars)
-  app.use((req, _res, next) => {
+  // Request ID tracking — accepts a client-supplied id (validated) or generates
+  // an 8-char hex so it's easy for a user to read/copy from an error toast.
+  // Always echoed back via X-Request-Id so the client can correlate with logs.
+  app.use((req, res, next) => {
     const clientId = String(req.headers["x-request-id"] || "").slice(0, 64);
-    req.requestId = /^[a-zA-Z0-9_-]+$/.test(clientId) ? clientId : crypto.randomUUID();
+    req.requestId = /^[a-zA-Z0-9_-]+$/.test(clientId) && clientId.length > 0
+      ? clientId
+      : crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+    res.setHeader("X-Request-Id", req.requestId);
+    // Expose the header to cross-origin fetchers so browser JS can read it
+    res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
     next();
   });
 
@@ -318,14 +326,46 @@ async function main() {
 
   // --- 2. 404 Handler for API routes (Keep this Strict) ---
   app.use("/api/*", (req, res) => {
-    res.status(404).json({ error: "API endpoint not found" });
+    res.status(404).json({ error: "API endpoint not found", requestId: req.requestId });
   });
 
   // --- 4. Global Error Handler ---
   app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error({ error: message, path: req.path }, "Unhandled error");
-    res.status(500).json({ error: "Internal Server Error" });
+    const stack = err instanceof Error ? err.stack : undefined;
+    const requestId = req.requestId ?? "unknown";
+    const ref = `ERR-${requestId}`;
+
+    // 1. Log (unchanged — logs remain the compliance source of truth)
+    logger.error(
+      { error: message, stack, ref, path: req.path, method: req.method, requestId, userId: req.user?.id },
+      "Unhandled error",
+    );
+
+    // 2. Push to in-memory ring buffer for the admin dashboard
+    errorBuffer.push({
+      ref,
+      requestId,
+      message,
+      stack: stack ? stack.slice(0, 4096) : null,
+      path: req.path,
+      method: req.method,
+      userId: req.user?.id ?? null,
+      userEmail: req.user?.email ?? null,
+      statusCode: 500,
+      timestamp: new Date().toISOString(),
+    });
+
+    // 3. Response envelope: everyone gets ref + requestId; admins get `detail`.
+    const body: { error: string; requestId: string; ref: string; detail?: string } = {
+      error: "Internal Server Error",
+      requestId,
+      ref,
+    };
+    if (req.user?.isAdmin === true) {
+      body.detail = message;
+    }
+    res.status(500).json(body);
   });
 
   // --- 3. SPA Catch-All (For React Routing) ---

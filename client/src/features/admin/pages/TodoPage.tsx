@@ -196,20 +196,29 @@ export default function TodoPage() {
                     isCollapsed ? n.delete(cat.id) : n.add(cat.id);
                     return n;
                   })}
-                  className="w-full flex items-center justify-between p-4 hover:bg-[var(--lg-bg-card)] transition-colors text-left"
+                  className="w-full p-4 hover:bg-[var(--lg-bg-card)] transition-colors text-left"
                 >
-                  <div className="flex items-center gap-3">
-                    {isCollapsed ? <ChevronRight size={16} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={16} className="text-[var(--lg-text-muted)]" />}
-                    <div>
-                      <h3 className="text-sm font-bold text-[var(--lg-text-heading)]">{cat.title}</h3>
-                      <p className="text-xs text-[var(--lg-text-muted)] mt-0.5">{cat.description}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {isCollapsed ? <ChevronRight size={16} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={16} className="text-[var(--lg-text-muted)]" />}
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-[var(--lg-text-heading)]">{cat.title}</h3>
+                        <p className="text-xs text-[var(--lg-text-muted)] mt-0.5">{cat.description}</p>
+                      </div>
                     </div>
+                    <span className="text-xs font-bold text-[var(--lg-text-muted)] tabular-nums shrink-0">{cDone}/{cTotal}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[var(--lg-text-muted)]">{cDone}/{cTotal}</span>
-                    <div className="h-1.5 w-20 bg-[var(--lg-bg)] rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 transition-all" style={{ width: `${cTotal > 0 ? (cDone / cTotal) * 100 : 0}%` }} />
+                  {/* Full-width progress bar for this category */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="h-1 flex-1 bg-[var(--lg-border-faint)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 transition-all"
+                        style={{ width: `${cTotal > 0 ? (cDone / cTotal) * 100 : 0}%` }}
+                      />
                     </div>
+                    <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums shrink-0">
+                      {cTotal > 0 ? Math.round((cDone / cTotal) * 100) : 0}%
+                    </span>
                   </div>
                 </button>
 

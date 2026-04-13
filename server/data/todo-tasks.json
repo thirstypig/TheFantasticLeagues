@@ -18,7 +18,7 @@
             "Point custom domain thefantasticleagues.com at GitHub Pages (CNAME file)",
             "Verify HTTPS certificate provisioning and redirect from apex"
           ],
-          "roadmapLink": "/roadmap#marketing",
+          "roadmapLink": "/roadmap#monetization",
           "targetDate": "2026-04-15",
           "updatedAt": "2026-04-12T22:19:46.596Z"
         },
@@ -33,7 +33,7 @@
             "Trigger: workflow rebuilds the marketing site so date-gated blog posts appear",
             "Verify in dry run with manual workflow_dispatch trigger"
           ],
-          "roadmapLink": "/roadmap#marketing"
+          "roadmapLink": "/roadmap#monetization"
         }
       ]
     },
@@ -86,7 +86,7 @@
             "Wire 'Notify Me' form on marketing landing page to this endpoint",
             "Add admin endpoint GET /api/admin/subscribers to export list"
           ],
-          "roadmapLink": "/roadmap#marketing"
+          "roadmapLink": "/roadmap#monetization"
         },
         {
           "id": "feature-gating",
@@ -135,7 +135,7 @@
             "Add JSON-LD BlogPosting schema on each post",
             "Verify in Google Rich Results Test"
           ],
-          "roadmapLink": "/roadmap#marketing",
+          "roadmapLink": "/roadmap#monetization",
           "conceptLink": "/concepts#seo-pages"
         },
         {

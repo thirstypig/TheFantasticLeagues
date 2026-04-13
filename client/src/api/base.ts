@@ -1,6 +1,71 @@
 
 import { JsonError } from './types';
 
+/**
+ * Thrown by fetchJsonApi when the server returns non-2xx or the response
+ * body isn't valid JSON. Carries enough context for the user-facing error
+ * UI to show a copyable error code that matches server logs.
+ *
+ * Two correlation strings are surfaced:
+ *   - `ref`: user-visible ERR-prefixed code (e.g. "ERR-a3f7b291"). Prefer
+ *     this in UI and when users paste codes back to support.
+ *   - `requestId`: the raw prefix-less id. Useful for log grep queries
+ *     where the prefix is noise.
+ *
+ * `detail` is populated only when the caller is an admin — the server
+ * includes the true error message instead of the generic envelope.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly url: string;
+  readonly requestId: string | null;
+  readonly ref: string | null;
+  readonly detail: string | null;
+  readonly body: unknown;
+  readonly serverMessage: string | null;
+
+  constructor(params: {
+    message: string;
+    status: number;
+    url: string;
+    requestId: string | null;
+    ref?: string | null;
+    detail?: string | null;
+    body: unknown;
+    serverMessage?: string | null;
+  }) {
+    super(params.message);
+    this.name = "ApiError";
+    this.status = params.status;
+    this.url = params.url;
+    this.requestId = params.requestId;
+    this.ref = params.ref ?? null;
+    this.detail = params.detail ?? null;
+    this.body = params.body;
+    this.serverMessage = params.serverMessage ?? null;
+  }
+
+  /**
+   * Best display code for the toast / error boundary / copy-to-clipboard.
+   * Prefers the ERR-prefixed form; falls back to raw requestId if the
+   * server is older and didn't populate `ref`.
+   */
+  displayCode(): string | null {
+    return this.ref ?? (this.requestId ? `ERR-${this.requestId}` : null);
+  }
+}
+
+/**
+ * Module-level ref holding the most recent X-Request-Id observed on any API
+ * response. React error boundaries use this to surface a code even when they
+ * catch a non-ApiError (e.g. a TypeError from bad render code). It's a best-
+ * effort correlation — not a guarantee the error is tied to that request.
+ */
+let lastRequestId: string | null = null;
+export function getLastRequestId(): string | null {
+  return lastRequestId;
+}
+
 const RAW_BASE: string =
   import.meta.env.VITE_API_BASE ??
   import.meta.env.VITE_API_BASE_URL ??
@@ -43,6 +108,9 @@ export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<
     credentials: "omit", // Supabase uses headers, not cookies
   });
 
+  const requestId = res.headers.get("x-request-id");
+  if (requestId) lastRequestId = requestId;
+
   const text = await res.text();
   const maybeJson = (() => {
     try {
@@ -53,11 +121,29 @@ export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<
   })();
 
   if (!res.ok) {
-    const errorBody = maybeJson as JsonError | null;
+    const errorBody = maybeJson as
+      | (JsonError & { requestId?: string; ref?: string; detail?: string })
+      | null;
+    const serverMessage = (errorBody && (errorBody.error || errorBody.message)) || null;
+    const bodyRequestId = errorBody?.requestId ?? null;
+    const bodyRef = errorBody?.ref ?? null;
+    const bodyDetail = errorBody?.detail ?? null;
+    // When the caller is an admin, the server includes `detail` with the real
+    // error message. Prefer it over the generic envelope for display.
     const msg =
-      (errorBody && (errorBody.error || errorBody.message)) ||
+      bodyDetail ||
+      serverMessage ||
       (text ? `HTTP ${res.status} for ${url} — ${text.slice(0, 180)}` : `HTTP ${res.status} for ${url}`);
-    throw new Error(msg);
+    throw new ApiError({
+      message: msg,
+      status: res.status,
+      url,
+      requestId: requestId ?? bodyRequestId,
+      ref: bodyRef,
+      detail: bodyDetail,
+      body: maybeJson ?? text,
+      serverMessage,
+    });
   }
 
   return (maybeJson ?? ({} as T)) as T;
@@ -69,6 +155,9 @@ export async function fetchJsonPublic<T>(url: string): Promise<T> {
     credentials: "omit",
   });
 
+  const requestId = res.headers.get("x-request-id");
+  if (requestId) lastRequestId = requestId;
+
   const text = await res.text();
   const maybeJson = (() => {
     try {
@@ -79,11 +168,29 @@ export async function fetchJsonPublic<T>(url: string): Promise<T> {
   })();
 
   if (!res.ok) {
-    const errorBody = maybeJson as JsonError | null;
+    const errorBody = maybeJson as
+      | (JsonError & { requestId?: string; ref?: string; detail?: string })
+      | null;
+    const serverMessage = (errorBody && (errorBody.error || errorBody.message)) || null;
+    const bodyRequestId = errorBody?.requestId ?? null;
+    const bodyRef = errorBody?.ref ?? null;
+    const bodyDetail = errorBody?.detail ?? null;
+    // When the caller is an admin, the server includes `detail` with the real
+    // error message. Prefer it over the generic envelope for display.
     const msg =
-      (errorBody && (errorBody.error || errorBody.message)) ||
+      bodyDetail ||
+      serverMessage ||
       (text ? `HTTP ${res.status} for ${url} — ${text.slice(0, 180)}` : `HTTP ${res.status} for ${url}`);
-    throw new Error(msg);
+    throw new ApiError({
+      message: msg,
+      status: res.status,
+      url,
+      requestId: requestId ?? bodyRequestId,
+      ref: bodyRef,
+      detail: bodyDetail,
+      body: maybeJson ?? text,
+      serverMessage,
+    });
   }
 
   return (maybeJson ?? ({} as T)) as T;

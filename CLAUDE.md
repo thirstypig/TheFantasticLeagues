@@ -177,11 +177,15 @@ When adding cross-feature imports, document them here to maintain visibility.
 ## Shared Infrastructure (do NOT move into features)
 - `server/src/middleware/auth.ts` — global auth (attachUser, requireAuth, requireAdmin, requireLeagueRole, requireFranchiseCommissioner)
 - `server/src/middleware/seasonGuard.ts` — `requireSeasonStatus(allowedStatuses, leagueIdSource)` — enforces season-phase constraints on write endpoints
-- `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts, auditLog.ts, emailService.ts
+- `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts, auditLog.ts, emailService.ts, **errorBuffer.ts** (100-entry ring buffer for admin error dashboard, push/list/find with ERR- prefix normalization)
 - `server/src/db/prisma.ts` — Prisma singleton
 - `client/src/auth/AuthProvider.tsx` — global React auth context
-- `client/src/api/base.ts` — fetchJsonApi, API_BASE config
+- `client/src/api/base.ts` — fetchJsonApi, API_BASE config, **`ApiError` class** (status, url, requestId, ref, detail, body, serverMessage, displayCode()), **`getLastRequestId()`** for cross-effect correlation
 - `client/src/api/types.ts` — shared API response/request types
+- `client/src/lib/errorBus.ts` — pub/sub error surface; `reportError(err, { source })` normalizes any thrown value; subscribe via `subscribeErrors(listener)`
+- `client/src/components/ErrorProvider.tsx` — root-mounted subscriber that renders `<ErrorToast>` stack; must wrap everything in main.tsx
+- `client/src/components/ErrorToast.tsx` — dismissible toast showing ERR-prefixed code with click-to-copy, auto-dismiss 12s, hover pauses
+- `client/src/components/ErrorBoundary.tsx` — React render-error boundary; calls `getLastRequestId()` + `reportError()` on catch
 - `client/src/components/ui/` — shadcn-style UI primitives (table.tsx has 3-tier density: compact/default/comfortable)
 - `client/src/components/ui/SortableHeader.tsx` — accessible sortable header (`<button>` in `<th>`, `aria-sort`, generic `<K extends string>`)
 - `client/src/components/ui/ThemedTable.tsx` — ThemedTable supports `density` and `zebra` props
@@ -214,7 +218,9 @@ When adding cross-feature imports, document them here to maintain visibility.
 - **Admin-only endpoints** (waiver processing, trade processing) use `requireAdmin`
 - **Middleware ordering**: `requireAuth → validateBody(schema) → requireSeasonStatus([...]) → requireTeamOwner/requireLeagueMember → asyncHandler(fn)`. Validation runs before season guard and authorization because both read from `req.body`. Season guard placed after validation so leagueId/teamId are parsed. For param-based auth (e.g., `requireCommissionerOrAdmin()`), auth runs before validation.
 - **Season-gated endpoints** use `requireSeasonStatus(["DRAFT"])` or `requireSeasonStatus(["IN_SEASON"], "body.teamId")` — auction nominate/bid require DRAFT, trade propose and waiver submit require IN_SEASON
-- **Error responses MUST NOT leak internal details** — return `{ error: "Internal Server Error" }` for 500s; log details server-side via `logger`
+- **Error responses MUST NOT leak internal details** — return `{ error: "Internal Server Error", requestId, ref }` for 500s; admins (`req.user?.isAdmin === true`) additionally get `detail: message`; log details server-side via `logger` with `{ ref, requestId, path, method, userId }`
+- **Request correlation** — every request gets an 8-char hex `req.requestId` set by middleware in `server/src/index.ts`; always echoed back via `X-Request-Id` response header (exposed to browser JS via `Access-Control-Expose-Headers`). User-facing code is `ERR-${requestId}`. Every 500 also pushes a record into the in-memory `errorBuffer` (capacity 100, newest-first, admin-visible at `GET /api/admin/errors`).
+- **Client-side error surface** — thrown `ApiError` (not plain `Error`) carries `status`, `url`, `requestId`, `ref`, `detail`, `body`, `serverMessage`. Callers that want the toast to appear should call `reportError(err, { source: "feature-name" })` from `client/src/lib/errorBus.ts`. `ErrorProvider` must wrap the app root in `main.tsx`.
 - **Required env vars** (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`) validated at startup — server exits if missing
 - **Dev-only endpoints** gated behind explicit env vars (e.g., `ENABLE_DEV_LOGIN=true`), never `NODE_ENV` checks
 

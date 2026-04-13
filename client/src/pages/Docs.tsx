@@ -22,7 +22,6 @@ import {
 import claudeMd from "../../../CLAUDE.md?raw";
 import readmeMd from "../../../README.md?raw";
 import feedbackMd from "../../../FEEDBACK.md?raw";
-import todoMd from "../../../TODO.md?raw";
 
 // docs/ directory
 import howto from "../../../docs/howto.md?raw";
@@ -57,7 +56,6 @@ const docs: DocEntry[] = [
   { name: "CLAUDE.md", filename: "CLAUDE.md", content: claudeMd, category: "root", icon: Terminal, description: "Project conventions, architecture, and coding guidelines" },
   { name: "README.md", filename: "README.md", content: readmeMd, category: "root", icon: BookOpen, description: "Project overview and getting started" },
   { name: "FEEDBACK.md", filename: "FEEDBACK.md", content: feedbackMd, category: "root", icon: History, description: "Session-by-session development log" },
-  { name: "TODO.md", filename: "TODO.md", content: todoMd, category: "root", icon: Settings, description: "Technical debt tracker and feature backlog" },
   // docs/ directory
   { name: "How-To Guides", filename: "docs/howto.md", content: howto, category: "docs", icon: BookOpen, description: "Step-by-step guides for common tasks" },
   { name: "Architecture Decisions", filename: "docs/decisions.md", content: decisions, category: "docs", icon: Layers, description: "Why behind key architectural choices" },

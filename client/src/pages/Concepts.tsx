@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   ChevronRight,
   Users,
@@ -17,6 +17,7 @@ import {
 import { useLeague } from "../contexts/LeagueContext";
 import LeagueBoard from "../features/board/components/LeagueBoard";
 import AdminCrossNav from "../features/admin/components/AdminCrossNav";
+import RelatedTodos from "../features/admin/components/RelatedTodos";
 
 /* ── Strategic concepts ──────────────────────────────────────── */
 
@@ -242,9 +243,37 @@ const MARKETPLACE_CARDS = [
 
 export default function Concepts() {
   const { leagueId } = useLeague();
+  const { hash } = useLocation();
   const [tab, setTab] = useState<TabId>("strategic");
   const [expandedConcept, setExpandedConcept] = useState<string | null>(null);
   const [expandedMockup, setExpandedMockup] = useState<string | null>(null);
+
+  // Deep-link support: /concepts#pricing auto-switches to the Strategic tab,
+  // expands the matching concept, and scrolls to it. Also supports #seo-pages
+  // etc. to jump to the SEO tab.
+  useEffect(() => {
+    if (!hash) return;
+    const target = hash.replace(/^#/, "");
+    // Tab alias shortcuts
+    const tabAliases: Record<string, TabId> = {
+      "seo-pages": "seo",
+      seo: "seo",
+      integrations: "integrations",
+      mockups: "mockups",
+      strategic: "strategic",
+    };
+    if (tabAliases[target]) {
+      setTab(tabAliases[target]);
+    }
+    // Concept id → switch to Strategic tab + expand
+    const concept = STRATEGIC.find((c) => c.id === target);
+    if (concept) {
+      setTab("strategic");
+      setExpandedConcept(concept.id);
+    }
+    const el = document.getElementById(target);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [hash]);
 
   return (
     <div className="px-4 py-6 md:px-6 md:py-10 max-w-6xl mx-auto space-y-8">
@@ -289,7 +318,7 @@ export default function Concepts() {
             const expanded = expandedConcept === c.id;
             const phaseStyle = PHASE_STYLE[c.phase];
             return (
-              <div key={c.id} id={c.id} className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl overflow-hidden">
+              <div key={c.id} id={c.id} className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl overflow-hidden scroll-mt-24">
                 <button
                   onClick={() => setExpandedConcept(expanded ? null : c.id)}
                   className="w-full p-4 text-left hover:bg-[var(--lg-bg-card)] transition-colors"
@@ -305,6 +334,31 @@ export default function Concepts() {
                 {expanded && (
                   <div className="px-4 pb-4 border-t border-[var(--lg-border-faint)] pt-3 space-y-3">
                     <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{c.description}</p>
+                    {c.id === "pricing" && (
+                      <div className="rounded-md border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--lg-text-muted)]">Tier summary</span>
+                          <Link to="/pricing" className="text-[10px] text-[var(--lg-accent)] hover:underline">
+                            Full pricing page →
+                          </Link>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="rounded border border-[var(--lg-border-subtle)] p-2">
+                            <div className="font-semibold text-[var(--lg-text-primary)]">Free</div>
+                            <div className="text-[var(--lg-text-muted)] text-[10px]">$0 · core league play · up to 2 leagues</div>
+                          </div>
+                          <div className="rounded border border-[var(--lg-accent)]/40 bg-[var(--lg-accent)]/5 p-2">
+                            <div className="font-semibold text-[var(--lg-text-primary)]">Pro · $29/season</div>
+                            <div className="text-[var(--lg-text-muted)] text-[10px]">AI draft report · trade advisor · Statcast</div>
+                          </div>
+                          <div className="rounded border border-[var(--lg-border-subtle)] p-2">
+                            <div className="font-semibold text-[var(--lg-text-primary)]">Commissioner · $49/season</div>
+                            <div className="text-[var(--lg-text-muted)] text-[10px]">Everything in Pro · auction admin · custom rules</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <RelatedTodos kind="concept" anchor={c.id} />
                     {c.competitors && (
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Competitors:</span>

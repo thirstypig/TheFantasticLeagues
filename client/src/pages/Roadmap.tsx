@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import AdminCrossNav from "../features/admin/components/AdminCrossNav";
+import RelatedTodos from "../features/admin/components/RelatedTodos";
 import {
   CheckCircle2,
   Circle,
@@ -49,6 +50,8 @@ interface RoadmapItem {
 }
 
 interface RoadmapPhase {
+  /** Stable anchor id — used by todos + concepts to deep-link (/roadmap#<id>). */
+  id: string;
   label: string;
   timeframe: string;
   color: string;
@@ -60,6 +63,7 @@ interface RoadmapPhase {
 
 const productRoadmap: RoadmapPhase[] = [
   {
+    id: "engagement",
     label: "In-Season 2026 — Engagement & Remote UX",
     timeframe: "April – September 2026",
     color: "text-emerald-400",
@@ -134,6 +138,7 @@ const productRoadmap: RoadmapPhase[] = [
     ],
   },
   {
+    id: "data",
     label: "Paid APIs & Data Integrations",
     timeframe: "Summer 2026",
     color: "text-amber-400",
@@ -176,6 +181,7 @@ const productRoadmap: RoadmapPhase[] = [
     ],
   },
   {
+    id: "features",
     label: "Scoring & Format Expansion",
     timeframe: "Late 2026",
     color: "text-cyan-400",
@@ -226,6 +232,7 @@ const productRoadmap: RoadmapPhase[] = [
     ],
   },
   {
+    id: "monetization",
     label: "Monetization & Growth",
     timeframe: "2027 Season Launch",
     color: "text-pink-400",
@@ -268,6 +275,7 @@ const productRoadmap: RoadmapPhase[] = [
     ],
   },
   {
+    id: "platform",
     label: "Platform Evolution",
     timeframe: "2027+",
     color: "text-purple-400",
@@ -565,6 +573,18 @@ function effortBadge(effort: string) {
 
 function ProductRoadmapSection() {
   const [expandedPhase, setExpandedPhase] = useState<number | null>(0);
+  const { hash } = useLocation();
+
+  // Deep-link support: /roadmap#monetization auto-expands and scrolls.
+  useEffect(() => {
+    if (!hash) return;
+    const target = hash.replace(/^#/, "");
+    const idx = productRoadmap.findIndex((p) => p.id === target);
+    if (idx >= 0) setExpandedPhase(idx);
+    // defer scroll until the panel has expanded
+    const el = document.getElementById(target);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [hash]);
 
   return (
     <div className="space-y-4">
@@ -588,7 +608,8 @@ function ProductRoadmapSection() {
           return (
             <div
               key={phase.label}
-              className={`rounded-lg border ${phase.borderColor} ${phase.bgColor} overflow-hidden`}
+              id={phase.id}
+              className={`rounded-lg border ${phase.borderColor} ${phase.bgColor} overflow-hidden scroll-mt-24`}
             >
               <button
                 onClick={() => setExpandedPhase(isOpen ? null : phaseIdx)}
@@ -624,6 +645,7 @@ function ProductRoadmapSection() {
 
               {isOpen && (
                 <div className="px-4 pb-4 space-y-2">
+                  <RelatedTodos kind="roadmap" anchor={phase.id} />
                   {phase.items.map((item) => {
                     const ItemIcon = item.icon;
                     return (

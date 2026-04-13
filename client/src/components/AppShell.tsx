@@ -18,7 +18,14 @@ const SIDEBAR_MAX = 320;
 const SIDEBAR_SNAP_THRESHOLD = 100;
 
 type NavItem = { to: string; label: string; show?: boolean; disabled?: boolean; disabledTip?: string };
-type NavSection = { title: string; items: NavItem[]; collapsible?: boolean; defaultOpen?: boolean };
+type NavSubgroup = { title: string; items: NavItem[] };
+type NavSection = {
+  title: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  items?: NavItem[];            // flat list (current layout)
+  groups?: NavSubgroup[];       // subgroup headers inside a section (e.g. Admin)
+};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
@@ -136,18 +143,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       items: [
         { to: "/payouts", label: "Payouts", show: true },
         { to: "/archive", label: "Archive", show: true },
+        { to: `/commissioner/${leagueId}`, label: "Commissioner", show: canAccessCommissioner },
         { to: "/about", label: "About", show: true },
         { to: "/guide", label: "Guide", show: true },
-      ],
-    },
-    {
-      title: "Manage",
-      collapsible: true,
-      defaultOpen: false,
-      items: [
-        { to: `/commissioner/${leagueId}`, label: "Commissioner", show: canAccessCommissioner },
-        { to: "/admin", label: "Admin", show: Boolean(user?.isAdmin) },
-        { to: "/todo", label: "Todo", show: Boolean(user?.isAdmin) },
       ],
     },
     {
@@ -155,14 +153,41 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       collapsible: true,
       defaultOpen: false,
       items: [
-        { to: "/community", label: "Community", show: true },
-        { to: "/concepts", label: "Concepts Lab", show: true },
-        { to: "/pricing", label: "Pricing", show: true },
-        { to: "/changelog", label: "Changelog", show: true },
         { to: "/roadmap", label: "Roadmap", show: true },
+        { to: "/concepts", label: "Concepts Lab", show: true },
+        { to: "/changelog", label: "Changelog", show: true },
         { to: "/status", label: "Status", show: true },
-        { to: "/tech", label: "Under the Hood", show: Boolean(user?.isAdmin) },
-        { to: "/docs", label: "Docs", show: Boolean(user?.isAdmin) },
+        { to: "/community", label: "Community", show: true },
+      ],
+    },
+    {
+      title: "Admin",
+      collapsible: true,
+      defaultOpen: false,
+      groups: [
+        {
+          title: "Operations",
+          items: [
+            { to: "/admin", label: "Dashboard", show: Boolean(user?.isAdmin) },
+            { to: "/admin/users", label: "Users", show: Boolean(user?.isAdmin) },
+          ],
+        },
+        {
+          title: "Planning",
+          items: [
+            { to: "/todo", label: "Todo", show: Boolean(user?.isAdmin) },
+            { to: "/docs", label: "Docs", show: Boolean(user?.isAdmin) },
+          ],
+        },
+        {
+          title: "Reference",
+          items: [
+            { to: "/changelog", label: "Changelog", show: Boolean(user?.isAdmin) },
+            { to: "/status", label: "Status", show: Boolean(user?.isAdmin) },
+            { to: "/analytics", label: "Analytics", show: Boolean(user?.isAdmin) },
+            { to: "/tech", label: "Under the Hood", show: Boolean(user?.isAdmin) },
+          ],
+        },
       ],
     },
   ];

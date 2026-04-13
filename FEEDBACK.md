@@ -4,6 +4,77 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-13 (Session 63) — Launch Readiness, Admin IA, Error Correlation, Dashboard Rebuild
+
+### Completed
+
+**Launch-readiness analysis + plan docs**
+- Wrote comprehensive launch-readiness audit: Sentry/PostHog/Stripe/GSC status, 7 scale chokepoints, stress-test plan, admin users spec, 8 integration prompts, 18 open questions for Jimmy
+- Wrote `docs/plans/2026-04-13-admin-users-session-tracking-plan.md` with UserSession + UserMetrics Prisma design. Ran `/deepen-plan` with 4 parallel agents (security-sentinel, performance-oracle, data-integrity-guardian, best-practices-researcher). Folded 19 material revisions back into the plan:
+  - Int PK not cuid (R2), one session per browser via BroadcastChannel (R3), 30s cadence (R4), no per-heartbeat rollup (R5), no lastSeenAt index for HOT updates (R6), fetch-keepalive over sendBeacon (R7), HMAC-hashed IPs with 7d raw retention (R8), 20/min heartbeat rate limit (R9), denormalized league counts (R10), upsert for first login (R11), idempotent sweeper (R12), impersonation P0 with dual-identity JWT (R13), admin table sort lastSeenAt DESC (R14), PostHog hybrid keep (R15), UserDeletionLog non-cascading (R16), LOGIN in AuditLog (R17), LIMIT 10000 retention purge (R18), backfill labeled lastActivityAt (R19)
+  - All 4 agent reviews appended as Appendices A-D verbatim
+  - Schema conflict resolved: single UserSession model (not split into UserPresence + UserSessionArchive) with no-index-on-lastSeenAt pattern satisfies both data-integrity and performance goals
+  - Awaiting @jimmy approval to run migration
+
+**Admin IA restructure**
+- Side nav: dissolved "Manage" (1-item section smell), created dedicated "Admin" section for admin-only pages, three sub-groups (Operations / Planning / Reference)
+- `/admin` tab "Product Roadmap" renamed "Launch Milestones" — eliminated collision with /roadmap page. Added disambiguation subtitle linking /todo and /roadmap
+- Quick-link bar on /admin rebuilt around admin destinations (Users, Todo, Analytics, Status, Under the Hood)
+- Pricing removed from side nav (kept as public /pricing route for Login/Signup); inline tier summary embedded in Concepts' pricing concept card
+- TODO.md dropped from /docs (redundant with /todo interactive page)
+- Stable anchor IDs on Roadmap phases (engagement/data/features/monetization/platform) and Concept cards
+- Hash-scroll + auto-expand on /roadmap#monetization, /concepts#pricing etc.
+- New `RelatedTodos` component: reverse cross-link panel on Roadmap phases + Concept cards, admin-only, module-level fetch cache for multiple instances per page
+- `server/data/todo-tasks.json`: 4 occurrences of `#marketing` → `#monetization` (matches actual phase id)
+
+**Admin dashboard rebuild** (parallel agents)
+- API contract doc written at `docs/plans/2026-04-13-admin-dashboard-api-contract.md`
+- Server agent built: `server/src/lib/errorBuffer.ts` (100-entry ring buffer, prefix normalization), error handler patched to push records + add `ref`, three endpoints (`GET /api/admin/stats`, `/admin/errors`, `/admin/errors/:ref`), 10s response cache on stats, Vitest tests
+- Client agent built: `/admin` rebuilt as 5-row card grid (stat cards, league health, AI summary, Todo progress, Quick Links, Activity feed, Recent Errors, League Tools collapsed below fold). Auto-refresh 60s + manual refresh. NavSection extended to support `groups` subgroup headers. Todo progress bars added to category headers. Changelog + Status dual-placed (public + admin).
+
+**Error correlation system (Phase 1)**
+- Existing request-ID middleware (server/index.ts:122) was generating IDs but never surfacing them. Patched: sets `X-Request-Id` response header, `Access-Control-Expose-Headers`, includes `requestId` in 500 + 404 response bodies. Switched to 8-char hex.
+- Admin-only `detail` field on 500 responses (real error message for admins, generic envelope for regular users)
+- ERR-prefixed user-facing codes (`ref` field in response body)
+- Client `ApiError` class with `status`, `url`, `requestId`, `ref`, `detail`, `body`, `serverMessage`, `displayCode()`
+- `fetchJsonApi` + `fetchJsonPublic` both extract all three correlation fields
+- New `lib/errorBus.ts` — pub/sub with `reportError(err, { source })` normalizes any thrown value
+- New `components/ErrorToast.tsx` — dismissible toast, click-to-copy code, auto-dismiss (pauses on hover), icons per kind (api/network/runtime)
+- New `components/ErrorProvider.tsx` — root-mounted subscriber, stack of 5, dedupes same-ref repeats from retry loops
+- Mounted in `main.tsx` outside `<BrowserRouter>` so errors from non-route code still surface
+- `ErrorBoundary` enhanced — captures `getLastRequestId()` on crash, shows `ERR-xxx` copyable code in fallback, also fires `reportError` so toast appears alongside fallback
+
+**Task-system consolidation proposal** (NOT executed)
+- `docs/plans/2026-04-13-task-system-consolidation-plan.md` proposes merging `admin-tasks.json` + `todo-tasks.json` into 3-level hierarchy (milestone → category → task). Rejected 3 alternatives. Awaiting @jimmy decision.
+
+### Pending — awaiting @jimmy decisions
+
+- **Session-tracking plan (19 revisions)** — approve → I run the migration + real data pipeline + admin users page data
+- **Task-system consolidation** — approve → I merge the JSONs and retire one UI
+- **Impersonation gating (R13)** — feature flag vs. defer entirely
+- **Hash secret rotation cadence (R8)** — yearly OK?
+- **PostHog `.init()`** — ship in session-tracking PR or separate?
+
+### Test Results
+- Server: `tsc --noEmit` clean
+- Client: `tsc --noEmit` clean
+- Server tests: 3 new Vitest files for admin stats/errors/integration (not yet run)
+
+### Files touched
+Modified (13): `client/src/components/AppShell.tsx`, `client/src/pages/Docs.tsx`, `client/src/pages/Roadmap.tsx`, `client/src/pages/Concepts.tsx`, `client/src/App.tsx`, `client/src/main.tsx`, `client/src/api/base.ts`, `client/src/components/ErrorBoundary.tsx`, `client/src/features/admin/pages/Admin.tsx`, `client/src/features/admin/pages/TodoPage.tsx`, `server/data/todo-tasks.json`, `server/src/index.ts`, `server/src/features/admin/routes.ts`
+
+Created (11): `client/src/features/admin/components/RelatedTodos.tsx`, `client/src/features/admin/pages/AdminUsers.tsx`, `client/src/lib/errorBus.ts`, `client/src/components/ErrorToast.tsx`, `client/src/components/ErrorProvider.tsx`, `server/src/lib/errorBuffer.ts`, plus 3 Vitest files for admin stats/errors/integration, plus 3 plan docs (`2026-04-13-admin-users-session-tracking-plan.md`, `2026-04-13-task-system-consolidation-plan.md`, `2026-04-13-admin-dashboard-api-contract.md`)
+
+### Concerns / Tech Debt
+
+- Two parallel task systems (`admin-tasks.json` + `todo-tasks.json`) still coexist — consolidation proposal awaits decision
+- PostHog dep installed but `.init()` still not called (Analytics page remains a mockup until wired)
+- No Sentry yet — all error data lives in Railway logs + in-memory ring buffer (wipes on restart)
+- Session-tracking migration NOT applied — `/admin/users` is a scaffold
+- Stripe NOT integrated — paid subscriber count hardcoded 0
+
+---
+
 ## Session 2026-04-12 (Session 62 cont.) — Admin System, Draft Report, Waiver Priority, YouTube Fix
 
 ### Completed
