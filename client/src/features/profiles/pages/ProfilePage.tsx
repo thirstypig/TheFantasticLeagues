@@ -46,7 +46,7 @@ function Initials({ name, size = 64 }: { name: string | null; size?: number }) {
 
 export default function ProfilePage() {
   const { userId: paramUserId } = useParams<{ userId?: string }>();
-  const { me } = useAuth();
+  const { me, isAdmin } = useAuth();
   const { toast } = useToast();
 
   const meId = me?.user?.id; // string | undefined
@@ -176,7 +176,17 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {profile && (profile as any).isPublic !== false ? (
+          {isAdmin && profile && (profile as any).isPublic === false && (
+            <div className="lg-card p-3 border-amber-500/30 bg-amber-500/5">
+              <div className="text-xs text-amber-300 font-semibold mb-0.5">Admin override — private profile</div>
+              <div className="text-[11px] text-[var(--lg-text-muted)]">
+                This user marked their profile private. You can see it because you&rsquo;re an admin.
+                Regular users see only the name + avatar.
+              </div>
+            </div>
+          )}
+
+          {profile && ((profile as any).isPublic !== false || isAdmin) ? (
             <>
               {profile.bio && (
                 <div className="lg-card p-5">

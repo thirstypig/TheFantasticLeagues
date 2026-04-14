@@ -111,13 +111,17 @@ router.get("/profiles/:userId", asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid userId" });
   }
 
+  // Admins get email for support/moderation workflows; non-admins never see it.
+  const isAdminRequester = req.user?.isAdmin === true;
   const user = await prisma.user.findUnique({
     where: { id: targetUserId },
     select: {
       id: true,
       name: true,
       avatarUrl: true,
-      // Do not expose email publicly
+      email: isAdminRequester,
+      isAdmin: isAdminRequester,
+      createdAt: isAdminRequester,
     },
   });
 
@@ -127,8 +131,8 @@ router.get("/profiles/:userId", asyncHandler(async (req, res) => {
     where: { userId: targetUserId },
   });
 
-  // Respect privacy
-  if (profile && !profile.isPublic) {
+  // Respect privacy — but admins see everything (support, moderation, debugging).
+  if (profile && !profile.isPublic && !isAdminRequester) {
     return res.json({
       user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl },
       profile: { isPublic: false },
@@ -165,7 +169,7 @@ router.get("/profiles/:userId", asyncHandler(async (req, res) => {
     orderBy: { league: { season: "desc" } },
   });
 
-  // Build response — hide payment handles unless same league
+  // Build response — hide payment handles unless same league OR requester is admin
   const profileData = profile ? {
     bio: profile.bio,
     favoriteTeam: profile.favoriteTeam,
@@ -173,11 +177,16 @@ router.get("/profiles/:userId", asyncHandler(async (req, res) => {
     preferredFormats: profile.preferredFormats,
     timezone: profile.timezone,
     isPublic: profile.isPublic,
-    paymentHandles: sharesLeague ? profile.paymentHandles : undefined,
+    paymentHandles: (sharesLeague || isAdminRequester) ? profile.paymentHandles : undefined,
   } : null;
 
+  // Admins see email + isAdmin + signup date; non-admins get the minimal view.
+  const userData = isAdminRequester
+    ? { id: user.id, name: user.name, avatarUrl: user.avatarUrl, email: (user as any).email, isAdmin: (user as any).isAdmin, signupAt: (user as any).createdAt }
+    : { id: user.id, name: user.name, avatarUrl: user.avatarUrl };
+
   return res.json({
-    user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl },
+    user: userData,
     profile: profileData,
     leagueHistory: memberships.map((m) => ({
       leagueId: m.league.id,

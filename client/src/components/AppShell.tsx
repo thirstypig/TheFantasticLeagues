@@ -149,18 +149,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       ],
     },
     {
-      title: "Product",
-      collapsible: true,
-      defaultOpen: false,
-      items: [
-        { to: "/roadmap", label: "Roadmap", show: true },
-        { to: "/concepts", label: "Concepts Lab", show: true },
-        { to: "/changelog", label: "Changelog", show: true },
-        { to: "/status", label: "Status", show: true },
-        { to: "/community", label: "Community", show: true },
-      ],
-    },
-    {
       title: "Admin",
       collapsible: true,
       defaultOpen: false,
@@ -170,19 +158,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           items: [
             { to: "/admin", label: "Dashboard", show: Boolean(user?.isAdmin) },
             { to: "/admin/users", label: "Users", show: Boolean(user?.isAdmin) },
+            { to: "/analytics", label: "Analytics", show: Boolean(user?.isAdmin) },
+            { to: "/status", label: "Status", show: Boolean(user?.isAdmin) },
           ],
         },
         {
           title: "Planning",
           items: [
             { to: "/todo", label: "Todo", show: Boolean(user?.isAdmin) },
-            { to: "/docs", label: "Docs", show: Boolean(user?.isAdmin) },
+            { to: "/roadmap", label: "Roadmap", show: Boolean(user?.isAdmin) },
+            { to: "/concepts", label: "Concepts Lab", show: Boolean(user?.isAdmin) },
+            { to: "/community", label: "Community", show: Boolean(user?.isAdmin) },
           ],
         },
         {
           title: "Reference",
           items: [
-            { to: "/analytics", label: "Analytics", show: Boolean(user?.isAdmin) },
+            { to: "/changelog", label: "Changelog", show: Boolean(user?.isAdmin) },
+            { to: "/docs", label: "Docs", show: Boolean(user?.isAdmin) },
             { to: "/tech", label: "Under the Hood", show: Boolean(user?.isAdmin) },
           ],
         },
