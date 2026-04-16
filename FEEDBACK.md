@@ -4,6 +4,83 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-14 (Session 65) — Task-System Consolidation
+
+### Completed
+
+**Task-system consolidation (todo-tasks.json is now the single source of truth)**
+- Discovery: `admin-tasks.json` had no live UI consumer. `AdminTasks.tsx` existed but was never imported into `App.tsx` — dead code. The earlier Session 63 plan (`docs/plans/2026-04-13-task-system-consolidation-plan.md`) assumed a live milestone UI; that assumption was wrong, which simplified the merge dramatically (no 3-level `work.json` rebuild needed).
+- Merged all unique content from `admin-tasks.json` into `todo-tasks.json` with an optional `milestone` field (`mvp | mid-season | growth | monetization | content-seo | seo-technical`) preserving launch-phase grouping.
+- Added 3 new categories: `mid-season` (4 tasks), `growth` (4 tasks), `code-quality-review` (9 tasks — the Session 63 `/ce:review` P1/P2 backlog that had been living in FEEDBACK.md only).
+- Deduped 4 overlapping ids (`stripe-setup`, `stripe-checkout-flow`, `email-subscribe-backend`, `blog-formatting-posts-2-5`) — todo-tasks won per richer schema; admin-tasks instructions folded in.
+- Deleted `server/data/admin-tasks.json`, `client/src/features/admin/pages/AdminTasks.tsx`, and all 4 `/api/admin/tasks` handlers + `TASKS_FILE`/`readTasks`/`writeTasks` helpers from `server/src/features/admin/routes.ts`.
+- Extended `updateTodoSchema` and `addTodoSchema` to accept the new `milestone` enum field.
+- Net: 68 tasks across 9 categories; 10 P1 open items now co-located (was split across two files).
+
+### Session 63 /ce:review P1 backlog now tracked as tasks
+
+All 9 items now live under `code-quality-review` category:
+- `heartbeat-single-statement` — rewrite SELECT+UPDATE as conditional UPDATE (DB race fix)
+- `admin-stats-active30d-index` — replace raw SQL on AuditLog with `UserMetrics.lastLoginAt` index (Supabase pooler exhaustion)
+- `admin-stats-singleflight` — dedup concurrent `/admin/stats` requests on cache miss
+- `admin-metric-bugs` — `leaguesOwned` returns team count; `avgSessionSec` biased low
+- `profile-endpoint-requireauth` — anonymous membership enumeration (security)
+- `usermetrics-dead-columns` — drop or populate `leaguesOwnedCount`/`leaguesCommissionedCount`/`lastActivityAt`
+- `admin-routes-split` — split 1031-LOC admin/routes.ts into sub-routers
+- `r13-impersonation-decision` — officially cut or implement behind flag
+- `prisma-any-casts-profiles` — remove root cast in profiles route
+
+### Concerns / Tech Debt
+
+- The consolidation plan doc at `docs/plans/2026-04-13-task-system-consolidation-plan.md` is now stale — it describes a `work.json` rebuild that we didn't do. Either update it to describe the actual simpler merge, or archive it. Low priority.
+
+### Test Results
+
+- Server: 546 passing, 7 skipped, 0 failing (no test changes — schema additions are additive + optional)
+- Client: 201 passing, 0 failing
+- TypeCheck: clean (both client + server)
+
+---
+
+## Session 2026-04-16 (Session 65 continuation) — Will Smith matcher, Table widths, Weekly Report MVP, IP_HASH_SECRET rotation
+
+### Completed
+
+**P0 — IP_HASH_SECRET rotated + redacted**
+- Jimmy generated a fresh 32-byte hex via `openssl rand -hex 32`, updated Railway env var, verified green deploy. `server/data/todo-tasks.json` line 44 redacted to placeholder; old value is cryptographically inert (even in git history, no deploy uses it). Todo `091-complete-p1-*` closed.
+
+**Will Smith news false-matching fixed** (queue task B)
+- New module `server/src/features/mlb-feed/services/playerNameMatcher.ts` with two protections: (1) word-boundary regex using lookbehind/lookahead (`(?<=^|\W)…(?=\W|$)`) so "Smithson" no longer matches "Smith", and names ending in punctuation like "Ronald Acuna Jr." still match correctly. (2) 50-name ambiguous-last-name allowlist (Smith, Garcia, Martinez, Rodriguez, Perez, etc.) where only full-name match is accepted.
+- 25 new tests (`__tests__/playerNameMatcher.test.ts`). `routes.ts` `/player-news` wired to use the matcher for both article titles AND Trade Rumors `categories[]`.
+
+**Table layout — 3 critical width fixes** (queue task C)
+- `AddDropTab.tsx` Name col: `min-w-[140px]` → `w-[220px]` (Jimmy's flagged bug).
+- `Players.tsx` cell: `min-w-[140px]` → `w-[220px]` — header had `w-[220px]`, cell mismatched.
+- `Draft.tsx` Team col `w-[180px]`, Player col `w-[220px]` (were unconstrained).
+- 13 partial tables + TeamListTab refactor deferred to todo #15.
+
+**Weekly Report MVP — "This Week in Baseball" (`/report`)**
+- New feature module `server/src/features/reports/` with single aggregator `GET /api/reports/:leagueId/:weekKey?` bundling League Digest + per-team Weekly Insights + Activity log from existing tables. No new AI calls, no new cron — pure data reuse.
+- Client: `ReportPage.tsx` at `/report` and `/report/:weekKey` with 10 sections (Hero, Power Rankings, Hot/Cold, Standings-stub, Category Movers-stub, Trade of Week, 8-team Insights collapsible, Activity log grouped by type, Stat/Prediction, Looking Ahead-stub).
+- `TwibHero.tsx` — inline SVG retro broadcast mark (red motion-line baseball, blue panel, yellow ticker). Evokes TWIB aesthetic without reproducing the MLB-trademarked logo.
+- Nav link not yet added; direct URL only. Home + Team page integrations deferred until design iteration.
+
+### Pending / Next Steps
+
+- **Task D** — Watchlist CTA expansion (Team, Activity, Trades, Auction unify). Design spike needed before building 4 surfaces.
+- **Report polish** — fill standings/category-movers/looking-ahead stubs; wire Home page League Digest as preview card linking to `/report`; add `/report` nav entry.
+- **Table sweep** — 13 partial tables + TeamListTab refactor (todo #15).
+- **Zod validation** for `readTodos()` (todo 092).
+- **FanGraphs audit** — Monday cadence unless anomalies.
+
+### Test Results
+
+- Server: **571 passing**, 7 skipped, 0 failing (+25 playerNameMatcher tests)
+- Client: 201 passing, 0 failing
+- TypeCheck: clean (both client + server)
+
+---
+
 ## Session 2026-04-14 (Session 64) — Session 63 P0/P1 Burn-Down, Table Layout Overhaul, Color Lab, AI Temperature
 
 ### Completed

@@ -9,6 +9,7 @@ import { logger } from "../../lib/logger.js";
 import { POS_ORDER } from "../../lib/sportConfig.js";
 import { mlbGameDayDate } from "../../lib/utils.js";
 import { fetchRssFeed } from "./services/rssParser.js";
+import { createPlayerNameMatcher } from "./services/playerNameMatcher.js";
 
 const router = Router();
 
@@ -197,19 +198,9 @@ router.get("/player-news", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "playerName must be at least 2 characters" });
   }
 
-  const fullName = playerName.toLowerCase();
-  const parts = playerName.split(/\s+/);
-  const lastName = parts[parts.length - 1]?.toLowerCase() || "";
-  const canMatchByLast = lastName.length >= 5;
+  const matcher = createPlayerNameMatcher(playerName);
 
-  const matchesPlayer = (text: string): boolean => {
-    const lower = text.toLowerCase();
-    if (lower.includes(fullName)) return true;
-    if (canMatchByLast && lower.includes(lastName)) return true;
-    return false;
-  };
-
-  // Fetch all 5 feeds in parallel (cached via rssParser 5-min TTL)
+  // Fetch all 4 feeds in parallel (cached via rssParser 5-min TTL)
   const [rumors, yahoo, mlb, espn] = await Promise.all([
     fetchRssFeed("https://www.mlbtraderumors.com/feed", { sourceName: "TradeRumors" }),
     fetchRssFeed("https://sports.yahoo.com/mlb/rss/", { sourceName: "Yahoo" }),
@@ -220,13 +211,15 @@ router.get("/player-news", requireAuth, asyncHandler(async (req, res) => {
   const matched: { source: string; title: string; link: string; pubDate: string }[] = [];
 
   for (const a of rumors) {
-    const catMatch = a.categories.some(c => c.toLowerCase().includes(lastName));
-    if (matchesPlayer(a.title) || (canMatchByLast && catMatch)) {
+    // Trade Rumors tags articles via categories (e.g., "Will Smith"); run matcher
+    // on categories AND title — same word-boundary + ambiguous-last-name rules.
+    const catMatch = a.categories.some(c => matcher.matches(c));
+    if (matcher.matches(a.title) || catMatch) {
       matched.push({ source: "Trade Rumors", title: a.title, link: a.link, pubDate: a.pubDate });
     }
   }
   for (const a of [...yahoo, ...mlb, ...espn]) {
-    if (matchesPlayer(a.title)) {
+    if (matcher.matches(a.title)) {
       const source = yahoo.includes(a) ? "Yahoo" : mlb.includes(a) ? "MLB.com" : "ESPN";
       matched.push({ source, title: a.title, link: a.link, pubDate: a.pubDate });
     }

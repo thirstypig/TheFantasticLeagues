@@ -46,6 +46,7 @@ import { notificationsRouter } from "./features/notifications/index.js";
 // import { attachChatWs } from "./features/chat/services/chatWsService.js";
 import { profilesRouter } from "./features/profiles/index.js";
 import { sessionsRouter } from "./features/sessions/index.js";
+import { reportsRouter } from "./features/reports/index.js";
 
 import rateLimit from "express-rate-limit";
 import { attachUser } from "./middleware/auth.js";
@@ -221,6 +222,7 @@ async function main() {
   app.use('/api', playerDataRouter);
   app.use("/api", franchiseRouter);
   app.use("/api/mlb", mlbFeedRouter);
+  app.use("/api", reportsRouter);
   app.use("/api/watchlist", watchlistRouter);
   app.use("/api/trading-block", tradingBlockRouter);
   app.use("/api/board", boardRouter);

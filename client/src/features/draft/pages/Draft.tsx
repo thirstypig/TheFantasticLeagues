@@ -324,8 +324,8 @@ export default function Draft() {
                       <ThemedTr>
                         <ThemedTh className="w-12">#</ThemedTh>
                         <ThemedTh className="w-16">Round</ThemedTh>
-                        <ThemedTh>Team</ThemedTh>
-                        <ThemedTh>Player</ThemedTh>
+                        <ThemedTh className="w-[180px]">Team</ThemedTh>
+                        <ThemedTh className="w-[220px]">Player</ThemedTh>
                         <ThemedTh className="w-12">Pos</ThemedTh>
                         <ThemedTh className="w-16">Auto</ThemedTh>
                       </ThemedTr>

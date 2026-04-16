@@ -202,7 +202,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                 <ThemedTable bare aria-label="Add/Drop player list">
                     <ThemedThead sticky>
                         <ThemedTr>
-                            <SortableHeader sortKey="name" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} frozen className="pl-2 min-w-[140px]">Name</SortableHeader>
+                            <SortableHeader sortKey="name" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} frozen className="pl-2 w-[220px]">Name</SortableHeader>
                             <SortableHeader sortKey="pos" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-14">Pos</SortableHeader>
                             <SortableHeader sortKey="mlb_team" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">MLB</SortableHeader>
 
@@ -243,7 +243,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                                         className={`group cursor-pointer transition-colors duration-300 ${isExpanded ? 'bg-[var(--lg-accent)]/10' : 'hover:bg-[var(--lg-tint)]'}`}
                                         onClick={() => toggleExpand(p.row_id ?? '')}
                                     >
-                                        <ThemedTd frozen className="pl-2 min-w-[140px]">
+                                        <ThemedTd frozen className="pl-2 w-[220px]">
                                             <div className="flex items-center gap-1.5">
                                                 <PlayerNameCell position={pos} name={p.mlb_full_name || p.player_name} isPitcher={p.is_pitcher} />
                                                 {isTaken && (

@@ -423,108 +423,12 @@ router.get("/admin/audit-log", requireAuth, requireAdmin, asyncHandler(async (re
   return res.json({ entries, total, limit, offset });
 }));
 
-// ── Admin Tasks (JSON file-backed) ──
+// ── Todo Page (category-based tasks, JSON file-backed) ──
+// Session 65: admin-tasks.json + /api/admin/tasks retired; content merged into todo-tasks.json
+// with a `milestone` field preserving launch-phase grouping (mvp / mid-season / growth / monetization / content-seo / seo-technical).
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-
-const TASKS_FILE = path.join(process.cwd(), "data", "admin-tasks.json");
-
-function readTasks(): any {
-  if (!fs.existsSync(TASKS_FILE)) return { milestones: [] };
-  return JSON.parse(fs.readFileSync(TASKS_FILE, "utf-8"));
-}
-
-function writeTasks(data: any): void {
-  fs.writeFileSync(TASKS_FILE, JSON.stringify(data, null, 2), "utf-8");
-}
-
-/** GET /api/admin/tasks — read all milestones + tasks */
-router.get("/admin/tasks", requireAuth, requireAdmin, asyncHandler(async (_req, res) => {
-  return res.json(readTasks());
-}));
-
-/** PATCH /api/admin/tasks/:taskId — update a task's status or fields */
-const updateTaskSchema = z.object({
-  status: z.enum(["not_started", "in_progress", "done"]).optional(),
-  title: z.string().min(1).max(500).optional(),
-  owner: z.string().max(100).optional(),
-  notes: z.string().max(2000).optional(),
-});
-
-router.patch("/admin/tasks/:taskId", requireAuth, requireAdmin, validateBody(updateTaskSchema), asyncHandler(async (req, res) => {
-  const { taskId } = req.params;
-  const updates = req.body;
-  const data = readTasks();
-
-  let found = false;
-  for (const milestone of data.milestones) {
-    const task = milestone.tasks.find((t: any) => t.id === taskId);
-    if (task) {
-      if (updates.status) task.status = updates.status;
-      if (updates.title) task.title = updates.title;
-      if (updates.owner) task.owner = updates.owner;
-      if (updates.notes !== undefined) task.notes = updates.notes;
-      task.updatedAt = new Date().toISOString();
-      found = true;
-      break;
-    }
-  }
-
-  if (!found) return res.status(404).json({ error: "Task not found" });
-
-  writeTasks(data);
-  writeAuditLog({ userId: req.user!.id, action: "ADMIN_TASK_UPDATE", resourceType: "AdminTask", resourceId: taskId, metadata: updates });
-  return res.json({ success: true });
-}));
-
-/** POST /api/admin/tasks — add a new task to a milestone */
-const addTaskSchema = z.object({
-  milestoneId: z.string().min(1),
-  title: z.string().min(1).max(500),
-  owner: z.enum(["jimmy", "dev"]).optional().default("dev"),
-  instructions: z.array(z.string()).optional().default([]),
-});
-
-router.post("/admin/tasks", requireAuth, requireAdmin, validateBody(addTaskSchema), asyncHandler(async (req, res) => {
-  const { milestoneId, title, owner, instructions } = req.body;
-  const data = readTasks();
-
-  const milestone = data.milestones.find((m: any) => m.id === milestoneId);
-  if (!milestone) return res.status(404).json({ error: "Milestone not found" });
-
-  const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "").substring(0, 50);
-  const newTask = { id, title, status: "not_started", owner, instructions, createdAt: new Date().toISOString() };
-  milestone.tasks.push(newTask);
-
-  writeTasks(data);
-  writeAuditLog({ userId: req.user!.id, action: "ADMIN_TASK_CREATE", resourceType: "AdminTask", resourceId: id, metadata: { milestoneId, title } });
-  return res.json({ success: true, task: newTask });
-}));
-
-/** DELETE /api/admin/tasks/:taskId — remove a task */
-router.delete("/admin/tasks/:taskId", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-  const { taskId } = req.params;
-  const data = readTasks();
-
-  let found = false;
-  for (const milestone of data.milestones) {
-    const idx = milestone.tasks.findIndex((t: any) => t.id === taskId);
-    if (idx !== -1) {
-      milestone.tasks.splice(idx, 1);
-      found = true;
-      break;
-    }
-  }
-
-  if (!found) return res.status(404).json({ error: "Task not found" });
-
-  writeTasks(data);
-  writeAuditLog({ userId: req.user!.id, action: "ADMIN_TASK_DELETE", resourceType: "AdminTask", resourceId: taskId });
-  return res.json({ success: true });
-}));
-
-// ── Todo Page (category-based micro-tasks, JSON file-backed) ──
 
 const TODO_FILE = path.join(process.cwd(), "data", "todo-tasks.json");
 
@@ -543,6 +447,8 @@ router.get("/admin/todos", requireAuth, requireAdmin, asyncHandler(async (_req, 
 }));
 
 /** PATCH /api/admin/todos/:todoId — update a todo */
+const MILESTONE_VALUES = ["mvp", "mid-season", "growth", "monetization", "content-seo", "seo-technical"] as const;
+
 const updateTodoSchema = z.object({
   status: z.enum(["not_started", "in_progress", "done"]).optional(),
   title: z.string().min(1).max(500).optional(),
@@ -552,6 +458,7 @@ const updateTodoSchema = z.object({
   notes: z.string().max(2000).optional(),
   roadmapLink: z.string().max(200).optional().nullable(),
   conceptLink: z.string().max(200).optional().nullable(),
+  milestone: z.enum(MILESTONE_VALUES).optional().nullable(),
 });
 
 router.patch("/admin/todos/:todoId", requireAuth, requireAdmin, validateBody(updateTodoSchema), asyncHandler(async (req, res) => {
@@ -589,10 +496,11 @@ const addTodoSchema = z.object({
   targetDate: z.string().max(50).optional(),
   roadmapLink: z.string().max(200).optional(),
   conceptLink: z.string().max(200).optional(),
+  milestone: z.enum(MILESTONE_VALUES).optional(),
 });
 
 router.post("/admin/todos", requireAuth, requireAdmin, validateBody(addTodoSchema), asyncHandler(async (req, res) => {
-  const { categoryId, title, priority, owner, instructions, targetDate, roadmapLink, conceptLink } = req.body;
+  const { categoryId, title, priority, owner, instructions, targetDate, roadmapLink, conceptLink, milestone } = req.body;
   const data = readTodos();
 
   const cat = data.categories.find((c: any) => c.id === categoryId);
@@ -611,6 +519,7 @@ router.post("/admin/todos", requireAuth, requireAdmin, validateBody(addTodoSchem
   if (targetDate) newTodo.targetDate = targetDate;
   if (roadmapLink) newTodo.roadmapLink = roadmapLink;
   if (conceptLink) newTodo.conceptLink = conceptLink;
+  if (milestone) newTodo.milestone = milestone;
 
   cat.tasks.push(newTodo);
 

@@ -25,6 +25,7 @@ const Rules = React.lazy(() => import("./features/leagues/pages/Rules"));
 const Profile = React.lazy(() => import("./features/auth/pages/Profile"));
 const ProfilePage = React.lazy(() => import("./features/profiles/pages/ProfilePage"));
 const Payouts = React.lazy(() => import("./features/periods/pages/Payouts"));
+const ReportPage = React.lazy(() => import("./features/reports/pages/ReportPage"));
 const Signup = React.lazy(() => import("./features/auth/pages/Signup"));
 const ForgotPassword = React.lazy(() => import("./features/auth/pages/ForgotPassword"));
 const ResetPassword = React.lazy(() => import("./features/auth/pages/ResetPassword"));
@@ -124,6 +125,8 @@ export default function App() {
                     <Route path="/teams/:teamCode" element={<Team />} />
                     <Route path="/players" element={<Players />} />
                     <Route path="/activity" element={<ActivityPage />} />
+                    <Route path="/report" element={<ReportPage />} />
+                    <Route path="/report/:weekKey" element={<ReportPage />} />
                     <Route path="/transactions" element={<Navigate to="/activity" replace />} />
                     <Route path="/trades" element={<Navigate to="/activity" replace />} />
                     <Route path="/trading-block" element={<Navigate to="/board" replace />} />

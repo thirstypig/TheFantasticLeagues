@@ -345,7 +345,7 @@ export default function Players() {
                                            className={`group cursor-pointer transition-colors duration-300 ${isExpanded ? 'bg-[var(--lg-accent)]/10' : 'hover:bg-[var(--lg-tint)]'}`}
                                            onClick={() => toggleExpand(p.row_id ?? '')}
                         >
-                                            <ThemedTd frozen className="pl-2 min-w-[140px]">
+                                            <ThemedTd frozen className="pl-2 w-[220px]">
                                                 <PlayerNameCell position={pos} name={p.mlb_full_name || p.player_name} isPitcher={p.is_pitcher} />
                                             </ThemedTd>
 
