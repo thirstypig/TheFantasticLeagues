@@ -6,6 +6,7 @@ import {
   computeTeamStatsFromDb,
   computeStandingsFromStats,
   computeCategoryRows,
+  getSeasonStandings,
   CATEGORY_CONFIG,
   KEY_TO_DB_FIELD,
 } from "./services/standingsService.js";
@@ -187,21 +188,15 @@ router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
+  // Shared helper parallelizes per-period DB calls via Promise.all.
+  const { periodIds, periodData } = await getSeasonStandings(leagueId);
+
   const periods = await prisma.period.findMany({
-    where: { leagueId, status: { in: ["active", "completed"] } },
+    where: { leagueId, id: { in: periodIds } },
+    select: { id: true, name: true },
     orderBy: { startDate: "asc" },
   });
-
-  const periodIds = periods.map((p) => p.id);
   const periodNames = periods.map((p) => p.name);
-
-  const periodData = await Promise.all(
-    periodIds.map(async (pid) => {
-      const teamStats = await computeTeamStatsFromDb(leagueId, pid);
-      const standings = computeStandingsFromStats(teamStats);
-      return { teamStats, standings };
-    })
-  );
 
   const teams = await prisma.team.findMany({
     where: { leagueId },

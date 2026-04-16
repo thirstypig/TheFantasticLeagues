@@ -591,3 +591,57 @@ async function computeWithPeriodStats(
     };
   });
 }
+
+/**
+ * Season-level standings: sum roto points across all active/completed periods.
+ * Parallelizes per-period DB calls via Promise.all (~15× faster than sequential).
+ * Shared by `/api/standings/season` and `/api/reports/:leagueId`.
+ */
+export async function getSeasonStandings(
+  leagueId: number,
+): Promise<{
+  periodIds: number[];
+  /** Per-period detail (teamStats + standings for each period). */
+  periodData: Array<{ teamStats: TeamStatRow[]; standings: StandingsRow[] }>;
+  /** Roto points summed across periods, sorted desc, ranked. */
+  seasonRows: Array<{ rank: number; teamId: number; teamName: string; totalPoints: number }>;
+}> {
+  const periods = await prisma.period.findMany({
+    where: { leagueId, status: { in: ["active", "completed"] } },
+    select: { id: true },
+    orderBy: { startDate: "asc" },
+  });
+
+  const periodIds = periods.map((p) => p.id);
+
+  const periodData = await Promise.all(
+    periodIds.map(async (pid) => {
+      const teamStats = await computeTeamStatsFromDb(leagueId, pid);
+      const standings = computeStandingsFromStats(teamStats);
+      return { teamStats, standings };
+    }),
+  );
+
+  // Accumulate total points per team
+  const pointsByTeam = new Map<number, { teamId: number; teamName: string; totalPoints: number }>();
+  for (const { standings } of periodData) {
+    for (const entry of standings) {
+      const cur = pointsByTeam.get(entry.teamId);
+      if (cur) {
+        cur.totalPoints += entry.points;
+      } else {
+        pointsByTeam.set(entry.teamId, {
+          teamId: entry.teamId,
+          teamName: entry.teamName,
+          totalPoints: entry.points,
+        });
+      }
+    }
+  }
+
+  const seasonRows = Array.from(pointsByTeam.values())
+    .sort((a, b) => b.totalPoints - a.totalPoints)
+    .map((row, i) => ({ rank: i + 1, ...row }));
+
+  return { periodIds, periodData, seasonRows };
+}

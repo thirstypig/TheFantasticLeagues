@@ -34,7 +34,6 @@ export interface WeeklyReport {
       teamName: string;
       totalPoints: number;
     }>;
-    available: boolean;
   };
 }
 

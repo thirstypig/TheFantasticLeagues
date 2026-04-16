@@ -172,7 +172,7 @@ function EmptyShell({ message }: { message: string }) {
 }
 
 function StandingsBlock({ standings }: { standings: WeeklyReport["standings"] }) {
-  if (!standings.available || standings.rows.length === 0) {
+  if (standings.rows.length === 0) {
     return <Placeholder>No active or completed periods for this league yet.</Placeholder>;
   }
   const max = standings.rows[0]?.totalPoints ?? 0;

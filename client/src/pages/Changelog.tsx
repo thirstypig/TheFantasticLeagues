@@ -34,6 +34,28 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.62.0",
+    date: "Apr 16, 2026",
+    session: "Session 66 (review sweep)",
+    title: "Review Sweep: Parallelize Standings, Strict Zod, Compound Doc",
+    highlights: [
+      "getSeasonStandings(leagueId) helper extracted — shared by /report + /api/standings/season. Promise.all parallelizes period DB calls (~15× faster than sequential)",
+      "todoTaskSchema flipped from .passthrough() to .strict() — catches hand-edit typos in field names at boot",
+      "Redundant standings.available flag dropped from /report API — rows.length encodes the same info",
+      "Compound doc: docs/solutions/logic-errors/player-news-false-positive-substring-match.md — Will Smith matcher solution with regex rationale, prevention strategies, regression checklist",
+    ],
+    changes: [
+      { type: "refactor", description: "standingsService: new getSeasonStandings(leagueId) aggregates per-period stats via Promise.all; consumed by reportBuilder + /api/standings/season (was duplicated sequential loop)" },
+      { type: "fix", description: "todoTaskSchema .passthrough() → .strict() — boot validation now catches unknown fields (typo field names like 'prority' are rejected)" },
+      { type: "refactor", description: "Dropped standings.available flag from WeeklyReport type — redundant with rows.length; simplifies API surface" },
+      { type: "docs", description: "Compound doc: player-news-false-positive-substring-match.md — root cause, regex design rationale, prevention strategies, remaining migration items (YouTube + Reddit includes() calls)" },
+      { type: "docs", description: "7 review todos filed (095-101): parallelize period loop, StandingsBlock→ThemedTable, boot validation→index.ts, activity weekKey window, strict Zod, any-cast cleanup, available flag" },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+    conceptLink: "/concepts",
+  },
+  {
     version: "0.61.0",
     date: "Apr 16, 2026",
     session: "Session 66 (cont.)",

@@ -451,7 +451,7 @@ const todoTaskSchema = z.object({
   conceptLink: z.string().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-}).passthrough(); // tolerate unknown fields — we own the file, but loose extras shouldn't fail-fast
+}).strict(); // strict: catches hand-edit drift (typo field names like `prority` are caught at boot)
 
 const todoCategorySchema = z.object({
   id: z.string(),
