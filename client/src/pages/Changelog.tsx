@@ -34,6 +34,35 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.59.0",
+    date: "Apr 16, 2026",
+    session: "Session 65",
+    title: "Task Consolidation, Will Smith Matcher, Weekly Report MVP, IP_HASH_SECRET Rotation",
+    highlights: [
+      "Single source of truth for todos: admin-tasks.json retired (orphan — AdminTasks.tsx was never routed); content merged into todo-tasks.json with optional `milestone` enum (mvp / mid-season / growth / monetization / content-seo / seo-technical)",
+      "Weekly Report MVP at /report — 'This Week in Baseball' aggregator bundles League Digest + per-team Weekly Insights + Activity into one shareable view",
+      "Will Smith news false-matching fixed — word-boundary regex + 50-name ambiguous-last-name allowlist in new playerNameMatcher module (Dominic Smith articles no longer appear in Will Smith's news)",
+      "IP_HASH_SECRET rotated + redacted — fresh secret generated, Railway updated, todo-tasks.json:44 placeholder-ized",
+      "Table width fixes: AddDropTab, Players cell/header consistency, Draft Team/Player columns — three non-compliant tables brought to Session 64 pattern",
+      "FanGraphs audit script — new scripts/fangraphs-audit.ts aggregates PlayerStatsDaily respecting roster ownership windows; outputs OnRoto display format",
+    ],
+    changes: [
+      { type: "feat", description: "New feature module `reports` — GET /api/reports/:leagueId/:weekKey? aggregator; ReportPage.tsx at /report with 10 sections; TwibHero inline-SVG retro mark (evokes TWIB without reproducing the MLB-trademarked logo)" },
+      { type: "feat", description: "server/features/mlb-feed/services/playerNameMatcher.ts — word-boundary regex via lookbehind/lookahead (handles `Jr.` suffixes) + 50-name ambiguous allowlist" },
+      { type: "feat", description: "scripts/fangraphs-audit.ts — aggregates season stats with roster-ownership windows for cell-by-cell OnRoto comparison" },
+      { type: "fix", description: "/player-news matcher: Dominic Smith, Derek Smith, etc. no longer false-match articles about Will Smith; Trade Rumors `categories[]` use same word-boundary check" },
+      { type: "fix", description: "Table widths: AddDropTab Name w-[220px], Players cell/header consistency, Draft Team w-[180px] + Player w-[220px] — 3 non-compliant tables fixed" },
+      { type: "refactor", description: "admin-tasks.json retired — 3 new categories in todo-tasks.json (mid-season, growth, code-quality-review). AdminTasks.tsx (unrouted dead code) deleted. 4 /api/admin/tasks orphan handlers removed." },
+      { type: "feat", description: "`milestone` optional enum on task records preserves launch-phase grouping across flat category hierarchy" },
+      { type: "security", description: "IP_HASH_SECRET rotated via Railway; server/data/todo-tasks.json line 44 redacted; todo 091 closed. Old value in git history is cryptographically inert post-rotation." },
+      { type: "docs", description: "CLAUDE.md feature modules list + cross-feature deps updated for reports module. FEEDBACK.md session entry added. 4 /ce:review follow-up todos (091-094) filed." },
+      { type: "test", description: "+25 tests (playerNameMatcher — Will Smith disambiguation, distinctive names, ambiguous names, punctuation, input normalization, regex safety). Server suite 571 passing, client 201 passing." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+    conceptLink: "/concepts",
+  },
+  {
     version: "0.58.0",
     date: "Apr 14, 2026",
     session: "Session 64",

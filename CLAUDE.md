@@ -22,7 +22,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 26 feature modules mirrored client/server
+- 27 feature modules mirrored client/server
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -64,7 +64,7 @@ fbst/
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-### Current Feature Modules (26)
+### Current Feature Modules (27)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -96,6 +96,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `draft` | routes, WebSocket | 1 page, 3 components, api | Snake draft: DraftBoard grid, auto-pick, pause/resume, On the Clock indicator |
 | `matchups` | routes | — | H2H matchup generation: round-robin scheduling, ScoringEngine (Roto/H2H/Points) |
 | `profiles` | routes | 1 page, api | User profiles: bio, favorite team, experience, preferred formats, payment handles |
+| `reports` | routes, reportBuilder | 1 page, 1 component, api | "This Week in Baseball" weekly report — aggregates League Digest + per-team Weekly Insights + Activity at `/report` and `/report/:weekKey` |
 
 ### Feature Module Pattern
 ```
@@ -147,6 +148,7 @@ Some features import from other features' services or components.
 - `matchups/routes.ts` imports `standings/services/standingsService` (H2H scoring from category stats)
 - `draft/routes.ts` imports `seasons/services/seasonService` (auto-transition on draft completion)
 - `teams/routes.ts` imports `standings/services/standingsService` (AI insights standings computation)
+- `reports/services/reportBuilder` queries `AiInsight` (type=league_digest + type=weekly) and `TransactionEvent` — aggregator-only, no services imported
 
 **Client (component imports):**
 - `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
