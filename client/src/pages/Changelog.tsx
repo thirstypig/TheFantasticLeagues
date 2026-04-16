@@ -34,6 +34,29 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.60.0",
+    date: "Apr 16, 2026",
+    session: "Session 66",
+    title: "Report Polish, Watchlist on Activity, Team Watchlist Ungated",
+    highlights: [
+      "Weekly Report discoverable — `/report` now has a nav entry under AI ('Week in Baseball') and cross-link buttons from Home Digest + Team Weekly Insights headers",
+      "Activity add/drop gains a watchlist star column — DB-backed, same pattern as Players page",
+      "Team page Watchlist panel ungated from IN_SEASON-only — now visible during DRAFT too (auction-prep watchlist)",
+      "Shared `useMyWatchlist` hook extracted — consumable by any page that renders player rows",
+    ],
+    changes: [
+      { type: "feat", description: "AppShell AI section: 'Week in Baseball' → /report as first item" },
+      { type: "feat", description: "Home page Weekly Digest header: 'Full Report →' cross-link button (preserves selected weekKey for back-week reports)" },
+      { type: "feat", description: "Team page Weekly Insights header: matching 'Full Report →' link using activeWeekKey" },
+      { type: "feat", description: "client/src/features/watchlist/hooks/useMyWatchlist.ts — shared hook with optimistic toggle + rollback. Players.tsx can migrate to this in a later refactor pass." },
+      { type: "feat", description: "AddDropTab: star button added to Action column. Amber when starred, fades in on row-hover otherwise. Gated on myTeamId." },
+      { type: "refactor", description: "Team page watchlist panel: ungated from IN_SEASON; now shown during DRAFT + IN_SEASON (hidden during SETUP / COMPLETED)" },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+    conceptLink: "/concepts",
+  },
+  {
     version: "0.59.0",
     date: "Apr 16, 2026",
     session: "Session 65",

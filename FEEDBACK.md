@@ -42,6 +42,35 @@ All 9 items now live under `code-quality-review` category:
 
 ---
 
+## Session 2026-04-16 (Session 66) — Report polish, Watchlist CTA on Activity, Team watchlist ungated
+
+### Completed
+
+**Report discoverability**
+- AppShell AI section: new "Week in Baseball" → `/report` item (first in section).
+- Home page Weekly Digest header now has a "Full Report →" cross-link button that preserves `selectedWeekKey`.
+- Team page Weekly Insights header has a matching "Full Report →" link using the active insight's `weekKey`.
+- Existing inline digest + insights UI preserved — cross-link approach rather than demotion, since `/report` still has stubs for standings snapshot / category movers / looking ahead.
+
+**Watchlist CTA on Activity add/drop (Task D v1)**
+- Extracted `useMyWatchlist(teamId)` hook in `client/src/features/watchlist/hooks/` — optimistic toggle + rollback + silent-fail load. Consumable by any page that renders player rows.
+- `AddDropTab.tsx`: star button added to the Action column (same amber-when-starred, fades-in-on-hover pattern as Players.tsx). Gated on `myTeamId` existence.
+- Team page WatchlistPanel: ungated from IN_SEASON-only → now also visible during DRAFT (auction-prep watchlist). Kept gated to own team + away from SETUP / COMPLETED.
+
+### Deferred to D-v2
+
+- Auction PlayerPoolTab localStorage → DB unification. Needs a cache-eventually-consistent pattern to avoid adding network latency inside the hot auction loop.
+- Trades tab asset selector — surface watchlisted players as quick-add suggestions.
+- Players.tsx refactor to consume the new `useMyWatchlist` hook (no-op refactor; lives in the redundant-code cleanup bucket).
+
+### Test Results
+
+- Server: 571 passing, 7 skipped, 0 failing (unchanged)
+- Client: 201 passing, 0 failing (unchanged)
+- TypeCheck: clean
+
+---
+
 ## Session 2026-04-16 (Session 65 continuation) — Will Smith matcher, Table widths, Weekly Report MVP, IP_HASH_SECRET rotation
 
 ### Completed
