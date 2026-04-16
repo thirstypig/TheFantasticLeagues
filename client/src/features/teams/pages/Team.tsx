@@ -16,7 +16,7 @@ import { mapPosition, positionToSlots, POS_SCORE } from "../../../lib/sportConfi
 import { fetchJsonApi, API_BASE, parseIP } from "../../../api/base";
 import { TableCard, Table, THead, Tr, Th, Td } from "../../../components/ui/TableCard";
 import { Button } from "../../../components/ui/button";
-import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
 import { StatsUpdated } from "../../../components/shared/StatsTables";
 import RosterAlertAccordion from "../../../components/shared/RosterAlertAccordion";
 import { useRosterStatus } from "../../../hooks/useRosterStatus";
@@ -395,25 +395,35 @@ export default function Team() {
 
           return (
           <div className="mb-8 rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
-            {/* Header — always visible, acts as toggle */}
-            <button
-              onClick={() => setAiExpanded(prev => !prev)}
-              className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-[var(--lg-bg-card)]/30 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2 flex-wrap min-w-0">
-                <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
-                <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Insights</span>
-                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {activeGrade && (
-                  <span className="px-2 py-1 rounded text-xs font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] border border-[var(--lg-accent)]/20">
-                    {activeGrade}
-                  </span>
-                )}
-                {aiExpanded ? <ChevronUp size={14} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={14} className="text-[var(--lg-text-muted)]" />}
-              </div>
-            </button>
+            {/* Header — toggle + full report cross-link */}
+            <div className="flex items-stretch">
+              <button
+                onClick={() => setAiExpanded(prev => !prev)}
+                className="flex-1 flex items-center justify-between p-4 md:p-5 hover:bg-[var(--lg-bg-card)]/30 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
+                  <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Insights</span>
+                  <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {activeGrade && (
+                    <span className="px-2 py-1 rounded text-xs font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] border border-[var(--lg-accent)]/20">
+                      {activeGrade}
+                    </span>
+                  )}
+                  {aiExpanded ? <ChevronUp size={14} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={14} className="text-[var(--lg-text-muted)]" />}
+                </div>
+              </button>
+              <Link
+                to={activeWeekKey ? `/report/${activeWeekKey}` : "/report"}
+                className="flex items-center gap-1.5 px-3 md:px-4 border-l border-[var(--lg-border-faint)] text-[11px] font-semibold uppercase tracking-wider text-[var(--lg-accent)] hover:bg-[var(--lg-bg-card)]/30 transition-colors"
+                title="Open This Week in Baseball — full weekly report"
+              >
+                Full Report
+                <ChevronRight size={14} />
+              </Link>
+            </div>
 
             {/* Expandable content */}
             {aiExpanded && (

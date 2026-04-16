@@ -132,6 +132,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       collapsible: true,
       defaultOpen: true,
       items: [
+        { to: "/report", label: "Week in Baseball", show: true },
         { to: "/draft-report", label: "Draft Report", show: true },
         { to: "/ai", label: "AI Insights", show: true },
       ],

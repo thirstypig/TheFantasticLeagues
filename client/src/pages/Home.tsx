@@ -1194,23 +1194,33 @@ export default function Home() {
       )}
       {(digest || digestWeeks.length > 0) && (
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
-          {/* Header toggle */}
-          <button
-            onClick={() => setDigestExpanded(prev => !prev)}
-            className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-[var(--lg-bg-card)]/30 transition-colors text-left"
-          >
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
-              <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Digest</span>
-              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
-              {digest?.generatedAt && (
-                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
-                  · {formatLocalDate(digest.generatedAt)}
-                </span>
-              )}
-            </div>
-            {digestExpanded ? <ChevronUp size={14} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={14} className="text-[var(--lg-text-muted)]" />}
-          </button>
+          {/* Header: toggle + "full report" cross-link */}
+          <div className="flex items-stretch">
+            <button
+              onClick={() => setDigestExpanded(prev => !prev)}
+              className="flex-1 flex items-center justify-between p-4 md:p-5 hover:bg-[var(--lg-bg-card)]/30 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
+                <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Digest</span>
+                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
+                {digest?.generatedAt && (
+                  <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
+                    · {formatLocalDate(digest.generatedAt)}
+                  </span>
+                )}
+              </div>
+              {digestExpanded ? <ChevronUp size={14} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={14} className="text-[var(--lg-text-muted)]" />}
+            </button>
+            <Link
+              to={`/report${selectedWeekKey && selectedWeekKey !== currentWeekKey ? `/${selectedWeekKey}` : ""}`}
+              className="flex items-center gap-1.5 px-3 md:px-4 border-l border-[var(--lg-border-faint)] text-[11px] font-semibold uppercase tracking-wider text-[var(--lg-accent)] hover:bg-[var(--lg-bg-card)]/30 transition-colors"
+              title="Open This Week in Baseball — full weekly report"
+            >
+              Full Report
+              <ChevronRight size={14} />
+            </Link>
+          </div>
 
           {/* Week pill tabs */}
           {digestExpanded && digestWeeks.length > 1 && (
