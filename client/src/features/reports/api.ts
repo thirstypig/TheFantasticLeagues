@@ -27,6 +27,15 @@ export interface WeeklyReport {
     playerName: string | null;
     raw: string | null;
   }>;
+  standings: {
+    rows: Array<{
+      rank: number;
+      teamId: number;
+      teamName: string;
+      totalPoints: number;
+    }>;
+    available: boolean;
+  };
 }
 
 export async function getWeeklyReport(leagueId: number, weekKey?: string): Promise<WeeklyReport> {

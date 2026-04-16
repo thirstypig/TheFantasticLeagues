@@ -432,14 +432,66 @@ import * as path from "node:path";
 
 const TODO_FILE = path.join(process.cwd(), "data", "todo-tasks.json");
 
-function readTodos(): any {
+// Schema convention: PATCH fields that accept null allow callers to clear a
+// previously-set value. POST fields use .optional() only — null on create
+// would be a no-op.
+const MILESTONE_VALUES = ["mvp", "mid-season", "growth", "monetization", "content-seo", "seo-technical"] as const;
+
+const todoTaskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.enum(["not_started", "in_progress", "done"]),
+  priority: z.enum(["p0", "p1", "p2", "p3"]).optional(),
+  owner: z.string().optional(),
+  milestone: z.enum(MILESTONE_VALUES).optional(),
+  instructions: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  targetDate: z.string().optional(),
+  roadmapLink: z.string().optional(),
+  conceptLink: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+}).passthrough(); // tolerate unknown fields — we own the file, but loose extras shouldn't fail-fast
+
+const todoCategorySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  tasks: z.array(todoTaskSchema),
+});
+
+const todoFileSchema = z.object({
+  categories: z.array(todoCategorySchema),
+});
+
+type TodoFile = z.infer<typeof todoFileSchema>;
+
+function readTodos(): TodoFile {
   if (!fs.existsSync(TODO_FILE)) return { categories: [] };
   return JSON.parse(fs.readFileSync(TODO_FILE, "utf-8"));
 }
 
-function writeTodos(data: any): void {
+function writeTodos(data: TodoFile): void {
   fs.writeFileSync(TODO_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
+
+// Boot-time validation — catch hand-edit drift in todo-tasks.json before
+// any request hits `readTodos()`. Same fail-fast posture as env-var validation
+// (server refuses to start if the file is malformed).
+(() => {
+  if (!fs.existsSync(TODO_FILE)) return; // optional in dev scaffolds
+  const raw = JSON.parse(fs.readFileSync(TODO_FILE, "utf-8"));
+  const parsed = todoFileSchema.safeParse(raw);
+  if (!parsed.success) {
+    logger.error(
+      { errors: parsed.error.format() },
+      "todo-tasks.json failed schema validation at boot",
+    );
+    throw new Error(
+      "todo-tasks.json failed schema validation — check the category/task shape and milestone enum values. See logs for details.",
+    );
+  }
+})();
 
 /** GET /api/admin/todos — read all categories + todos */
 router.get("/admin/todos", requireAuth, requireAdmin, asyncHandler(async (_req, res) => {
@@ -447,7 +499,6 @@ router.get("/admin/todos", requireAuth, requireAdmin, asyncHandler(async (_req, 
 }));
 
 /** PATCH /api/admin/todos/:todoId — update a todo */
-const MILESTONE_VALUES = ["mvp", "mid-season", "growth", "monetization", "content-seo", "seo-technical"] as const;
 
 const updateTodoSchema = z.object({
   status: z.enum(["not_started", "in_progress", "done"]).optional(),
@@ -507,7 +558,7 @@ router.post("/admin/todos", requireAuth, requireAdmin, validateBody(addTodoSchem
   if (!cat) return res.status(404).json({ error: "Category not found" });
 
   const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "").substring(0, 60);
-  const newTodo: Record<string, any> = {
+  const newTodo: z.infer<typeof todoTaskSchema> = {
     id,
     title,
     status: "not_started",

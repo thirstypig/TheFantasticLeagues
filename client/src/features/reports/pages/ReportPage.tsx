@@ -72,9 +72,12 @@ export default function ReportPage() {
         </Section>
       </div>
 
-      {/* 4. STANDINGS SNAPSHOT — stub */}
-      <Section title="Standings · This Week" note="Snapshot + week-over-week movers coming next pass.">
-        <Placeholder>Standings matrix will drop in here.</Placeholder>
+      {/* 4. STANDINGS SNAPSHOT */}
+      <Section
+        title="Standings · This Week"
+        note="Roto points summed across all active/completed periods. Week-over-week delta coming next pass."
+      >
+        <StandingsBlock standings={report.standings} />
       </Section>
 
       {/* 5. CATEGORY MOVERS — stub */}
@@ -164,6 +167,51 @@ function EmptyShell({ message }: { message: string }) {
   return (
     <div className="max-w-6xl mx-auto px-4 py-20 md:px-6 md:py-24 text-center text-sm text-[var(--lg-text-muted)]">
       {message}
+    </div>
+  );
+}
+
+function StandingsBlock({ standings }: { standings: WeeklyReport["standings"] }) {
+  if (!standings.available || standings.rows.length === 0) {
+    return <Placeholder>No active or completed periods for this league yet.</Placeholder>;
+  }
+  const max = standings.rows[0]?.totalPoints ?? 0;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
+        <thead>
+          <tr className="border-b border-[var(--lg-border-subtle)] text-[11px] uppercase tracking-wider text-[var(--lg-text-muted)]">
+            <th className="w-12 px-2 py-2 text-left font-semibold">#</th>
+            <th className="px-2 py-2 text-left font-semibold">Team</th>
+            <th className="w-24 px-2 py-2 text-right font-semibold">Points</th>
+            <th className="w-[45%] px-2 py-2 text-left font-semibold">Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.rows.map((r) => {
+            const pct = max > 0 ? Math.round((r.totalPoints / max) * 100) : 0;
+            return (
+              <tr key={r.teamId} className="border-b border-[var(--lg-divide)]">
+                <td className="px-2 py-1.5 tabular-nums text-[var(--lg-text-muted)]">{r.rank}</td>
+                <td className="px-2 py-1.5 font-semibold text-[var(--lg-text-primary)] truncate">
+                  {r.teamName}
+                </td>
+                <td className="px-2 py-1.5 text-right tabular-nums font-semibold">
+                  {r.totalPoints.toFixed(1)}
+                </td>
+                <td className="px-2 py-1.5">
+                  <div className="h-2 rounded bg-[var(--lg-tint)] overflow-hidden">
+                    <div
+                      className="h-full rounded bg-[var(--lg-accent)]"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -34,6 +34,25 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.61.0",
+    date: "Apr 16, 2026",
+    session: "Session 66 (cont.)",
+    title: "Weekly Report Standings Snapshot + Zod Boot-Validation for todo-tasks.json",
+    highlights: [
+      "Weekly Report Standings section now renders — roto points summed across all active/completed periods, sorted desc, with per-team share bar. Stub retired.",
+      "todo-tasks.json gains boot-time Zod validation (todo 092 closed) — server refuses to start if the file is malformed, catching hand-edit drift before any request hits readTodos().",
+    ],
+    changes: [
+      { type: "feat", description: "reportBuilder: added `standings` block — aggregates per-period computeStandingsFromStats into total-points-sorted rows. No new AI call, reuses existing standingsService." },
+      { type: "feat", description: "ReportPage: StandingsBlock component replaces the stub. 4 columns: #, Team, Points, Share (percentage of leader, rendered as progress bar)." },
+      { type: "feat", description: "admin/routes.ts: todoFileSchema + boot-time validation. Fails fast on malformed JSON with clear error (same pattern as env-var validation)." },
+      { type: "refactor", description: "readTodos/writeTodos now typed via z.infer<typeof todoFileSchema> instead of any (addresses Session 63 review finding)." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+    conceptLink: "/concepts",
+  },
+  {
     version: "0.60.0",
     date: "Apr 16, 2026",
     session: "Session 66",

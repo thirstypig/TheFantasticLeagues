@@ -13,6 +13,10 @@
 
 import { prisma } from "../../../db/prisma.js";
 import { weekKeyLabel } from "../../../lib/utils.js";
+import {
+  computeTeamStatsFromDb,
+  computeStandingsFromStats,
+} from "../../standings/services/standingsService.js";
 
 export interface WeeklyReport {
   meta: {
@@ -41,6 +45,17 @@ export interface WeeklyReport {
     playerName: string | null;
     raw: string | null;
   }>;
+  standings: {
+    /** Rows ordered by totalPoints descending. */
+    rows: Array<{
+      rank: number;
+      teamId: number;
+      teamName: string;
+      totalPoints: number;
+    }>;
+    /** True if ≥1 active/completed period existed for this league. */
+    available: boolean;
+  };
 }
 
 interface BuildOpts {
@@ -115,6 +130,31 @@ export async function buildWeeklyReport(opts: BuildOpts): Promise<WeeklyReport> 
     raw: tx.transactionRaw,
   }));
 
+  // Standings — sum roto points across all active/completed periods.
+  // Mirrors the /api/season aggregation. No rate-recomputation needed here since
+  // we only surface totalPoints (category-level detail lives on the Season page).
+  const periods = await prisma.period.findMany({
+    where: { leagueId, status: { in: ["active", "completed"] } },
+    select: { id: true },
+    orderBy: { startDate: "asc" },
+  });
+  const pointsByTeam = new Map<number, number>(teams.map((t) => [t.id, 0]));
+  for (const p of periods) {
+    const teamStats = await computeTeamStatsFromDb(leagueId, p.id);
+    const periodStandings = computeStandingsFromStats(teamStats);
+    for (const entry of periodStandings) {
+      pointsByTeam.set(entry.teamId, (pointsByTeam.get(entry.teamId) ?? 0) + entry.points);
+    }
+  }
+  const standingsRows = teams
+    .map((t) => ({
+      teamId: t.id,
+      teamName: t.name,
+      totalPoints: pointsByTeam.get(t.id) ?? 0,
+    }))
+    .sort((a, b) => b.totalPoints - a.totalPoints)
+    .map((row, i) => ({ rank: i + 1, ...row }));
+
   return {
     meta: {
       leagueId,
@@ -130,5 +170,9 @@ export async function buildWeeklyReport(opts: BuildOpts): Promise<WeeklyReport> 
     },
     teamInsights,
     activity,
+    standings: {
+      rows: standingsRows,
+      available: periods.length > 0,
+    },
   };
 }
