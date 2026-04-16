@@ -28,11 +28,13 @@ vi.mock("../../../middleware/asyncHandler.js", () => ({
 const mockComputeTeamStatsFromDb = vi.fn();
 const mockComputeStandingsFromStats = vi.fn();
 const mockComputeCategoryRows = vi.fn();
+const mockGetSeasonStandings = vi.fn();
 
 vi.mock("../services/standingsService.js", () => ({
   computeTeamStatsFromDb: (...args: any[]) => mockComputeTeamStatsFromDb(...args),
   computeStandingsFromStats: (...args: any[]) => mockComputeStandingsFromStats(...args),
   computeCategoryRows: (...args: any[]) => mockComputeCategoryRows(...args),
+  getSeasonStandings: (...args: any[]) => mockGetSeasonStandings(...args),
   CATEGORY_CONFIG: [
     { key: "R", label: "Runs", lowerIsBetter: false },
     { key: "HR", label: "Home Runs", lowerIsBetter: false },
@@ -185,27 +187,38 @@ describe("GET /season", () => {
   });
 
   it("aggregates standings across periods", async () => {
+    // getSeasonStandings returns the combined shape (parallel-computed internally)
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [1, 2],
+      periodData: [
+        {
+          teamStats: sampleTeamStats,
+          standings: [
+            { teamId: 1, teamName: "Team A", points: 55, rank: 1, delta: 0 },
+            { teamId: 2, teamName: "Team B", points: 45, rank: 2, delta: 0 },
+          ],
+        },
+        {
+          teamStats: sampleTeamStats,
+          standings: [
+            { teamId: 2, teamName: "Team B", points: 52, rank: 1, delta: 0 },
+            { teamId: 1, teamName: "Team A", points: 48, rank: 2, delta: 0 },
+          ],
+        },
+      ],
+      seasonRows: [
+        { rank: 1, teamId: 1, teamName: "Team A", totalPoints: 103 },
+        { rank: 2, teamId: 2, teamName: "Team B", totalPoints: 97 },
+      ],
+    });
     mockPrisma.period.findMany.mockResolvedValue([
-      { id: 1, status: "completed" },
-      { id: 2, status: "active" },
+      { id: 1, name: "Period 1" },
+      { id: 2, name: "Period 2" },
     ]);
     mockPrisma.team.findMany.mockResolvedValue([
       { id: 1, name: "Team A", code: "TMA" },
       { id: 2, name: "Team B", code: "TMB" },
     ]);
-    // Period 1 standings
-    mockComputeTeamStatsFromDb
-      .mockResolvedValueOnce(sampleTeamStats)
-      .mockResolvedValueOnce(sampleTeamStats);
-    mockComputeStandingsFromStats
-      .mockReturnValueOnce([
-        { teamId: 1, teamName: "Team A", points: 55, rank: 1, delta: 0 },
-        { teamId: 2, teamName: "Team B", points: 45, rank: 2, delta: 0 },
-      ])
-      .mockReturnValueOnce([
-        { teamId: 2, teamName: "Team B", points: 52, rank: 1, delta: 0 },
-        { teamId: 1, teamName: "Team A", points: 48, rank: 2, delta: 0 },
-      ]);
 
     const res = await supertest(app).get("/season?leagueId=1");
 
@@ -228,6 +241,11 @@ describe("GET /season", () => {
   });
 
   it("returns empty rows when no periods exist", async () => {
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [],
+      periodData: [],
+      seasonRows: [],
+    });
     mockPrisma.period.findMany.mockResolvedValue([]);
     mockPrisma.team.findMany.mockResolvedValue([
       { id: 1, name: "Team A", code: "TMA" },
