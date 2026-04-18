@@ -470,6 +470,7 @@ router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), async
     .map(r => r.player.name)
     .slice(0, 2); // Top 2 pitchers
   const playerNames = [...hitterNames, ...pitcherNames]; // 6 total searches
+  const playerMatchers = playerNames.map(name => ({ name, matcher: createPlayerNameMatcher(name) }));
 
   if (!YOUTUBE_API_KEY) {
     // No API key — use YouTube channel RSS from multiple channels (free, no auth)
@@ -498,9 +499,7 @@ router.get("/player-videos", requireAuth, requireLeagueMember("leagueId"), async
           const thumbnail = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
           const decodedTitle = title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"');
 
-          // Check if title mentions a rostered player
-          const lowerTitle = decodedTitle.toLowerCase();
-          const matchedPlayer = playerNames.find(name => lowerTitle.includes(name.toLowerCase()));
+          const matchedPlayer = playerMatchers.find(m => m.matcher.matches(decodedTitle))?.name ?? null;
 
           videos.push({
             videoId,
@@ -654,17 +653,11 @@ router.get("/reddit-baseball", requireAuth, requireLeagueMember("leagueId"), asy
       where: { team: { leagueId }, releasedAt: null },
       select: { player: { select: { name: true } }, team: { select: { name: true } } },
     });
-    const rosterMap = new Map<string, string>(); // lowercase last name → fantasy team
-    for (const r of allRosters) {
-      const parts = r.player.name.split(" ");
-      const lastName = parts[parts.length - 1].toLowerCase();
-      // Only map last names that are 4+ chars to avoid false positives (e.g., "Lee", "May")
-      if (lastName.length >= 4) {
-        rosterMap.set(lastName, r.team.name);
-      }
-      // Also map full name
-      rosterMap.set(r.player.name.toLowerCase(), r.team.name);
-    }
+    const rosterMatchers = allRosters.map(r => ({
+      name: r.player.name,
+      team: r.team.name,
+      matcher: createPlayerNameMatcher(r.player.name),
+    }));
 
     const posts = (data.data?.children || [])
       .filter((child: any) => child.kind === "t3" && !child.data.stickied)
@@ -680,17 +673,11 @@ router.get("/reddit-baseball", requireAuth, requireLeagueMember("leagueId"), asy
         const thumbnail = post.thumbnail && post.thumbnail.startsWith("http") ? post.thumbnail : null;
         const flair = post.link_flair_text || "";
 
-        // Cross-reference: check if title mentions any rostered player
-        const lowerTitle = title.toLowerCase();
         const matchedPlayers: { name: string; fantasyTeam: string }[] = [];
-        for (const [key, team] of rosterMap) {
-          if (lowerTitle.includes(key)) {
-            // Find the full player name for display
-            const fullName = allRosters.find(r =>
-              r.player.name.toLowerCase() === key || r.player.name.split(" ").pop()?.toLowerCase() === key
-            )?.player.name ?? key;
-            if (!matchedPlayers.some(mp => mp.name === fullName)) {
-              matchedPlayers.push({ name: fullName, fantasyTeam: team });
+        for (const rm of rosterMatchers) {
+          if (rm.matcher.matches(title)) {
+            if (!matchedPlayers.some(mp => mp.name === rm.name)) {
+              matchedPlayers.push({ name: rm.name, fantasyTeam: rm.team });
             }
           }
         }

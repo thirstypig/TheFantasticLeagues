@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 export function Screenshot({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   return (
     <figure className="my-3 rounded-lg overflow-hidden border border-[var(--lg-border-subtle)] shadow-sm">
-      <img src={src} alt={alt} className="w-full" loading="lazy" />
+      <img src={src} alt={alt} className="w-full" loading="lazy" width={1280} height={800} style={{ aspectRatio: "16 / 10" }} />
       {caption && <figcaption className="text-[10px] text-[var(--lg-text-muted)] text-center py-1.5 bg-[var(--lg-tint)] border-t border-[var(--lg-border-subtle)]">{caption}</figcaption>}
     </figure>
   );

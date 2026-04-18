@@ -113,15 +113,29 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     orderBy: { startDate: "asc" },
   });
 
+  const allPeriodStats = await Promise.all(
+    allPeriods.map(p =>
+      p.id === pid ? Promise.resolve(teamStats) : computeTeamStatsFromDb(leagueId, p.id)
+    )
+  );
+
   const seasonTotals = new Map<number, Record<string, number>>();
-  for (const p of allPeriods) {
-    const pStats = p.id === pid ? teamStats : await computeTeamStatsFromDb(leagueId, p.id);
+  for (const pStats of allPeriodStats) {
     for (const t of pStats) {
       const prev = seasonTotals.get(t.team.id) ?? { R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, K: 0, ERA: 0, WHIP: 0 };
       prev.R += t.R; prev.HR += t.HR; prev.RBI += t.RBI; prev.SB += t.SB;
       prev.W += t.W; prev.S += t.S; prev.K += t.K;
-      prev.AVG = t.AVG; prev.ERA = t.ERA; prev.WHIP = t.WHIP;
+      // Rate stats: accumulate for averaging (components not available in TeamStatRow)
+      prev.AVG += t.AVG; prev.ERA += t.ERA; prev.WHIP += t.WHIP;
       seasonTotals.set(t.team.id, prev);
+    }
+  }
+  const periodCount = allPeriodStats.length;
+  if (periodCount > 0) {
+    for (const totals of seasonTotals.values()) {
+      totals.AVG /= periodCount;
+      totals.ERA /= periodCount;
+      totals.WHIP /= periodCount;
     }
   }
 

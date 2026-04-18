@@ -2,7 +2,7 @@
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, PITCHER_CODES } from "../../../lib/sportConfig.js";
-import { getSportConfig } from "../../../lib/sports/index.js";
+
 import type { PeriodStatRow } from "../../../types/stats.js";
 
 // --- Types ---
@@ -104,20 +104,6 @@ export function buildTeamNameMap(
 export { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../../../lib/sportConfig.js";
 export type { CategoryKey } from "../../../lib/sportConfig.js";
 import { CATEGORY_CONFIG, KEY_TO_DB_FIELD, type CategoryKey } from "../../../lib/sportConfig.js";
-
-/**
- * Get category config for a given sport (defaults to baseball).
- * Maps SportConfig.categories to the { key, lowerIsBetter } shape used by standings.
- */
-export function getCategoriesForSport(sport: string = "baseball") {
-  const config = getSportConfig(sport);
-  return config.categories.map((c) => ({
-    key: c.id,
-    label: c.name,
-    lowerIsBetter: c.isLowerBetter ?? false,
-    group: c.group,
-  }));
-}
 
 export function computeCategoryRows(
   stats: TeamStatRow[],
@@ -465,9 +451,8 @@ async function computeWithDailyStats(
 
     // Two-way player check
     const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-    const assignedAsP = PITCHER_CODES.includes(
-      (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase() as any
-    );
+    const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
+    const assignedAsP = PITCHER_CODES.some(code => code === pos);
     const countHitting = !isTwoWay || !assignedAsP;
     const countPitching = !isTwoWay || assignedAsP;
 
@@ -592,10 +577,20 @@ async function computeWithPeriodStats(
   });
 }
 
+// In-memory TTL cache — stats change only on daily cron syncs (12:00 + 13:00 UTC)
+const standingsCache = new Map<number, { data: Awaited<ReturnType<typeof getSeasonStandingsUncached>>; expiry: number }>();
+const STANDINGS_CACHE_TTL = 120_000; // 2 minutes
+
+export function clearStandingsCache(leagueId?: number): void {
+  if (leagueId !== undefined) standingsCache.delete(leagueId);
+  else standingsCache.clear();
+}
+
 /**
  * Season-level standings: sum roto points across all active/completed periods.
  * Parallelizes per-period DB calls via Promise.all (~15× faster than sequential).
  * Shared by `/api/standings/season` and `/api/reports/:leagueId`.
+ * Results cached for 2 minutes (stats change only on daily cron syncs).
  */
 export async function getSeasonStandings(
   leagueId: number,
@@ -606,6 +601,14 @@ export async function getSeasonStandings(
   /** Roto points summed across periods, sorted desc, ranked. */
   seasonRows: Array<{ rank: number; teamId: number; teamName: string; totalPoints: number }>;
 }> {
+  const cached = standingsCache.get(leagueId);
+  if (cached && cached.expiry > Date.now()) return cached.data;
+  const result = await getSeasonStandingsUncached(leagueId);
+  standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
+  return result;
+}
+
+async function getSeasonStandingsUncached(leagueId: number) {
   const periods = await prisma.period.findMany({
     where: { leagueId, status: { in: ["active", "completed"] } },
     select: { id: true },

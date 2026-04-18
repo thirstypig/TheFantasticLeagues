@@ -610,6 +610,18 @@ model PlayerStatsPeriod {
   RBI Int @default(0)
   SB  Int @default(0)
 
+  // Batting — extended (from MLB API, for MVP/award tracking)
+  BB     Int   @default(0) // walks (baseOnBalls)
+  HBP    Int   @default(0) // hit by pitch
+  SF     Int   @default(0) // sacrifice flies
+  TB     Int   @default(0) // total bases
+  DBL    Int   @default(0) // doubles
+  TPL    Int   @default(0) // triples
+  SO     Int   @default(0) // strikeouts (batting)
+  OBP    Float @default(0)
+  SLG    Float @default(0)
+  OPS    Float @default(0)
+
   // Pitching
   W    Int   @default(0)
   SV   Int   @default(0)
@@ -617,6 +629,15 @@ model PlayerStatsPeriod {
   IP   Float @default(0)
   ER   Int   @default(0)
   BB_H Int   @default(0) // walks + hits allowed (for WHIP)
+
+  // Pitching — extended (from MLB API, for Cy Young tracking)
+  L       Int   @default(0) // losses
+  GS      Int   @default(0) // games started
+  QS      Int   @default(0) // quality starts (not in MLB API — computed)
+  K9      Float @default(0) // strikeouts per 9 innings
+  BB9     Float @default(0) // walks per 9 innings
+  HR_A    Int   @default(0) // home runs allowed
+  BF      Int   @default(0) // batters faced
 
   player Player @relation(fields: [playerId], references: [id])
   period Period @relation(fields: [periodId], references: [id])
@@ -638,6 +659,18 @@ model PlayerStatsDaily {
   RBI Int @default(0)
   SB  Int @default(0)
 
+  // Batting — extended
+  BB     Int   @default(0)
+  HBP    Int   @default(0)
+  SF     Int   @default(0)
+  TB     Int   @default(0)
+  DBL    Int   @default(0)
+  TPL    Int   @default(0)
+  SO     Int   @default(0)
+  OBP    Float @default(0)
+  SLG    Float @default(0)
+  OPS    Float @default(0)
+
   // Pitching
   W    Int   @default(0)
   SV   Int   @default(0)
@@ -645,6 +678,14 @@ model PlayerStatsDaily {
   IP   Float @default(0)
   ER   Int   @default(0)
   BB_H Int   @default(0) // walks + hits allowed (for WHIP)
+
+  // Pitching — extended
+  L       Int   @default(0)
+  GS      Int   @default(0)
+  K9      Float @default(0)
+  BB9     Float @default(0)
+  HR_A    Int   @default(0)
+  BF      Int   @default(0)
 
   player Player @relation(fields: [playerId], references: [id])
 

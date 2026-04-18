@@ -21,6 +21,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import { getWeeklyReport, type WeeklyReport } from "../api";
 import { TwibHero } from "../components/TwibHero";
 import { reportError } from "../../../lib/errorBus";
+import { ThemedTable, ThemedThead, ThemedTr, ThemedTh, ThemedTd } from "../../../components/ui/ThemedTable";
 
 export default function ReportPage() {
   const { leagueId } = useLeague();
@@ -55,6 +56,7 @@ export default function ReportPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
       {/* 1. HERO */}
+      <h1 className="sr-only">This Week in Baseball — {report.meta.leagueName} · {report.meta.label}</h1>
       <TwibHero label={`${report.meta.leagueName} · ${report.meta.label}`} />
 
       {/* 2. POWER RANKINGS */}
@@ -80,12 +82,7 @@ export default function ReportPage() {
         <StandingsBlock standings={report.standings} />
       </Section>
 
-      {/* 5. CATEGORY MOVERS — stub */}
-      <Section title="Category Movers" note="Top 3 up / down across all 10 roto categories.">
-        <Placeholder>Per-category biggest movers will render here.</Placeholder>
-      </Section>
-
-      {/* 6. TRADE OF THE WEEK */}
+      {/* 5. TRADE OF THE WEEK */}
       <Section title="Trade of the Week">
         <DigestBlock digest={report.digest} field="proposedTrade" />
         <p className="mt-2 text-xs text-[var(--lg-text-muted)]">
@@ -115,11 +112,6 @@ export default function ReportPage() {
           <DigestBlock digest={report.digest} field="boldPrediction" />
         </Section>
       </div>
-
-      {/* 10. LOOKING AHEAD — stub */}
-      <Section title="Looking Ahead" note="Tight races, matchup previews. Phase 2.">
-        <Placeholder>Next-week outlook will render here.</Placeholder>
-      </Section>
 
       <footer className="mt-12 text-center text-[11px] text-[var(--lg-text-muted)]">
         Powered by Google Gemini &amp; Anthropic Claude ·{" "}
@@ -177,42 +169,33 @@ function StandingsBlock({ standings }: { standings: WeeklyReport["standings"] })
   }
   const max = standings.rows[0]?.totalPoints ?? 0;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm" style={{ tableLayout: "fixed" }}>
-        <thead>
-          <tr className="border-b border-[var(--lg-border-subtle)] text-[11px] uppercase tracking-wider text-[var(--lg-text-muted)]">
-            <th className="w-12 px-2 py-2 text-left font-semibold">#</th>
-            <th className="px-2 py-2 text-left font-semibold">Team</th>
-            <th className="w-24 px-2 py-2 text-right font-semibold">Points</th>
-            <th className="w-[45%] px-2 py-2 text-left font-semibold">Share</th>
-          </tr>
-        </thead>
-        <tbody>
-          {standings.rows.map((r) => {
-            const pct = max > 0 ? Math.round((r.totalPoints / max) * 100) : 0;
-            return (
-              <tr key={r.teamId} className="border-b border-[var(--lg-divide)]">
-                <td className="px-2 py-1.5 tabular-nums text-[var(--lg-text-muted)]">{r.rank}</td>
-                <td className="px-2 py-1.5 font-semibold text-[var(--lg-text-primary)] truncate">
-                  {r.teamName}
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums font-semibold">
-                  {r.totalPoints.toFixed(1)}
-                </td>
-                <td className="px-2 py-1.5">
-                  <div className="h-2 rounded bg-[var(--lg-tint)] overflow-hidden">
-                    <div
-                      className="h-full rounded bg-[var(--lg-accent)]"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <ThemedTable density="compact" aria-label="Standings snapshot">
+      <ThemedThead>
+        <ThemedTr>
+          <ThemedTh className="w-12">#</ThemedTh>
+          <ThemedTh>Team</ThemedTh>
+          <ThemedTh align="right" className="w-24">Points</ThemedTh>
+          <ThemedTh className="w-[45%]">Share</ThemedTh>
+        </ThemedTr>
+      </ThemedThead>
+      <tbody>
+        {standings.rows.map((r) => {
+          const pct = max > 0 ? Math.round((r.totalPoints / max) * 100) : 0;
+          return (
+            <ThemedTr key={r.teamId}>
+              <ThemedTd className="tabular-nums text-[var(--lg-text-muted)]">{r.rank}</ThemedTd>
+              <ThemedTd className="font-semibold text-[var(--lg-text-primary)] truncate">{r.teamName}</ThemedTd>
+              <ThemedTd align="right" className="tabular-nums font-semibold">{r.totalPoints.toFixed(1)}</ThemedTd>
+              <ThemedTd>
+                <div className="h-2 rounded bg-[var(--lg-tint)] overflow-hidden">
+                  <div className="h-full rounded bg-[var(--lg-accent)]" style={{ width: `${pct}%` }} />
+                </div>
+              </ThemedTd>
+            </ThemedTr>
+          );
+        })}
+      </tbody>
+    </ThemedTable>
   );
 }
 

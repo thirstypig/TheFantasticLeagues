@@ -12,7 +12,7 @@
  */
 
 import { prisma } from "../../../db/prisma.js";
-import { weekKeyLabel } from "../../../lib/utils.js";
+import { weekKeyLabel, weekKeyToMonday } from "../../../lib/utils.js";
 import { getSeasonStandings } from "../../standings/services/standingsService.js";
 
 export interface WeeklyReport {
@@ -40,7 +40,6 @@ export interface WeeklyReport {
     type: string | null;
     teamName: string | null;
     playerName: string | null;
-    raw: string | null;
   }>;
   standings: {
     /** Rows ordered by totalPoints descending. Empty array when no active/completed periods. */
@@ -53,6 +52,29 @@ export interface WeeklyReport {
   };
 }
 
+const DIGEST_SAFE_KEYS = new Set([
+  "weekInOneSentence", "powerRankings", "hotTeam", "coldTeam",
+  "statOfTheWeek", "categoryMovers", "proposedTrade", "boldPrediction",
+  "fantasyMVP", "fantasyCyYoung",
+]);
+
+const INSIGHT_SAFE_KEYS = new Set([
+  "insights", "overallGrade", "grade", "summary", "highlights",
+  "concerns", "recommendations", "weeklyPerformance", "categoryBreakdown",
+]);
+
+function filterSafeFields(
+  data: Record<string, unknown> | null,
+  safeKeys: Set<string>,
+): Record<string, unknown> | null {
+  if (!data) return null;
+  const filtered: Record<string, unknown> = {};
+  for (const key of safeKeys) {
+    if (key in data) filtered[key] = data[key];
+  }
+  return Object.keys(filtered).length > 0 ? filtered : null;
+}
+
 interface BuildOpts {
   leagueId: number;
   weekKey: string;
@@ -62,7 +84,7 @@ interface BuildOpts {
 export async function buildWeeklyReport(opts: BuildOpts): Promise<WeeklyReport> {
   const { leagueId, weekKey, currentWeekKey } = opts;
 
-  const [league, digest, teams, transactions] = await Promise.all([
+  const [league, digest, teams, transactions, standingsResult] = await Promise.all([
     prisma.league.findUnique({
       where: { id: leagueId },
       select: { id: true, name: true },
@@ -75,22 +97,28 @@ export async function buildWeeklyReport(opts: BuildOpts): Promise<WeeklyReport> 
       select: { id: true, name: true },
       orderBy: { id: "asc" },
     }),
-    // Activity: transactions posted during this weekKey window.
-    // For MVP we pull recent and client-filter; future: use weekStart/weekEnd bounds.
-    prisma.transactionEvent.findMany({
-      where: { leagueId },
-      orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
-      take: 50,
-      select: {
-        id: true,
-        transactionType: true,
-        submittedAt: true,
-        createdAt: true,
-        ogbaTeamName: true,
-        playerAliasRaw: true,
-        transactionRaw: true,
-      },
-    }),
+    // Activity: transactions within this week's date bounds
+    (() => {
+      const weekStart = weekKeyToMonday(weekKey);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      return prisma.transactionEvent.findMany({
+        where: {
+          leagueId,
+          submittedAt: { gte: weekStart, lt: weekEnd },
+        },
+        orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          transactionType: true,
+          submittedAt: true,
+          createdAt: true,
+          ogbaTeamName: true,
+          playerAliasRaw: true,
+        },
+      });
+    })(),
+    getSeasonStandings(leagueId),
   ]);
 
   // Per-team weekly insights for this week
@@ -110,23 +138,22 @@ export async function buildWeeklyReport(opts: BuildOpts): Promise<WeeklyReport> 
       teamId: t.id,
       teamName: t.name,
       available: !!row,
-      data: (row?.data ?? null) as Record<string, unknown> | null,
+      data: filterSafeFields(
+        (row?.data ?? null) as Record<string, unknown> | null,
+        INSIGHT_SAFE_KEYS,
+      ),
     };
   });
 
-  // Activity — flat list for MVP; client renders with type badges.
-  // Future: filter by weekStart/weekEnd bounds from weekKey.
   const activity = transactions.map((tx) => ({
     id: tx.id,
     at: (tx.submittedAt ?? tx.createdAt).toISOString(),
     type: tx.transactionType,
     teamName: tx.ogbaTeamName,
     playerName: tx.playerAliasRaw,
-    raw: tx.transactionRaw,
   }));
 
-  // Standings — shared helper parallelizes per-period DB calls via Promise.all.
-  const { seasonRows: standingsRows } = await getSeasonStandings(leagueId);
+  const { seasonRows: standingsRows } = standingsResult;
 
   return {
     meta: {
@@ -139,7 +166,10 @@ export async function buildWeeklyReport(opts: BuildOpts): Promise<WeeklyReport> 
     },
     digest: {
       available: !!digest,
-      data: (digest?.data ?? null) as Record<string, unknown> | null,
+      data: filterSafeFields(
+        (digest?.data ?? null) as Record<string, unknown> | null,
+        DIGEST_SAFE_KEYS,
+      ),
     },
     teamInsights,
     activity,

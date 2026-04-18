@@ -1,5 +1,5 @@
 // client/src/components/PlayerDetailModal.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePlayerNews } from "../../hooks/usePlayerNews";
 
 import {
@@ -239,13 +239,41 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
     };
   }, [player, mlbId, mode, isVisible]);
 
+  // Focus trap + Escape handler
+  const modalRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!player) return;
+    // Store the element that had focus so we can restore it on close
+    const previousFocus = document.activeElement as HTMLElement | null;
+
     const onKeyDown = (ev: KeyboardEvent) => {
-      if (ev.key === "Escape") onClose();
+      if (ev.key === "Escape") { onClose(); return; }
+      if (ev.key !== "Tab" || !modalRef.current) return;
+
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (ev.shiftKey && document.activeElement === first) {
+        ev.preventDefault();
+        last.focus();
+      } else if (!ev.shiftKey && document.activeElement === last) {
+        ev.preventDefault();
+        first.focus();
+      }
     };
+
+    // Focus the modal on open
+    requestAnimationFrame(() => modalRef.current?.focus());
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      previousFocus?.focus();
+    };
   }, [player, onClose]);
 
   if (!isVisible || !player) return null;
@@ -280,7 +308,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
       role="dialog"
       aria-modal="true"
     >
-      <div className={modalCls} onMouseDown={e => e.stopPropagation()}>
+      <div ref={modalRef} tabIndex={-1} className={modalCls} onMouseDown={e => e.stopPropagation()}>
         <div className={headerCls}>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">

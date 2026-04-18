@@ -9,6 +9,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { addMemberSchema } from "../../lib/schemas.js";
+import { buildDashboard } from "./services/dashboardService.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
 import { syncAllPlayers, syncPositionEligibility, syncAAARosters, enrichStalePlayers } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
@@ -475,11 +476,12 @@ function writeTodos(data: TodoFile): void {
   fs.writeFileSync(TODO_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
-// Boot-time validation — catch hand-edit drift in todo-tasks.json before
-// any request hits `readTodos()`. Same fail-fast posture as env-var validation
-// (server refuses to start if the file is malformed).
-(() => {
-  if (!fs.existsSync(TODO_FILE)) return; // optional in dev scaffolds
+/**
+ * Validate todo-tasks.json against the Zod schema.
+ * Call from server/src/index.ts at boot alongside env-var validation.
+ */
+export function validateTodoFileAtBoot(): void {
+  if (!fs.existsSync(TODO_FILE)) return;
   const raw = JSON.parse(fs.readFileSync(TODO_FILE, "utf-8"));
   const parsed = todoFileSchema.safeParse(raw);
   if (!parsed.success) {
@@ -491,7 +493,7 @@ function writeTodos(data: TodoFile): void {
       "todo-tasks.json failed schema validation — check the category/task shape and milestone enum values. See logs for details.",
     );
   }
-})();
+}
 
 /** GET /api/admin/todos — read all categories + todos */
 router.get("/admin/todos", requireAuth, requireAdmin, asyncHandler(async (_req, res) => {
@@ -980,6 +982,13 @@ router.get("/admin/errors/:ref", requireAuth, requireAdmin, asyncHandler(async (
     error: null,
     note: "Not found in ring buffer — may have been evicted. Check Railway logs by requestId.",
   });
+}));
+
+/** GET /api/admin/dashboard — executive dashboard with hero + tiles + funnels + activity. */
+router.get("/admin/dashboard", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  const days = Math.min(Math.max(Number(req.query.days) || 30, 7), 90);
+  const data = await buildDashboard(days);
+  return res.json(data);
 }));
 
 /** Test-only cache invalidator (used by adminStats.test.ts). */

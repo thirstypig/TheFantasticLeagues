@@ -19,7 +19,7 @@ import { authRouter } from "./features/auth/index.js";
 import { publicRouter } from "./routes/public.js";
 import { leaguesRouter } from "./features/leagues/index.js";
 import { rulesRouter } from "./features/leagues/index.js";
-import { adminRouter } from "./features/admin/index.js";
+import { adminRouter, validateTodoFileAtBoot } from "./features/admin/index.js";
 import { auctionRouter } from "./features/auction/index.js";
 import { draftRouter } from "./features/draft/index.js";
 import { matchupsRouter } from "./features/matchups/index.js";
@@ -67,6 +67,9 @@ for (const key of REQUIRED_ENV) {
     process.exit(1);
   }
 }
+
+// Validate todo-tasks.json schema at boot (same fail-fast posture as env vars)
+validateTodoFileAtBoot();
 
 const PORT = Number(process.env.PORT || 4010);
 

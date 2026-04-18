@@ -15,6 +15,7 @@ import Login from "./features/auth/pages/Login";
 // Non-critical routes — lazy-loaded (code-split chunks)
 const Commissioner = React.lazy(() => import("./features/commissioner/pages/Commissioner"));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
+const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
@@ -56,6 +57,8 @@ const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
+import NotFound from "./pages/NotFound";
+import { RouteAnnouncer } from "./components/RouteAnnouncer";
 
 /**
  * Handles unauthenticated routing. If the URL has a Supabase auth hash
@@ -104,6 +107,7 @@ export default function App() {
 
   return (
     <Suspense fallback={<PageLoader />}>
+      <RouteAnnouncer />
       <Routes>
         {/* Public routes outside of AppShell (no auth required) */}
         <Route path="/login" element={<Login />} />
@@ -139,6 +143,7 @@ export default function App() {
                     <Route path="/matchup" element={<MatchupPage />} />
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     <Route path="/admin/users" element={<AdminUsers />} />
                     <Route path="/todo" element={<TodoPage />} />
                     <Route path="/guide" element={<GuidePage />} />
@@ -167,7 +172,7 @@ export default function App() {
                     <Route path="/community" element={<ProductBoard />} />
                     <Route path="/ai" element={<AIHub />} />
                     <Route path="/draft-report" element={<DraftReportPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
               </AppShell>

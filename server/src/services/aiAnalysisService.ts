@@ -169,6 +169,8 @@ export class AIAnalysisService {
     weekNumber: number;
     previousVotes: { yes: number; no: number } | null;
     narrativeHints?: string[];
+    mvpCandidates?: string;
+    cyYoungCandidates?: string;
   }): Promise<{
     success: boolean;
     result?: {
@@ -203,6 +205,7 @@ export class AIAnalysisService {
         ? `\nLast week's proposed trade received ${previousVotes.yes} "yes" and ${previousVotes.no} "no" votes.${previousVotes.no > previousVotes.yes ? ' Owners felt it was unrealistic — aim for a more practical, mutually beneficial trade this week.' : previousVotes.yes > previousVotes.no ? ' Owners liked the idea — this week, try something in a similar vein.' : ''}`
         : '';
 
+      const { mvpCandidates, cyYoungCandidates } = input;
       const prompt = `You are a stat-obsessed league member in "${leagueName}" writing the weekly digest after Week ${weekNumber} of the ${season} season (${teams.length} teams, 10-cat roto: R, HR, RBI, SB, AVG | W, SV, K, ERA, WHIP).
 
 Write with personality — be opinionated, use trash talk, be specific. Use last names only ("Betts" not "Mookie Betts"). Do NOT use position labels (no "OF", "SP", "TWP" — just names).
@@ -234,6 +237,12 @@ Recent moves: ${t.recentMoves || 'None'}`.replace(/\n\n/g, '\n');
 ${narrativeHints && narrativeHints.length > 0 ? `
 INSIGHTS FROM THE DATA:
 ${narrativeHints.map(h => `- ${h}`).join('\n')}` : ''}
+${mvpCandidates ? `
+FANTASY MVP CANDIDATES (YTD, by OPS):
+${mvpCandidates}` : ''}
+${cyYoungCandidates ? `
+FANTASY CY YOUNG CANDIDATES (YTD, by ERA):
+${cyYoungCandidates}` : ''}
 
 CRITICAL RULES (in priority order):
 
@@ -272,7 +281,13 @@ Return ONLY valid JSON (no markdown, no code blocks):
   "categoryMovers": [
     {"category": "HR", "team": "Team", "direction": "up|down", "detail": "Cumulative total + current rank + rank change (e.g., 'Sitting at 18 HR (2nd), up from 5th last week')"}
   ],
-  "boldPrediction": "1 fun sentence grounded in a real trend from the data"
+  "boldPrediction": "1 fun sentence grounded in a real trend from the data",
+  "fantasyMVP": [
+    {"rank": 1, "playerName": "Last Name", "fantasyTeam": "Team", "statLine": "e.g. .331 AVG, 22 HR, 55 RBI, .985 OPS", "analysis": "1 sentence: why this player leads — cite specific stats from the MVP candidates data above"}
+  ],
+  "fantasyCyYoung": [
+    {"rank": 1, "playerName": "Last Name", "fantasyTeam": "Team", "statLine": "e.g. 2.15 ERA, 0.92 WHIP, 95 K, 8-2", "analysis": "1 sentence: why this pitcher leads — cite specific stats from the Cy Young candidates data above"}
+  ]
 }
 
 FINAL CHECK: Re-read every sentence in your response. If ANY sentence contains a number that does not appear in the team data above, DELETE that sentence and rewrite it using only real numbers. This is non-negotiable.`;
@@ -311,6 +326,20 @@ FINAL CHECK: Re-read every sentence in your response. If ANY sentence contains a
           reasoning: z.string().max(1000),
         }).optional(),
         boldPrediction: z.string().max(400),
+        fantasyMVP: z.array(z.object({
+          rank: z.number().int().min(1),
+          playerName: z.string().max(100),
+          fantasyTeam: z.string().max(200),
+          statLine: z.string().max(300),
+          analysis: z.string().max(400),
+        })).max(3).optional(),
+        fantasyCyYoung: z.array(z.object({
+          rank: z.number().int().min(1),
+          playerName: z.string().max(100),
+          fantasyTeam: z.string().max(200),
+          statLine: z.string().max(300),
+          analysis: z.string().max(400),
+        })).max(3).optional(),
       });
 
       const parsed = schema.safeParse(raw);

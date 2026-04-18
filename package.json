@@ -38,6 +38,7 @@
     "@types/supertest": "^7.2.0",
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
+    "playwright": "^1.59.1",
     "prisma": "^6.19.2",
     "supertest": "^7.2.2"
   }

@@ -83,14 +83,16 @@ export const MLB_API_BASE = "https://statsapi.mlb.com/api/v1";
 
 import { supabase } from '../lib/supabase';
 
+const DEFAULT_TIMEOUT_MS = 30_000;
+
 export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<T> {
   // Get current session token
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
-  const headers: Record<string, string> = { 
-    Accept: "application/json", 
-    ...init?.headers as Record<string, string> 
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...init?.headers as Record<string, string>
   };
 
   if (token) {
@@ -102,9 +104,16 @@ export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<
     headers["Content-Type"] = "application/json";
   }
 
+  // 30s timeout — prevents indefinite hangs on stalled connections
+  const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+  const signal = init?.signal
+    ? AbortSignal.any([init.signal, timeoutSignal])
+    : timeoutSignal;
+
   const res = await fetch(url, {
     ...init,
     headers,
+    signal,
     credentials: "omit", // Supabase uses headers, not cookies
   });
 

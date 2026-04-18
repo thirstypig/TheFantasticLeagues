@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "097"
 tags: [code-review, architecture, test-isolation, boot]

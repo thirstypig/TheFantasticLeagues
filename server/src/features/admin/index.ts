@@ -1,1 +1,1 @@
-export { adminRouter } from "./routes.js";
+export { adminRouter, validateTodoFileAtBoot } from "./routes.js";

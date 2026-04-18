@@ -4,6 +4,7 @@ import { getLastName } from '../../../lib/baseballUtils';
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
 import { SortableHeader } from '../../../components/ui/SortableHeader';
 import { Star } from 'lucide-react';
+import { HitterStatHeaders, PitcherStatHeaders, HitterStatCells, PitcherStatCells } from '../../../components/shared/PlayerStatsColumns';
 
 import {
   PlayerSeasonStat,
@@ -54,7 +55,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
   const [viewMode, setViewMode] = useState<'all' | 'remaining' | 'starred'>('remaining');
 
   // Sort State
-  type StatKey = 'name' | 'R' | 'HR' | 'RBI' | 'SB' | 'AVG' | 'W' | 'SV' | 'K' | 'ERA' | 'WHIP' | 'val' | 'rank';
+  type StatKey = 'name' | 'AB' | 'R' | 'HR' | 'RBI' | 'SB' | 'AVG' | 'W' | 'SV' | 'K' | 'ERA' | 'WHIP' | 'val' | 'rank';
   const [sortKey, setSortKey] = useState<StatKey>('name');
   const [sortDesc, setSortDesc] = useState(false);
 
@@ -278,11 +279,11 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
     setExpandedId(prev => (prev === id ? null : id));
   };
 
-  const handleHeaderClick = (key: StatKey) => {
+  const handleHeaderClick = (key: string) => {
       if (sortKey === key) {
           setSortDesc(!sortDesc);
       } else {
-          setSortKey(key);
+          setSortKey(key as StatKey);
           // Default to descending for stats (higher is better), ascending for name
           setSortDesc(key !== 'name');
       }
@@ -406,21 +407,9 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                     {hasRankings && <SortableHeader sortKey="rank" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="My Rank (from imported rankings)">#R</SortableHeader>}
                     <SortableHeader sortKey="name" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} className="px-2 tracking-wide">Player</SortableHeader>
                     {viewGroup === 'hitters' ? (
-                        <>
-                             <SortableHeader sortKey="R" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Runs">R</SortableHeader>
-                             <SortableHeader sortKey="HR" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Home Runs">HR</SortableHeader>
-                             <SortableHeader sortKey="RBI" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Runs Batted In">RBI</SortableHeader>
-                             <SortableHeader sortKey="SB" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Stolen Bases">SB</SortableHeader>
-                             <SortableHeader sortKey="AVG" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title="Batting Average">AVG</SortableHeader>
-                        </>
+                        <HitterStatHeaders sortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} />
                     ) : (
-                        <>
-                             <SortableHeader sortKey="W" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Wins">W</SortableHeader>
-                             <SortableHeader sortKey="SV" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Saves">SV</SortableHeader>
-                             <SortableHeader sortKey="K" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-8" title="Strikeouts">K</SortableHeader>
-                             <SortableHeader sortKey="ERA" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title="Earned Run Average (lower is better)">ERA</SortableHeader>
-                             <SortableHeader sortKey="WHIP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title="Walks + Hits per Inning Pitched (lower is better)">WHIP</SortableHeader>
-                        </>
+                        <PitcherStatHeaders sortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} />
                     )}
                     <SortableHeader sortKey="val" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleHeaderClick} align="center" className="px-1 w-10" title={myTeamId ? "Personalized value based on your roster needs, budget, and position scarcity." : "Projected auction value."}>{myTeamId ? 'My Val' : 'Val'}</SortableHeader>
                     <ThemedTh className="w-14 px-1" title="Click Nom to nominate a player for auction"> </ThemedTh>
@@ -481,21 +470,9 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                 </ThemedTd>
 
                                 {viewGroup === 'hitters' ? (
-                                    <>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.R || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.HR || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.RBI || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.SB || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{typeof p.AVG === 'number' ? fmtRate(p.AVG) : '-'}</ThemedTd>
-                                    </>
+                                    <HitterStatCells row={p} />
                                 ) : (
-                                    <>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.W || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.SV || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.K || '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.ERA ? Number(p.ERA).toFixed(2) : '-'}</ThemedTd>
-                                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{p.WHIP ? Number(p.WHIP).toFixed(2) : '-'}</ThemedTd>
-                                    </>
+                                    <PitcherStatCells row={p} />
                                 )}
 
                                 {/* Value + Surplus (AUC-05) / My Value */}

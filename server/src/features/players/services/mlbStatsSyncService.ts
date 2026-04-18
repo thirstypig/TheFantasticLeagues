@@ -168,22 +168,20 @@ async function mirrorTwoWayPitcherStats(periodId: number): Promise<void> {
 
 /**
  * Parse hitting + pitching stats from an MLB API person response.
+ * Extracts both core fantasy stats and extended stats for MVP/Cy Young tracking.
  */
-function parsePlayerStats(person: any): {
-  AB: number;
-  H: number;
-  R: number;
-  HR: number;
-  RBI: number;
-  SB: number;
-  W: number;
-  SV: number;
-  K: number;
-  IP: number;
-  ER: number;
-  BB_H: number;
-} {
-  const result = { AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 };
+function parsePlayerStats(person: any) {
+  const result = {
+    // Core batting
+    AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+    // Extended batting (MVP tracking)
+    BB: 0, HBP: 0, SF: 0, TB: 0, DBL: 0, TPL: 0, SO: 0,
+    OBP: 0, SLG: 0, OPS: 0,
+    // Core pitching
+    W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0,
+    // Extended pitching (Cy Young tracking)
+    L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0,
+  };
 
   if (!person.stats) return result;
 
@@ -193,20 +191,39 @@ function parsePlayerStats(person: any): {
     if (!split) continue;
 
     if (groupName === "hitting") {
+      // Core
       result.AB = split.atBats || 0;
       result.H = split.hits || 0;
       result.R = split.runs || 0;
       result.HR = split.homeRuns || 0;
       result.RBI = split.rbi || 0;
       result.SB = split.stolenBases || 0;
+      // Extended
+      result.BB = split.baseOnBalls || 0;
+      result.HBP = split.hitByPitch || 0;
+      result.SF = split.sacFlies || 0;
+      result.TB = split.totalBases || 0;
+      result.DBL = split.doubles || 0;
+      result.TPL = split.triples || 0;
+      result.SO = split.strikeOuts || 0;
+      result.OBP = parseFloat(split.obp) || 0;
+      result.SLG = parseFloat(split.slg) || 0;
+      result.OPS = parseFloat(split.ops) || 0;
     } else if (groupName === "pitching") {
+      // Core
       result.W = split.wins || 0;
       result.SV = split.saves || 0;
       result.K = split.strikeOuts || 0;
       result.IP = split.inningsPitched ? parseIP(split.inningsPitched) : 0;
       result.ER = split.earnedRuns || 0;
-      // BB_H = walks + hits allowed (for WHIP = BB_H / IP)
       result.BB_H = (split.baseOnBalls || 0) + (split.hits || 0);
+      // Extended
+      result.L = split.losses || 0;
+      result.GS = split.gamesStarted || 0;
+      result.K9 = parseFloat(split.strikeoutsPer9Inn) || 0;
+      result.BB9 = parseFloat(split.walksPer9Inn) || 0;
+      result.HR_A = split.homeRuns || 0;
+      result.BF = split.battersFaced || 0;
     }
   }
 

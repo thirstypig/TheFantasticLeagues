@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   getTransactions,
   TransactionEvent,
@@ -22,6 +23,7 @@ import TeamRosterView from "../../teams/components/TeamRosterView";
 import ActivityWaiversTab from "../components/ActivityWaiversTab";
 import ActivityHistoryTab from "../components/ActivityHistoryTab";
 import PageHeader from "../../../components/ui/PageHeader";
+import { PageSkeleton } from "../../../components/ui/Skeleton";
 import { Button } from "../../../components/ui/button";
 import { Plus, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { EmptyState } from "../../../components/ui/EmptyState";
@@ -39,7 +41,11 @@ export default function ActivityPage() {
       (m: any) => Number(m.leagueId) === currentLeagueId && m.role === "COMMISSIONER"
     );
 
-  const [activeTab, setActiveTab] = useState<ActivityTab>("waivers");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS: ActivityTab[] = ["waivers", "add_drop", "trades", "history"];
+  const tabParam = searchParams.get("tab") as ActivityTab | null;
+  const activeTab: ActivityTab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : "waivers";
+  const setActiveTab = (tab: ActivityTab) => setSearchParams({ tab }, { replace: true });
   const [loading, setLoading] = useState(true);
 
   // Transaction data
@@ -198,12 +204,7 @@ export default function ActivityPage() {
     [trades]
   );
 
-  if (loading)
-    return (
-      <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse text-sm">
-        Loading activity...
-      </div>
-    );
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">

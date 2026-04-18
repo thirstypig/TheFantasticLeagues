@@ -1,5 +1,6 @@
 // server/src/routes/public.ts
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { prisma } from "../db/prisma.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import {
@@ -9,12 +10,22 @@ import {
 
 export const publicRouter = Router();
 
+const publicLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => req.ip || "unknown",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+
 /**
  * GET /api/public/leagues
  * List all public leagues
  */
 publicRouter.get(
   "/public/leagues",
+  publicLimiter,
   asyncHandler(async (req, res) => {
     const leagues = await prisma.league.findMany({
       where: { isPublic: true },
@@ -50,8 +61,13 @@ publicRouter.get(
  */
 publicRouter.get(
   "/public/leagues/:slug/standings",
+  publicLimiter,
   asyncHandler(async (req, res) => {
     const { slug } = req.params;
+
+    if (!/^[a-z0-9-]{1,100}$/.test(slug)) {
+      return res.status(400).json({ error: "Invalid slug format" });
+    }
 
     const league = await prisma.league.findFirst({
       where: { publicSlug: slug, isPublic: true },
@@ -73,6 +89,7 @@ publicRouter.get(
       standings = computeStandingsFromStats(teamStats);
     }
 
+    res.set("Cache-Control", "public, max-age=120");
     return res.json({
       league: {
         name: league.name,
@@ -86,5 +103,3 @@ publicRouter.get(
     });
   }),
 );
-
-export default publicRouter;

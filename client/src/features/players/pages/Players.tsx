@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Star, Loader2 } from "lucide-react";
 import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type PeriodStatRow, fmtRate } from '../../../api';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -8,6 +9,8 @@ import { PlayerFilterBar } from '../../../components/shared/PlayerFilterBar';
 import { POS_ORDER, getPrimaryPosition, getLastName } from '../../../lib/baseballUtils';
 import { NL_TEAMS, AL_TEAMS, mapPosition } from '../../../lib/sportConfig';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
+import { HitterStatHeaders, PitcherStatHeaders, HitterStatCells, PitcherStatCells } from '../../../components/shared/PlayerStatsColumns';
+import { PageSkeleton } from '../../../components/ui/Skeleton';
 import PageHeader from '../../../components/ui/PageHeader';
 import { ThemedTable, ThemedThead, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
 import { SortableHeader } from '../../../components/ui/SortableHeader';
@@ -29,9 +32,28 @@ export default function Players() {
   const [watchPending, setWatchPending] = useState<Set<number>>(new Set());
   const canWatch = myTeamId != null && seasonStatus === "IN_SEASON";
 
-  // View State
-  const [viewGroup, setViewGroup] = useState<'hitters' | 'pitchers'>('hitters');
-  const [viewMode, setViewMode] = useState<'all' | 'remaining'>('all');
+  // URL-persisted state — survives back/forward and page refresh
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewGroup = (searchParams.get('group') === 'pitchers' ? 'pitchers' : 'hitters') as 'hitters' | 'pitchers';
+  const viewMode = (searchParams.get('mode') === 'remaining' ? 'remaining' : 'all') as 'all' | 'remaining';
+  const searchQuery = searchParams.get('q') || '';
+  const sortKey = searchParams.get('sort') || 'name';
+  const sortDesc = searchParams.get('desc') === '1';
+
+  const setUrlParam = useCallback((key: string, value: string, defaults: Record<string, string> = {}) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (value === (defaults[key] ?? '')) next.delete(key);
+      else next.set(key, value);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setViewGroup = (v: 'hitters' | 'pitchers') => setUrlParam('group', v, { group: 'hitters' });
+  const setViewMode = (v: 'all' | 'remaining') => setUrlParam('mode', v, { mode: 'all' });
+  const setSearchQuery = (v: string) => setUrlParam('q', v);
+
+  // Component-local state (not worth persisting in URL)
   const [statsMode, setStatsMode] = useState<string>('season');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
@@ -40,25 +62,26 @@ export default function Players() {
   const [periods, setPeriods] = useState<number[]>([]);
   const [periodNameMap, setPeriodNameMap] = useState<Record<number, string>>({});
 
-
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterTeam, setFilterTeam] = useState<string>('ALL_NL'); // Default NL teams for NL-only league
-  const [filterFantasyTeam, setFilterFantasyTeam] = useState<string>('ALL'); // OGBA Team
+  // Filters (component-local — too many to clutter the URL)
+  const [filterTeam, setFilterTeam] = useState<string>('ALL_NL');
+  const [filterFantasyTeam, setFilterFantasyTeam] = useState<string>('ALL');
   const [filterPos, setFilterPos] = useState<string>('ALL');
-  const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('NL'); // Default NL for NL-only league
+  const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('NL');
 
-  // Sort State
-  const [sortKey, setSortKey] = useState<string>('name');
-  const [sortDesc, setSortDesc] = useState(false);
+  // Sort — desc derived from URL
+  const setSortDesc = (_v: boolean) => {}; // no-op, managed via URL
 
   const handleSort = (key: string) => {
-    if (sortKey === key) {
-      setSortDesc(!sortDesc);
-    } else {
-      setSortKey(key);
-      setSortDesc(!['name', 'mlb_team', 'fantasy', 'pos'].includes(key));
-    }
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (sortKey === key) {
+        next.set('desc', sortDesc ? '0' : '1');
+      } else {
+        next.set('sort', key);
+        next.set('desc', !['name', 'mlb_team', 'fantasy', 'pos'].includes(key) ? '1' : '0');
+      }
+      return next;
+    }, { replace: true });
   };
 
   useEffect(() => {
@@ -252,12 +275,7 @@ export default function Players() {
     [myTeamId],
   );
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-[var(--lg-text-muted)]">
-      <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-6"></div>
-      <div className="text-sm font-medium animate-pulse">Searching players...</div>
-    </div>
-  );
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="flex flex-col min-h-0 w-full max-w-[100vw] overflow-x-hidden scrollbar-hide" style={{ height: '100svh' }}>
@@ -306,21 +324,9 @@ export default function Players() {
                                 <SortableHeader sortKey="mlb_team" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">MLB</SortableHeader>
 
                                 {viewGroup === 'hitters' ? (
-                                    <>
-                                        <SortableHeader sortKey="R" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">R</SortableHeader>
-                                        <SortableHeader sortKey="HR" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">HR</SortableHeader>
-                                        <SortableHeader sortKey="RBI" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">RBI</SortableHeader>
-                                        <SortableHeader sortKey="SB" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">SB</SortableHeader>
-                                        <SortableHeader sortKey="AVG" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">AVG</SortableHeader>
-                                    </>
+                                    <HitterStatHeaders sortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} />
                                 ) : (
-                                    <>
-                                        <SortableHeader sortKey="W" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">W</SortableHeader>
-                                        <SortableHeader sortKey="SV" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">SV</SortableHeader>
-                                        <SortableHeader sortKey="K" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">K</SortableHeader>
-                                        <SortableHeader sortKey="ERA" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-20">ERA</SortableHeader>
-                                        <SortableHeader sortKey="WHIP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-20">WHIP</SortableHeader>
-                                    </>
+                                    <PitcherStatHeaders sortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} />
                                 )}
 
                                 {canWatch && (
@@ -356,21 +362,9 @@ export default function Players() {
                                             </ThemedTd>
 
                                            {viewGroup === 'hitters' ? (
-                                                <>
-                                                    <ThemedTd align="center">{p.R}</ThemedTd>
-                                                    <ThemedTd align="center">{p.HR}</ThemedTd>
-                                                    <ThemedTd align="center">{p.RBI}</ThemedTd>
-                                                    <ThemedTd align="center">{p.SB}</ThemedTd>
-                                                    <ThemedTd align="center">{typeof p.AVG === 'number' ? fmtRate(p.AVG) : '- '}</ThemedTd>
-                                                </>
+                                                <HitterStatCells row={p} />
                                            ) : (
-                                                <>
-                                                    <ThemedTd align="center">{p.W}</ThemedTd>
-                                                    <ThemedTd align="center">{p.SV}</ThemedTd>
-                                                    <ThemedTd align="center">{p.K}</ThemedTd>
-                                                    <ThemedTd align="center">{p.ERA ? Number(p.ERA).toFixed(2) : '- '}</ThemedTd>
-                                                    <ThemedTd align="center">{p.WHIP ? Number(p.WHIP).toFixed(2) : '- '}</ThemedTd>
-                                                </>
+                                                <PitcherStatCells row={p} />
                                            )}
         
                                            {canWatch && (

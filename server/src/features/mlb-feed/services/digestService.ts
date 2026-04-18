@@ -48,6 +48,8 @@ export interface DigestContext {
   weekNumber: number;
   previousVotes: { yes: number; no: number } | null;
   narrativeHints: string[];
+  mvpCandidates?: string;
+  cyYoungCandidates?: string;
 }
 
 /** Vote results for a digest. */
@@ -204,7 +206,7 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
       include: {
         rosters: {
           where: { releasedAt: null },
-          include: { player: { select: { name: true, posPrimary: true, mlbId: true, mlbTeam: true } } },
+          include: { player: { select: { id: true, name: true, posPrimary: true, mlbId: true, mlbTeam: true } } },
           orderBy: { price: "desc" },
         },
       },
@@ -361,6 +363,143 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
     }
   }
 
+  // Compute Fantasy MVP and Cy Young candidates via z-score composite scoring.
+  // Z-scores normalize stats to a common scale (standard deviations above league mean),
+  // then each stat is weighted by its historical correlation with award voting.
+  let mvpCandidates = "";
+  let cyYoungCandidates = "";
+
+  const activePeriods = await prisma.period.findMany({
+    where: { leagueId, status: { in: ["active", "completed"] } },
+    select: { id: true },
+  });
+  if (activePeriods.length > 0) {
+    const periodIds = activePeriods.map(p => p.id);
+    const rosteredPlayerIds = [...new Set(teams.flatMap(t => t.rosters.map(r => r.player.id)))];
+
+    if (rosteredPlayerIds.length > 0) {
+      const [playerStats, ipSums] = await Promise.all([
+        prisma.playerStatsPeriod.groupBy({
+          by: ["playerId"],
+          where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
+          _sum: {
+            AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
+            BB: true, TB: true, SO: true,
+            W: true, SV: true, K: true, ER: true, L: true, GS: true, HR_A: true,
+          },
+        }),
+        prisma.playerStatsPeriod.groupBy({
+          by: ["playerId"],
+          where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
+          _sum: { IP: true, BB_H: true },
+        }),
+      ]);
+      const ipMap = new Map(ipSums.map(r => [r.playerId, { IP: r._sum.IP ?? 0, BB_H: r._sum.BB_H ?? 0 }]));
+      const playerNames = new Map(
+        teams.flatMap(t => t.rosters.map(r => [r.player.id, { name: r.player.name, team: t.name }]))
+      );
+
+      // ── MVP: z-score composite ──
+      const MIN_AB = 50; // lower threshold early season, scale up over time
+      const hitterRows = playerStats.filter(p => (p._sum.AB ?? 0) >= MIN_AB).map(p => {
+        const ab = p._sum.AB ?? 0, h = p._sum.H ?? 0, hr = p._sum.HR ?? 0;
+        const rbi = p._sum.RBI ?? 0, r = p._sum.R ?? 0, sb = p._sum.SB ?? 0;
+        const bb = p._sum.BB ?? 0, tb = p._sum.TB ?? 0, so = p._sum.SO ?? 0;
+        const obp = (ab + bb) > 0 ? (h + bb) / (ab + bb) : 0;
+        const slg = ab > 0 ? tb / ab : 0;
+        const ops = obp + slg;
+        const avg = ab > 0 ? h / ab : 0;
+        const info = playerNames.get(p.playerId);
+        return { id: p.playerId, name: info?.name ?? "?", team: info?.team ?? "?", ab, hr, rbi, r, sb, bb, tb, so, avg, obp, slg, ops };
+      });
+
+      if (hitterRows.length >= 3) {
+        const z = (vals: number[]) => {
+          const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+          const sd = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length) || 1;
+          return vals.map(v => (v - mean) / sd);
+        };
+        const zOPS = z(hitterRows.map(h => h.ops));
+        const zHR = z(hitterRows.map(h => h.hr));
+        const zOBP = z(hitterRows.map(h => h.obp));
+        const zRBI = z(hitterRows.map(h => h.rbi));
+        const zR = z(hitterRows.map(h => h.r));
+        const zSB = z(hitterRows.map(h => h.sb));
+        const zTB = z(hitterRows.map(h => h.tb));
+        const zBB = z(hitterRows.map(h => h.bb));
+        const zSO = z(hitterRows.map(h => h.so));
+
+        const scored = hitterRows.map((h, i) => ({
+          ...h,
+          mvpScore:
+            zOPS[i] * 3.0 + zHR[i] * 2.5 + zOBP[i] * 2.0 +
+            zRBI[i] * 1.5 + zR[i] * 1.5 + zSB[i] * 1.5 +
+            zTB[i] * 1.0 + zBB[i] * 0.5 - zSO[i] * 0.3,
+        })).sort((a, b) => b.mvpScore - a.mvpScore).slice(0, 3);
+
+        mvpCandidates = scored.map((h, i) =>
+          `${i + 1}. ${h.name} (${h.team}) — Score: ${h.mvpScore.toFixed(1)} | .${Math.round(h.avg * 1000)} AVG, .${Math.round(h.ops * 1000)} OPS, ${h.hr} HR, ${h.rbi} RBI, ${h.r} R, ${h.sb} SB (${h.ab} AB)`
+        ).join("\n");
+      }
+
+      // ── Cy Young: z-score composite (starters + relievers separately) ──
+      const starterRows = playerStats.filter(p => {
+        const ip = ipMap.get(p.playerId)?.IP ?? 0;
+        return ip >= 20 && (p._sum.GS ?? 0) >= 3;
+      }).map(p => {
+        const ipData = ipMap.get(p.playerId) ?? { IP: 0, BB_H: 0 };
+        const ip = ipData.IP, bbh = ipData.BB_H;
+        const w = p._sum.W ?? 0, l = p._sum.L ?? 0, k = p._sum.K ?? 0;
+        const er = p._sum.ER ?? 0, sv = p._sum.SV ?? 0, hra = p._sum.HR_A ?? 0;
+        const era = ip > 0 ? (er * 9) / ip : 99;
+        const whip = ip > 0 ? bbh / ip : 99;
+        const k9 = ip > 0 ? (k * 9) / ip : 0;
+        const bb9 = ip > 0 ? ((bbh - (p._sum.H ?? 0)) * 9) / ip : 99; // approx BB from BB_H - H
+        const info = playerNames.get(p.playerId);
+        return { id: p.playerId, name: info?.name ?? "?", team: info?.team ?? "?", w, l, k, sv, ip, era, whip, k9, bb9, hra, isStarter: (p._sum.GS ?? 0) >= 3 };
+      });
+
+      if (starterRows.length >= 3) {
+        const z = (vals: number[]) => {
+          const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+          const sd = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length) || 1;
+          return vals.map(v => (v - mean) / sd);
+        };
+        // Invert ERA, WHIP, BB9 (lower = better → negate z-score)
+        const zERA = z(starterRows.map(p => p.era)).map(v => -v);
+        const zWHIP = z(starterRows.map(p => p.whip)).map(v => -v);
+        const zK = z(starterRows.map(p => p.k));
+        const zK9 = z(starterRows.map(p => p.k9));
+        const zIP = z(starterRows.map(p => p.ip));
+        const zW = z(starterRows.map(p => p.w));
+        const zL = z(starterRows.map(p => p.l));
+        const zHRA = z(starterRows.map(p => p.hra));
+        const zBB9 = z(starterRows.map(p => p.bb9)).map(v => -v);
+        const zSV = z(starterRows.map(p => p.sv));
+
+        const scored = starterRows.map((p, i) => {
+          // Starters: ERA/WHIP/K dominate, W matters less
+          const starterScore =
+            zERA[i] * 3.5 + zWHIP[i] * 2.5 + zK[i] * 2.0 + zK9[i] * 1.5 +
+            zIP[i] * 1.5 + zW[i] * 1.0 - zL[i] * 0.5 - zHRA[i] * 0.5 + zBB9[i] * 0.5;
+          // Relievers: saves + rate stats, no IP/W
+          const relieverScore =
+            zSV[i] * 3.0 + zERA[i] * 3.0 + zWHIP[i] * 2.0 + zK9[i] * 1.5 +
+            zK[i] * 1.0 + zBB9[i] * 0.5 - zHRA[i] * 0.5;
+          // Use starter formula if GS >= 5, reliever if mostly relief
+          const isRelief = p.sv > 0 && !p.isStarter;
+          const cyScore = isRelief ? relieverScore * 0.7 : starterScore; // 0.7x discount for relievers
+          const role = isRelief ? "RP" : "SP";
+          return { ...p, cyScore, role };
+        }).sort((a, b) => b.cyScore - a.cyScore).slice(0, 3);
+
+        cyYoungCandidates = scored.map((p, i) =>
+          `${i + 1}. ${p.name} (${p.team}, ${p.role}) — Score: ${p.cyScore.toFixed(1)} | ${p.era.toFixed(2)} ERA, ${p.whip.toFixed(2)} WHIP, ${p.k} K, ${p.w}-${p.l} W-L, ${p.k9.toFixed(1)} K/9, ${p.sv} SV (${p.ip.toFixed(1)} IP)`
+        ).join("\n");
+      }
+    }
+  }
+
   // Extract previous week's vote results
   let previousVotes: { yes: number; no: number } | null = null;
   if (prevDigest) {
@@ -380,5 +519,7 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
     weekNumber: weekNum,
     previousVotes,
     narrativeHints,
+    mvpCandidates,
+    cyYoungCandidates,
   };
 }

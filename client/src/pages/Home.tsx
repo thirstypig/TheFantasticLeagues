@@ -394,25 +394,19 @@ export default function Home() {
     return () => { ok = false; };
   }, [currentLeagueId]);
 
-  // Fetch Yahoo Sports, MLB.com, ESPN feeds
+  // Fetch Yahoo Sports, MLB.com, ESPN feeds in parallel
   useEffect(() => {
-    setYahooLoading(true);
-    fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/yahoo-sports`)
-      .then(res => setYahooArticles(res.articles || []))
-      .catch(() => setYahooArticles([]))
-      .finally(() => setYahooLoading(false));
-
-    setMlbLoading(true);
-    fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/mlb-news`)
-      .then(res => setMlbArticles(res.articles || []))
-      .catch(() => setMlbArticles([]))
-      .finally(() => setMlbLoading(false));
-
-    setEspnLoading(true);
-    fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/espn-news`)
-      .then(res => setEspnArticles(res.articles || []))
-      .catch(() => setEspnArticles([]))
-      .finally(() => setEspnLoading(false));
+    setYahooLoading(true); setMlbLoading(true); setEspnLoading(true);
+    Promise.allSettled([
+      fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/yahoo-sports`),
+      fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/mlb-news`),
+      fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/espn-news`),
+    ]).then(([yahoo, mlb, espn]) => {
+      setYahooArticles(yahoo.status === "fulfilled" ? yahoo.value.articles || [] : []);
+      setMlbArticles(mlb.status === "fulfilled" ? mlb.value.articles || [] : []);
+      setEspnArticles(espn.status === "fulfilled" ? espn.value.articles || [] : []);
+      setYahooLoading(false); setMlbLoading(false); setEspnLoading(false);
+    });
   }, []);
 
   // Fetch roster status alerts (IL, minors)

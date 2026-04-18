@@ -579,6 +579,7 @@ export default function Admin() {
               <h3 className={SECTION_TITLE_CLASS + " mb-3"}>Quick Links</h3>
               <div className="grid grid-cols-2 gap-1">
                 {[
+                  { to: "/admin/dashboard", label: "Dashboard", Icon: BarChart3 },
                   { to: "/admin/users", label: "Users", Icon: Users },
                   { to: "/todo", label: "Todo", Icon: CheckSquare },
                   { to: "/analytics", label: "Analytics", Icon: BarChart3 },

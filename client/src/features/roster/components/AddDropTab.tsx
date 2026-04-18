@@ -8,6 +8,7 @@ import { getMlbTeamAbbr } from '../../../lib/playerDisplay';
 import { PlayerNameCell } from '../../../components/shared/PlayerNameCell';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { SortableHeader } from '../../../components/ui/SortableHeader';
+import { HitterStatHeaders, PitcherStatHeaders, HitterStatCells, PitcherStatCells } from '../../../components/shared/PlayerStatsColumns';
 import { PlayerFilterBar } from '../../../components/shared/PlayerFilterBar';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
@@ -210,21 +211,9 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                             <SortableHeader sortKey="mlb_team" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">MLB</SortableHeader>
 
                             {viewGroup === 'hitters' ? (
-                                <>
-                                    <SortableHeader sortKey="R" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">R</SortableHeader>
-                                    <SortableHeader sortKey="HR" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">HR</SortableHeader>
-                                    <SortableHeader sortKey="RBI" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">RBI</SortableHeader>
-                                    <SortableHeader sortKey="SB" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">SB</SortableHeader>
-                                    <SortableHeader sortKey="AVG" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">AVG</SortableHeader>
-                                </>
+                                <HitterStatHeaders sortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} />
                             ) : (
-                                <>
-                                    <SortableHeader sortKey="W" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">W</SortableHeader>
-                                    <SortableHeader sortKey="SV" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">SV</SortableHeader>
-                                    <SortableHeader sortKey="K" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-16">K</SortableHeader>
-                                    <SortableHeader sortKey="ERA" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-20">ERA</SortableHeader>
-                                    <SortableHeader sortKey="WHIP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} align="center" className="w-20">WHIP</SortableHeader>
-                                </>
+                                <PitcherStatHeaders sortKey={sortKey} sortDesc={sortDesc} onSort={handleSort} />
                             )}
 
                             <ThemedTh align="center" className="pr-8 w-48">
@@ -268,21 +257,9 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                                         </ThemedTd>
 
                                         {viewGroup === 'hitters' ? (
-                                            <>
-                                                <ThemedTd align="center">{p.R}</ThemedTd>
-                                                <ThemedTd align="center">{p.HR}</ThemedTd>
-                                                <ThemedTd align="center">{p.RBI}</ThemedTd>
-                                                <ThemedTd align="center">{p.SB}</ThemedTd>
-                                                <ThemedTd align="center">{typeof p.AVG === 'number' ? fmtRate(p.AVG) : '- '}</ThemedTd>
-                                            </>
+                                            <HitterStatCells row={p} />
                                         ) : (
-                                            <>
-                                                <ThemedTd align="center">{p.W}</ThemedTd>
-                                                <ThemedTd align="center">{p.SV}</ThemedTd>
-                                                <ThemedTd align="center">{p.K}</ThemedTd>
-                                                <ThemedTd align="center">{p.ERA ? Number(p.ERA).toFixed(2) : '- '}</ThemedTd>
-                                                <ThemedTd align="center">{p.WHIP ? Number(p.WHIP).toFixed(2) : '- '}</ThemedTd>
-                                            </>
+                                            <PitcherStatCells row={p} />
                                         )}
 
                                         <ThemedTd align="center">

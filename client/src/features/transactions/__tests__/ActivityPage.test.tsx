@@ -108,10 +108,10 @@ describe("ActivityPage", () => {
     });
   });
 
-  it("shows loading state initially", () => {
+  it("shows loading skeleton initially", () => {
     vi.mocked(getTransactions).mockReturnValue(new Promise(() => {}));
     renderPage();
-    expect(screen.getByText("Loading activity...")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
   });
 
   it("renders tab buttons", async () => {

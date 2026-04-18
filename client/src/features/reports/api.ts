@@ -25,7 +25,6 @@ export interface WeeklyReport {
     type: string | null;
     teamName: string | null;
     playerName: string | null;
-    raw: string | null;
   }>;
   standings: {
     rows: Array<{

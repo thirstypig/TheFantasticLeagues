@@ -67,9 +67,9 @@
     --lg-table-row-hover: rgba(0, 45, 114, 0.07);
     --lg-table-row-alt: rgba(0, 45, 114, 0.04);
 
-    /* Semantic value colors (mode-aware) */
-    --lg-positive: #16a34a;
-    --lg-negative: #dc2626;
+    /* Semantic value colors (mode-aware) — WCAG AA on #d6dde7 */
+    --lg-positive: #0a6635;   /* 7.5:1 contrast (was #16a34a at 2.41:1) */
+    --lg-negative: #b91c1c;   /* 4.73:1 contrast (was #dc2626 at 3.53:1) */
 
     /* Sidebar */
     --lg-sidebar-bg: rgba(248, 250, 252, 0.55);
@@ -752,6 +752,18 @@ a:hover {
   background: linear-gradient(to right, transparent, var(--lg-bg-primary));
   opacity: 0.6;
   border-radius: 0 var(--lg-radius-md) var(--lg-radius-md) 0;
+}
+
+/* ====================================================================
+   Reduced Motion — respect user OS preference (WCAG 2.3.3)
+   ==================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ====================================================================
