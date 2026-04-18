@@ -4,6 +4,37 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-17 (Session 67)
+
+### Completed
+- 7-agent parallel code review of PRs #102-#106 (16 findings, 11 resolved)
+- Production audit (9 areas, 31 findings) — accessibility, performance, security, mobile
+- Executive Admin Dashboard at /admin/dashboard — hero metric, 6 stat tiles with sparklines, 3 conversion funnels, activity feed, rule-based insight engine (7 insights, every tile covered)
+- Extended stats schema — 16 new columns (OBP, SLG, OPS, BB, TB, 2B, 3B, SO, L, GS, K9, BB9, HR_A, BF, HBP, SF)
+- Fantasy MVP & Cy Young z-score composite scoring in weekly digest
+- Shared PlayerStatsColumns component — AB column added to all hitter tables
+- Accessibility fixes: contrast (#16a34a→#0a6635, #dc2626→#b91c1c), prefers-reduced-motion, focus trap on PlayerDetailModal, route announcements, <h1> headings, <noscript>
+- Performance: 30s fetch timeout, parallelize news feeds, standings TTL cache, getSeasonStandings into reportBuilder Promise.all
+- Security: AI field allowlist, public rate limiting (60/min), slug validation, playerNameMatcher migration
+- UX: 404 page, URL state (Activity tabs + Players filters), skeleton loading, guide image CLS
+- Data cleanup: 15 test accounts deleted, terminology League→Season
+- Shipped PR #107 (54 files, +2648/-826)
+
+### Pending / Next Steps
+- Home.tsx type safety refactor (todo #106) — 15+ `any` state vars
+- Team.tsx migrate TableCard → ThemedTable
+- Trigger stats sync to populate OBP/SLG/OPS columns
+- Convert guide images to WebP
+- Bundle analyzer + split eager routes (456KB → ~300KB)
+- Claude API enrichment for dashboard insights (weekly cron)
+
+### Test Results
+- Server: 571 passing, 7 skipped
+- Client: 201 passing
+- Total: 772 passing
+
+---
+
 ## Session 2026-04-14 (Session 65) — Task-System Consolidation
 
 ### Completed
