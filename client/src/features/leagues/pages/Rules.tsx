@@ -19,10 +19,16 @@ function rv(rules: LeagueRule[], key: string): string {
   return rules.find((r) => r.key === key)?.value ?? "";
 }
 
+interface LeagueMeta {
+  maxTeams?: number;
+  entryFee?: number | null;
+}
+
 export default function Rules() {
   const { user } = useAuth();
   const { leagueId, leagues } = useLeague();
   const [rules, setRules] = useState<LeagueRule[]>([]);
+  const [leagueMeta, setLeagueMeta] = useState<LeagueMeta>({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"overview" | "settings">("overview");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -42,10 +48,19 @@ export default function Rules() {
     (async () => {
       try {
         setLoading(true);
-        const data = await fetchJsonApi<{ rules: LeagueRule[] }>(
-          `${API_BASE}/leagues/${leagueId}/rules`
-        );
-        if (mounted) setRules(data.rules ?? []);
+        // Fetch rules + league meta in parallel. Team count and entry fee live on
+        // the League model, not LeagueRule — see docs/RULES_AUDIT.md.
+        const [rulesRes, leagueRes] = await Promise.all([
+          fetchJsonApi<{ rules: LeagueRule[] }>(`${API_BASE}/leagues/${leagueId}/rules`),
+          fetchJsonApi<{ league: { maxTeams?: number; entryFee?: number | null } }>(`${API_BASE}/leagues/${leagueId}`),
+        ]);
+        if (mounted) {
+          setRules(rulesRes.rules ?? []);
+          setLeagueMeta({
+            maxTeams: leagueRes.league?.maxTeams,
+            entryFee: leagueRes.league?.entryFee ?? null,
+          });
+        }
       } catch (e) {
         console.error("Failed to load rules:", e);
       } finally {
@@ -55,7 +70,7 @@ export default function Rules() {
     return () => { mounted = false; };
   }, [leagueId, refreshKey]);
 
-  const teamCount = parseInt(rv(rules, "team_count")) || 8;
+  const teamCount = leagueMeta.maxTeams ?? 8;
   const draftMode = rv(rules, "draft_mode") || "Auction";
   const batterCount = parseInt(rv(rules, "batter_count")) || 14;
   const pitcherCount = parseInt(rv(rules, "pitcher_count")) || 9;

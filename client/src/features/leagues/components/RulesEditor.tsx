@@ -44,7 +44,7 @@ interface RuleConfig {
 import { HITTING_CATS, PITCHING_CATS, POSITIONS } from "../../../lib/sportConfig";
 
 const RULE_CONFIGS: Record<string, RuleConfig> = {
-  team_count: { type: 'slider', min: 4, max: 16, step: 1 },
+  // team_count removed — authoritative value is League.maxTeams (edit in Commissioner → League tab).
   stats_source: { type: 'select', options: ["NL", "AL", "MLB", "Other"] },
   pitcher_count: { type: 'slider', min: 1, max: 20 },
   batter_count: { type: 'slider', min: 1, max: 25 },
@@ -71,7 +71,7 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   mvp: { type: 'number', suffix: '$' },
   cy_young: { type: 'number', suffix: '$' },
   roy: { type: 'number', suffix: '$' },
-  entry_fee: { type: 'number', suffix: '$' },
+  // entry_fee removed — authoritative value is League.entryFee (edit in Commissioner → League tab).
   payout_1st: { type: 'number', suffix: '%', min: 0, max: 100 },
   payout_2nd: { type: 'number', suffix: '%', min: 0, max: 100 },
   payout_3rd: { type: 'number', suffix: '%', min: 0, max: 100 },
@@ -174,7 +174,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--lg-text-heading)]">League Rules</h2>
           <p className="text-[var(--lg-text-muted)] mt-1 text-sm font-medium">
@@ -198,6 +198,10 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
             )}
           </div>
         )}
+      </div>
+
+      <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-tint)] px-4 py-3 mb-8 text-xs text-[var(--lg-text-muted)]">
+        Waiver, trade, playoff, and discovery settings (max teams, entry fee, FAAB budget, trade deadline, roster lock) live in the other Commissioner tabs — they write directly to the League model. See <span className="font-mono">docs/RULES_AUDIT.md</span> for the full map.
       </div>
 
       <div className="space-y-8">

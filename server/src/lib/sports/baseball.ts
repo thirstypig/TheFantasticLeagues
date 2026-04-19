@@ -55,7 +55,9 @@ export const KEY_TO_DB_FIELD: Partial<Record<CategoryKey, string>> = {
 
 export const DEFAULT_RULES = [
   // Overview
-  { category: "overview", key: "team_count", value: "8", label: "Number of Teams" },
+  // NOTE: `team_count` is NOT here — authoritative value is `League.maxTeams`.
+  // `entry_fee` is NOT here — authoritative value is `League.entryFee`.
+  // See docs/RULES_AUDIT.md for the two-system history.
   { category: "overview", key: "stats_source", value: "NL", label: "Stats Source" },
   // Roster
   { category: "roster", key: "pitcher_count", value: "9", label: "Pitchers per Team" },
@@ -89,8 +91,7 @@ export const DEFAULT_RULES = [
   { category: "bonuses", key: "mvp", value: "25", label: "MVP Award ($)" },
   { category: "bonuses", key: "cy_young", value: "25", label: "Cy Young Award ($)" },
   { category: "bonuses", key: "roy", value: "10", label: "Rookie of the Year ($)" },
-  // Payouts
-  { category: "payouts", key: "entry_fee", value: "300", label: "Team Entry Fee ($)" },
+  // Payouts — entry fee lives on `League.entryFee`, not here.
   { category: "payouts", key: "payout_1st", value: "40", label: "1st Place (%)" },
   { category: "payouts", key: "payout_2nd", value: "25", label: "2nd Place (%)" },
   { category: "payouts", key: "payout_3rd", value: "15", label: "3rd Place (%)" },

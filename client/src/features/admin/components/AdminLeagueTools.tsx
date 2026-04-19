@@ -272,7 +272,8 @@ function RulesSnapshot({ rules }: { rules: LeagueRule[] }) {
   const val = (key: string) => ruleVal(rules, key);
 
   const items: Array<{ label: string; value: string }> = [
-    { label: "Teams", value: val("team_count") },
+    // "Teams" removed — team count lives on League.maxTeams, not LeagueRule.
+    // Admin teams list already shows the count directly above this snapshot.
     { label: "Budget", value: val("auction_budget") ? `$${val("auction_budget")}` : "" },
     { label: "Hitters", value: val("batter_count") },
     { label: "Pitchers", value: val("pitcher_count") },

@@ -267,12 +267,15 @@ router.get("/standings/settlement/:leagueId", requireAuth, requireLeagueMember("
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
-  const rules = await prisma.leagueRule.findMany({
-    where: { leagueId, category: "payouts" },
-  });
+  // Entry fee now lives on the League model (see docs/RULES_AUDIT.md).
+  // Payout percentages still use LeagueRule rows.
+  const [rules, league] = await Promise.all([
+    prisma.leagueRule.findMany({ where: { leagueId, category: "payouts" } }),
+    prisma.league.findUnique({ where: { id: leagueId }, select: { entryFee: true } }),
+  ]);
 
   const ruleMap = new Map(rules.map(r => [r.key, r.value]));
-  const entryFee = Number(ruleMap.get("entry_fee") || "0");
+  const entryFee = Number(league?.entryFee ?? 0);
   const payoutPcts: Record<string, number> = {};
   for (let i = 1; i <= 8; i++) {
     const pct = Number(ruleMap.get(`payout_${i}st`) || ruleMap.get(`payout_${i}nd`) || ruleMap.get(`payout_${i}rd`) || ruleMap.get(`payout_${i}th`) || "0");
