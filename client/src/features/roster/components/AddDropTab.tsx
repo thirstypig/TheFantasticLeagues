@@ -279,7 +279,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                                                             className={`p-1 rounded transition-colors ${
                                                                 isWatched
                                                                     ? "text-amber-400 hover:text-amber-300"
-                                                                    : "text-[var(--lg-text-muted)] opacity-30 group-hover:opacity-80 hover:text-amber-400"
+                                                                    : "text-[var(--lg-text-muted)] opacity-60 hover:opacity-100 hover:text-amber-400"
                                                             } ${isPending ? "cursor-wait" : "cursor-pointer"}`}
                                                         >
                                                             <Star className={`w-3.5 h-3.5 ${isWatched ? "fill-current" : ""}`} />
