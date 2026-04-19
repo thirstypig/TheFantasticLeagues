@@ -113,5 +113,38 @@ Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 - **Red/"not covered" areas = not tested** — rely on manual browser verification.
 - If you're about to make a change in a red area, ask for a test to be added first.
 
+## Workflow — slash commands
+
+Two reusable commands codify the cadence this doc describes:
+
+- **`/test-new <feature>`** — after finishing a feature, generates unit + (maybe) integration + (maybe) E2E tests, runs them, and updates this catalog. Full prompt in `.claude/commands/test-new.md`. Enforces the pyramid (unit first, E2E only when the flow costs real money if broken) and blocks commits when anything is red.
+- **`/test-run`** — runs tsc + unit/integration in ~10s. **`/test-run e2e`** also runs the Playwright suite. Prompt in `.claude/commands/test-run.md`.
+
+Both commands explicitly stop on the first failure rather than masking errors. Both require dev servers (`:3010` + `:4010`) up for E2E — they check and tell you if either is down, but don't start them automatically.
+
+## Beyond the basics — things to add when the suite grows
+
+The pyramid (unit / integration / E2E) is the baseline. These are worth considering as the codebase matures — not all at once, but in rough priority:
+
+1. **Pre-commit enforcement** — a Claude Code `PreToolUse` hook on `git commit` that runs tsc + unit tests and blocks on failure. Planned for Session 70. Git-level (Husky) hook is a backup that catches commits made outside Claude Code.
+2. **Coverage reporting** — Vitest has `--coverage` built in; `npm run test:coverage` exists in client. No reporting surface yet. Low priority until you want to see it.
+3. **Mutation testing** (Stryker) — flips one operator in a function and checks whether any test fails. Catches tests that pass trivially. Worth running once per quarter on core business logic (standings, auction, trades) to find weak tests.
+4. **Contract testing between client and server** — the `normalizeTwoWayRow` bug was a contract mismatch (server returned `id`, client expected `id`, normalization dropped it). A shared Zod schema used by both would have made this a compile error. Highest-impact next investment.
+5. **Visual regression** — Playwright has `expect(page).toHaveScreenshot()`. Catches CSS regressions you'd miss otherwise. Start with 3–5 screens (Home, Players, Team, Activity, Commissioner).
+6. **Accessibility** — `@axe-core/playwright` runs axe against a rendered page. One assertion per E2E catches common a11y regressions (missing labels, low contrast, wrong heading levels).
+7. **Flaky test tracking** — when a test fails once but passes on retry, log it. Flakes are bugs, not noise.
+8. **Performance baselines** — Lighthouse CI for the five highest-traffic pages. Fails the build if LCP regresses > X%.
+9. **CI pipeline** — today tests run locally. A GitHub Action that runs `/test-run` (and eventually E2E + visual) on every PR is the gate that protects `main` when multiple people work at once.
+10. **Test data factories** — right now each server test builds its own Prisma fixture. A small `tests/factories/` helper (`makeUser()`, `makeLeague()`, `makeTeam()`) keeps tests short and forces consistency when schemas change.
+
+## Automation — a loop worth running
+
+The `/loop` skill runs a prompt on a cadence. Two specific uses:
+
+- **`/loop 1w /test-new <area-needing-coverage>`** — weekly sweep of coverage gaps flagged in this doc's "What's NOT covered today" section. Agent picks the top unaddressed item, writes tests, removes it from the list.
+- **`/loop 1d npx playwright test`** — nightly E2E run (only useful once the suite grows beyond 1 test). Catches regressions introduced by dependency updates overnight.
+
+Neither is wired today. When you're ready, say "set up a weekly test-gap loop" and I'll configure it with `/loop`.
+
 ---
-*Future: an /admin/tests page that renders this catalog plus live CI status — tracked as a follow-up.*
+*Future: an `/admin/tests` page that renders this catalog plus live CI status — tracked as a follow-up.*
