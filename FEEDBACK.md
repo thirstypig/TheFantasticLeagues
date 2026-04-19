@@ -4,6 +4,45 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-19 (Session 69) — Watchlist, position filter, rules audit, E2E scaffold
+
+### Completed
+- **Watchlist stars fixed on Players page.** `normalizeTwoWayRow` was stripping `Player.id`, `G`, `SHO` from API rows — so every star button short-circuited to `null` and the G column showed 0 for everyone. Added passthrough; also exposed the fields in the type.
+- **Default Players list hides 0-game unrostered players** (513 → 223 rows). Search bypasses the filter so minor leaguers can still be added to the watchlist.
+- **Position filter rework.** CM/MI use `isCMEligible`/`isMIEligible` against the full `posList` (not just primary); specific positions match across posList with SP/RP collapsed to P; position dropdown is scoped by viewGroup and hides SP/RP. OGBA uses a single P bucket — codified as new `pitcher_split` rule.
+- **Position eligibility threshold 20 → 3.** `DEFAULT_RULES.position_eligibility_gp`, daily cron, admin endpoint default, admin test. Manual sync re-eligibilized 202 players.
+- **Commissioner Manual Roster Management** gains an "Add / Drop Search" table. Reuses `AddDropTab` via a new `teamIdOverride` prop — stars reflect Acting-As team's watchlist; claims go to Acting-As; drops release whichever team owns the player. Uses admin bypass on `/transactions/claim|drop`.
+- **Home dashboard links to team pages.** Header team name + Power Rankings rows now link to `/teams/:code` via a `name→code` map.
+- **Playwright E2E scaffold.** `@playwright/test` in client/, `client/playwright.config.ts`, `client/e2e/` with a golden-path watchlist round-trip test (29.6s, passing). Scripts `npm run test:e2e` / `test:e2e:ui`. Guards the exact regression we fixed this session.
+- **Rules audit** (`docs/RULES_AUDIT.md`). Full map of the two-system problem (`League.*` direct columns vs `LeagueRule` rows). Closed the two P1 overlaps: removed `overview.team_count` (now reads `League.maxTeams`) and `payouts.entry_fee` (now reads `League.entryFee`). RulesEditor gets a header note pointing to the other Commissioner tabs.
+- **TESTING.md** (`docs/TESTING.md`). Admin-visible catalog: unit/integration/E2E vocabulary, 823-test baseline, gap list, run cadence.
+
+### Commits (3, all on main)
+- `e00b0c5` — Session 69 product changes (13 files, +340/−42)
+- `5847754` — Playwright E2E scaffold (8 files, +220/−3)
+- `f041895` — Rules audit + overlap fixes (6 files, +172/−16)
+
+### Test results
+- Server: 571 passing, 7 skipped, 42 files.
+- Client: 201 passing, 16 files.
+- MCP: 50 passing (separate runner).
+- E2E: 1 passing (29.6s).
+- Total: **823 passing**.
+
+### Pending / Next Steps
+- **P2 unification** of the two config systems (merge `League.*` into RulesEditor, or vice versa) — deferred to schema-level decision.
+- **Full UX/navigation PM review** → punch list doc (deferred from this session).
+- **`/admin/tests` page** rendering `docs/TESTING.md` with live CI status.
+- **E2E expansion:** auction draft, trade, waiver FAAB, roster lock flows.
+- **Missing unit tests** flagged in TESTING.md: `useMyWatchlist` hook, position-filter logic — first-pick high-leverage additions.
+
+### Concerns / Tech Debt
+- **Multi-league support for `syncPositionEligibility`** — cron is global today. When a second league with different rules joins, it needs to iterate per-league and read `position_eligibility_gp` from `LeagueRule`.
+- **Existing `team_count` / `entry_fee` `LeagueRule` rows** in the DB are now dead data after this session. Harmless; cleanup in a future migration.
+- **`dh_games_threshold` rule** has no consumer — either wire or delete.
+
+---
+
 ## Session 2026-04-19 (Session 68)
 
 ### Completed

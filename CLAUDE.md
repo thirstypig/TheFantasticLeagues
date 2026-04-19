@@ -239,7 +239,7 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `AuctionSession.state.draftReport` — JSON, persisted Draft Report (generated once, survives restarts)
 
 ### Daily Cron Jobs (server/src/index.ts)
-- **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 20)` — updates multi-position eligibility from fielding stats (20+ games = qualified)
+- **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 3)` — updates multi-position eligibility from fielding stats (3+ games = qualified per OGBA rule). Global threshold today; per-league in the future.
 - **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods
 
 **CRITICAL**: `syncAllPlayers()` updates `Player.posPrimary` and `Player.mlbTeam` but **preserves enriched `Player.posList`** — it only overwrites `posList` if the existing value is just the primary position (not enriched by fielding stats). This prevents the daily sync from wiping multi-position eligibility data.
@@ -315,7 +315,11 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (571 server + 201 client + 50 MCP = 822 tests, 27 feature modules)
+### Current Test Coverage (571 server + 201 client + 50 MCP + 1 E2E = 823 tests, 27 feature modules)
+
+See `docs/TESTING.md` for the full catalog, vocabulary (unit/integration/E2E), coverage gaps, and run cadence.
+E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e` (requires both dev servers up).
+
 
 **Server (493 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
