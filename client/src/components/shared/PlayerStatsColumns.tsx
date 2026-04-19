@@ -17,12 +17,14 @@ interface SortProps {
 /** Column width presets */
 const W_STAT = "w-14";       // compact stat column (R, HR, RBI, SB, AB, W, SV, K)
 const W_RATE = "w-[4.5rem]"; // rate stat column (AVG, ERA, WHIP)
+const W_NARROW = "w-10";     // narrow stat column (G, SHO)
 
 // ─── Headers ──────────────────────────────────────────────────
 
 export function HitterStatHeaders({ sortKey, sortDesc, onSort }: SortProps) {
   return (
     <>
+      <SortableHeader sortKey="G" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_NARROW}>G</SortableHeader>
       <SortableHeader sortKey="AB" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>AB</SortableHeader>
       <SortableHeader sortKey="R" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>R</SortableHeader>
       <SortableHeader sortKey="HR" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>HR</SortableHeader>
@@ -36,11 +38,14 @@ export function HitterStatHeaders({ sortKey, sortDesc, onSort }: SortProps) {
 export function PitcherStatHeaders({ sortKey, sortDesc, onSort }: SortProps) {
   return (
     <>
+      <SortableHeader sortKey="G" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_NARROW}>G</SortableHeader>
+      <SortableHeader sortKey="IP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>IP</SortableHeader>
       <SortableHeader sortKey="W" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>W</SortableHeader>
       <SortableHeader sortKey="SV" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>SV</SortableHeader>
       <SortableHeader sortKey="K" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_STAT}>K</SortableHeader>
       <SortableHeader sortKey="ERA" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_RATE}>ERA</SortableHeader>
       <SortableHeader sortKey="WHIP" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_RATE}>WHIP</SortableHeader>
+      <SortableHeader sortKey="SHO" activeSortKey={sortKey} sortDesc={sortDesc} onSort={onSort} align="center" className={W_NARROW} title="Shutouts">SHO</SortableHeader>
     </>
   );
 }
@@ -48,6 +53,7 @@ export function PitcherStatHeaders({ sortKey, sortDesc, onSort }: SortProps) {
 // ─── Cells ────────────────────────────────────────────────────
 
 interface StatRow {
+  G?: number | string;
   AB?: number | string;
   R?: number | string;
   HR?: number | string;
@@ -57,31 +63,45 @@ interface StatRow {
   W?: number | string;
   SV?: number | string;
   K?: number | string;
+  IP?: number | string;
   ERA?: number | string;
   WHIP?: number | string;
+  SHO?: number | string;
 }
 
 export function HitterStatCells({ row }: { row: StatRow }) {
   return (
     <>
-      <ThemedTd align="center">{row.AB ?? "—"}</ThemedTd>
-      <ThemedTd align="center">{row.R}</ThemedTd>
-      <ThemedTd align="center">{row.HR}</ThemedTd>
-      <ThemedTd align="center">{row.RBI}</ThemedTd>
-      <ThemedTd align="center">{row.SB}</ThemedTd>
-      <ThemedTd align="center">{typeof row.AVG === "number" ? fmtRate(row.AVG) : "—"}</ThemedTd>
+      <ThemedTd align="center">{row.G ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.AB ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.R ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.HR ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.RBI ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.SB ?? 0}</ThemedTd>
+      <ThemedTd align="center">{typeof row.AVG === "number" ? fmtRate(row.AVG) : ".000"}</ThemedTd>
     </>
   );
+}
+
+/** Format IP for display — show one decimal for fractional innings */
+function fmtIP(val: number | string | undefined): string {
+  if (val == null) return "0";
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  if (!n) return "0";
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
 export function PitcherStatCells({ row }: { row: StatRow }) {
   return (
     <>
-      <ThemedTd align="center">{row.W}</ThemedTd>
-      <ThemedTd align="center">{row.SV}</ThemedTd>
-      <ThemedTd align="center">{row.K}</ThemedTd>
-      <ThemedTd align="center">{row.ERA ? Number(row.ERA).toFixed(2) : "—"}</ThemedTd>
-      <ThemedTd align="center">{row.WHIP ? Number(row.WHIP).toFixed(2) : "—"}</ThemedTd>
+      <ThemedTd align="center">{row.G ?? 0}</ThemedTd>
+      <ThemedTd align="center">{fmtIP(row.IP)}</ThemedTd>
+      <ThemedTd align="center">{row.W ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.SV ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.K ?? 0}</ThemedTd>
+      <ThemedTd align="center">{row.ERA ? Number(row.ERA).toFixed(2) : "0.00"}</ThemedTd>
+      <ThemedTd align="center">{row.WHIP ? Number(row.WHIP).toFixed(2) : "0.00"}</ThemedTd>
+      <ThemedTd align="center">{row.SHO ?? 0}</ThemedTd>
     </>
   );
 }

@@ -10,7 +10,12 @@ import { useLeague, findMyTeam } from "../contexts/LeagueContext";
 import { gradeColor } from "../lib/sportConfig";
 import { useSeasonGating } from "../hooks/useSeasonGating";
 import { formatLocalDate, formatLocalTime, formatEventTime, safeParseDate } from "../lib/timeUtils";
-import type { DigestResponse, PowerRanking, CategoryMover, TeamGrade } from "./home/types";
+import type {
+  DigestResponse, PowerRanking, CategoryMover, TeamGrade,
+  RosterStatsPlayer, RosterStatsResponse, RosterAlertPlayer, PlayerVideo,
+  RedditPost, NewsArticle, ScoredPlayer, TradeRumor, MatchedPlayer,
+  HittingLine, PitchingLine,
+} from "./home/types";
 import DeadlineWarnings from "../components/shared/DeadlineWarnings";
 import RosterAlertAccordion from "../components/shared/RosterAlertAccordion";
 
@@ -207,7 +212,7 @@ export default function Home() {
   const [loadingScores, setLoadingScores] = useState(true);
 
   // Real-Time Stats Today
-  const [rosterStats, setRosterStats] = useState<{ date: string; teamName: string; players: any[] }>({ date: '', teamName: '', players: [] });
+  const [rosterStats, setRosterStats] = useState<RosterStatsResponse>({ date: '', teamName: '', players: [] });
   const [rosterStatsLoading, setRosterStatsLoading] = useState(true);
 
   // YouTube video modal + pagination
@@ -227,27 +232,27 @@ export default function Home() {
   const [leagueRoster, setLeagueRoster] = useState<Map<string, string>>(new Map()); // lowercase name → fantasy team name
 
   // YouTube player videos
-  const [playerVideos, setPlayerVideos] = useState<any[]>([]);
+  const [playerVideos, setPlayerVideos] = useState<PlayerVideo[]>([]);
   const [videosLoading, setVideosLoading] = useState(true);
 
   // Reddit baseball feed
-  const [redditPosts, setRedditPosts] = useState<any[]>([]);
+  const [redditPosts, setRedditPosts] = useState<RedditPost[]>([]);
   const [redditLoading, setRedditLoading] = useState(true);
 
   // Yahoo Sports MLB feed
-  const [yahooArticles, setYahooArticles] = useState<any[]>([]);
+  const [yahooArticles, setYahooArticles] = useState<NewsArticle[]>([]);
   const [yahooLoading, setYahooLoading] = useState(true);
 
   // MLB.com news feed
-  const [mlbArticles, setMlbArticles] = useState<any[]>([]);
+  const [mlbArticles, setMlbArticles] = useState<NewsArticle[]>([]);
   const [mlbLoading, setMlbLoading] = useState(true);
 
   // ESPN MLB news feed
-  const [espnArticles, setEspnArticles] = useState<any[]>([]);
+  const [espnArticles, setEspnArticles] = useState<NewsArticle[]>([]);
   const [espnLoading, setEspnLoading] = useState(true);
 
   // Roster status alerts (IL, minors)
-  const [rosterAlerts, setRosterAlerts] = useState<any[]>([]);
+  const [rosterAlerts, setRosterAlerts] = useState<RosterAlertPlayer[]>([]);
 
   // Depth Charts
   const [depthTeamId, setDepthTeamId] = useState(119); // Default LAD
@@ -330,8 +335,8 @@ export default function Home() {
     let ok = true;
     setRosterStatsLoading(true);
     Promise.allSettled([
-      fetchJsonApi<{ date: string; teamName: string; players: any[] }>(`${API_BASE}/mlb/roster-stats-today?leagueId=${currentLeagueId}`),
-      fetchJsonApi<{ stats: any[] }>(`${API_BASE}/player-season-stats?leagueId=${currentLeagueId}`),
+      fetchJsonApi<RosterStatsResponse>(`${API_BASE}/mlb/roster-stats-today?leagueId=${currentLeagueId}`),
+      fetchJsonApi<{ stats: { player_name?: string; ogba_team_name?: string }[] }>(`${API_BASE}/player-season-stats?leagueId=${currentLeagueId}`),
     ]).then(([statsRes, rosterRes]) => {
       if (!ok) return;
       if (statsRes.status === "fulfilled") setRosterStats(statsRes.value);
@@ -354,7 +359,7 @@ export default function Home() {
     const hasLive = rosterStats.players.some(p => p.gameStatus === "In Progress" || p.gameStatus === "Live");
     if (!hasLive || !currentLeagueId) return;
     const interval = setInterval(() => {
-      fetchJsonApi<{ date: string; teamName: string; players: any[] }>(`${API_BASE}/mlb/roster-stats-today?leagueId=${currentLeagueId}`)
+      fetchJsonApi<RosterStatsResponse>(`${API_BASE}/mlb/roster-stats-today?leagueId=${currentLeagueId}`)
         .then(data => setRosterStats(data))
         .catch(() => {});
     }, 120_000);
@@ -364,7 +369,7 @@ export default function Home() {
   // Fetch Trade Rumors
   useEffect(() => {
     setRumorsLoading(true);
-    fetchJsonApi<{ items: any[] }>(`${API_BASE}/mlb/trade-rumors`)
+    fetchJsonApi<{ items: TradeRumor[] }>(`${API_BASE}/mlb/trade-rumors`)
       .then(res => setRumors(res.items || []))
       .catch(() => setRumors([]))
       .finally(() => setRumorsLoading(false));
@@ -375,7 +380,7 @@ export default function Home() {
     if (!currentLeagueId) { setVideosLoading(false); return; }
     let ok = true;
     setVideosLoading(true);
-    fetchJsonApi<{ videos: any[] }>(`${API_BASE}/mlb/player-videos?leagueId=${currentLeagueId}`)
+    fetchJsonApi<{ videos: PlayerVideo[] }>(`${API_BASE}/mlb/player-videos?leagueId=${currentLeagueId}`)
       .then(res => { if (ok) setPlayerVideos(res.videos || []); })
       .catch(() => { if (ok) setPlayerVideos([]); })
       .finally(() => { if (ok) setVideosLoading(false); });
@@ -387,7 +392,7 @@ export default function Home() {
     if (!currentLeagueId) { setRedditLoading(false); return; }
     let ok = true;
     setRedditLoading(true);
-    fetchJsonApi<{ posts: any[] }>(`${API_BASE}/mlb/reddit-baseball?leagueId=${currentLeagueId}`)
+    fetchJsonApi<{ posts: RedditPost[] }>(`${API_BASE}/mlb/reddit-baseball?leagueId=${currentLeagueId}`)
       .then(res => { if (ok) setRedditPosts(res.posts || []); })
       .catch(() => { if (ok) setRedditPosts([]); })
       .finally(() => { if (ok) setRedditLoading(false); });
@@ -398,9 +403,9 @@ export default function Home() {
   useEffect(() => {
     setYahooLoading(true); setMlbLoading(true); setEspnLoading(true);
     Promise.allSettled([
-      fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/yahoo-sports`),
-      fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/mlb-news`),
-      fetchJsonApi<{ articles: any[] }>(`${API_BASE}/mlb/espn-news`),
+      fetchJsonApi<{ articles: NewsArticle[] }>(`${API_BASE}/mlb/yahoo-sports`),
+      fetchJsonApi<{ articles: NewsArticle[] }>(`${API_BASE}/mlb/mlb-news`),
+      fetchJsonApi<{ articles: NewsArticle[] }>(`${API_BASE}/mlb/espn-news`),
     ]).then(([yahoo, mlb, espn]) => {
       setYahooArticles(yahoo.status === "fulfilled" ? yahoo.value.articles || [] : []);
       setMlbArticles(mlb.status === "fulfilled" ? mlb.value.articles || [] : []);
@@ -413,8 +418,8 @@ export default function Home() {
   useEffect(() => {
     if (!currentLeagueId) return;
     let ok = true;
-    fetchJsonApi<{ players: any[] }>(`${API_BASE}/mlb/roster-status?leagueId=${currentLeagueId}`)
-      .then(res => { if (ok) setRosterAlerts((res.players || []).filter((p: any) => p.isInjured || p.isMinors)); })
+    fetchJsonApi<{ players: RosterAlertPlayer[] }>(`${API_BASE}/mlb/roster-status?leagueId=${currentLeagueId}`)
+      .then(res => { if (ok) setRosterAlerts((res.players || []).filter(p => p.isInjured || p.isMinors)); })
       .catch(() => { if (ok) setRosterAlerts([]); });
     return () => { ok = false; };
   }, [currentLeagueId]);
@@ -588,21 +593,21 @@ export default function Home() {
       {!rosterStatsLoading && rosterStats.players.length > 0 && (() => {
         // Score and filter to players who actually did something
         const scored = rosterStats.players
-          .filter((p: any) => p.gameToday && (p.hitting || p.pitching))
-          .map((p: any) => {
-            const h = p.hitting || {};
-            const pt = p.pitching || {};
+          .filter((p: RosterStatsPlayer) => p.gameToday && (p.hitting || p.pitching))
+          .map((p: RosterStatsPlayer) => {
+            const h = p.hitting || {} as Partial<HittingLine>;
+            const pt = p.pitching || {} as Partial<PitchingLine>;
             const hitScore = (h.HR || 0) * 4 + (h.RBI || 0) * 2 + (h.R || 0) * 2 + (h.SB || 0) * 3 + (h.H || 0);
             const pitchScore = (pt.W || 0) * 5 + (pt.SV || 0) * 5 + (pt.K || 0) + (parseFloat(pt.IP || "0") >= 5 && (pt.ER || 0) <= 2 ? 5 : 0);
             return { ...p, score: hitScore + pitchScore };
           })
-          .filter((p: any) => p.score > 0) // Only players who did something
-          .sort((a: any, b: any) => b.score - a.score);
+          .filter(p => p.score > 0)
+          .sort((a, b) => b.score - a.score);
 
         // Inject IL placements as headline-worthy stories (recent IL moves are big news)
         const recentIL = rosterAlerts
-          .filter((a: any) => a.isInjured && a.ilPlacedDate)
-          .map((a: any) => {
+          .filter(a => a.isInjured && a.ilPlacedDate)
+          .map(a => {
             const placedDate = new Date(a.ilPlacedDate + "T12:00:00");
             const daysSince = Math.floor((Date.now() - placedDate.getTime()) / 86400000);
             if (daysSince > 1) return null; // Only feature NEW IL placements (today/yesterday)
@@ -629,15 +634,18 @@ export default function Home() {
           .filter(Boolean);
 
         // Merge IL stories into scored — they compete on score
-        const allStories = [...scored, ...recentIL].sort((a: any, b: any) => b.score - a.score);
+        const allStories = [...scored, ...recentIL].sort((a, b) => (b as ScoredPlayer).score - (a as ScoredPlayer).score) as ScoredPlayer[];
 
         if (allStories.length === 0) return null;
 
         // Generate fun, punchy headlines — each player gets a unique one
         const pick = (arr: string[], seed: number) => arr[seed % arr.length];
-        const makeHeadline = (p: any, idx: number): string => {
-          const h = p.hitting || {};
-          const pt = p.pitching || {};
+        const emptyH: HittingLine = { AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, BB: 0, K: 0 };
+        const emptyP: PitchingLine = { IP: "0", H: 0, R: 0, ER: 0, K: 0, BB: 0, W: 0, L: 0, SV: 0 };
+
+        const makeHeadline = (p: ScoredPlayer, idx: number): string => {
+          const h = p.hitting || emptyH;
+          const pt = p.pitching || emptyP;
           const last = p.playerName.split(" ").slice(-1)[0];
           const first = p.playerName.split(" ")[0];
           const seed = new Date().getDate() * 7 + idx * 13 + ((p.mlbId || 0) % 11);
@@ -681,9 +689,9 @@ export default function Home() {
         };
 
         // Compact stat line
-        const statLine = (p: any) => {
-          const h = p.hitting || {};
-          const pt = p.pitching || {};
+        const statLine = (p: ScoredPlayer) => {
+          const h = p.hitting || emptyH;
+          const pt = p.pitching || emptyP;
           if (p.isPitcher && pt.IP) {
             const parts: string[] = [];
             if (pt.W) parts.push("W");
@@ -707,13 +715,13 @@ export default function Home() {
 
         const hero = allStories[0];
         const sideStories = allStories.slice(1, 3); // Cap at 2 side stories (3 total with hero)
-        const scoredIds = new Set(allStories.map((p: any) => p.mlbId));
+        const scoredIds = new Set(allStories.map((p) => p.mlbId));
         // Filter IL players from on-deck using rosterAlerts
-        const ilMlbIds = new Set(rosterAlerts.filter((a: any) => a.isInjured).map((a: any) => a.mlbId));
-        const onDeck = rosterStats.players.filter((p: any) => p.gameToday && !scoredIds.has(p.mlbId) && !ilMlbIds.has(p.mlbId));
+        const ilMlbIds = new Set(rosterAlerts.filter((a) => a.isInjured).map(a => a.mlbId));
+        const onDeck = rosterStats.players.filter((p) => p.gameToday && !scoredIds.has(p.mlbId) && !ilMlbIds.has(p.mlbId));
         // IL and Minors players from rosterAlerts
-        const ilPlayers = rosterAlerts.filter((a: any) => a.isInjured);
-        const minorsPlayers = rosterAlerts.filter((a: any) => a.isMinors);
+        const ilPlayers = rosterAlerts.filter((a) => a.isInjured);
+        const minorsPlayers = rosterAlerts.filter((a) => a.isMinors);
         const hasSidebar = true; // always show sidebar: stories, on-deck, pulse, or daily column
         const dateStr = formatLocalDate(new Date(), { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 
@@ -793,19 +801,19 @@ export default function Home() {
                   try { return formatLocalTime(t); }
                   catch { return ""; }
                 };
-                const isFinal = (p: any) => {
+                const isFinal = (p: RosterStatsPlayer | ScoredPlayer) => {
                   const s = (p.gameStatus || "").toLowerCase();
                   return s.includes("final") || s.includes("over") || s.includes("game over");
                 };
-                const isLive = (p: any) => {
+                const isLive = (p: RosterStatsPlayer | ScoredPlayer) => {
                   const s = (p.gameStatus || "").toLowerCase();
                   return s.includes("progress") || s.includes("live");
                 };
                 // Only show upcoming or live — not final
-                const onDeckFiltered = onDeck.filter((p: any) => !isFinal(p));
+                const onDeckFiltered = onDeck.filter((p) => !isFinal(p));
 
                 // Today's pulse stats
-                const allToday = rosterStats.players.filter((p: any) => p.gameToday);
+                const allToday = rosterStats.players.filter((p) => p.gameToday);
                 const liveCount = allToday.filter(isLive).length;
                 const doneCount = allToday.filter(isFinal).length;
                 const upcomingCount = allToday.length - liveCount - doneCount;
@@ -851,7 +859,7 @@ export default function Home() {
                     {/* Headline stories */}
                     {sideStories.length > 0 && (
                       <div className="space-y-0 divide-y divide-[var(--lg-divide)]">
-                        {sideStories.map((p: any, i: number) => (
+                        {sideStories.map((p, i) => (
                           <div key={i} className="flex items-start gap-2.5 py-2.5 first:pt-0 group">
                             {p.thumbnail ? (
                               <img
@@ -893,7 +901,7 @@ export default function Home() {
                       <div className={sideStories.length > 0 ? "mt-3 pt-3 border-t border-[var(--lg-divide)]" : ""}>
                         <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">On Deck</p>
                         <div className="space-y-1.5">
-                          {onDeckFiltered.slice(0, 3).map((p: any, i: number) => {
+                          {onDeckFiltered.slice(0, 3).map((p, i) => {
                             const live = isLive(p);
                             const label = live ? "LIVE" : (fmtTime(p.gameTime) || "Today");
                             return (
@@ -1006,7 +1014,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {/* Hitters */}
             {(() => {
-              const hitters = rosterStats.players.filter((p: any) => !p.isPitcher);
+              const hitters = rosterStats.players.filter((p) => !p.isPitcher);
               if (hitters.length === 0) return null;
               return (
                 <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-x-auto">
@@ -1025,7 +1033,7 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--lg-border-faint)]">
-                      {hitters.map((p: any, idx: number) => {
+                      {hitters.map((p, idx) => {
                         const h = p.hitting;
                         const hasStats = !!h;
                         const isLive = p.gameStatus === "In Progress";
@@ -1039,12 +1047,12 @@ export default function Home() {
                               {isLive && <span className="ml-1 text-[7px] text-emerald-400 animate-pulse font-bold">LIVE</span>}
                             </td>
                             <td className={`px-1 py-px text-center tabular-nums opacity-60 ${hasStats ? '' : dim}`}>{h?.AB ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums opacity-60 ${h?.H > 0 ? 'text-emerald-400' : hasStats ? '' : dim}`}>{h?.H ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${h?.R > 0 ? 'text-blue-400 font-bold' : hasStats ? '' : dim}`}>{h?.R ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${h?.HR > 0 ? 'text-amber-400 font-bold' : hasStats ? '' : dim}`}>{h?.HR ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${h?.RBI > 0 ? 'text-purple-400 font-bold' : hasStats ? '' : dim}`}>{h?.RBI ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${h?.SB > 0 ? 'text-cyan-400 font-bold' : hasStats ? '' : dim}`}>{h?.SB ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums font-bold ${hasStats && h?.AB > 0 ? '' : dim}`}>{hasStats && h?.AB > 0 ? (h.H / h.AB).toFixed(3).replace('0.', '.') : '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums opacity-60 ${(h?.H ?? 0) > 0 ? 'text-emerald-400' : hasStats ? '' : dim}`}>{h?.H ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(h?.R ?? 0) > 0 ? 'text-blue-400 font-bold' : hasStats ? '' : dim}`}>{h?.R ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(h?.HR ?? 0) > 0 ? 'text-amber-400 font-bold' : hasStats ? '' : dim}`}>{h?.HR ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(h?.RBI ?? 0) > 0 ? 'text-purple-400 font-bold' : hasStats ? '' : dim}`}>{h?.RBI ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(h?.SB ?? 0) > 0 ? 'text-cyan-400 font-bold' : hasStats ? '' : dim}`}>{h?.SB ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums font-bold ${hasStats && (h?.AB ?? 0) > 0 ? '' : dim}`}>{hasStats && (h?.AB ?? 0) > 0 ? ((h?.H ?? 0) / (h?.AB ?? 1)).toFixed(3).replace('0.', '.') : '—'}</td>
                           </tr>
                         );
                       })}
@@ -1056,7 +1064,7 @@ export default function Home() {
 
             {/* Pitchers */}
             {(() => {
-              const pitchers = rosterStats.players.filter((p: any) => p.isPitcher);
+              const pitchers = rosterStats.players.filter((p) => p.isPitcher);
               if (pitchers.length === 0) return null;
               return (
                 <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
@@ -1077,13 +1085,13 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--lg-border-faint)]">
-                      {pitchers.map((p: any, idx: number) => {
+                      {pitchers.map((p, idx) => {
                         const s = p.pitching;
                         const hasStats = !!s;
                         const isLive = p.gameStatus === "In Progress";
                         const dim = 'text-[var(--lg-text-muted)] opacity-30';
-                        const ip = s?.IP ?? 0;
-                        const era = hasStats && ip > 0 ? ((s.ER / ip) * 9).toFixed(2) : '—';
+                        const ip = hasStats ? parseFloat(String(s.IP)) || 0 : 0;
+                        const era = hasStats && ip > 0 ? (((s.ER ?? 0) / ip) * 9).toFixed(2) : '—';
                         const whip = hasStats && ip > 0 ? (((s.BB ?? 0) + (s.H ?? 0)) / ip).toFixed(2) : '—';
                         return (
                           <tr key={`p-${idx}`} className={isLive ? 'bg-emerald-500/5' : ''}>
@@ -1095,11 +1103,11 @@ export default function Home() {
                             </td>
                             <td className={`px-1 py-px text-center tabular-nums opacity-60 ${hasStats ? '' : dim}`}>{s?.IP ?? '—'}</td>
                             <td className={`px-1 py-px text-center tabular-nums opacity-60 ${hasStats ? '' : dim}`}>{s?.H ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums opacity-60 ${s?.ER > 0 ? 'text-red-400' : hasStats ? '' : dim}`}>{s?.ER ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${s?.K > 0 ? 'text-emerald-400 font-bold' : hasStats ? '' : dim}`}>{s?.K ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums opacity-60 ${(s?.ER ?? 0) > 0 ? 'text-red-400' : hasStats ? '' : dim}`}>{s?.ER ?? '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(s?.K ?? 0) > 0 ? 'text-emerald-400 font-bold' : hasStats ? '' : dim}`}>{s?.K ?? '—'}</td>
                             <td className={`px-1 py-px text-center tabular-nums opacity-60 ${hasStats ? '' : dim}`}>{s?.BB ?? '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${s?.W > 0 ? 'text-emerald-400 font-bold' : hasStats ? '' : dim}`}>{hasStats ? (s.W ?? 0) : '—'}</td>
-                            <td className={`px-1 py-px text-center tabular-nums ${s?.SV > 0 ? 'text-amber-400 font-bold' : hasStats ? '' : dim}`}>{hasStats ? (s.SV ?? 0) : '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(s?.W ?? 0) > 0 ? 'text-emerald-400 font-bold' : hasStats ? '' : dim}`}>{hasStats ? (s.W ?? 0) : '—'}</td>
+                            <td className={`px-1 py-px text-center tabular-nums ${(s?.SV ?? 0) > 0 ? 'text-amber-400 font-bold' : hasStats ? '' : dim}`}>{hasStats ? (s.SV ?? 0) : '—'}</td>
                             <td className={`px-1 py-px text-center tabular-nums font-bold ${hasStats && ip > 0 ? '' : dim}`}>{era}</td>
                             <td className={`px-1 py-px text-center tabular-nums font-bold ${hasStats && ip > 0 ? '' : dim}`}>{whip}</td>
                           </tr>
@@ -1116,8 +1124,8 @@ export default function Home() {
 
       {/* Roster Alerts — IL / Minors cards */}
       {rosterAlerts.length > 0 && (() => {
-        const ilAlerts = rosterAlerts.filter((p: any) => p.isInjured);
-        const minorsAlerts = rosterAlerts.filter((p: any) => p.isMinors);
+        const ilAlerts = rosterAlerts.filter((p) => p.isInjured);
+        const minorsAlerts = rosterAlerts.filter((p) => p.isMinors);
         const headshotUrl = (mlbId: number | null) =>
           `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
         return (
@@ -1126,7 +1134,7 @@ export default function Home() {
               <div>
                 <div className="text-[9px] font-bold uppercase tracking-widest text-red-400 mb-2">Injured List ({ilAlerts.length})</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                  {ilAlerts.map((p: any, i: number) => {
+                  {ilAlerts.map((p, i) => {
                     const ilMatch = (p.mlbStatus || "").match(/(\d+)/);
                     const ilLabel = ilMatch ? `${ilMatch[1]}-Day IL` : "IL";
                     return (
@@ -1154,7 +1162,7 @@ export default function Home() {
               <div>
                 <div className="text-[9px] font-bold uppercase tracking-widest text-amber-400 mb-2">Minors ({minorsAlerts.length})</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                  {minorsAlerts.map((p: any, i: number) => (
+                  {minorsAlerts.map((p, i) => (
                     <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/15">
                       <img
                         src={headshotUrl(p.mlbId)}
@@ -1206,14 +1214,6 @@ export default function Home() {
               </div>
               {digestExpanded ? <ChevronUp size={14} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={14} className="text-[var(--lg-text-muted)]" />}
             </button>
-            <Link
-              to={`/report${selectedWeekKey && selectedWeekKey !== currentWeekKey ? `/${selectedWeekKey}` : ""}`}
-              className="flex items-center gap-1.5 px-3 md:px-4 border-l border-[var(--lg-border-faint)] text-[11px] font-semibold uppercase tracking-wider text-[var(--lg-accent)] hover:bg-[var(--lg-bg-card)]/30 transition-colors"
-              title="Open This Week in Baseball — full weekly report"
-            >
-              Full Report
-              <ChevronRight size={14} />
-            </Link>
           </div>
 
           {/* Week pill tabs */}
@@ -1562,12 +1562,12 @@ export default function Home() {
             <div className="space-y-2 p-3">{[1,2,3,4].map(i => <div key={i} className="h-8 rounded bg-[var(--lg-bg-card)] animate-pulse" />)}</div>
           ) : (() => {
             let filtered = redditPosts;
-            if (newsFilter === 'MY_ROSTER') filtered = filtered.filter((p: any) => p.matchedPlayers?.length > 0);
-            else if (newsFilter === 'FREE_AGENTS') filtered = filtered.filter((p: any) => !p.matchedPlayers?.length);
-            else if (newsFilter !== 'ALL') filtered = filtered.filter((p: any) => p.matchedPlayers?.some((mp: any) => mp.fantasyTeam === newsFilter));
+            if (newsFilter === 'MY_ROSTER') filtered = filtered.filter((p) => p.matchedPlayers?.length);
+            else if (newsFilter === 'FREE_AGENTS') filtered = filtered.filter((p) => !p.matchedPlayers?.length);
+            else if (newsFilter !== 'ALL') filtered = filtered.filter((p) => p.matchedPlayers?.some((mp: MatchedPlayer) => mp.fantasyTeam === newsFilter));
             return filtered.length === 0 ? (
               <div className="text-center py-8 text-xs text-[var(--lg-text-muted)] opacity-50">No posts</div>
-            ) : (<>{filtered.map((post: any, i: number) => {
+            ) : (<>{filtered.map((post, i) => {
               const ago = post.createdUtc ? (() => { const ms = Date.now() - post.createdUtc * 1000; const h = Math.floor(ms / 3_600_000); return h < 1 ? "just now" : h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`; })() : "";
               return (
                 <a key={`rd-${i}`} href={post.permalink} target="_blank" rel="noopener noreferrer"
@@ -1575,7 +1575,7 @@ export default function Home() {
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-[var(--lg-text-primary)] leading-relaxed">{post.title}</div>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      {(post.matchedPlayers || []).map((mp: any, mi: number) => (
+                      {(post.matchedPlayers || []).map((mp: MatchedPlayer, mi: number) => (
                         <span key={`rmp-${mi}`} className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-accent)]/20 text-[var(--lg-accent)] font-semibold border border-[var(--lg-accent)]/30">{mp.name} · {mp.fantasyTeam}</span>
                       ))}
                       {post.flair && <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 font-medium">{post.flair}</span>}
@@ -1594,7 +1594,7 @@ export default function Home() {
             const loading = newsTab === 'mlb' ? mlbLoading : newsTab === 'espn' ? espnLoading : yahooLoading;
             if (loading) return <div className="space-y-2 p-3">{[1,2,3,4].map(i => <div key={i} className="h-6 rounded bg-[var(--lg-bg-card)] animate-pulse" />)}</div>;
             // Cross-reference with league roster
-            const articles = sourceArticles.map((a: any) => {
+            const articles = sourceArticles.map((a) => {
               const lowerTitle = (a.title || "").toLowerCase();
               const matched: { name: string; fantasyTeam: string }[] = [];
               for (const [key, team] of leagueRoster) {
@@ -1603,12 +1603,12 @@ export default function Home() {
               return { ...a, matchedPlayers: matched };
             });
             let filtered = articles;
-            if (newsFilter === 'MY_ROSTER') filtered = filtered.filter((a: any) => a.matchedPlayers.length > 0);
-            else if (newsFilter === 'FREE_AGENTS') filtered = filtered.filter((a: any) => a.matchedPlayers.length === 0);
-            else if (newsFilter !== 'ALL') filtered = filtered.filter((a: any) => a.matchedPlayers.some((mp: any) => mp.fantasyTeam === newsFilter));
+            if (newsFilter === 'MY_ROSTER') filtered = filtered.filter((a) => a.matchedPlayers.length > 0);
+            else if (newsFilter === 'FREE_AGENTS') filtered = filtered.filter((a) => a.matchedPlayers.length === 0);
+            else if (newsFilter !== 'ALL') filtered = filtered.filter((a) => a.matchedPlayers.some((mp: MatchedPlayer) => mp.fantasyTeam === newsFilter));
             return filtered.length === 0 ? (
               <div className="text-center py-8 text-xs text-[var(--lg-text-muted)] opacity-50">No articles</div>
-            ) : (<>{filtered.map((a: any, i: number) => {
+            ) : (<>{filtered.map((a, i) => {
               const ago = a.pubDate ? (() => { const ms = Date.now() - new Date(a.pubDate).getTime(); const h = Math.floor(ms / 3_600_000); return h < 1 ? "just now" : h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`; })() : "";
               return (
                 <a key={`art-${i}`} href={a.link} target="_blank" rel="noopener noreferrer"
@@ -1616,7 +1616,7 @@ export default function Home() {
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-[var(--lg-text-primary)] leading-relaxed">{a.title}</div>
                     <div className="flex items-center gap-1 mt-1 flex-wrap">
-                      {(a.matchedPlayers || []).slice(0, 3).map((mp: any, mi: number) => (
+                      {(a.matchedPlayers || []).slice(0, 3).map((mp: MatchedPlayer, mi: number) => (
                         <span key={mi} className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-accent)]/20 text-[var(--lg-accent)] font-semibold border border-[var(--lg-accent)]/30">{mp.name} · {mp.fantasyTeam}</span>
                       ))}
                       {a.description && <span className="text-[9px] text-[var(--lg-text-muted)] line-clamp-1">{a.description}</span>}
@@ -1644,7 +1644,7 @@ export default function Home() {
             YouTube Shorts
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {playerVideos.slice(ytPage * YT_PER_PAGE, (ytPage + 1) * YT_PER_PAGE).map((v: any, i: number) => (
+            {playerVideos.slice(ytPage * YT_PER_PAGE, (ytPage + 1) * YT_PER_PAGE).map((v, i) => (
               <button
                 key={`yt-${ytPage}-${i}`}
                 onClick={() => setActiveVideo({ videoId: v.videoId, title: v.title })}
@@ -1799,8 +1799,8 @@ export default function Home() {
               <tbody className="divide-y divide-[var(--lg-border-faint)]">
                 {depthChart.map(pos => {
                   // Show first 4 visible slots, but also ensure all IL players appear
-                  const active = pos.players.filter((p: any) => !p.isInjured);
-                  const il = pos.players.filter((p: any) => p.isInjured);
+                  const active = pos.players.filter((p) => !p.isInjured);
+                  const il = pos.players.filter((p) => p.isInjured);
                   // Interleave: starter, backup, then IL players fill remaining visible slots
                   const display = [...active.slice(0, 2)]; // starter + backup always active
                   // Fill 3rd and 4th with active depth or IL players

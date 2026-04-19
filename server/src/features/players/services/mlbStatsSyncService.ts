@@ -135,20 +135,19 @@ async function mirrorTwoWayPitcherStats(periodId: number): Promise<void> {
     if (!realStats) continue;
 
     // Mirror pitching-only stats (zero out hitting so standings count correctly)
+    const pitchingStats = {
+      AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+      BB: 0, HBP: 0, SF: 0, TB: 0, DBL: 0, TPL: 0, SO: 0, OBP: 0, SLG: 0, OPS: 0, GS_HR: 0,
+      W: realStats.W, SV: realStats.SV, K: realStats.K,
+      IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
+      L: realStats.L, GS: realStats.GS, K9: realStats.K9,
+      BB9: realStats.BB9, HR_A: realStats.HR_A, BF: realStats.BF,
+      SHO: realStats.SHO, G: realStats.G,
+    };
     await prisma.playerStatsPeriod.upsert({
       where: { playerId_periodId: { playerId: pitcherPlayerId, periodId } },
-      create: {
-        playerId: pitcherPlayerId,
-        periodId,
-        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
-        W: realStats.W, SV: realStats.SV, K: realStats.K,
-        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
-      },
-      update: {
-        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
-        W: realStats.W, SV: realStats.SV, K: realStats.K,
-        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
-      },
+      create: { playerId: pitcherPlayerId, periodId, ...pitchingStats },
+      update: pitchingStats,
     });
 
     // Zero out pitching stats on the HITTER record to prevent double-counting.
@@ -156,7 +155,7 @@ async function mirrorTwoWayPitcherStats(periodId: number): Promise<void> {
     // We want pitching only on the synthetic pitcher record, hitting only on the hitter.
     await prisma.playerStatsPeriod.update({
       where: { playerId_periodId: { playerId: realPlayer.id, periodId } },
-      data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 },
+      data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0, SHO: 0 },
     });
 
     logger.info(
@@ -177,10 +176,14 @@ function parsePlayerStats(person: any) {
     // Extended batting (MVP tracking)
     BB: 0, HBP: 0, SF: 0, TB: 0, DBL: 0, TPL: 0, SO: 0,
     OBP: 0, SLG: 0, OPS: 0,
+    GS_HR: 0, // grand slams
     // Core pitching
     W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0,
     // Extended pitching (Cy Young tracking)
     L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0,
+    SHO: 0, // shutouts
+    // General
+    G: 0,
   };
 
   if (!person.stats) return result;
@@ -209,6 +212,8 @@ function parsePlayerStats(person: any) {
       result.OBP = parseFloat(split.obp) || 0;
       result.SLG = parseFloat(split.slg) || 0;
       result.OPS = parseFloat(split.ops) || 0;
+      result.GS_HR = split.grandSlams || 0;
+      result.G = Math.max(result.G, split.gamesPlayed || 0);
     } else if (groupName === "pitching") {
       // Core
       result.W = split.wins || 0;
@@ -224,6 +229,8 @@ function parsePlayerStats(person: any) {
       result.BB9 = parseFloat(split.walksPer9Inn) || 0;
       result.HR_A = split.homeRuns || 0;
       result.BF = split.battersFaced || 0;
+      result.SHO = split.shutouts || 0;
+      result.G = Math.max(result.G, split.gamesPlayed || 0);
     }
   }
 
@@ -361,25 +368,25 @@ async function mirrorTwoWayDailyPitcherStats(gameDate: Date): Promise<void> {
     });
     if (!realStats || (realStats.W === 0 && realStats.SV === 0 && realStats.K === 0 && realStats.IP === 0)) continue;
 
+    const dailyPitching = {
+      AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+      BB: 0, HBP: 0, SF: 0, TB: 0, DBL: 0, TPL: 0, SO: 0, OBP: 0, SLG: 0, OPS: 0, GS_HR: 0,
+      W: realStats.W, SV: realStats.SV, K: realStats.K,
+      IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
+      L: realStats.L, GS: realStats.GS, K9: realStats.K9,
+      BB9: realStats.BB9, HR_A: realStats.HR_A, BF: realStats.BF,
+      SHO: realStats.SHO, G: realStats.G,
+    };
     await prisma.playerStatsDaily.upsert({
       where: { playerId_gameDate: { playerId: pitcherPlayerId, gameDate } },
-      create: {
-        playerId: pitcherPlayerId, gameDate,
-        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
-        W: realStats.W, SV: realStats.SV, K: realStats.K,
-        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
-      },
-      update: {
-        AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
-        W: realStats.W, SV: realStats.SV, K: realStats.K,
-        IP: realStats.IP, ER: realStats.ER, BB_H: realStats.BB_H,
-      },
+      create: { playerId: pitcherPlayerId, gameDate, ...dailyPitching },
+      update: dailyPitching,
     });
 
     // Zero out pitching stats on the hitter record to prevent double-counting
     await prisma.playerStatsDaily.update({
       where: { playerId_gameDate: { playerId: realPlayer.id, gameDate } },
-      data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 },
+      data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0, SHO: 0 },
     });
   }
 }

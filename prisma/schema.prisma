@@ -621,6 +621,7 @@ model PlayerStatsPeriod {
   OBP    Float @default(0)
   SLG    Float @default(0)
   OPS    Float @default(0)
+  GS_HR  Int   @default(0) // grand slams
 
   // Pitching
   W    Int   @default(0)
@@ -638,6 +639,10 @@ model PlayerStatsPeriod {
   BB9     Float @default(0) // walks per 9 innings
   HR_A    Int   @default(0) // home runs allowed
   BF      Int   @default(0) // batters faced
+  SHO     Int   @default(0) // shutouts
+
+  // General
+  G       Int   @default(0) // games played/pitched
 
   player Player @relation(fields: [playerId], references: [id])
   period Period @relation(fields: [periodId], references: [id])
@@ -670,6 +675,7 @@ model PlayerStatsDaily {
   OBP    Float @default(0)
   SLG    Float @default(0)
   OPS    Float @default(0)
+  GS_HR  Int   @default(0) // grand slams
 
   // Pitching
   W    Int   @default(0)
@@ -686,6 +692,10 @@ model PlayerStatsDaily {
   BB9     Float @default(0)
   HR_A    Int   @default(0)
   BF      Int   @default(0)
+  SHO     Int   @default(0) // shutouts
+
+  // General
+  G       Int   @default(0) // games played/pitched
 
   player Player @relation(fields: [playerId], references: [id])
 

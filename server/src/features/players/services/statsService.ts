@@ -16,7 +16,9 @@ import { TWO_WAY_PLAYERS } from "../../../lib/sportConfig.js";
 export type SeasonStatEntry = {
   G: number;
   R: number; HR: number; RBI: number; SB: number; H: number; AB: number; AVG: number;
+  GS_HR: number; // grand slams
   W: number; SV: number; K: number; IP: number; ER: number; BB_H: number; ERA: number; WHIP: number;
+  SHO: number; // shutouts
 };
 
 const LAST_SEASON = 2025;
@@ -25,7 +27,7 @@ let lastSeasonPromise: Promise<Map<string, SeasonStatEntry>> | null = null;
 
 /** Parse hitting/pitching stats from an MLB API person object into our flat format */
 function parseSeasonStats(person: any): SeasonStatEntry {
-  const entry: SeasonStatEntry = { G: 0, R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, ERA: 0, WHIP: 0 };
+  const entry: SeasonStatEntry = { G: 0, R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0, GS_HR: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, ERA: 0, WHIP: 0, SHO: 0 };
   if (!person.stats) return entry;
 
   for (const statGroup of person.stats) {
@@ -34,7 +36,7 @@ function parseSeasonStats(person: any): SeasonStatEntry {
     if (!split) continue;
 
     if (groupName === "hitting") {
-      entry.G = split.gamesPlayed || 0;
+      entry.G = Math.max(entry.G, split.gamesPlayed || 0);
       entry.AB = split.atBats || 0;
       entry.H = split.hits || 0;
       entry.R = split.runs || 0;
@@ -42,7 +44,9 @@ function parseSeasonStats(person: any): SeasonStatEntry {
       entry.RBI = split.rbi || 0;
       entry.SB = split.stolenBases || 0;
       entry.AVG = entry.AB > 0 ? entry.H / entry.AB : 0;
+      entry.GS_HR = split.grandSlams || 0;
     } else if (groupName === "pitching") {
+      entry.G = Math.max(entry.G, split.gamesPlayed || 0);
       entry.W = split.wins || 0;
       entry.SV = split.saves || 0;
       entry.K = split.strikeOuts || 0;
@@ -54,6 +58,7 @@ function parseSeasonStats(person: any): SeasonStatEntry {
       entry.BB_H = bbH;
       entry.ERA = ip > 0 ? (er / ip) * 9 : 0;
       entry.WHIP = ip > 0 ? bbH / ip : 0;
+      entry.SHO = split.shutouts || 0;
     }
   }
   return entry;
@@ -74,9 +79,10 @@ function loadCsvFallback(): Map<string, SeasonStatEntry> {
       G: Number(r["G"]) || 0,
       R: Number(r["R"]) || 0, HR: Number(r["HR"]) || 0, RBI: Number(r["RBI"]) || 0,
       SB: Number(r["SB"]) || 0, H: Number(r["H"]) || 0, AB: Number(r["AB"]) || 0,
-      AVG: Number(r["AVG"]) || 0, W: Number(r["W"]) || 0, SV: Number(r["SV"]) || 0,
+      AVG: Number(r["AVG"]) || 0, GS_HR: Number(r["GS_HR"]) || 0,
+      W: Number(r["W"]) || 0, SV: Number(r["SV"]) || 0,
       K: Number(r["K"]) || 0, IP: Number(r["IP"]) || 0, ER: Number(r["ER"]) || 0, BB_H: Number(r["BB_H"]) || 0,
-      ERA: Number(r["ERA"]) || 0, WHIP: Number(r["WHIP"]) || 0,
+      ERA: Number(r["ERA"]) || 0, WHIP: Number(r["WHIP"]) || 0, SHO: Number(r["SHO"]) || 0,
     });
   }
   return m;

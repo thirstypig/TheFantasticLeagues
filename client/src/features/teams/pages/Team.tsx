@@ -14,7 +14,7 @@ import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel"
 import { isPitcher, normalizePosition, formatAvg, getMlbTeamAbbr, sortByPosition } from "../../../lib/playerDisplay";
 import { mapPosition, positionToSlots, POS_SCORE } from "../../../lib/sportConfig";
 import { fetchJsonApi, API_BASE, parseIP } from "../../../api/base";
-import { TableCard, Table, THead, Tr, Th, Td } from "../../../components/ui/TableCard";
+import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { Button } from "../../../components/ui/button";
 import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
 import { StatsUpdated } from "../../../components/shared/StatsTables";
@@ -529,56 +529,54 @@ export default function Team() {
             {periodRosterLoading ? (
               <div className="text-center py-8 text-sm text-[var(--lg-text-muted)] animate-pulse">Loading period roster...</div>
             ) : periodRoster && periodRoster.length > 0 ? (
-              <TableCard>
-                <Table>
-                  <THead>
-                    <Tr>
-                      <Th align="center" w={50}>POS</Th>
-                      <Th align="center">PLAYER</Th>
-                      <Th align="center" w={60}>TM</Th>
-                      <Th align="center" w={60}>$</Th>
-                      <Th align="center" w={120}>STATUS</Th>
-                      <Th align="center" w={100}>SOURCE</Th>
-                    </Tr>
-                  </THead>
-                  <tbody>
-                    {periodRoster.map(r => (
-                      <Tr
-                        key={r.id}
-                        className={`border-t border-[var(--lg-border-faint)] ${!r.isActive ? "opacity-50" : ""}`}
-                      >
-                        <Td align="center">
-                          <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
-                            {r.assignedPosition || mapPosition(r.posPrimary, outfieldMode)}
+              <ThemedTable density="compact" aria-label="Period roster">
+                <ThemedThead>
+                  <ThemedTr>
+                    <ThemedTh align="center" className="w-[50px]">POS</ThemedTh>
+                    <ThemedTh align="center">PLAYER</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">$</ThemedTh>
+                    <ThemedTh align="center" className="w-[120px]">STATUS</ThemedTh>
+                    <ThemedTh align="center" className="w-[100px]">SOURCE</ThemedTh>
+                  </ThemedTr>
+                </ThemedThead>
+                <tbody>
+                  {periodRoster.map(r => (
+                    <ThemedTr
+                      key={r.id}
+                      className={!r.isActive ? "opacity-50" : ""}
+                    >
+                      <ThemedTd align="center">
+                        <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                          {r.assignedPosition || mapPosition(r.posPrimary, outfieldMode)}
+                        </span>
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        <span className="text-xs font-medium text-[var(--lg-text-primary)]">{r.name}</span>
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        <span className="text-[10px] text-[var(--lg-text-muted)]">{r.mlbTeam || "—"}</span>
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        <span className="text-[10px] text-[var(--lg-text-muted)]">${r.price}</span>
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        {r.isActive ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                            {r.source === "TRADE_OUT" ? "Traded" : r.source === "WAIVER_DROP" ? "Waived" : "Dropped"}{" "}
+                            {r.releasedAt ? new Date(r.releasedAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) : ""}
                           </span>
-                        </Td>
-                        <Td align="center">
-                          <span className="text-xs font-medium text-[var(--lg-text-primary)]">{r.name}</span>
-                        </Td>
-                        <Td align="center">
-                          <span className="text-[10px] text-[var(--lg-text-muted)]">{r.mlbTeam || "—"}</span>
-                        </Td>
-                        <Td align="center">
-                          <span className="text-[10px] text-[var(--lg-text-muted)]">${r.price}</span>
-                        </Td>
-                        <Td align="center">
-                          {r.isActive ? (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                              {r.source === "TRADE_OUT" ? "Traded" : r.source === "WAIVER_DROP" ? "Waived" : "Dropped"}{" "}
-                              {r.releasedAt ? new Date(r.releasedAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) : ""}
-                            </span>
-                          )}
-                        </Td>
-                        <Td align="center">
-                          <span className="text-[10px] text-[var(--lg-text-muted)]">{r.source}</span>
-                        </Td>
-                      </Tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </TableCard>
+                        )}
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        <span className="text-[10px] text-[var(--lg-text-muted)]">{r.source}</span>
+                      </ThemedTd>
+                    </ThemedTr>
+                  ))}
+                </tbody>
+              </ThemedTable>
             ) : (
               <div className="text-center py-8 text-sm text-[var(--lg-text-muted)]">No roster data for this period.</div>
             )}
@@ -609,23 +607,20 @@ export default function Team() {
         <StatsUpdated source="synced" className="text-right mb-1" />
         {activeTab === "hitters" ? (
           <section id="hitters">
-            <TableCard>
-              <Table>
-                <THead>
-                  <Tr>
-                    {/* All columns explicitly sized so table-layout: fixed distributes
-                        any extra width proportionally, not dumped into PLAYER. */}
-                    <Th align="center" w={50}>POS</Th>
-                    <Th align="center" w={240}>PLAYER</Th>
-                    <Th align="center" w={60}>TM</Th>
-                    <Th align="center" w={70}>AB</Th>
-                    <Th align="center" w={60}>R</Th>
-                    <Th align="center" w={60}>HR</Th>
-                    <Th align="center" w={60}>RBI</Th>
-                    <Th align="center" w={60}>SB</Th>
-                    <Th align="center" w={80}>AVG</Th>
-                  </Tr>
-                </THead>
+            <ThemedTable density="compact" aria-label="Hitter statistics">
+                <ThemedThead>
+                  <ThemedTr>
+                    <ThemedTh align="center" className="w-[50px]">POS</ThemedTh>
+                    <ThemedTh align="center" className="w-[240px]">PLAYER</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
+                    <ThemedTh align="center" className="w-[70px]">AB</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">R</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">HR</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">RBI</ThemedTh>
+                    <ThemedTh align="center" className="w-[60px]">SB</ThemedTh>
+                    <ThemedTh align="center" className="w-[80px]">AVG</ThemedTh>
+                  </ThemedTr>
+                </ThemedThead>
 
                 <tbody>
                   {loading ? (
@@ -652,12 +647,11 @@ export default function Team() {
 
                       return (
                         <React.Fragment key={key}>
-                          <Tr
+                          <ThemedTr
                             className={`border-t border-[var(--lg-border-faint)] cursor-pointer transition-all ${isExpanded ? 'bg-[var(--lg-accent)]/10' : 'hover:bg-[var(--lg-tint)]'}`}
                             onClick={() => setExpandedId(isExpanded ? null : key)}
-                            title="Click to expand player details"
                           >
-                            <Td align="center">
+                            <ThemedTd align="center">
                               {(() => {
                                 const rosterId = (p as any)?._rosterId as number | undefined;
                                 // Show the locked roster slot from assignedPosition
@@ -690,8 +684,8 @@ export default function Team() {
                                   <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>
                                 );
                               })()}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               <span className="inline-flex items-center gap-1.5">
                                 {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
                                 {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
@@ -701,29 +695,29 @@ export default function Team() {
                                   </span>
                                 )}
                               </span>
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {tm || "—"}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.AB)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.R)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.HR)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.RBI)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.SB)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {formatAvg(p?.AVG)}
-                            </Td>
-                          </Tr>
+                            </ThemedTd>
+                          </ThemedTr>
                           {isExpanded && (
                             <PlayerExpandedRow
                               player={p}
@@ -748,42 +742,39 @@ export default function Team() {
                     const teamAvg = totAB > 0 ? totH / totAB : 0;
                     return (
                       <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
-                        <Td align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></Td>
-                        <Td align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></Td>
-                        <Td align="center">{""}</Td>
-                        <Td align="center"><span className="font-bold">{totAB}</span></Td>
-                        <Td align="center"><span className="font-bold">{totR}</span></Td>
-                        <Td align="center"><span className="font-bold">{totHR}</span></Td>
-                        <Td align="center"><span className="font-bold">{totRBI}</span></Td>
-                        <Td align="center"><span className="font-bold">{totSB}</span></Td>
-                        <Td align="center"><span className="font-bold">{formatAvg(teamAvg)}</span></Td>
+                        <ThemedTd align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></ThemedTd>
+                        <ThemedTd align="center">{""}</ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totAB}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totR}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totHR}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totRBI}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totSB}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{formatAvg(teamAvg)}</span></ThemedTd>
                       </tr>
                     );
                   })()}
                 </tbody>
-              </Table>
-            </TableCard>
+            </ThemedTable>
           </section>
         ) : (
           <section id="pitchers">
-            <TableCard>
-              <Table>
-                <THead>
-                  <Tr>
-                    {/* All columns explicitly sized — proportional distribution of extra. */}
-                    <Th align="center" w={50}>POS</Th>
-                    <Th align="center" w={220}>PLAYER</Th>
-                    <Th align="center" w={55}>TM</Th>
-                    <Th align="center" w={50}>W</Th>
-                    <Th align="center" w={50}>SV</Th>
-                    <Th align="center" w={55}>K</Th>
-                    <Th align="center" w={55}>IP</Th>
-                    <Th align="center" w={55}>ER</Th>
-                    <Th align="center" w={65} title="Walks + Hits (WHIP numerator)">BB+H</Th>
-                    <Th align="center" w={65}>ERA</Th>
-                    <Th align="center" w={70}>WHIP</Th>
-                  </Tr>
-                </THead>
+            <ThemedTable density="compact" aria-label="Pitcher statistics">
+                <ThemedThead>
+                  <ThemedTr>
+                    <ThemedTh align="center" className="w-[50px]">POS</ThemedTh>
+                    <ThemedTh align="center" className="w-[220px]">PLAYER</ThemedTh>
+                    <ThemedTh align="center" className="w-[55px]">TM</ThemedTh>
+                    <ThemedTh align="center" className="w-[50px]">W</ThemedTh>
+                    <ThemedTh align="center" className="w-[50px]">SV</ThemedTh>
+                    <ThemedTh align="center" className="w-[55px]">K</ThemedTh>
+                    <ThemedTh align="center" className="w-[55px]">IP</ThemedTh>
+                    <ThemedTh align="center" className="w-[55px]">ER</ThemedTh>
+                    <ThemedTh align="center" className="w-[65px]" title="Walks + Hits (WHIP numerator)">BB+H</ThemedTh>
+                    <ThemedTh align="center" className="w-[65px]">ERA</ThemedTh>
+                    <ThemedTh align="center" className="w-[70px]">WHIP</ThemedTh>
+                  </ThemedTr>
+                </ThemedThead>
 
                 <tbody>
                   {loading ? (
@@ -810,16 +801,15 @@ export default function Team() {
 
                       return (
                         <React.Fragment key={key}>
-                          <Tr
+                          <ThemedTr
                             className={`border-t border-[var(--lg-border-faint)] cursor-pointer transition-all ${isExpanded ? 'bg-[var(--lg-accent)]/10' : 'hover:bg-[var(--lg-tint)]'}`}
                             onClick={() => setExpandedId(isExpanded ? null : key)}
-                            title="Click to expand player details"
                           >
-                            <Td align="center">
+                            <ThemedTd align="center">
                               {/* Pitchers always show P — locked during season */}
                               <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">P</span>
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               <span className="inline-flex items-center gap-1.5">
                                 {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
                                 {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
@@ -829,36 +819,36 @@ export default function Team() {
                                   </span>
                                 )}
                               </span>
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {tm || "—"}
-                            </Td>
+                            </ThemedTd>
 
-                            <Td align="center">
+                            <ThemedTd align="center">
                               {asNum(p?.W)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.SV)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.K)}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.IP) > 0 ? asNum(p.IP).toFixed(1) : "—"}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.ER) || "—"}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.BB_H) || "—"}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.IP) > 0 ? asNum(p.ERA).toFixed(2) : "—"}
-                            </Td>
-                            <Td align="center">
+                            </ThemedTd>
+                            <ThemedTd align="center">
                               {asNum(p?.IP) > 0 ? asNum(p.WHIP).toFixed(3) : "—"}
-                            </Td>
-                          </Tr>
+                            </ThemedTd>
+                          </ThemedTr>
                           {isExpanded && (
                             <PlayerExpandedRow
                               player={p}
@@ -894,23 +884,22 @@ export default function Team() {
                     const teamWHIP = totIP > 0 ? weightedBBH / totIP : 0;
                     return (
                       <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
-                        <Td align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></Td>
-                        <Td align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></Td>
-                        <Td align="center">{""}</Td>
-                        <Td align="center"><span className="font-bold">{totW}</span></Td>
-                        <Td align="center"><span className="font-bold">{totSV}</span></Td>
-                        <Td align="center"><span className="font-bold">{totK}</span></Td>
-                        <Td align="center"><span className="font-bold">{totIP > 0 ? totIP.toFixed(1) : "—"}</span></Td>
-                        <Td align="center"><span className="font-bold">{totER}</span></Td>
-                        <Td align="center"><span className="font-bold">{totBB}</span></Td>
-                        <Td align="center"><span className="font-bold">{totIP > 0 ? teamERA.toFixed(2) : "—"}</span></Td>
-                        <Td align="center"><span className="font-bold">{totIP > 0 ? teamWHIP.toFixed(3) : "—"}</span></Td>
+                        <ThemedTd align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></ThemedTd>
+                        <ThemedTd align="center">{""}</ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totW}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totSV}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totK}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totIP > 0 ? totIP.toFixed(1) : "—"}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totER}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totBB}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totIP > 0 ? teamERA.toFixed(2) : "—"}</span></ThemedTd>
+                        <ThemedTd align="center"><span className="font-bold">{totIP > 0 ? teamWHIP.toFixed(3) : "—"}</span></ThemedTd>
                       </tr>
                     );
                   })()}
                 </tbody>
-              </Table>
-            </TableCard>
+            </ThemedTable>
           </section>
         )}
 
