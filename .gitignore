@@ -39,3 +39,10 @@ server/src/data/mlb_team_cache.json
 # Data files
 *.csv
 *.xlsx
+
+# Playwright E2E artifacts
+client/test-results/
+client/playwright-report/
+client/playwright/.cache/
+test-results/
+.playwright-mcp/

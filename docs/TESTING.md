@@ -23,7 +23,7 @@ A single place where any admin or contributor can see **what tests exist, what t
 
 ### E2E (end-to-end) tests
 **What:** Drive the real browser against a running app, simulating a real user flow from login through a multi-step outcome. Slow (tens of seconds per flow), brittle if the UI shifts, highest confidence.
-**Where:** Not yet formalized in CI — today we run ad-hoc Playwright MCP flows from Claude Code. Proposed home: `client/e2e/` with `@playwright/test` runner.
+**Where:** `client/e2e/` — `@playwright/test` runner. Run with `cd client && npm run test:e2e` (headless) or `npm run test:e2e:ui` (interactive).
 **Good at:** proving "a team owner can claim a free agent and see the star persist across pages" — the kind of thing a user would notice.
 **Bad at:** pinpointing which layer broke when they fail.
 
@@ -86,13 +86,18 @@ Major covered areas (selected):
 - `cache.test.ts` — 8, `rateLimiter.test.ts` — 5, `tools.test.ts` — 16, `integration.test.ts` — 21.
 Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 
+### E2E (Playwright) — 1 passing, 1 file
+
+- `client/e2e/watchlist.spec.ts` — 1 test (29.6s): golden-path watchlist round-trip (Players → star → Add/Drop shows filled star → reload → still filled). Guards Session 68/69 `normalizeTwoWayRow` regression.
+- Helpers: `client/e2e/helpers/auth.ts` — `loginViaDev()` for shared auth setup.
+
 ## What's NOT covered today (gaps worth closing)
 
 1. **Watchlist flows** — no unit or E2E tests. A regression here (Session 68's star-not-rendering bug) would ship silently. Proposed: `features/watchlist/__tests__/useMyWatchlist.test.ts` + E2E flow "owner stars a player on Players page, sees it on Add/Drop, survives reload."
 2. **Position eligibility filter** — the CM/MI/specific-position filter bug fixed this session had no test guarding it. Proposed: `features/players/__tests__/positionFilter.test.ts` with table-driven cases.
 3. **Commissioner roster tool** — no tests of the new Add/Drop Search in CommissionerRosterTool.
 4. **Home dashboard** — no tests. The new team link is visually verified but not unit-tested.
-5. **E2E baseline** — zero formal E2E tests. Proposed Session 70 task: scaffold `client/e2e/` with one golden-path flow (owner logs in → Home → Players → star → Add/Drop shows star).
+5. **E2E baseline** — ✅ scaffolded (Session 69). One golden-path test passing. Next expansions: auction draft, trade processing, waiver FAAB ordering, roster lock/unlock.
 6. **Deploy smoke** — we have ad-hoc Playwright checks against Railway, not a runnable smoke script.
 
 ## Cadence proposal
