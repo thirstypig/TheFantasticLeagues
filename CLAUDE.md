@@ -96,7 +96,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `draft` | routes, WebSocket | 1 page, 3 components, api | Snake draft: DraftBoard grid, auto-pick, pause/resume, On the Clock indicator |
 | `matchups` | routes | — | H2H matchup generation: round-robin scheduling, ScoringEngine (Roto/H2H/Points) |
 | `profiles` | routes | 1 page, api | User profiles: bio, favorite team, experience, preferred formats, payment handles |
-| `reports` | routes, reportBuilder | 1 page, 1 component, api | "This Week in Baseball" weekly report — aggregates League Digest + per-team Weekly Insights + Activity at `/report` and `/report/:weekKey` |
+| `reports` | routes, reportBuilder | — (client removed) | Weekly report API — server endpoints still active at `/api/reports/:leagueId`; client UI removed (weekly digest on Home covers this) |
 
 ### Feature Module Pattern
 ```
@@ -315,7 +315,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (493 server + 187 client + 50 MCP = 730 tests, 26 feature modules)
+### Current Test Coverage (571 server + 201 client + 50 MCP = 822 tests, 27 feature modules)
 
 **Server (493 tests):**
 - `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)

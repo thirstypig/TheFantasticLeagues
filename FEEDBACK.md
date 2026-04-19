@@ -4,6 +4,39 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-19 (Session 68)
+
+### Completed
+- Extended stat columns: G (games), IP (innings pitched), SHO (shutouts) added to all stat tables
+- GS_HR (grand slams) schema added — MLB API does NOT provide this field (always null); manually backfilled 5 players from StatMuse data
+- Home.tsx type safety refactor: 50+ `any` → 0, 12 interfaces in home/types.ts
+- Team.tsx migrated from TableCard → ThemedTable (all 3 tables)
+- "This Week in Baseball" removed (route, nav, link) — weekly digest covers this
+- Dead code cleanup: deleted reports/ client module (3 files), TableCard.tsx (0 consumers)
+- Ohtani two-way mirror fix: extended pitching/batting fields now properly mirrored
+- OBP/SLG/OPS columns populated via stats sync (108 hitters, all pitchers)
+- All stat displays changed from "—" to 0/0.00/.000 for empty values
+- Bundle analysis research: mermaid IS used (Tech.tsx), lucide tree-shaking ~40-60KB opportunity
+- Feature module isolation audit: zero violations, architecture clean
+
+### Pending / Next Steps
+- Bundle optimization: lucide icon tree-shaking (~40-60KB), recharts vendor chunk (~35KB), Vite manualChunks
+- Grand slams: need play-by-play data source or periodic StatMuse scrape — MLB API won't provide it
+- Watchlist: feature is live (star column on Players + AddDropTab), user needs to verify in browser after login
+- Verify Playwright MCP stability (disconnected twice this session)
+
+### Concerns / Tech Debt
+- MLB API `grandSlams` field is always null — documented limitation
+- `mermaid` dependency (~50KB) used only in Tech.tsx diagram rendering — consider lazy-loading
+- `client/src/features/chat/` may be dead code (route redirects to /board) — verify before deleting
+
+### Test Results
+- Server: 571 passing, 7 skipped
+- Client: 201 passing
+- Total: 772 passing
+
+---
+
 ## Session 2026-04-17 (Session 67)
 
 ### Completed
