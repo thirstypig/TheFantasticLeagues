@@ -59,6 +59,7 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
   }
 
   return {
+    id: typeof row?.id === "number" ? row.id : undefined,
     mlb_id,
     row_id: `${mlb_id}-${role}`,
     player_name,
@@ -69,6 +70,7 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
     positions,
     mlb_team: String(row?.mlb_team ?? row?.mlbTeam ?? "").trim(),
     mlbTeam: String(row?.mlbTeam ?? row?.mlb_team ?? "").trim(),
+    G: row?.G,
     AB: row?.AB,
     H: row?.H,
     R: row?.R,
@@ -89,6 +91,7 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
     z_total: row?.z_total ?? row?.relValue,
     GS: row?.GS,
     SO: row?.SO,
+    SHO: row?.SHO,
     pos: row?.pos,
     name: row?.name,
     team: row?.team,

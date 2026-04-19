@@ -219,6 +219,7 @@ export type PlayerSeasonStat = {
   mlb_team_abbr?: string;
   mlbTeam?: string;
   price?: number;
+  G?: number;
   AB?: number;
   H?: number;
   R?: number;
@@ -239,6 +240,7 @@ export type PlayerSeasonStat = {
   z_total?: number;
   GS?: number;
   SO?: number;
+  SHO?: number;
   pos?: string;
   name?: string;
   team?: string;

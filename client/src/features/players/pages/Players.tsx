@@ -6,7 +6,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 import { PlayerFilterBar } from '../../../components/shared/PlayerFilterBar';
-import { POS_ORDER, getPrimaryPosition, getLastName } from '../../../lib/baseballUtils';
+import { POS_ORDER, getPrimaryPosition, getLastName, isCMEligible, isMIEligible } from '../../../lib/baseballUtils';
 import { NL_TEAMS, AL_TEAMS, mapPosition } from '../../../lib/sportConfig';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
 import { HitterStatHeaders, PitcherStatHeaders, HitterStatCells, PitcherStatCells } from '../../../components/shared/PlayerStatsColumns';
@@ -138,19 +138,39 @@ export default function Players() {
          });
      }
 
+     const hasSearch = searchQuery.trim().length > 0;
      const res = baseList.filter(p => {
         if (viewGroup === 'hitters' && p.is_pitcher) return false;
         if (viewGroup === 'pitchers' && !p.is_pitcher) return false;
         if (viewMode === 'remaining' && (p.ogba_team_code || p.team)) return false;
-        if (searchQuery && !p.player_name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        if (hasSearch && !p.player_name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        // Default view: hide players who haven't played yet (G === 0) unless they're
+        // rostered on a fantasy team. Search bypasses this so owners can look up
+        // minor-leaguers / not-yet-called-up players to add to their watchlist.
+        if (!hasSearch) {
+          const rostered = !!p.ogba_team_code || !!p.team;
+          const games = Number(p.G ?? 0);
+          if (!rostered && games === 0) return false;
+        }
         if (filterTeam === 'ALL_NL') { if (!NL_TEAMS.has(p.mlb_team || '')) return false; }
         else if (filterTeam === 'ALL_AL') { if (!AL_TEAMS.has(p.mlb_team || '')) return false; }
         else if (filterTeam !== 'ALL' && (p.mlb_team || 'FA') !== filterTeam) return false;
         if (filterFantasyTeam !== 'ALL' && (p.ogba_team_code || 'FA') !== filterFantasyTeam) return false;
         
         if (filterPos !== 'ALL') {
-             const pPos = getPrimaryPosition(p.positions);
-             if (!pPos.includes(filterPos)) return false;
+             // Use full posList so a 1B-eligible OF still matches filter="1B".
+             // CM/MI are league-level rollups (Corner = 1B|3B, Middle = 2B|SS).
+             // OGBA rule: 3+ games at a position qualifies — applied by syncPositionEligibility.
+             if (filterPos === 'CM') {
+                 if (!isCMEligible(p.positions)) return false;
+             } else if (filterPos === 'MI') {
+                 if (!isMIEligible(p.positions)) return false;
+             } else {
+                 const posList = (p.positions || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+                 // Collapse SP/RP → P (OGBA uses a single pitcher bucket)
+                 const normalized = posList.map(pos => (pos === 'SP' || pos === 'RP') ? 'P' : pos);
+                 if (!normalized.includes(filterPos.toUpperCase())) return false;
+             }
         }
         if (filterLeague !== 'ALL') {
              const team = (p.mlb_team || p.mlbTeam || '').toString().trim();

@@ -378,8 +378,8 @@ describe("POST /admin/sync-position-eligibility", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.updated).toBe(15);
-    expect(res.body.gpThreshold).toBe(20);
-    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 20);
+    expect(res.body.gpThreshold).toBe(3);
+    expect(syncPositionEligibility).toHaveBeenCalledWith(expect.any(Number), 3);
   });
 
   it("accepts custom season and gpThreshold", async () => {

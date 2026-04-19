@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Star } from 'lucide-react';
-import { getPrimaryPosition, getLastName, POS_ORDER } from '../../../lib/baseballUtils';
+import { getPrimaryPosition, getLastName, POS_ORDER, isCMEligible, isMIEligible } from '../../../lib/baseballUtils';
 import { getPlayerPeriodStats, PlayerSeasonStat, PeriodStatRow, fmtRate } from '../../../api';
 import { NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
@@ -21,11 +21,14 @@ interface AddDropTabProps {
     onClaim: (player: PlayerSeasonStat, dropPlayerId?: number) => void;
     onDrop?: (player: PlayerSeasonStat) => void;
     disabled?: boolean;
+    /** Override the watchlist team — commissioner tool passes `actingAsTeamId` so stars reflect that team's list. */
+    teamIdOverride?: number | null;
 }
 
-export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled }: AddDropTabProps) {
+export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled, teamIdOverride }: AddDropTabProps) {
     const { leagueId, myTeamId } = useLeague();
-    const { watchedIds, pendingIds, toggle: toggleWatch, canWatch } = useMyWatchlist(myTeamId);
+    const effectiveTeamId = teamIdOverride ?? myTeamId;
+    const { watchedIds, pendingIds, toggle: toggleWatch, canWatch } = useMyWatchlist(effectiveTeamId);
 
     // View state
     const [viewGroup, setViewGroup] = useState<'hitters' | 'pitchers'>('hitters');
@@ -99,8 +102,17 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
             if (filterFantasyTeam !== 'ALL' && (p.ogba_team_code || 'FA') !== filterFantasyTeam) return false;
 
             if (filterPos !== 'ALL') {
-                const pPos = getPrimaryPosition(p.positions);
-                if (!pPos.includes(filterPos)) return false;
+                // Match against the full posList so 1B-eligible OFs show under "1B".
+                // CM = 1B|3B, MI = 2B|SS (OGBA rollups). SP/RP collapse to P.
+                if (filterPos === 'CM') {
+                    if (!isCMEligible(p.positions)) return false;
+                } else if (filterPos === 'MI') {
+                    if (!isMIEligible(p.positions)) return false;
+                } else {
+                    const posList = (p.positions || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+                    const normalized = posList.map(pos => (pos === 'SP' || pos === 'RP') ? 'P' : pos);
+                    if (!normalized.includes(filterPos.toUpperCase())) return false;
+                }
             }
             if (filterLeague !== 'ALL') {
                 const team = (p.mlb_team || (p as any).mlbTeam || '').toString().trim();

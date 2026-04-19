@@ -213,11 +213,20 @@ export function PlayerFilterBar({
           aria-label="Position filter"
         >
           <option value="ALL">All Positions</option>
-          {POS_ORDER.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
+          {POS_ORDER
+            // OGBA rules: hitters use C/1B/2B/3B/SS/MI/CM/OF/DH; pitchers use a single "P" bucket.
+            // SP/RP are filtered out — leagues that split pitching can re-enable via a future rule flag.
+            .filter((p) => {
+              if (p === 'SP' || p === 'RP') return false;
+              const isPitcherPos = p === 'P';
+              if (viewGroup === 'hitters') return !isPitcherPos;
+              return isPitcherPos;
+            })
+            .map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
         </select>
       </div>
     </div>

@@ -184,6 +184,7 @@ function TransactionRow({ tx }: { tx: MlbTransaction }) {
 interface MyTeamInfo {
   name: string;
   id: number;
+  code: string | null;
   budget: number;
   rosterCount: number;
 }
@@ -193,6 +194,8 @@ interface LeagueDash {
   season: number;
   teamCount: number;
   myTeam: MyTeamInfo | null;
+  /** name → team code lookup used to link Power Rankings rows to /teams/:code */
+  teamCodeByName: Record<string, string>;
 }
 
 export default function Home() {
@@ -302,18 +305,23 @@ export default function Home() {
   useEffect(() => {
     if (!user || !currentLeagueId) { setHasTeam(null); setDash(null); return; }
     let ok = true;
-    fetchJsonApi<{ league: { name: string; season: number; teams: Array<{ id: number; name: string; budget: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
+    fetchJsonApi<{ league: { name: string; season: number; teams: Array<{ id: number; name: string; code?: string | null; budget: number; ownerUserId?: number | null; ownerships?: Array<{ userId: number }> }> } }>(`${API_BASE}/leagues/${currentLeagueId}`)
       .then(res => {
         if (!ok) return;
         const league = res.league;
         const teams = league?.teams || [];
         const mine = findMyTeam(teams, Number(user.id));
+        const teamCodeByName: Record<string, string> = {};
+        for (const t of teams) {
+          if (t.code) teamCodeByName[t.name] = t.code;
+        }
         setHasTeam(!!mine);
         setDash({
           leagueName: league?.name || '',
           season: league?.season || new Date().getFullYear(),
           teamCount: teams.length,
-          myTeam: mine ? { name: mine.name, id: mine.id, budget: mine.budget, rosterCount: 0 } : null,
+          myTeam: mine ? { name: mine.name, id: mine.id, code: mine.code ?? null, budget: mine.budget, rosterCount: 0 } : null,
+          teamCodeByName,
         });
       })
       .catch(() => { if (ok) { setHasTeam(null); setDash(null); } });
@@ -523,7 +531,11 @@ export default function Home() {
         </h1>
         <p className="text-xs text-[var(--lg-text-muted)] mt-0.5">
           {dash ? (
-            <>{dash.leagueName} · {dash.season}{dash.myTeam && <> · <span className="text-[var(--lg-accent)] font-semibold">{dash.myTeam.name}</span></>}</>
+            <>{dash.leagueName} · {dash.season}{dash.myTeam && <> · {dash.myTeam.code ? (
+              <Link to={`/teams/${dash.myTeam.code}`} className="text-[var(--lg-accent)] font-semibold hover:underline">{dash.myTeam.name}</Link>
+            ) : (
+              <span className="text-[var(--lg-accent)] font-semibold">{dash.myTeam.name}</span>
+            )}</>}</>
           ) : (
             <>Welcome, <span className="text-[var(--lg-accent)] font-semibold">{user.name || user.email}</span></>
           )}
@@ -1275,20 +1287,28 @@ export default function Home() {
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Power Rankings</div>
                   <div className="space-y-1">
-                    {digest.powerRankings.map((pr: PowerRanking) => (
-                      <div key={pr.teamName} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]">
-                        <span className="text-sm font-black tabular-nums w-6 text-center flex-shrink-0 text-[var(--lg-accent)]">
-                          {pr.rank}
-                        </span>
-                        <span className="text-xs flex-shrink-0 mt-0.5">
-                          {pr.movement === "up" ? "↑" : pr.movement === "down" ? "↓" : "→"}
-                        </span>
-                        <div className="min-w-0">
-                          <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{pr.teamName}</span>
-                          <span className="text-[10px] text-[var(--lg-text-muted)] ml-1.5">{pr.commentary}</span>
+                    {digest.powerRankings.map((pr: PowerRanking) => {
+                      const code = dash?.teamCodeByName[pr.teamName];
+                      const nameNode = code ? (
+                        <Link to={`/teams/${code}`} className="text-xs font-semibold text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] hover:underline">{pr.teamName}</Link>
+                      ) : (
+                        <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{pr.teamName}</span>
+                      );
+                      return (
+                        <div key={pr.teamName} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]">
+                          <span className="text-sm font-black tabular-nums w-6 text-center flex-shrink-0 text-[var(--lg-accent)]">
+                            {pr.rank}
+                          </span>
+                          <span className="text-xs flex-shrink-0 mt-0.5">
+                            {pr.movement === "up" ? "↑" : pr.movement === "down" ? "↓" : "→"}
+                          </span>
+                          <div className="min-w-0">
+                            {nameNode}
+                            <span className="text-[10px] text-[var(--lg-text-muted)] ml-1.5">{pr.commentary}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

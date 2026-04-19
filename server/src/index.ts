@@ -244,9 +244,11 @@ async function main() {
       const result = await syncAllPlayers(season);
       logger.info({ created: result.created, updated: result.updated, teams: result.teams, teamChanges: result.teamChanges.length }, "Scheduled MLB player sync complete");
 
-      // Update position eligibility based on fielding stats (20+ games = qualified)
+      // Update position eligibility based on fielding stats.
+      // OGBA rule: 3+ games at a position qualifies. When multi-league support lands,
+      // read per-league threshold from LeagueRule(position_eligibility_gp) and run per league.
       const { syncPositionEligibility } = await import("./features/players/services/mlbSyncService.js");
-      const posResult = await syncPositionEligibility(season, 20);
+      const posResult = await syncPositionEligibility(season, 3);
       logger.info({ updated: posResult.updated, unchanged: posResult.unchanged }, "Scheduled position eligibility sync complete");
     } catch (err) {
       logger.error({ error: String(err) }, "Scheduled MLB player sync failed");

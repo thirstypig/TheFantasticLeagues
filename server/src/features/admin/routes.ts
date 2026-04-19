@@ -322,7 +322,8 @@ router.post("/admin/sync-stats", requireAuth, requireAdmin, validateBody(syncSta
  * Fetches fielding stats from MLB API and updates Player.posList based on
  * games-played threshold. Players qualify for a position if GP >= threshold.
  * Body (optional): { season?: number, gpThreshold?: number }
- * gpThreshold defaults to 20 if not provided.
+ * gpThreshold defaults to 3 (OGBA rule). Pass a higher value to sync with a
+ * stricter threshold for leagues that require more games for eligibility.
  */
 const syncEligibilitySchema = z.object({
   season: z.number().int().min(1900).max(2100).optional(),
@@ -331,7 +332,7 @@ const syncEligibilitySchema = z.object({
 
 router.post("/admin/sync-position-eligibility", requireAuth, requireAdmin, validateBody(syncEligibilitySchema), asyncHandler(async (req, res) => {
   const season = Number(req.body?.season) || new Date().getFullYear();
-  const gpThreshold = req.body?.gpThreshold ?? 20;
+  const gpThreshold = req.body?.gpThreshold ?? 3;
 
   const result = await syncPositionEligibility(season, gpThreshold);
 
