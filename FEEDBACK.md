@@ -16,11 +16,23 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - **Playwright E2E scaffold.** `@playwright/test` in client/, `client/playwright.config.ts`, `client/e2e/` with a golden-path watchlist round-trip test (29.6s, passing). Scripts `npm run test:e2e` / `test:e2e:ui`. Guards the exact regression we fixed this session.
 - **Rules audit** (`docs/RULES_AUDIT.md`). Full map of the two-system problem (`League.*` direct columns vs `LeagueRule` rows). Closed the two P1 overlaps: removed `overview.team_count` (now reads `League.maxTeams`) and `payouts.entry_fee` (now reads `League.entryFee`). RulesEditor gets a header note pointing to the other Commissioner tabs.
 - **TESTING.md** (`docs/TESTING.md`). Admin-visible catalog: unit/integration/E2E vocabulary, 823-test baseline, gap list, run cadence.
+- **Contract testing pilot** (`docs/CONTRACT_TESTING.md`). Added `shared/api/playerSeasonStats.ts` — a Zod schema used by both client and server for `/api/player-season-stats`. Proved the pattern: removing the `id` field from `normalizeTwoWayRow` is now a compile error with the exact message "Property 'id' is missing in type…" — the Session 69 bug at compile time. Infrastructure: `shared/` dir at repo root, tsconfig paths on both sides, zod installed in client (was server-only). 1 of 234 endpoints covered; priority order for the rest is in the doc.
+- **Five reusable slash commands** committed to `.claude/commands/` and installed globally at `~/.claude/commands/`:
+  - `/test-new <feature>` — write + run + document tests
+  - `/test-run [e2e|<feature>]` — execute (tsc + unit/integration + optional E2E)
+  - `/test-audit` — decision-support for test-infra gaps
+  - `/doc [context]` — atomic doc sync with drift detection
+  - `/ship <feature-name>` — meta: test-new → doc → tsc+tests → commit
 
-### Commits (3, all on main)
+### Commits (8, all on main)
 - `e00b0c5` — Session 69 product changes (13 files, +340/−42)
 - `5847754` — Playwright E2E scaffold (8 files, +220/−3)
 - `f041895` — Rules audit + overlap fixes (6 files, +172/−16)
+- `186682d` — `/test-new` + `/test-run` slash commands + TESTING workflow section (3 files)
+- `d5d66cd` — `/test-audit` decision-support prompt (1 file)
+- `6be2a90` — Contract testing pilot — shared Zod schema (12 files, +250/−57)
+- `a691bf2` — `/doc` slash command + per-feature cadence documented (2 files)
+- `1e4c04e` — `/ship` meta-command — one-call feature flow (1 file)
 
 ### Test results
 - Server: 571 passing, 7 skipped, 42 files.
@@ -40,6 +52,8 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 - **Multi-league support for `syncPositionEligibility`** — cron is global today. When a second league with different rules joins, it needs to iterate per-league and read `position_eligibility_gp` from `LeagueRule`.
 - **Existing `team_count` / `entry_fee` `LeagueRule` rows** in the DB are now dead data after this session. Harmless; cleanup in a future migration.
 - **`dh_games_threshold` rule** has no consumer — either wire or delete.
+- **Contract testing NodeNext quirk** — server side can't use `@shared/*` tsconfig path alias at runtime (NodeNext ignores it), so server imports use relative `../../../../shared/api/X.js` paths. Works; looks awkward. If we ever flip server to a bundler, we can simplify.
+- **Pre-commit hook not yet wired** — agreed end-of-session to add a `PreToolUse` hook in `settings.json` at Session 70 start to enforce tsc + npm run test before any commit. Currently relying on me to remember.
 
 ---
 

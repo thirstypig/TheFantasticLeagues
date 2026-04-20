@@ -177,6 +177,7 @@ Some features import from other features' services or components.
 When adding cross-feature imports, document them here to maintain visibility.
 
 ## Shared Infrastructure (do NOT move into features)
+- `shared/api/` — **cross-side Zod schemas** (pilot: `playerSeasonStats.ts`). Both client and server import from here; the inferred type is the single source of truth for the wire format. See `docs/CONTRACT_TESTING.md` for how to add a new schema. Server imports via relative `.js` path (NodeNext), client via `@shared/*` path alias.
 - `server/src/middleware/auth.ts` — global auth (attachUser, requireAuth, requireAdmin, requireLeagueRole, requireFranchiseCommissioner)
 - `server/src/middleware/seasonGuard.ts` — `requireSeasonStatus(allowedStatuses, leagueIdSource)` — enforces season-phase constraints on write endpoints
 - `server/src/lib/` — supabase.ts, prisma.ts, logger.ts, mlbApi.ts, utils.ts, auditLog.ts, emailService.ts, **errorBuffer.ts** (100-entry ring buffer for admin error dashboard, push/list/find with ERR- prefix normalization), **ipHash.ts** (HMAC-SHA256 + /24-/48 truncation, fail-fast if `IP_HASH_SECRET` missing)
@@ -463,6 +464,13 @@ Located in `.claude/commands/`. Run from Claude Code with `/<name>`:
 | `/feature-test <name>` | Run server + client tests for a feature module |
 | `/feature-overview <name>` | Show files, routes, imports, tests for a feature |
 | `/smoke-test` | Hit all API endpoints and report status codes |
+| `/test-new <feature>` | Write unit/integration/E2E tests for a new feature, run them, update `docs/TESTING.md` |
+| `/test-run [e2e\|<feature>]` | Run tsc + unit/integration (~10s). Add `e2e` for Playwright suite |
+| `/test-audit` | Scan test-infra gaps (pre-commit hook, contract testing, CI, etc.) and recommend next investment |
+| `/doc [context]` | Synchronize all docs atomically — CLAUDE.md, FEEDBACK, `docs/*`, TODO — with drift detection |
+| `/ship <feature-name>` | Meta: runs `/test-new` → `/doc` → tsc+tests → commit in one flow. Kebab-case name required |
+
+All five `test-*` + `/doc` + `/ship` also live at `~/.claude/commands/` so they work in every project.
 
 ## MCP Servers
 
