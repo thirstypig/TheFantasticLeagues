@@ -46,3 +46,14 @@ client/playwright-report/
 client/playwright/.cache/
 test-results/
 .playwright-mcp/
+
+# Root-level screenshots and ephemeral Playwright snapshots — written by
+# MCP browser runs and easy to accumulate. Keep purposeful PNGs under
+# docs/ or the relevant feature folder.
+/*.png
+/*-snap.yml
+/*-snapshot.yml
+/auction-network.txt
+
+# Compound Engineering local config (plugin reads this; git doesn't need to track)
+compound-engineering.local.md
