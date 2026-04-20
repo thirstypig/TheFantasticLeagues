@@ -59,7 +59,10 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
   }
 
   return {
-    id: typeof row?.id === "number" ? row.id : undefined,
+    // `id` is required by the shared schema — the server always sends it.
+    // If we ever see a row without a numeric id, that's a contract violation
+    // worth failing loudly over (and a sign Prisma mapping changed upstream).
+    id: Number(row.id),
     mlb_id,
     row_id: `${mlb_id}-${role}`,
     player_name,

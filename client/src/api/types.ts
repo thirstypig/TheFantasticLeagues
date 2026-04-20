@@ -202,54 +202,10 @@ export type PeriodCategoryStandingsResponse = {
   totalDelta?: Record<number, number>;
 };
 
-export type PlayerSeasonStat = {
-  /** Prisma Player.id — stable DB identifier. Required for watchlist API. */
-  id?: number;
-  mlb_id: string;
-  row_id?: string;
-  player_name?: string;
-  mlb_full_name?: string;
-  ogba_team_code?: string;
-  ogba_team_name?: string;
-  group?: "H" | "P";
-  is_pitcher?: boolean | number;
-  positions?: string;
-  posPrimary?: string;
-  mlb_team?: string;
-  mlb_team_abbr?: string;
-  mlbTeam?: string;
-  price?: number;
-  G?: number;
-  AB?: number;
-  H?: number;
-  R?: number;
-  HR?: number;
-  RBI?: number;
-  SB?: number;
-  AVG?: number | string;
-  W?: number;
-  SV?: number;
-  K?: number;
-  IP?: number | string;
-  ER?: number | string;
-  ERA?: number | string;
-  BB_H?: number | string;
-  WHIP?: number | string;
-  dollar_value?: number;
-  value?: number;
-  z_total?: number;
-  GS?: number;
-  SO?: number;
-  SHO?: number;
-  pos?: string;
-  name?: string;
-  team?: string;
-  isPitcher?: boolean;
-  // Added by Team page when merging roster data
-  assignedPosition?: string;
-  isKeeper?: boolean;
-  rosterId?: number;
-};
+// PlayerSeasonStat is now defined once in shared/api/playerSeasonStats.ts and
+// inferred from the Zod schema that the server also parses its response against.
+// See docs/CONTRACT_TESTING.md for the pattern.
+export type { PlayerSeasonStat } from "@shared/api/playerSeasonStats";
 
 export type CareerHittingRow = {
   year: string;

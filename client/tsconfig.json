@@ -19,11 +19,13 @@
     /* ⭐ IMPORTANT — SHADCN + ABSOLUTE IMPORTS ⭐ */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@shared/*": ["../shared/*"],
+      "zod": ["node_modules/zod"]
     }
   },
 
-  "include": ["src", "src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src", "src/**/*.ts", "src/**/*.tsx", "../shared/**/*.ts"],
   "exclude": ["src/**/__tests__/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

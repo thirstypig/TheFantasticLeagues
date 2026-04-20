@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { prisma } from "../../db/prisma.js";
+import type { PlayerSeasonStatsResponse } from "../../../../shared/api/playerSeasonStats.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import { mlbGetJson } from "../../lib/mlbApi.js";
 import { logger } from "../../lib/logger.js";
@@ -375,7 +376,11 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
   // then zero out cross-role stats (pitcher rows lose hitting, hitter rows lose pitching)
   const expandedStats = splitTwoWayStats(expandTwoWayPlayers(stats), valuesMap);
 
-  res.json({ stats: expandedStats });
+  // Typed against the shared contract — adding or removing a field from the
+  // server response that the client's inferred type doesn't expect is a
+  // compile error. See docs/CONTRACT_TESTING.md.
+  const body: PlayerSeasonStatsResponse = { stats: expandedStats };
+  res.json(body);
 }));
 
 /** GET /api/player-period-stats?leagueId=N — player stats for the active period */

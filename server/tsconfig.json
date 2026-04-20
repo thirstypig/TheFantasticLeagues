@@ -4,7 +4,12 @@
     "module": "NodeNext",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "..",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "zod": ["node_modules/zod"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,7 +20,7 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../shared/**/*.ts"],
   "exclude": ["node_modules", "dist", "src/scripts"]
 }
 
