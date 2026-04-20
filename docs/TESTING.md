@@ -115,12 +115,28 @@ Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 
 ## Workflow — slash commands
 
-Two reusable commands codify the cadence this doc describes:
+Four reusable commands codify the cadence:
 
-- **`/test-new <feature>`** — after finishing a feature, generates unit + (maybe) integration + (maybe) E2E tests, runs them, and updates this catalog. Full prompt in `.claude/commands/test-new.md`. Enforces the pyramid (unit first, E2E only when the flow costs real money if broken) and blocks commits when anything is red.
+- **`/test-new <feature>`** — after finishing a feature, generates unit + (maybe) integration + (maybe) E2E tests, runs them, and updates this catalog. Prompt in `.claude/commands/test-new.md`. Enforces the pyramid (unit first, E2E only when the flow costs real money if broken).
 - **`/test-run`** — runs tsc + unit/integration in ~10s. **`/test-run e2e`** also runs the Playwright suite. Prompt in `.claude/commands/test-run.md`.
+- **`/test-audit`** — decision-support: scans the "Beyond the basics" list below and recommends the single highest-leverage next investment. Doesn't install anything. Prompt in `.claude/commands/test-audit.md`.
+- **`/doc [context]`** — after feature + tests are green, updates every project doc atomically (CLAUDE.md, FEEDBACK.md, README, relevant `docs/*`, TODO, changelogs if any). Prompt in `.claude/commands/doc.md`.
 
-Both commands explicitly stop on the first failure rather than masking errors. Both require dev servers (`:3010` + `:4010`) up for E2E — they check and tell you if either is down, but don't start them automatically.
+All four stop on the first failure rather than masking errors.
+
+## Recommended per-feature cadence
+
+```
+1. Build the feature                              (code)
+2. /test-new <feature>                            (write + run unit/integration/E2E)
+3. /doc <feature>                                 (update all docs in sync)
+4. pre-commit: tsc + npm run test (auto-run)      (keeps main green)
+5. git commit                                     (conventional message)
+6. pre-push: /test-run e2e                        (before user pushes)
+7. git push
+```
+
+Step 4 is a saved preference — every commit runs tsc and the unit/integration suite before it lands. Step 6 is manual today; a pre-push hook is on the follow-up list (see `/test-audit`).
 
 ## Beyond the basics — things to add when the suite grows
 
