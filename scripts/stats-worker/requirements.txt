@@ -1,0 +1,1 @@
+(eval):1: /Users/jameschang/Projects/fbst/scripts/stats-worker/.venv/bin/pip: bad interpreter: /Users/jameschang/Documents/Projects/fbst-stats-worker/.venv/bin/python: no such file or directory

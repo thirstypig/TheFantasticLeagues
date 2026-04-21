@@ -57,3 +57,8 @@ test-results/
 
 # Compound Engineering local config (plugin reads this; git doesn't need to track)
 compound-engineering.local.md
+
+# Python virtualenvs and caches (used by scripts/stats-worker/)
+.venv/
+__pycache__/
+*.pyc
