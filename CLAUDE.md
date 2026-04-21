@@ -28,7 +28,8 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 - PostgreSQL (Supabase)
 - Supabase Auth (Google/Yahoo OAuth, email/password)
 - Resend (transactional email for league invites)
-- Render (deployment, SSL termination at proxy)
+- Railway (deployment, unified API + static client at `app.thefantasticleagues.com`)
+- Cloudflare (DNS + CDN in front of Railway)
 
 ## Project Structure
 ```

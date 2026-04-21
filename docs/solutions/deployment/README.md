@@ -1,5 +1,9 @@
 # Production Deployment Solutions & Learnings
 
+> **Current production host:** Railway (unified API + client at `app.thefantasticleagues.com`), behind Cloudflare. For the authoritative deploy reference, see `docs/RAILWAY-DEPLOY.md`.
+>
+> The incidents below happened during the **original Render deployment** (March 2026). They're preserved because the *lessons* — CSP must whitelist every third-party domain, hardcoded paths bypass routing, CDNs silently cache API responses — apply to any host. Specific URLs (`fbst-api.onrender.com`) and the split-domain architecture are historical.
+
 This directory contains institutional knowledge from FBST's first production deployment (March 2026) and the critical incidents discovered post-deploy.
 
 ## Documents
@@ -40,28 +44,29 @@ Covers two related security and infrastructure incidents:
 
 ---
 
-## Production Architecture (FBST)
+## Production Architecture (current)
 
 ```
-User Domain (Cloudflare Custom Domain)
+Browser
   │
-  └─→ thefantasticleagues.com (HTTPS)
+  └─→ app.thefantasticleagues.com (Cloudflare DNS + CDN)
         │
-        └─→ Cloudflare proxy layer
-              │
-              └─→ Render backend (fbst.onrender.com)
-
-API Domain (Direct to Render)
-  │
-  └─→ fbst-api.onrender.com (HTTPS)
-        │
-        └─→ Render backend (bypasses Cloudflare)
+        └─→ Railway (Nixpacks, Node 20)
+              ├── Express serves API at /api/*
+              ├── Express serves built client (Vite dist) at /*
+              └── WebSocket upgrades on same origin (wss://app.thefantasticleagues.com)
 ```
 
-Client code must route:
-- **User-facing HTML/static assets:** through `thefantasticleagues.com` (Cloudflare)
-- **API calls:** directly to `fbst-api.onrender.com` (bypass Cloudflare)
-- **WebSocket:** directly to `fbst-api.onrender.com` (bypass Cloudflare)
+Unified single-service deployment: `API_BASE = "/api"` (relative) and WebSocket uses `window.location.host`. No split API domain.
+
+### Historical architecture (Render, March 2026)
+
+```
+thefantasticleagues.com  ──▶  Cloudflare  ──▶  fbst.onrender.com        (HTML/static)
+fbst-api.onrender.com    ──▶  (direct)    ──▶  Render API               (JSON + WS)
+```
+
+The split was required because Cloudflare's custom domain didn't forward WebSocket upgrades. Railway's unified deploy makes the split unnecessary — but the Incidents 1–4 below all stem from maintaining that split, so the lessons still matter.
 
 ---
 
@@ -78,34 +83,33 @@ Client code must route:
 
 ## Environment-Specific Variables
 
-### API_BASE (client/src/api/base.ts)
+### API_BASE (client/src/api/base.ts) — current
 ```typescript
-if (window.location.hostname === 'thefantasticleagues.com') {
-  return 'https://fbst-api.onrender.com';  // Production
-}
-return '/api';  // Dev/localhost
+const RAW_BASE = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_BASE_URL ?? "";
+// Empty → "/api" (relative). Works because Railway serves API and client on the
+// same origin. Historical Render deploy had to hardcode a split-domain check here.
 ```
 
-### WebSocket Host (client/src/features/auction/hooks/useAuctionState.ts)
-```typescript
-const host = window.location.hostname === 'thefantasticleagues.com'
-    ? 'fbst-api.onrender.com'  // Production
-    : window.location.host;    // Dev/localhost
-```
+### WebSocket Host (client/src/features/auction/hooks/useAuctionState.ts) — current
+Uses `window.location.host` for the WS URL. Same origin as the HTTP request → Railway handles the upgrade natively.
 
 ### If You Change the Production Domain
-Update **three places**:
-1. API_BASE check in `client/src/api/base.ts`
-2. WebSocket host check in `client/src/features/auction/hooks/useAuctionState.ts`
-3. CSP wss: rule in `server/src/index.ts`
+Currently (unified Railway deploy), update:
+1. CSP `wss://` entry in `server/src/index.ts`
+2. OAuth provider consoles (Google, Yahoo, Supabase) — callback URLs
+3. `CLIENT_URL` / `APP_URL` / `*_REDIRECT_URI` env vars in Railway dashboard
+4. `docs/RAILWAY-DEPLOY.md` + `docs/AUTH_SETUP.md` documented URLs
+
+If a split API domain is ever reintroduced, also update `client/src/api/base.ts` and `client/src/features/auction/hooks/useAuctionState.ts`.
 
 ---
 
 ## Session History
 
-- **Session 33 (2026-03-20):** Production deployment readiness (CSP hardening, render.yaml, env vars)
+- **Session 33 (2026-03-20):** First production deployment to Render (CSP hardening, render.yaml, env vars)
 - **Session 34 (2026-03-21):** Mobile readiness, sticky headers, color accessibility
-- **2026-03-22:** Production incidents discovered and fixed (hardcoded paths, cache bypass, WebSocket)
+- **2026-03-22:** Production incidents discovered and fixed (hardcoded paths, cache bypass, WebSocket) — see Incidents 1–4 above
+- **Session 51:** Migrated Render → Railway (always-on, native WebSocket, unified deploy) — see `FEEDBACK.md`
 
 ---
 
@@ -114,7 +118,8 @@ Update **three places**:
 - `server/src/index.ts` — CSP configuration, cache-control middleware
 - `client/src/api/base.ts` — API_BASE constant definition
 - `client/src/features/auction/hooks/useAuctionState.ts` — WebSocket host determination
-- `render.yaml` — Render deployment configuration
+- `railway.json` — Railway deployment configuration (current)
+- `docs/RAILWAY-DEPLOY.md` — env var schema + deploy procedure (current)
 - `FEEDBACK.md` — Session-by-session progress log
 - `CLAUDE.md` — Architecture and conventions
 
@@ -124,26 +129,22 @@ Update **three places**:
 
 ```bash
 # 1. Health check
-curl https://thefantasticleagues.com/api/health | jq .
+curl https://app.thefantasticleagues.com/api/health | jq .
 
 # 2. CSP verification
-curl -I https://thefantasticleagues.com | grep -i "content-security-policy"
+curl -I https://app.thefantasticleagues.com | grep -i "content-security-policy"
 
 # 3. API response validation
-# Open DevTools → Network tab
-# Make an API call (login, bid, etc.)
-# Verify response is JSON (not HTML)
-# Verify request goes to fbst-api.onrender.com (not thefantasticleagues.com)
+# Open DevTools → Network tab; make an API call (login, bid, etc.)
+# Verify response is JSON (not HTML) with Cache-Control: no-store
 
 # 4. WebSocket test
-# Open Auction page
-# DevTools → Network → WS filter
-# Should see wss://fbst-api.onrender.com/ws/auction?...
+# Open Auction page → DevTools → Network → WS filter
+# Should see wss://app.thefantasticleagues.com/ws/auction?...
 # Should NOT see "Reconnecting" message
 
 # 5. CSP violations
-# DevTools → Console
-# Search for "Refused" or "CSP"
+# DevTools → Console → search for "Refused" or "CSP"
 # Should find 0 violations
 
 # 6. Hardcoded paths scan

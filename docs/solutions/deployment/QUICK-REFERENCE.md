@@ -9,6 +9,10 @@ tags:
 
 # Quick Reference — Production Deployment Gotchas
 
+> **Current host:** Railway (unified service at `app.thefantasticleagues.com`). For env vars and deploy procedure see `docs/RAILWAY-DEPLOY.md` — it's the current source of truth.
+>
+> The cheatsheet below was written during the **Render-era** split-domain deploy. The *shape* of the gotchas (hardcoded `/api/` paths, CDN caching API responses as HTML, CSP silently blocking third-party services, WebSocket host mismatches) still applies to any host — keep it around as the diagnostic reference. Specific domains like `fbst-api.onrender.com` are historical.
+
 ## Pre-Deploy Checklist (5 minutes)
 
 ```bash

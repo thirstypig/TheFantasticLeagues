@@ -55,7 +55,7 @@ cd ~/Projects/thefantasticleagues/thefantasticleagues-app
 npx prisma format
 npx prisma migrate dev --name <migration_name>
 npx prisma generate
-If you get P1000 Authentication failed, treat it as a database credentials/URL problem (Neon/Render/local DB), not a Prisma schema problem.
+If you get P1000 Authentication failed, treat it as a database credentials/URL problem (Supabase/Railway/local DB), not a Prisma schema problem.
 
 5) Transactions import workflow
 Generate JSON:
