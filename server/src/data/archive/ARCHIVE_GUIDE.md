@@ -191,7 +191,7 @@ team_code,team_name,R_score,HR_score,RBI_score,SB_score,AVG_score,W_score,SV_sco
 
 ### Standard Import (New Data)
 
-**Script**: [`import_historical_archive.ts`](file:///Users/jameschang/Documents/Projects/fbst/server/src/scripts/import_historical_archive.ts)
+**Script**: [`import_historical_archive.ts`](file:///Users/jameschang/Projects/thefantasticleagues/thefantasticleagues-app/server/src/scripts/import_historical_archive.ts)
 
 ```bash
 cd server
@@ -246,7 +246,7 @@ server/src/data/mlb_id_reference/
 
 **When to export**: After manually correcting player MLB IDs or completing a new season's data entry.
 
-**Script**: [`export_mlb_id_reference.ts`](file:///Users/jameschang/Documents/Projects/fbst/server/src/scripts/export_mlb_id_reference.ts)
+**Script**: [`export_mlb_id_reference.ts`](file:///Users/jameschang/Projects/thefantasticleagues/thefantasticleagues-app/server/src/scripts/export_mlb_id_reference.ts)
 
 ```bash
 cd server

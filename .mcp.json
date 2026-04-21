@@ -3,9 +3,9 @@
     "mlb-data": {
       "command": "node",
       "args": ["mcp-servers/mlb-data/dist/index.js"],
-      "cwd": "/Users/jameschang/Projects/fbst",
+      "cwd": "/Users/jameschang/Projects/thefantasticleagues/thefantasticleagues-app",
       "env": {
-        "CACHE_PATH": "/Users/jameschang/Projects/fbst/mcp-servers/mlb-data/cache/mlb-data.db"
+        "CACHE_PATH": "/Users/jameschang/Projects/thefantasticleagues/thefantasticleagues-app/mcp-servers/mlb-data/cache/mlb-data.db"
       }
     },
     "supabase": {
