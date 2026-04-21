@@ -18,9 +18,13 @@ date: 2026-03-22
 
 # Production Deployment Checklist & Learnings
 
+> **Current deploy reference:** `docs/RAILWAY-DEPLOY.md` — authoritative env var schema, deploy workflow, and rollback procedure for the current **Railway** host (unified at `app.thefantasticleagues.com`).
+>
+> This document captures the **Render-era** incident narratives (March 20–22, 2026) that shaped how we think about production deployments. The general pre-deploy checks (hardcoded path grep, TypeScript check, test pass) still apply; Render-specific env var tables and split-domain URLs are historical.
+
 ## Overview
 
-This document captures institutional learnings from FBST's first production deployment (March 20-22, 2026) to Render with Cloudflare custom domain. Several critical production incidents were discovered and fixed. Use this checklist before every future deployment.
+This document captures institutional learnings from FBST's first production deployment (March 20-22, 2026) to Render with Cloudflare custom domain. Several critical production incidents were discovered and fixed. The incident narratives below are the institutional record; for current Railway deploys, follow `docs/RAILWAY-DEPLOY.md`.
 
 ---
 

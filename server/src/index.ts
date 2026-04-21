@@ -97,7 +97,7 @@ async function main() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://us-assets.i.posthog.com"],
+          scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://us-assets.i.posthog.com", "https://www.googletagmanager.com"],
           connectSrc: [
             "'self'",
             "wss://app.thefantasticleagues.com",
@@ -110,8 +110,12 @@ async function main() {
             "https://us.posthog.com",
             "https://us-assets.i.posthog.com",
             "https://statsapi.mlb.com",
+            "https://www.googletagmanager.com",
+            "https://www.google-analytics.com",
+            "https://*.google-analytics.com",
+            "https://*.analytics.google.com",
           ],
-          imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com", "https://img.mlbstatic.com", "https://*.mlb.com"],
+          imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com", "https://img.mlbstatic.com", "https://*.mlb.com", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://www.googletagmanager.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https:"],
           fontSrc: ["'self'", "https:", "data:"],
           frameSrc: ["'self'", "https://accounts.google.com", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com", "https://www.google.com"],

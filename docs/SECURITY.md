@@ -79,11 +79,11 @@ The server handles `SIGTERM` and `SIGINT` signals:
 
 ## Rollback Procedure
 
-1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Select the FBST service
-3. Click "Deploys" tab
-4. Find the last known-good deploy
-5. Click "Redeploy" on that version
+1. Go to [Railway Dashboard](https://railway.app/dashboard)
+2. Select the FBST project / service
+3. Open the "Deployments" tab
+4. Find the last known-good deployment
+5. Click the overflow menu → "Redeploy" on that version
 
 ## Incident Response
 

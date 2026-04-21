@@ -4,8 +4,8 @@
 
 | Provider | Local Redirect URI | Production Redirect URI |
 |----------|-------------------|------------------------|
-| **Google** | `http://localhost:3010/api/auth/google/callback` | `https://fbst-api.onrender.com/api/auth/google/callback` |
-| **Yahoo** | `https://localhost:4000/api/auth/yahoo/callback` | `https://fbst-api.onrender.com/api/auth/yahoo/callback` |
+| **Google** | `http://localhost:3010/api/auth/google/callback` | `https://app.thefantasticleagues.com/api/auth/google/callback` |
+| **Yahoo** | `https://localhost:4000/api/auth/yahoo/callback` | `https://app.thefantasticleagues.com/api/auth/yahoo/callback` |
 
 ## Protocol Rules (Do NOT Violate)
 
@@ -24,16 +24,16 @@
 YAHOO_REDIRECT_URI=https://localhost:4000/api/auth/yahoo/callback
 ```
 
-### Production (Render Dashboard)
+### Production (Railway Dashboard)
 
 ```env
 GOOGLE_CLIENT_ID=<from Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
-GOOGLE_REDIRECT_URI=https://fbst-api.onrender.com/api/auth/google/callback
+GOOGLE_REDIRECT_URI=https://app.thefantasticleagues.com/api/auth/google/callback
 
 YAHOO_CLIENT_ID=<from Yahoo Developer Console>
 YAHOO_CLIENT_SECRET=<from Yahoo Developer Console>
-YAHOO_REDIRECT_URI=https://fbst-api.onrender.com/api/auth/yahoo/callback
+YAHOO_REDIRECT_URI=https://app.thefantasticleagues.com/api/auth/yahoo/callback
 ```
 
 ## Provider Console Links
@@ -86,4 +86,4 @@ If a protocol violation is detected, you'll see a ⚠️ warning.
 | "invalid redirect uri" from Yahoo | URI doesn't match Yahoo Console | Check `/api/auth/yahoo/check`, copy `computedRedirectUri` to Console |
 | "Access blocked: invalid request" | Using `https://localhost` with Google | Remove `GOOGLE_REDIRECT_URI` from `.env`, let code default to `http://` |
 | "This connection is not private" | Self-signed cert on localhost | Click Advanced → Proceed. One-time per browser session |
-| 502 on Render | Server using HTTPS on Render | Ensure `NODE_ENV` is NOT `development` on Render |
+| 502 on Railway | Server using HTTPS on Railway | Ensure `NODE_ENV` is NOT `development` on Railway |

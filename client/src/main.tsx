@@ -11,17 +11,20 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { LeagueProvider } from "./contexts/LeagueContext";
 import { PostHogTracker } from "./components/PostHogTracker";
+import { GATracker } from "./components/GATracker";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import ErrorProvider from "./components/ErrorProvider";
 import { initPostHog } from "./lib/posthog";
+import { initGA } from "./lib/ga";
 import { applyPersistedPalette } from "./lib/colorLabPalettes";
 
 // Reapply any Color Lab preview the user picked before this reload. Must
 // run before React renders to avoid a flash of unstyled (default) colors.
 applyPersistedPalette();
 
-// Initialize PostHog before render
+// Initialize analytics before render
 initPostHog();
+initGA();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -33,6 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <ToastProvider>
                 <LeagueProvider>
                   <PostHogTracker />
+                  <GATracker />
                   <App />
                 </LeagueProvider>
               </ToastProvider>
