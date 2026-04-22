@@ -15,18 +15,42 @@ const mockTx = {
   },
   player: { findUnique: vi.fn() },
   transactionEvent: { create: vi.fn() },
+  rosterSlotEvent: { create: vi.fn() },
+  leagueRule: {
+    findMany: vi.fn().mockResolvedValue([]),
+    findFirst: vi.fn().mockResolvedValue(null),
+  },
 };
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     transactionEvent: { count: vi.fn(), findMany: vi.fn() },
     roster: { findFirst: vi.fn() },
-    player: { findFirst: vi.fn() },
+    player: { findFirst: vi.fn(), findUnique: vi.fn() },
     league: { findUnique: vi.fn() },
     leagueMembership: { findUnique: vi.fn() },
+    leagueRule: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     $transaction: vi.fn(async (fn: any) => fn(mockTx)),
   },
 }));
+
+// Mock the ilSlotGuard module so MLB-feed calls and ghost-IL scans don't
+// hit real network/DB. Individual tests override these return values.
+const mockCheckMlbIlEligibility = vi.fn();
+const mockAssertIlSlotAvailable = vi.fn().mockResolvedValue(undefined);
+const mockAssertNoGhostIl = vi.fn().mockResolvedValue(undefined);
+vi.mock("../../../lib/ilSlotGuard.js", () => ({
+  checkMlbIlEligibility: (...args: any[]) => mockCheckMlbIlEligibility(...args),
+  assertIlSlotAvailable: (...args: any[]) => mockAssertIlSlotAvailable(...args),
+  assertNoGhostIl: (...args: any[]) => mockAssertNoGhostIl(...args),
+}));
+
+// Control enforcement at test-time via env. Phase 1 guards only fire when
+// this is true — default false so existing tests see legacy behavior.
+const originalEnv = process.env;
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
@@ -46,6 +70,10 @@ vi.mock("../../../middleware/asyncHandler.js", () => ({
 vi.mock("../../../lib/rosterGuard.js", () => ({
   assertPlayerAvailable: vi.fn().mockResolvedValue(undefined),
   assertRosterLimit: vi.fn().mockResolvedValue(undefined),
+  // Phase 2 adds these — default to passing for existing tests; individual
+  // Phase 2 tests can override by controlling tx.roster.count / leagueRule.findMany.
+  assertRosterAtExactCap: vi.fn().mockResolvedValue(undefined),
+  loadLeagueRosterCap: vi.fn().mockResolvedValue(23),
 }));
 vi.mock("../../../middleware/seasonGuard.js", () => ({
   requireSeasonStatus: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
@@ -74,10 +102,18 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockTx.player.findUnique.mockResolvedValue({ id: 100, name: "Mike Trout", posPrimary: "OF", mlbId: 545361, mlbTeam: "LAA" });
+  mockTx.player.findUnique.mockResolvedValue({ id: 100, name: "Mike Trout", posPrimary: "OF", posList: "OF", mlbId: 545361, mlbTeam: "LAA" });
   mockTx.roster.create.mockResolvedValue({});
   mockTx.roster.findMany.mockResolvedValue([]);
   mockTx.transactionEvent.create.mockResolvedValue({});
+  mockTx.rosterSlotEvent.create.mockResolvedValue({});
+  mockTx.leagueRule.findMany.mockResolvedValue([]);
+  mockTx.leagueRule.findFirst.mockResolvedValue(null);
+  mockAssertIlSlotAvailable.mockResolvedValue(undefined);
+  mockAssertNoGhostIl.mockResolvedValue(undefined);
+  // Default: ENFORCE off so existing legacy tests see pre-Phase-2 behavior.
+  // Phase 2 describe blocks override to "true".
+  process.env = { ...originalEnv, ENFORCE_ROSTER_RULES: "false" };
 });
 
 // ── GET /transactions ────────────────────────────────────────────
@@ -512,5 +548,405 @@ describe("POST /transactions/drop — effectiveDate backdate", () => {
         metadata: expect.objectContaining({ backdated: false }),
       }),
     );
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  Phase 2a — Roster rules enforcement behind ENFORCE_ROSTER_RULES=true
+// ══════════════════════════════════════════════════════════════════
+
+describe("POST /transactions/claim — Phase 2 enforcement (ENFORCE=true)", () => {
+  const OGBA_RULES = [
+    { category: "roster", key: "pitcher_count", value: "9" },
+    { category: "roster", key: "batter_count", value: "14" },
+  ];
+
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockTx.leagueRule.findMany.mockResolvedValue(OGBA_RULES);
+    mockTx.roster.count.mockResolvedValue(23); // team at cap
+  });
+
+  it("rejects claim without dropPlayerId (DROP_REQUIRED)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("DROP_REQUIRED");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects claim with position-incompatible drop (POSITION_INELIGIBLE)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)  // existingRoster check (player 100 not rostered)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "SS" }); // drop player at SS
+    mockPrisma.player.findUnique.mockResolvedValue({
+      name: "Juan Soto", posList: "OF",
+    });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("POSITION_INELIGIBLE");
+    expect(res.body.error).toContain("SS");
+    expect(res.body.error).toContain("Juan Soto");
+  });
+
+  it("accepts claim when added player is eligible for drop slot; added player inherits the slot", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)  // existingRoster
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "MI" }); // drop at MI
+    mockPrisma.player.findUnique.mockResolvedValue({
+      name: "Replacement Mookie", posList: "2B,OF",
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst.mockResolvedValue({ id: 50, teamId: 10, playerId: 200 });
+    mockTx.player.findUnique.mockResolvedValue({ id: 200, name: "Dropped" });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200,
+    });
+
+    expect(res.status).toBe(200);
+    // Added player's Roster row inherits the MI slot (not the primary 2B).
+    expect(mockTx.roster.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ assignedPosition: "MI" }),
+      }),
+    );
+  });
+
+  it("rejects claim when team has a ghost-IL player (GHOST_IL)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+    mockAssertNoGhostIl.mockRejectedValue(
+      new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
+        "GHOST_IL",
+        "Team has ghost-IL player Reactivated Guy — activate before stashing.",
+      ),
+    );
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("GHOST_IL");
+  });
+
+  it("rejects claim when dropPlayerId is not on team (IL_UNKNOWN_PLAYER)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)  // existingRoster
+      .mockResolvedValueOnce(null); // drop not on team
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 999,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("IL_UNKNOWN_PLAYER");
+  });
+});
+
+describe("POST /transactions/drop — Phase 2 enforcement (ENFORCE=true)", () => {
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+  });
+
+  it("rejects standalone drop of an active player (DROP_REQUIRED)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue({
+      id: 5, teamId: 10, playerId: 100,
+      acquiredAt: new Date("2026-04-01T00:00:00Z"),
+      assignedPosition: "OF",
+    });
+
+    const res = await supertest(app).post("/transactions/drop").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("DROP_REQUIRED");
+    expect(res.body.error).toContain("Use POST /transactions/claim");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("allows drop of an IL-slotted player", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue({
+      id: 5, teamId: 10, playerId: 100,
+      acquiredAt: new Date("2026-04-01T00:00:00Z"),
+      assignedPosition: "IL",
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/drop").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockTx.roster.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 5 },
+        data: expect.objectContaining({ source: "DROP" }),
+      }),
+    );
+  });
+});
+
+describe("POST /transactions/il-stash", () => {
+  const IL_STATUS = {
+    status: "Injured List 10-Day",
+    cacheFetchedAt: new Date("2026-04-21T10:00:00Z"),
+  };
+
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockCheckMlbIlEligibility.mockResolvedValue(IL_STATUS);
+    mockAssertIlSlotAvailable.mockResolvedValue(undefined);
+    mockAssertNoGhostIl.mockResolvedValue(undefined);
+  });
+
+  it("atomically stashes + adds: writes RosterSlotEvent, both TransactionEvents, and inherits slot", async () => {
+    // Stash player is on team 10 in OF slot.
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") }) // stashRoster (pre-tx)
+      .mockResolvedValueOnce(null); // existingRoster for addPlayer (not on any team)
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 100, name: "Jo Adell", posPrimary: "OF", posList: "OF",
+      mlbId: 123, mlbTeam: "LAA",
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10,
+      stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.stashPlayerId).toBe(42);
+    expect(res.body.addPlayerId).toBe(100);
+
+    // Stash player's Roster row updated to assignedPosition = "IL"
+    expect(mockTx.roster.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 50 },
+        data: expect.objectContaining({ assignedPosition: "IL" }),
+      }),
+    );
+    // Add player's new Roster row inherits OF (the slot stashPlayer vacated)
+    expect(mockTx.roster.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          playerId: 100,
+          assignedPosition: "OF",
+          source: "il_stash",
+        }),
+      }),
+    );
+    // RosterSlotEvent IL_STASH with MLB evidence capture
+    expect(mockTx.rosterSlotEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          playerId: 42,
+          event: "IL_STASH",
+          mlbStatusSnapshot: "Injured List 10-Day",
+          mlbStatusFetchedAt: IL_STATUS.cacheFetchedAt,
+        }),
+      }),
+    );
+    // Two TransactionEvents: IL_STASH + ADD
+    const types = (mockTx.transactionEvent.create as any).mock.calls
+      .map((c: any[]) => c[0].data.transactionType);
+    expect(types).toContain("IL_STASH");
+    expect(types).toContain("ADD");
+  });
+
+  it("rejects when MLB status is not 'Injured List…' (NOT_MLB_IL)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
+    });
+    mockCheckMlbIlEligibility.mockRejectedValue(
+      new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
+        "NOT_MLB_IL",
+        "Mike Trout's MLB status is \"Active\" — not eligible for IL.",
+      ),
+    );
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_MLB_IL");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects when MLB feed is unavailable (MLB_FEED_UNAVAILABLE, fail-closed)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
+    });
+    mockCheckMlbIlEligibility.mockRejectedValue(
+      new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
+        "MLB_FEED_UNAVAILABLE",
+        "MLB status feed unavailable; cannot verify IL status.",
+      ),
+    );
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("MLB_FEED_UNAVAILABLE");
+  });
+
+  it("rejects when add player is position-incompatible with stash player's slot", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "SS", acquiredAt: new Date("2026-04-01Z"),
+    });
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 100, name: "OF Only", posPrimary: "OF", posList: "OF",
+      mlbId: 123, mlbTeam: "LAA",
+    });
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("POSITION_INELIGIBLE");
+  });
+
+  it("rejects when stash player is not on the team's active roster", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValueOnce(null);
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("IL_UNKNOWN_PLAYER");
+  });
+
+  it("rejects when stash player is already on IL (NOT_ON_IL)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "IL", acquiredAt: new Date("2026-04-01Z"),
+    });
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_ON_IL");
+  });
+
+  it("requires addPlayerId or addMlbId", async () => {
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42,
+    });
+    // Zod validator is mocked as passthrough in these tests; the handler's
+    // own check catches this case.
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /transactions/il-activate", () => {
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+  });
+
+  it("atomically activates + drops: updates slot, releases drop, writes RosterSlotEvent and both TransactionEvents", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" }) // ilRoster
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") }); // dropRoster
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 42, name: "Activated Guy", posList: "OF,1B",
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    // Transaction-inner re-verifications
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    // Drop player released
+    expect(mockTx.roster.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 50 },
+        data: expect.objectContaining({ source: "DROP" }),
+      }),
+    );
+    // Activate player slot updated to dropped player's slot (OF)
+    expect(mockTx.roster.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 200 },
+        data: expect.objectContaining({ assignedPosition: "OF" }),
+      }),
+    );
+    // RosterSlotEvent IL_ACTIVATE
+    expect(mockTx.rosterSlotEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ event: "IL_ACTIVATE", playerId: 42 }),
+      }),
+    );
+    // Two TransactionEvents
+    const types = (mockTx.transactionEvent.create as any).mock.calls
+      .map((c: any[]) => c[0].data.transactionType);
+    expect(types).toContain("IL_ACTIVATE");
+    expect(types).toContain("DROP");
+  });
+
+  it("rejects when activate player is not on IL (NOT_ON_IL)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 200, assignedPosition: "OF", // active, not IL
+    });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_ON_IL");
+  });
+
+  it("rejects when activate player is not position-eligible for drop slot", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "C", acquiredAt: new Date("2026-04-01Z") });
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 42, name: "OF-Only", posList: "OF",
+    });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("POSITION_INELIGIBLE");
+  });
+
+  it("rejects when drop player is on IL (should use /transactions/drop instead)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "IL", acquiredAt: new Date("2026-04-01Z") });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("DROP_REQUIRED");
   });
 });
