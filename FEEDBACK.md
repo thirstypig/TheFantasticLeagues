@@ -4,6 +4,68 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-22 (Session 72) — Roster rules Phases 2a, 2b, 3 shipped; outbox drainer tested
+
+Same continuous session arc as Session 71; broken out as a separate entry because four distinct shipments landed after the last `/doc` pass.
+
+### Completed
+
+- **Phase 2a: endpoint wiring** (PR [#113](https://github.com/thirstypig/TheFantasticLeagues/pull/113), merge `0cfcfda`).
+  - `/transactions/claim` now enforces `dropPlayerId` required in-season (plan Q1=b), applies ghost-IL block, position-inherit (added player takes dropped player's exact slot — plan Q8 follow-on), and exact-cap via `assertRosterAtExactCap`.
+  - `/transactions/drop` rejects standalone active-player drops in-season; IL-slot drops still allowed.
+  - **New: `POST /transactions/il-stash`** — atomic stash + add. Pre-transaction MLB-IL eligibility check (fail-closed on feed unavailability — plan R9 security fix). Writes `RosterSlotEvent(IL_STASH)` with MLB-status snapshot + fetch timestamp for audit/dispute trail. Commissioner god-mode cross-team reassign handled.
+  - **New: `POST /transactions/il-activate`** — atomic activate + drop. Position-inherit on drop player's slot. Writes `RosterSlotEvent(IL_ACTIVATE)`.
+  - Typed `RosterRuleError` → HTTP 400 with `{error, code}` body across all new handlers.
+  - Tests: **+18 integration tests** using the existing `ENFORCE_ROSTER_RULES=false` env override in the suite `beforeEach` for legacy tests + `ENFORCE=true` in new Phase 2 describe blocks. Total in that file went 22 → 40.
+
+- **Phase 2b: waiver + commissioner PATCH** (PR [#114](https://github.com/thirstypig/TheFantasticLeagues/pull/114), merge `656a006`).
+  - `POST /waivers` submission requires `dropPlayerId` in-season when `ENFORCE`.
+  - Waiver batch processor (`/waivers/process/:leagueId`): re-checks position-inherit at processing time (state may have moved since submission), marks `FAILED_INVALID` with clear log message on incompatibility, writes the previously-missing `TransactionEvent` rows for both halves (silent audit bug — Phase 1 `/test-new` Explore caught this during planning).
+  - `PATCH /commissioner/:leagueId/roster/:rosterId` applies position-eligibility guard on `assignedPosition` changes (skips `IL` — MLB-IL eligibility is enforced by `/il-stash`, not here).
+  - No new dedicated tests this PR — all new logic thinly wraps already-unit-tested primitives (`isEligibleForSlot`, `enforceRosterRules`). Flagged waiver-processor integration as a future `/test-new` candidate.
+
+- **Phase 3: IL fee service + billing pipeline** (PR [#115](https://github.com/thirstypig/TheFantasticLeagues/pull/115), merge `6733d01`).
+  - **`ilFeeService.ts`** (`server/src/features/transactions/services/`): pairs IL_STASH with next IL_ACTIVATE/IL_RELEASE from RosterSlotEvent to derive stints; computes rank-at-entry (sticky per stint, counting concurrent open stints on same team); `reconcileIlFeesForPeriod` wraps in Serializable transaction with `pg_advisory_xact_lock(hashtext('il_fee_reconcile'), periodId)`; append-only void + negative reversal entries on backdate correction (never `DELETE` from `FinanceLedger`); IDOR guard (period.leagueId === arg). `dryRun=true` supported.
+  - **Outbox drainer** (`server/src/lib/outboxDrainer.ts`): durable post-commit queue. In-process `setInterval` every 5s picks up to 10 uncompleted events with `SELECT ... FOR UPDATE SKIP LOCKED`, dispatches by `kind`, increments `attempts+lastError` on failure (max 5), marks `completedAt` on success. Started from `server/src/index.ts` bootstrap. Forward-compatible with pg-boss.
+  - **`POST /commissioner/:leagueId/reconcile-il-fees/:periodId`** — manual recovery endpoint. Commissioner-or-admin gated, `?dryRun=true` supported, rate limit 1 call / 30s per `(leagueId, periodId)` via in-memory map (plan security review).
+  - **Period-close hook** in `PATCH /api/periods/:id`: when status transitions to `'completed'`, enqueue `IL_FEE_RECONCILE` outbox event. Graceful on enqueue failure.
+  - **Backdate hooks** in `/il-stash` and `/il-activate`: post-commit, when `effectiveDate` falls inside any completed period (`endDate >= effective`), enqueue reconcile for each. Defensive over-reconcile — the reconciler is idempotent.
+  - Tests: **+17 unit tests** for `ilFeeService` covering stint pairing (STASH+ACTIVATE, STASH+RELEASE, open stints), rank-at-entry (rank 1 solo, rank 2 concurrent, rank 1 after teammate left, per-team scoping), reconcile (billable write, rank-2 cost, outside-period skip, ends-inside-period presence billing, dryRun, IDOR rejection, period-not-found, unchanged-when-matches, void+reversal on amount shift, void+reversal on wipe, advisory-lock acquired, never DELETE).
+
+- **Outbox drainer test coverage** (uncommitted on feature branch).
+  - **+15 unit tests** for `outboxDrainer.ts` covering `drainOutboxOnce` happy path, multi-event processing, `SELECT FOR UPDATE SKIP LOCKED` raw SQL, failure retry with `lastError`+attempts increment, 500-char error truncation, failure isolation (one bad event doesn't block siblings), malformed payload rejection, unknown-kind rejection; `enqueueIlFeeReconcile` payload shape, no-op on empty `periodIds`, transaction-client pass-through; `startOutboxDrainer` idempotent double-start, `stopOutboxDrainer` clears the timer.
+  - **Caught a real latent issue**: previously there was nothing in the suite exercising what happens when `dispatch` throws on an unknown `kind` or a malformed payload. Tests codified the expected behavior (record `lastError`, no-op `reconcileIlFeesForPeriods`) rather than silent no-op.
+
+### Commits on main (Session 72)
+
+- `b8d7625` — feat: Phase 2a endpoints (+18 integration tests)
+- `0cfcfda` — Merge PR #113
+- `5c01e43` — feat: Phase 2b waivers + commissioner PATCH
+- `656a006` — Merge PR #114
+- `20b479e` — feat: Phase 3 IL fee service + drainer + hooks (+17 unit tests)
+- `6733d01` — Merge PR #115
+
+### Pending at end of session
+
+- Outbox drainer test file (`server/src/lib/__tests__/outboxDrainer.test.ts`, +15 tests) and this `/doc` sync — **uncommitted on a feature branch**, ready to PR after this entry is written.
+
+### Pre-flip checklist (before enabling `ENFORCE_ROSTER_RULES=true` in prod)
+
+The enforcement layer, new endpoints, and billing pipeline all ship behind `ENFORCE_ROSTER_RULES` (default `true` but operationally we recommend deploying with it `false` first):
+
+1. **Run the audit script** against prod Railway DB: `cd server && npx tsx src/scripts/auditRosterRules.ts`. Output includes **per-team retroactive IL fee totals** under policy Option B (full retroactive from `Roster.acquiredAt`).
+2. **Brief OGBA owners** about the upcoming retroactive charges.
+3. **Dry-run the reconciler** against a completed period: `POST /api/commissioner/:leagueId/reconcile-il-fees/:periodId?dryRun=true` — returns `{added, voided, unchanged}` without writing.
+4. **Flip `ENFORCE_ROSTER_RULES=true`** in Railway env (no deploy required). Monitor `/api/admin/errors` + `OutboxEvent` queue health for 24h.
+5. On next period close, the hook enqueues reconcile; drainer processes within ~5s; `il_fee` rows appear in `FinanceLedger`.
+
+### Next
+
+- **Phase 4 (UI)**: Team page IL subsection, ghost-IL banner on commissioner dashboard, waiver form drop dropdown, Playwright E2E. Requires new GET endpoints for the UI to read IL state + ghost-IL detection (currently only `listGhostIlPlayersForTeam` exists as a server-side function). Best done in a fresh session.
+- **Phase 3b polish**: integration tests for the commissioner recovery endpoint; `/drop`-of-IL-player to write an explicit `RosterSlotEvent(IL_RELEASE)` so stint end doesn't rely on roster-state inference; waiver processor → outbox hook.
+
+---
+
 ## Session 2026-04-21 → 2026-04-22 (Session 71) — Backdate ships, roster-rules plan + Phase 1 foundation, latent bug fixed
 
 ### Completed
