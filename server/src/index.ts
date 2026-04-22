@@ -481,6 +481,11 @@ async function main() {
     attachDraftWs(server);
 
     // Chat WebSocket removed — Board replaces it
+
+    // Start the OutboxEvent drainer for IL fee reconciliation + any future
+    // post-commit durable side effects (Phase 3 of roster-rules plan).
+    const { startOutboxDrainer } = await import("./lib/outboxDrainer.js");
+    startOutboxDrainer();
   };
 
   let wss: import("ws").WebSocketServer | null = null;

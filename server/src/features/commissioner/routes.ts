@@ -13,6 +13,7 @@ import { addMemberSchema } from "../../lib/schemas.js";
 import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
+import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
 
 // --- Zod Schemas ---
 
@@ -1148,6 +1149,71 @@ router.get("/commissioner/:leagueId/health", requireAuth, requireCommissionerOrA
 
   res.json({ health, leagueHealthScore: Math.round(health.reduce((s, h) => s + h.engagementScore, 0) / (health.length || 1)) });
 }));
+
+/**
+ * POST /api/commissioner/:leagueId/reconcile-il-fees/:periodId
+ *
+ * Manual IL-fee recovery endpoint (plan Phase 3, security review). Walks
+ * the RosterSlotEvent log for the period and brings the il_fee ledger to
+ * the correct state via append-only void+reversal semantics.
+ *
+ * Query:
+ *   - dryRun=true: preview the diff (counts of added/voided/unchanged)
+ *     without writing. Commissioner uses this to inspect impact before
+ *     committing.
+ *
+ * Gates:
+ *   - Commissioner-or-admin for the league (requireCommissionerOrAdmin middleware)
+ *   - IDOR guard: verifies Period.leagueId === leagueId (inside ilFeeService)
+ *   - Rate limit: 1 call / 30s per (leagueId, periodId) to defend against DoS
+ *     and reduce advisory-lock contention under repeated clicks.
+ */
+const reconcileRateLimitMap = new Map<string, number>();
+const RECONCILE_COOLDOWN_MS = 30_000;
+
+router.post(
+  "/commissioner/:leagueId/reconcile-il-fees/:periodId",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const periodId = Number(req.params.periodId);
+    const dryRun = req.query.dryRun === "true" || req.query.dryRun === "1";
+
+    if (!Number.isFinite(leagueId) || !Number.isFinite(periodId)) {
+      return res.status(400).json({ error: "Invalid leagueId or periodId" });
+    }
+
+    const key = `${leagueId}:${periodId}`;
+    const last = reconcileRateLimitMap.get(key);
+    if (last && Date.now() - last < RECONCILE_COOLDOWN_MS && !dryRun) {
+      const wait = Math.ceil((RECONCILE_COOLDOWN_MS - (Date.now() - last)) / 1000);
+      return res.status(429).json({
+        error: `Reconcile cooling down — wait ${wait}s before retrying this period.`,
+        code: "RATE_LIMIT",
+      });
+    }
+    if (!dryRun) reconcileRateLimitMap.set(key, Date.now());
+
+    try {
+      const result = await reconcileIlFeesForPeriod(leagueId, periodId, {
+        dryRun,
+        actorUserId: req.user!.id,
+      });
+      return res.json(result);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("does not belong to league")) {
+        // IDOR guard from ilFeeService
+        return res.status(404).json({ error: "Period not found in league." });
+      }
+      if (msg.includes("Period") && msg.includes("not found")) {
+        return res.status(404).json({ error: msg });
+      }
+      throw err;
+    }
+  }),
+);
 
 export const commissionerRouter = router;
 export default commissionerRouter;

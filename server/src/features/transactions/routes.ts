@@ -25,6 +25,35 @@ import {
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { assertAddEligibleForDropSlot } from "./lib/positionInherit.js";
+import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
+
+/**
+ * Find completed periods whose date range is touched by a backdated
+ * transaction at `effective`, and enqueue an IL fee reconcile for each.
+ *
+ * Defensive over-reconcile: we enqueue for every completed period whose
+ * endDate >= effective. The reconciler is idempotent, so over-enqueuing
+ * is a drainer-throughput cost, not a correctness concern.
+ */
+async function enqueueReconcileForEffective(
+  leagueId: number,
+  effective: Date,
+): Promise<void> {
+  try {
+    const completed = await prisma.period.findMany({
+      where: { leagueId, status: "completed", endDate: { gte: effective } },
+      select: { id: true },
+    });
+    if (completed.length === 0) return;
+    await enqueueIlFeeReconcile(null, leagueId, completed.map(p => p.id));
+  } catch (err) {
+    // Never fail the originating transaction on outbox enqueue failure —
+    // commissioner can run /reconcile-il-fees manually if the drainer
+    // missed a window.
+    logger.error({ error: String(err), leagueId, effective },
+      "Failed to enqueue IL fee reconcile for backdated transaction");
+  }
+}
 
 // ISO date (YYYY-MM-DD) or full ISO datetime. Commissioner/admin only;
 // validated per-route. Null/omit = default to nextDayEffective().
@@ -708,6 +737,16 @@ router.post(
       },
     });
 
+    // Phase 3 backdate reconcile hook: if the effective date falls inside
+    // (or before) any completed period, the IL stint window affects that
+    // period's billing. Enqueue an OutboxEvent so the drainer recomputes
+    // fees via the ilFeeService. Same-period (current open period) is
+    // picked up at period close; we only enqueue for backdates that cross
+    // into already-completed periods.
+    if (isBackdated) {
+      await enqueueReconcileForEffective(leagueId, effective);
+    }
+
     return res.json({ success: true, stashPlayerId, addPlayerId });
   }),
 );
@@ -894,6 +933,11 @@ router.post(
         targetSlot,
       },
     });
+
+    // Phase 3 backdate reconcile hook (same pattern as /il-stash).
+    if (isBackdated) {
+      await enqueueReconcileForEffective(leagueId, effective);
+    }
 
     return res.json({ success: true, activatePlayerId, dropPlayerId });
   }),
