@@ -1,5 +1,11 @@
 # The Fantastic Leagues (FBST)
 
+## Current status
+
+<!-- now-tldr -->
+The Fantastic Leagues (TFL) is the fantasy baseball app I run for my OGBA league — an Astro marketing site plus a React/Express/Prisma monorepo that handles live auctions, waivers, trades, and AI-generated weekly insights, all built AI-assisted with Claude. The current focus is a multi-phase roster-rules rollout (IL slots, fees, ghost-IL detection); Phase 4 UI just landed in a PR, and today's browser walkthrough uncovered two silent Phase 1 regressions sitting in production — a predicate that rejects every real MLB injured-list status, and a stalled Prisma migration where the `RosterSlotEvent` table was never actually created. Next is applying the pending migration cleanly, shipping the predicate fix plus Phase 4 UI, and then building the Phase 5 commissioner add/drop pairing so I can finally flip `ENFORCE_ROSTER_RULES` on for my OGBA owners.
+<!-- /now-tldr -->
+
 ## Project Overview
 Fantasy baseball league management tool. Client/server monorepo organized by **feature modules**.
 
