@@ -110,3 +110,59 @@ export async function warmMlbTeamCache(mlbIds: string[]): Promise<Record<string,
 
   return result;
 }
+
+/** MLB roster-status cache TTL — 6 hours, matches mlb-feed/routes.ts pattern. */
+const ROSTER_STATUS_TTL = 21600;
+
+export type MlbRosterStatus = {
+  /** Raw status string, e.g. "Injured List 10-Day", "Active", "Minor League". */
+  status: string;
+  /** Player's current position abbreviation on MLB's 40-man (e.g. "SP", "RP"). */
+  position: string;
+  /** Epoch ms when this record was fetched. Best-effort freshness marker for
+   *  evidence capture on RosterSlotEvent rows. */
+  fetchedAt: number;
+};
+
+type FortyManRosterEntry = {
+  person?: { id?: number };
+  status?: { description?: string };
+  position?: { abbreviation?: string };
+};
+
+type FortyManResponse = { roster?: FortyManRosterEntry[] };
+
+/**
+ * Look up an individual player's current MLB status (e.g. "Injured List
+ * 10-Day", "Active", "Minor League"). Reuses the 40-man roster feed with
+ * a 6-hour cache so roster-transaction gates don't hit statsapi on every
+ * call.
+ *
+ * Returns `null` if the player isn't on the team's 40-man (e.g. optioned
+ * and removed from 40-man, or team abbreviation is wrong).
+ *
+ * Throws on network / feed failure — callers enforcing IL rules should
+ * treat thrown errors as fail-closed ("can't verify → can't stash").
+ */
+export async function getMlbPlayerStatus(
+  mlbId: number,
+  mlbTeamAbbr: string,
+): Promise<MlbRosterStatus | null> {
+  const teamsMap = await fetchMlbTeamsMap();
+  const teamId = Number(
+    Object.keys(teamsMap).find(k => teamsMap[Number(k)] === mlbTeamAbbr),
+  );
+  if (!Number.isFinite(teamId)) return null;
+
+  const url = `${MLB_BASE}/teams/${teamId}/roster?rosterType=40Man`;
+  const data = await mlbGetJson<FortyManResponse>(url, ROSTER_STATUS_TTL);
+
+  const entry = (data.roster || []).find(e => e.person?.id === mlbId);
+  if (!entry) return null;
+
+  return {
+    status: entry.status?.description ?? "Unknown",
+    position: entry.position?.abbreviation ?? "",
+    fetchedAt: Date.now(),
+  };
+}
