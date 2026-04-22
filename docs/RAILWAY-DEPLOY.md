@@ -59,6 +59,12 @@ Set all of these in the Railway dashboard **before the first build** (`VITE_*` v
 | `VITE_POSTHOG_HOST` | `https://us.i.posthog.com` | Optional |
 | `VITE_GA_MEASUREMENT_ID` | `G-66ZM096S4D` | Optional — omit to disable GA4 |
 
+### Feature flags
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `ENFORCE_ROSTER_RULES` | `true` | Platform-wide kill switch for the Phase 2/3 roster-rules enforcement layer (add-must-drop, position-inherit, IL slot gating, ghost-IL block). Flip to `false` in Railway dashboard (no deploy needed) to disable enforcement while keeping the new endpoints (`/il-stash`, `/il-activate`, `/reconcile-il-fees`) + `FinanceLedger` billing live. Safety net if legitimate commissioner workflow starts getting rejected in production — see plan R16 in `docs/plans/2026-04-21-feat-roster-rules-il-slots-and-fees-plan.md`. |
+
 **Do NOT set:** `VITE_API_BASE` (leave empty — relative `/api` works for unified deploy), `PORT` (Railway auto-assigns).
 
 ## OAuth provider configuration
