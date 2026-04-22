@@ -357,7 +357,7 @@ describe("LeagueTradeCard", () => {
     fireEvent.click(screen.getByText("Process Trade"));
 
     await waitFor(() => {
-      expect(mockProcessTrade).toHaveBeenCalledWith(1);
+      expect(mockProcessTrade).toHaveBeenCalledWith(1, undefined);
       expect(onRefresh).toHaveBeenCalled();
     });
   });

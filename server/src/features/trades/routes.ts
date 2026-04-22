@@ -4,12 +4,19 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, isTeamOwner } from "../../middleware/auth.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
-import { assertPlayerAvailable, assertRosterLimit } from "../../lib/rosterGuard.js";
+import { assertRosterLimit } from "../../lib/rosterGuard.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { logger } from "../../lib/logger.js";
-import { nextDayEffective } from "../../lib/utils.js";
+import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
+
+const processSchema = z.object({
+  effectiveDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
+    .optional(),
+}).optional();
 import { sendTradeProposedEmail, sendTradeProcessedEmail, sendTradeVetoedEmail, notifyTeamOwners } from "../../lib/emailService.js";
 import { sendPushToTeamOwners, sendPushToLeague } from "../../lib/pushService.js";
 
@@ -389,6 +396,8 @@ router.post("/:id/cancel", requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/trades/:id/process - Execute (Commissioner/Admin)
+// Body: { effectiveDate?: "YYYY-MM-DD" | ISO datetime } — optional backdate
+// for stats attribution. Defaults to nextDayEffective().
 router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
@@ -410,7 +419,21 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
     }
   }
 
+  // 2b. Resolve effective date (optional body param)
+  const parsed = processSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues.map(i => i.message).join(", ") });
+  }
+  const effDateRaw = parsed.data?.effectiveDate;
+  let effective: Date;
+  try {
+    effective = resolveEffectiveDate(effDateRaw);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid effectiveDate" });
+  }
+
   // 3. Transact with SELECT FOR UPDATE to prevent double-processing race condition
+  try {
   await prisma.$transaction(async (tx) => {
     // Re-check status under row lock to prevent concurrent processing
     const locked = await tx.$queryRaw<{ status: string }[]>`
@@ -429,10 +452,17 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
         if (rosterEntry) {
            await tx.roster.update({
              where: { id: rosterEntry.id },
-             data: { releasedAt: nextDayEffective(), source: "TRADE_OUT" },
+             data: { releasedAt: effective, source: "TRADE_OUT" },
            });
 
-           await assertPlayerAvailable(tx, item.playerId, trade.leagueId);
+           // Window-aware availability: excludes the just-released sender row.
+           await assertNoOwnershipConflict(tx, {
+             leagueId: trade.leagueId,
+             playerId: item.playerId,
+             acquiredAt: effective,
+             releasedAt: null,
+             excludeRosterIds: [rosterEntry.id],
+           });
 
            // Carry over assignedPosition from sender, or default to player's primary
            const tradedPlayer = await tx.player.findUnique({ where: { id: item.playerId }, select: { posPrimary: true } });
@@ -445,7 +475,7 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
                teamId: item.recipientId,
                playerId: item.playerId,
                source: "TRADE_IN",
-               acquiredAt: nextDayEffective(),
+               acquiredAt: effective,
                price: rosterEntry.price,
                assignedPosition: tradePos,
              },
@@ -504,13 +534,25 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
       data: { status: "PROCESSED", processedAt: new Date() },
     });
   }, { timeout: 30_000 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Trade process failed";
+    if (msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate") || msg.includes("already processed") || msg.includes("max 23") || msg.includes("insufficient budget")) {
+      return res.status(400).json({ error: msg });
+    }
+    throw err;
+  }
 
   writeAuditLog({
     userId: req.user!.id,
     action: "TRADE_PROCESS",
     resourceType: "Trade",
     resourceId: id,
-    metadata: { leagueId: trade.leagueId, itemCount: trade.items.length },
+    metadata: {
+      leagueId: trade.leagueId,
+      itemCount: trade.items.length,
+      effectiveDate: effective.toISOString(),
+      backdated: effDateRaw != null,
+    },
   });
 
   // Fire-and-forget: generate AI trade analysis
@@ -609,6 +651,7 @@ router.post("/analyze", requireAuth, validateBody(tradeAnalyzeSchema), requireLe
 }));
 
 // POST /api/trades/:id/reverse — Reverse a processed trade (commissioner only)
+// Body: { effectiveDate?: "YYYY-MM-DD" | ISO datetime } — optional backdate.
 router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
 
@@ -636,6 +679,18 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
     return res.status(403).json({ error: "Commissioner access required" });
   }
 
+  const parsed = processSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues.map(i => i.message).join(", ") });
+  }
+  const reverseEffDateRaw = parsed.data?.effectiveDate;
+  let reverseEffective: Date;
+  try {
+    reverseEffective = resolveEffectiveDate(reverseEffDateRaw);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid effectiveDate" });
+  }
+
   // Reverse each item in a transaction (swap sender/recipient)
   await prisma.$transaction(async (tx) => {
     for (const item of trade.items) {
@@ -643,7 +698,7 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
         // Release from recipient (who received the player)
         await tx.roster.updateMany({
           where: { teamId: item.recipientId, playerId: item.playerId, releasedAt: null },
-          data: { releasedAt: nextDayEffective(), source: "TRADE_REVERSE" },
+          data: { releasedAt: reverseEffective, source: "TRADE_REVERSE" },
         });
         // Create new roster entry on original sender
         await tx.roster.create({
@@ -652,7 +707,7 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
             playerId: item.playerId,
             price: item.amount || 0,
             source: "TRADE_REVERSE",
-            acquiredAt: nextDayEffective(),
+            acquiredAt: reverseEffective,
           },
         });
       } else if (item.assetType === "BUDGET") {

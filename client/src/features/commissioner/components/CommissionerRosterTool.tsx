@@ -69,8 +69,9 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
       onUpdate();
   };
 
-  // Commissioner claim — uses actingAsTeamId (admin bypass allowed server-side)
-  const handleClaim = async (player: PlayerSeasonStat) => {
+  // Commissioner claim — uses actingAsTeamId (admin bypass allowed server-side).
+  // `effectiveDate` (YYYY-MM-DD) backdates stats attribution; undefined = server default (tomorrow PT).
+  const handleClaim = async (player: PlayerSeasonStat, _dropPlayerId?: number, effectiveDate?: string) => {
     if (!actingAsTeamId) {
       alert("Select a team in 'Acting As' first.");
       return;
@@ -89,6 +90,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
           teamId: actingAsTeamId,
           playerId,
           mlbId: player.mlb_id,
+          ...(effectiveDate ? { effectiveDate } : {}),
         }),
       });
       handleUpdate();
@@ -100,7 +102,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   };
 
   // Commissioner drop — drops the player from whichever team actually owns them.
-  const handleDrop = async (player: PlayerSeasonStat) => {
+  // `effectiveDate` (YYYY-MM-DD) backdates; undefined = server default.
+  const handleDrop = async (player: PlayerSeasonStat, effectiveDate?: string) => {
     const playerId = (player as unknown as { id?: number }).id;
     if (!playerId) {
       alert("Player is missing a DB id — cannot drop.");
@@ -111,7 +114,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
       alert("Player is not on any roster.");
       return;
     }
-    if (!confirm(`Drop ${player.player_name} from ${teams.find(t => t.id === owningRoster.teamId)?.name ?? 'the team'}?`)) {
+    const dateLabel = effectiveDate ? ` effective ${effectiveDate}` : "";
+    if (!confirm(`Drop ${player.player_name} from ${teams.find(t => t.id === owningRoster.teamId)?.name ?? 'the team'}${dateLabel}?`)) {
       return;
     }
     setActionInFlight(true);
@@ -122,6 +126,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
           leagueId,
           teamId: owningRoster.teamId,
           playerId,
+          ...(effectiveDate ? { effectiveDate } : {}),
         }),
       });
       handleUpdate();
@@ -190,6 +195,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
              onDrop={handleDrop}
              disabled={actionInFlight}
              teamIdOverride={actingAsTeamId}
+             showEffectiveDatePicker
            />
          )}
        </div>

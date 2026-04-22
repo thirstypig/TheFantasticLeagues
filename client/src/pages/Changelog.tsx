@@ -34,6 +34,30 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.63.0",
+    date: "Apr 21, 2026",
+    session: "Session 70",
+    title: "GA4 Analytics + Railway Migration Docs Sync",
+    highlights: [
+      "Google Analytics 4 live on both sites — marketing (G-5FS3SKCH55, hardcoded in Base.astro) and web app (G-66ZM096S4D, env-gated via VITE_GA_MEASUREMENT_ID). Mirrors the existing PostHog pattern: lazy script inject, manual SPA pageview on route change, identify/reset on auth change.",
+      "CSP updated for GA4 — added googletagmanager.com, google-analytics.com, *.google-analytics.com, *.analytics.google.com across scriptSrc/connectSrc/imgSrc. Without this, beacons would be silently blocked in prod (same failure mode as the original PostHog incident).",
+      "Render → Railway migration docs finalized. docs/RAILWAY-DEPLOY.md rewritten as the authoritative current-deploy reference (env vars, workflow, rollback). Stale render.yaml deleted. CLAUDE.md infra, AUTH_SETUP callback URLs, SECURITY rollback link, DEV_NOTES DB hint, .env.example hints, and verify_auth_config.ts output all updated for Railway. Historical Render incident narratives in docs/solutions/deployment/ preserved — banner at top points to RAILWAY-DEPLOY.md for current state.",
+    ],
+    changes: [
+      { type: "feat", description: "client/src/lib/ga.ts + GATracker.tsx — GA4 wrapper mirroring lib/posthog.ts pattern. Env-gated (VITE_GA_MEASUREMENT_ID) so local dev stays clean." },
+      { type: "feat", description: "Marketing site (thefantasticleagues-www): inlined gtag snippet in Base.astro — covers all 4 pages (index, blog, blog/[slug], status)." },
+      { type: "security", description: "CSP connectSrc/scriptSrc/imgSrc — added GA4 domains so gtag.js script + event beacons aren't silently CSP-blocked in prod." },
+      { type: "docs", description: "docs/RAILWAY-DEPLOY.md rewritten from pre-migration checklist to current deploy reference; adds VITE_GA_MEASUREMENT_ID to env schema." },
+      { type: "docs", description: "docs/solutions/deployment/{README,DEPLOYMENT-CHECKLIST,QUICK-REFERENCE}.md — banner pointing to RAILWAY-DEPLOY.md for current state; Render-era incident narratives preserved as institutional knowledge." },
+      { type: "docs", description: "CLAUDE.md infra, docs/AUTH_SETUP.md OAuth callback URLs, docs/SECURITY.md rollback procedure, docs/DEV_NOTES.md DB error reference — migrated Render → Railway." },
+      { type: "refactor", description: "Deleted render.yaml (Railway env vars are dashboard-managed; railway.json is the minimal config)." },
+      { type: "docs", description: "scripts/verify_auth_config.ts + server/.env.example + client/.env.example production URL hints updated." },
+      { type: "docs", description: "Tech page: added Google Analytics 4 entry alongside PostHog." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+  },
+  {
     version: "0.62.0",
     date: "Apr 16, 2026",
     session: "Session 66 (review sweep)",

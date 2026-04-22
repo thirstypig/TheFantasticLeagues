@@ -33,6 +33,11 @@ const addTeamOwnerSchema = z.object({
   ownerName: z.string().max(100).optional(),
 }).refine(d => d.userId || d.email || d.ownerName, { message: "userId, email, or ownerName required" });
 
+const effectiveDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
+  .optional();
+
 const rosterAssignSchema = z.object({
   teamId: z.number().int().positive(),
   mlbId: z.union([z.number(), z.string()]).optional(),
@@ -41,12 +46,14 @@ const rosterAssignSchema = z.object({
   posList: z.string().max(100).optional(),
   price: z.number().nonnegative().optional(),
   source: z.string().max(50).optional(),
+  effectiveDate: effectiveDateSchema,
 });
 
 const rosterReleaseSchema = z.object({
   rosterId: z.number().int().positive().optional(),
   teamId: z.number().int().positive().optional(),
   playerId: z.number().int().positive().optional(),
+  effectiveDate: effectiveDateSchema,
 }).refine(d => d.rosterId || (d.teamId && d.playerId), { message: "rosterId or teamId+playerId required" });
 
 const periodSchema = z.object({
@@ -698,7 +705,8 @@ router.post(
           posPrimary: req.body?.posPrimary,
           posList: req.body?.posList,
           price: req.body?.price,
-          source: req.body?.source
+          source: req.body?.source,
+          effectiveDate: req.body?.effectiveDate,
       });
 
       writeAuditLog({
@@ -733,7 +741,8 @@ router.post(
       const result = await commissionerService.releasePlayer(leagueId, {
           rosterId,
           teamId,
-          playerId
+          playerId,
+          effectiveDate: req.body?.effectiveDate,
       });
 
       writeAuditLog({

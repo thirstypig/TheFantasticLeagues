@@ -5,7 +5,14 @@ import type { NextFunction } from "express";
 
 const mockTx = {
   $queryRaw: vi.fn().mockResolvedValue([]),
-  roster: { create: vi.fn(), findFirst: vi.fn(), delete: vi.fn(), update: vi.fn(), count: vi.fn().mockResolvedValue(10) },
+  roster: {
+    create: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
+    delete: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn().mockResolvedValue(10),
+  },
   player: { findUnique: vi.fn() },
   transactionEvent: { create: vi.fn() },
 };
@@ -68,6 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockTx.player.findUnique.mockResolvedValue({ id: 100, name: "Mike Trout", posPrimary: "OF", mlbId: 545361, mlbTeam: "LAA" });
   mockTx.roster.create.mockResolvedValue({});
+  mockTx.roster.findMany.mockResolvedValue([]);
   mockTx.transactionEvent.create.mockResolvedValue({});
 });
 
