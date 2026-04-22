@@ -34,11 +34,23 @@ beforeEach(() => {
 // ── isMlbIlStatus ────────────────────────────────────────────────
 
 describe("isMlbIlStatus", () => {
-  it("matches all IL variants", () => {
+  // The live MLB statsapi 40-man feed returns `description` values like
+  // "Injured 10-Day" / "Injured 15-Day" / "Injured 60-Day" — these are the
+  // real-world strings the predicate has to accept.
+  it("matches all MLB-API IL variants", () => {
+    expect(isMlbIlStatus("Injured 7-Day")).toBe(true);
+    expect(isMlbIlStatus("Injured 10-Day")).toBe(true);
+    expect(isMlbIlStatus("Injured 15-Day")).toBe(true);
+    expect(isMlbIlStatus("Injured 60-Day")).toBe(true);
+  });
+
+  // Forward-compat: if MLB ever returns the longer "Injured List N-Day" form,
+  // keep treating it as a valid IL designation.
+  it("matches the legacy 'Injured List N-Day' form", () => {
+    expect(isMlbIlStatus("Injured List 7-Day")).toBe(true);
     expect(isMlbIlStatus("Injured List 10-Day")).toBe(true);
     expect(isMlbIlStatus("Injured List 15-Day")).toBe(true);
     expect(isMlbIlStatus("Injured List 60-Day")).toBe(true);
-    expect(isMlbIlStatus("Injured List 7-Day")).toBe(true);
   });
 
   it("rejects non-IL statuses", () => {
@@ -49,7 +61,15 @@ describe("isMlbIlStatus", () => {
     expect(isMlbIlStatus("Suspended")).toBe(false);
     expect(isMlbIlStatus("Minor League")).toBe(false);
     expect(isMlbIlStatus("Optioned")).toBe(false);
+    expect(isMlbIlStatus("Reassigned to Minors")).toBe(false);
     expect(isMlbIlStatus("Unknown")).toBe(false);
+  });
+
+  it("rejects malformed Injured strings (no day count)", () => {
+    expect(isMlbIlStatus("Injured")).toBe(false);
+    expect(isMlbIlStatus("Injured List")).toBe(false);
+    expect(isMlbIlStatus("Injured Day")).toBe(false);
+    expect(isMlbIlStatus("Injured 10")).toBe(false);
   });
 
   it("rejects empty / nullish", () => {
@@ -59,8 +79,9 @@ describe("isMlbIlStatus", () => {
   });
 
   it("is case-sensitive (guards against typo in MLB data)", () => {
+    expect(isMlbIlStatus("injured 10-day")).toBe(false);
+    expect(isMlbIlStatus("INJURED 10-DAY")).toBe(false);
     expect(isMlbIlStatus("injured list 10-day")).toBe(false);
-    expect(isMlbIlStatus("INJURED LIST 10-DAY")).toBe(false);
   });
 });
 
@@ -151,10 +172,10 @@ describe("checkMlbIlEligibility", () => {
       id: 42, name: "Mike Trout", mlbId: 545361, mlbTeam: "LAA",
     });
     mockGetMlbPlayerStatus.mockResolvedValue({
-      status: "Injured List 10-Day", position: "OF", fetchedAt: 1776900000000,
+      status: "Injured 10-Day", position: "OF", fetchedAt: 1776900000000,
     });
     const result = await checkMlbIlEligibility(42);
-    expect(result.status).toBe("Injured List 10-Day");
+    expect(result.status).toBe("Injured 10-Day");
     expect(result.cacheFetchedAt).toEqual(new Date(1776900000000));
   });
 
@@ -244,7 +265,7 @@ describe("listGhostIlPlayersForTeam", () => {
     };
     mockGetMlbPlayerStatus
       .mockResolvedValueOnce({ status: "Active", position: "OF", fetchedAt: Date.now() })
-      .mockResolvedValueOnce({ status: "Injured List 60-Day", position: "SP", fetchedAt: Date.now() });
+      .mockResolvedValueOnce({ status: "Injured 60-Day", position: "SP", fetchedAt: Date.now() });
 
     const ghosts = await listGhostIlPlayersForTeam(tx as any, 1);
     expect(ghosts).toHaveLength(1);

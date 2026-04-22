@@ -698,7 +698,7 @@ describe("POST /transactions/drop — Phase 2 enforcement (ENFORCE=true)", () =>
 
 describe("POST /transactions/il-stash", () => {
   const IL_STATUS = {
-    status: "Injured List 10-Day",
+    status: "Injured 10-Day",
     cacheFetchedAt: new Date("2026-04-21T10:00:00Z"),
   };
 
@@ -752,7 +752,7 @@ describe("POST /transactions/il-stash", () => {
         data: expect.objectContaining({
           playerId: 42,
           event: "IL_STASH",
-          mlbStatusSnapshot: "Injured List 10-Day",
+          mlbStatusSnapshot: "Injured 10-Day",
           mlbStatusFetchedAt: IL_STATUS.cacheFetchedAt,
         }),
       }),
@@ -764,7 +764,7 @@ describe("POST /transactions/il-stash", () => {
     expect(types).toContain("ADD");
   });
 
-  it("rejects when MLB status is not 'Injured List…' (NOT_MLB_IL)", async () => {
+  it("rejects when MLB status is not an 'Injured …-Day' designation (NOT_MLB_IL)", async () => {
     mockPrisma.roster.findFirst.mockResolvedValueOnce({
       id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
     });
