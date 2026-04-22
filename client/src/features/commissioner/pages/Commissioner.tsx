@@ -21,6 +21,7 @@ import {
   getLockedFields as apiGetLockedFields,
 } from "../api";
 import type { PendingInvite } from "../api";
+import { getGhostIlSummary, type GhostIlSummary } from "../api";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
@@ -349,6 +350,10 @@ export default function Commissioner() {
   // Tabs
   const [activeTab, setActiveTab] = useState<TabKey>('league');
 
+  // Phase 4: ghost-IL summary (surfaced as a banner on the Teams tab)
+  const [ghostIl, setGhostIl] = useState<GhostIlSummary | null>(null);
+  const [ghostIlExpanded, setGhostIlExpanded] = useState(false);
+
   // Hash listener — only navigate to enabled tabs
   useEffect(() => {
      const hash = window.location.hash.replace('#', '') as TabKey;
@@ -358,6 +363,19 @@ export default function Commissioner() {
      }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gating.seasonStatus]);
+
+  // Load ghost-IL summary when the Teams tab is first opened. Fetching lazily
+  // keeps the initial commissioner page load quick — the endpoint fans out to
+  // MLB roster lookups per team, which we don't want on every page view.
+  useEffect(() => {
+    if (activeTab !== 'teams' || !lid) return;
+    if (ghostIl !== null) return;
+    let ok = true;
+    getGhostIlSummary(lid)
+      .then(res => { if (ok) setGhostIl(res); })
+      .catch(() => { if (ok) setGhostIl({ teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0 }); });
+    return () => { ok = false; };
+  }, [activeTab, lid, ghostIl]);
 
   const leagueFromList = useMemo(() => (leagues ?? []).find((x) => x.id === lid) ?? null, [leagues, lid]);
 
@@ -1150,6 +1168,36 @@ export default function Commissioner() {
             {/* Tab: Teams */}
             {activeTab === 'teams' && (
                 <div className="space-y-5">
+                  {/* Ghost-IL banner */}
+                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
+                          {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"}{" "}
+                          — MLB has activated them but they're still in a fantasy IL slot. New IL stashes are blocked until resolved.
+                        </div>
+                        <button
+                          onClick={() => setGhostIlExpanded(v => !v)}
+                          className="ml-3 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline"
+                        >
+                          {ghostIlExpanded ? "Hide" : "Details"}
+                        </button>
+                      </div>
+                      {ghostIlExpanded && (
+                        <ul className="mt-2 ml-4 list-disc space-y-1">
+                          {ghostIl.teams.map(t => (
+                            <li key={t.teamId}>
+                              <span className="font-semibold text-red-300">{t.teamName}</span>
+                              {" — "}
+                              {t.ghosts.map(g => `${g.playerName} (${g.currentMlbStatus})`).join(", ")}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
                   {/* Team List */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <div className="mb-3 flex items-center justify-between">

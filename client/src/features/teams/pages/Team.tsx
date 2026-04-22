@@ -20,6 +20,9 @@ import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp, ChevronRight
 import { StatsUpdated } from "../../../components/shared/StatsTables";
 import RosterAlertAccordion from "../../../components/shared/RosterAlertAccordion";
 import { useRosterStatus } from "../../../hooks/useRosterStatus";
+import PlaceOnIlModal from "../components/PlaceOnIlModal";
+import ActivateFromIlModal from "../components/ActivateFromIlModal";
+import { useAuth } from "../../../auth/AuthProvider";
 
 function normCode(v: any): string {
   return String(v ?? "").trim().toUpperCase();
@@ -119,8 +122,28 @@ export default function Team() {
   // Trade block state
   const [tradeBlockIds, setTradeBlockIds] = useState<Set<number>>(new Set());
 
-  // IL + Minors report via shared hook
-  const { ilPlayers, minorsPlayers } = useRosterStatus(leagueId ?? null, dbTeamId ?? undefined);
+  // Phase 4: IL action modals. Only the commissioner (or admin) can perform
+  // IL stash/activate — the backend gates /il-stash and /il-activate with
+  // requireCommishOrAdmin (server/src/features/transactions/routes.ts).
+  const { isCommissioner, isAdmin } = useAuth();
+  const canManageIl = leagueId ? (isCommissioner(String(leagueId)) || isAdmin) : false;
+  const [placeOnIlFor, setPlaceOnIlFor] = useState<any | null>(null);
+  const [activateFrom, setActivateFrom] = useState<any | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const [fullPlayerPool, setFullPlayerPool] = useState<PlayerSeasonStat[]>([]);
+
+  // IL + Minors report via shared hook.
+  // `allPlayers` is used to build an MLB-status map so we can flag ghost-IL on
+  // fantasy-IL-slotted rows (assignedPosition === "IL" but MLB status is no
+  // longer "Injured List…").
+  const { ilPlayers, minorsPlayers, allPlayers: mlbRosterStatus } = useRosterStatus(leagueId ?? null, dbTeamId ?? undefined);
+  const mlbStatusByMlbId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const p of mlbRosterStatus) {
+      if (p.mlbId != null) map.set(p.mlbId, p.mlbStatus || "");
+    }
+    return map;
+  }, [mlbRosterStatus]);
 
   // Period roster state (for viewing historical period rosters)
   const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
@@ -142,6 +165,7 @@ export default function Team() {
           getPlayerSeasonStats(),
         ]);
         if (!ok) return;
+        setFullPlayerPool(csvRows ?? []);
 
         const ogbaName = getOgbaTeamName(code);
         const team = allTeams.find((t: any) => normCode(t.code) === code)
@@ -261,7 +285,7 @@ export default function Team() {
     return () => {
       ok = false;
     };
-  }, [code, leagueId]);
+  }, [code, leagueId, reloadTick]);
 
   // Reset AI state when team changes (prevents showing Team A's grade on Team B)
   useEffect(() => {
@@ -318,9 +342,12 @@ export default function Team() {
 
   const teamName = useMemo(() => getOgbaTeamName(code) || code, [code]);
 
-  // Sort hitters by roster slot order (POS_SCORE: C=0, 1B=1, … DH=11), then price desc
+  const isIlSlotted = (p: any) => (p?.assignedPosition ?? "") === "IL";
+
+  // Sort hitters by roster slot order (POS_SCORE: C=0, 1B=1, … DH=11), then price desc.
+  // IL-slotted players are pulled out into their own section below.
   const hitters = useMemo(() => {
-    const list = players.filter((p) => !isPitcher(p));
+    const list = players.filter((p) => !isPitcher(p) && !isIlSlotted(p));
     list.sort((a, b) => {
       const posA = a.assignedPosition || "";
       const posB = b.assignedPosition || "";
@@ -332,7 +359,7 @@ export default function Team() {
   }, [players]);
   // Sort pitchers by position (SP before RP), then price desc
   const pitchers = useMemo(() => {
-    const list = players.filter((p) => isPitcher(p));
+    const list = players.filter((p) => isPitcher(p) && !isIlSlotted(p));
     list.sort((a, b) => {
       const posA = a.assignedPosition || "";
       const posB = b.assignedPosition || "";
@@ -342,6 +369,21 @@ export default function Team() {
     });
     return list;
   }, [players]);
+  // Players sitting in fantasy IL slots (assignedPosition === "IL"). Sorted by
+  // price desc so the most expensive stashes surface first.
+  const ilSlotted = useMemo(() => {
+    const list = players.filter((p) => isIlSlotted(p));
+    list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    return list;
+  }, [players]);
+  const ilSlottedMlbIds = useMemo(() => {
+    const set = new Set<number>();
+    for (const p of ilSlotted) {
+      const id = Number((p as any)?.mlb_id ?? (p as any)?.mlbId ?? 0);
+      if (id) set.add(id);
+    }
+    return set;
+  }, [ilSlotted]);
 
   return (
     <div className="flex-1 min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
@@ -903,21 +945,109 @@ export default function Team() {
           </section>
         )}
 
-        {/* IL Report */}
-        {ilPlayers.length > 0 && (
-          <div className="mt-10">
-            <RosterAlertAccordion
-              players={ilPlayers}
-              colorScheme="red"
-              label="Injured List"
-              mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
-            />
-          </div>
+        {/* Your IL Slots — players in fantasy IL slots (Roster.assignedPosition === "IL").
+            Ghost-IL badge when the player's MLB status is no longer "Injured List…". */}
+        {ilSlotted.length > 0 && (
+          <section className="mt-10">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
+              Your IL Slots ({ilSlotted.length})
+            </p>
+            <ThemedTable density="compact" aria-label="Fantasy IL slots">
+              <ThemedThead>
+                <ThemedTr>
+                  <ThemedTh align="center" className="w-[60px]">SLOT</ThemedTh>
+                  <ThemedTh align="center">PLAYER</ThemedTh>
+                  <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
+                  <ThemedTh align="center" className="w-[60px]">$</ThemedTh>
+                  <ThemedTh align="center">MLB STATUS</ThemedTh>
+                  <ThemedTh align="center" className="w-[100px]">ACTION</ThemedTh>
+                </ThemedTr>
+              </ThemedThead>
+              <tbody>
+                {ilSlotted.map((p: any) => {
+                  const mlbId = Number(p?.mlb_id ?? p?.mlbId ?? 0);
+                  const mlbStatus = mlbId ? (mlbStatusByMlbId.get(mlbId) ?? "") : "";
+                  const isGhost = !mlbStatus.startsWith("Injured List");
+                  const tm = getMlbTeamAbbr(p);
+                  return (
+                    <ThemedTr key={rowKey(p)} className="border-t border-[var(--lg-border-faint)]">
+                      <ThemedTd align="center">
+                        <span className="text-[10px] font-mono font-semibold text-red-400">IL</span>
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        <span className="inline-flex items-center gap-1.5">
+                          {p?.player_name ?? p?.name ?? ""}
+                          {(p as any)?.isKeeper && (
+                            <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>
+                          )}
+                          {isGhost && (
+                            <span
+                              className="text-[9px] font-bold uppercase text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-px rounded"
+                              title={mlbStatus ? `MLB status: ${mlbStatus}` : "No active MLB IL designation — activate or drop"}
+                            >
+                              Ghost IL
+                            </span>
+                          )}
+                        </span>
+                      </ThemedTd>
+                      <ThemedTd align="center">{tm || "—"}</ThemedTd>
+                      <ThemedTd align="center">${asNum(p?.price)}</ThemedTd>
+                      <ThemedTd align="center">
+                        <span className="text-[10px] text-[var(--lg-text-muted)]">{mlbStatus || "Unknown"}</span>
+                      </ThemedTd>
+                      <ThemedTd align="center">
+                        {canManageIl && seasonStatus === "IN_SEASON" && dbTeamId && leagueId ? (
+                          <button
+                            onClick={() => setActivateFrom(p)}
+                            className="text-[10px] font-semibold uppercase text-emerald-400 hover:text-emerald-300 underline"
+                          >
+                            Activate
+                          </button>
+                        ) : <span className="text-[10px] text-[var(--lg-text-muted)]">—</span>}
+                      </ThemedTd>
+                    </ThemedTr>
+                  );
+                })}
+              </tbody>
+            </ThemedTable>
+          </section>
         )}
+
+        {/* MLB IL Candidates — players on active roster whose MLB team has placed
+            them on IL but who have NOT yet been stashed into a fantasy IL slot. */}
+        {(() => {
+          const candidates = ilPlayers.filter(
+            (p) => !(p.mlbId != null && ilSlottedMlbIds.has(p.mlbId))
+          );
+          if (candidates.length === 0) return null;
+          return (
+            <div className={ilSlotted.length > 0 ? "mt-6" : "mt-10"}>
+              <RosterAlertAccordion
+                players={candidates}
+                colorScheme="red"
+                label="MLB IL Candidates"
+                mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
+                renderAction={canManageIl && seasonStatus === "IN_SEASON" && dbTeamId ? (candidate) => {
+                  // Map the accordion entry back to a roster row so the stash modal has assignedPosition + _dbPlayerId.
+                  const row = players.find((pl: any) => Number(pl?.mlb_id ?? pl?.mlbId) === candidate.mlbId);
+                  if (!row || !(row as any)._dbPlayerId) return null;
+                  return (
+                    <button
+                      onClick={() => setPlaceOnIlFor({ ...(row as any), mlbStatus: candidate.mlbStatus })}
+                      className="text-[10px] font-semibold uppercase text-red-400 hover:text-red-300 underline"
+                    >
+                      Place on IL
+                    </button>
+                  );
+                } : undefined}
+              />
+            </div>
+          );
+        })()}
 
         {/* Minors Report */}
         {minorsPlayers.length > 0 && (
-          <div className={ilPlayers.length > 0 ? "mt-4" : "mt-10"}>
+          <div className={(ilSlotted.length > 0 || ilPlayers.length > 0) ? "mt-4" : "mt-10"}>
             <RosterAlertAccordion
               players={minorsPlayers}
               colorScheme="amber"
@@ -948,6 +1078,28 @@ export default function Team() {
         )}
 
         {selected ? <PlayerDetailModal player={selected} onClose={() => setSelected(null)} /> : null}
+
+        {placeOnIlFor && dbTeamId && leagueId ? (
+          <PlaceOnIlModal
+            leagueId={leagueId}
+            teamId={dbTeamId}
+            stashPlayer={placeOnIlFor}
+            playerPool={fullPlayerPool}
+            onClose={() => setPlaceOnIlFor(null)}
+            onSuccess={() => { setPlaceOnIlFor(null); setReloadTick(t => t + 1); }}
+          />
+        ) : null}
+
+        {activateFrom && dbTeamId && leagueId ? (
+          <ActivateFromIlModal
+            leagueId={leagueId}
+            teamId={dbTeamId}
+            activatePlayer={activateFrom}
+            activeRoster={players as any}
+            onClose={() => setActivateFrom(null)}
+            onSuccess={() => { setActivateFrom(null); setReloadTick(t => t + 1); }}
+          />
+        ) : null}
 
       </main>
     </div>
