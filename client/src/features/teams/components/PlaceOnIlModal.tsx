@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ilStash } from "../../transactions/api";
 import { positionToSlots } from "../../../lib/sportConfig";
+import { isMlbIlStatus } from "../../../lib/mlbStatus";
 import { Button } from "../../../components/ui/button";
 import { reportError } from "../../../lib/errorBus";
 
@@ -104,7 +105,7 @@ export default function PlaceOnIlModal({ leagueId, teamId, stashPlayer, playerPo
           adds a replacement into the vacated <span className="text-[var(--lg-accent)] font-mono">{stashSlot}</span> slot. Both happen atomically.
         </p>
 
-        {stashPlayer.mlbStatus && !stashPlayer.mlbStatus.startsWith("Injured List") && (
+        {stashPlayer.mlbStatus && !isMlbIlStatus(stashPlayer.mlbStatus) && (
           <div className="mb-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
             MLB status is "{stashPlayer.mlbStatus}". The server requires an active Injured-List designation and will reject this stash.
           </div>

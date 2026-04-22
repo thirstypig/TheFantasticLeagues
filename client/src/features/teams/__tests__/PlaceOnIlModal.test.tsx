@@ -24,7 +24,7 @@ const stashPlayer = {
   _dbPlayerId: 501,
   assignedPosition: "OF",
   posPrimary: "OF",
-  mlbStatus: "Injured List (10-day)",
+  mlbStatus: "Injured 10-Day",
 };
 
 const freeAgentFits = {
@@ -113,7 +113,7 @@ describe("PlaceOnIlModal", () => {
     expect(screen.getByText(/is not eligible for the OF slot/i)).toBeInTheDocument();
   });
 
-  it("warns when the stash player's MLB status is not Injured List", () => {
+  it("warns when the stash player's MLB status is not an Injured N-Day designation", () => {
     render(
       <PlaceOnIlModal
         leagueId={1}

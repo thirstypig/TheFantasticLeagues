@@ -20,6 +20,7 @@ import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp, ChevronRight
 import { StatsUpdated } from "../../../components/shared/StatsTables";
 import RosterAlertAccordion from "../../../components/shared/RosterAlertAccordion";
 import { useRosterStatus } from "../../../hooks/useRosterStatus";
+import { isMlbIlStatus } from "../../../lib/mlbStatus";
 import PlaceOnIlModal from "../components/PlaceOnIlModal";
 import ActivateFromIlModal from "../components/ActivateFromIlModal";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -135,7 +136,7 @@ export default function Team() {
   // IL + Minors report via shared hook.
   // `allPlayers` is used to build an MLB-status map so we can flag ghost-IL on
   // fantasy-IL-slotted rows (assignedPosition === "IL" but MLB status is no
-  // longer "Injured List…").
+  // longer an "Injured …-Day" designation).
   const { ilPlayers, minorsPlayers, allPlayers: mlbRosterStatus } = useRosterStatus(leagueId ?? null, dbTeamId ?? undefined);
   const mlbStatusByMlbId = useMemo(() => {
     const map = new Map<number, string>();
@@ -946,7 +947,7 @@ export default function Team() {
         )}
 
         {/* Your IL Slots — players in fantasy IL slots (Roster.assignedPosition === "IL").
-            Ghost-IL badge when the player's MLB status is no longer "Injured List…". */}
+            Ghost-IL badge when the player's MLB status is no longer an "Injured …-Day" designation. */}
         {ilSlotted.length > 0 && (
           <section className="mt-10">
             <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
@@ -967,7 +968,7 @@ export default function Team() {
                 {ilSlotted.map((p: any) => {
                   const mlbId = Number(p?.mlb_id ?? p?.mlbId ?? 0);
                   const mlbStatus = mlbId ? (mlbStatusByMlbId.get(mlbId) ?? "") : "";
-                  const isGhost = !mlbStatus.startsWith("Injured List");
+                  const isGhost = !isMlbIlStatus(mlbStatus);
                   const tm = getMlbTeamAbbr(p);
                   return (
                     <ThemedTr key={rowKey(p)} className="border-t border-[var(--lg-border-faint)]">

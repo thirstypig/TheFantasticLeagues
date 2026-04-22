@@ -119,7 +119,7 @@ describe("Team page — IL subsection and ghost-IL", () => {
     useRosterStatusMock.mockReturnValue({
       ilPlayers: [],
       minorsPlayers: [],
-      allPlayers: [{ mlbId: 1, mlbStatus: "Injured List (10-day)" }],
+      allPlayers: [{ mlbId: 1, mlbStatus: "Injured 10-Day" }],
     });
     renderTeam();
     await waitFor(() => expect(screen.getByText(/Your IL Slots \(1\)/i)).toBeInTheDocument());
@@ -134,7 +134,7 @@ describe("Team page — IL subsection and ghost-IL", () => {
     expect(hittersTable).not.toHaveTextContent("Mike Trout");
   });
 
-  it("renders Ghost IL badge when the IL-slotted player's MLB status is no longer Injured List", async () => {
+  it("renders Ghost IL badge when the IL-slotted player's MLB status is no longer an Injured designation", async () => {
     vi.mocked(getTeamDetails).mockResolvedValue(rosterWith([
       { ...trout, assignedPosition: "IL" },
     ]));
@@ -147,14 +147,14 @@ describe("Team page — IL subsection and ghost-IL", () => {
     await waitFor(() => expect(screen.getByText(/Ghost IL/i)).toBeInTheDocument());
   });
 
-  it("omits Ghost IL badge when MLB status still begins with 'Injured List'", async () => {
+  it("omits Ghost IL badge when MLB status is still a valid Injured N-Day designation", async () => {
     vi.mocked(getTeamDetails).mockResolvedValue(rosterWith([
       { ...trout, assignedPosition: "IL" },
     ]));
     useRosterStatusMock.mockReturnValue({
       ilPlayers: [],
       minorsPlayers: [],
-      allPlayers: [{ mlbId: 1, mlbStatus: "Injured List (60-day)" }],
+      allPlayers: [{ mlbId: 1, mlbStatus: "Injured 60-Day" }],
     });
     renderTeam();
     await waitFor(() => expect(screen.getByText(/Your IL Slots \(1\)/i)).toBeInTheDocument());
@@ -171,13 +171,13 @@ describe("Team page — IL subsection and ghost-IL", () => {
     ]));
     useRosterStatusMock.mockReturnValue({
       ilPlayers: [
-        { mlbId: 1, playerName: "Mike Trout", mlbStatus: "Injured List (10-day)", isInjured: true },
-        { mlbId: 2, playerName: "Mookie Betts", mlbStatus: "Injured List (10-day)", isInjured: true },
+        { mlbId: 1, playerName: "Mike Trout", mlbStatus: "Injured 10-Day", isInjured: true },
+        { mlbId: 2, playerName: "Mookie Betts", mlbStatus: "Injured 10-Day", isInjured: true },
       ],
       minorsPlayers: [],
       allPlayers: [
-        { mlbId: 1, mlbStatus: "Injured List (10-day)" },
-        { mlbId: 2, mlbStatus: "Injured List (10-day)" },
+        { mlbId: 1, mlbStatus: "Injured 10-Day" },
+        { mlbId: 2, mlbStatus: "Injured 10-Day" },
       ],
     });
     renderTeam();
