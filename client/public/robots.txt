@@ -1,0 +1,29 @@
+User-agent: *
+Allow: /
+Allow: /guide
+Allow: /login
+Allow: /signup
+Allow: /discover
+
+# Auth-gated SPA routes — the shell is the same HTML for all of them, so
+# disallowing saves crawl budget and prevents duplicate indexing of empty
+# shells. The marketing site (https://www.thefantasticleagues.com) is the
+# canonical entry point for discovery.
+Disallow: /season
+Disallow: /teams/
+Disallow: /players
+Disallow: /activity
+Disallow: /board
+Disallow: /leagues/
+Disallow: /auction
+Disallow: /auction-results
+Disallow: /draft
+Disallow: /matchup
+Disallow: /commissioner/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /report
+Disallow: /profile
+Disallow: /notifications
+Disallow: /reset-password
+Disallow: /forgot-password
