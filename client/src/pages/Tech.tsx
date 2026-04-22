@@ -70,7 +70,7 @@ const techStack = [
     items: [
       { name: "Node.js + Express", desc: "REST API server" },
       { name: "TypeScript (ESM)", desc: "Strict mode, ES modules" },
-      { name: "Prisma ORM", desc: "Type-safe database access with 49 models" },
+      { name: "Prisma ORM", desc: "Type-safe database access with 54 models" },
       { name: "Zod", desc: "Runtime request validation" },
       { name: "Helmet", desc: "Security headers" },
       { name: "express-rate-limit", desc: "API rate limiting" },
@@ -1151,7 +1151,7 @@ function DatabaseERD() {
         Database Schema
       </h2>
       <p className="text-sm text-[var(--lg-text-secondary)] mb-4">
-        49 models across 5 domains — PostgreSQL via Prisma ORM with 1,131 lines of schema.
+        54 models across 5 domains — PostgreSQL via Prisma ORM with 1,383 lines of schema.
         Click a section to view its entity-relationship diagram.
       </p>
       <div className="space-y-2">
