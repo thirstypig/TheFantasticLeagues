@@ -4,6 +4,59 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-21 → 2026-04-22 (Session 71) — Backdate ships, roster-rules plan + Phase 1 foundation, latent bug fixed
+
+### Completed
+
+- **Backdate effective-date + god-mode cross-team reassign shipped to main** (PR [#110](https://github.com/thirstypig/TheFantasticLeagues/pull/110), merge `29dcb40`). Session 70's FEEDBACK entry described this as complete but the branch was actually still sitting uncommitted. PR #110 is what actually landed it — `server/src/lib/rosterWindow.ts` (half-open-interval overlap guard), `effectiveDate` on `/transactions/claim`, `/drop`, `/trades/:id/process`, `/trades/:id/reverse`, and `CommissionerService.assignPlayer/releasePlayer`. Frontend date pickers in `AddDropTab` and `TradesPage`.
+
+- **Roster-rules enforcement plan written and deepened.** `/ce:plan` with ultrathink → `/ce:deepen-plan` with 13 parallel review/research agents (architecture, data-integrity, data-migration, performance, security, Kieran TS, simplicity, pattern-recognition, deployment, Julik frontend, best-practices, framework-docs, learnings). Output: [docs/plans/2026-04-21-feat-roster-rules-il-slots-and-fees-plan.md](docs/plans/2026-04-21-feat-roster-rules-il-slots-and-fees-plan.md) — 1,271 lines, 18 integration test scenarios, 16 risks, fantasy-platform comparison matrix, deployment Go/No-Go.
+
+- **Phase 1 foundation shipped** (PR [#111](https://github.com/thirstypig/TheFantasticLeagues/pull/111), merge `303971e`). **No user-visible behavior change yet** — guards are callable but not wired into endpoints (that's Phase 2). Contents:
+  - **Migration** `20260421000000_roster_rules_foundation`: `FinanceLedger` gains `periodId` + `playerId` + `voidedAt` + `reversalOf` + `createdBy`; partial unique index scoped to `type='il_fee' AND voidedAt IS NULL` (fixes the plan's original broken `@@unique` under PG NULL semantics); new `RosterSlotEvent` append-only log and `OutboxEvent` durable queue; backfill of `il.slot_count = 2` into every league's `LeagueRule`; performance indexes on `TransactionEvent` + `Period`.
+  - **Typed `RosterRuleError`** with 14-code discriminated union — replaces string-match error propagation across future route handlers.
+  - **`rosterGuard` extended** — `loadLeagueRosterCap` (reads from `LeagueRule` rules, fallback 23), `assertRosterAtExactCap` (in-season strict invariant); active-roster counts now exclude `assignedPosition = "IL"` rows.
+  - **`ilSlotGuard`** — pre-transaction MLB-IL eligibility check (fail-closed on feed unavailable — security fix for the attack vector the deepen-plan pass identified), slot cap, ghost-IL detection (fails open for read, closed for write).
+  - **Reusable `getMlbPlayerStatus(mlbId, mlbTeam)`** extracted into `server/src/lib/mlbApi.ts` from inline logic in `mlb-feed/routes.ts`. Same 6h cache.
+  - **`featureFlags.ts`** — `ENFORCE_ROSTER_RULES` env circuit breaker (default true). Flip in Railway dashboard without deploy.
+  - **`positionInherit`** helper inside `server/src/features/transactions/lib/` — eligibility check via `posList × positionToSlots()`. Inlined per simplicity review.
+  - **`auditRosterRules.ts`** — read-only markdown report. Outputs cap violations, ghost-IL players, and retroactive IL fee estimate per team (policy **Option B: full retroactive from `Roster.acquiredAt`** — user-confirmed). Commissioner runs this before flipping enforcement to brief owners.
+  - **65 new unit tests** across all Phase 1 libs. Full server suite: 648 → 648 + 14 from the test-coverage branch = 662 passing, +7 skipped.
+
+- **Test coverage for PR #110 added on a follow-up branch** (`test/backdate-integration-coverage`, commit `dc161dd`, not yet PR'd). 14 new integration tests for `/transactions/claim` and `/transactions/drop` backdate paths. The cross-team reassign test passed without surfacing issues; the "malformed effectiveDate → 400" test **caught a real shipped bug** — claim's `resolveEffectiveDate` was called outside the try/catch and was returning 500 for malformed dates. Fixed in the same commit to mirror the drop route's pattern.
+
+### Policy decisions locked (from the 19-question deepen-plan pass)
+
+Q1=b (strict exact-cap in-season), Q2=b (per-league cap from rules), Q3=b (explicit `il.slot_count`), Q4=a (extra-capacity IL), Q5=a (strict MLB status gate), Q6=a (`"Injured List"` prefix only), Q7 (minors stay active, future minors slot class), Q8=a + follow-on (owner-initiated activate, inherit dropped player's slot, applies to all add+drop), Q9=a (waiver dropPlayerId required), Q10=a (atomic stash+add), Q11=b (no standalone IL moves), Q12=b (ghost-IL blocks + warns), Q13=a (on-demand MLB status), Q14=a (slot costs charged to FinanceLedger), Q15=a (bundle enforcement + billing), Q16=a (entry-order ranking), Q17=b (presence-during-period = full fee), Q18=a (retroactive reconciliation on backdate), Q19=a interpreted (sticky rank per stint). Full answers in the plan's Appendix K.
+
+### Commits on main (Session 71)
+
+- `d07f5e5` — feat: backdate effective-date + god-mode (15 files, +666/−69)
+- `29dcb40` — Merge PR #110
+- `c622847` — feat(roster-rules): typed RosterRuleError (8 tests)
+- `a78bd78` — feat(roster-rules): ENFORCE_ROSTER_RULES env kill switch (6 tests)
+- `59b94c5` — feat(roster-rules): per-league cap + exact-cap guard (14 tests)
+- `ad36bea` — feat(roster-rules): positionInherit helper (14 tests)
+- `7aae115` — feat(roster-rules): ilSlotGuard (23 tests)
+- `700a32b` — feat(roster-rules): schema foundation (migration, new models, indexes)
+- `85ffbe9` — feat(roster-rules): audit script
+- `b3ebc69` — docs: add the roster-rules plan
+- `303971e` — Merge PR #111
+
+### Branches pending merge
+
+- `test/backdate-integration-coverage` (`dc161dd`) — 14 integration tests for backdate + the malformed-date 400 bug fix for `/claim`.
+
+### Pending / Next Steps
+
+- **Phase 2**: wire the Phase 1 guards into `/transactions/claim` (require `dropPlayerId` in-season, position-inherit, ghost-IL block), `/transactions/drop` (reject standalone active-roster drops in-season), `/transactions/il-stash` + `/transactions/il-activate` new endpoints, waiver schema update. ~2 days. Guards are typed and tested in isolation; this is the integration layer.
+- **Phase 3**: `ilFeeService` (stint derivation from `RosterSlotEvent`, rank-at-entry stamping, presence-based period billing, outbox-driven reconciliation), period-close hook, backdate reconciliation, `PeriodStatus` enum conversion, commissioner manual recovery endpoint.
+- **Phase 4**: Team page IL subsection, ghost-IL dashboard banner, waiver form drop-dropdown, Playwright E2E.
+- **Pre-ship action for operator (me/commissioner)**: run `cd server && npx tsx src/scripts/auditRosterRules.ts` against prod Railway DB, review the "Retroactive IL fee estimate" per-team totals, brief affected OGBA owners *before* Phase 2 ships. Per policy Option B, existing IL stashes will back-bill from their `acquiredAt`.
+- **Gotchas noted for Phase 2**: position-inherit is stricter than every mainstream fantasy platform (Yahoo/ESPN/CBS/Fantrax all use free-slot assignment). Owners will hit rejections that feel wrong coming from other apps. UX filter for compatible drop candidates in the AddDropTab modal is required for Phase 4 — not optional.
+
+---
+
 ## Session 2026-04-20 → 2026-04-21 (Session 70) — GA4 on both sites, Render → Railway doc sync
 
 ### Completed
