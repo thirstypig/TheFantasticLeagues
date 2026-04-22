@@ -132,6 +132,21 @@ router.patch("/:id", requireAuth, validateBody(updatePeriodSchema), asyncHandler
     data: updateData,
   });
 
+  // Phase 3: when a period transitions to 'completed', enqueue an
+  // IL_FEE_RECONCILE outbox event so the drainer recomputes fees against
+  // the authoritative RosterSlotEvent log. Durable — survives a crash
+  // between this commit and the drainer's next tick.
+  if (req.body.status === "completed" && period.status !== "completed" && period.leagueId) {
+    try {
+      const { enqueueIlFeeReconcile } = await import("../../lib/outboxDrainer.js");
+      await enqueueIlFeeReconcile(null, period.leagueId, [periodId]);
+    } catch (err) {
+      // Don't fail the period update if outbox enqueue fails — log and
+      // continue. Commissioner can run /reconcile-il-fees manually.
+      logger.error({ error: String(err), periodId }, "Failed to enqueue IL fee reconcile");
+    }
+  }
+
   res.json({ data: updated });
 }));
 
