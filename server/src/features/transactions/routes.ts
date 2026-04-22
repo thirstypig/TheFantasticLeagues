@@ -87,7 +87,14 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     }
   }
 
-  const effective = resolveEffectiveDate(effDateRaw);
+  let effective: Date;
+  try {
+    effective = resolveEffectiveDate(effDateRaw);
+  } catch (err) {
+    return res.status(400).json({
+      error: err instanceof Error ? err.message : "Invalid effectiveDate",
+    });
+  }
   const isBackdated = effDateRaw != null;
 
   let { playerId } = req.body;
