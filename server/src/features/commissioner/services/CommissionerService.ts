@@ -2,6 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { norm, slugify } from "../../../lib/utils.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
+import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../../lib/rosterWindow.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
 import { sendInviteEmail } from "../../../lib/emailService.js";
@@ -727,6 +728,7 @@ export class CommissionerService {
       posList?: string;
       price?: number;
       source?: string;
+      effectiveDate?: string | null;
     },
   ) {
     const {
@@ -737,11 +739,14 @@ export class CommissionerService {
       posList,
       price = 1,
       source = "manual",
+      effectiveDate,
     } = data;
 
     const team = await prisma.team.findUnique({ where: { id: teamId } });
     if (!team || team.leagueId !== leagueId)
       throw new Error("Team not found in this league");
+
+    const effective = resolveEffectiveDate(effectiveDate);
 
     // 1. Resolve Player
     let player = mlbId
@@ -773,34 +778,51 @@ export class CommissionerService {
       });
     }
 
-    // 2. Release from any other active roster in this league
-    await prisma.roster.updateMany({
-      where: { playerId: player.id, releasedAt: null, team: { leagueId } },
-      data: { releasedAt: new Date() },
-    });
+    // 2. Atomic: release prior active roster in this league + window-check +
+    //    create new roster entry. Backdate-aware via `effective`.
+    return await prisma.$transaction(async (tx) => {
+      const priorActive = await tx.roster.findMany({
+        where: { playerId: player.id, releasedAt: null, team: { leagueId } },
+        select: { id: true },
+      });
+      const excludeIds: number[] = [];
+      for (const row of priorActive) {
+        await tx.roster.update({
+          where: { id: row.id },
+          data: { releasedAt: effective, source: "COMMISSIONER_REASSIGN" },
+        });
+        excludeIds.push(row.id);
+      }
 
-    // 3. Guard: ensure player isn't on another team in this league
-    await assertPlayerAvailable(prisma, player.id, leagueId);
-
-    // 4. Create Roster Entry
-    return await prisma.roster.create({
-      data: {
-        teamId,
+      await assertNoOwnershipConflict(tx, {
+        leagueId,
         playerId: player.id,
-        source,
-        price: Number(price),
-      },
-      include: {
-        player: true,
-      },
+        acquiredAt: effective,
+        releasedAt: null,
+        excludeRosterIds: excludeIds,
+      });
+
+      return await tx.roster.create({
+        data: {
+          teamId,
+          playerId: player.id,
+          source,
+          price: Number(price),
+          acquiredAt: effective,
+        },
+        include: {
+          player: true,
+        },
+      });
     });
   }
 
   async releasePlayer(
     leagueId: number,
-    data: { rosterId?: number; teamId?: number; playerId?: number },
+    data: { rosterId?: number; teamId?: number; playerId?: number; effectiveDate?: string | null },
   ) {
-    const { rosterId, teamId, playerId } = data;
+    const { rosterId, teamId, playerId, effectiveDate } = data;
+    const effective = resolveEffectiveDate(effectiveDate);
 
     if (rosterId) {
       const r = await prisma.roster.findUnique({
@@ -809,10 +831,15 @@ export class CommissionerService {
       });
       if (!r || r.team.leagueId !== leagueId)
         throw new Error("Roster item not found in league");
+      if (effective <= r.acquiredAt) {
+        throw new Error(
+          `effectiveDate (${effective.toISOString().slice(0, 10)}) must be after the player was acquired (${r.acquiredAt.toISOString().slice(0, 10)})`,
+        );
+      }
 
       return await prisma.roster.update({
         where: { id: rosterId },
-        data: { releasedAt: new Date() },
+        data: { releasedAt: effective },
       });
     }
 
@@ -824,7 +851,7 @@ export class CommissionerService {
 
       await prisma.roster.updateMany({
         where: { teamId, playerId, releasedAt: null },
-        data: { releasedAt: new Date() },
+        data: { releasedAt: effective },
       });
       return { success: true };
     }

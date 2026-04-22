@@ -120,15 +120,17 @@ export async function vetoTrade(tradeId: number): Promise<{ success: boolean }> 
     });
 }
 
-export async function processTrade(tradeId: number): Promise<{ success: boolean }> {
+export async function processTrade(tradeId: number, effectiveDate?: string): Promise<{ success: boolean }> {
     return fetchJsonApi(`${API_BASE}/trades/${tradeId}/process`, {
         method: 'POST',
+        body: JSON.stringify(effectiveDate ? { effectiveDate } : {}),
     });
 }
 
-export async function reverseTrade(tradeId: number): Promise<{ success: boolean }> {
+export async function reverseTrade(tradeId: number, effectiveDate?: string): Promise<{ success: boolean }> {
     return fetchJsonApi(`${API_BASE}/trades/${tradeId}/reverse`, {
         method: 'POST',
+        body: JSON.stringify(effectiveDate ? { effectiveDate } : {}),
     });
 }
 

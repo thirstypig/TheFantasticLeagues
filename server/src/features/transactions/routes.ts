@@ -10,13 +10,21 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { logger } from "../../lib/logger.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
-import { assertPlayerAvailable, assertRosterLimit } from "../../lib/rosterGuard.js";
-import { nextDayEffective } from "../../lib/utils.js";
+import { assertRosterLimit } from "../../lib/rosterGuard.js";
+import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
+
+// ISO date (YYYY-MM-DD) or full ISO datetime. Commissioner/admin only;
+// validated per-route. Null/omit = default to nextDayEffective().
+const effectiveDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
+  .optional();
 
 const dropSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
   playerId: z.number().int().positive(),
+  effectiveDate: effectiveDateSchema,
 });
 
 const claimSchema = z.object({
@@ -25,6 +33,7 @@ const claimSchema = z.object({
   playerId: z.number().int().positive().optional(),
   mlbId: z.union([z.number(), z.string()]).optional(),
   dropPlayerId: z.number().int().positive().optional(),
+  effectiveDate: effectiveDateSchema,
 }).refine((d) => d.playerId || d.mlbId, { message: "playerId or mlbId required" });
 
 const router = Router();
@@ -64,10 +73,11 @@ router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncH
  * Claims a player for a team. Commissioner-only per league rules.
  */
 router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requireSeasonStatus(["IN_SEASON"]), asyncHandler(async (req, res) => {
-  const { leagueId, teamId, dropPlayerId } = req.body;
+  const { leagueId, teamId, dropPlayerId, effectiveDate: effDateRaw } = req.body;
 
   // Commissioner-only: verify user is commissioner of this league or site admin
-  if (!req.user!.isAdmin) {
+  const isPrivileged = req.user!.isAdmin;
+  if (!isPrivileged) {
     const membership = await prisma.leagueMembership.findUnique({
       where: { leagueId_userId: { leagueId, userId: req.user!.id } },
       select: { role: true },
@@ -76,6 +86,10 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       return res.status(403).json({ error: "Add/Drop is commissioner-only" });
     }
   }
+
+  const effective = resolveEffectiveDate(effDateRaw);
+  const isBackdated = effDateRaw != null;
+
   let { playerId } = req.body;
   const { mlbId } = req.body;
 
@@ -94,14 +108,21 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     return res.status(400).json({ error: "Missing playerId or mlbId" });
   }
 
-  // 2. Verify availability (active rosters only — releasedAt: null)
+  // 2. Current-owner check
+  //    Live claim (no backdate): refuse if already active on another team.
+  //    Backdated claim: commissioner god-mode — we'll auto-release from the
+  //    current owner at `effective` inside the transaction (unless it's the
+  //    same team being claimed). Cross-team reassign gets the same rule.
   const existingRoster = await prisma.roster.findFirst({
     where: { playerId, team: { leagueId }, releasedAt: null },
     include: { team: true }
   });
 
-  if (existingRoster) {
+  if (existingRoster && !isBackdated && existingRoster.teamId !== teamId) {
     return res.status(400).json({ error: `Player is already on team: ${existingRoster.team.name}` });
+  }
+  if (existingRoster && existingRoster.teamId === teamId) {
+    return res.status(400).json({ error: `Player is already on this team's active roster` });
   }
 
   // 3. Look up league season for transaction records
@@ -113,7 +134,41 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   await prisma.$transaction(async (tx) => {
     // Acquire row-level lock on the team to serialize concurrent claims
     await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
-    await assertPlayerAvailable(tx, playerId, leagueId);
+
+    // Commissioner god-mode: if backdating and the player is on another team,
+    // release them first at `effective`. For live (non-backdated) claims this
+    // branch doesn't run (we 400'd above).
+    const excludeRosterIds: number[] = [];
+    if (existingRoster && existingRoster.teamId !== teamId) {
+      await tx.roster.update({
+        where: { id: existingRoster.id },
+        data: { releasedAt: effective, source: "COMMISSIONER_REASSIGN" },
+      });
+      excludeRosterIds.push(existingRoster.id);
+      await tx.transactionEvent.create({
+        data: {
+          rowHash: `REASSIGN-DROP-${crypto.randomUUID()}-${playerId}`,
+          leagueId,
+          season,
+          effDate: effective,
+          submittedAt: new Date(),
+          teamId: existingRoster.teamId,
+          playerId,
+          transactionRaw: `Commissioner reassign — released from ${existingRoster.team.name}`,
+          transactionType: 'DROP',
+        },
+      });
+    }
+
+    // Overlap guard — rejects if the new window would collide with a historical
+    // Roster entry (including any released rows that span the target date).
+    await assertNoOwnershipConflict(tx, {
+      leagueId,
+      playerId,
+      acquiredAt: effective,
+      releasedAt: null,
+      excludeRosterIds,
+    });
     await assertRosterLimit(tx, teamId, !!dropPlayerId);
 
     const player = await tx.player.findUnique({ where: { id: playerId }, select: { id: true, name: true, posPrimary: true, mlbId: true, mlbTeam: true } });
@@ -122,7 +177,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     const assignedPos = PITCHER_POS.has(primaryPos) ? "P" : primaryPos;
 
     await tx.roster.create({
-      data: { teamId, playerId, source: 'waiver_claim', acquiredAt: nextDayEffective(), assignedPosition: assignedPos }
+      data: { teamId, playerId, source: 'waiver_claim', acquiredAt: effective, assignedPosition: assignedPos }
     });
     const rowHash = `CLAIM-${crypto.randomUUID()}-${playerId}`;
 
@@ -131,7 +186,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         rowHash,
         leagueId,
         season,
-        effDate: new Date(),
+        effDate: effective,
         submittedAt: new Date(),
         teamId,
         playerId,
@@ -146,7 +201,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       });
 
       if (dropRoster) {
-        await tx.roster.update({ where: { id: dropRoster.id }, data: { releasedAt: nextDayEffective(), source: "DROP" } });
+        await tx.roster.update({ where: { id: dropRoster.id }, data: { releasedAt: effective, source: "DROP" } });
 
         const dropPlayer = await tx.player.findUnique({ where: { id: dropPlayerId } });
         await tx.transactionEvent.create({
@@ -154,7 +209,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
             rowHash: `DROP-${crypto.randomUUID()}-${dropPlayerId}`,
             leagueId,
             season,
-            effDate: new Date(),
+            effDate: effective,
             submittedAt: new Date(),
             teamId,
             playerId: dropPlayerId,
@@ -167,8 +222,8 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   }, { timeout: 30_000 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Claim failed";
-    // Guard errors (roster limit, player unavailable) are user errors, not server errors
-    if (msg.includes("Roster limit") || msg.includes("already on")) {
+    // Guard errors (roster limit, player unavailable, window conflict) are user errors, not server errors
+    if (msg.includes("Roster limit") || msg.includes("already on") || msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate")) {
       return res.status(400).json({ error: msg });
     }
     throw err; // Re-throw unexpected errors for asyncHandler
@@ -178,7 +233,13 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     userId: req.user!.id,
     action: "TRANSACTION_CLAIM",
     resourceType: "Transaction",
-    metadata: { leagueId, teamId, playerId, dropPlayerId: dropPlayerId || null },
+    metadata: {
+      leagueId, teamId, playerId,
+      dropPlayerId: dropPlayerId || null,
+      effectiveDate: effective.toISOString(),
+      backdated: isBackdated,
+      reassignedFromTeamId: existingRoster && existingRoster.teamId !== teamId ? existingRoster.teamId : null,
+    },
   });
 
   return res.json({ success: true, playerId });
@@ -189,7 +250,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
  * Drops a player from a team roster. Commissioner-only.
  */
 router.post("/transactions/drop", requireAuth, validateBody(dropSchema), requireSeasonStatus(["IN_SEASON"]), asyncHandler(async (req, res) => {
-  const { leagueId, teamId, playerId } = req.body;
+  const { leagueId, teamId, playerId, effectiveDate: effDateRaw } = req.body;
 
   // Commissioner-only check
   if (!req.user!.isAdmin) {
@@ -210,11 +271,24 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
     return res.status(400).json({ error: "Player is not on this team's active roster" });
   }
 
+  let effective: Date;
+  try {
+    effective = resolveEffectiveDate(effDateRaw);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid effectiveDate" });
+  }
+  // Guard: backdated releasedAt must be at or after acquiredAt.
+  if (effective <= rosterEntry.acquiredAt) {
+    return res.status(400).json({
+      error: `effectiveDate (${effective.toISOString().slice(0, 10)}) must be after the player was acquired (${rosterEntry.acquiredAt.toISOString().slice(0, 10)})`,
+    });
+  }
+
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
   const season = league?.season ?? new Date().getFullYear();
 
   await prisma.$transaction(async (tx) => {
-    await tx.roster.update({ where: { id: rosterEntry.id }, data: { releasedAt: nextDayEffective(), source: "DROP" } });
+    await tx.roster.update({ where: { id: rosterEntry.id }, data: { releasedAt: effective, source: "DROP" } });
 
     const player = await tx.player.findUnique({ where: { id: playerId } });
     await tx.transactionEvent.create({
@@ -222,7 +296,7 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
         rowHash: `DROP-${crypto.randomUUID()}-${playerId}`,
         leagueId,
         season,
-        effDate: new Date(),
+        effDate: effective,
         submittedAt: new Date(),
         teamId,
         playerId,
@@ -236,7 +310,11 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
     userId: req.user!.id,
     action: "TRANSACTION_DROP",
     resourceType: "Transaction",
-    metadata: { leagueId, teamId, playerId },
+    metadata: {
+      leagueId, teamId, playerId,
+      effectiveDate: effective.toISOString(),
+      backdated: effDateRaw != null,
+    },
   });
 
   return res.json({ success: true, playerId });

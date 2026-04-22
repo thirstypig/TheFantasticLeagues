@@ -18,17 +18,24 @@ import { useMyWatchlist } from '../../watchlist/hooks/useMyWatchlist';
 interface AddDropTabProps {
     players: PlayerSeasonStat[];
     myTeamRoster?: PlayerSeasonStat[];
-    onClaim: (player: PlayerSeasonStat, dropPlayerId?: number) => void;
-    onDrop?: (player: PlayerSeasonStat) => void;
+    /** `effectiveDate` is forwarded as YYYY-MM-DD when the commissioner backdate picker is shown; undefined otherwise. */
+    onClaim: (player: PlayerSeasonStat, dropPlayerId?: number, effectiveDate?: string) => void;
+    onDrop?: (player: PlayerSeasonStat, effectiveDate?: string) => void;
     disabled?: boolean;
     /** Override the watchlist team — commissioner tool passes `actingAsTeamId` so stars reflect that team's list. */
     teamIdOverride?: number | null;
+    /** Commissioner-only: render an effective-date picker whose value is passed to onClaim/onDrop. */
+    showEffectiveDatePicker?: boolean;
 }
 
-export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled, teamIdOverride }: AddDropTabProps) {
+export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled, teamIdOverride, showEffectiveDatePicker }: AddDropTabProps) {
     const { leagueId, myTeamId } = useLeague();
     const effectiveTeamId = teamIdOverride ?? myTeamId;
     const { watchedIds, pendingIds, toggle: toggleWatch, canWatch } = useMyWatchlist(effectiveTeamId);
+
+    // Commissioner-only: effective date for the next claim/drop. Empty string
+    // means "use server default (nextDayEffective)."
+    const [effectiveDate, setEffectiveDate] = useState<string>('');
 
     // View state
     const [viewGroup, setViewGroup] = useState<'hitters' | 'pitchers'>('hitters');
@@ -188,6 +195,34 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
 
     return (
         <div className="space-y-0">
+            {showEffectiveDatePicker && (
+                <div className="px-4 pt-4 flex items-center gap-3 flex-wrap">
+                    <label htmlFor="add-drop-effective-date" className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">
+                        Effective date:
+                    </label>
+                    <input
+                        id="add-drop-effective-date"
+                        type="date"
+                        value={effectiveDate}
+                        onChange={(e) => setEffectiveDate(e.target.value)}
+                        className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-lg px-3 py-1.5 text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
+                    />
+                    {effectiveDate ? (
+                        <button
+                            type="button"
+                            onClick={() => setEffectiveDate('')}
+                            className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] underline"
+                        >
+                            clear (use default: tomorrow)
+                        </button>
+                    ) : (
+                        <span className="text-xs text-[var(--lg-text-muted)]">
+                            empty = default (tomorrow 12:00 AM PT) — backdate here to attribute stats from this date onward to the new owner
+                        </span>
+                    )}
+                </div>
+            )}
+
             {/* Filters Header */}
             <div className="p-4">
                 <PlayerFilterBar
@@ -300,7 +335,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                                                 })()}
                                                 {!isTaken && (
                                                     <button
-                                                        onClick={() => onClaim(p)}
+                                                        onClick={() => onClaim(p, undefined, effectiveDate || undefined)}
                                                         disabled={disabled}
                                                         className="px-2 py-px bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
@@ -309,7 +344,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                                                 )}
                                                 {isTaken && onDrop && (
                                                     <button
-                                                        onClick={() => onDrop(p)}
+                                                        onClick={() => onDrop(p, effectiveDate || undefined)}
                                                         disabled={disabled}
                                                         className="px-2 py-px bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[9px] font-bold uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >

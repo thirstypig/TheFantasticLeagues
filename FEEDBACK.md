@@ -4,6 +4,41 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-20 → 2026-04-21 (Session 70) — GA4 on both sites, Render → Railway doc sync
+
+### Completed
+- **GA4 live on web app.** New `client/src/lib/ga.ts` + `client/src/components/GATracker.tsx` mirror the existing PostHog pattern: env-gated init via `VITE_GA_MEASUREMENT_ID` (prod value `G-66ZM096S4D`), lazy gtag.js script inject, manual `page_view` on `location.pathname`/`location.search` change, `user_id` set on auth change, unset on logout. Wired into `main.tsx` alongside `PostHogTracker`. `.env.example` documents the var.
+- **GA4 live on marketing site** (`thefantasticleagues-www`). Inlined gtag snippet (`G-5FS3SKCH55`, hardcoded since Astro is MPA/static and GA IDs are public) in `src/layouts/Base.astro` — all 4 pages extend Base, so this covers index/blog/blog/[slug]/status in one shot.
+- **CSP updated for GA4.** Added `googletagmanager.com` to `scriptSrc`; `googletagmanager.com`, `google-analytics.com`, `*.google-analytics.com`, `*.analytics.google.com` to `connectSrc`; `google-analytics.com`, `*.google-analytics.com`, `googletagmanager.com` to `imgSrc`. Caught before deploy — without these, beacons would have been silently CSP-blocked (same failure mode as Incident 4 / PostHog in `docs/solutions/deployment/csp-websocket-and-cdn-issues.md`).
+- **Render → Railway migration docs finalized.** Current prod is unified Railway at `app.thefantasticleagues.com` (migrated Session 51); docs had been a patchwork of historical Render references. Pass:
+  - `docs/RAILWAY-DEPLOY.md` rewritten from pre-migration checklist to current deploy reference (env var schema, OAuth callback URLs, deploy workflow, rollback, "if you change the production domain" checklist). Added `VITE_GA_MEASUREMENT_ID`.
+  - `render.yaml` deleted (Railway has no yaml-declared env vars — dashboard only).
+  - `CLAUDE.md` infrastructure section, `docs/AUTH_SETUP.md` OAuth callback URLs, `docs/SECURITY.md` rollback procedure, `docs/DEV_NOTES.md` Prisma P1000 hint, `server/.env.example`, `scripts/verify_auth_config.ts` — all updated to Railway / `app.thefantasticleagues.com`.
+  - `docs/solutions/deployment/{README,DEPLOYMENT-CHECKLIST,QUICK-REFERENCE}.md` — added "current state: Railway (see RAILWAY-DEPLOY.md)" banners at top; historical Render-era incident narratives (Incidents 1–4: hardcoded `/api/` paths, Cloudflare-cache-as-HTML, WebSocket through Cloudflare, CSP blocks PostHog) intentionally preserved as institutional knowledge rather than rewritten.
+- **Tech page adds GA4** alongside PostHog in the Frontend stack list.
+- **Two PRs shipped via branch + PR + merge** flow (not direct-to-main): `TheFantasticLeagues#109` and `thefantasticleagues-www#3`. App CI passed (test + audit jobs green).
+
+### Commits on main
+- `b3c7c6b` — feat: GA4 analytics on web app (4 files)
+- `d3ff926` — docs+config: migrate Render → Railway (12 files, render.yaml deleted, CSP updated)
+- `afb9e58` — chore: sync MASTER-PORTS.md (pre-existing port registry commit that landed on the branch)
+- `6d27ab1` — Merge PR #109
+- (www) `feb93b7` — feat: GA4 analytics on marketing site
+- (www) `b366cb2` — chore: sync MASTER-PORTS.md
+- (www) `3d00c85` — Merge PR #3
+
+### Gotchas / lessons
+- **Parallel Bash tool calls share working directory state.** First `gh pr create` ran against the wrong branch (`feat/ga4-analytics`, a leftover from a parallel-call mishap) — created PR #108 which got auto-closed when that branch was deleted. Had to redo as PR #109 explicitly via `--head`. Lesson: `cd` in each individual Bash call when switching repos; don't assume parallel calls serialize their `cd` effects.
+- **GA CSP is the silent trap.** GA4 uses 3 CSP directives (scriptSrc for gtag.js, connectSrc for beacons, imgSrc for tracking-pixel fallbacks) + wildcard regional endpoints for GDPR routing. Catching this pre-deploy saves repeating the PostHog CSP lesson.
+- **Railway vs Render confusion.** User initially set `VITE_GA_MEASUREMENT_ID` on Railway while CLAUDE.md still said Render — triggered the doc-sync pass.
+
+### Pending / Next Steps
+- **Verify GA4 events post-deploy** — open Realtime dashboard for both properties after next Railway build + next GitHub Pages deploy.
+- **Uncommitted `mermaid@^11.14.0`** dependency in `package.json` / `package-lock.json` (from a prior session) — unused in active code per Tech.tsx; decide whether to finish the feature that needed it or revert.
+- **Session 69 pending items still open:** P2 config-system unification, UX/nav PM review, `/admin/tests` page, E2E expansion to auction/trade/waiver/roster-lock flows, missing unit tests for `useMyWatchlist` + position-filter logic.
+
+---
+
 ## Session 2026-04-19 (Session 69) — Watchlist, position filter, rules audit, E2E scaffold
 
 ### Completed

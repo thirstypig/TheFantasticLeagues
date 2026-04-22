@@ -284,6 +284,10 @@ export function TradeCard({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // Commissioner effective-date override for process / reverse (YYYY-MM-DD).
+  // Empty string = server default (nextDayEffective).
+  const [effectiveDate, setEffectiveDate] = useState<string>("");
+
   const handleAnalyze = async () => {
     if (!currentLeagueId || !trade.proposingTeamId || !trade.acceptingTeamId) return;
     setAiLoading(true);
@@ -431,6 +435,10 @@ export function LeagueTradeCard({
     || trade.acceptingTeam?.ownerUserId === currentUserId
     || (trade.acceptingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
 
+  // Commissioner effective-date override for process / reverse (YYYY-MM-DD).
+  // Empty string = server default (nextDayEffective).
+  const [effectiveDate, setEffectiveDate] = useState<string>("");
+
   return (
     <div className="lg-card p-4">
       <div className="flex justify-between items-start mb-4">
@@ -537,7 +545,18 @@ export function LeagueTradeCard({
 
       {/* Commissioner Controls — process/veto ACCEPTED trades */}
       {isAdmin && trade.status === "ACCEPTED" && (
-        <div className="flex justify-end space-x-2 border-t border-[var(--lg-border-subtle)] pt-3 mt-3">
+        <div className="flex justify-end items-center space-x-2 border-t border-[var(--lg-border-subtle)] pt-3 mt-3 flex-wrap gap-y-2">
+          <label htmlFor={`trade-${trade.id}-eff-date`} className="text-xs text-[var(--lg-text-muted)]">
+            Effective:
+          </label>
+          <input
+            id={`trade-${trade.id}-eff-date`}
+            type="date"
+            value={effectiveDate}
+            onChange={(e) => setEffectiveDate(e.target.value)}
+            title="Empty = tomorrow (default). Backdate to attribute stats from this date onward to the new owners."
+            className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded px-2 py-1 text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
+          />
           <button
             onClick={async () => {
               if (!confirm("Veto this trade?")) return;
@@ -550,8 +569,11 @@ export function LeagueTradeCard({
           </button>
           <button
             onClick={async () => {
-              if (!confirm("Process this trade? Players and budget will be moved.")) return;
-              await processTrade(trade.id);
+              const msg = effectiveDate
+                ? `Process this trade effective ${effectiveDate}? Players and budget will be moved.`
+                : "Process this trade? Players and budget will be moved (effective tomorrow).";
+              if (!confirm(msg)) return;
+              await processTrade(trade.id, effectiveDate || undefined);
               onRefresh();
             }}
             className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded text-sm font-semibold"
@@ -563,11 +585,25 @@ export function LeagueTradeCard({
 
       {/* Commissioner Controls — reverse PROCESSED trades */}
       {isAdmin && trade.status === "PROCESSED" && (
-        <div className="flex justify-end border-t border-[var(--lg-border-subtle)] pt-3 mt-3">
+        <div className="flex justify-end items-center border-t border-[var(--lg-border-subtle)] pt-3 mt-3 space-x-2 flex-wrap gap-y-2">
+          <label htmlFor={`trade-${trade.id}-rev-date`} className="text-xs text-[var(--lg-text-muted)]">
+            Effective:
+          </label>
+          <input
+            id={`trade-${trade.id}-rev-date`}
+            type="date"
+            value={effectiveDate}
+            onChange={(e) => setEffectiveDate(e.target.value)}
+            title="Empty = tomorrow (default). Backdate to reverse this trade effective on a specific date."
+            className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded px-2 py-1 text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
+          />
           <button
             onClick={async () => {
-              if (!confirm("Reverse this trade? All players and budget will be moved back to their original teams.")) return;
-              await reverseTrade(trade.id);
+              const msg = effectiveDate
+                ? `Reverse this trade effective ${effectiveDate}? All players and budget will be moved back to their original teams.`
+                : "Reverse this trade? All players and budget will be moved back to their original teams (effective tomorrow).";
+              if (!confirm(msg)) return;
+              await reverseTrade(trade.id, effectiveDate || undefined);
               onRefresh();
             }}
             className="px-3 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-sm font-semibold"

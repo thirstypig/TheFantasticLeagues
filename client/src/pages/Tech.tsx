@@ -62,6 +62,7 @@ const techStack = [
       { name: "Headless UI", desc: "Unstyled accessible components" },
       { name: "dnd-kit", desc: "Drag-and-drop for auction & roster management" },
       { name: "PostHog", desc: "Product analytics — pageviews, user identity, event tracking (lazy-loaded)" },
+      { name: "Google Analytics 4", desc: "Aggregate pageviews / acquisition / demographics — gtag.js, env-gated, SPA pageview on route change (lazy-loaded)" },
     ],
   },
   {
