@@ -11,6 +11,8 @@ import { writeAuditLog } from "../../lib/auditLog.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.js";
+import { enforceRosterRules } from "../../lib/featureFlags.js";
+import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 
 // --- Zod Schemas ---
 
@@ -779,7 +781,10 @@ router.patch(
     // Verify roster belongs to this league
     const roster = await prisma.roster.findUnique({
       where: { id: rosterId },
-      include: { team: { select: { leagueId: true } }, player: { select: { name: true } } },
+      include: {
+        team: { select: { leagueId: true } },
+        player: { select: { name: true, posList: true } },
+      },
     });
     if (!roster || roster.team.leagueId !== leagueId) {
       return res.status(404).json({ error: "Roster entry not found" });
@@ -792,6 +797,24 @@ router.patch(
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "No fields to update" });
+    }
+
+    // Phase 2b (plan Q8 follow-on): if the commissioner is changing the
+    // assignedPosition, verify the player is eligible for the new slot.
+    // The "IL" slot is exempt — MLB-IL eligibility is enforced by the
+    // dedicated /transactions/il-stash endpoint, not here. A null clears
+    // the assignment; also allowed.
+    if (enforceRosterRules()
+        && updates.assignedPosition !== undefined
+        && updates.assignedPosition !== null
+        && updates.assignedPosition !== "IL") {
+      const targetSlot = String(updates.assignedPosition);
+      if (!isEligibleForSlot(roster.player.posList, targetSlot)) {
+        return res.status(400).json({
+          error: `${roster.player.name} (${roster.player.posList}) is not eligible for the ${targetSlot} slot.`,
+          code: "POSITION_INELIGIBLE",
+        });
+      }
     }
 
     // If price changes, adjust team budget accordingly
