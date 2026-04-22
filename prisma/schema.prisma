@@ -293,6 +293,7 @@ model League {
   aiInsights        AiInsight[]
   boardCards        BoardCard[]
   chatMessages      ChatMessage[]
+  rosterSlotEvents  RosterSlotEvent[]
 
   @@unique([name, season])
 }
@@ -376,6 +377,7 @@ model Team {
   stats         TeamStatsPeriod[]
   season        TeamStatsSeason?
   financeEvents FinanceLedger[]
+  rosterSlotEvents RosterSlotEvent[]
 
   // ADD THIS:
   transactions TransactionEvent[]
@@ -441,6 +443,8 @@ model Player {
   draftPicks       DraftPick[]
   watchlistEntries Watchlist[]
   tradingBlockEntries TradingBlock[]
+  rosterSlotEvents RosterSlotEvent[]
+  financeLedgerEntries FinanceLedger[]
 
   @@index([name])
 }
@@ -504,6 +508,10 @@ model TransactionEvent {
   @@index([playerId])
   @@index([submittedAt])
   @@index([leagueId, submittedAt])
+  // Roster-rules-plan indexes (2026-04-21): stint derivation + backdate
+  // affected-period lookups.
+  @@index([leagueId, transactionType, effDate])
+  @@index([teamId, playerId, effDate])
 }
 
 model Season {
@@ -535,14 +543,16 @@ model Period {
   league    League?  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   season    Season?  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
-  teamStats   TeamStatsPeriod[]
-  playerStats PlayerStatsPeriod[]
-  matchups    Matchup[]
+  teamStats     TeamStatsPeriod[]
+  playerStats   PlayerStatsPeriod[]
+  matchups      Matchup[]
+  financeLedger FinanceLedger[]
 
   @@unique([seasonId, name])
   @@index([leagueId])
   @@index([seasonId])
   @@index([leagueId, status])
+  @@index([leagueId, startDate, endDate])
 }
 
 model TeamStatsPeriod {
@@ -763,9 +773,29 @@ model FinanceLedger {
   reason String?
   ts     DateTime @default(now())
 
-  team Team @relation(fields: [teamId], references: [id])
+  // Roster-rules-plan additions (2026-04-21): enable per-period IL fees,
+  // append-only void/reversal semantics, and actor tracking.
+  // All nullable — existing entry_fee/bonus/auction_adjust rows untouched.
+  // Required in application layer when type == "il_fee".
+  periodId   Int?
+  playerId   Int?
+  voidedAt   DateTime?
+  reversalOf Int?
+  createdBy  Int?
+
+  team       Team            @relation(fields: [teamId], references: [id])
+  period     Period?         @relation(fields: [periodId], references: [id])
+  player     Player?         @relation(fields: [playerId], references: [id])
+  reverses   FinanceLedger?  @relation("FinanceLedgerReversal", fields: [reversalOf], references: [id])
+  reversedBy FinanceLedger[] @relation("FinanceLedgerReversal")
 
   @@index([teamId])
+  @@index([periodId])
+  @@index([playerId])
+  @@index([teamId, periodId])
+  // Note: partial unique index scoped to type='il_fee' AND voidedAt IS NULL
+  // is expressed in the migration SQL only (Prisma @@unique can't express
+  // WHERE clauses). See migration 20260421000000_roster_rules_foundation.
 }
 
 // ======================
@@ -1287,4 +1317,67 @@ model ChatReadCursor {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, leagueId])
+}
+
+// ======================
+//  Roster Rules Enforcement (2026-04-21 plan)
+// ======================
+
+/**
+ * Append-only log of every IL slot transition. The IL fee reconciler
+ * computes billable stints directly from this table instead of pairing
+ * TransactionEvent rows — removes a fragile indirection for money-sensitive
+ * accounting (see plan architecture review).
+ *
+ * Each (IL_STASH, IL_ACTIVATE, IL_RELEASE) row is written inside the same
+ * transaction as the Roster mutation that caused it. Commissioner backdates
+ * use the effective date as effDate, not now().
+ */
+model RosterSlotEvent {
+  id        Int      @id @default(autoincrement())
+  teamId    Int
+  playerId  Int
+  leagueId  Int
+  event     String   // "IL_STASH" | "IL_ACTIVATE" | "IL_RELEASE"
+  effDate   DateTime // respects commissioner backdate; anchored at UTC midnight
+  createdAt DateTime @default(now())
+  createdBy Int?     // user id of actor
+  reason    String?  // optional commissioner justification
+  // Evidence capture — what the MLB feed returned at stash time. Best-effort
+  // freshness marker; not load-bearing for enforcement, used for audit.
+  mlbStatusSnapshot     String?
+  mlbStatusFetchedAt    DateTime?
+
+  team   Team   @relation(fields: [teamId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+  league League @relation(fields: [leagueId], references: [id])
+
+  // Idempotency — prevents duplicate IL_STASH events for same (team, player,
+  // effDate) from re-playing a commissioner action.
+  @@unique([teamId, playerId, effDate, event])
+  @@index([leagueId, effDate])
+  @@index([teamId, playerId, effDate])
+}
+
+/**
+ * Durable queue for post-commit side effects. When a transaction needs to
+ * trigger async work (e.g., IL fee reconciliation spanning a closed period),
+ * it inserts a row here inside the originating transaction. A separate
+ * drainer picks up uncompleted rows and processes them under its own
+ * advisory lock.
+ *
+ * Initial implementation: in-process setInterval-based drainer. Forward-
+ * compatible with pg-boss if/when FBST goes multi-container.
+ */
+model OutboxEvent {
+  id          Int       @id @default(autoincrement())
+  kind        String    // "IL_FEE_RECONCILE" etc.
+  payload     Json
+  attempts    Int       @default(0)
+  lastError   String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([completedAt, createdAt])
+  @@index([kind, completedAt])
 }
