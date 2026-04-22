@@ -10,6 +10,9 @@ import { logger } from "../../lib/logger.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { assertPlayerAvailable, assertRosterLimit } from "../../lib/rosterGuard.js";
+import { enforceRosterRules } from "../../lib/featureFlags.js";
+import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
+import crypto from "crypto";
 import { computeTeamStatsFromDb, computeStandingsFromStats } from "../standings/services/standingsService.js";
 import { nextDayEffective } from "../../lib/utils.js";
 import { sendWaiverResultEmail, notifyTeamOwners, getTeamOwnerEmails } from "../../lib/emailService.js";
@@ -122,6 +125,15 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
 router.post("/", requireAuth, validateBody(waiverClaimSchema), requireSeasonStatus(["IN_SEASON"], "body.teamId"), requireTeamOwner("teamId"), asyncHandler(async (req, res) => {
   const { teamId, playerId, dropPlayerId, bidAmount, priority, conditionType, conditionPlayerId, conditionNote } = req.body;
 
+  // Plan Q9=a: in-season claims must pair with a drop at submission time.
+  // Re-checked at processing time (state may move between submit and process).
+  if (enforceRosterRules() && !dropPlayerId) {
+    return res.status(400).json({
+      error: "In-season waiver claims require a dropPlayerId — every add must pair with a drop.",
+      code: "DROP_REQUIRED",
+    });
+  }
+
   // Validate conditionPlayerId exists if provided
   if (conditionPlayerId) {
     const condPlayer = await prisma.player.findUnique({ where: { id: conditionPlayerId }, select: { id: true } });
@@ -203,10 +215,11 @@ router.delete("/:id", requireAuth, asyncHandler(async (req, res) => {
 router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
 
-  // 1. Fetch pending claims for this league only
+  // 1. Fetch pending claims for this league only. Includes team.league for
+  //    the season year (needed when writing TransactionEvent rows).
   const claims = await prisma.waiverClaim.findMany({
     where: { status: "PENDING", team: { leagueId } },
-    include: { player: true, team: true },
+    include: { player: true, team: { include: { league: { select: { id: true, season: true } } } } },
   });
 
   // 2. Compute inverse-standings waiver priority (worst team = priority 1)
@@ -366,6 +379,48 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
         }
       }
 
+      // Phase 2b: position-inherit re-check at processing time. The owner
+      // specified dropPlayerId at submission, but the dropped player's slot
+      // (or eligibility) may have moved since. Plan Q9=a says we re-check
+      // here and fail the claim cleanly rather than ending up in an illegal
+      // position-count state. Load the drop roster row now so we know the
+      // target slot; also reused below for the actual drop.
+      let dropRosterForClaim: { id: number; assignedPosition: string | null; teamId: number; playerId: number } | null = null;
+      if (claim.dropPlayerId) {
+        dropRosterForClaim = await tx.roster.findFirst({
+          where: { teamId: claim.teamId, playerId: claim.dropPlayerId, releasedAt: null },
+          select: { id: true, assignedPosition: true, teamId: true, playerId: true },
+        });
+      }
+
+      if (enforceRosterRules() && claim.dropPlayerId) {
+        if (!dropRosterForClaim) {
+          await tx.waiverClaim.update({
+            where: { id: claim.id },
+            data: { status: "FAILED_INVALID", processedAt: new Date() },
+          });
+          logs.push(`Claim ${claim.id} failed: Drop player ${claim.dropPlayerId} no longer on team.`);
+          continue;
+        }
+        if (dropRosterForClaim.assignedPosition && dropRosterForClaim.assignedPosition !== "IL") {
+          const addPlayerForCheck = await tx.player.findUnique({
+            where: { id: claim.playerId },
+            select: { posList: true },
+          });
+          const compatible = addPlayerForCheck
+            ? isEligibleForSlot(addPlayerForCheck.posList, dropRosterForClaim.assignedPosition)
+            : false;
+          if (!compatible) {
+            await tx.waiverClaim.update({
+              where: { id: claim.id },
+              data: { status: "FAILED_INVALID", processedAt: new Date() },
+            });
+            logs.push(`Claim ${claim.id} failed: add player not position-eligible for drop player's ${dropRosterForClaim.assignedPosition} slot.`);
+            continue;
+          }
+        }
+      }
+
       // Execute Success
       processedPlayerIds.add(claim.playerId);
       processedResults.set(claim.playerId, claim.teamId);
@@ -382,35 +437,73 @@ router.post("/process/:leagueId", requireAuth, requireCommissionerOrAdmin("leagu
       // Guard: ensure roster limit not exceeded
       await assertRosterLimit(tx, claim.teamId, !!claim.dropPlayerId);
 
-      // Add Player to Roster (auto-assign position from primary)
-      const addedPlayer = await tx.player.findUnique({ where: { id: claim.playerId }, select: { posPrimary: true } });
+      // Add Player to Roster. Position inheritance: under ENFORCE, inherit
+      // the dropped player's slot (plan Q8 follow-on). Otherwise fall back
+      // to primary-position mapping (legacy behavior).
+      const addedPlayer = await tx.player.findUnique({ where: { id: claim.playerId }, select: { posPrimary: true, name: true } });
       const PITCHER_POS = new Set(["P", "SP", "RP", "CL"]);
       const waiverPos = (addedPlayer?.posPrimary ?? "UT").toUpperCase();
+      const legacyPos = PITCHER_POS.has(waiverPos) ? "P" : waiverPos;
+      const inheritedSlot = dropRosterForClaim?.assignedPosition && dropRosterForClaim.assignedPosition !== "IL"
+        ? dropRosterForClaim.assignedPosition
+        : null;
+      const assignedPos = (enforceRosterRules() && inheritedSlot) ? inheritedSlot : legacyPos;
+
+      const effective = nextDayEffective();
       await tx.roster.create({
         data: {
           teamId: claim.teamId,
           playerId: claim.playerId,
           source: "WAIVER",
           price: claim.bidAmount,
-          acquiredAt: nextDayEffective(),
-          assignedPosition: PITCHER_POS.has(waiverPos) ? "P" : waiverPos,
+          acquiredAt: effective,
+          assignedPosition: assignedPos,
+        },
+      });
+
+      // Plan R12: waiver processor has historically not written
+      // TransactionEvent rows — caught by the /test-new Phase 1 Explore
+      // pass. Fix: write both halves (ADD for the claim, DROP for the
+      // matched drop) so the activity feed and audit trail are complete.
+      const seasonYear = claim.team.league?.season ?? new Date().getFullYear();
+      await tx.transactionEvent.create({
+        data: {
+          rowHash: `WAIVER-ADD-${crypto.randomUUID()}-${claim.playerId}`,
+          leagueId: claim.team.leagueId,
+          season: seasonYear,
+          effDate: effective,
+          submittedAt: new Date(),
+          teamId: claim.teamId,
+          playerId: claim.playerId,
+          transactionRaw: `Waiver claim: added ${addedPlayer?.name ?? `#${claim.playerId}`} for $${claim.bidAmount}`,
+          transactionType: "ADD",
         },
       });
 
       // Drop Player if needed
-      if (claim.dropPlayerId) {
-        const rosterEntry = await tx.roster.findFirst({
-          where: { teamId: claim.teamId, playerId: claim.dropPlayerId, releasedAt: null },
+      if (claim.dropPlayerId && dropRosterForClaim) {
+        await tx.roster.update({
+          where: { id: dropRosterForClaim.id },
+          data: { releasedAt: effective, source: "WAIVER_DROP" },
         });
-        if (rosterEntry) {
-          await tx.roster.update({
-            where: { id: rosterEntry.id },
-            data: { releasedAt: nextDayEffective(), source: "WAIVER_DROP" },
-          });
 
-          if (!teamDropMap.has(claim.teamId)) teamDropMap.set(claim.teamId, new Set());
-          teamDropMap.get(claim.teamId)!.add(claim.dropPlayerId);
-        }
+        if (!teamDropMap.has(claim.teamId)) teamDropMap.set(claim.teamId, new Set());
+        teamDropMap.get(claim.teamId)!.add(claim.dropPlayerId);
+
+        const droppedPlayer = await tx.player.findUnique({ where: { id: claim.dropPlayerId }, select: { name: true } });
+        await tx.transactionEvent.create({
+          data: {
+            rowHash: `WAIVER-DROP-${crypto.randomUUID()}-${claim.dropPlayerId}`,
+            leagueId: claim.team.leagueId,
+            season: seasonYear,
+            effDate: effective,
+            submittedAt: new Date(),
+            teamId: claim.teamId,
+            playerId: claim.dropPlayerId,
+            transactionRaw: `Waiver drop: released ${droppedPlayer?.name ?? `#${claim.dropPlayerId}`}`,
+            transactionType: "DROP",
+          },
+        });
       }
 
       // Update Claim
