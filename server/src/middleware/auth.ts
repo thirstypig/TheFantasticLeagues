@@ -337,3 +337,128 @@ export function requireTeamOwner(teamIdSource = "teamId"): RequestHandler {
     return next();
   };
 }
+
+/**
+ * Middleware factory: allows either a league commissioner/admin to act on any
+ * team in the league, OR a team owner to act on their own team — but only if
+ * the league's `transactions.owner_self_serve` rule is set to "true". The
+ * default is "false" (commissioner-only), preserving OGBA's existing policy.
+ *
+ * Reads leagueId and teamId from `req.body` by default (matches the payload
+ * shape of /transactions/claim, /drop, /il-stash, /il-activate). Override via
+ * the options object for routes that use path params.
+ *
+ * Authorization precedence (fail-closed at every step):
+ *   1. Admin  →  allow (audit: authorizedVia = "admin")
+ *   2. team.leagueId !== leagueId  →  403 (IDOR — see plan C1)
+ *   3. Commissioner of this league  →  allow (authorizedVia = "commissioner")
+ *   4. `owner_self_serve === "true"` AND user owns the team  →  allow (authorizedVia = "owner_self_serve")
+ *   5. otherwise  →  403
+ *
+ * Denial messages are deliberately generic (plan C3) — three distinct
+ * messages would let an attacker enumerate whether they're a non-member vs.
+ * a non-owner vs. a toggle-off-league. Admins can still read the specific
+ * reason from the server logs via request-id correlation.
+ *
+ * Sets `req.authorizedVia` for downstream handlers to persist in audit rows.
+ *
+ * Must be placed after `requireAuth` in the middleware chain.
+ */
+export function requireTeamOwnerOrCommissioner(
+  opts: { leagueIdSource?: string; teamIdSource?: string } = {},
+): RequestHandler {
+  const leagueIdSource = opts.leagueIdSource ?? "leagueId";
+  const teamIdSource = opts.teamIdSource ?? "teamId";
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    // Resolve IDs from body (default for mutation endpoints), then params,
+    // then query — matches the fallback order used elsewhere in this file.
+    const resolve = (src: string): number => {
+      const raw = req.body?.[src] ?? req.params?.[src] ?? (req.query as any)?.[src];
+      return Number(raw);
+    };
+    const leagueId = resolve(leagueIdSource);
+    const teamId = resolve(teamIdSource);
+
+    if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
+      return res.status(400).json({ error: "Invalid leagueId or teamId" });
+    }
+
+    const userId = req.user!.id;
+    const requestId = req.requestId;
+
+    // Admin short-circuit — bypasses every check below, logged for audit.
+    if (req.user!.isAdmin) {
+      (req as any).authorizedVia = "admin";
+      logger.info(
+        { event: "admin_transaction_auth", userId, leagueId, teamId, requestId },
+        "admin authorized for roster transaction",
+      );
+      return next();
+    }
+
+    // C1 guard — team must belong to the claimed league before we look at
+    // anything else. Prevents cross-league IDOR where a user who owns Team A
+    // in League 1 submits with teamId=B (in League 2, different toggle state).
+    const team = await prisma.team.findFirst({
+      where: { id: teamId, leagueId },
+      select: { id: true },
+    });
+    if (!team) {
+      logger.info(
+        { event: "roster_auth_denied", reason: "team_league_mismatch", userId, leagueId, teamId, requestId },
+        "denied: team does not belong to this league",
+      );
+      return res.status(403).json({ error: "Not authorized." });
+    }
+
+    // Commissioner path — uses the shared 2-min membership cache so this
+    // stays cheap on the hot mutation endpoints.
+    const cached = getCachedMembership(userId, leagueId);
+    let role: string | null;
+    if (cached) {
+      role = cached.role;
+    } else {
+      const m = await prisma.leagueMembership.findUnique({
+        where: { leagueId_userId: { leagueId, userId } },
+        select: { role: true },
+      });
+      role = m?.role ?? null;
+      setCachedMembership(userId, leagueId, role);
+    }
+    if (role === "COMMISSIONER") {
+      (req as any).authorizedVia = "commissioner";
+      return next();
+    }
+
+    // Owner self-serve path — requires the league's toggle AND actual ownership.
+    // Imported lazily to avoid a circular dependency between auth.ts and
+    // leagueRuleCache.ts (which doesn't exist today, but leaves room for future
+    // helpers to grow into either module).
+    const { getLeagueRules } = await import("../lib/leagueRuleCache.js");
+    const rules = await getLeagueRules(prisma, leagueId);
+    const selfServe = rules.transactions?.owner_self_serve === "true";
+    if (!selfServe) {
+      logger.info(
+        { event: "roster_auth_denied", reason: "commissioner_only_league", userId, leagueId, teamId, requestId },
+        "denied: league is commissioner-only for roster transactions",
+      );
+      return res.status(403).json({ error: "Not authorized." });
+    }
+
+    // Reuses the existing isTeamOwner helper (which checks BOTH legacy
+    // Team.ownerUserId AND the TeamOwnership join table) so single-owner
+    // teams migrated before multi-owner support still authorize correctly.
+    const owns = await isTeamOwner(teamId, userId);
+    if (!owns) {
+      logger.info(
+        { event: "roster_auth_denied", reason: "not_team_owner", userId, leagueId, teamId, requestId },
+        "denied: user is a league member but does not own target team",
+      );
+      return res.status(403).json({ error: "Not authorized." });
+    }
+
+    (req as any).authorizedVia = "owner_self_serve";
+    return next();
+  };
+}
