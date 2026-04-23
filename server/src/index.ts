@@ -58,6 +58,7 @@ import { attachAuctionWs } from './features/auction/services/auctionWsService.js
 import { attachDraftWs } from './features/draft/services/draftWsService.js';
 import { syncAllActivePeriods, syncDailyStats } from './features/players/services/mlbStatsSyncService.js';
 import * as errorBuffer from './lib/errorBuffer.js';
+import { isRosterRuleError, type RosterRuleErrorCode } from "./lib/rosterRuleError.js";
 
 // Validate required env vars at startup
 const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET", "IP_HASH_SECRET"];
@@ -409,7 +410,54 @@ async function main() {
     res.status(404).json({ error: "API endpoint not found", requestId: req.requestId });
   });
 
-  // --- 4. Global Error Handler ---
+  // --- 3. Typed RosterRuleError → HTTP status mapper ---
+  // Must run BEFORE the 500 handler below. Maps domain errors from roster-rule
+  // guards and the new roster-moves auth middleware to appropriate HTTP status
+  // codes. Without this, thrown RosterRuleErrors would fall through to the 500
+  // handler — the plan's "server returns 403 FORBIDDEN" contract depends on
+  // this mapping existing and being reached before the 500 fallback.
+  //
+  // Route handlers can still rescue `isRosterRuleError` inline and return a
+  // specific response shape if they need it — but as of this file's ship
+  // date, that's no longer necessary. Throwing the typed error is enough.
+  const ROSTER_RULE_STATUS: Record<RosterRuleErrorCode, number> = {
+    GHOST_IL: 400,
+    IL_SLOT_FULL: 400,
+    NOT_MLB_IL: 400,
+    POSITION_INELIGIBLE: 400,
+    ROSTER_CAP: 400,
+    DROP_REQUIRED: 400,
+    MLB_IDENTITY_MISSING: 400,
+    MLB_FEED_UNAVAILABLE: 503,
+    SEASON_NOT_IN_PROGRESS: 400,
+    IL_UNKNOWN_PLAYER: 400,
+    INVALID_EFFECTIVE_DATE: 400,
+    IDOR: 404,
+    NOT_ON_IL: 400,
+    OWNERSHIP_CONFLICT: 409,
+    NOT_AUTHORIZED: 403,
+    NOT_TEAM_OWNER: 403,
+  };
+
+  app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!isRosterRuleError(err)) return next(err);
+    const status = ROSTER_RULE_STATUS[err.code] ?? 400;
+    const requestId = req.requestId ?? "unknown";
+    // Log at info level — these are expected denials, not server bugs. Admins
+    // can still pull them from stdout via request-id correlation.
+    logger.info(
+      { code: err.code, status, metadata: err.metadata, path: req.path, method: req.method, requestId, userId: req.user?.id },
+      "RosterRuleError",
+    );
+    return res.status(status).json({
+      error: err.message,
+      code: err.code,
+      requestId,
+      ref: `ERR-${requestId}`,
+    });
+  });
+
+  // --- 4. Global 500 Error Handler (catches everything else) ---
   app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
