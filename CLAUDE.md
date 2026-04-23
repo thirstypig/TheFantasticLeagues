@@ -1,5 +1,11 @@
 # The Fantastic Leagues (FBST)
 
+## Current status
+
+<!-- now-tldr -->
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. App is live, our first auction of the season just wrapped, and I'm rolling out roster-rules enforcement in phases while iterating weekly on AI-assisted features (draft grades, trade analyzer, a weekly "Week in Baseball" report). Current focus: merging fixes for two silent production regressions caught this week, landing the Phase 4 UI, and finishing commissioner tooling so I can flip roster-rules enforcement on for my own OGBA owners.
+<!-- /now-tldr -->
+
 ## Project Overview
 Fantasy baseball league management tool. Client/server monorepo organized by **feature modules**.
 
@@ -317,7 +323,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (712 server + 201 client + 50 MCP + 1 E2E = 964 tests, 27 feature modules)
+### Current Test Coverage (712 server + 237 client + 50 MCP + 1 E2E = 1000 tests, 27 feature modules)
 
 See `docs/TESTING.md` for the full catalog, vocabulary (unit/integration/E2E), coverage gaps, and run cadence.
 E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e` (requires both dev servers up).
@@ -361,6 +367,7 @@ E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e`
 **Client (187 tests):**
 - `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `client/src/lib/__tests__/baseballUtils.test.ts` — 32 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition, positionToSlots)
+- `client/src/lib/__tests__/mlbStatus.test.ts` — 6 tests (isMlbIlStatus: real MLB API format `Injured N-Day` + legacy `Injured List N-Day` + non-IL rejects + malformed cases + case sensitivity; mirror of server `ilSlotGuard.test.ts`)
 - `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)
 - `client/src/features/standings/__tests__/StatsTables.test.tsx` — 22 tests (table rendering, sorting)
 - `client/src/features/auction/__tests__/AuctionValues.test.tsx` — 10 tests (rendering, tabs, search, sorting, modal)
