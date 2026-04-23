@@ -115,7 +115,7 @@ export async function warmMlbTeamCache(mlbIds: string[]): Promise<Record<string,
 const ROSTER_STATUS_TTL = 21600;
 
 export type MlbRosterStatus = {
-  /** Raw status string, e.g. "Injured List 10-Day", "Active", "Minor League". */
+  /** Raw status string, e.g. "Injured 10-Day", "Active", "Minor League". */
   status: string;
   /** Player's current position abbreviation on MLB's 40-man (e.g. "SP", "RP"). */
   position: string;
@@ -133,8 +133,8 @@ type FortyManRosterEntry = {
 type FortyManResponse = { roster?: FortyManRosterEntry[] };
 
 /**
- * Look up an individual player's current MLB status (e.g. "Injured List
- * 10-Day", "Active", "Minor League"). Reuses the 40-man roster feed with
+ * Look up an individual player's current MLB status (e.g. "Injured 10-Day",
+ * "Active", "Minor League"). Reuses the 40-man roster feed with
  * a 6-hour cache so roster-transaction gates don't hit statsapi on every
  * call.
  *

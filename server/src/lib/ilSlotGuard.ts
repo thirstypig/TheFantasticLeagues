@@ -2,8 +2,11 @@
 // Guards for IL slot invariants — MLB-IL eligibility, slot-cap, ghost-IL.
 //
 // Conventions from the plan (2026-04-21):
-//   - Eligibility (Q5, Q6): player's MLB status must start with "Injured List".
-//     Paternity / bereavement / restricted / suspended / minors do NOT qualify.
+//   - Eligibility (Q5, Q6): player's MLB status must be an "Injured …-Day"
+//     designation (10/15/60-Day IL — MLB statsapi formats these as
+//     "Injured 10-Day", "Injured 60-Day", etc.; the legacy "Injured List
+//     10-Day" form is also accepted for forward compat). Paternity /
+//     bereavement / restricted / suspended / minors do NOT qualify.
 //   - Extra-capacity model (Q4): IL slots live outside the active roster cap.
 //     League's `il.slot_count` rule controls how many (default 2).
 //   - Ghost-IL block (Q12, plan R9): fails CLOSED on feed unavailability for
@@ -33,7 +36,7 @@ type PrismaLike = {
  * a trail even if the MLB status changed minutes later.
  */
 export type MlbStatusCheck = {
-  status: string;         // e.g. "Injured List 10-Day"
+  status: string;         // e.g. "Injured 10-Day" (raw MLB statsapi format)
   cacheFetchedAt: Date;   // when the 40-man feed data was pulled
 };
 
@@ -42,12 +45,17 @@ const DEFAULT_IL_SLOT_COUNT = 2;
 
 /**
  * Does this MLB status qualify for an IL slot?
- * Plan Q6: only "Injured List …" prefix qualifies. Paternity / bereavement /
- * restricted / suspended do not.
+ * Plan Q6: only the MLB "Injured …-Day" designations qualify. Paternity /
+ * bereavement / restricted / suspended do not. The MLB statsapi 40-man feed
+ * returns these as `"Injured 10-Day"` / `"Injured 15-Day"` / `"Injured 60-Day"`
+ * (not `"Injured List 10-Day"` — that variant is kept as a defensive
+ * forward-compat match in case MLB ever changes the string).
  */
+const MLB_IL_STATUS_RE = /^Injured (List )?\d+-Day$/;
+
 export function isMlbIlStatus(status: string | null | undefined): boolean {
   if (!status) return false;
-  return status.startsWith("Injured List");
+  return MLB_IL_STATUS_RE.test(status);
 }
 
 /**
@@ -97,7 +105,7 @@ export async function checkMlbIlEligibility(
 
   if (!isMlbIlStatus(result.status)) {
     throw new RosterRuleError("NOT_MLB_IL",
-      `${player.name}'s MLB status is "${result.status}" — not eligible for an IL slot. Only "Injured List …" statuses qualify.`,
+      `${player.name}'s MLB status is "${result.status}" — not eligible for an IL slot. Only "Injured …-Day" statuses (10/15/60-Day IL) qualify.`,
       { playerId, mlbStatus: result.status });
   }
 
@@ -147,7 +155,7 @@ export async function assertIlSlotAvailable(
 
 /**
  * Find players this team has in IL slots whose MLB status is no longer
- * "Injured List …" (ghost-IL). Used by:
+ * an "Injured …-Day" designation (ghost-IL). Used by:
  *   - `assertNoGhostIl` to block new stashes while ghost-IL exists (plan Q12 = b)
  *   - The commissioner dashboard banner and per-team UI badge
  *   - The `auditRosterRules.ts` pre-ship report
@@ -206,7 +214,7 @@ export async function assertNoGhostIl(
   if (ghosts.length > 0) {
     const names = ghosts.map(g => g.playerName).join(", ");
     throw new RosterRuleError("GHOST_IL",
-      `Team has ghost-IL player${ghosts.length > 1 ? "s" : ""} (${names}) whose MLB status is no longer "Injured List …". Activate or drop them before stashing another player.`,
+      `Team has ghost-IL player${ghosts.length > 1 ? "s" : ""} (${names}) whose MLB status is no longer an "Injured …-Day" designation. Activate or drop them before stashing another player.`,
       { ghostCount: ghosts.length, ghostPlayerIds: ghosts.map(g => g.playerId) });
   }
 }

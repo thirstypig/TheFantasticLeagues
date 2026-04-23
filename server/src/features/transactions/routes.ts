@@ -186,9 +186,9 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   }
 
   // 3. Ghost-IL pre-check (plan Q12=b). A team with a player stashed in an
-  //    IL slot whose MLB status is no longer "Injured List …" cannot do any
-  //    new roster operation until they resolve it. Fails open on feed
-  //    unavailability (listGhostIlPlayersForTeam never speculatively labels
+  //    IL slot whose MLB status is no longer an "Injured …-Day" designation
+  //    cannot do any new roster operation until they resolve it. Fails open on
+  //    feed unavailability (listGhostIlPlayersForTeam never speculatively labels
   //    a player ghost when the MLB status can't be read).
   if (enforce) {
     try {
@@ -508,8 +508,9 @@ async function requireCommishOrAdmin(req: any, res: any, leagueId: number): Prom
  * stash player just vacated. Both operations succeed, or neither.
  *
  * Guards:
- *   - stashPlayer's MLB status must start with "Injured List" (pre-tx, fail
- *     closed on feed unavailability — plan R9)
+ *   - stashPlayer's MLB status must be an "Injured …-Day" designation (10/15/
+ *     60-Day IL, per the MLB statsapi 40-man feed format; pre-tx, fail closed
+ *     on feed unavailability — plan R9)
  *   - team must have an open IL slot (`il.slot_count` rule)
  *   - team cannot have a ghost-IL player blocking further stashes
  *   - addPlayer must be position-eligible for stashPlayer's current slot

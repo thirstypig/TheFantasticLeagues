@@ -9,7 +9,7 @@
 export type RosterRuleErrorCode =
   | "GHOST_IL"                // team has a ghost-IL player blocking further stashes
   | "IL_SLOT_FULL"            // team has no open IL slots left
-  | "NOT_MLB_IL"              // player's MLB status does not start with "Injured List"
+  | "NOT_MLB_IL"              // player's MLB status is not an "Injured …-Day" designation
   | "POSITION_INELIGIBLE"     // added player cannot fill the dropped player's slot
   | "ROSTER_CAP"              // transaction would violate per-league exact-cap invariant
   | "DROP_REQUIRED"           // in-season claim/waiver submission without a dropPlayerId

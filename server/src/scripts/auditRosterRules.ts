@@ -5,7 +5,7 @@
 //   1. Teams off-cap in an IN_SEASON season (would be rejected in-season
 //      once enforcement goes live)
 //   2. Ghost-IL players (assignedPosition='IL' but MLB status is no longer
-//      "Injured List …") — prevents the team from doing new stashes
+//      an "Injured …-Day" designation) — prevents the team from doing new stashes
 //   3. Retroactive IL fee estimate per team under policy Q17=b + Q15=bundle +
 //      R15 (Option B full retroactive) — how many $ each team will owe at
 //      enforcement flip, based on Roster.acquiredAt stint windows and
