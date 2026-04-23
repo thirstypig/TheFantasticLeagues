@@ -34,8 +34,12 @@ const BASE_PROPS = {
   onComplete: vi.fn(),
 };
 
+// Free agents come from getPlayerSeasonStats and are NOT enriched with
+// _dbPlayerId — that field is only set on rows joined against a Roster
+// row. mlb_id is the stable identifier the panel keys on and what the
+// server accepts via the /transactions/claim dual-ID contract.
 const freeAgent = {
-  _dbPlayerId: 500,
+  mlb_id: "642731",
   _dbTeamId: undefined,
   player_name: "Jake Bauers",
   positions: "1B,OF",
@@ -96,6 +100,33 @@ describe("AddDropPanel — DROP_REQUIRED in-season", () => {
 
     const submit = screen.getByRole("button", { name: /Add \+ Drop/ });
     expect(submit).not.toBeDisabled();
+  });
+});
+
+describe("AddDropPanel — free-agent key uniqueness (regression)", () => {
+  // Regression for a bug where every free-agent button shared key=0 because
+  // the panel fell back to `_dbPlayerId ?? 0` — which is undefined for FAs.
+  // Clicking one FA flipped `isSelected` true for every row. Fixture here
+  // mirrors real data: multiple FAs with distinct mlb_id and no _dbPlayerId.
+  it("clicking one free agent selects only that one, not every FA with missing _dbPlayerId", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    const fas: RosterMovesPlayer[] = [
+      { mlb_id: "1001", player_name: "Alpha One", positions: "1B" },
+      { mlb_id: "1002", player_name: "Bravo Two", positions: "OF" },
+      { mlb_id: "1003", player_name: "Charlie Three", positions: "P" },
+    ];
+    render(<AddDropPanel {...BASE_PROPS} players={[...fas, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Bravo Two"));
+
+    // Only the clicked FA gets the selected background class.
+    const allFaButtons = screen.getAllByRole("button").filter((b) =>
+      fas.some((f) => b.textContent?.includes(f.player_name ?? ""))
+    );
+    const selected = allFaButtons.filter((b) => b.className.includes("bg-[var(--lg-accent)]/15"));
+    expect(selected).toHaveLength(1);
+    expect(selected[0].textContent).toContain("Bravo Two");
   });
 });
 

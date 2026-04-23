@@ -30,7 +30,13 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
   const inSeason = seasonStatus === "IN_SEASON";
 
   const [query, setQuery] = useState("");
-  const [addPlayerId, setAddPlayerId] = useState<number | null>(null);
+  // Track the add selection by mlb_id, not _dbPlayerId. Free agents come from
+  // getPlayerSeasonStats and do NOT carry _dbPlayerId (that field is only
+  // enriched on rows joined against a Roster row). Keying by _dbPlayerId
+  // collapsed every FA to pid=0, making one click select all 30. mlb_id is
+  // set by normalizeTwoWayRow for every row and is also what the server's
+  // /transactions/claim accepts for FAs that aren't in the Roster table.
+  const [addMlbId, setAddMlbId] = useState<string | null>(null);
   const [dropPlayerId, setDropPlayerId] = useState<number | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +59,8 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
   }, [players, teamId]);
 
   const selectedAdd = useMemo(
-    () => freeAgents.find((p) => p._dbPlayerId === addPlayerId) ?? null,
-    [freeAgents, addPlayerId],
+    () => freeAgents.find((p) => String(p.mlb_id ?? "") === addMlbId) ?? null,
+    [freeAgents, addMlbId],
   );
   const selectedDrop = useMemo(
     () => dropCandidates.find((p) => p._dbPlayerId === dropPlayerId) ?? null,
@@ -74,26 +80,31 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
 
   const dropRequired = inSeason;
   const canSubmit =
-    addPlayerId !== null &&
+    addMlbId !== null &&
     (!dropRequired || dropPlayerId !== "") &&
     !submitting;
 
   async function handleSubmit() {
-    if (!canSubmit || addPlayerId === null) return;
+    if (!canSubmit || addMlbId === null || !selectedAdd) return;
     setSubmitting(true);
     setError(null);
     try {
+      // Server accepts either playerId (DB Player.id) or mlbId. Free agents
+      // typically don't have _dbPlayerId; send mlbId as the canonical key
+      // and include playerId only when the row was already enriched.
+      const addDbId = selectedAdd._dbPlayerId;
       await fetchJsonApi(`${API_BASE}/transactions/claim`, {
         method: "POST",
         body: JSON.stringify({
           leagueId,
           teamId,
-          playerId: addPlayerId,
+          mlbId: addMlbId,
+          ...(addDbId ? { playerId: addDbId } : {}),
           ...(dropPlayerId !== "" ? { dropPlayerId: Number(dropPlayerId) } : {}),
         }),
       });
       // Reset panel state so the next move starts clean.
-      setAddPlayerId(null);
+      setAddMlbId(null);
       setDropPlayerId("");
       setQuery("");
       onComplete();
@@ -121,7 +132,7 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
           type="text"
           placeholder="Search by name…"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setAddPlayerId(null); }}
+          onChange={(e) => { setQuery(e.target.value); setAddMlbId(null); }}
           className="w-full mb-2 rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
         />
         <div className="max-h-60 overflow-y-auto rounded border border-[var(--lg-border-faint)]">
@@ -129,13 +140,13 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
             <div className="p-3 text-[11px] text-[var(--lg-text-muted)]">No matching free agents.</div>
           ) : (
             freeAgents.map((p) => {
-              const pid = p._dbPlayerId ?? 0;
-              const isSelected = pid === addPlayerId;
+              const key = String(p.mlb_id ?? p._dbPlayerId ?? p.player_name ?? "");
+              const isSelected = key === addMlbId;
               return (
                 <button
-                  key={pid}
+                  key={key}
                   type="button"
-                  onClick={() => setAddPlayerId(pid)}
+                  onClick={() => setAddMlbId(key)}
                   className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between border-b border-[var(--lg-border-faint)] ${
                     isSelected ? "bg-[var(--lg-accent)]/15 text-[var(--lg-text-primary)]" : "hover:bg-[var(--lg-tint)]"
                   }`}
@@ -179,7 +190,7 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
       </div>
 
       {/* Inline warnings */}
-      {dropRequired && addPlayerId !== null && dropPlayerId === "" && (
+      {dropRequired && addMlbId !== null && dropPlayerId === "" && (
         <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
           In-season adds require a matching drop. Pick a player to drop to enable submit.
         </div>
