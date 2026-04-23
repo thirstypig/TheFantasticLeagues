@@ -4,7 +4,8 @@ const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     user: { findUnique: vi.fn(), create: vi.fn() },
     leagueMembership: { findUnique: vi.fn() },
-    team: { findUnique: vi.fn(), findMany: vi.fn() },
+    leagueRule: { findMany: vi.fn() },
+    team: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     teamOwnership: { findUnique: vi.fn(), findMany: vi.fn() },
   },
 }));
@@ -26,12 +27,14 @@ import {
   requireCommissionerOrAdmin,
   requireLeagueMember,
   requireTeamOwner,
+  requireTeamOwnerOrCommissioner,
   isTeamOwner,
   getOwnedTeamIds,
   clearUserCache,
   clearMembershipCache,
 } from "../auth.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
+import { _clearLeagueRuleCache } from "../../lib/leagueRuleCache.js";
 
 function mockReq(overrides: any = {}): any {
   return { user: null, headers: {}, params: {}, body: {}, ...overrides };
@@ -48,6 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   clearUserCache();
   clearMembershipCache();
+  _clearLeagueRuleCache();
 });
 
 describe("attachUser", () => {
@@ -395,5 +399,219 @@ describe("getOwnedTeamIds", () => {
     const ids = await getOwnedTeamIds(1);
 
     expect(ids).toEqual([5]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// requireTeamOwnerOrCommissioner
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Exercises the full role × toggle × ownership × IDOR matrix from the
+// Roster Moves plan (docs/plans/2026-04-23-roster-moves-unified-redesign-plan.md).
+// Every denial path must return 403 with the generic "Not authorized." message
+// — distinct messages would leak membership/toggle state to attackers.
+
+describe("requireTeamOwnerOrCommissioner", () => {
+  const mkReq = (user: any, body: any = { leagueId: 1, teamId: 10 }) =>
+    mockReq({ user, body });
+
+  const setRule = (selfServe: boolean) => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(
+      selfServe
+        ? [{ category: "transactions", key: "owner_self_serve", value: "true" }]
+        : [{ category: "transactions", key: "owner_self_serve", value: "false" }],
+    );
+  };
+
+  const setTeamInLeague = (inLeague: boolean) => {
+    mockPrisma.team.findFirst.mockResolvedValue(inLeague ? { id: 10 } : null);
+  };
+
+  it("admin short-circuits without DB lookups for league/team", async () => {
+    const req = mkReq({ id: 99, isAdmin: true });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authorizedVia).toBe("admin");
+    // Admin path bypasses all of these.
+    expect(mockPrisma.team.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.leagueMembership.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.leagueRule.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects with 400 when leagueId or teamId is missing/non-numeric", async () => {
+    const req = mockReq({ user: { id: 1, isAdmin: false }, body: {} });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(res.statusCode).toBe(400);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("rejects (403) when team does not belong to the claimed league — C1 IDOR", async () => {
+    setTeamInLeague(false); // cross-league attack path
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({ error: "Not authorized." });
+    expect(next).not.toHaveBeenCalled();
+    // Must stop before hitting the expensive path.
+    expect(mockPrisma.leagueMembership.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.leagueRule.findMany).not.toHaveBeenCalled();
+  });
+
+  it("allows a commissioner on any team in their league (toggle irrelevant)", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "COMMISSIONER" });
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authorizedVia).toBe("commissioner");
+    // Commissioner path short-circuits BEFORE the toggle lookup.
+    expect(mockPrisma.leagueRule.findMany).not.toHaveBeenCalled();
+  });
+
+  it("denies (403) a non-commissioner owner when toggle is false", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+    setRule(false);
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({ error: "Not authorized." });
+    expect(next).not.toHaveBeenCalled();
+    // Doesn't probe ownership when toggle is off — avoids leaking ownership signal.
+    expect(mockPrisma.team.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.teamOwnership.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("denies (403) a non-member when toggle is false (fail-closed on missing membership)", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+    setRule(false);
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("denies (403) a non-member when toggle is true (must still own the team)", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+    setRule(true);
+    mockPrisma.team.findUnique.mockResolvedValue({ ownerUserId: 999 }); // not our user
+    mockPrisma.teamOwnership.findUnique.mockResolvedValue(null);
+
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("allows an owner on their own team when toggle is true — legacy ownerUserId path", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+    setRule(true);
+    // Single-owner team that predates multi-owner support.
+    mockPrisma.team.findUnique.mockResolvedValue({ ownerUserId: 7 });
+    mockPrisma.teamOwnership.findUnique.mockResolvedValue(null);
+
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authorizedVia).toBe("owner_self_serve");
+  });
+
+  it("allows an owner on their own team when toggle is true — co-owner via TeamOwnership", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+    setRule(true);
+    // Multi-owner team: ownerUserId is a different user (the "primary"),
+    // but our user is listed in TeamOwnership.
+    mockPrisma.team.findUnique.mockResolvedValue({ ownerUserId: 1 });
+    mockPrisma.teamOwnership.findUnique.mockResolvedValue({ id: 42 });
+
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.authorizedVia).toBe("owner_self_serve");
+  });
+
+  it("denies (403) an owner of a DIFFERENT team in the same league when toggle is true", async () => {
+    setTeamInLeague(true);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+    setRule(true);
+    mockPrisma.team.findUnique.mockResolvedValue({ ownerUserId: 999 });
+    mockPrisma.teamOwnership.findUnique.mockResolvedValue(null);
+
+    const req = mkReq({ id: 7, isAdmin: false });
+    const res = mockRes();
+    const next = vi.fn();
+
+    await requireTeamOwnerOrCommissioner()(req, res, next);
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  // Fail-closed matrix for the rule value. Any value other than the literal
+  // string "true" must deny, with no trimming or coercion. A future refactor
+  // to toBool() would silently weaken authorization — this matrix guards it.
+  describe("rule value fail-closed matrix (toggle must be exactly 'true')", () => {
+    const denyCases: Array<[string, any]> = [
+      ["rule row missing", []],
+      ["empty string", [{ category: "transactions", key: "owner_self_serve", value: "" }]],
+      ["capitalized False", [{ category: "transactions", key: "owner_self_serve", value: "False" }]],
+      ["capitalized TRUE", [{ category: "transactions", key: "owner_self_serve", value: "TRUE" }]],
+      ["numeric 1", [{ category: "transactions", key: "owner_self_serve", value: "1" }]],
+      ["whitespace-padded true", [{ category: "transactions", key: "owner_self_serve", value: " true " }]],
+    ];
+
+    for (const [label, rules] of denyCases) {
+      it(`denies (403) when value is ${label}`, async () => {
+        setTeamInLeague(true);
+        mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+        mockPrisma.leagueRule.findMany.mockResolvedValue(rules);
+
+        const req = mkReq({ id: 7, isAdmin: false });
+        const res = mockRes();
+        const next = vi.fn();
+
+        await requireTeamOwnerOrCommissioner()(req, res, next);
+
+        expect(res.statusCode).toBe(403);
+        expect(next).not.toHaveBeenCalled();
+      });
+    }
   });
 });

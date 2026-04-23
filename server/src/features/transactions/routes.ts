@@ -4,7 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
-import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
+import { requireAuth, requireLeagueMember, requireTeamOwnerOrCommissioner } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
@@ -114,20 +114,8 @@ router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncH
  * POST /api/transactions/claim
  * Claims a player for a team. Commissioner-only per league rules.
  */
-router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requireSeasonStatus(["IN_SEASON"]), asyncHandler(async (req, res) => {
+router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requireSeasonStatus(["IN_SEASON"]), requireTeamOwnerOrCommissioner(), asyncHandler(async (req, res) => {
   const { leagueId, teamId, dropPlayerId, effectiveDate: effDateRaw } = req.body;
-
-  // Commissioner-only: verify user is commissioner of this league or site admin
-  const isPrivileged = req.user!.isAdmin;
-  if (!isPrivileged) {
-    const membership = await prisma.leagueMembership.findUnique({
-      where: { leagueId_userId: { leagueId, userId: req.user!.id } },
-      select: { role: true },
-    });
-    if (!membership || membership.role !== "COMMISSIONER") {
-      return res.status(403).json({ error: "Add/Drop is commissioner-only" });
-    }
-  }
 
   let effective: Date;
   try {
@@ -388,19 +376,8 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
  * POST /api/transactions/drop
  * Drops a player from a team roster. Commissioner-only.
  */
-router.post("/transactions/drop", requireAuth, validateBody(dropSchema), requireSeasonStatus(["IN_SEASON"]), asyncHandler(async (req, res) => {
+router.post("/transactions/drop", requireAuth, validateBody(dropSchema), requireSeasonStatus(["IN_SEASON"]), requireTeamOwnerOrCommissioner(), asyncHandler(async (req, res) => {
   const { leagueId, teamId, playerId, effectiveDate: effDateRaw } = req.body;
-
-  // Commissioner-only check
-  if (!req.user!.isAdmin) {
-    const membership = await prisma.leagueMembership.findUnique({
-      where: { leagueId_userId: { leagueId, userId: req.user!.id } },
-      select: { role: true },
-    });
-    if (!membership || membership.role !== "COMMISSIONER") {
-      return res.status(403).json({ error: "Drop is commissioner-only" });
-    }
-  }
 
   // Verify player is on team roster
   const rosterEntry = await prisma.roster.findFirst({
@@ -487,19 +464,6 @@ const ilStashSchema = z.object({
   message: "addPlayerId or addMlbId required",
 });
 
-async function requireCommishOrAdmin(req: any, res: any, leagueId: number): Promise<boolean> {
-  if (req.user!.isAdmin) return true;
-  const membership = await prisma.leagueMembership.findUnique({
-    where: { leagueId_userId: { leagueId, userId: req.user!.id } },
-    select: { role: true },
-  });
-  if (!membership || membership.role !== "COMMISSIONER") {
-    res.status(403).json({ error: "IL operations are commissioner-only" });
-    return false;
-  }
-  return true;
-}
-
 /**
  * POST /api/transactions/il-stash
  *
@@ -530,10 +494,9 @@ router.post(
   requireAuth,
   validateBody(ilStashSchema),
   requireSeasonStatus(["IN_SEASON"]),
+  requireTeamOwnerOrCommissioner(),
   asyncHandler(async (req, res) => {
     const { leagueId, teamId, stashPlayerId, addPlayerId: addPlayerIdInput, addMlbId, reason, effectiveDate: effDateRaw } = req.body;
-
-    if (!(await requireCommishOrAdmin(req, res, leagueId))) return;
 
     // Pre-transaction: resolve effective date.
     let effective: Date;
@@ -783,10 +746,9 @@ router.post(
   requireAuth,
   validateBody(ilActivateSchema),
   requireSeasonStatus(["IN_SEASON"]),
+  requireTeamOwnerOrCommissioner(),
   asyncHandler(async (req, res) => {
     const { leagueId, teamId, activatePlayerId, dropPlayerId, reason, effectiveDate: effDateRaw } = req.body;
-
-    if (!(await requireCommishOrAdmin(req, res, leagueId))) return;
 
     let effective: Date;
     try {

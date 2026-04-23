@@ -5,6 +5,11 @@ import {
   assertRosterAtExactCap,
 } from "../rosterGuard.js";
 import { RosterRuleError, isRosterRuleError } from "../rosterRuleError.js";
+import { _clearLeagueRuleCache } from "../leagueRuleCache.js";
+
+// rosterGuard reads rules via the process-local leagueRuleCache. Clear it
+// between tests so each test's mock tx returns the expected value.
+beforeEach(() => _clearLeagueRuleCache());
 
 function makeTx(overrides: Partial<{
   rules: Array<{ category: string; key: string; value: string }>;

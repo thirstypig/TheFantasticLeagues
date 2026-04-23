@@ -60,6 +60,7 @@ vi.mock("../../../middleware/auth.js", () => ({
   requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   requireTeamOwner: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
   requireLeagueMember: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireTeamOwnerOrCommissioner: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/validate.js", () => ({
   validateBody: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),

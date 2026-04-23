@@ -10,6 +10,7 @@
 //     must leave the team at exactly cap, never above, never below.
 
 import { RosterRuleError } from "./rosterRuleError.js";
+import { getLeagueRules } from "./leagueRuleCache.js";
 
 type PrismaLike = {
   roster: {
@@ -67,17 +68,12 @@ export async function loadLeagueRosterCap(
   tx: PrismaLike,
   leagueId: number,
 ): Promise<number> {
-  const rules = await tx.leagueRule.findMany({
-    where: { leagueId, category: "roster", key: { in: ["pitcher_count", "batter_count"] } },
-    select: { key: true, value: true },
-  });
-
-  const byKey = new Map(rules.map(r => [r.key, Number(r.value)]));
-  const pitcher = byKey.get("pitcher_count");
-  const batter = byKey.get("batter_count");
+  const rules = await getLeagueRules(tx as any, leagueId);
+  const pitcher = Number(rules.roster?.pitcher_count);
+  const batter = Number(rules.roster?.batter_count);
 
   if (Number.isFinite(pitcher) && Number.isFinite(batter)) {
-    return (pitcher as number) + (batter as number);
+    return pitcher + batter;
   }
   return DEFAULT_ROSTER_MAX;
 }

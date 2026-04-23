@@ -2,6 +2,7 @@
 // MLB team abbreviation → league mapping for stats_source filtering
 
 import { prisma } from "../db/prisma.js";
+import { getLeagueRules } from "./leagueRuleCache.js";
 
 const NL_TEAMS = new Set([
   "ARI", "AZ", "ATL", "CHC", "CIN", "COL", "LAD", "MIA", "MIL",
@@ -22,9 +23,6 @@ export function getTeamsForSource(source: string): Set<string> | null {
 
 /** Looks up the league's stats_source rule, defaults to "ALL". */
 export async function getLeagueStatsSource(leagueId: number): Promise<string> {
-  const rule = await prisma.leagueRule.findFirst({
-    where: { leagueId, key: "stats_source" },
-    select: { value: true },
-  });
-  return rule?.value ?? "ALL";
+  const rules = await getLeagueRules(prisma, leagueId);
+  return rules.overview?.stats_source ?? "ALL";
 }

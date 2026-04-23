@@ -58,7 +58,14 @@ beforeEach(() => {
 });
 
 describe("CommissionerService.updateRules", () => {
-  it("rejects updates when rules are locked", async () => {
+  // Check order (current implementation): IDOR check first (findMany), then
+  // lock/season checks (findFirst + season.findFirst) — but only when at
+  // least one update targets a non-exempt category. Updates that only touch
+  // the `transactions` category bypass lock/season entirely.
+
+  it("rejects updates when rules are locked (non-transactions category)", async () => {
+    // Rule 10 exists in category "roster" (non-exempt) — so lock/season checks run.
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([{ id: 10, category: "roster" }]);
     mockPrisma.leagueRule.findFirst.mockResolvedValueOnce({ id: 1, isLocked: true });
 
     await expect(
@@ -66,10 +73,9 @@ describe("CommissionerService.updateRules", () => {
     ).rejects.toThrow("Rules are locked for this season");
   });
 
-  it("rejects updates when season has moved past SETUP", async () => {
-    // No locked rules
+  it("rejects updates when season has moved past SETUP (non-transactions category)", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([{ id: 10, category: "roster" }]);
     mockPrisma.leagueRule.findFirst.mockResolvedValueOnce(null);
-    // Season exists past SETUP
     mockPrisma.season.findFirst.mockResolvedValueOnce({ id: 1, leagueId: 1, status: "DRAFT" });
 
     await expect(
@@ -77,12 +83,21 @@ describe("CommissionerService.updateRules", () => {
     ).rejects.toThrow("Rules cannot be changed after season setup");
   });
 
+  it("allows updates to `transactions` category mid-season (exempt from lock)", async () => {
+    // Rule 10 is in `transactions` (exempt) — lock/season checks are SKIPPED
+    // even though a lock exists and a draft is in progress.
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([{ id: 10, category: "transactions" }]);
+    mockPrisma.leagueRule.update.mockResolvedValue({});
+
+    const count = await service.updateRules(1, [{ id: 10, value: "true" }]);
+    expect(count).toBe(1);
+    // The lock/season checks should NEVER have been consulted.
+    expect(mockPrisma.leagueRule.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.season.findFirst).not.toHaveBeenCalled();
+  });
+
   it("rejects updates when rule IDs belong to a different league (IDOR prevention)", async () => {
-    // No locked rules
-    mockPrisma.leagueRule.findFirst.mockResolvedValueOnce(null);
-    // No active season
-    mockPrisma.season.findFirst.mockResolvedValueOnce(null);
-    // Rule 10 belongs to league 2, not league 1 — findMany returns empty
+    // findMany returns empty — rule 10 doesn't belong to league 1
     mockPrisma.leagueRule.findMany.mockResolvedValueOnce([]);
 
     await expect(
@@ -91,10 +106,8 @@ describe("CommissionerService.updateRules", () => {
   });
 
   it("rejects when some rule IDs belong to different league", async () => {
-    mockPrisma.leagueRule.findFirst.mockResolvedValueOnce(null);
-    mockPrisma.season.findFirst.mockResolvedValueOnce(null);
     // Only rule 10 belongs to league 1; rule 20 does not
-    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([{ id: 10 }]);
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([{ id: 10, category: "roster" }]);
 
     await expect(
       service.updateRules(1, [
@@ -105,9 +118,12 @@ describe("CommissionerService.updateRules", () => {
   });
 
   it("succeeds when all rule IDs belong to the league", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([
+      { id: 10, category: "roster" },
+      { id: 11, category: "scoring" },
+    ]);
     mockPrisma.leagueRule.findFirst.mockResolvedValueOnce(null);
     mockPrisma.season.findFirst.mockResolvedValueOnce(null);
-    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([{ id: 10 }, { id: 11 }]);
     mockPrisma.leagueRule.update.mockResolvedValue({});
 
     const count = await service.updateRules(1, [

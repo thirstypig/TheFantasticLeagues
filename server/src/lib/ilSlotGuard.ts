@@ -18,6 +18,7 @@
 import { RosterRuleError } from "./rosterRuleError.js";
 import { getMlbPlayerStatus, type MlbRosterStatus } from "./mlbApi.js";
 import { prisma } from "../db/prisma.js";
+import { getLeagueRules } from "./leagueRuleCache.js";
 
 type PrismaLike = {
   roster: {
@@ -123,11 +124,8 @@ export async function loadLeagueIlSlotCount(
   tx: PrismaLike,
   leagueId: number,
 ): Promise<number> {
-  const rule = await tx.leagueRule.findFirst({
-    where: { leagueId, category: "il", key: "slot_count" },
-    select: { value: true },
-  });
-  const n = Number(rule?.value);
+  const rules = await getLeagueRules(tx as any, leagueId);
+  const n = Number(rules.il?.slot_count);
   if (!Number.isFinite(n) || n < 0) return DEFAULT_IL_SLOT_COUNT;
   return n;
 }

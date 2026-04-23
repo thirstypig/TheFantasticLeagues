@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (571 server + 237 client = 808 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (744 server + 247 client = 991 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -44,11 +44,11 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 
 ## Current coverage (Session 69 baseline)
 
-### Server — 571 passing, 7 skipped, 42 files
+### Server — 744 passing, 7 skipped, 1 todo, 52 files
 
 Major covered areas (selected):
-- `middleware/` — auth (6), extended auth (28), async handler (4), validate (7), season guard (10)
-- `lib/` — utils (36), ipHash (16)
+- `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
+- `lib/` — utils (36), ipHash (16), leagueRuleCache (9 + 1 todo: shape, caching, TTL expiry, invalidation per-league, test isolation)
 - `features/auth/routes.test.ts` — 16 tests (health, me, dev login)
 - `features/auction/` — 23 routes + 8 persistence + 3 auto-finish + 11 retrospective
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)

@@ -82,6 +82,12 @@ export const DEFAULT_RULES = [
   // IL
   { category: "il", key: "il_slot_1_cost", value: "10", label: "1st IL Slot Cost ($)" },
   { category: "il", key: "il_slot_2_cost", value: "15", label: "2nd IL Slot Cost ($)" },
+  // Transactions — permission toggles.
+  // Default 'false' keeps add/drop + IL management commissioner-only. Flip
+  // to 'true' to let team owners run these transactions on their own team.
+  // Exempt from isLocked (see CommissionerService.updateRules) so commissioners
+  // can change the policy mid-season without unlocking every rule.
+  { category: "transactions", key: "owner_self_serve", value: "false", label: "Owner self-serve roster moves" },
   // Bonuses
   { category: "bonuses", key: "grand_slam", value: "5", label: "Grand Slam Bonus ($)" },
   { category: "bonuses", key: "shutout", value: "5", label: "Shutout Bonus ($)" },
