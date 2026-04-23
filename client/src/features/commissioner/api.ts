@@ -248,3 +248,21 @@ export async function createLeagueSeason(input: {
     body: JSON.stringify(input),
   });
 }
+
+
+export interface GhostIlTeam {
+  teamId: number;
+  teamName: string;
+  teamCode: string;
+  ghosts: Array<{ rosterId: number; playerId: number; playerName: string; currentMlbStatus: string }>;
+}
+
+export interface GhostIlSummary {
+  teams: GhostIlTeam[];
+  totalTeamsWithGhosts: number;
+  totalGhosts: number;
+}
+
+export async function getGhostIlSummary(leagueId: number): Promise<GhostIlSummary> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/ghost-il`);
+}

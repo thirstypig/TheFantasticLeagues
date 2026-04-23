@@ -3,6 +3,7 @@ import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useToast } from "../../../contexts/ToastContext";
 import type { PlayerSeasonStat } from "../../../api";
+import { positionToSlots } from "../../../lib/sportConfig";
 
 type ConditionType = "ONLY_IF_UNAVAILABLE" | "ONLY_IF_AVAILABLE" | "PAIR_WITH";
 
@@ -20,9 +21,20 @@ interface WaiverClaimFormProps {
   onComplete: () => void;
 }
 
+function slotsFor(posList: string): Set<string> {
+  const slots = new Set<string>();
+  for (const p of (posList || "").split(/[,/| ]+/).map(s => s.trim()).filter(Boolean)) {
+    for (const s of positionToSlots(p)) slots.add(s);
+  }
+  return slots;
+}
+
 export default function WaiverClaimForm({ players, myTeamId, myTeamBudget, myRoster, onComplete }: WaiverClaimFormProps) {
-  const { leagueId } = useLeague();
+  const { leagueId, seasonStatus } = useLeague();
   const { toast } = useToast();
+  // Phase 2b backend rule: every in-season waiver claim must pair with a drop.
+  // The form enforces the same rule client-side so owners don't waste a click.
+  const dropRequired = seasonStatus === "IN_SEASON";
 
   const [search, setSearch] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
@@ -192,26 +204,45 @@ export default function WaiverClaimForm({ players, myTeamId, myTeamBudget, myRos
         </div>
       )}
 
-      {/* Step 3: Optional drop player */}
-      {selectedPlayer && myRoster.length >= 23 && (
-        <div>
-          <label className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] block mb-1">
-            Drop Player (required — roster full)
-          </label>
-          <select
-            value={dropPlayerId ?? ""}
-            onChange={(e) => setDropPlayerId(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-colors"
-          >
-            <option value="">Select player to drop...</option>
-            {myRoster.map((p: any, i: number) => (
-              <option key={i} value={(p as any)._dbPlayerId || (p as any).mlb_id}>
-                {p.player_name || p.name} ({p.positions || p.posPrimary})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {/* Step 3: Drop player — required in-season (Phase 2b: every add pairs with a drop).
+          Outside of IN_SEASON the dropdown is optional but still surfaced. */}
+      {selectedPlayer && (() => {
+        const addSlots = slotsFor(((selectedPlayer as any).positions ?? (selectedPlayer as any).posPrimary ?? "") as string);
+        const selectedDrop = myRoster.find((p: any) => ((p as any)._dbPlayerId || (p as any).mlb_id) === dropPlayerId) ?? null;
+        const dropSlot = selectedDrop
+          ? ((selectedDrop as any).assignedPosition || (selectedDrop as any).posPrimary || "UT")
+          : null;
+        const dropEligible = !selectedDrop || !dropSlot ? true : addSlots.has(dropSlot);
+        return (
+          <div>
+            <label className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] block mb-1">
+              Drop Player{dropRequired ? " (required in-season)" : " (optional)"}
+            </label>
+            <select
+              value={dropPlayerId ?? ""}
+              onChange={(e) => setDropPlayerId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-colors"
+            >
+              <option value="">Select player to drop...</option>
+              {myRoster.map((p: any, i: number) => {
+                const targetSlot = (p as any).assignedPosition || (p as any).posPrimary || "UT";
+                const fits = addSlots.has(targetSlot);
+                return (
+                  <option key={i} value={(p as any)._dbPlayerId || (p as any).mlb_id}>
+                    {p.player_name || p.name} — {targetSlot}{fits ? "" : " (ineligible)"}
+                  </option>
+                );
+              })}
+            </select>
+            {selectedDrop && !dropEligible && (
+              <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                {(selectedPlayer as any).player_name || "Add player"} is not eligible for the {dropSlot} slot.
+                The waiver processor will reject this claim — pick a different drop player.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Step 4: Optional condition */}
       {selectedPlayer && (
@@ -325,7 +356,7 @@ export default function WaiverClaimForm({ players, myTeamId, myTeamBudget, myRos
       {selectedPlayer && (
         <button
           onClick={handleSubmit}
-          disabled={submitting || bidAmount < 0 || bidAmount > myTeamBudget || (myRoster.length >= 23 && !dropPlayerId) || (showCondition && !conditionPlayer)}
+          disabled={submitting || bidAmount < 0 || bidAmount > myTeamBudget || ((dropRequired || myRoster.length >= 23) && !dropPlayerId) || (showCondition && !conditionPlayer)}
           className="px-6 py-2 text-sm font-semibold rounded-lg bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
         >
           {submitting ? "Submitting..." : `Submit Claim ($${bidAmount})`}

@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (571 server + 201 client = 772 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (571 server + 237 client = 808 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -64,20 +64,25 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 201 passing, 16 files
+### Client — 237 passing, 21 files
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
+- `lib/mlbStatus.test.ts` — 6 (isMlbIlStatus: real MLB format + legacy form + non-IL + malformed + case sensitivity; mirror of `server/src/lib/__tests__/ilSlotGuard.test.ts`)
 - `hooks/useSessionHeartbeat.test.ts` — 7
 - `features/players/PlayerDetailModal.test.tsx` — 14
 - `features/standings/StatsTables.test.tsx` — 22
 - `features/auction/AuctionValues.test.tsx` — 10
 - `features/teams/Teams.test.tsx` + `Team.test.tsx` — 17
+- `features/teams/Team.IL.test.tsx` — 4 (Your IL Slots subsection, Ghost-IL badge, stashed-dedup in MLB IL Candidates)
+- `features/teams/PlaceOnIlModal.test.tsx` — 9 (render, FA filter, eligibility, submit, MLB-status warning, error surface)
+- `features/teams/ActivateFromIlModal.test.tsx` — 6
+- `features/waivers/WaiverClaimForm.test.tsx` — 6 (in-season drop-required label, position eligibility)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16
 - `features/keeper-prep/KeeperSelection.test.tsx` — 8
 - `features/periods/Season.test.tsx` — 8
-- `features/commissioner/Commissioner.test.tsx` — 8
+- `features/commissioner/Commissioner.test.tsx` — 11 (Phase 4 adds ghost-IL banner + lazy-load assertions)
 - `features/transactions/ActivityPage.test.tsx` — 6
 - `features/admin/Admin.test.tsx` — 6
 

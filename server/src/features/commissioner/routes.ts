@@ -14,6 +14,7 @@ import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.j
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
+import { listGhostIlPlayersForTeam } from "../../lib/ilSlotGuard.js";
 
 // --- Zod Schemas ---
 
@@ -1149,6 +1150,48 @@ router.get("/commissioner/:leagueId/health", requireAuth, requireCommissionerOrA
 
   res.json({ health, leagueHealthScore: Math.round(health.reduce((s, h) => s + h.engagementScore, 0) / (health.length || 1)) });
 }));
+
+/**
+ * GET /api/commissioner/:leagueId/ghost-il
+ *
+ * League-wide ghost-IL summary. A ghost-IL player is one whose Roster entry
+ * has `assignedPosition === "IL"` but whose current MLB status is no longer
+ * "Injured List …" — the stash has outlived the real-world IL designation and
+ * the team owes the league either an activation or a drop. Ghost-IL read
+ * paths fail open on feed unavailability (same policy as `listGhostIlPlayersForTeam`).
+ *
+ * Response: { teams: [...], totalTeamsWithGhosts, totalGhosts }
+ */
+router.get(
+  "/commissioner/:leagueId/ghost-il",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    if (!Number.isFinite(leagueId)) {
+      return res.status(400).json({ error: "Invalid leagueId" });
+    }
+
+    const teams = await prisma.team.findMany({
+      where: { leagueId },
+      select: { id: true, name: true, code: true },
+    });
+
+    const perTeam = await Promise.all(teams.map(async (t) => {
+      const ghosts = await listGhostIlPlayersForTeam(prisma, t.id);
+      return { teamId: t.id, teamName: t.name, teamCode: t.code ?? "", ghosts };
+    }));
+
+    const withGhosts = perTeam.filter(t => t.ghosts.length > 0);
+    const totalGhosts = withGhosts.reduce((n, t) => n + t.ghosts.length, 0);
+
+    res.json({
+      teams: withGhosts,
+      totalTeamsWithGhosts: withGhosts.length,
+      totalGhosts,
+    });
+  }),
+);
 
 /**
  * POST /api/commissioner/:leagueId/reconcile-il-fees/:periodId

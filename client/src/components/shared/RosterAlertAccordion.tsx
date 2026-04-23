@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * Shared accordion component for IL Report and Minors Report.
  * Renders a collapsible list of roster alerts with team-colored styling.
@@ -24,6 +26,8 @@ interface RosterAlertAccordionProps {
   label: string;
   maxDisplay?: number;
   mlbHeadshot: (mlbId: number | null | undefined) => string;
+  /** Optional inline action rendered in each expanded entry (e.g., "Place on IL"). */
+  renderAction?: (player: RosterAlertPlayer) => ReactNode;
 }
 
 export default function RosterAlertAccordion({
@@ -32,6 +36,7 @@ export default function RosterAlertAccordion({
   label,
   maxDisplay = 6,
   mlbHeadshot,
+  renderAction,
 }: RosterAlertAccordionProps) {
   if (players.length === 0) return null;
 
@@ -81,6 +86,7 @@ export default function RosterAlertAccordion({
                     Replacement: <span className="font-medium">{p.ilReplacement}</span>
                   </div>
                 )}
+                {renderAction && <div className="mt-2">{renderAction(p)}</div>}
               </div>
             </details>
           );

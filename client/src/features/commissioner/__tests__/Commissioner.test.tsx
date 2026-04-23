@@ -13,6 +13,7 @@ vi.mock("../api", () => ({
   assignTeamOwner: vi.fn(),
   removeTeamOwner: vi.fn(),
   updateLeague: vi.fn(),
+  getGhostIlSummary: vi.fn(),
 }));
 
 // Mock leagues API
@@ -70,8 +71,9 @@ vi.mock("../components/SeasonManager", () => ({
   default: () => <div data-testid="season-manager" />,
 }));
 
-import { getCommissionerOverview, getAvailableUsers, getPriorTeams } from "../api";
+import { getCommissionerOverview, getAvailableUsers, getPriorTeams, getGhostIlSummary } from "../api";
 import Commissioner from "../pages/Commissioner";
+import { fireEvent } from "@testing-library/react";
 
 function renderWithRoute() {
   return render(
@@ -92,6 +94,7 @@ beforeEach(() => {
   });
   vi.mocked(getAvailableUsers).mockResolvedValue([]);
   vi.mocked(getPriorTeams).mockResolvedValue([]);
+  vi.mocked(getGhostIlSummary).mockResolvedValue({ teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0 });
 });
 
 describe("Commissioner", () => {
@@ -158,5 +161,56 @@ describe("Commissioner", () => {
     await waitFor(() => {
       expect(screen.getByText(/Back to Home/)).toBeInTheDocument();
     });
+  });
+});
+
+describe("Commissioner — ghost-IL banner on Teams tab", () => {
+  async function openTeamsTab() {
+    renderWithRoute();
+    // Wait for overview to resolve
+    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
+    const teamsBtn = screen.getAllByRole("button").find(b => b.textContent?.trim() === "Teams")!;
+    fireEvent.click(teamsBtn);
+  }
+
+  it("does not fetch ghost-IL before the Teams tab is opened (lazy load)", async () => {
+    renderWithRoute();
+    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
+    // Give the effect a beat — even so, the ghost-IL call should not have fired.
+    expect(getGhostIlSummary).not.toHaveBeenCalled();
+  });
+
+  it("fetches ghost-IL once the Teams tab is opened", async () => {
+    await openTeamsTab();
+    await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalledWith(1));
+  });
+
+  it("renders the banner when ghosts exist, with a Details button that expands the list", async () => {
+    vi.mocked(getGhostIlSummary).mockResolvedValue({
+      totalTeamsWithGhosts: 2,
+      totalGhosts: 3,
+      teams: [
+        { teamId: 10, teamName: "Aces", teamCode: "ACES", ghosts: [
+          { rosterId: 1, playerId: 100, playerName: "Mike Trout", currentMlbStatus: "Active" },
+          { rosterId: 2, playerId: 101, playerName: "Mookie Betts", currentMlbStatus: "Active" },
+        ]},
+        { teamId: 20, teamName: "Titans", teamCode: "TITN", ghosts: [
+          { rosterId: 3, playerId: 200, playerName: "Aaron Judge", currentMlbStatus: "Active" },
+        ]},
+      ],
+    });
+    await openTeamsTab();
+    await waitFor(() => expect(screen.getByText(/2 teams/i)).toBeInTheDocument());
+    // Details list is initially collapsed
+    expect(screen.queryByText(/Mike Trout/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Details/i }));
+    expect(screen.getByText(/Mike Trout/)).toBeInTheDocument();
+    expect(screen.getByText(/Aaron Judge/)).toBeInTheDocument();
+  });
+
+  it("hides the banner when no teams have ghost-IL players", async () => {
+    await openTeamsTab();
+    await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalled());
+    expect(screen.queryByText(/ghost-IL player/i)).not.toBeInTheDocument();
   });
 });
