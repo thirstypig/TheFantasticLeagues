@@ -323,7 +323,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (712 server + 237 client + 50 MCP + 1 E2E = 1000 tests, 27 feature modules)
+### Current Test Coverage (744 server + 247 client + 50 MCP + 1 E2E = 1042 tests, 27 feature modules)
 
 See `docs/TESTING.md` for the full catalog, vocabulary (unit/integration/E2E), coverage gaps, and run cadence.
 E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e` (requires both dev servers up).
