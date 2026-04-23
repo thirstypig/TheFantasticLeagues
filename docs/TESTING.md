@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (749 server + 283 client = 1032 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (749 server + 293 client = 1042 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -64,7 +64,7 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 283 passing, 23 files
+### Client — 293 passing, 25 files
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
@@ -86,6 +86,8 @@ Major covered areas (selected):
 - `features/periods/Season.test.tsx` — 8
 - `features/commissioner/Commissioner.test.tsx` — 11 (Phase 4 adds ghost-IL banner + lazy-load assertions)
 - `features/transactions/ActivityPage.test.tsx` — 6
+- `features/transactions/api.test.ts` — 6 (ilStash + ilActivate wrappers: URL/method/body shape, optional params, error propagation)
+- `features/commissioner/api.test.ts` — 4 (getGhostIlSummary: URL interpolation, error propagation, GET semantics)
 - `features/admin/Admin.test.tsx` — 6
 
 ### MCP (MLB Data Proxy) — 50 passing (not run by root `npm test`)
