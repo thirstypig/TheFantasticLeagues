@@ -44,11 +44,11 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 
 ## Current coverage (Session 69 baseline)
 
-### Server — 571 passing, 7 skipped, 42 files
+### Server — 744 passing, 7 skipped, 1 todo, 52 files
 
 Major covered areas (selected):
-- `middleware/` — auth (6), extended auth (28), async handler (4), validate (7), season guard (10)
-- `lib/` — utils (36), ipHash (16)
+- `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
+- `lib/` — utils (36), ipHash (16), leagueRuleCache (9 + 1 todo: shape, caching, TTL expiry, invalidation per-league, test isolation)
 - `features/auth/routes.test.ts` — 16 tests (health, me, dev login)
 - `features/auction/` — 23 routes + 8 persistence + 3 auto-finish + 11 retrospective
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)

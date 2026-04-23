@@ -334,7 +334,8 @@ E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e`
 - `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
 - `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
 - `server/src/middleware/__tests__/auth.test.ts` — 6 tests (requireAuth, requireAdmin)
-- `server/src/middleware/__tests__/authExtended.test.ts` — 28 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, requireLeagueMember body fallback)
+- `server/src/middleware/__tests__/authExtended.test.ts` — 45 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, requireLeagueMember body fallback, requireTeamOwnerOrCommissioner matrix: admin / IDOR / commissioner / toggle on-off / legacy ownerUserId / co-owner TeamOwnership / fail-closed rule value variants)
+- `server/src/lib/__tests__/leagueRuleCache.test.ts` — 9 tests + 1 todo (row→map shape, cache hits across repeated reads, per-league isolation, 60s TTL expiry with fake timers, invalidation scoping, _clearLeagueRuleCache for test isolation)
 - `server/src/middleware/__tests__/asyncHandler.test.ts` — 4 tests
 - `server/src/middleware/__tests__/validate.test.ts` — 7 tests
 - `server/src/middleware/__tests__/seasonGuard.test.ts` — 10 tests (requireSeasonStatus: allowed/denied status, no season, team lookup, error forwarding)
