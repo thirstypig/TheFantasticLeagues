@@ -10,6 +10,7 @@ export {
   POSITIONS,
   PITCHER_CODES,
   positionToSlots,
+  SLOT_CODES,
   HITTING_CATS,
   PITCHING_CATS,
   NL_TEAMS,
@@ -33,3 +34,4 @@ export {
 // Re-export registry for convenience
 export { getSportConfig, getAllSports } from "./sports/index";
 export type { SportConfig, PositionConfig, CategoryConfig } from "./sports/types";
+export type { SlotCode } from "./sports/baseball";

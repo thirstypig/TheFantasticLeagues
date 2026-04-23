@@ -19,7 +19,15 @@ export const PITCHER_CODES = ["P", "SP", "RP", "CL", "TWP"] as const;
 
 // ─── Position-to-Slot Mapping ───
 
-export function positionToSlots(pos: string): string[] {
+/**
+ * Roster-slot vocabulary — what a player can be ASSIGNED to in a lineup.
+ * Distinct from the raw MLB input positions this function accepts (LF/CF/RF/
+ * SP/RP/CL/TWP all collapse into an output slot from this set).
+ */
+export const SLOT_CODES = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
+export type SlotCode = typeof SLOT_CODES[number];
+
+export function positionToSlots(pos: string): readonly SlotCode[] {
   const p = pos.trim().toUpperCase();
   if (p === "C") return ["C"];
   if (p === "1B") return ["1B", "CM"];
