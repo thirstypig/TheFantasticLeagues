@@ -6,6 +6,7 @@ import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../../lib/ro
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
 import { sendInviteEmail } from "../../../lib/emailService.js";
+import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
 
 const auctionImportService = new AuctionImportService();
 
@@ -146,6 +147,19 @@ export class CommissionerService {
       await this.copyLeagueData(league.id, copyFromLeagueId, creatorUserId);
     }
 
+    // 7. Ensure every DEFAULT_RULES row exists. When copyFromLeagueId is set,
+    // copyLeagueData has already inserted the source league's rules — those
+    // values win. skipDuplicates lets this fill in anything the source lacked
+    // (e.g. rules added after the source league was created). When there's
+    // no copy, this is the sole seeding step for a brand-new league —
+    // prevents the "new league is permanently missing a rule" footgun where
+    // getRules() lazy-seed only runs on first Rules-page view.
+    await prisma.leagueRule.createMany({
+      data: DEFAULT_RULES.map((r) => ({ ...r, leagueId: league.id })),
+      skipDuplicates: true,
+    });
+    invalidateLeagueRules(league.id);
+
     return league;
   }
 
@@ -233,6 +247,7 @@ export class CommissionerService {
           isLocked: false,
         })),
       });
+      invalidateLeagueRules(targetLeagueId);
     }
 
     // 4. Copy Rosters directly from source teams using the team ID map
@@ -936,6 +951,7 @@ export class CommissionerService {
         await prisma.leagueRule.createMany({
           data: DEFAULT_RULES.map((r) => ({ ...r, leagueId })),
         });
+        invalidateLeagueRules(leagueId);
         rules = await prisma.leagueRule.findMany({
           where: { leagueId },
           orderBy: [{ category: "asc" }, { key: "asc" }],
@@ -945,34 +961,43 @@ export class CommissionerService {
   }
 
   async updateRules(leagueId: number, updates: { id: number; value: string }[]) {
-       // Check if rules are locked
-      const lockedRule = await prisma.leagueRule.findFirst({
-        where: { leagueId, isLocked: true },
-      });
-
-      if (lockedRule) {
-        throw new Error("Rules are locked for this season");
-      }
-
-      // Check if any Season has moved past SETUP (rules locked after draft starts)
-      const activeSeason = await prisma.season.findFirst({
-        where: { leagueId, status: { not: "SETUP" } },
-      });
-
-      if (activeSeason) {
-        throw new Error("Rules cannot be changed after season setup.");
-      }
-
-      // Verify all rule IDs belong to this league (prevent IDOR)
+      // Verify all rule IDs belong to this league (prevent IDOR). Also pull
+      // the category so we can decide which updates bypass the lock checks.
       const ruleIds = updates.map(u => u.id);
       const ownedRules = await prisma.leagueRule.findMany({
         where: { id: { in: ruleIds }, leagueId },
-        select: { id: true },
+        select: { id: true, category: true },
       });
       const ownedIds = new Set(ownedRules.map(r => r.id));
       const unauthorized = ruleIds.filter(id => !ownedIds.has(id));
       if (unauthorized.length > 0) {
         throw new Error("One or more rule IDs do not belong to this league");
+      }
+
+      // Categories that are editable at any time. `transactions` is a policy
+      // toggle (e.g. owner_self_serve) that commissioners may need to adjust
+      // mid-season — lock semantics shouldn't pin it to pre-draft.
+      const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
+      const hasLockedSubjectUpdate = ownedRules.some(
+        r => !MUTABLE_ANY_TIME_CATEGORIES.has(r.category),
+      );
+
+      if (hasLockedSubjectUpdate) {
+        // Only enforce lock checks for updates that touch non-exempt
+        // categories. A pure `transactions` update skips these.
+        const lockedRule = await prisma.leagueRule.findFirst({
+          where: { leagueId, isLocked: true },
+        });
+        if (lockedRule) {
+          throw new Error("Rules are locked for this season");
+        }
+
+        const activeSeason = await prisma.season.findFirst({
+          where: { leagueId, status: { not: "SETUP" } },
+        });
+        if (activeSeason) {
+          throw new Error("Rules cannot be changed after season setup.");
+        }
       }
 
       const results = await Promise.all(
@@ -983,6 +1008,7 @@ export class CommissionerService {
           })
         )
       );
+      invalidateLeagueRules(leagueId);
       return results.length;
   }
 
@@ -991,6 +1017,7 @@ export class CommissionerService {
         where: { leagueId },
         data: { isLocked: true },
       });
+      invalidateLeagueRules(leagueId);
       return true;
   }
 
@@ -999,6 +1026,7 @@ export class CommissionerService {
         where: { leagueId },
         data: { isLocked: false },
       });
+      invalidateLeagueRules(leagueId);
       return true;
   }
 
@@ -1041,6 +1069,7 @@ export class CommissionerService {
 
       return created;
     }, { timeout: 30_000 });
+    invalidateLeagueRules(leagueId);
 
     return { snapshotted: count };
   }
