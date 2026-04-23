@@ -8,9 +8,9 @@
 // consolidated it here and retyped `positionToSlots` at its source in
 // `sports/baseball.ts` so the `SlotCode` literal union is enforced end-to-end.
 
-import { positionToSlots, type SlotCode } from "./sports/baseball";
+import { positionToSlots, SLOT_CODES, type SlotCode } from "./sports/baseball";
 
-export { type SlotCode } from "./sports/baseball";
+export { SLOT_CODES, type SlotCode } from "./sports/baseball";
 
 /**
  * Roster-slot vocabulary for `Roster.assignedPosition` values that are NOT
@@ -28,12 +28,10 @@ export type AssignedPosition = SlotCode | StructuralSlot;
  * untyped data (e.g. server responses where assignedPosition is string).
  */
 export function isSlotCode(s: string): s is SlotCode {
-  return positionToSlots(s).length > 0
-    // extra belt: positionToSlots would accept "OF" (a SlotCode) but also
-    // accept inputs like "LF" that collapse to an OF slot. isSlotCode asks a
-    // stricter question — is this STRING already a canonical slot code?
-    && (["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const)
-      .some((c) => c === s);
+  // Strictly asks: is this STRING already a canonical slot code? Unlike
+  // positionToSlots (which also accepts "LF"/"CF"/"RF" as valid *inputs*
+  // that collapse to OF), isSlotCode rejects input-only positions.
+  return (SLOT_CODES as readonly string[]).includes(s);
 }
 
 /**
