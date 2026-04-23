@@ -14,6 +14,17 @@ export function findMyTeam<T extends TeamLike>(teams: T[], userId: number): T | 
   ) ?? null;
 }
 
+/**
+ * All of a league's rules, grouped `{ category: { key: value } }`. Fetched
+ * once per leagueId change and shared across the tree so features like the
+ * Roster Moves tab can read toggles (e.g. `transactions.owner_self_serve`)
+ * without duplicating the fetch or blocking render on their own loader.
+ *
+ * Mirror shape of `server/src/lib/leagueRuleCache.ts`'s LeagueRuleMap —
+ * identical categorization on both sides of the wire.
+ */
+export type LeagueRuleMap = Record<string, Record<string, string>>;
+
 interface LeagueContextType {
   leagueId: number;
   setLeagueId: (id: number) => void;
@@ -29,6 +40,13 @@ interface LeagueContextType {
   leagueSeasons: LeagueListItem[];
   seasonStatus: SeasonStatus | null;
   myTeamId: number | null;
+  /**
+   * Null while rules are loading or unavailable. Empty object means
+   * fetched-but-no-rules (e.g. a freshly-created league pre-seed). Consumers
+   * must treat undefined keys as absent rather than assuming defaults.
+   */
+  leagueRules: LeagueRuleMap | null;
+  refreshLeagueRules: () => void;
 }
 
 const LeagueContext = createContext<LeagueContextType | undefined>(undefined);
@@ -121,6 +139,39 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
     return () => { canceled = true; };
   }, [user, leagueId]);
 
+  // Fetch league rules, grouped by category, when league changes. Shared
+  // surface for features that need to read policy toggles (e.g. the
+  // Roster Moves tab reads transactions.owner_self_serve). Server endpoint
+  // returns `{ rules, grouped, leagueId }`; we normalize to a flat map.
+  const [leagueRules, setLeagueRules] = useState<LeagueRuleMap | null>(null);
+  const [rulesTick, setRulesTick] = useState(0);
+  useEffect(() => {
+    if (!user || !leagueId) return;
+    let canceled = false;
+    setLeagueRules(null);
+    fetchJsonApi<{ rules: Array<{ category: string; key: string; value: string }> }>(
+      `${API_BASE}/leagues/${leagueId}/rules`,
+    )
+      .then((res) => {
+        if (canceled) return;
+        const map: LeagueRuleMap = {};
+        for (const r of res.rules ?? []) {
+          (map[r.category] ??= {})[r.key] = r.value;
+        }
+        setLeagueRules(map);
+      })
+      .catch(() => {
+        if (canceled) return;
+        // Rules endpoint requires league membership; non-members will 403 here.
+        // Fail-to-empty so consumers can still render — they'll treat missing
+        // toggles as "off" (their own fail-closed default).
+        setLeagueRules({});
+      });
+    return () => { canceled = true; };
+  }, [user, leagueId, rulesTick]);
+
+  const refreshLeagueRules = useCallback(() => setRulesTick((t) => t + 1), []);
+
   const setLeagueId = useCallback((id: number) => {
     setLeagueIdState(id);
     localStorage.setItem(STORAGE_KEY, String(id));
@@ -144,9 +195,11 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
     leagueId, setLeagueId, refreshLeagues, leagues, sport, outfieldMode, scoringFormat, draftMode,
     currentLeagueName, currentSeason, currentFranchiseId,
     leagueSeasons, seasonStatus, myTeamId,
+    leagueRules, refreshLeagueRules,
   }), [leagueId, setLeagueId, refreshLeagues, leagues, sport, outfieldMode, scoringFormat, draftMode,
        currentLeagueName, currentSeason, currentFranchiseId,
-       leagueSeasons, seasonStatus, myTeamId]);
+       leagueSeasons, seasonStatus, myTeamId,
+       leagueRules, refreshLeagueRules]);
 
   return (
     <LeagueContext.Provider value={contextValue}>

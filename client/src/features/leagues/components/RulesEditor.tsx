@@ -82,9 +82,11 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   payout_8th: { type: 'number', suffix: '%', min: 0, max: 100 },
   il_slot_1_cost: { type: 'number', suffix: '$' },
   il_slot_2_cost: { type: 'number', suffix: '$' },
+  // Transactions — per-league toggles governing who can run roster moves.
+  owner_self_serve: { type: 'toggle' },
 };
 
-const CATEGORY_ORDER = ["overview", "roster", "scoring", "draft", "il", "bonuses", "payouts"];
+const CATEGORY_ORDER = ["overview", "roster", "scoring", "draft", "il", "bonuses", "payouts", "transactions"];
 const CATEGORY_ICONS: Record<string, string> = {
   overview: overviewIcon,
   roster: rosterIcon,
@@ -93,6 +95,9 @@ const CATEGORY_ICONS: Record<string, string> = {
   il: ilIcon,
   bonuses: bonusesIcon,
   payouts: payoutsIcon,
+  // transactions category uses the default emoji fallback (📄) — no icon
+  // asset defined yet. Acceptable for a single-rule section; add an
+  // SVG later if/when transactions grows more toggles.
 };
 
 // --- Component ---

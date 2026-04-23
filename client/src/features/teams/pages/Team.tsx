@@ -21,8 +21,9 @@ import { StatsUpdated } from "../../../components/shared/StatsTables";
 import RosterAlertAccordion from "../../../components/shared/RosterAlertAccordion";
 import { useRosterStatus } from "../../../hooks/useRosterStatus";
 import { isMlbIlStatus } from "../../../lib/mlbStatus";
-import PlaceOnIlModal from "../components/PlaceOnIlModal";
-import ActivateFromIlModal from "../components/ActivateFromIlModal";
+// Roster mutation UX (Place on IL / Activate / Add / Drop) lives on the
+// Activity page's Roster Moves tab as of PR #N (2026-04-23). The Team page
+// is view-only — modal imports and action state have been removed.
 import { useAuth } from "../../../auth/AuthProvider";
 
 function normCode(v: any): string {
@@ -127,9 +128,9 @@ export default function Team() {
   // IL stash/activate — the backend gates /il-stash and /il-activate with
   // requireCommishOrAdmin (server/src/features/transactions/routes.ts).
   const { isCommissioner, isAdmin } = useAuth();
-  const canManageIl = leagueId ? (isCommissioner(String(leagueId)) || isAdmin) : false;
-  const [placeOnIlFor, setPlaceOnIlFor] = useState<any | null>(null);
-  const [activateFrom, setActivateFrom] = useState<any | null>(null);
+  // canManageIl / modal state removed — IL management lives in the Activity
+  // page's Roster Moves tab. Team page surfaces the informational "Your IL
+  // Slots" subsection and Ghost-IL badges; actions are not this page's job.
   const [reloadTick, setReloadTick] = useState(0);
   const [fullPlayerPool, setFullPlayerPool] = useState<PlayerSeasonStat[]>([]);
 
@@ -951,7 +952,7 @@ export default function Team() {
         {ilSlotted.length > 0 && (
           <section className="mt-10">
             <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-              Your IL Slots ({ilSlotted.length})
+              {dbTeamId && myTeamId === dbTeamId ? "Your IL Slots" : "IL Slots"} ({ilSlotted.length})
             </p>
             <ThemedTable density="compact" aria-label="Fantasy IL slots">
               <ThemedThead>
@@ -961,7 +962,6 @@ export default function Team() {
                   <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
                   <ThemedTh align="center" className="w-[60px]">$</ThemedTh>
                   <ThemedTh align="center">MLB STATUS</ThemedTh>
-                  <ThemedTh align="center" className="w-[100px]">ACTION</ThemedTh>
                 </ThemedTr>
               </ThemedThead>
               <tbody>
@@ -996,16 +996,6 @@ export default function Team() {
                       <ThemedTd align="center">
                         <span className="text-[10px] text-[var(--lg-text-muted)]">{mlbStatus || "Unknown"}</span>
                       </ThemedTd>
-                      <ThemedTd align="center">
-                        {canManageIl && seasonStatus === "IN_SEASON" && dbTeamId && leagueId ? (
-                          <button
-                            onClick={() => setActivateFrom(p)}
-                            className="text-[10px] font-semibold uppercase text-emerald-400 hover:text-emerald-300 underline"
-                          >
-                            Activate
-                          </button>
-                        ) : <span className="text-[10px] text-[var(--lg-text-muted)]">—</span>}
-                      </ThemedTd>
                     </ThemedTr>
                   );
                 })}
@@ -1028,19 +1018,6 @@ export default function Team() {
                 colorScheme="red"
                 label="MLB IL Candidates"
                 mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
-                renderAction={canManageIl && seasonStatus === "IN_SEASON" && dbTeamId ? (candidate) => {
-                  // Map the accordion entry back to a roster row so the stash modal has assignedPosition + _dbPlayerId.
-                  const row = players.find((pl: any) => Number(pl?.mlb_id ?? pl?.mlbId) === candidate.mlbId);
-                  if (!row || !(row as any)._dbPlayerId) return null;
-                  return (
-                    <button
-                      onClick={() => setPlaceOnIlFor({ ...(row as any), mlbStatus: candidate.mlbStatus })}
-                      className="text-[10px] font-semibold uppercase text-red-400 hover:text-red-300 underline"
-                    >
-                      Place on IL
-                    </button>
-                  );
-                } : undefined}
               />
             </div>
           );
@@ -1079,29 +1056,6 @@ export default function Team() {
         )}
 
         {selected ? <PlayerDetailModal player={selected} onClose={() => setSelected(null)} /> : null}
-
-        {placeOnIlFor && dbTeamId && leagueId ? (
-          <PlaceOnIlModal
-            leagueId={leagueId}
-            teamId={dbTeamId}
-            stashPlayer={placeOnIlFor}
-            playerPool={fullPlayerPool}
-            onClose={() => setPlaceOnIlFor(null)}
-            onSuccess={() => { setPlaceOnIlFor(null); setReloadTick(t => t + 1); }}
-          />
-        ) : null}
-
-        {activateFrom && dbTeamId && leagueId ? (
-          <ActivateFromIlModal
-            leagueId={leagueId}
-            teamId={dbTeamId}
-            activatePlayer={activateFrom}
-            activeRoster={players as any}
-            onClose={() => setActivateFrom(null)}
-            onSuccess={() => { setActivateFrom(null); setReloadTick(t => t + 1); }}
-          />
-        ) : null}
-
       </main>
     </div>
   );
