@@ -15,6 +15,7 @@ import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
 import { listGhostIlPlayersForTeam } from "../../lib/ilSlotGuard.js";
+import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
 
 // --- Zod Schemas ---
 
@@ -973,6 +974,7 @@ router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrA
             create: { leagueId, category, key, value, label: label || key },
             update: { value, label: label || undefined }
         });
+        invalidateLeagueRules(leagueId);
 
         writeAuditLog({
           userId: req.user!.id,

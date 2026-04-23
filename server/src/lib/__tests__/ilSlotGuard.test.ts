@@ -8,6 +8,7 @@ import {
   assertNoGhostIl,
 } from "../ilSlotGuard.js";
 import { isRosterRuleError } from "../rosterRuleError.js";
+import { _clearLeagueRuleCache } from "../leagueRuleCache.js";
 
 // ── Hoisted mocks ────────────────────────────────────────────────
 // Vitest hoists vi.mock() above imports. Use vi.hoisted() so mock functions
@@ -29,6 +30,9 @@ vi.mock("../../db/prisma.js", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // ilSlotGuard's loadLeagueIlSlotCount reads via leagueRuleCache; isolate
+  // tests by clearing the cache each turn.
+  _clearLeagueRuleCache();
 });
 
 // ── isMlbIlStatus ────────────────────────────────────────────────
@@ -87,11 +91,18 @@ describe("isMlbIlStatus", () => {
 
 // ── loadLeagueIlSlotCount ───────────────────────────────────────
 
+// loadLeagueIlSlotCount + assertIlSlotAvailable both read rules via the
+// shared leagueRuleCache, which calls `leagueRule.findMany` on its first
+// fetch per leagueId. The mocks below return the cache's expected flat-row
+// shape `{category, key, value}[]` rather than the old single-row findFirst.
+
 describe("loadLeagueIlSlotCount", () => {
   it("reads the il.slot_count rule", async () => {
     const tx = {
       roster: { count: vi.fn(), findMany: vi.fn() },
-      leagueRule: { findFirst: vi.fn().mockResolvedValue({ value: "3" }) },
+      leagueRule: { findMany: vi.fn().mockResolvedValue([
+        { category: "il", key: "slot_count", value: "3" },
+      ]) },
     };
     expect(await loadLeagueIlSlotCount(tx as any, 1)).toBe(3);
   });
@@ -99,7 +110,7 @@ describe("loadLeagueIlSlotCount", () => {
   it("falls back to 2 when rule is missing", async () => {
     const tx = {
       roster: { count: vi.fn(), findMany: vi.fn() },
-      leagueRule: { findFirst: vi.fn().mockResolvedValue(null) },
+      leagueRule: { findMany: vi.fn().mockResolvedValue([]) },
     };
     expect(await loadLeagueIlSlotCount(tx as any, 1)).toBe(2);
   });
@@ -107,7 +118,9 @@ describe("loadLeagueIlSlotCount", () => {
   it("falls back to 2 on invalid / negative rule value", async () => {
     const tx = {
       roster: { count: vi.fn(), findMany: vi.fn() },
-      leagueRule: { findFirst: vi.fn().mockResolvedValue({ value: "not a number" }) },
+      leagueRule: { findMany: vi.fn().mockResolvedValue([
+        { category: "il", key: "slot_count", value: "not a number" },
+      ]) },
     };
     expect(await loadLeagueIlSlotCount(tx as any, 1)).toBe(2);
   });
@@ -122,8 +135,10 @@ describe("assertIlSlotAvailable", () => {
       findMany: vi.fn(),
     },
     leagueRule: {
-      findFirst: vi.fn().mockResolvedValue(
-        overrides.slotCountRule == null ? null : { value: overrides.slotCountRule },
+      findMany: vi.fn().mockResolvedValue(
+        overrides.slotCountRule == null
+          ? []
+          : [{ category: "il", key: "slot_count", value: overrides.slotCountRule }],
       ),
     },
   });

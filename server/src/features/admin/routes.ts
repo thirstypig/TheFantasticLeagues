@@ -14,6 +14,7 @@ import { CommissionerService } from "../commissioner/services/CommissionerServic
 import { syncAllPlayers, syncPositionEligibility, syncAAARosters, enrichStalePlayers } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
 import * as errorBuffer from "../../lib/errorBuffer.js";
+import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
 import { BUFFER_CAPACITY } from "../../lib/errorBuffer.js";
 import { logger } from "../../lib/logger.js";
 
@@ -191,6 +192,7 @@ router.delete("/admin/league/:leagueId", requireAuth, requireAdmin, asyncHandler
     prisma.period.deleteMany({ where: { leagueId } }),
     prisma.league.delete({ where: { id: leagueId } }),
   ]);
+  invalidateLeagueRules(leagueId);
 
   writeAuditLog({
     userId: req.user!.id,

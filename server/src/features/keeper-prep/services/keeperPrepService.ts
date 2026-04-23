@@ -4,6 +4,7 @@
 import { prisma } from "../../../db/prisma.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
 import { logger } from "../../../lib/logger.js";
+import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ export class KeeperPrepService {
       create: { leagueId, category: "status", key: "keepers_locked", value: "true", label: "Keepers Locked" },
       update: { value: "true" },
     });
+    invalidateLeagueRules(leagueId);
 
     logger.info({ leagueId, releasedCount: released.count }, "Keepers locked — non-keepers released to free agent pool");
 
@@ -89,6 +91,7 @@ export class KeeperPrepService {
       create: { leagueId, category: "status", key: "keepers_locked", value: "false", label: "Keepers Locked" },
       update: { value: "false" },
     });
+    invalidateLeagueRules(leagueId);
     logger.info({ leagueId }, "Keepers unlocked — non-keepers were NOT restored; re-populate if needed");
   }
 
