@@ -16,8 +16,9 @@ import {
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague, findMyTeam } from "../../../contexts/LeagueContext";
 import { useToast } from "../../../contexts/ToastContext";
-import AddDropTab from "../../roster/components/AddDropTab";
 import WaiverClaimForm from "../../waivers/components/WaiverClaimForm";
+import RosterMovesTab from "../components/RosterMovesTab";
+import { canManageRoster, REASON_COPY } from "../lib/permissions";
 import { TradeCard, LeagueTradeCard, CreateTradeForm } from "../../trades/pages/TradesPage";
 import TeamRosterView from "../../teams/components/TeamRosterView";
 import ActivityWaiversTab from "../components/ActivityWaiversTab";
@@ -32,7 +33,7 @@ type ActivityTab = "add_drop" | "trades" | "waivers" | "history";
 export default function ActivityPage() {
   const { me } = useAuth();
   const authUser = me?.user;
-  const { leagueId: currentLeagueId } = useLeague();
+  const { leagueId: currentLeagueId, myTeamId, leagueRules } = useLeague();
   const { toast } = useToast();
 
   const isCommissioner =
@@ -40,6 +41,14 @@ export default function ActivityPage() {
     authUser?.memberships?.some(
       (m: any) => Number(m.leagueId) === currentLeagueId && m.role === "COMMISSIONER"
     );
+
+  // Permission check for the Roster Moves tab. Mirror of the server-side
+  // requireTeamOwnerOrCommissioner — a non-commissioner owner sees the tab
+  // when the league's transactions.owner_self_serve rule is 'true', scoped
+  // to their own team. Admins/commissioners always see it.
+  const isLeagueMember = Boolean(
+    authUser?.memberships?.some((m: any) => Number(m.leagueId) === currentLeagueId),
+  );
 
   const [searchParams, setSearchParams] = useSearchParams();
   const VALID_TABS: ActivityTab[] = ["waivers", "add_drop", "trades", "history"];
@@ -229,7 +238,7 @@ export default function ActivityPage() {
                   size="sm"
                   className="px-6"
                 >
-                  Add / Drop
+                  Roster Moves
                 </Button>
                 <Button
                   onClick={() => setActiveTab("trades")}
@@ -263,29 +272,76 @@ export default function ActivityPage() {
           />
         )}
 
-        {/* Add/Drop Tab */}
-        {activeTab === "add_drop" && (
-          <div className="liquid-glass rounded-3xl p-1 bg-[var(--lg-tint)]">
-            {isCommissioner ? (
-              <AddDropTab players={players} onClaim={handleClaim} onDrop={handleDrop} disabled={claimInFlight} />
-            ) : selectedTeamId ? (
-              <WaiverClaimForm
+        {/* Roster Moves Tab — unified home for Add/Drop, Place on IL, and
+            Activate from IL. Visibility gated by canManageRoster: admins and
+            league commissioners always see it; team owners see it when the
+            league's transactions.owner_self_serve rule is 'true'. When the
+            caller is not authorized for roster moves, we keep the waiver-
+            submission fallback (existing path for non-commissioner owners in
+            commissioner-only leagues) so that path doesn't regress. */}
+        {activeTab === "add_drop" && (() => {
+          const permission = canManageRoster({
+            leagueId: currentLeagueId || null,
+            teamId: selectedTeamId,
+            isAdmin: Boolean(authUser?.isAdmin),
+            isCommissioner: (lid) =>
+              Boolean(authUser?.memberships?.some(
+                (m: any) => String(m.leagueId) === lid && m.role === "COMMISSIONER",
+              )),
+            myTeamId: myTeamId ?? null,
+            leagueRules,
+            isLeagueMember,
+          });
+
+          if (permission.kind === "loading") {
+            return (
+              <div className="p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
+                Loading…
+              </div>
+            );
+          }
+
+          if (permission.kind === "allow" && selectedTeamId && currentLeagueId) {
+            return (
+              <RosterMovesTab
+                leagueId={currentLeagueId}
+                teamId={selectedTeamId}
                 players={players}
-                myTeamId={selectedTeamId}
-                myTeamBudget={teams.find(t => t.id === selectedTeamId)?.budget ?? 400}
-                myRoster={players.filter((p: any) => {
-                  const tid = (p as any)._dbTeamId || teams.find(t => t.name === p.ogba_team_name)?.id;
-                  return tid === selectedTeamId;
-                })}
                 onComplete={loadData}
               />
-            ) : (
-              <div className="p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                Select a team to submit waiver claims.
+            );
+          }
+
+          // Deny — show a waiver-claim fallback for non-commissioner owners
+          // in commissioner-only leagues. This is the pre-existing path,
+          // preserved to avoid regressing the owner-submits-waiver flow
+          // while a dedicated Waivers-tab submit UI is built separately.
+          if (permission.kind === "deny" && selectedTeamId) {
+            return (
+              <div className="lg-card p-4">
+                <p className="text-[11px] text-[var(--lg-text-muted)] mb-4">
+                  {REASON_COPY[permission.reason]} You can still submit a waiver claim below.
+                </p>
+                <WaiverClaimForm
+                  players={players}
+                  myTeamId={selectedTeamId}
+                  myTeamBudget={teams.find(t => t.id === selectedTeamId)?.budget ?? 400}
+                  myRoster={players.filter((p: any) => {
+                    const tid = (p as any)._dbTeamId || teams.find(t => t.name === p.ogba_team_name)?.id;
+                    return tid === selectedTeamId;
+                  })}
+                  onComplete={loadData}
+                />
               </div>
-            )}
-          </div>
-        )}
+            );
+          }
+
+          return (
+            <div className="p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
+              Select a team to manage roster moves.
+            </div>
+          );
+        })()}
 
         {/* Trades Tab */}
         {activeTab === "trades" && (

@@ -45,8 +45,11 @@ vi.mock("../../../contexts/ToastContext", () => ({
 vi.mock("../../../components/ui/button", () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
 }));
-vi.mock("../../roster/components/AddDropTab", () => ({
-  default: () => <div data-testid="add-drop-tab">AddDropTab</div>,
+// AddDropTab is no longer rendered from ActivityPage — the tab now routes
+// authorized users through RosterMovesTab. Non-commissioner owners still
+// see WaiverClaimForm as a fallback when their league is commissioner-only.
+vi.mock("../components/RosterMovesTab", () => ({
+  default: () => <div data-testid="roster-moves-tab">RosterMovesTab</div>,
 }));
 vi.mock("../../waivers/components/WaiverClaimForm", () => ({
   default: () => <div data-testid="waiver-claim-form">WaiverClaimForm</div>,
@@ -117,7 +120,7 @@ describe("ActivityPage", () => {
   it("renders tab buttons", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("Add / Drop")).toBeInTheDocument();
+      expect(screen.getByText("Roster Moves")).toBeInTheDocument();
       expect(screen.getByText("Trades")).toBeInTheDocument();
       expect(screen.getByText("Waivers")).toBeInTheDocument();
       expect(screen.getByText("History")).toBeInTheDocument();
@@ -131,10 +134,10 @@ describe("ActivityPage", () => {
     });
   });
 
-  it("does not show add/drop tab content by default", async () => {
+  it("does not show roster-moves tab content by default", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.queryByTestId("add-drop-tab")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("roster-moves-tab")).not.toBeInTheDocument();
     });
   });
 

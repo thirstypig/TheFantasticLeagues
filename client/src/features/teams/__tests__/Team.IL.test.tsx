@@ -67,8 +67,10 @@ vi.mock("../../../components/shared/RosterAlertAccordion", () => ({
 }));
 vi.mock("../../watchlist/components/WatchlistPanel", () => ({ default: () => null }));
 vi.mock("../../trading-block/components/TradingBlockPanel", () => ({ default: () => null }));
-vi.mock("../components/PlaceOnIlModal", () => ({ default: () => null }));
-vi.mock("../components/ActivateFromIlModal", () => ({ default: () => null }));
+// PlaceOnIlModal and ActivateFromIlModal were deleted in the Roster Moves
+// redesign (PR #N). Their behavior lives on the Activity → Roster Moves
+// tab via PlaceOnIlPanel / ActivateFromIlPanel now. Team.tsx no longer
+// imports them, so no mock is needed here.
 
 import { getPlayerSeasonStats, getTeamDetails, getTeams } from "../../../api";
 import Team from "../pages/Team";
