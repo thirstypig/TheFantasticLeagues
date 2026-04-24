@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AddDropPanel from "../AddDropPanel";
+import { fetchJsonApi } from "../../../../../api/base";
 import type { RosterMovesPlayer } from "../types";
 
 // Critical fixture: seasonStatus controls DROP_REQUIRED. The test below
@@ -127,6 +128,65 @@ describe("AddDropPanel — free-agent key uniqueness (regression)", () => {
     const selected = allFaButtons.filter((b) => b.className.includes("bg-[var(--lg-accent)]/15"));
     expect(selected).toHaveLength(1);
     expect(selected[0].textContent).toContain("Bravo Two");
+  });
+});
+
+describe("AddDropPanel — submit body contract", () => {
+  // Regression lock for the server-contract change in the free-agent fix.
+  // The server's /transactions/claim accepts either playerId (DB Player.id)
+  // or mlbId. Free agents from getPlayerSeasonStats have mlb_id but no
+  // _dbPlayerId, so the client must send mlbId — not playerId=0. Before
+  // the fix, every FA was keyed on _dbPlayerId ?? 0 and handleSubmit
+  // posted { playerId: 0 }, which the server rejected.
+
+  it("posts mlbId (not playerId) for free agents with no _dbPlayerId", async () => {
+    mockSeasonStatus.value = "SETUP"; // no drop required
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe("/api/transactions/claim");
+    const body = JSON.parse((init as RequestInit).body as string);
+    // mlbId must be sent for the server to resolve the free agent.
+    expect(body).toMatchObject({
+      leagueId: 20,
+      teamId: 147,
+      mlbId: "642731",
+    });
+    // playerId must NOT be present when _dbPlayerId is undefined —
+    // sending playerId: 0 or null would fail the server lookup.
+    expect(body).not.toHaveProperty("playerId");
+    // No drop selected, so dropPlayerId must be absent.
+    expect(body).not.toHaveProperty("dropPlayerId");
+  });
+
+  it("posts both mlbId and dropPlayerId for in-season add+drop", async () => {
+    mockSeasonStatus.value = "IN_SEASON";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
+    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).toMatchObject({
+      leagueId: 20,
+      teamId: 147,
+      mlbId: "642731",
+      dropPlayerId: 600,
+    });
+    expect(body).not.toHaveProperty("playerId");
   });
 });
 

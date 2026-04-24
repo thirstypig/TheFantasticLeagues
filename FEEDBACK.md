@@ -4,6 +4,43 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-04-23/24 (Session 75) — Roster Moves UX consolidated, Rule 2 prior-year fallback shipped, enforcement flipped on for OGBA
+
+Three distinct PRs landed in rapid succession along the path to getting `ENFORCE_ROSTER_RULES=true` live for OGBA. Writing them up together because they're one arc: Phase 5 UI consolidation → live-flip audit → Rule 2 correctness patch.
+
+### Completed
+
+- **PR [#123](https://github.com/thirstypig/TheFantasticLeagues/pull/123) — Roster Moves client re-homing** (merge `7adb9ce`). Phase 5 of the roster-rules plan. Three-panel `RosterMovesTab` at `/activity?tab=add_drop&mode=…` with Add/Drop + Place on IL + Activate from IL modes, URL-synced. `Team.tsx` stripped to view-only. `PlaceOnIlModal`, `ActivateFromIlModal`, dead `TransactionsPage` deleted. `LeagueContext` exposes `leagueRules`. `positionEligibility.ts` consolidates the triplicated `slotsFor`. Rules editor gains a "transactions" category with the `owner_self_serve` toggle (default `'false'` for OGBA). 11 `RosterMovesTab` tests + 8 `AddDropPanel` tests + 9 `permissions` tests + 27 `positionEligibility` tests added.
+  - **Follow-on fix on the same branch** (`27b0961`): `AddDropPanel` tracked free-agent selection by `_dbPlayerId ?? 0`, but `getPlayerSeasonStats` does NOT enrich `_dbPlayerId` on free agents. Every FA collapsed to pid=0; clicking any FA selected all 30. Caught by browser verification; fixed by switching to `addMlbId` and the server's existing dual-ID `/transactions/claim` contract. The session memory now carries a "distrust test fixtures that set `_dbPlayerId` on free agents" signal — the unit tests had mocked the field, masking the regression from CI.
+
+- **ENFORCE_ROSTER_RULES flipped to `true` for OGBA** in Railway dashboard (2026-04-23). `cd server && npx tsx src/scripts/auditRosterRules.ts 20` returned clean: all teams at cap, zero ghost-IL, 0 completed periods → $0 retroactive fees. Flip was deliberately timed before the first period close to keep retroactive fees at zero.
+
+- **PR [#124](https://github.com/thirstypig/TheFantasticLeagues/pull/124) — Rule 2 prior-year position eligibility fallback** (merge `a8723fc`). OGBA's three-layer eligibility (Rule 1: current ≥3 GP, Rule 2: prior ≥20 GP, Rule 3: rookies → primary) had Rules 1 and 3 but not 2. Without Rule 2, April's `syncPositionEligibility` rebuilt `posList` as `[posPrimary]` until players crossed 3 GP at secondaries — which, with enforcement now live, would reject legitimate re-acquisition claims for players who qualified in 2025 but not yet in 2026.
+  - Added a second `fetchPlayerFieldingStats(season - 1)` call with 30-day TTL (prior-year data is immutable after year close). Fail-closed on any error — fallback is skipped for the tick, next cron self-heals.
+  - `!isTwoWay` guard on the fallback (forward-compat; `TWO_WAY_PLAYERS` is actually empty in production post-split — real Ohtani protection is the derived-ID filter).
+  - Derived-ID pre-filter `mlbId < 1_000_000` excludes Ohtani's synthetic pitcher row (1660271) from the prior-season fetch.
+  - **Plan deepened via 9 parallel research/review agents** before implementation. Biggest finding from deepening: the original plan had a `secondaryCount === 0` gate that would have made Rule 2 a pre-season-only safety net; three reviewers converged that (a) set union is idempotent so the gate is redundant, (b) industry convention (Yahoo/ESPN/CBS) persists prior-year eligibility all season, and (c) the gate was actually a silent removal vector in the (prior-2B:40, current-SS:5) case. Dropped. Saved one test case and aligned OGBA with industry norms.
+  - 5 Rule 2 tests + 2 `AddDropPanel` submit-body contract tests (post-merge).
+
+### Commits on main (Session 75)
+
+- `7adb9ce` — Merge PR #123 (Roster Moves client re-homing)
+- `a8723fc` — Merge PR #124 (Rule 2 prior-year fallback)
+
+### Pending at end of session
+
+- Two `AddDropPanel` submit-body contract tests (`posts mlbId for free agents`, `posts both mlbId and dropPlayerId for in-season add+drop`) — added via `/test-new` after merge of #123/#124. Uncommitted on main alongside this `/doc` sync; to commit after this entry writes.
+- Memory update for `position_eligibility_layers.md` to reflect Rule 2 implemented (memory still says "Rule 2 is NOT implemented").
+
+### Concerns / Tech debt surfaced
+
+- **Test fixture hazard.** `AddDropPanel` unit tests mocked free agents with `_dbPlayerId: 500`, which is not how real data looks. The key-collision + selection bug shipped through CI because all tests used the fabricated field. Added a regression test for the uniqueness case and documented this in `memory/roster_rules_feature.md`. Consider a lint or test-data generator to prevent future drift between fixture shapes and real API responses.
+- **CLAUDE.md per-file test breakdown** (lines ~332+) is severely stale — last full-sync ~session 66. The summary line is now authoritative; the per-file list will need a separate dedicated pass or to be deleted.
+- **`shouldOverwritePosList` primary-change edge case.** `mlbSyncService.ts:99` preserves enriched `posList` but if `posPrimary` changes upstream, the list's `[0]` may no longer equal the primary. Downstream consumers that read `posList.split(",")[0]` as primary would misread. Not blocking; tracked as a Rule 2 follow-up in `docs/plans/2026-04-23-fix-rule2-prior-year-position-eligibility-plan.md`.
+- **Rule 2 is not league-scoped.** Hardcoded `PRIOR_YEAR_GP_THRESHOLD = 20`. When a second league adopts this fallback with a different threshold, promote to `LeagueRule.position.prior_year_threshold`. YAGNI until then.
+
+---
+
 ## Session 2026-04-22 (Session 72) — Roster rules Phases 2a, 2b, 3 shipped; outbox drainer tested
 
 Same continuous session arc as Session 71; broken out as a separate entry because four distinct shipments landed after the last `/doc` pass.

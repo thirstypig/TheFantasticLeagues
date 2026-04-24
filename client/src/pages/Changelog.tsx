@@ -34,6 +34,31 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.64.0",
+    date: "Apr 24, 2026",
+    session: "Session 75",
+    title: "Roster Moves UX + Rule 2 prior-year position eligibility live",
+    highlights: [
+      "PR #123: Roster Moves tab consolidates Add/Drop, Place on IL, and Activate from IL into one unified surface at /activity?tab=add_drop with URL-synced mode selection. Team page stripped to view-only. Owner self-serve toggle shipped default-off for OGBA via LeagueRule.transactions.owner_self_serve — commissioners can flip per-league. Also caught and fixed a silent regression in AddDropPanel where every free agent shared key=0 (missing _dbPlayerId) and clicking any FA selected all 30 — now keyed on mlb_id using the server's dual-ID /transactions/claim contract.",
+      "ENFORCE_ROSTER_RULES=true flipped on for OGBA in Railway dashboard. Pre-flip audit via server/src/scripts/auditRosterRules.ts returned clean: zero cap violations, zero ghost-IL, zero retroactive fees (0 completed periods on file). The four re-acquisition gates — claim, il-stash, il-activate, commissioner PATCH roster — now enforce position eligibility, exact cap, drop-required in-season, and IL-slot rules against OGBA in production.",
+      "PR #124: Rule 2 prior-year 20-GP position eligibility fallback. OGBA's three-layer eligibility now fully implemented — Rule 1 (current ≥3 GP, pre-existing), Rule 2 (prior ≥20 GP, NEW), Rule 3 (rookies → primary only, pre-existing). syncPositionEligibility now makes a second fielding fetch for season-1 with 30-day TTL, merges additively alongside current-season data. Fail-closed on MLB API error. Derived-ID filter (mlbId < 1_000_000) excludes Ohtani's synthetic pitcher row from the prior fetch. Aligns OGBA with Yahoo/ESPN/CBS industry norm of persistent prior-year eligibility.",
+    ],
+    changes: [
+      { type: "feat", description: "PR #123 (7adb9ce): RosterMovesTab at client/src/features/transactions/components/RosterMovesTab/ with three panels (Add/Drop, Place on IL, Activate from IL), URL-synced via ?mode=, IL count pill + shortcut banner when team has stashed players." },
+      { type: "refactor", description: "Team.tsx stripped to view-only — all in-season mutations now flow through the Activity → Roster Moves tab. PlaceOnIlModal, ActivateFromIlModal, dead TransactionsPage deleted." },
+      { type: "feat", description: "LeagueRule.transactions.owner_self_serve toggle (default 'false', per-league). Controls whether team owners can run add/drop + IL management on their own team without commissioner approval. OGBA keeps commissioner-only behavior via the default." },
+      { type: "fix", description: "PR #123 follow-on (27b0961): AddDropPanel regression — free agents have no _dbPlayerId so every FA collapsed to pid=0 and clicking one selected all 30. Switched selection tracking to mlb_id (string) and submit body to mlbId + optional playerId per server's dual-ID /transactions/claim contract. Unit tests had mocked _dbPlayerId on FAs, masking the bug from CI." },
+      { type: "feat", description: "PR #124 (a8723fc): Rule 2 prior-year 20-GP position eligibility fallback in syncPositionEligibility. Second fetchPlayerFieldingStats(season - 1) call with 30-day TTL (prior-year data is immutable after year close). Fail-closed try/catch — on any error, fallback is skipped for the tick and the next 12:00 UTC cron self-heals." },
+      { type: "fix", description: "Rule 2: derived-ID pre-filter (mlbId < 1_000_000) excludes Ohtani's synthetic pitcher row (1660271) from the prior-season fetch, preventing MLB API 404s (see docs/solutions/logic-errors/ohtani-two-way-player-split-architecture.md)." },
+      { type: "security", description: "ENFORCE_ROSTER_RULES=true live for OGBA. All four re-acquisition gates now reject POSITION_INELIGIBLE, EXACT_CAP_VIOLATION, DROP_REQUIRED, and GHOST_IL_BLOCK per plan; grandfathered assignments still sticky via the three-layer invariant (daily sync never touches Roster.assignedPosition, in-season UI lock, gates at re-acquisition)." },
+      { type: "perf", description: "Optional ttlSeconds threaded through fetchPlayerBatch → fetchPlayerFieldingStats → mlbGetJson so callers can cache immutable data for days. Default behavior unchanged. Prior-season Rule 2 fetch uses 30-day TTL." },
+      { type: "test", description: "+46 client tests (RosterMovesTab 11, AddDropPanel 10 incl. 2 submit-body contract tests, permissions 9, positionEligibility 27) and +5 server tests for Rule 2 (fallback fires, additive merge, threshold respected, fail-closed on error, derived-ID filter)." },
+      { type: "docs", description: "CLAUDE.md daily-cron section documents the three-layer eligibility model; summary test count updated (744→749 server, 247→283 client). FEEDBACK session 75 entry added. Plan for Rule 2 preserved at docs/plans/2026-04-23-fix-rule2-prior-year-position-eligibility-plan.md with implementation-notes section capturing build-time deviations from the plan." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+  },
+  {
     version: "0.63.0",
     date: "Apr 21, 2026",
     session: "Session 70",

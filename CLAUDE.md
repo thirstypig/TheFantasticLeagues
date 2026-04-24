@@ -247,10 +247,14 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `AuctionSession.state.draftReport` — JSON, persisted Draft Report (generated once, survives restarts)
 
 ### Daily Cron Jobs (server/src/index.ts)
-- **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 3)` — updates multi-position eligibility from fielding stats (3+ games = qualified per OGBA rule). Global threshold today; per-league in the future.
+- **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 3)` which applies OGBA's three-layer position eligibility:
+  1. **Rule 1** — current season ≥3 GP at a position → eligible.
+  2. **Rule 2** — prior season ≥20 GP at a position → eligible (additive with Rule 1; PR #124). Fail-closed on prior-season MLB API error; prior fetch uses 30-day TTL. Derived-IDs (≥1M) filtered to avoid 404s on Ohtani's synthetic pitcher row.
+  3. **Rule 3** — rookies / minors → primary position only (falls out of the empty-fielding skip).
+  Global threshold; per-league future.
 - **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods
 
-**CRITICAL**: `syncAllPlayers()` updates `Player.posPrimary` and `Player.mlbTeam` but **preserves enriched `Player.posList`** — it only overwrites `posList` if the existing value is just the primary position (not enriched by fielding stats). This prevents the daily sync from wiping multi-position eligibility data.
+**CRITICAL**: `syncAllPlayers()` updates `Player.posPrimary` and `Player.mlbTeam` but **preserves enriched `Player.posList`** — it only overwrites `posList` if the existing value is just the primary position (not enriched by current or prior-season fielding stats). This prevents the daily sync from wiping multi-position eligibility data produced by `syncPositionEligibility`.
 
 ## Development
 
@@ -323,7 +327,9 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (744 server + 247 client + 50 MCP + 1 E2E = 1042 tests, 27 feature modules)
+### Current Test Coverage (749 server + 283 client + 50 MCP + 1 E2E = 1083 tests, 27 feature modules)
+
+**Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 
 See `docs/TESTING.md` for the full catalog, vocabulary (unit/integration/E2E), coverage gaps, and run cadence.
 E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e` (requires both dev servers up).

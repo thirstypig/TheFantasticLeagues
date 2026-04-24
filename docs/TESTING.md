@@ -35,16 +35,16 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (744 server + 247 client = 991 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (749 server + 283 client = 1032 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
 **Current reality (2026-04-19):** we don't have a formal E2E suite in CI. Every session I (Claude Code) verify user-facing changes with Playwright MCP interactive flows — that's good evidence but it's not automated. Next step is to promote the most common flows into `@playwright/test` so they run in CI.
 
-## Current coverage (Session 69 baseline)
+## Current coverage (Session 75 baseline, 2026-04-24)
 
-### Server — 744 passing, 7 skipped, 1 todo, 52 files
+### Server — 749 passing, 7 skipped, 1 todo, 52 files
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -55,7 +55,7 @@ Major covered areas (selected):
 - `features/waivers/routes.test.ts` — 12 (submit, process, cancel)
 - `features/standings/` — 26 service + 7 integration + 11 routes
 - `features/seasons/` — 14 service + 5 routes
-- `features/players/mlbSyncService.test.ts` — 23 (roster sync, position eligibility)
+- `features/players/mlbSyncService.test.ts` — 28 (roster sync, position eligibility, Rule 2 prior-year 20-GP fallback)
 - `features/archive/routes.test.ts` — 38
 - `features/admin/routes.test.ts` — 21
 - `features/keeper-prep/routes.test.ts` — 8
@@ -64,7 +64,7 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 237 passing, 21 files
+### Client — 283 passing, 23 files
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
@@ -75,8 +75,10 @@ Major covered areas (selected):
 - `features/auction/AuctionValues.test.tsx` — 10
 - `features/teams/Teams.test.tsx` + `Team.test.tsx` — 17
 - `features/teams/Team.IL.test.tsx` — 4 (Your IL Slots subsection, Ghost-IL badge, stashed-dedup in MLB IL Candidates)
-- `features/teams/PlaceOnIlModal.test.tsx` — 9 (render, FA filter, eligibility, submit, MLB-status warning, error surface)
-- `features/teams/ActivateFromIlModal.test.tsx` — 6
+- `features/transactions/components/RosterMovesTab/RosterMovesTab.test.tsx` — 11 (mode default / URL sync / IL count pill / shortcut banner / panel switching; PR #123 re-homing of PlaceOnIlModal + ActivateFromIlModal + standalone add/drop into a single tab)
+- `features/transactions/components/RosterMovesTab/AddDropPanel.test.tsx` — 10 (DROP_REQUIRED in-season + preseason inverse + FA key-uniqueness regression + submit-body contract: mlbId for free agents with no _dbPlayerId, dropPlayerId for in-season paired submits)
+- `features/transactions/lib/permissions.test.ts` — 9 (canManageRoster matrix: admin / commissioner / owner with self-serve toggle / cross-team IDOR / no-league-rules loading state)
+- `lib/positionEligibility.test.ts` — 27 (slotsFor consolidation from the triplicated Phase 4 helpers)
 - `features/waivers/WaiverClaimForm.test.tsx` — 6 (in-season drop-required label, position eligibility)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16
