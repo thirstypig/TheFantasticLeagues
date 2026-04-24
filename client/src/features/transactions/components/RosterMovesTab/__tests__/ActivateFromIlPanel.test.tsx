@@ -60,6 +60,22 @@ async function setUpAndSubmit(effectiveDate?: string) {
   await user.click(screen.getByRole("button", { name: /Activate \+ Drop/i }));
 }
 
+describe("ActivateFromIlPanel initialActivatePlayerId preselection", () => {
+  it("preselects the activate dropdown when initialActivatePlayerId is provided", () => {
+    render(
+      <ActivateFromIlPanel
+        leagueId={20}
+        teamId={147}
+        players={[ilPlayer, dropCandidate]}
+        onComplete={vi.fn()}
+        initialActivatePlayerId={ilPlayer._dbPlayerId}
+      />
+    );
+    const [activateSelect] = screen.getAllByRole("combobox") as HTMLSelectElement[];
+    expect(activateSelect.value).toBe(String(ilPlayer._dbPlayerId));
+  });
+});
+
 describe("ActivateFromIlPanel effectiveDate forwarding", () => {
   it("forwards effectiveDate to ilActivate when the prop is set", async () => {
     await setUpAndSubmit("2026-04-20");

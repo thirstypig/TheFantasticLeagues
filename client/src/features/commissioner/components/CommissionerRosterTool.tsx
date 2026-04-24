@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getCommissionerRosters } from '../api';
 import RosterGrid from '../../roster/components/RosterGrid';
 import RosterControls from '../../roster/components/RosterControls';
@@ -52,6 +52,13 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   // default (tomorrow 12:00 AM PT).
   const [effectiveDate, setEffectiveDate] = useState<string>('');
   const [ilMode, setIlMode] = useState<IlMode>('place-il');
+  // Preselection nonces from the per-row IL shortcut on RosterGrid. We use
+  // a {playerId, nonce} tuple instead of a bare playerId so clicking the
+  // same player twice still triggers the panel's useEffect (otherwise React
+  // would skip the state update because the value didn't change).
+  const [stashPreselect, setStashPreselect] = useState<{ playerId: number; nonce: number } | null>(null);
+  const [activatePreselect, setActivatePreselect] = useState<{ playerId: number; nonce: number } | null>(null);
+  const ilCardRef = useRef<HTMLDivElement | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -147,6 +154,39 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
       setActionInFlight(false);
     }
   };
+
+  // Lookup of Player.id → mlbStatus, used by RosterGrid to gate the per-row
+  // "IL" shortcut button to rows whose MLB status actually matches the IL
+  // regex (otherwise commissioners would click and hit a server rejection).
+  const mlbStatusByPlayerId = useMemo(() => {
+    const map = new Map<number, string | undefined>();
+    for (const p of players) {
+      const pid = (p as unknown as { id?: number }).id;
+      if (pid) map.set(pid, (p as unknown as { mlbStatus?: string }).mlbStatus);
+    }
+    return map;
+  }, [players]);
+
+  // Per-row IL shortcut handlers. We jump the acting-as team to whichever
+  // team owns the clicked roster row, because the commissioner clicked
+  // *that* player — the IL panels are scoped to actingAsTeamId, so the
+  // Acting As must follow. We then preselect the player and switch ilMode.
+  function handlePlaceIlShortcut(item: RosterItem) {
+    setActingAsTeamId(item.teamId);
+    setIlMode('place-il');
+    setStashPreselect({ playerId: item.player.id, nonce: Date.now() });
+    requestAnimationFrame(() => {
+      ilCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+  function handleActivateIlShortcut(item: RosterItem) {
+    setActingAsTeamId(item.teamId);
+    setIlMode('activate-il');
+    setActivatePreselect({ playerId: item.player.id, nonce: Date.now() });
+    requestAnimationFrame(() => {
+      ilCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 
   // Annotate each player with the fantasy team code they belong to so
   // AddDropTab's `isTaken` check lights up correctly. getPlayerSeasonStats
@@ -245,7 +285,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
            server-side. Uses the acting-as team + lifted effective date.
            Panels remount on team change (via key) so their internal picker
            state resets to avoid cross-team bleed. */}
-       <div className="lg-card p-0 bg-transparent">
+       <div ref={ilCardRef} className="lg-card p-0 bg-transparent">
          <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
            <div className="flex items-center justify-between gap-4 flex-wrap">
              <div>
@@ -285,6 +325,11 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                players={playersWithRosterState as unknown as any}
                onComplete={handleUpdate}
                effectiveDate={effectiveDate || undefined}
+               initialStashPlayerId={
+                 stashPreselect && stashPreselect.nonce
+                   ? stashPreselect.playerId
+                   : null
+               }
              />
            ) : (
              <ActivateFromIlPanel
@@ -294,13 +339,30 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                players={playersWithRosterState as unknown as any}
                onComplete={handleUpdate}
                effectiveDate={effectiveDate || undefined}
+               initialActivatePlayerId={
+                 activatePreselect && activatePreselect.nonce
+                   ? activatePreselect.playerId
+                   : null
+               }
              />
            )}
          </div>
        </div>
 
-       {/* Live Rosters — release/edit in-place */}
-       <RosterGrid teams={teams} rosters={rosters} canRelease canEditPrice canEditPosition onRelease={handleUpdate} />
+       {/* Live Rosters — release/edit in-place. Per-row IL/Activate
+           shortcuts route to the IL Management card above with the player
+           preselected. */}
+       <RosterGrid
+         teams={teams}
+         rosters={rosters}
+         canRelease
+         canEditPrice
+         canEditPosition
+         onRelease={handleUpdate}
+         onPlaceIl={handlePlaceIlShortcut}
+         onActivateIl={handleActivateIlShortcut}
+         mlbStatusByPlayerId={mlbStatusByPlayerId}
+       />
     </div>
   );
 }

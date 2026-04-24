@@ -71,6 +71,57 @@ async function setUpAndSubmit(effectiveDate?: string) {
   await user.click(screen.getByRole("button", { name: /Stash \+ Add/i }));
 }
 
+describe("PlaceOnIlPanel initialStashPlayerId preselection", () => {
+  it("preselects the stash dropdown when initialStashPlayerId is provided", () => {
+    render(
+      <PlaceOnIlPanel
+        leagueId={20}
+        teamId={147}
+        players={[ilStashCandidate, freeAgentReplacement]}
+        onComplete={vi.fn()}
+        initialStashPlayerId={ilStashCandidate._dbPlayerId}
+      />
+    );
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select.value).toBe(String(ilStashCandidate._dbPlayerId));
+  });
+
+  it("re-applies preselection when initialStashPlayerId changes (e.g., commissioner clicks IL on a different row)", async () => {
+    const otherCandidate = {
+      ...ilStashCandidate,
+      _dbPlayerId: 501,
+      player_name: "Other Player",
+    } as RosterMovesPlayer;
+
+    const { rerender } = render(
+      <PlaceOnIlPanel
+        leagueId={20}
+        teamId={147}
+        players={[ilStashCandidate, otherCandidate, freeAgentReplacement]}
+        onComplete={vi.fn()}
+        initialStashPlayerId={ilStashCandidate._dbPlayerId}
+      />
+    );
+
+    let select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select.value).toBe(String(ilStashCandidate._dbPlayerId));
+
+    // Parent updates the preselect to a different player.
+    rerender(
+      <PlaceOnIlPanel
+        leagueId={20}
+        teamId={147}
+        players={[ilStashCandidate, otherCandidate, freeAgentReplacement]}
+        onComplete={vi.fn()}
+        initialStashPlayerId={otherCandidate._dbPlayerId}
+      />
+    );
+
+    select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select.value).toBe(String(otherCandidate._dbPlayerId));
+  });
+});
+
 describe("PlaceOnIlPanel effectiveDate forwarding", () => {
   it("forwards effectiveDate to ilStash when the prop is set", async () => {
     await setUpAndSubmit("2026-04-20");
