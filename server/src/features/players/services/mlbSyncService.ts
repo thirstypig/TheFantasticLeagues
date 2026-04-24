@@ -213,17 +213,21 @@ export async function syncAllPlayers(season: number): Promise<{
 /**
  * Batch-fetch player data from the MLB people endpoint with a configurable hydrate param.
  * Chunks mlbIds into batches of 50 with 100ms delay between requests.
+ *
+ * Optional `ttlSeconds` overrides the cache TTL at `mlbGetJson` — useful for
+ * immutable data like prior-season stats which can safely cache for days.
  */
 async function fetchPlayerBatch(
   mlbIds: number[],
-  hydrateParam: string
+  hydrateParam: string,
+  ttlSeconds?: number
 ): Promise<MlbPerson[]> {
   const batches = chunk(mlbIds.map(String), 50);
   const allPlayers: MlbPerson[] = [];
 
   for (const batch of batches) {
     const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=${hydrateParam}`;
-    const data = await mlbGetJson<{ people?: MlbPerson[] }>(url);
+    const data = await mlbGetJson<{ people?: MlbPerson[] }>(url, ttlSeconds);
     allPlayers.push(...(data.people || []));
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -237,9 +241,14 @@ async function fetchPlayerBatch(
  */
 export async function fetchPlayerStats(
   mlbIds: number[],
-  season: number
+  season: number,
+  ttlSeconds?: number
 ): Promise<MlbPerson[]> {
-  return fetchPlayerBatch(mlbIds, `currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`);
+  return fetchPlayerBatch(
+    mlbIds,
+    `currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`,
+    ttlSeconds,
+  );
 }
 
 /**
@@ -248,9 +257,14 @@ export async function fetchPlayerStats(
  */
 export async function fetchPlayerFieldingStats(
   mlbIds: number[],
-  season: number
+  season: number,
+  ttlSeconds?: number
 ): Promise<MlbPerson[]> {
-  return fetchPlayerBatch(mlbIds, `stats(group=[fielding],type=[season],season=${season})`);
+  return fetchPlayerBatch(
+    mlbIds,
+    `stats(group=[fielding],type=[season],season=${season})`,
+    ttlSeconds,
+  );
 }
 
 /**
@@ -285,13 +299,35 @@ function extractFieldingPositions(player: MlbPerson): Map<string, number> {
 }
 
 /**
+ * OGBA Rule 2 threshold: a player qualifies at a position if they played at
+ * least this many games there in the prior season. Additive with Rule 1
+ * (current-season ≥ gpThreshold) and Rule 3 (rookies → primary only).
+ *
+ * Not parameterized per-league (YAGNI) — if a second league adopts a
+ * different threshold, promote to LeagueRule at that point.
+ */
+const PRIOR_YEAR_GP_THRESHOLD = 20;
+
+/**
  * Sync position eligibility for all players in the database.
- * Fetches fielding stats from MLB API and updates Player.posList based on
- * a games-played threshold. Players qualify for a position if they have
- * played >= gpThreshold games there in the given season.
+ * Fetches fielding stats from MLB API for the current season and prior
+ * season, and updates Player.posList based on a games-played threshold.
+ *
+ * Rules applied, additively:
+ *   1. Current season ≥ gpThreshold games at a position → eligible.
+ *   2. Prior season ≥ PRIOR_YEAR_GP_THRESHOLD games at a position → eligible.
+ *      Skipped for two-way players to prevent prior-year hitter positions
+ *      bleeding into a pitcher row (and vice versa).
+ *   3. Rookies / minors (no fielding data either season) → primary position
+ *      only, via the eligible set's primary-always-included floor.
+ *
+ * Prior-season fetch is fail-closed: if it throws, the fallback is skipped
+ * for this tick, the existing posList is preserved, and the next cron tick
+ * self-heals. Prior-season data uses a 30-day cache TTL since it's
+ * immutable after the season closes.
  *
  * @param season - MLB season year
- * @param gpThreshold - Minimum games played to qualify (default 20)
+ * @param gpThreshold - Minimum games played in current season to qualify (default 20)
  * @returns Summary of updates
  */
 export async function syncPositionEligibility(
@@ -318,7 +354,7 @@ export async function syncPositionEligibility(
     .map((p) => p.mlbId!)
     .filter((id) => id > 0);
 
-  // Batch fetch fielding stats from MLB API
+  // Batch fetch current-season fielding stats from MLB API
   const mlbPlayers = await fetchPlayerFieldingStats(mlbIds, season);
 
   // Build lookup: mlbId → fielding positions map
@@ -327,17 +363,51 @@ export async function syncPositionEligibility(
     fieldingByMlbId.set(mp.id, extractFieldingPositions(mp));
   }
 
+  // Rule 2: fetch prior-season fielding for the 20-GP fallback.
+  // Defense in depth: filter out derived IDs (≥ 1M, e.g. Ohtani's synthetic
+  // pitcher row 1660271) which the MLB API doesn't recognize — see
+  // docs/solutions/logic-errors/ohtani-derived-id-api-resolution.md.
+  // Fail-closed on error: undefined map → fallback is skipped this tick.
+  let priorFieldingByMlbId: Map<number, Map<string, number>> | undefined;
+  try {
+    const priorMlbIds = mlbIds.filter((id) => id < 1_000_000);
+    const priorMlbPlayers = await fetchPlayerFieldingStats(
+      priorMlbIds,
+      season - 1,
+      30 * 86400, // 30-day TTL — prior-season fielding is immutable once year closes
+    );
+    priorFieldingByMlbId = new Map();
+    for (const mp of priorMlbPlayers) {
+      priorFieldingByMlbId.set(mp.id, extractFieldingPositions(mp));
+    }
+  } catch (err) {
+    logger.warn(
+      { error: String(err), season: season - 1 },
+      "Prior-season fielding fetch failed; Rule 2 fallback skipped this tick",
+    );
+    priorFieldingByMlbId = undefined;
+  }
+
   let updated = 0;
   let unchanged = 0;
   let errors = 0;
 
   for (const player of players) {
     try {
-      const fielding = fieldingByMlbId.get(player.mlbId!);
-      const isTwoWay = TWO_WAY_PLAYERS.has(player.mlbId!);
+      // Narrow mlbId once at top of loop — removes four ! assertions below.
+      const { mlbId } = player;
+      if (mlbId == null) { unchanged++; continue; }
 
-      // Skip players with no fielding data (unless they're two-way players who need P added)
-      if ((!fielding || fielding.size === 0) && !isTwoWay) {
+      const fielding = fieldingByMlbId.get(mlbId);
+      const priorFielding = priorFieldingByMlbId?.get(mlbId);
+      const isTwoWay = TWO_WAY_PLAYERS.has(mlbId);
+
+      // Skip players with no fielding data in either season (unless two-way).
+      // Rule 2 widens this check from current-only to current-or-prior so a
+      // player with only prior-year data still gets the fallback merge.
+      const hasCurrent = fielding && fielding.size > 0;
+      const hasPrior = priorFielding && priorFielding.size > 0;
+      if (!hasCurrent && !hasPrior && !isTwoWay) {
         unchanged++;
         continue;
       }
@@ -350,6 +420,22 @@ export async function syncPositionEligibility(
       if (fielding) {
         for (const [pos, games] of fielding) {
           if (games >= gpThreshold) {
+            eligible.add(normalizePos(pos));
+          }
+        }
+      }
+
+      // Rule 2: merge prior-year positions at ≥ PRIOR_YEAR_GP_THRESHOLD,
+      // additively alongside current season. Set union is idempotent so a
+      // position already added from Rule 1 stays added.
+      //
+      // Guarded behind !isTwoWay: for Ohtani-style players, current fielding
+      // is pitcher-group-only (line 353 group filter), so without this guard
+      // a prior-year hitter position like OF would merge into the pitcher
+      // row. See docs/solutions/logic-errors/ohtani-two-way-player-split-architecture.md.
+      if (!isTwoWay && priorFielding) {
+        for (const [pos, games] of priorFielding) {
+          if (games >= PRIOR_YEAR_GP_THRESHOLD) {
             eligible.add(normalizePos(pos));
           }
         }
@@ -377,7 +463,7 @@ export async function syncPositionEligibility(
 
       if (newPosList !== player.posPrimary) {
         logger.debug(
-          { playerId: player.id, mlbId: player.mlbId, old: player.posList, new: newPosList },
+          { playerId: player.id, mlbId, old: player.posList, new: newPosList },
           "Position eligibility updated"
         );
       }

@@ -413,6 +413,157 @@ describe("syncPositionEligibility", () => {
     expect(result.unchanged).toBe(1); // player 2
     expect(result.total).toBe(3);
   });
+
+  // ── Rule 2: prior-year 20-GP fallback ─────────────────────────
+  //
+  // syncPositionEligibility now calls fetchPlayerFieldingStats twice per
+  // invocation: once for the current season, once for the prior season
+  // (for the OGBA Rule 2 fallback). The existing tests above use
+  // mockResolvedValue (sticky), so the second call returns the same data
+  // as the first — harmless because set union is idempotent and the
+  // existing assertions don't distinguish current vs prior behavior.
+  //
+  // The tests in this block explicitly mock the two calls separately via
+  // mockResolvedValueOnce so prior-year behavior can be asserted.
+
+  describe("Rule 2 — prior-year 20-GP fallback", () => {
+    it("fallback fires when current-season fielding is empty", async () => {
+      // Player dropped mid-April — 0 GP this year — but played 40 GP at 2B
+      // and 22 GP at SS last year. Rule 2 should grant both.
+      mockPrisma.player.findMany.mockResolvedValue([
+        { id: 1, mlbId: 12345, posPrimary: "UT", posList: "UT" },
+      ]);
+
+      mockMlbGetJson
+        // current season: empty fielding
+        .mockResolvedValueOnce({ people: [{ id: 12345, stats: [] }] })
+        // prior season: 40 GP at 2B, 22 GP at SS
+        .mockResolvedValueOnce(
+          makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "2B", games: 40 }, { pos: "SS", games: 22 }] }])
+        );
+
+      mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+      const result = await syncPositionEligibility(2026, 3);
+
+      expect(result.updated).toBe(1);
+      expect(mockPrisma.player.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { posList: "UT,2B,SS" },
+      });
+    });
+
+    it("prior-year positions merge additively with current season (no suppression)", async () => {
+      // Current season has SS: 5 GP (qualifies at threshold 3). Prior year
+      // has 2B: 40 GP. Both should land in posList — Rule 2 is additive,
+      // not a fallback-only-when-current-is-empty rule. This matches the
+      // Yahoo/ESPN industry convention of persisting prior-year eligibility.
+      mockPrisma.player.findMany.mockResolvedValue([
+        { id: 1, mlbId: 12345, posPrimary: "UT", posList: "UT" },
+      ]);
+
+      mockMlbGetJson
+        .mockResolvedValueOnce(
+          makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "SS", games: 5 }] }])
+        )
+        .mockResolvedValueOnce(
+          makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "2B", games: 40 }] }])
+        );
+
+      mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+      const result = await syncPositionEligibility(2026, 3);
+
+      expect(result.updated).toBe(1);
+      expect(mockPrisma.player.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { posList: "UT,2B,SS" },
+      });
+    });
+
+    it("prior-year threshold of 20 GP is respected", async () => {
+      // Prior year has 2B: 15 GP (below Rule 2's 20-GP threshold). Current
+      // year empty. Result: posList collapses to primary only.
+      mockPrisma.player.findMany.mockResolvedValue([
+        { id: 1, mlbId: 12345, posPrimary: "SS", posList: "SS" },
+      ]);
+
+      mockMlbGetJson
+        .mockResolvedValueOnce({ people: [{ id: 12345, stats: [] }] })
+        .mockResolvedValueOnce(
+          makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "2B", games: 15 }] }])
+        );
+
+      const result = await syncPositionEligibility(2026, 3);
+
+      // posList stays "SS" — below-threshold prior-year position not merged.
+      expect(result.unchanged).toBe(1);
+      expect(result.updated).toBe(0);
+    });
+
+    it("fail-closed when prior-season fetch throws — existing posList preserved", async () => {
+      // Simulates MLB API rate limit or 5xx on the second (prior-season)
+      // call. Plan requires all-or-nothing semantics: no partial fallback.
+      // First call succeeds, second throws → fallback is skipped this tick,
+      // a warn is logged, cron self-heals next day.
+      mockPrisma.player.findMany.mockResolvedValue([
+        { id: 1, mlbId: 12345, posPrimary: "OF", posList: "OF,1B" },
+      ]);
+
+      mockMlbGetJson
+        // current-season succeeds — 80 GP at OF, 1B not qualifying (0 GP)
+        .mockResolvedValueOnce(
+          makeMlbFieldingResponse([{ id: 12345, positions: [{ pos: "LF", games: 80 }] }])
+        )
+        // prior-season throws
+        .mockRejectedValueOnce(new Error("MLB API timeout"));
+
+      mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+      const result = await syncPositionEligibility(2026, 20);
+
+      // Sync still completes without raising. Current-season processing
+      // applied as normal: posList built from current only.
+      // Player's new posList = "OF,LF" (OF is primary, LF qualifies at 80).
+      expect(result.updated).toBe(1);
+      expect(mockPrisma.player.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { posList: "OF,LF" },
+      });
+    });
+
+    it("derived-ID pitcher row is filtered out of prior-season fetch", async () => {
+      // Ohtani post-split: two player rows — real hitter mlbId 660271 and
+      // synthetic pitcher mlbId 1660271 (>= 1M). MLB API doesn't recognize
+      // derived IDs and 404s on lookups. The Rule 2 implementation pre-
+      // filters mlbIds >= 1_000_000 before the prior-season call to avoid
+      // doubling 404s. See docs/solutions/logic-errors/ohtani-two-way-player-split-architecture.md.
+      //
+      // Two-player fixture: one real (hitter row) + one derived (pitcher row).
+      // Asserts the prior-season fetch URL includes only the real ID.
+      mockPrisma.player.findMany.mockResolvedValue([
+        { id: 6, mlbId: 660271, posPrimary: "DH", posList: "DH" },
+        { id: 7, mlbId: 1660271, posPrimary: "P", posList: "P" },
+      ]);
+
+      mockMlbGetJson.mockResolvedValue({ people: [] });
+
+      await syncPositionEligibility(2026, 20);
+
+      // Two mlbGetJson calls expected: call[0] = current season, call[1] = prior
+      expect(mockMlbGetJson).toHaveBeenCalledTimes(2);
+      const currentCallUrl = mockMlbGetJson.mock.calls[0][0] as string;
+      const priorCallUrl = mockMlbGetJson.mock.calls[1][0] as string;
+
+      // Current-season URL contains both IDs (no filter on current)
+      expect(currentCallUrl).toContain("660271");
+
+      // Prior-season URL: must contain real hitter ID, must NOT contain derived pitcher ID
+      expect(priorCallUrl).toContain(`season=${2026 - 1}`);
+      expect(priorCallUrl).toContain("660271");
+      expect(priorCallUrl).not.toMatch(/[?&,]1660271([&,]|$)/);
+    });
+  });
 });
 
 // ── fetchAAATeams ───────────────────────────────────────────────
