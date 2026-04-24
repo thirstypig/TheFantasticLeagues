@@ -28,16 +28,29 @@ interface AddDropTabProps {
     teamIdOverride?: number | null;
     /** Commissioner-only: render an effective-date picker whose value is passed to onClaim/onDrop. */
     showEffectiveDatePicker?: boolean;
+    /**
+     * Controlled-mode effective date. When provided, the internal picker is
+     * NOT rendered (parent owns the UI) and this value is forwarded to
+     * onClaim/onDrop directly. Empty string means "use server default."
+     * When undefined, AddDropTab falls back to its internal state + internal
+     * picker (the legacy `showEffectiveDatePicker` path).
+     */
+    effectiveDate?: string;
 }
 
-export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled, teamIdOverride, showEffectiveDatePicker }: AddDropTabProps) {
+export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, disabled, teamIdOverride, showEffectiveDatePicker, effectiveDate: effectiveDateProp }: AddDropTabProps) {
     const { leagueId, myTeamId } = useLeague();
     const effectiveTeamId = teamIdOverride ?? myTeamId;
     const { watchedIds, pendingIds, toggle: toggleWatch, canWatch } = useMyWatchlist(effectiveTeamId);
 
     // Commissioner-only: effective date for the next claim/drop. Empty string
-    // means "use server default (nextDayEffective)."
-    const [effectiveDate, setEffectiveDate] = useState<string>('');
+    // means "use server default (nextDayEffective)." When a controlled value
+    // is passed via `effectiveDateProp`, the internal state and picker are
+    // unused — parent owns the UI and value.
+    const [internalEffectiveDate, setInternalEffectiveDate] = useState<string>('');
+    const isControlled = effectiveDateProp !== undefined;
+    const effectiveDate = isControlled ? effectiveDateProp : internalEffectiveDate;
+    const setEffectiveDate = setInternalEffectiveDate;
 
     // View state
     const [viewGroup, setViewGroup] = useState<'hitters' | 'pitchers'>('hitters');
@@ -197,7 +210,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
 
     return (
         <div className="space-y-0">
-            {showEffectiveDatePicker && (
+            {showEffectiveDatePicker && !isControlled && (
                 <div className="px-4 pt-4 flex items-center gap-3 flex-wrap">
                     <label htmlFor="add-drop-effective-date" className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">
                         Effective date:

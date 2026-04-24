@@ -10,6 +10,11 @@ interface Props {
   teamId: number;
   players: RosterMovesPlayer[];
   onComplete: () => void;
+  /**
+   * YYYY-MM-DD, commissioner-only. When set, the activate+drop is backdated
+   * to this date. Empty string or undefined = server default.
+   */
+  effectiveDate?: string;
 }
 
 /**
@@ -23,7 +28,7 @@ interface Props {
  * the eligibility check here is the MIRROR of PlaceOnIlPanel — same helper,
  * different direction.
  */
-export default function ActivateFromIlPanel({ leagueId, teamId, players, onComplete }: Props) {
+export default function ActivateFromIlPanel({ leagueId, teamId, players, onComplete, effectiveDate }: Props) {
   const [activatePlayerId, setActivatePlayerId] = useState<number | null>(null);
   const [dropPlayerId, setDropPlayerId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +82,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
         teamId,
         activatePlayerId: Number(activatePlayerId),
         dropPlayerId: Number(dropPlayerId),
+        ...(effectiveDate ? { effectiveDate } : {}),
       });
       setActivatePlayerId(null);
       setDropPlayerId(null);

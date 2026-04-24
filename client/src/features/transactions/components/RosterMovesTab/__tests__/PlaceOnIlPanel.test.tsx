@@ -1,0 +1,108 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import PlaceOnIlPanel from "../PlaceOnIlPanel";
+import { ilStash } from "../../../../transactions/api";
+import type { RosterMovesPlayer } from "../types";
+
+// Mock the API wrapper at the module boundary — we're asserting the panel
+// forwards `effectiveDate` correctly into the payload, not re-testing the
+// wrapper (that belongs to ../__tests__/api.test.ts).
+vi.mock("../../../../transactions/api", () => ({
+  ilStash: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock("../../../../../lib/errorBus", () => ({
+  reportError: vi.fn(),
+}));
+
+vi.mock("../../../../../components/ui/button", () => ({
+  Button: ({ children, onClick, disabled, ...props }: any) => (
+    <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
+  ),
+}));
+
+// mlbStatus that matches the real MLB API format — isMlbIlStatus regex is
+// /^Injured (List )?\d+-Day$/. An MLB-IL-status roster player is required
+// for the server to accept an il-stash; the panel surfaces the warning
+// up-front when not present.
+const ilStashCandidate = {
+  _dbPlayerId: 500,
+  _dbTeamId: 147,
+  player_name: "Byron Buxton",
+  assignedPosition: "OF",
+  posPrimary: "OF",
+  positions: "OF",
+  mlbStatus: "Injured 10-Day",
+} as RosterMovesPlayer;
+
+const freeAgentReplacement = {
+  mlb_id: "642731",
+  player_name: "Jake Bauers",
+  positions: "OF,1B",
+} as RosterMovesPlayer;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+async function setUpAndSubmit(effectiveDate?: string) {
+  const user = userEvent.setup();
+  render(
+    <PlaceOnIlPanel
+      leagueId={20}
+      teamId={147}
+      players={[ilStashCandidate, freeAgentReplacement]}
+      onComplete={vi.fn()}
+      effectiveDate={effectiveDate}
+    />
+  );
+
+  // Pick the stash player from the only <select> in the panel. The panel's
+  // selects aren't wired with htmlFor/id, so we query by role rather than
+  // label text.
+  const stashSelect = screen.getByRole("combobox");
+  await user.selectOptions(stashSelect, String(ilStashCandidate._dbPlayerId));
+
+  // Pick the free-agent replacement button.
+  await user.click(screen.getByText("Jake Bauers"));
+
+  // Submit.
+  await user.click(screen.getByRole("button", { name: /Stash \+ Add/i }));
+}
+
+describe("PlaceOnIlPanel effectiveDate forwarding", () => {
+  it("forwards effectiveDate to ilStash when the prop is set", async () => {
+    await setUpAndSubmit("2026-04-20");
+
+    expect(ilStash).toHaveBeenCalledTimes(1);
+    const payload = vi.mocked(ilStash).mock.calls[0][0];
+    expect(payload).toMatchObject({
+      leagueId: 20,
+      teamId: 147,
+      stashPlayerId: 500,
+      addMlbId: 642731,
+      effectiveDate: "2026-04-20",
+    });
+  });
+
+  it("omits effectiveDate from the payload when the prop is undefined", async () => {
+    await setUpAndSubmit(undefined);
+
+    expect(ilStash).toHaveBeenCalledTimes(1);
+    const payload = vi.mocked(ilStash).mock.calls[0][0];
+    expect(payload).not.toHaveProperty("effectiveDate");
+  });
+
+  it("omits effectiveDate from the payload when the prop is an empty string", async () => {
+    // Empty string is the "use server default" sentinel — the panel's spread
+    // `...(effectiveDate ? { effectiveDate } : {})` must treat it the same
+    // as undefined, otherwise a stale empty string from the header picker
+    // would hit the server as effectiveDate=""` and fail validation.
+    await setUpAndSubmit("");
+
+    expect(ilStash).toHaveBeenCalledTimes(1);
+    const payload = vi.mocked(ilStash).mock.calls[0][0];
+    expect(payload).not.toHaveProperty("effectiveDate");
+  });
+});
