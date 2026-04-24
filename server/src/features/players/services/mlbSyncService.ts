@@ -213,17 +213,21 @@ export async function syncAllPlayers(season: number): Promise<{
 /**
  * Batch-fetch player data from the MLB people endpoint with a configurable hydrate param.
  * Chunks mlbIds into batches of 50 with 100ms delay between requests.
+ *
+ * Optional `ttlSeconds` overrides the cache TTL at `mlbGetJson` — useful for
+ * immutable data like prior-season stats which can safely cache for days.
  */
 async function fetchPlayerBatch(
   mlbIds: number[],
-  hydrateParam: string
+  hydrateParam: string,
+  ttlSeconds?: number
 ): Promise<MlbPerson[]> {
   const batches = chunk(mlbIds.map(String), 50);
   const allPlayers: MlbPerson[] = [];
 
   for (const batch of batches) {
     const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=${hydrateParam}`;
-    const data = await mlbGetJson<{ people?: MlbPerson[] }>(url);
+    const data = await mlbGetJson<{ people?: MlbPerson[] }>(url, ttlSeconds);
     allPlayers.push(...(data.people || []));
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -237,9 +241,14 @@ async function fetchPlayerBatch(
  */
 export async function fetchPlayerStats(
   mlbIds: number[],
-  season: number
+  season: number,
+  ttlSeconds?: number
 ): Promise<MlbPerson[]> {
-  return fetchPlayerBatch(mlbIds, `currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`);
+  return fetchPlayerBatch(
+    mlbIds,
+    `currentTeam,stats(group=[hitting,pitching],type=[season],season=${season})`,
+    ttlSeconds,
+  );
 }
 
 /**
@@ -248,9 +257,14 @@ export async function fetchPlayerStats(
  */
 export async function fetchPlayerFieldingStats(
   mlbIds: number[],
-  season: number
+  season: number,
+  ttlSeconds?: number
 ): Promise<MlbPerson[]> {
-  return fetchPlayerBatch(mlbIds, `stats(group=[fielding],type=[season],season=${season})`);
+  return fetchPlayerBatch(
+    mlbIds,
+    `stats(group=[fielding],type=[season],season=${season})`,
+    ttlSeconds,
+  );
 }
 
 /**
