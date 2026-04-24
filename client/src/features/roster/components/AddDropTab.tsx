@@ -15,6 +15,8 @@ import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { useMyWatchlist } from '../../watchlist/hooks/useMyWatchlist';
 
+const VISIBLE_ROW_LIMIT = 15;
+
 interface AddDropTabProps {
     players: PlayerSeasonStat[];
     myTeamRoster?: PlayerSeasonStat[];
@@ -269,7 +271,7 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                         </ThemedTr>
                     </ThemedThead>
                     <tbody className="divide-y divide-[var(--lg-divide)]">
-                        {filteredPlayers.map((p: PlayerSeasonStat) => {
+                        {filteredPlayers.slice(0, VISIBLE_ROW_LIMIT).map((p: PlayerSeasonStat) => {
                             const isExpanded = expandedId === p.row_id;
                             const isTaken = !!p.ogba_team_code || !!p.team;
                             const teamLabel = p.ogba_team_code ? (OGBA_TEAM_NAMES[p.ogba_team_code] || p.ogba_team_code) : (p.team ? 'Taken' : '');
@@ -369,6 +371,19 @@ export default function AddDropTab({ players, myTeamRoster, onClaim, onDrop, dis
                         })}
                     </tbody>
                 </ThemedTable>
+
+            {filteredPlayers.length > VISIBLE_ROW_LIMIT && (
+                <div
+                    data-testid="add-drop-row-cap-footer"
+                    className="px-4 py-3 border-t border-[var(--lg-border-subtle)] text-[11px] text-[var(--lg-text-muted)] flex items-center justify-between"
+                >
+                    <span>
+                        Showing <span className="font-semibold text-[var(--lg-text-primary)]">{VISIBLE_ROW_LIMIT}</span> of{' '}
+                        <span className="font-semibold text-[var(--lg-text-primary)]">{filteredPlayers.length}</span> players
+                    </span>
+                    <span className="opacity-70">Refine search or filters to narrow.</span>
+                </div>
+            )}
 
             {filteredPlayers.length === 0 && (
                 <div className="flex flex-col items-center justify-center p-32 text-center opacity-40">
