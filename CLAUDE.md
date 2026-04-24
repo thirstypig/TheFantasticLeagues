@@ -327,7 +327,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (749 server + 283 client + 50 MCP + 1 E2E = 1083 tests, 27 feature modules)
+### Current Test Coverage (749 server + 293 client + 50 MCP + 1 E2E = 1093 tests, 27 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 
@@ -386,6 +386,8 @@ E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e`
 - `client/src/features/periods/__tests__/Season.test.tsx` — 8 tests (standings matrix, period toggle)
 - `client/src/features/commissioner/__tests__/Commissioner.test.tsx` — 8 tests (tabs, overview, phase badge)
 - `client/src/features/transactions/__tests__/ActivityPage.test.tsx` — 6 tests (tabs, add/drop)
+- `client/src/features/transactions/__tests__/api.test.ts` — 6 tests (ilStash + ilActivate: URL/method/body shape, optional params forwarding, error propagation)
+- `client/src/features/commissioner/__tests__/api.test.ts` — 4 tests (getGhostIlSummary: URL interpolation, GET semantics, error propagation)
 - `client/src/features/admin/__tests__/Admin.test.tsx` — 6 tests (admin access, non-admin denied)
 
 **MCP (50 tests):**
