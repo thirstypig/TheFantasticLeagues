@@ -4,9 +4,14 @@ import { getCommissionerRosters } from '../api';
 import RosterGrid from '../../roster/components/RosterGrid';
 import RosterControls from '../../roster/components/RosterControls';
 import AddDropTab from '../../roster/components/AddDropTab';
+import PlaceOnIlPanel from '../../transactions/components/RosterMovesTab/PlaceOnIlPanel';
+import ActivateFromIlPanel from '../../transactions/components/RosterMovesTab/ActivateFromIlPanel';
+import { Button } from '../../../components/ui/button';
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { reportError } from '../../../lib/errorBus';
+
+type IlMode = 'place-il' | 'activate-il';
 
 interface Team {
   id: number;
@@ -41,6 +46,12 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const [error, setError] = useState<string | null>(null);
   const [actingAsTeamId, setActingAsTeamId] = useState<number | null>(teams[0]?.id ?? null);
   const [actionInFlight, setActionInFlight] = useState(false);
+  // Lifted effective-date state — one picker in the header drives both the
+  // Add/Drop table (via AddDropTab's controlled `effectiveDate` prop) and
+  // the IL panels (via their new `effectiveDate` prop). Empty string = server
+  // default (tomorrow 12:00 AM PT).
+  const [effectiveDate, setEffectiveDate] = useState<string>('');
+  const [ilMode, setIlMode] = useState<IlMode>('place-il');
 
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -161,18 +172,47 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
 
   return (
     <div className="space-y-6">
-       {/* Acting As Team Selector */}
-       <div className="flex items-center gap-3">
-         <label className="text-xs font-medium uppercase text-[var(--lg-text-muted)]">Acting As:</label>
-         <select
-           value={actingAsTeamId ?? ''}
-           onChange={(e) => setActingAsTeamId(Number(e.target.value))}
-           className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
-         >
-           {teams.map((t) => (
-             <option key={t.id} value={t.id} className="text-black">{t.name}</option>
-           ))}
-         </select>
+       {/* Header — Acting As team + shared effective-date picker. One picker
+           drives both Add/Drop and IL actions (matches Fangraphs' always-
+           visible control at the top of the commissioner roster page). */}
+       <div className="flex items-end gap-6 flex-wrap">
+         <div className="flex flex-col gap-1">
+           <label className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)]">Acting As</label>
+           <select
+             value={actingAsTeamId ?? ''}
+             onChange={(e) => setActingAsTeamId(Number(e.target.value))}
+             className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
+           >
+             {teams.map((t) => (
+               <option key={t.id} value={t.id} className="text-black">{t.name}</option>
+             ))}
+           </select>
+         </div>
+         <div className="flex flex-col gap-1">
+           <label htmlFor="commissioner-effective-date" className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)]">
+             Effective date
+           </label>
+           <div className="flex items-center gap-2">
+             <input
+               id="commissioner-effective-date"
+               type="date"
+               value={effectiveDate}
+               onChange={(e) => setEffectiveDate(e.target.value)}
+               className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
+             />
+             {effectiveDate ? (
+               <button
+                 type="button"
+                 onClick={() => setEffectiveDate('')}
+                 className="text-[10px] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] underline"
+               >
+                 clear
+               </button>
+             ) : (
+               <span className="text-[10px] text-[var(--lg-text-muted)]">empty = tomorrow</span>
+             )}
+           </div>
+         </div>
        </div>
 
        {/* Controls: single-player typeahead + bulk CSV */}
@@ -183,7 +223,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
          <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
            <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Add / Drop Search</h3>
            <p className="text-xs text-[var(--lg-text-muted)] mt-1">
-             Commissioner view — claims go to the Acting As team; drops release whichever team owns the player. Stars reflect the Acting As team's watchlist.
+             Commissioner view — claims go to the Acting As team; drops release whichever team owns the player. Stars reflect the Acting As team's watchlist. Effective date from the header above is used.
            </p>
          </div>
          {loading ? (
@@ -195,9 +235,68 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
              onDrop={handleDrop}
              disabled={actionInFlight}
              teamIdOverride={actingAsTeamId}
-             showEffectiveDatePicker
+             effectiveDate={effectiveDate}
            />
          )}
+       </div>
+
+       {/* IL Management — place on IL (paired with replacement add) or
+           activate from IL (paired with drop). Both halves commit atomically
+           server-side. Uses the acting-as team + lifted effective date.
+           Panels remount on team change (via key) so their internal picker
+           state resets to avoid cross-team bleed. */}
+       <div className="lg-card p-0 bg-transparent">
+         <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
+           <div className="flex items-center justify-between gap-4 flex-wrap">
+             <div>
+               <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">IL Management</h3>
+               <p className="text-xs text-[var(--lg-text-muted)] mt-1">
+                 Place on IL pairs with a replacement add; Activate from IL pairs with a drop. Both commit atomically.
+               </p>
+             </div>
+             <div className="lg-card p-1 inline-flex gap-1">
+               <Button
+                 onClick={() => setIlMode('place-il')}
+                 variant={ilMode === 'place-il' ? 'default' : 'ghost'}
+                 size="sm"
+                 className="px-4"
+               >
+                 Place on IL
+               </Button>
+               <Button
+                 onClick={() => setIlMode('activate-il')}
+                 variant={ilMode === 'activate-il' ? 'default' : 'ghost'}
+                 size="sm"
+                 className="px-4"
+               >
+                 Activate from IL
+               </Button>
+             </div>
+           </div>
+         </div>
+         <div className="p-4">
+           {!actingAsTeamId ? (
+             <p className="text-[11px] text-[var(--lg-text-muted)]">Select an Acting As team above.</p>
+           ) : ilMode === 'place-il' ? (
+             <PlaceOnIlPanel
+               key={`place-${actingAsTeamId}`}
+               leagueId={leagueId}
+               teamId={actingAsTeamId}
+               players={playersWithRosterState as unknown as any}
+               onComplete={handleUpdate}
+               effectiveDate={effectiveDate || undefined}
+             />
+           ) : (
+             <ActivateFromIlPanel
+               key={`activate-${actingAsTeamId}`}
+               leagueId={leagueId}
+               teamId={actingAsTeamId}
+               players={playersWithRosterState as unknown as any}
+               onComplete={handleUpdate}
+               effectiveDate={effectiveDate || undefined}
+             />
+           )}
+         </div>
        </div>
 
        {/* Live Rosters — release/edit in-place */}

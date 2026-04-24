@@ -11,6 +11,12 @@ interface Props {
   teamId: number;
   players: RosterMovesPlayer[];
   onComplete: () => void;
+  /**
+   * YYYY-MM-DD, commissioner-only. When set, the stash is backdated to this
+   * date; the server attributes stats from this date onward to the new owner.
+   * Empty string or undefined = server default (tomorrow 12:00 AM PT).
+   */
+  effectiveDate?: string;
 }
 
 /**
@@ -27,7 +33,7 @@ interface Props {
  * UI surfaces each of those as an inline amber warning before the user
  * submits, so they don't hit a 400 and have to re-read the error.
  */
-export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete }: Props) {
+export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, effectiveDate }: Props) {
   const [stashPlayerId, setStashPlayerId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [addMlbId, setAddMlbId] = useState<number | null>(null);
@@ -83,6 +89,7 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete }
         teamId,
         stashPlayerId: Number(stashPlayerId),
         addMlbId,
+        ...(effectiveDate ? { effectiveDate } : {}),
       });
       setStashPlayerId(null);
       setAddMlbId(null);
