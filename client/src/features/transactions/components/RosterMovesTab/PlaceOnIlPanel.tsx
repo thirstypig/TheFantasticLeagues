@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ilStash } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
@@ -17,6 +17,13 @@ interface Props {
    * Empty string or undefined = server default (tomorrow 12:00 AM PT).
    */
   effectiveDate?: string;
+  /**
+   * Optional preselected stash player (DB Player.id). Used by the per-row
+   * "IL" shortcut from RosterGrid to skip the stash-player dropdown step.
+   * Reapplied whenever the value changes (non-null) — switching the source
+   * row replaces the preselection rather than ignoring later clicks.
+   */
+  initialStashPlayerId?: number | null;
 }
 
 /**
@@ -33,12 +40,21 @@ interface Props {
  * UI surfaces each of those as an inline amber warning before the user
  * submits, so they don't hit a 400 and have to re-read the error.
  */
-export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, effectiveDate }: Props) {
-  const [stashPlayerId, setStashPlayerId] = useState<number | null>(null);
+export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, effectiveDate, initialStashPlayerId }: Props) {
+  const [stashPlayerId, setStashPlayerId] = useState<number | null>(initialStashPlayerId ?? null);
   const [query, setQuery] = useState("");
   const [addMlbId, setAddMlbId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Re-apply preselection whenever the parent passes a new non-null id —
+  // a commissioner clicking IL on a different row should replace the
+  // dropdown selection rather than be ignored.
+  useEffect(() => {
+    if (initialStashPlayerId != null) {
+      setStashPlayerId(initialStashPlayerId);
+    }
+  }, [initialStashPlayerId]);
 
   // Stash candidates: this team's active roster, plus MLB-IL status. In
   // practice the server also accepts non-IL status and rejects with a

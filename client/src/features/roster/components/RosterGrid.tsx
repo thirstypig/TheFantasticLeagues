@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, BedDouble, Activity } from 'lucide-react';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { POS_ORDER } from '../../../lib/baseballUtils';
 import { mapPosition } from '../../../lib/sportConfig';
+import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { useToast } from '../../../contexts/ToastContext';
 
@@ -37,9 +38,28 @@ interface RosterGridProps {
   canEditPrice?: boolean;
   canEditPosition?: boolean;
   onRelease?: () => void;
+  /**
+   * Per-row "IL" quick-action — fired with the roster item when the
+   * commissioner clicks the IL button. Caller is responsible for opening
+   * the IL Management UI and preselecting the player. Button only renders
+   * when this callback AND `mlbStatusByPlayerId` are both provided AND
+   * the player's status matches the MLB-IL regex.
+   */
+  onPlaceIl?: (item: RosterItem) => void;
+  /**
+   * Per-row "Activate" quick-action — fired with the roster item when the
+   * commissioner clicks Activate on an IL-slotted row.
+   */
+  onActivateIl?: (item: RosterItem) => void;
+  /**
+   * Lookup of `Player.id → mlbStatus` so the grid can decide which rows
+   * are IL-eligible. Built by the parent from its PlayerSeasonStat[]
+   * data; without it, the "IL" button is hidden on every row.
+   */
+  mlbStatusByPlayerId?: Map<number, string | undefined>;
 }
 
-export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, canEditPrice, canEditPosition, onRelease }: RosterGridProps) {
+export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, canEditPrice, canEditPosition, onRelease, onPlaceIl, onActivateIl, mlbStatusByPlayerId }: RosterGridProps) {
   const { outfieldMode, leagueId: contextLeagueId, seasonStatus } = useLeague();
   const priceDeemphasized = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
   const { toast, confirm } = useToast();
@@ -223,6 +243,33 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                             onClick={() => { if (canEditPrice) { setEditingId(r.id); setEditPrice(String(r.price)); } }}
                                             title={canEditPrice ? "Click to edit price" : undefined}
                                           >${r.price}</span>
+                                        )}
+                                        {/* Per-row IL quick-actions. "IL" appears on active rows whose
+                                            MLB status matches /^Injured (List )?\d+-Day$/; "Activate"
+                                            appears on rows already in the IL slot. Both gated by an
+                                            opt-in callback so non-commissioner contexts hide them. */}
+                                        {onActivateIl && r.assignedPosition === 'IL' && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onActivateIl(r); }}
+                                                className="p-0.5 text-[var(--lg-text-muted)] opacity-40 hover:opacity-100 hover:text-emerald-400 hover:bg-emerald-900/20 rounded transition-all"
+                                                title={`Activate ${r.player.name} from IL`}
+                                                aria-label={`Activate ${r.player.name} from IL`}
+                                            >
+                                                <Activity size={12} />
+                                            </button>
+                                        )}
+                                        {onPlaceIl
+                                          && r.assignedPosition !== 'IL'
+                                          && mlbStatusByPlayerId
+                                          && isMlbIlStatus(mlbStatusByPlayerId.get(r.player.id)) && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onPlaceIl(r); }}
+                                                className="p-0.5 text-[var(--lg-text-muted)] opacity-40 hover:opacity-100 hover:text-amber-400 hover:bg-amber-900/20 rounded transition-all"
+                                                title={`Place ${r.player.name} on IL`}
+                                                aria-label={`Place ${r.player.name} on IL`}
+                                            >
+                                                <BedDouble size={12} />
+                                            </button>
                                         )}
                                         {canRelease && (
                                             <button

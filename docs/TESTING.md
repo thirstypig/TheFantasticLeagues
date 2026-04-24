@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (749 server + 302 client = 1051 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (749 server + 310 client = 1059 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -64,7 +64,7 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 302 passing, 28 files
+### Client — 310 passing, 29 files
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)

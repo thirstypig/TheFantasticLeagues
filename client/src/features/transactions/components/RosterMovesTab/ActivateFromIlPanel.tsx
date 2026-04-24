@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ilActivate } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
@@ -15,6 +15,12 @@ interface Props {
    * to this date. Empty string or undefined = server default.
    */
   effectiveDate?: string;
+  /**
+   * Optional preselected activate player (DB Player.id) — used by the
+   * per-row "Activate" shortcut from RosterGrid to skip the IL-player
+   * dropdown. Reapplied whenever the value changes (non-null).
+   */
+  initialActivatePlayerId?: number | null;
 }
 
 /**
@@ -28,11 +34,17 @@ interface Props {
  * the eligibility check here is the MIRROR of PlaceOnIlPanel — same helper,
  * different direction.
  */
-export default function ActivateFromIlPanel({ leagueId, teamId, players, onComplete, effectiveDate }: Props) {
-  const [activatePlayerId, setActivatePlayerId] = useState<number | null>(null);
+export default function ActivateFromIlPanel({ leagueId, teamId, players, onComplete, effectiveDate, initialActivatePlayerId }: Props) {
+  const [activatePlayerId, setActivatePlayerId] = useState<number | null>(initialActivatePlayerId ?? null);
   const [dropPlayerId, setDropPlayerId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialActivatePlayerId != null) {
+      setActivatePlayerId(initialActivatePlayerId);
+    }
+  }, [initialActivatePlayerId]);
 
   // IL-slotted players on this team.
   const ilPlayers = useMemo(() => {
