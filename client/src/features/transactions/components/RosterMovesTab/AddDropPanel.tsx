@@ -11,6 +11,13 @@ interface Props {
   teamId: number;
   players: RosterMovesPlayer[];
   onComplete: () => void;
+  /**
+   * YYYY-MM-DD, commissioner-only. When set, the claim is backdated to this
+   * date; the server attributes stats from this date onward to the new owner.
+   * Empty string or undefined = server default (tomorrow 12:00 AM PT).
+   * Mirrors the prop added to PlaceOnIlPanel/ActivateFromIlPanel in PR #127.
+   */
+  effectiveDate?: string;
 }
 
 /**
@@ -25,7 +32,7 @@ interface Props {
  * player can fill the drop's slot. Server still independently checks
  * position eligibility via `assertAddEligibleForDropSlot`.
  */
-export default function AddDropPanel({ leagueId, teamId, players, onComplete }: Props) {
+export default function AddDropPanel({ leagueId, teamId, players, onComplete, effectiveDate }: Props) {
   const { seasonStatus } = useLeague();
   const inSeason = seasonStatus === "IN_SEASON";
 
@@ -101,6 +108,7 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete }: 
           mlbId: addMlbId,
           ...(addDbId ? { playerId: addDbId } : {}),
           ...(dropPlayerId !== "" ? { dropPlayerId: Number(dropPlayerId) } : {}),
+          ...(effectiveDate ? { effectiveDate } : {}),
         }),
       });
       // Reset panel state so the next move starts clean.

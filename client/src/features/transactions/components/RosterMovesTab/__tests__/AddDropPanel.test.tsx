@@ -222,3 +222,70 @@ describe("AddDropPanel — preseason / SETUP", () => {
     expect(screen.queryByText(/In-season adds require a matching drop/)).not.toBeInTheDocument();
   });
 });
+
+describe("AddDropPanel — effectiveDate forwarding (commissioner backdate)", () => {
+  // Mirror of the props added to PlaceOnIlPanel/ActivateFromIlPanel in PR #127.
+  // CommissionerRosterTool lifts the effective-date picker to its header and
+  // passes the value down; the panel must forward it to /transactions/claim
+  // when truthy and omit the key entirely when empty/undefined.
+  it("forwards effectiveDate to /transactions/claim when set", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(
+      <AddDropPanel
+        {...BASE_PROPS}
+        players={[freeAgent, ownRosterPlayer]}
+        effectiveDate="2026-04-20"
+      />
+    );
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).toMatchObject({ effectiveDate: "2026-04-20" });
+  });
+
+  it("omits effectiveDate when prop is undefined", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).not.toHaveProperty("effectiveDate");
+  });
+
+  it("omits effectiveDate when prop is empty string (header picker default)", async () => {
+    // Empty string is the "use server default" sentinel — must be treated
+    // identically to undefined so a stale empty string from the header
+    // picker doesn't hit the server literally.
+    mockSeasonStatus.value = "SETUP";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(
+      <AddDropPanel
+        {...BASE_PROPS}
+        players={[freeAgent, ownRosterPlayer]}
+        effectiveDate=""
+      />
+    );
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).not.toHaveProperty("effectiveDate");
+  });
+});
