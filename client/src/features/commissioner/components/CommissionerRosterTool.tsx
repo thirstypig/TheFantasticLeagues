@@ -3,13 +3,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getCommissionerRosters } from '../api';
 import RosterGrid from '../../roster/components/RosterGrid';
 import RosterControls from '../../roster/components/RosterControls';
-import AddDropTab from '../../roster/components/AddDropTab';
+import AddDropPanel from '../../transactions/components/RosterMovesTab/AddDropPanel';
 import PlaceOnIlPanel from '../../transactions/components/RosterMovesTab/PlaceOnIlPanel';
 import ActivateFromIlPanel from '../../transactions/components/RosterMovesTab/ActivateFromIlPanel';
 import { Button } from '../../../components/ui/button';
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
-import { fetchJsonApi, API_BASE } from '../../../api/base';
-import { reportError } from '../../../lib/errorBus';
 
 type IlMode = 'place-il' | 'activate-il';
 
@@ -45,11 +43,9 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingAsTeamId, setActingAsTeamId] = useState<number | null>(teams[0]?.id ?? null);
-  const [actionInFlight, setActionInFlight] = useState(false);
-  // Lifted effective-date state — one picker in the header drives both the
-  // Add/Drop table (via AddDropTab's controlled `effectiveDate` prop) and
-  // the IL panels (via their new `effectiveDate` prop). Empty string = server
-  // default (tomorrow 12:00 AM PT).
+  // Lifted effective-date state — one picker in the header drives the
+  // shared AddDropPanel + the IL panels (all three accept `effectiveDate`
+  // as an optional prop). Empty string = server default (tomorrow 12:00 AM PT).
   const [effectiveDate, setEffectiveDate] = useState<string>('');
   const [ilMode, setIlMode] = useState<IlMode>('place-il');
   // Preselection nonces from the per-row IL shortcut on RosterGrid. We use
@@ -85,74 +81,6 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const handleUpdate = () => {
       setRefreshKey(prev => prev + 1);
       onUpdate();
-  };
-
-  // Commissioner claim — uses actingAsTeamId (admin bypass allowed server-side).
-  // `effectiveDate` (YYYY-MM-DD) backdates stats attribution; undefined = server default (tomorrow PT).
-  const handleClaim = async (player: PlayerSeasonStat, _dropPlayerId?: number, effectiveDate?: string) => {
-    if (!actingAsTeamId) {
-      alert("Select a team in 'Acting As' first.");
-      return;
-    }
-    const playerId = (player as unknown as { id?: number }).id;
-    if (!playerId) {
-      alert("Player is missing a DB id — cannot claim.");
-      return;
-    }
-    setActionInFlight(true);
-    try {
-      await fetchJsonApi(`${API_BASE}/transactions/claim`, {
-        method: "POST",
-        body: JSON.stringify({
-          leagueId,
-          teamId: actingAsTeamId,
-          playerId,
-          mlbId: player.mlb_id,
-          ...(effectiveDate ? { effectiveDate } : {}),
-        }),
-      });
-      handleUpdate();
-    } catch (err) {
-      reportError(err, { source: "commissioner-claim" });
-    } finally {
-      setActionInFlight(false);
-    }
-  };
-
-  // Commissioner drop — drops the player from whichever team actually owns them.
-  // `effectiveDate` (YYYY-MM-DD) backdates; undefined = server default.
-  const handleDrop = async (player: PlayerSeasonStat, effectiveDate?: string) => {
-    const playerId = (player as unknown as { id?: number }).id;
-    if (!playerId) {
-      alert("Player is missing a DB id — cannot drop.");
-      return;
-    }
-    const owningRoster = rosters.find((r) => r.player.id === playerId);
-    if (!owningRoster) {
-      alert("Player is not on any roster.");
-      return;
-    }
-    const dateLabel = effectiveDate ? ` effective ${effectiveDate}` : "";
-    if (!confirm(`Drop ${player.player_name} from ${teams.find(t => t.id === owningRoster.teamId)?.name ?? 'the team'}${dateLabel}?`)) {
-      return;
-    }
-    setActionInFlight(true);
-    try {
-      await fetchJsonApi(`${API_BASE}/transactions/drop`, {
-        method: "POST",
-        body: JSON.stringify({
-          leagueId,
-          teamId: owningRoster.teamId,
-          playerId,
-          ...(effectiveDate ? { effectiveDate } : {}),
-        }),
-      });
-      handleUpdate();
-    } catch (err) {
-      reportError(err, { source: "commissioner-drop" });
-    } finally {
-      setActionInFlight(false);
-    }
   };
 
   // Lookup of Player.id → mlbStatus, used by RosterGrid to gate the per-row
@@ -255,28 +183,48 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
          </div>
        </div>
 
+       {/* Acting team feedback line — visual confirmation that the Acting As
+           change took effect. Bold team name only; counts/last-move chrome
+           cut per the deepened plan's simplicity review. */}
+       {actingAsTeamId && (
+         <div className="text-xs text-[var(--lg-text-muted)]">
+           Acting on roster for{' '}
+           <span className="font-semibold text-[var(--lg-text-primary)]">
+             {teams.find((t) => t.id === actingAsTeamId)?.name ?? `team ${actingAsTeamId}`}
+           </span>
+         </div>
+       )}
+
        {/* Controls: single-player typeahead + bulk CSV */}
        <RosterControls leagueId={leagueId} teams={teams} onUpdate={handleUpdate} />
 
-       {/* Add / Drop — full searchable player table with watchlist stars for the acting team */}
+       {/* Add / Drop — shared AddDropPanel from RosterMovesTab. The owner-side
+           and commissioner-side now use the SAME pair-action component;
+           server-side `requireTeamOwnerOrCommissioner` middleware handles
+           cross-team commissioner authority. Server enforces DROP_REQUIRED
+           in-season so the panel disables submit until a drop is picked. */}
        <div className="lg-card p-0 bg-transparent">
          <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
-           <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Add / Drop Search</h3>
+           <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Add / Drop</h3>
            <p className="text-xs text-[var(--lg-text-muted)] mt-1">
-             Commissioner view — claims go to the Acting As team; drops release whichever team owns the player. Stars reflect the Acting As team's watchlist. Effective date from the header above is used.
+             Commissioner view — adds go to the Acting As team. In-season every add must pair with a drop. Effective date from the header above is used.
            </p>
          </div>
-         {loading ? (
-           <div className="p-6 text-xs text-[var(--lg-text-muted)]">Loading players…</div>
+         {loading || !actingAsTeamId ? (
+           <div className="p-6 text-xs text-[var(--lg-text-muted)]">
+             {loading ? "Loading players…" : "Select an Acting As team above."}
+           </div>
          ) : (
-           <AddDropTab
-             players={playersWithRosterState}
-             onClaim={handleClaim}
-             onDrop={handleDrop}
-             disabled={actionInFlight}
-             teamIdOverride={actingAsTeamId}
-             effectiveDate={effectiveDate}
-           />
+           <div className="p-4">
+             <AddDropPanel
+               key={`add-drop-${actingAsTeamId}`}
+               leagueId={leagueId}
+               teamId={actingAsTeamId}
+               players={playersWithRosterState as unknown as any}
+               onComplete={handleUpdate}
+               effectiveDate={effectiveDate || undefined}
+             />
+           </div>
          )}
        </div>
 

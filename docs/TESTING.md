@@ -64,7 +64,7 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 310 passing, 29 files
+### Client — 310 passing, 28 files
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
