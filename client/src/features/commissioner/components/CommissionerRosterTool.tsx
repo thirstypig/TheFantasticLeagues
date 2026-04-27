@@ -7,6 +7,7 @@ import CommissionerTradeTool from './CommissionerTradeTool';
 import PlaceOnIlPanel from '../../transactions/components/RosterMovesTab/PlaceOnIlPanel';
 import ActivateFromIlPanel from '../../transactions/components/RosterMovesTab/ActivateFromIlPanel';
 import { Button } from '../../../components/ui/button';
+import { enrichPlayersWithRosterState } from '../lib/enrichPlayersWithRosterState';
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
 
 type IlMode = 'place-il' | 'activate-il';
@@ -117,37 +118,13 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     });
   }
 
-  // Annotate each player with the fantasy team it belongs to. Two flavors:
-  //   - ogba_team_code/name → human-readable, used by AddDropPanel's
-  //     "isTaken" UI and the watchlist
-  //   - _dbTeamId / _dbPlayerId / assignedPosition → numeric DB ids that
-  //     AddDropPanel + IL panels filter against (`p._dbTeamId === teamId`).
-  //     The shared PlayerSeasonStat schema does NOT include these — they're
-  //     derived client-side from the rosters join. Without this enrichment,
-  //     drop dropdowns and IL pickers are always empty regardless of which
-  //     team is selected. Session 80 bug — same class as the
-  //     `_dbPlayerId` / react-key collision of PR #125.
-  const playersWithRosterState = useMemo(() => {
-    if (rosters.length === 0) return players;
-    const rosterByPlayerId = new Map(rosters.map(r => [r.player.id, r]));
-    return players.map(p => {
-      const pid = (p as unknown as { id?: number }).id;
-      if (!pid) return p;
-      const r = rosterByPlayerId.get(pid);
-      if (!r) return p;
-      const team = teams.find(t => t.id === r.teamId);
-      if (!team) return p;
-      return {
-        ...p,
-        ogba_team_code: team.code ?? team.name.substring(0, 3).toUpperCase(),
-        ogba_team_name: team.name,
-        _dbTeamId: r.teamId,
-        _dbPlayerId: pid,
-        _rosterId: r.id,
-        assignedPosition: r.assignedPosition ?? p.assignedPosition,
-      };
-    });
-  }, [players, rosters, teams]);
+  // Annotate each player with the fantasy-team join data the panels need.
+  // See `enrichPlayersWithRosterState` for the rationale and the
+  // session-80 "Acting As stale dropdown" bug it prevents.
+  const playersWithRosterState = useMemo(
+    () => enrichPlayersWithRosterState(players as any, rosters, teams),
+    [players, rosters, teams],
+  );
 
   if (error) {
     return <div className="text-red-500 text-sm">Error loading rosters: {error}</div>;

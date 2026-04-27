@@ -37,16 +37,21 @@ vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: vi.fn(), confirm: vi.fn().mockResolvedValue(true) }),
 }));
 
-// Mock useSeasonGating
-vi.mock("../../../hooks/useSeasonGating", () => ({
-  useSeasonGating: () => ({
-    seasonStatus: "IN_SEASON",
+// Mock useSeasonGating — mutable so each test can pick its phase.
+// Used by the hash-redirect block: legacy `#teams` resolves to
+// `#manage-rosters` in IN_SEASON, otherwise to `#season`.
+const mockGating = {
+  value: {
+    seasonStatus: "IN_SEASON" as string,
     isReadOnly: false,
     canTrade: true,
     canKeepers: false,
     canAuction: false,
     phaseGuidance: "Season is active.",
-  }),
+  },
+};
+vi.mock("../../../hooks/useSeasonGating", () => ({
+  useSeasonGating: () => mockGating.value,
 }));
 
 // Mock LeagueContext
@@ -87,6 +92,17 @@ function renderWithRoute() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Reset seasonStatus + hash defaults — tests that need other values
+  // override these inline before renderWithRoute().
+  mockGating.value = {
+    seasonStatus: "IN_SEASON",
+    isReadOnly: false,
+    canTrade: true,
+    canKeepers: false,
+    canAuction: false,
+    phaseGuidance: "Season is active.",
+  };
+  window.location.hash = "";
   vi.mocked(getCommissionerOverview).mockResolvedValue({
     league: { id: 1, name: "Test League", season: 2025, draftMode: "AUCTION", isPublic: false },
     teams: [{ id: 10, leagueId: 1, name: "Aces", budget: 400, ownerships: [] }],
@@ -214,5 +230,69 @@ describe("Commissioner — ghost-IL banner on Manage Rosters tab", () => {
     await openManageRostersTab();
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalled());
     expect(screen.queryByText(/ghost-IL player/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("Commissioner — legacy hash redirects (PR #130 6→5 restructure)", () => {
+  // The 6-tab structure had `#teams` and `#trades`. After PR #130:
+  //   - `#teams` → `#manage-rosters` if IN_SEASON, else `#season`
+  //     (Teams tab split: in-season transactions live in Manage Rosters;
+  //     pre-season auction-time roster setup lives in Season)
+  //   - `#trades` → `#manage-rosters` (Trades tab folded into Manage Rosters
+  //     as a collapsible section)
+  // These redirects keep old commissioner bookmarks landing somewhere sensible.
+
+  it("redirects #teams → #manage-rosters during IN_SEASON", async () => {
+    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+    window.location.hash = "#teams";
+    renderWithRoute();
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#manage-rosters");
+    });
+  });
+
+  it("redirects #teams → #season during SETUP (pre-auction)", async () => {
+    mockGating.value = { ...mockGating.value, seasonStatus: "SETUP", canAuction: true };
+    window.location.hash = "#teams";
+    renderWithRoute();
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#season");
+    });
+  });
+
+  it("redirects #teams → #season during DRAFT", async () => {
+    mockGating.value = { ...mockGating.value, seasonStatus: "DRAFT", canAuction: true };
+    window.location.hash = "#teams";
+    renderWithRoute();
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#season");
+    });
+  });
+
+  it("redirects #trades → #manage-rosters regardless of season phase", async () => {
+    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+    window.location.hash = "#trades";
+    renderWithRoute();
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#manage-rosters");
+    });
+  });
+
+  it("does not redirect known hashes — #season passes through unchanged", async () => {
+    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+    window.location.hash = "#season";
+    renderWithRoute();
+    // Wait for overview to settle so the effect has run.
+    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
+    expect(window.location.hash).toBe("#season");
+  });
+
+  it("does not redirect a no-op hash that doesn't match any legacy slug", async () => {
+    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+    window.location.hash = "#unknown-slug";
+    renderWithRoute();
+    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
+    // Unknown hashes should be left alone — neither redirected nor scrubbed.
+    expect(window.location.hash).toBe("#unknown-slug");
   });
 });
