@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
 import Team from "./features/teams/pages/Team";
+import TeamsIndex from "./features/teams/pages/TeamsIndex";
 import Players from "./features/players/pages/Players";
 import ActivityPage from "./features/transactions/pages/ActivityPage";
 import Login from "./features/auth/pages/Login";
@@ -126,6 +127,11 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/season" element={<Season />} />
+                    {/* Teams index — Explore section's "Teams" entry per
+                        the Sitemap & Navigation design. Lists all teams in
+                        the active league with cards linking to the existing
+                        /teams/:teamCode roster page. */}
+                    <Route path="/teams" element={<TeamsIndex />} />
                     <Route path="/teams/:teamCode" element={<Team />} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team

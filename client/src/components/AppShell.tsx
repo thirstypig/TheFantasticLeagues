@@ -134,6 +134,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       title: "Explore",
       items: [
         { to: "/players", label: "Players", show: true },
+        // Teams index — closes the design's last EXPLORE section gap.
+        // Cards-grid view of all teams in the league; each links to
+        // the existing /teams/:teamCode roster page.
+        { to: "/teams", label: "Teams", show: true },
         { to: "/activity", label: "Activity", show: true },
         // Archive moved out of "League" — it's research (past seasons,
         // trophy case), not paperwork.
