@@ -119,10 +119,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         { to: "/", label: "Home", show: true },
         { to: "/matchup", label: "Matchup", show: gating.isH2H },
         // "My Team" — solves the documented "no path to your own team"
-        // gap. Resolves to /teams/:teamCode using the user's owned team
-        // in the current league; hidden when no team owned (multi-league
-        // users browsing a league they don't play in).
-        ...(myTeamCode ? [{ to: `/teams/${myTeamCode}`, label: "My Team", show: true }] : []),
+        // gap. Routes to the canonical /my-team which redirects to
+        // /teams/:code via MyTeamRedirect (resolves from LeagueContext).
+        // Hidden when the user owns no team in the current league.
+        ...(myTeamCode ? [{ to: "/my-team", label: "My Team", show: true }] : []),
         // Renamed from "Season" — users didn't know it meant Standings
         // until they clicked. The /period redirect already proves the
         // confusion; this rename closes it.

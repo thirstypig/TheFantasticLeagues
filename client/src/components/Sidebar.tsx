@@ -1,5 +1,5 @@
 // client/src/components/Sidebar.tsx
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import type { LeagueListItem } from "../api";
@@ -304,46 +304,11 @@ export default function Sidebar({
           {loading ? (
             <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
           ) : user ? (
-            <div className={`flex items-center gap-2.5 ${!sidebarOpen && 'flex-col'}`}>
-              <Link to="/profile" className="shrink-0">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name || 'User'} className="h-8 w-8 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
-                ) : (
-                  <div className="h-8 w-8 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)]">
-                    {user.name?.[0] || 'U'}
-                  </div>
-                )}
-              </Link>
-
-              {sidebarOpen && (
-                <>
-                  <Link to="/profile" className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                    <div className="text-xs font-bold text-[var(--lg-text-primary)] truncate tracking-tight">{user.name || user.email}</div>
-                  </Link>
-                  <button
-                    onClick={onLogout}
-                    className="p-2 rounded-lg hover:bg-rose-500/10 text-[var(--lg-text-muted)] hover:text-rose-400 transition-all"
-                    title="Sign Out"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                  </button>
-                </>
-              )}
-
-              {!sidebarOpen && (
-                <button
-                  onClick={onLogout}
-                  className="p-2 rounded-lg hover:bg-rose-500/10 text-[var(--lg-text-muted)] hover:text-rose-400 transition-all"
-                  title="Sign Out"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
-              )}
-            </div>
+            <AccountMenu
+              user={user}
+              sidebarOpen={sidebarOpen}
+              onLogout={onLogout}
+            />
           ) : (
             <div className="w-full">
               <button
@@ -372,5 +337,148 @@ export default function Sidebar({
         />
       )}
     </aside>
+  );
+}
+
+// ─── Account Menu ───
+//
+// Bottom-of-sidebar avatar that opens a popover with user-scoped
+// destinations: My Profile, Discover Leagues, Create League, Pricing,
+// Sign Out. Surfaces three orphan routes (Discover, Create League,
+// Pricing) that the Sitemap & Navigation design audit flagged. When
+// the sidebar is collapsed (icon-only), the popover still opens but
+// the trigger is just the avatar.
+
+interface AccountMenuItem {
+  label: string;
+  to?: string;
+  onClick?: () => void;
+  icon: JSX.Element;
+  destructive?: boolean;
+}
+
+function AccountMenu({
+  user, sidebarOpen, onLogout,
+}: {
+  user: { name?: string | null; email?: string | null; avatarUrl?: string | null; isAdmin?: boolean };
+  sidebarOpen: boolean;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Click-outside-to-close + Escape-to-close. Pointerdown beats click
+  // because it fires before the trigger's own click handler — without
+  // it, clicking the trigger while open would close-then-reopen.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const items: AccountMenuItem[] = [
+    {
+      label: "My Profile", to: "/profile",
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
+    },
+    {
+      label: "Discover Leagues", to: "/discover",
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5.5-3.5l-2 6-6 2 2-6 6-2z" />,
+    },
+    {
+      label: "Create League", to: "/create-league",
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14M5 12h14" />,
+    },
+    {
+      label: "Pricing & Plans", to: "/pricing",
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M3 11l8.5 8.5a2 2 0 002.83 0L21 13a2 2 0 000-2.83L12.5 1.5A2 2 0 0011 1H5a2 2 0 00-2 2v6a2 2 0 00.59 1.41z" />,
+    },
+  ];
+
+  return (
+    <div ref={containerRef} className={`relative w-full ${!sidebarOpen && 'flex flex-col items-center'}`}>
+      {/* Trigger — avatar + name (when sidebar open) acts as the toggle. */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className={`flex items-center gap-2.5 w-full rounded-lg p-1 hover:bg-[var(--lg-tint)] transition-colors ${!sidebarOpen && 'flex-col'}`}
+      >
+        <span className="shrink-0">
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.name || 'User'} className="h-8 w-8 rounded-[var(--lg-radius-md)] grayscale hover:grayscale-0 transition-all border border-[var(--lg-border-subtle)]" />
+          ) : (
+            <div className="h-8 w-8 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)]">
+              {user.name?.[0] || 'U'}
+            </div>
+          )}
+        </span>
+        {sidebarOpen && (
+          <>
+            <span className="flex-1 min-w-0 text-left">
+              <span className="block text-xs font-bold text-[var(--lg-text-primary)] truncate tracking-tight">{user.name || user.email}</span>
+              <span className="block text-[10px] text-[var(--lg-text-muted)] truncate">{user.email}</span>
+            </span>
+            <svg
+              className={`w-4 h-4 text-[var(--lg-text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </>
+        )}
+      </button>
+
+      {/* Popover — anchored above the trigger so it doesn't scroll out
+          of the sidebar's bottom-pinned position. */}
+      {open && (
+        <div
+          role="menu"
+          aria-label="Account menu"
+          className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-card)] shadow-xl shadow-black/30 backdrop-blur-xl overflow-hidden z-50"
+        >
+          <div className="py-1">
+            {items.map(it => (
+              <Link
+                key={it.label}
+                to={it.to!}
+                onClick={() => setOpen(false)}
+                role="menuitem"
+                className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)] transition-colors"
+              >
+                <svg className="w-4 h-4 text-[var(--lg-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {it.icon}
+                </svg>
+                <span className="flex-1">{it.label}</span>
+              </Link>
+            ))}
+            <div className="my-1 mx-3 h-px bg-[var(--lg-border-faint)]" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { setOpen(false); onLogout(); }}
+              className="w-full flex items-center gap-3 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="flex-1 text-left">Sign Out</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
