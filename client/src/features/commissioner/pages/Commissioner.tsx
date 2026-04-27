@@ -26,6 +26,7 @@ import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
+import RosterControls from "../../roster/components/RosterControls";
 import LeagueHealthTab from "../components/LeagueHealthTab";
 import KeeperPrepDashboard from "../../keeper-prep/components/KeeperPrepDashboard";
 import SeasonManager from "../components/SeasonManager";
@@ -336,15 +337,19 @@ export default function Commissioner() {
   // Season gating
   const gating = useSeasonGating();
 
-  // Tab definitions with season-aware gating
-  type TabKey = 'league' | 'members' | 'teams' | 'season' | 'trades' | 'health';
+  // Tab definitions — restructured 6 → 5 tabs for coherent purposes:
+  //   League (config + team CRUD), Members, Season (lifecycle + auction
+  //   setup including bulk roster import / price + position edits),
+  //   Manage Rosters (in-season transactions: add/drop, IL, retroactive
+  //   trades), Health. Old "Teams" tab + "Trades" tab folded into the
+  //   above. Hash redirects below preserve old bookmarks.
+  type TabKey = 'league' | 'members' | 'season' | 'manage-rosters' | 'health';
   const TABS: { key: TabKey; label: string; icon: string; enabled: boolean; reason?: string }[] = [
-    { key: 'league', label: 'League', icon: 'building', enabled: true },
-    { key: 'members', label: 'Members', icon: 'users', enabled: true },
-    { key: 'teams', label: 'Teams', icon: 'trophy', enabled: true },
-    { key: 'season', label: 'Season', icon: 'calendar', enabled: true },
-    { key: 'trades', label: 'Trades', icon: 'arrows', enabled: !gating.isReadOnly, reason: 'Season is completed' },
-    { key: 'health', label: 'Health', icon: 'activity', enabled: true },
+    { key: 'league',         label: 'League',         icon: 'building', enabled: true },
+    { key: 'members',        label: 'Members',        icon: 'users', enabled: true },
+    { key: 'season',         label: 'Season',         icon: 'calendar', enabled: true },
+    { key: 'manage-rosters', label: 'Manage Rosters', icon: 'trophy', enabled: true },
+    { key: 'health',         label: 'Health',         icon: 'activity', enabled: true },
   ];
 
   // Tabs
@@ -354,9 +359,26 @@ export default function Commissioner() {
   const [ghostIl, setGhostIl] = useState<GhostIlSummary | null>(null);
   const [ghostIlExpanded, setGhostIlExpanded] = useState(false);
 
-  // Hash listener — only navigate to enabled tabs
+  // Hash listener — handles tab nav AND legacy redirects from the old
+  // 6-tab structure (#teams → #manage-rosters per phase, #trades →
+  // #manage-rosters). Old bookmarks land on a sane page.
   useEffect(() => {
-     const hash = window.location.hash.replace('#', '') as TabKey;
+     const raw = window.location.hash.replace('#', '');
+     // Legacy hash redirects from the 6-tab structure (PR #130).
+     // The Teams tab split: in-season transactions live in Manage Rosters;
+     // pre-season auction setup lives in Season. Trades folds into
+     // Manage Rosters as a collapsible section.
+     const LEGACY_REDIRECTS: Record<string, () => TabKey> = {
+       teams: () => (gating.seasonStatus === 'IN_SEASON' ? 'manage-rosters' : 'season'),
+       trades: () => 'manage-rosters',
+     };
+     if (raw in LEGACY_REDIRECTS) {
+       const target = LEGACY_REDIRECTS[raw]();
+       window.history.replaceState(null, '', `#${target}`);
+       setActiveTab(target);
+       return;
+     }
+     const hash = raw as TabKey;
      const tab = TABS.find(t => t.key === hash);
      if (tab?.enabled) {
          setActiveTab(hash);
@@ -364,11 +386,10 @@ export default function Commissioner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gating.seasonStatus]);
 
-  // Load ghost-IL summary when the Teams tab is first opened. Fetching lazily
-  // keeps the initial commissioner page load quick — the endpoint fans out to
-  // MLB roster lookups per team, which we don't want on every page view.
+  // Load ghost-IL summary when Manage Rosters is first opened. Lazy fetch —
+  // the endpoint fans out to MLB roster lookups per team, costly on first paint.
   useEffect(() => {
-    if (activeTab !== 'teams' || !lid) return;
+    if (activeTab !== 'manage-rosters' || !lid) return;
     if (ghostIl !== null) return;
     let ok = true;
     getGhostIlSummary(lid)
@@ -1029,174 +1050,6 @@ export default function Commissioner() {
                       Share this code with users so they can join your league.
                     </p>
                   </div>
-                </div>
-            )}
-
-            {/* Tab: Members */}
-            {activeTab === 'members' && (
-                <div className="space-y-5">
-                  {/* Member List */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Members</div>
-                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {overview.memberships.map((m) => {
-                        const isMe = m.userId === me?.id;
-                        const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
-                        return (
-                          <div
-                            key={m.id}
-                            className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm text-[var(--lg-text-primary)]">
-                                {memberName}
-                              </div>
-                              <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
-                              {userTeamMap.get(m.userId)?.map((tName) => (
-                                <span
-                                  key={tName}
-                                  className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]"
-                                >
-                                  {tName}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                onClick={() => onChangeMemberRole(m.id, m.role)}
-                                className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors"
-                                title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`}
-                                disabled={busy || isMe}
-                              >
-                                {m.role}
-                              </button>
-                              {!isMe && (
-                                <button
-                                  onClick={() => onRemoveMember(m.id, memberName)}
-                                  className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                  title="Remove member"
-                                  disabled={busy}
-                                >
-                                  Remove
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Add Member */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
-                    <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
-                      <input
-                        className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                        placeholder="owner@email.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                      />
-                      <select
-                        className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as any)}
-                        title="Select role"
-                      >
-                        <option value="OWNER">OWNER</option>
-                        <option value="COMMISSIONER">COMMISSIONER</option>
-                      </select>
-
-                      <div className="md:col-span-3 flex justify-end">
-                        <button
-                          type="submit"
-                          className={cls(
-                            "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
-                            busy && "opacity-60 cursor-not-allowed"
-                          )}
-                          disabled={busy}
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </form>
-
-                    <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
-                      If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.
-                    </div>
-                  </div>
-
-                  {/* Pending Invites */}
-                  {pendingInvites.length > 0 && (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
-                        Pending Invites
-                        <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
-                      </div>
-                      <div className="space-y-2">
-                        {pendingInvites.map((inv) => (
-                          <div
-                            key={inv.id}
-                            className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
-                              <div className="text-xs text-[var(--lg-text-muted)]">
-                                {inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}
-                                {inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => onCancelInvite(inv.id)}
-                              className="shrink-0 text-xs text-red-400 hover:text-red-300"
-                              disabled={busy}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-            )}
-
-            {/* Tab: Teams */}
-            {activeTab === 'teams' && (
-                <div className="space-y-5">
-                  {/* Ghost-IL banner */}
-                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && (
-                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
-                          {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"}{" "}
-                          — MLB has activated them but they're still in a fantasy IL slot. New IL stashes are blocked until resolved.
-                        </div>
-                        <button
-                          onClick={() => setGhostIlExpanded(v => !v)}
-                          className="ml-3 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline"
-                        >
-                          {ghostIlExpanded ? "Hide" : "Details"}
-                        </button>
-                      </div>
-                      {ghostIlExpanded && (
-                        <ul className="mt-2 ml-4 list-disc space-y-1">
-                          {ghostIl.teams.map(t => (
-                            <li key={t.teamId}>
-                              <span className="font-semibold text-red-300">{t.teamName}</span>
-                              {" — "}
-                              {t.ghosts.map(g => `${g.playerName} (${g.currentMlbStatus})`).join(", ")}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
 
                   {/* Team List */}
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
@@ -1382,6 +1235,180 @@ export default function Commissioner() {
                     </div>
                   </div>
 
+                </div>
+            )}
+
+            {/* Tab: Members */}
+            {activeTab === 'members' && (
+                <div className="space-y-5">
+                  {/* Member List */}
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Members</div>
+                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {overview.memberships.map((m) => {
+                        const isMe = m.userId === me?.id;
+                        const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
+                        return (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm text-[var(--lg-text-primary)]">
+                                {memberName}
+                              </div>
+                              <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
+                              {userTeamMap.get(m.userId)?.map((tName) => (
+                                <span
+                                  key={tName}
+                                  className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]"
+                                >
+                                  {tName}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => onChangeMemberRole(m.id, m.role)}
+                                className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors"
+                                title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`}
+                                disabled={busy || isMe}
+                              >
+                                {m.role}
+                              </button>
+                              {!isMe && (
+                                <button
+                                  onClick={() => onRemoveMember(m.id, memberName)}
+                                  className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  title="Remove member"
+                                  disabled={busy}
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Add Member */}
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                    <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
+                    <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
+                      <input
+                        className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
+                        placeholder="owner@email.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                      />
+                      <select
+                        className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as any)}
+                        title="Select role"
+                      >
+                        <option value="OWNER">OWNER</option>
+                        <option value="COMMISSIONER">COMMISSIONER</option>
+                      </select>
+
+                      <div className="md:col-span-3 flex justify-end">
+                        <button
+                          type="submit"
+                          className={cls(
+                            "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
+                            busy && "opacity-60 cursor-not-allowed"
+                          )}
+                          disabled={busy}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
+                      If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.
+                    </div>
+                  </div>
+
+                  {/* Pending Invites */}
+                  {pendingInvites.length > 0 && (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
+                        Pending Invites
+                        <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {pendingInvites.map((inv) => (
+                          <div
+                            key={inv.id}
+                            className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
+                              <div className="text-xs text-[var(--lg-text-muted)]">
+                                {inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}
+                                {inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => onCancelInvite(inv.id)}
+                              className="shrink-0 text-xs text-red-400 hover:text-red-300"
+                              disabled={busy}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+            )}
+
+            {/* Tab: Manage Rosters (was 'teams' pre-PR #130). In-season focus —
+                ghost-IL banner + the unified CommissionerRosterTool which owns
+                Acting As + Effective date + focused single-team view +
+                Add/Drop + IL Management + retroactive trades + collapsible
+                all-teams quick view. Team CRUD has moved to the League tab. */}
+            {activeTab === 'manage-rosters' && (
+                <div className="space-y-5">
+                  {/* Ghost-IL banner */}
+                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
+                          {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"}{" "}
+                          — MLB has activated them but they're still in a fantasy IL slot. New IL stashes are blocked until resolved.
+                        </div>
+                        <button
+                          onClick={() => setGhostIlExpanded(v => !v)}
+                          className="ml-3 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline"
+                        >
+                          {ghostIlExpanded ? "Hide" : "Details"}
+                        </button>
+                      </div>
+                      {ghostIlExpanded && (
+                        <ul className="mt-2 ml-4 list-disc space-y-1">
+                          {ghostIl.teams.map(t => (
+                            <li key={t.teamId}>
+                              <span className="font-semibold text-red-300">{t.teamName}</span>
+                              {" — "}
+                              {t.ghosts.map(g => `${g.playerName} (${g.currentMlbStatus})`).join(", ")}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+
                   {/* Roster Tool */}
                   {!gating.isReadOnly && (
                     <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
@@ -1423,23 +1450,28 @@ export default function Commissioner() {
                           </Link>
                         </div>
                         <CommissionerControls leagueId={lid} />
+
+                        {/* Roster setup — single-player typeahead + bulk CSV
+                            import. Moved here from the old Teams tab in PR #130
+                            because these are auction-time setup operations,
+                            not in-season transactions. Only shown during
+                            SETUP/DRAFT (gated by canKeepers || canAuction). */}
+                        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                          <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Roster Setup</h3>
+                          <p className="text-sm text-[var(--lg-text-muted)] mb-4">
+                            Bulk import rosters via CSV or add a single player by name. In-season add/drop happens in the <strong>Manage Rosters</strong> tab.
+                          </p>
+                          <RosterControls leagueId={lid} teams={overview.teams} onUpdate={refreshOverviewOnly} />
+                        </div>
                       </div>
                     )}
                 </div>
             )}
 
-            {/* Tab: Trades */}
-            {activeTab === 'trades' && (
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                       <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Record Trade</h2>
-                       <CommissionerTradeTool
-                          leagueId={lid}
-                          teams={overview.teams}
-                        />
-                    </div>
-                </div>
-            )}
+            {/* Tab: Trades — REMOVED per PR #130 (6 → 5 tabs).
+                CommissionerTradeTool now lives inside Manage Rosters tab as a
+                collapsible section, embedded inside CommissionerRosterTool.
+                Old #trades hash links auto-redirect to Manage Rosters. */}
 
             {activeTab === 'health' && (
                 <div className="space-y-4">

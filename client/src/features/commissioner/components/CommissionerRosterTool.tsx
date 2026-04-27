@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getCommissionerRosters } from '../api';
 import RosterGrid from '../../roster/components/RosterGrid';
-import RosterControls from '../../roster/components/RosterControls';
 import AddDropPanel from '../../transactions/components/RosterMovesTab/AddDropPanel';
+import CommissionerTradeTool from './CommissionerTradeTool';
 import PlaceOnIlPanel from '../../transactions/components/RosterMovesTab/PlaceOnIlPanel';
 import ActivateFromIlPanel from '../../transactions/components/RosterMovesTab/ActivateFromIlPanel';
 import { Button } from '../../../components/ui/button';
@@ -22,6 +22,7 @@ interface Team {
 interface RosterItem {
     id: number;
     teamId: number;
+    assignedPosition?: string | null;
     player: {
         id: number;
         name: string;
@@ -116,10 +117,16 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     });
   }
 
-  // Annotate each player with the fantasy team code they belong to so
-  // AddDropTab's `isTaken` check lights up correctly. getPlayerSeasonStats
-  // already does this for public rosters, but we refresh here after each
-  // commissioner action.
+  // Annotate each player with the fantasy team it belongs to. Two flavors:
+  //   - ogba_team_code/name → human-readable, used by AddDropPanel's
+  //     "isTaken" UI and the watchlist
+  //   - _dbTeamId / _dbPlayerId / assignedPosition → numeric DB ids that
+  //     AddDropPanel + IL panels filter against (`p._dbTeamId === teamId`).
+  //     The shared PlayerSeasonStat schema does NOT include these — they're
+  //     derived client-side from the rosters join. Without this enrichment,
+  //     drop dropdowns and IL pickers are always empty regardless of which
+  //     team is selected. Session 80 bug — same class as the
+  //     `_dbPlayerId` / react-key collision of PR #125.
   const playersWithRosterState = useMemo(() => {
     if (rosters.length === 0) return players;
     const rosterByPlayerId = new Map(rosters.map(r => [r.player.id, r]));
@@ -130,7 +137,15 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
       if (!r) return p;
       const team = teams.find(t => t.id === r.teamId);
       if (!team) return p;
-      return { ...p, ogba_team_code: team.code ?? team.name.substring(0, 3).toUpperCase(), ogba_team_name: team.name };
+      return {
+        ...p,
+        ogba_team_code: team.code ?? team.name.substring(0, 3).toUpperCase(),
+        ogba_team_name: team.name,
+        _dbTeamId: r.teamId,
+        _dbPlayerId: pid,
+        _rosterId: r.id,
+        assignedPosition: r.assignedPosition ?? p.assignedPosition,
+      };
     });
   }, [players, rosters, teams]);
 
@@ -195,8 +210,24 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
          </div>
        )}
 
-       {/* Controls: single-player typeahead + bulk CSV */}
-       <RosterControls leagueId={leagueId} teams={teams} onUpdate={handleUpdate} />
+       {/* Focused single-team roster view — primary pane. Shows the acting-as
+           team's roster only (no editable price/position; those are auction
+           setup concerns now in the Season tab). Per-row IL/Activate buttons
+           from #128 still work via the same callbacks. */}
+       {actingAsTeamId && !loading && (() => {
+         const actingTeam = teams.find((t) => t.id === actingAsTeamId);
+         return actingTeam ? (
+           <RosterGrid
+             teams={[actingTeam]}
+             rosters={rosters.filter((r) => r.teamId === actingAsTeamId)}
+             canRelease
+             onRelease={handleUpdate}
+             onPlaceIl={handlePlaceIlShortcut}
+             onActivateIl={handleActivateIlShortcut}
+             mlbStatusByPlayerId={mlbStatusByPlayerId}
+           />
+         ) : null;
+       })()}
 
        {/* Add / Drop — shared AddDropPanel from RosterMovesTab. The owner-side
            and commissioner-side now use the SAME pair-action component;
@@ -297,20 +328,44 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
          </div>
        </div>
 
-       {/* Live Rosters — release/edit in-place. Per-row IL/Activate
-           shortcuts route to the IL Management card above with the player
-           preselected. */}
-       <RosterGrid
-         teams={teams}
-         rosters={rosters}
-         canRelease
-         canEditPrice
-         canEditPosition
-         onRelease={handleUpdate}
-         onPlaceIl={handlePlaceIlShortcut}
-         onActivateIl={handleActivateIlShortcut}
-         mlbStatusByPlayerId={mlbStatusByPlayerId}
-       />
+       {/* Retroactive Trades — collapsible. Folded in from the deleted Trades
+           tab (PR #130). Commissioner can record trades that already happened. */}
+       <details className="lg-card p-0 bg-transparent">
+         <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-[var(--lg-text-primary)] select-none">
+           Record retroactive trade
+           <span className="ml-2 text-[10px] font-normal text-[var(--lg-text-muted)] uppercase tracking-wide">
+             (collapsible)
+           </span>
+         </summary>
+         <div className="p-4 border-t border-[var(--lg-border-subtle)]">
+           <CommissionerTradeTool leagueId={leagueId} teams={teams} />
+         </div>
+       </details>
+
+       {/* All Teams Quick View — collapsible glance across the league.
+           Default closed; lazy-mounted (the contents only render when open)
+           so eight teams worth of roster rendering doesn't run on first paint. */}
+       <details className="lg-card p-0 bg-transparent">
+         <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-[var(--lg-text-primary)] select-none">
+           All Teams Quick View
+           <span className="ml-2 text-[10px] font-normal text-[var(--lg-text-muted)] uppercase tracking-wide">
+             (collapsible)
+           </span>
+         </summary>
+         <div className="p-4 border-t border-[var(--lg-border-subtle)]">
+           <RosterGrid
+             teams={teams}
+             rosters={rosters}
+             canRelease
+             canEditPrice
+             canEditPosition
+             onRelease={handleUpdate}
+             onPlaceIl={handlePlaceIlShortcut}
+             onActivateIl={handleActivateIlShortcut}
+             mlbStatusByPlayerId={mlbStatusByPlayerId}
+           />
+         </div>
+       </details>
     </div>
   );
 }
