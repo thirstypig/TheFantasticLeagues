@@ -225,6 +225,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
              onPlaceIl={handlePlaceIlShortcut}
              onActivateIl={handleActivateIlShortcut}
              mlbStatusByPlayerId={mlbStatusByPlayerId}
+             unbounded
            />
          ) : null;
        })()}

@@ -135,3 +135,38 @@ describe("RosterGrid IL shortcut buttons", () => {
     expect(onActivateIl).toHaveBeenCalledWith(ilSlotted);
   });
 });
+
+describe("RosterGrid unbounded mode", () => {
+  // Regression test for the Skunk Dogs "missing player" report in session 80.
+  // The focused single-team view in CommissionerRosterTool inherited the
+  // grid's `h-96` per-card height + internal scroll, designed for the 8-up
+  // grid. With 23 rows and ~10 visible without scrolling, users assumed
+  // pitchers (e.g., Ohtani Pitcher at row 14) were missing entirely. The
+  // `unbounded` prop drops the height + scroll so the focused card grows
+  // to fit all rows.
+  it("by default renders the team card with the h-96 height + internal scroll", () => {
+    const { container } = render(
+      <RosterGrid teams={teams} rosters={[activeIlEligible]} />
+    );
+    const teamCard = container.querySelector(
+      '[class*="rounded-xl"][class*="overflow-hidden"][class*="flex flex-col"]'
+    ) as HTMLElement;
+    expect(teamCard).toBeTruthy();
+    expect(teamCard.className).toContain("h-96");
+    const scrollPane = container.querySelector('[class*="overflow-y-auto"]');
+    expect(scrollPane).toBeTruthy();
+  });
+
+  it("when unbounded, drops both the height constraint and the internal scroll pane", () => {
+    const { container } = render(
+      <RosterGrid teams={teams} rosters={[activeIlEligible]} unbounded />
+    );
+    const teamCard = container.querySelector(
+      '[class*="rounded-xl"][class*="overflow-hidden"][class*="flex flex-col"]'
+    ) as HTMLElement;
+    expect(teamCard).toBeTruthy();
+    expect(teamCard.className).not.toContain("h-96");
+    const scrollPane = container.querySelector('[class*="overflow-y-auto"]');
+    expect(scrollPane).toBeNull();
+  });
+});

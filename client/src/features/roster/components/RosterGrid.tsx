@@ -57,9 +57,17 @@ interface RosterGridProps {
    * data; without it, the "IL" button is hidden on every row.
    */
   mlbStatusByPlayerId?: Map<number, string | undefined>;
+  /**
+   * Drop the per-card `h-96` height constraint so each team card grows
+   * to fit all rows without internal scroll. Use this when the grid
+   * renders ONE team as the primary pane (e.g., the focused single-team
+   * view in CommissionerRosterTool); leave default (false) for the
+   * 8-up grid where fixed-height cards keep the layout uniform.
+   */
+  unbounded?: boolean;
 }
 
-export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, canEditPrice, canEditPosition, onRelease, onPlaceIl, onActivateIl, mlbStatusByPlayerId }: RosterGridProps) {
+export default function RosterGrid({ leagueId, teams: initialTeams, rosters: initialRosters, className, canRelease, canEditPrice, canEditPosition, onRelease, onPlaceIl, onActivateIl, mlbStatusByPlayerId, unbounded }: RosterGridProps) {
   const { outfieldMode, leagueId: contextLeagueId, seasonStatus } = useLeague();
   const priceDeemphasized = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
   const { toast, confirm } = useToast();
@@ -183,7 +191,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                const remaining = budget - totalSpent;
                
                return (
-                   <div key={team.id} className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden flex flex-col h-96">
+                   <div key={team.id} className={`rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden flex flex-col ${unbounded ? '' : 'h-96'}`}>
                        <div className="p-3 bg-[var(--lg-tint)] border-b border-[var(--lg-border-faint)] flex justify-between items-center">
                            <div className="font-semibold text-[var(--lg-text-primary)] truncate max-w-[120px]" title={team.name}>{team.name}</div>
                            <div className="text-xs text-[var(--lg-text-secondary)] flex flex-col items-end">
@@ -191,7 +199,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                <span className="text-[var(--lg-text-muted)]">{teamRoster.length} players</span>
                            </div>
                        </div>
-                       <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
+                       <div className={`flex-1 p-2 space-y-1 ${unbounded ? '' : 'overflow-y-auto scrollbar-thin scrollbar-thumb-white/10'}`}>
                            {teamRoster.length === 0 && (
                                <div className="text-center text-xs text-[var(--lg-text-muted)] mt-10">No players</div>
                            )}
