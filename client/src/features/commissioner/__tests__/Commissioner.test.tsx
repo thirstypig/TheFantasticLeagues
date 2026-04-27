@@ -127,14 +127,16 @@ describe("Commissioner", () => {
   it("renders navigation tabs", async () => {
     renderWithRoute();
     await waitFor(() => {
-      // Tab buttons contain label text; "Members" and "Teams" also appear in quick stats
+      // Tab buttons contain label text; "Members" appears in quick stats too.
+      // Per PR #130 (6→5 restructure): "Teams" → "Manage Rosters", and the
+      // standalone "Trades" tab was folded into Manage Rosters.
       const buttons = screen.getAllByRole("button");
       const tabLabels = buttons.map((b) => b.textContent?.trim());
       expect(tabLabels).toContain("League");
       expect(tabLabels).toContain("Members");
-      expect(tabLabels).toContain("Teams");
+      expect(tabLabels).toContain("Manage Rosters");
       expect(tabLabels).toContain("Season");
-      expect(tabLabels).toContain("Trades");
+      expect(tabLabels).not.toContain("Trades");
     });
   });
 
@@ -164,24 +166,24 @@ describe("Commissioner", () => {
   });
 });
 
-describe("Commissioner — ghost-IL banner on Teams tab", () => {
-  async function openTeamsTab() {
+describe("Commissioner — ghost-IL banner on Manage Rosters tab", () => {
+  async function openManageRostersTab() {
     renderWithRoute();
     // Wait for overview to resolve
     await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
-    const teamsBtn = screen.getAllByRole("button").find(b => b.textContent?.trim() === "Teams")!;
-    fireEvent.click(teamsBtn);
+    const tabBtn = screen.getAllByRole("button").find(b => b.textContent?.trim() === "Manage Rosters")!;
+    fireEvent.click(tabBtn);
   }
 
-  it("does not fetch ghost-IL before the Teams tab is opened (lazy load)", async () => {
+  it("does not fetch ghost-IL before the Manage Rosters tab is opened (lazy load)", async () => {
     renderWithRoute();
     await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
     // Give the effect a beat — even so, the ghost-IL call should not have fired.
     expect(getGhostIlSummary).not.toHaveBeenCalled();
   });
 
-  it("fetches ghost-IL once the Teams tab is opened", async () => {
-    await openTeamsTab();
+  it("fetches ghost-IL once the Manage Rosters tab is opened", async () => {
+    await openManageRostersTab();
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalledWith(1));
   });
 
@@ -199,7 +201,7 @@ describe("Commissioner — ghost-IL banner on Teams tab", () => {
         ]},
       ],
     });
-    await openTeamsTab();
+    await openManageRostersTab();
     await waitFor(() => expect(screen.getByText(/2 teams/i)).toBeInTheDocument());
     // Details list is initially collapsed
     expect(screen.queryByText(/Mike Trout/)).not.toBeInTheDocument();
@@ -209,7 +211,7 @@ describe("Commissioner — ghost-IL banner on Teams tab", () => {
   });
 
   it("hides the banner when no teams have ghost-IL players", async () => {
-    await openTeamsTab();
+    await openManageRostersTab();
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalled());
     expect(screen.queryByText(/ghost-IL player/i)).not.toBeInTheDocument();
   });
