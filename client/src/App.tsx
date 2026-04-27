@@ -6,6 +6,7 @@ import AppShell from "./components/AppShell";
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
+import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
 import Team from "./features/teams/pages/Team";
 import Players from "./features/players/pages/Players";
@@ -126,6 +127,10 @@ export default function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/season" element={<Season />} />
                     <Route path="/teams/:teamCode" element={<Team />} />
+                    {/* Canonical "My Team" — resolves myTeamCode from league
+                        context, redirects to /teams/:code. Sidebar's My Team
+                        shortcut (PR #132) and external bookmarks both land here. */}
+                    <Route path="/my-team" element={<MyTeamRedirect />} />
                     <Route path="/players" element={<Players />} />
                     <Route path="/activity" element={<ActivityPage />} />
                     <Route path="/transactions" element={<Navigate to="/activity" replace />} />
