@@ -32,7 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, loading, logout } = useAuth();
-  const { leagueId, setLeagueId, leagues, draftMode } = useLeague();
+  const { leagueId, setLeagueId, leagues, draftMode, myTeamCode } = useLeague();
   const gating = useSeasonGating();
 
   // Persisted sidebar width
@@ -104,48 +104,81 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return selected?.access?.type === "MEMBER" && selected?.access?.role === "COMMISSIONER";
   }, [leagues, user, leagueId]);
 
+  // Sidebar IA — restructured per the Sitemap & Navigation design (PR #132).
+  // Five user-facing groups, each with one coherent purpose:
+  //   PLAY (untitled, flat top)  — what a manager touches every visit
+  //   EXPLORE                    — research / lookups
+  //   INSIGHTS                   — AI surfaces, promoted from a sub-group
+  //   DRAFT (collapsible)        — preseason-only operations
+  //   LEAGUE INFO (collapsible)  — settings + reference, demoted from top
+  // Plus the existing Admin tree, untouched per design scope.
   const NAV_SECTIONS: NavSection[] = [
     {
       title: "",
       items: [
         { to: "/", label: "Home", show: true },
-        { to: "/season", label: "Season", show: true },
-        { to: "/players", label: "Players", show: true },
         { to: "/matchup", label: "Matchup", show: gating.isH2H },
-        { to: "/activity", label: "Activity", show: true },
+        // "My Team" — solves the documented "no path to your own team"
+        // gap. Resolves to /teams/:teamCode using the user's owned team
+        // in the current league; hidden when no team owned (multi-league
+        // users browsing a league they don't play in).
+        ...(myTeamCode ? [{ to: `/teams/${myTeamCode}`, label: "My Team", show: true }] : []),
+        // Renamed from "Season" — users didn't know it meant Standings
+        // until they clicked. The /period redirect already proves the
+        // confusion; this rename closes it.
+        { to: "/season", label: "Standings", show: true },
         { to: "/board", label: "Board", show: true },
       ],
     },
     {
-      title: "Preseason",
+      title: "Explore",
+      items: [
+        { to: "/players", label: "Players", show: true },
+        { to: "/activity", label: "Activity", show: true },
+        // Archive moved out of "League" — it's research (past seasons,
+        // trophy case), not paperwork.
+        { to: "/archive", label: "Archive", show: true },
+      ],
+    },
+    {
+      title: "Insights",
+      collapsible: true,
+      defaultOpen: true,
+      items: [
+        { to: "/ai", label: "AI Hub", show: true },
+        { to: "/draft-report", label: "Draft Report", show: true },
+      ],
+    },
+    {
+      title: "Draft",
       collapsible: true,
       defaultOpen: false,
       items: [
         { to: "/auction", label: "Auction", show: draftMode === "AUCTION", disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
+        // Auction Results — surfaced from orphan-route status. Findable
+        // after the auction window closes instead of URL-only.
+        { to: "/auction-results", label: "Auction Results", show: draftMode === "AUCTION" },
         { to: "/draft", label: "Snake Draft", show: draftMode === "DRAFT", disabled: !(gating.canAuction || gating.canViewAuctionResults), disabledTip: "Available during draft" },
-        { to: "/rules", label: "Rules", show: true },
         ...(leagueId ? [{ to: `/leagues/${leagueId}/keepers`, label: "Keepers", show: true }] : []),
       ],
     },
     {
-      title: "AI",
-      collapsible: true,
-      defaultOpen: true,
-      items: [
-        { to: "/draft-report", label: "Draft Report", show: true },
-        { to: "/ai", label: "AI Insights", show: true },
-      ],
-    },
-    {
-      title: "League",
+      title: "League Info",
       collapsible: true,
       defaultOpen: false,
       items: [
-        { to: "/payouts", label: "Payouts", show: true },
-        { to: "/archive", label: "Archive", show: true },
+        // Commissioner pinned to top of section when user is commish —
+        // matches the design's "pinned shortcut" note.
         { to: `/commissioner/${leagueId}`, label: "Commissioner", show: canAccessCommissioner },
+        // Rules moved out of "Preseason" — it's reference, not auction-time.
+        { to: "/rules", label: "Rules", show: true },
+        { to: "/payouts", label: "Payouts", show: true },
+        // Help & Guide — the /guide/* trio (account, auction, faq) still
+        // exist as routes; consolidating into a single tabbed page is a
+        // follow-up. For now this entry routes to /guide which already
+        // holds the index.
+        { to: "/guide", label: "Help & Guide", show: true },
         { to: "/about", label: "About", show: true },
-        { to: "/guide", label: "Guide", show: true },
       ],
     },
     {
