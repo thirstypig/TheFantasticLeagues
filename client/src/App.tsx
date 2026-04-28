@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import HomeLegacy from "./pages/HomeLegacy";
 import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
+import SeasonLegacy from "./features/periods/pages/SeasonLegacy";
 import Team from "./features/teams/pages/Team";
 import TeamsIndex from "./features/teams/pages/TeamsIndex";
 import Players from "./features/players/pages/Players";
@@ -133,6 +134,11 @@ export default function App() {
                         scores, news, depth charts — are ported into Aurora). */}
                     <Route path="/home-classic" element={<HomeLegacy />} />
                     <Route path="/season" element={<Season />} />
+                    {/* Pre-Aurora Standings preserved for users who need
+                        Period Detail / H2H Matchups views (PR #138 pilot
+                        ports the matrix only). Remove once those views are
+                        ported into Aurora. */}
+                    <Route path="/season-classic" element={<SeasonLegacy />} />
                     {/* Teams index — Explore section's "Teams" entry per
                         the Sitemap & Navigation design. Lists all teams in
                         the active league with cards linking to the existing

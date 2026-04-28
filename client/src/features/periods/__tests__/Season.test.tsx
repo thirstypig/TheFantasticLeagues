@@ -44,7 +44,12 @@ vi.mock("../../../lib/ogbaTeams", () => ({
 }));
 
 import { getSeasonStandings } from "../../../api";
-import SeasonPage from "../pages/Season";
+// Tests target the legacy Season page (period detail tabs, H2H matchups,
+// the rich roto matrix) which lives at /season-classic post PR #138 and
+// is exported as SeasonLegacy. The Aurora Season page (current /season)
+// is a thin matrix port — its tests would assert different copy. When
+// Aurora gets period detail + H2H, port these tests to the new component.
+import SeasonPage from "../pages/SeasonLegacy";
 
 const mockSeasonData = {
   periodIds: [1, 2, 3],
