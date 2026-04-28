@@ -30,9 +30,9 @@ import RosterControls from "../../roster/components/RosterControls";
 import LeagueHealthTab from "../components/LeagueHealthTab";
 import KeeperPrepDashboard from "../../keeper-prep/components/KeeperPrepDashboard";
 import SeasonManager from "../components/SeasonManager";
-import PageHeader from "../../../components/ui/PageHeader";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import { useLeague } from "../../../contexts/LeagueContext";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 
 // Local types for normalizeOverview (server response has more fields than the api.ts types)
 type CommissionerOverviewResponse = {
@@ -683,56 +683,80 @@ export default function Commissioner() {
   const league = overview.league;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="Commissioner"
-        subtitle="Season setup and management tools."
-      />
-
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="text-sm text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">
-            ← Back to Home
-          </Link>
-          <div className="flex items-center gap-2">
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ League Tools</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              Commissioner
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              Season setup, members, rosters, and league health — all in one place.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Link to="/" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none" }}>
+              ← Back to Home
+            </Link>
             <button
+              type="button"
               onClick={loadAll}
-              className={cls(
-                "rounded-xl border border-[var(--lg-border-subtle)] px-3 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]",
-                busy && "opacity-60 cursor-not-allowed"
-              )}
               disabled={busy}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "6px 12px", borderRadius: 99,
+                fontSize: 12, fontWeight: 600,
+                background: "var(--am-chip)", color: "var(--am-text)",
+                border: "1px solid var(--am-border)",
+                cursor: busy ? "not-allowed" : "pointer",
+                opacity: busy ? 0.5 : 1,
+                fontFamily: "inherit",
+              }}
             >
               Refresh
             </button>
-            {/* leagueId used internally only */}
           </div>
         </div>
+      </Glass>
 
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {loading ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-muted)]">
-            Loading…
-          </div>
+          <Glass>
+            <div style={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--am-text-muted)", fontSize: 13 }}>
+              Loading…
+            </div>
+          </Glass>
         ) : error ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-red-300">
-            {error}
-          </div>
+          <Glass>
+            <div style={{ padding: 8, color: "rgb(248, 113, 113)", fontSize: 13, textAlign: "center" }}>
+              {error}
+            </div>
+          </Glass>
         ) : !me ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
-            You are not logged in.
-          </div>
+          <Glass>
+            <div style={{ padding: 8, color: "var(--am-text-muted)", fontSize: 13, textAlign: "center" }}>
+              You are not logged in.
+            </div>
+          </Glass>
         ) : !leagueFromList ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
-            League not found.
-          </div>
+          <Glass>
+            <div style={{ padding: 8, color: "var(--am-text-muted)", fontSize: 13, textAlign: "center" }}>
+              League not found.
+            </div>
+          </Glass>
         ) : !canCommissioner ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
-            You are not a commissioner for this league.
-          </div>
+          <Glass>
+            <div style={{ padding: 8, color: "var(--am-text-muted)", fontSize: 13, textAlign: "center" }}>
+              You are not a commissioner for this league.
+            </div>
+          </Glass>
         ) : !league ? (
-          <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-primary)]/70">
-            Commissioner data not available.
-          </div>
+          <Glass>
+            <div style={{ padding: 8, color: "var(--am-text-muted)", fontSize: 13, textAlign: "center" }}>
+              Commissioner data not available.
+            </div>
+          </Glass>
         ) : (
           <>
             {/* League header */}
@@ -800,9 +824,11 @@ export default function Commissioner() {
               <span className="text-sm text-[var(--lg-text-secondary)]">{gating.phaseGuidance}</span>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 border-b border-[var(--lg-border-subtle)] pb-4 mb-6 overflow-x-auto">
-                {TABS.map((tab) => (
+            {/* Aurora pill tabs */}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                {TABS.map((tab) => {
+                    const isActive = activeTab === tab.key && tab.enabled;
+                    return (
                     <button
                         key={tab.key}
                         onClick={() => {
@@ -810,15 +836,17 @@ export default function Commissioner() {
                              window.history.replaceState(null, '', `#${tab.key}`);
                              setActiveTab(tab.key);
                         }}
-                        className={cls(
-                            "px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-1.5",
-                            !tab.enabled && "opacity-40 cursor-not-allowed",
-                            activeTab === tab.key && tab.enabled
-                                ? "bg-[var(--lg-accent)] text-white"
-                                : tab.enabled
-                                  ? "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]"
-                                  : "text-[var(--lg-text-muted)]"
-                        )}
+                        style={{
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", borderRadius: 99,
+                            fontSize: 12, fontWeight: 600, letterSpacing: 0.2,
+                            background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                            color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                            border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                            opacity: tab.enabled ? 1 : 0.4,
+                            cursor: tab.enabled ? "pointer" : "not-allowed",
+                            fontFamily: "inherit",
+                        }}
                         title={tab.enabled ? undefined : tab.reason}
                         disabled={!tab.enabled}
                     >
@@ -842,7 +870,8 @@ export default function Commissioner() {
                         )}
                         {tab.label}
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Tab: League */}
