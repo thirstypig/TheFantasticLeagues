@@ -1,5 +1,21 @@
+/*
+ * ActivityPage — Aurora port (post-shell rollout).
+ *
+ * Renders inside AuroraShell so we do NOT add aurora-theme / AmbientBg
+ * wrappers here — the shell provides them. Page-level chrome moves to
+ * Aurora atoms (Glass hero, IridText display heading, segmented tab
+ * pills, footer escape link). Tab content delegates to the existing
+ * children (ActivityWaiversTab, RosterMovesTab, ActivityHistoryTab,
+ * TradeCard) which keep their legacy `--lg-*` token styling — those
+ * tokens stay globally defined so legacy children render acceptably
+ * inside the Aurora wrapper. Deeper Aurora ports of those children
+ * are follow-up PRs.
+ *
+ * Legacy 477-LOC version preserved at /activity-classic via
+ * ActivityPageLegacy.tsx.
+ */
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   getTransactions,
   TransactionEvent,
@@ -23,12 +39,18 @@ import { TradeCard, LeagueTradeCard, CreateTradeForm } from "../../trades/pages/
 import TeamRosterView from "../../teams/components/TeamRosterView";
 import ActivityWaiversTab from "../components/ActivityWaiversTab";
 import ActivityHistoryTab from "../components/ActivityHistoryTab";
-import PageHeader from "../../../components/ui/PageHeader";
-import { PageSkeleton } from "../../../components/ui/Skeleton";
-import { Button } from "../../../components/ui/button";
 import { Plus, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { EmptyState } from "../../../components/ui/EmptyState";
+import { Glass, IridText, SectionLabel } from "../../../components/aurora/atoms";
+
 type ActivityTab = "add_drop" | "trades" | "waivers" | "history";
+
+const TABS: { key: ActivityTab; label: string }[] = [
+  { key: "waivers", label: "Waivers" },
+  { key: "add_drop", label: "Roster Moves" },
+  { key: "trades", label: "Trades" },
+  { key: "history", label: "History" },
+];
 
 export default function ActivityPage() {
   const { me } = useAuth();
@@ -42,10 +64,6 @@ export default function ActivityPage() {
       (m: any) => Number(m.leagueId) === currentLeagueId && m.role === "COMMISSIONER"
     );
 
-  // Permission check for the Roster Moves tab. Mirror of the server-side
-  // requireTeamOwnerOrCommissioner — a non-commissioner owner sees the tab
-  // when the league's transactions.owner_self_serve rule is 'true', scoped
-  // to their own team. Admins/commissioners always see it.
   const isLeagueMember = Boolean(
     authUser?.memberships?.some((m: any) => Number(m.leagueId) === currentLeagueId),
   );
@@ -57,7 +75,6 @@ export default function ActivityPage() {
   const setActiveTab = (tab: ActivityTab) => setSearchParams({ tab }, { replace: true });
   const [loading, setLoading] = useState(true);
 
-  // Transaction data
   const [transactions, setTransactions] = useState<TransactionEvent[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -65,7 +82,6 @@ export default function ActivityPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [claimInFlight, setClaimInFlight] = useState(false);
 
-  // Trade data
   const [trades, setTrades] = useState<TradeProposal[]>([]);
   const [showCreateTrade, setShowCreateTrade] = useState(false);
   const [showCompletedTrades, setShowCompletedTrades] = useState(false);
@@ -85,7 +101,6 @@ export default function ActivityPage() {
   const loadData = useCallback(async () => {
     if (!currentLeagueId) { setLoading(false); return; }
     try {
-      // Load all data in parallel — trades included in the same batch
       const results = await Promise.allSettled([
         getTransactions({ leagueId: currentLeagueId, take: 100 }),
         getPlayerSeasonStats(currentLeagueId),
@@ -105,7 +120,6 @@ export default function ActivityPage() {
         const loadedTeams = leagueResult.value.league.teams || [];
         setTeams(loadedTeams);
 
-        // Auto-detect user's team
         const uid = Number(authUser?.id);
         const myTeam = findMyTeam(loadedTeams, uid);
         if (myTeam) {
@@ -188,22 +202,22 @@ export default function ActivityPage() {
     }
   };
 
-  // Waiver Order: Reverse standings — worst team gets first waiver pick
+  // Suppress unused-var warnings; preserved for future Aurora deep-port of children
+  void handleClaim;
+  void handleDrop;
+
   const sortedWaiverOrder = useMemo(() => {
     const standingMap = new Map(standings.map((s) => [s.teamId, s]));
     const teamsWithPoints = teams.map((t) => {
       const s = standingMap.get(t.id);
       return { ...t, rank: 0, points: s?.totalPoints || s?.points || 0 };
     });
-    // Sort by points ASC (fewest points = worst team = first waiver pick)
     teamsWithPoints.sort((a, b) => a.points - b.points);
-    // Assign standing rank for display (1 = best, N = worst)
     const byPointsDesc = [...teamsWithPoints].sort((a, b) => b.points - a.points);
     byPointsDesc.forEach((t, i) => { t.rank = i + 1; });
     return teamsWithPoints;
   }, [teams, standings]);
 
-  // Trade categorization
   const activeTrades = useMemo(
     () => trades.filter((t) => ["PROPOSED", "ACCEPTED"].includes(t.status)),
     [trades]
@@ -213,262 +227,330 @@ export default function ActivityPage() {
     [trades]
   );
 
-  if (loading) return <PageSkeleton />;
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <div className="mb-10">
-        <PageHeader
-          title="Activity"
-          subtitle="Manage roster moves, trades, waivers, and review transaction history."
-          rightElement={
-            <div className="flex items-center gap-4">
-              <div className="lg-card p-1 flex gap-2">
-                <Button
-                  onClick={() => setActiveTab("waivers")}
-                  variant={activeTab === "waivers" ? "default" : "ghost"}
-                  size="sm"
-                  className="px-6"
-                >
-                  Waivers
-                </Button>
-                <Button
-                  onClick={() => setActiveTab("add_drop")}
-                  variant={activeTab === "add_drop" ? "default" : "ghost"}
-                  size="sm"
-                  className="px-6"
-                >
-                  Roster Moves
-                </Button>
-                <Button
-                  onClick={() => setActiveTab("trades")}
-                  variant={activeTab === "trades" ? "default" : "ghost"}
-                  size="sm"
-                  className="px-6"
-                >
-                  Trades
-                </Button>
-                <Button
-                  onClick={() => setActiveTab("history")}
-                  variant={activeTab === "history" ? "default" : "ghost"}
-                  size="sm"
-                  className="px-6"
-                >
-                  History
-                </Button>
-              </div>
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Hero */}
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ Activity</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              Manage roster moves.
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              Roster moves, trades, waivers, and a full transaction history — all in one place.
             </div>
-          }
-        />
-      </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+            <SectionLabel style={{ marginBottom: 2 }}>Activity</SectionLabel>
+            <IridText size={26}>{transactions.length + trades.length}</IridText>
+          </div>
+        </div>
 
-      <div className="mt-6">
-        {/* Waivers Tab */}
-        {activeTab === "waivers" && (
-          <ActivityWaiversTab
-            sortedWaiverOrder={sortedWaiverOrder}
-            leagueId={currentLeagueId}
-            isCommissioner={isCommissioner}
-          />
-        )}
-
-        {/* Roster Moves Tab — unified home for Add/Drop, Place on IL, and
-            Activate from IL. Visibility gated by canManageRoster: admins and
-            league commissioners always see it; team owners see it when the
-            league's transactions.owner_self_serve rule is 'true'. When the
-            caller is not authorized for roster moves, we keep the waiver-
-            submission fallback (existing path for non-commissioner owners in
-            commissioner-only leagues) so that path doesn't regress. */}
-        {activeTab === "add_drop" && (() => {
-          const permission = canManageRoster({
-            leagueId: currentLeagueId || null,
-            teamId: selectedTeamId,
-            isAdmin: Boolean(authUser?.isAdmin),
-            isCommissioner: (lid) =>
-              Boolean(authUser?.memberships?.some(
-                (m: any) => String(m.leagueId) === lid && m.role === "COMMISSIONER",
-              )),
-            myTeamId: myTeamId ?? null,
-            leagueRules,
-            isLeagueMember,
-          });
-
-          if (permission.kind === "loading") {
+        {/* Tab pills */}
+        <div style={{ marginTop: 16, display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {TABS.map((t) => {
+            const isActive = t.key === activeTab;
             return (
-              <div className="p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-                Loading…
-              </div>
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setActiveTab(t.key)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 14px",
+                  borderRadius: 99,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                  color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                  border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: 0.2,
+                }}
+              >
+                {t.label}
+              </button>
             );
-          }
+          })}
+        </div>
+      </Glass>
 
-          if (permission.kind === "allow" && selectedTeamId && currentLeagueId) {
-            return (
-              <RosterMovesTab
-                leagueId={currentLeagueId}
-                teamId={selectedTeamId}
-                players={players}
-                onComplete={loadData}
-              />
-            );
-          }
-
-          // Deny — show a waiver-claim fallback for non-commissioner owners
-          // in commissioner-only leagues. This is the pre-existing path,
-          // preserved to avoid regressing the owner-submits-waiver flow
-          // while a dedicated Waivers-tab submit UI is built separately.
-          if (permission.kind === "deny" && selectedTeamId) {
-            return (
-              <div className="lg-card p-4">
-                <p className="text-[11px] text-[var(--lg-text-muted)] mb-4">
-                  {REASON_COPY[permission.reason]} You can still submit a waiver claim below.
-                </p>
-                <WaiverClaimForm
-                  players={players}
-                  myTeamId={selectedTeamId}
-                  myTeamBudget={teams.find(t => t.id === selectedTeamId)?.budget ?? 400}
-                  myRoster={players.filter((p: any) => {
-                    const tid = (p as any)._dbTeamId || teams.find(t => t.name === p.ogba_team_name)?.id;
-                    return tid === selectedTeamId;
-                  })}
-                  onComplete={loadData}
+      {loading ? (
+        <Glass>
+          <div role="status" aria-label="Loading" style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--am-text-muted)", fontSize: 13 }}>
+            Loading…
+          </div>
+        </Glass>
+      ) : (
+        <>
+          {activeTab === "waivers" && (
+            <Glass padded={false}>
+              <div style={{ padding: 16 }}>
+                <ActivityWaiversTab
+                  sortedWaiverOrder={sortedWaiverOrder}
+                  leagueId={currentLeagueId}
+                  isCommissioner={isCommissioner}
                 />
               </div>
-            );
-          }
+            </Glass>
+          )}
 
-          return (
-            <div className="p-16 text-center text-[var(--lg-text-muted)] opacity-40 italic font-medium">
-              Select a team to manage roster moves.
-            </div>
-          );
-        })()}
+          {activeTab === "add_drop" && (() => {
+            const permission = canManageRoster({
+              leagueId: currentLeagueId || null,
+              teamId: selectedTeamId,
+              isAdmin: Boolean(authUser?.isAdmin),
+              isCommissioner: (lid) =>
+                Boolean(authUser?.memberships?.some(
+                  (m: any) => String(m.leagueId) === lid && m.role === "COMMISSIONER",
+                )),
+              myTeamId: myTeamId ?? null,
+              leagueRules,
+              isLeagueMember,
+            });
 
-        {/* Trades Tab */}
-        {activeTab === "trades" && (
-          <div className="space-y-8">
-            {/* Propose Trade Button */}
-            <div className="flex justify-end">
-              <Button
-                onClick={() => setShowCreateTrade(!showCreateTrade)}
-                variant="default"
-                className="px-8 shadow-xl shadow-blue-500/20"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Propose Trade
-              </Button>
-            </div>
+            if (permission.kind === "loading") {
+              return (
+                <Glass>
+                  <div style={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--am-text-muted)", fontSize: 13 }}>
+                    Loading…
+                  </div>
+                </Glass>
+              );
+            }
 
-            {/* Create Trade Form (inline) */}
-            {showCreateTrade && (
-              <CreateTradeForm
-                onCancel={() => setShowCreateTrade(false)}
-                onSuccess={() => {
-                  loadTrades();
-                  setShowCreateTrade(false);
-                }}
-              />
-            )}
-
-            {/* Active Trades */}
-            <div>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-1.5 h-6 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"></div>
-                <h2 className="text-2xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)]">
-                  Active Trades
-                </h2>
-              </div>
-              {activeTrades.length === 0 ? (
-                <EmptyState icon={ArrowLeftRight} title="No active trade proposals" description="Trades, waivers, and roster moves will appear here." compact />
-              ) : (
-                <div className="grid gap-6">
-                  {activeTrades.map((t) => (
-                    <LeagueTradeCard
-                      key={t.id}
-                      trade={t}
-                      onRefresh={loadTrades}
-                      currentUserId={Number(authUser?.id)}
-                      isAdmin={isCommissioner}
-                      onViewContext={() => setContextTrade(t)}
+            if (permission.kind === "allow" && selectedTeamId && currentLeagueId) {
+              return (
+                <Glass padded={false}>
+                  <div style={{ padding: 16 }}>
+                    <RosterMovesTab
+                      leagueId={currentLeagueId}
+                      teamId={selectedTeamId}
+                      players={players}
+                      onComplete={loadData}
                     />
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                </Glass>
+              );
+            }
 
-            {/* Completed Trades (collapsible) */}
-            {completedTrades.length > 0 && (
-              <div>
-                <button
-                  onClick={() => setShowCompletedTrades(!showCompletedTrades)}
-                  className="flex items-center gap-4 mb-6 group cursor-pointer"
-                >
-                  <div className="w-1.5 h-6 bg-[var(--lg-text-muted)] opacity-20 rounded-full"></div>
-                  <h2 className="text-2xl font-semibold uppercase tracking-tight text-[var(--lg-text-heading)] opacity-60">
-                    Completed Trades ({completedTrades.length})
-                  </h2>
-                  <ChevronDown
-                    className={`w-5 h-5 text-[var(--lg-text-muted)] transition-transform ${
-                      showCompletedTrades ? "rotate-180" : ""
-                    }`}
+            if (permission.kind === "deny" && selectedTeamId) {
+              return (
+                <Glass>
+                  <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginBottom: 14 }}>
+                    {REASON_COPY[permission.reason]} You can still submit a waiver claim below.
+                  </div>
+                  <WaiverClaimForm
+                    players={players}
+                    myTeamId={selectedTeamId}
+                    myTeamBudget={teams.find(t => t.id === selectedTeamId)?.budget ?? 400}
+                    myRoster={players.filter((p: any) => {
+                      const tid = (p as any)._dbTeamId || teams.find(t => t.name === p.ogba_team_name)?.id;
+                      return tid === selectedTeamId;
+                    })}
+                    onComplete={loadData}
                   />
+                </Glass>
+              );
+            }
+
+            return (
+              <Glass>
+                <div style={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--am-text-muted)", fontSize: 13, fontStyle: "italic" }}>
+                  Select a team to manage roster moves.
+                </div>
+              </Glass>
+            );
+          })()}
+
+          {activeTab === "trades" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateTrade(!showCreateTrade)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 16px",
+                    borderRadius: 99,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: "var(--am-chip-strong)",
+                    color: "var(--am-text)",
+                    border: "1px solid var(--am-border-strong)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <Plus size={13} />
+                  Propose Trade
                 </button>
-                {showCompletedTrades && (
-                  <div className="grid gap-6">
-                    {completedTrades.map((t) => (
-                      <TradeCard
-                        key={t.id}
-                        trade={t}
-                        onRefresh={loadTrades}
-                        currentUserId={Number(authUser?.id)}
-                        onViewContext={() => setContextTrade(t)}
-                      />
+              </div>
+
+              {showCreateTrade && (
+                <Glass padded={false}>
+                  <div style={{ padding: 16 }}>
+                    <CreateTradeForm
+                      onCancel={() => setShowCreateTrade(false)}
+                      onSuccess={() => {
+                        loadTrades();
+                        setShowCreateTrade(false);
+                      }}
+                    />
+                  </div>
+                </Glass>
+              )}
+
+              <div>
+                <SectionLabel>Active Trades</SectionLabel>
+                {activeTrades.length === 0 ? (
+                  <Glass>
+                    <EmptyState
+                      icon={ArrowLeftRight}
+                      title="No active trade proposals"
+                      description="Trades, waivers, and roster moves will appear here."
+                      compact
+                    />
+                  </Glass>
+                ) : (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {activeTrades.map((t) => (
+                      <Glass key={t.id} padded={false}>
+                        <div style={{ padding: 16 }}>
+                          <LeagueTradeCard
+                            trade={t}
+                            onRefresh={loadTrades}
+                            currentUserId={Number(authUser?.id)}
+                            isAdmin={isCommissioner}
+                            onViewContext={() => setContextTrade(t)}
+                          />
+                        </div>
+                      </Glass>
                     ))}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
 
-        {/* History Tab */}
-        {activeTab === "history" && (
-          <ActivityHistoryTab
-            completedTrades={completedTrades}
-            transactions={transactions}
-          />
-        )}
+              {completedTrades.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCompletedTrades(!showCompletedTrades)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 10,
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      color: "var(--am-text-faint)",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <SectionLabel style={{ marginBottom: 0 }}>
+                      Completed Trades · {completedTrades.length}
+                    </SectionLabel>
+                    <ChevronDown
+                      size={14}
+                      style={{
+                        transition: "transform 200ms",
+                        transform: showCompletedTrades ? "rotate(180deg)" : "none",
+                      }}
+                    />
+                  </button>
+                  {showCompletedTrades && (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {completedTrades.map((t) => (
+                        <Glass key={t.id} padded={false}>
+                          <div style={{ padding: 16 }}>
+                            <TradeCard
+                              trade={t}
+                              onRefresh={loadTrades}
+                              currentUserId={Number(authUser?.id)}
+                              onViewContext={() => setContextTrade(t)}
+                            />
+                          </div>
+                        </Glass>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
+          {activeTab === "history" && (
+            <Glass padded={false}>
+              <div style={{ padding: 16 }}>
+                <ActivityHistoryTab
+                  completedTrades={completedTrades}
+                  transactions={transactions}
+                />
+              </div>
+            </Glass>
+          )}
+        </>
+      )}
+
+      {/* Footer escape link */}
+      <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "var(--am-text-faint)" }}>
+        Need the original layout? <Link to="/activity-classic" style={{ color: "var(--am-text-muted)", textDecoration: "underline" }}>View classic Activity →</Link>
       </div>
 
       {/* Trade Context Modal */}
       {contextTrade && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 60,
+          }}
           onClick={() => setContextTrade(null)}
         >
-          <div
-            className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 border-b border-[var(--lg-border-subtle)] flex justify-between items-center bg-[var(--lg-tint)]">
-              <h3 className="font-semibold text-lg text-[var(--lg-text-heading)]">Trade Context</h3>
-              <button
-                onClick={() => setContextTrade(null)}
-                className="text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TeamRosterView
-                teamId={contextTrade.proposingTeamId ?? contextTrade.proposerId}
-                teamName={contextTrade.proposingTeam?.name ?? "Proposer"}
-              />
-              <TeamRosterView
-                teamId={contextTrade.acceptingTeamId ?? 0}
-                teamName={contextTrade.acceptingTeam?.name ?? "Counterparty"}
-              />
-            </div>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 960, maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <Glass strong padded={false}>
+              <div style={{ padding: 14, borderBottom: "1px solid var(--am-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "var(--am-display)", fontSize: 16, fontWeight: 500, color: "var(--am-text)" }}>Trade Context</span>
+                <button
+                  type="button"
+                  onClick={() => setContextTrade(null)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--am-text-muted)",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div style={{ padding: 14, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                <TeamRosterView
+                  teamId={contextTrade.proposingTeamId ?? contextTrade.proposerId}
+                  teamName={contextTrade.proposingTeam?.name ?? "Proposer"}
+                />
+                <TeamRosterView
+                  teamId={contextTrade.acceptingTeamId ?? 0}
+                  teamName={contextTrade.acceptingTeam?.name ?? "Counterparty"}
+                />
+              </div>
+            </Glass>
           </div>
         </div>
       )}

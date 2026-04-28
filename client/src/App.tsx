@@ -3,6 +3,7 @@ import React, { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AuroraShell from "./components/aurora/AuroraShell";
+const ActivityPageLegacy = React.lazy(() => import("./features/transactions/pages/ActivityPageLegacy"));
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
@@ -177,6 +178,11 @@ export default function App() {
                         Trading Block, Watchlist, Board, Draft Report). */}
                     <Route path="/players/:mlbId" element={<PlayerDetail />} />
                     <Route path="/activity" element={<ActivityPage />} />
+                    {/* Aurora Activity (post-shell rollout). Legacy preserved
+                        for any feature the Aurora pilot doesn't deep-port yet
+                        (legacy ActivityWaiversTab / RosterMovesTab still
+                        embedded inside Aurora wrapper). */}
+                    <Route path="/activity-classic" element={<ActivityPageLegacy />} />
                     <Route path="/transactions" element={<Navigate to="/activity" replace />} />
                     <Route path="/trades" element={<Navigate to="/activity" replace />} />
                     <Route path="/trading-block" element={<Navigate to="/board" replace />} />
