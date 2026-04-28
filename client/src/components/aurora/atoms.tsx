@@ -7,6 +7,7 @@
  * further, atoms should split per-file.
  */
 import React, { CSSProperties } from "react";
+import { NavLink } from "react-router-dom";
 
 // ─── AmbientBg ───
 // Full-bleed background with three radial-glow layers + grain. Pin
@@ -346,6 +347,182 @@ export function AIStrip({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Topbar ───
+// Floating top strip per the Aurora System.html spec. Iridescent square
+// logo on the left, league display name + subtitle, right-side chip slot,
+// iridescent avatar disc. Absolute-positioned over the AmbientBg.
+export function Topbar({
+  title = "The Fantastic Leagues",
+  subtitle,
+  right,
+  onLogoClick,
+  onAvatarClick,
+}: {
+  title?: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+  onLogoClick?: () => void;
+  onAvatarClick?: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 16,
+        left: 18,
+        right: 18,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        zIndex: 20,
+        gap: 12,
+      }}
+    >
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 12, cursor: onLogoClick ? "pointer" : "default", minWidth: 0 }}
+        onClick={onLogoClick}
+      >
+        <div
+          aria-hidden
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 9,
+            background: "var(--am-irid)",
+            boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+            flexShrink: 0,
+          }}
+        />
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "var(--am-display)",
+              fontSize: 18,
+              lineHeight: 1,
+              letterSpacing: -0.2,
+              color: "var(--am-text)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {title}
+          </div>
+          {subtitle && (
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--am-text-faint)",
+                marginTop: 2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {subtitle}
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+        {right}
+        <button
+          type="button"
+          aria-label="Account menu"
+          onClick={onAvatarClick}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 99,
+            background: "var(--am-irid)",
+            border: "1px solid var(--am-border-strong)",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Dock ───
+// Floating bottom-center nav per the Aurora System.html spec. Items
+// route via React Router NavLink; the optional `extra` slot lets the
+// shell add a "More" overflow trigger after the last item.
+export interface DockItem {
+  key: string;
+  label: string;
+  glyph: string;
+  to: string;
+}
+
+export function Dock({
+  items,
+  extra,
+}: {
+  items: DockItem[];
+  extra?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 22,
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        gap: 6,
+        padding: 6,
+        background: "var(--am-surface-strong)",
+        backdropFilter: "blur(32px) saturate(160%)",
+        WebkitBackdropFilter: "blur(32px) saturate(160%)",
+        border: "1px solid var(--am-border-strong)",
+        borderRadius: 22,
+        boxShadow: "0 18px 50px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08) inset",
+        zIndex: 30,
+      }}
+    >
+      {items.map((it) => (
+        <NavLink
+          key={it.key}
+          to={it.to}
+          end={it.to === "/"}
+          style={({ isActive }) => ({
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 14px",
+            borderRadius: 16,
+            fontSize: 13,
+            fontWeight: 500,
+            color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+            background: isActive ? "var(--am-chip-strong)" : "transparent",
+            border: "1px solid " + (isActive ? "var(--am-border-strong)" : "transparent"),
+            textDecoration: "none",
+          })}
+        >
+          {({ isActive }) => (
+            <>
+              <span
+                style={{
+                  fontSize: 14,
+                  background: isActive ? "var(--am-irid)" : "transparent",
+                  WebkitBackgroundClip: isActive ? "text" : undefined,
+                  WebkitTextFillColor: isActive ? "transparent" : undefined,
+                }}
+              >
+                {it.glyph}
+              </span>
+              {it.label}
+            </>
+          )}
+        </NavLink>
+      ))}
+      {extra}
     </div>
   );
 }

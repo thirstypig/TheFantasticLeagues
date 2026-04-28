@@ -2,7 +2,7 @@
 import React, { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import AppShell from "./components/AppShell";
+import AuroraShell from "./components/aurora/AuroraShell";
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
@@ -127,12 +127,17 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/discover" element={<Suspense fallback={<PageLoader />}><DiscoverLeagues /></Suspense>} />
 
-        {/* Protected routes inside AppShell */}
+        {/* Protected routes inside AuroraShell — Aurora design system's
+            unified app chrome (floating Topbar + bottom Dock per the
+            Aurora System.html design handoff). Replaces the legacy
+            sidebar AppShell (preserved on disk in
+            client/src/components/AppShell.tsx for rollback) across the
+            entire authenticated site. */}
         <Route
           path="/*"
           element={
             user ? (
-              <AppShell>
+              <AuroraShell>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Home />} />
@@ -232,7 +237,7 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-              </AppShell>
+              </AuroraShell>
             ) : (
               <Suspense fallback={<PageLoader />}>
                 <Routes>
