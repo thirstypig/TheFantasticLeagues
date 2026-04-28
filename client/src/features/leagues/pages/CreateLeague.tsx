@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Copy, Check } from "lucide-react";
 import { Button } from "../../../components/ui/button";
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { createLeague, type CreateLeagueInput } from "../api";
@@ -49,7 +49,7 @@ export default function CreateLeague() {
 
   if (result) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-6 md:px-6 md:py-10">
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "8px 16px" }}>
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
             <Trophy size={32} className="text-emerald-500" />
@@ -106,8 +106,16 @@ export default function CreateLeague() {
   }
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader title="Create a League" subtitle="Set up a new fantasy league. You'll be the commissioner." />
+    <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Create a League</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          Create a League
+        </h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+          Set up a new fantasy league. You'll be the commissioner.
+        </div>
+      </Glass>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* League Info */}
