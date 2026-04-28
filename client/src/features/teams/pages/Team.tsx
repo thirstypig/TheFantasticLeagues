@@ -1,1062 +1,491 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
-
-import { getPlayerSeasonStats, type PlayerSeasonStat, getTeamDetails, getTeams, getTeamAiInsights, TeamInsightsResult } from "../../../api";
-import { getTeamAiInsightsHistory, getTeamPeriodRoster, type WeeklyInsightEntry, type PeriodRosterEntry } from "../api";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
-import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
+/*
+ * Team — Aurora port (PR #139).
+ *
+ * Aurora bento layout for the team detail page. Mirrors the design's
+ * TeamPageAmbient screen from the Aurora System.html bundle:
+ *   - Hero card (full-width): team identity + points + cap + IL count
+ *   - Hitters table (span 8): sorted by slot order
+ *   - AI sidebar (span 4): weekly insights from the existing endpoint
+ *   - Pitchers table (full-width)
+ *
+ * Data sources (all real, no mocks):
+ *   - getTeams(leagueId): resolve teamCode → team metadata
+ *   - getTeamDetails(teamId): roster + budget + IL slots
+ *   - getTeamAiInsights(leagueId, teamId): AI weekly insights
+ *
+ * The legacy Team.tsx (1062 LOC of trade asset selector, watchlist
+ * stars, news feeds, depth charts, weekly insights history tabs,
+ * period roster viewer) is preserved at /teams/:teamCode/classic.
+ * Port the deferred features into Aurora when the pilot expands.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import {
+  AmbientBg, Glass, IridText, Chip, SectionLabel,
+} from "../../../components/aurora/atoms";
+import "../../../components/aurora/aurora.css";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { getTradeBlock } from "../api";
+import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats } from "../../../api";
+import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 
-import { getOgbaTeamName } from "../../../lib/ogbaTeams";
-import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
-import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
-import { isPitcher, normalizePosition, formatAvg, getMlbTeamAbbr, sortByPosition } from "../../../lib/playerDisplay";
-import { mapPosition, positionToSlots, POS_SCORE } from "../../../lib/sportConfig";
-import { fetchJsonApi, API_BASE, parseIP } from "../../../api/base";
-import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
-import { Button } from "../../../components/ui/button";
-import { Sparkles, Loader2, ArrowLeftRight, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
-import { StatsUpdated } from "../../../components/shared/StatsTables";
-import RosterAlertAccordion from "../../../components/shared/RosterAlertAccordion";
-import { useRosterStatus } from "../../../hooks/useRosterStatus";
-import { isMlbIlStatus } from "../../../lib/mlbStatus";
-// Roster mutation UX (Place on IL / Activate / Add / Drop) lives on the
-// Activity page's Roster Moves tab as of PR #N (2026-04-23). The Team page
-// is view-only — modal imports and action state have been removed.
-import { useAuth } from "../../../auth/AuthProvider";
-
-function normCode(v: any): string {
-  return String(v ?? "").trim().toUpperCase();
+interface RosterPlayer {
+  rosterId: number;
+  playerName: string;
+  posPrimary?: string;
+  position?: string;
+  assignedPosition?: string;
+  isPitcher?: boolean;
+  price?: number;
+  mlbTeam?: string;
+  isKeeper?: boolean;
+  // Hitter stats (when available)
+  AVG?: number | string;
+  HR?: number;
+  R?: number;
+  RBI?: number;
+  SB?: number;
+  // Pitcher stats
+  W?: number;
+  SV?: number;
+  K?: number;
+  ERA?: number | string;
+  WHIP?: number | string;
 }
 
-function asNum(v: any): number {
-  const n = Number(String(v ?? "").trim());
-  return Number.isFinite(n) ? n : 0;
+const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
+const PITCHER_POS = new Set(["P", "SP", "RP"]);
+
+function posScore(p?: string) {
+  if (!p) return 99;
+  const i = POS_ORDER.indexOf(p);
+  return i < 0 ? 50 : i;
 }
 
-function numFromAny(p: any, ...keys: string[]): number {
-  for (const k of keys) {
-    if (p?.[k] != null && String(p[k]).trim() !== "") return asNum(p[k]);
-  }
-  return 0;
+function normCode(c: unknown): string {
+  return String(c ?? "").trim().toUpperCase();
 }
-
-function rowKey(p: any): string {
-  return String(p?.row_id ?? p?.id ?? `${p?.mlb_id ?? p?.mlbId ?? ""}-${isPitcher(p) ? "P" : "H"}`);
-}
-
-function normalizePosList(raw: any, ofMode: string = "OF"): string {
-  const s = String(raw ?? "").trim();
-  if (!s) return "";
-
-  const parts = s
-    .split(/[/,| ]+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-  const out: string[] = [];
-  const seen = new Set<string>();
-
-  for (const part of parts) {
-    const n = mapPosition(normalizePosition(part), ofMode);
-    if (!n) continue;
-    if (seen.has(n)) continue;
-    seen.add(n);
-    out.push(n);
-  }
-
-  return out.join("/");
-}
-
-function posEligible(p: any, ofMode: string = "OF"): string {
-  const raw = p?.positions ?? p?.pos ?? p?.position ?? p?.positionEligible ?? p?.position_eligible ?? "";
-  return normalizePosList(raw, ofMode);
-}
-
 
 export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
-  const { leagueId, outfieldMode, seasonStatus, myTeamId } = useLeague();
-  // Positions are locked on the Team page during the season for everyone.
-  // Commissioners manage position changes from the Commissioner page Roster tab.
-  const positionsLocked = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
+  const { leagueId, currentLeagueName, myTeamId } = useLeague();
 
-  const loc = useLocation();
-  const activeTab: "hitters" | "pitchers" = loc.hash === "#pitchers" ? "pitchers" : "hitters";
-
-  const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dbTeamId, setDbTeamId] = useState<number | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<PlayerSeasonStat | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Position editing state
-  const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
-  const [positionOverrides, setPositionOverrides] = useState<Record<number, string>>({});
-  const handlePositionSwap = React.useCallback(async (teamId: number, rosterId: number, newPos: string) => {
-    setPositionOverrides(prev => ({ ...prev, [rosterId]: newPos }));
-    try {
-      await fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ assignedPosition: newPos }),
-      });
-      setPositionOverrides(prev => { const n = { ...prev }; delete n[rosterId]; return n; });
-    } catch {
-      setPositionOverrides(prev => { const n = { ...prev }; delete n[rosterId]; return n; });
-    }
-  }, []);
-
-  // AI Insights state
+  const [teamMeta, setTeamMeta] = useState<{
+    id: number;
+    name: string;
+    code: string;
+    budget?: number | null;
+    ownerName?: string | null;
+  } | null>(null);
+  const [roster, setRoster] = useState<RosterPlayer[]>([]);
   const [aiInsights, setAiInsights] = useState<TeamInsightsResult | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiExpanded, setAiExpanded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Weekly insights history (tab-based)
-  const [insightHistory, setInsightHistory] = useState<WeeklyInsightEntry[]>([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [selectedWeekKey, setSelectedWeekKey] = useState<string | null>(null);
-
-  // Trade block state
-  const [tradeBlockIds, setTradeBlockIds] = useState<Set<number>>(new Set());
-
-  // Phase 4: IL action modals. Only the commissioner (or admin) can perform
-  // IL stash/activate — the backend gates /il-stash and /il-activate with
-  // requireCommishOrAdmin (server/src/features/transactions/routes.ts).
-  const { isCommissioner, isAdmin } = useAuth();
-  // canManageIl / modal state removed — IL management lives in the Activity
-  // page's Roster Moves tab. Team page surfaces the informational "Your IL
-  // Slots" subsection and Ghost-IL badges; actions are not this page's job.
-  const [reloadTick, setReloadTick] = useState(0);
-  const [fullPlayerPool, setFullPlayerPool] = useState<PlayerSeasonStat[]>([]);
-
-  // IL + Minors report via shared hook.
-  // `allPlayers` is used to build an MLB-status map so we can flag ghost-IL on
-  // fantasy-IL-slotted rows (assignedPosition === "IL" but MLB status is no
-  // longer an "Injured …-Day" designation).
-  const { ilPlayers, minorsPlayers, allPlayers: mlbRosterStatus } = useRosterStatus(leagueId ?? null, dbTeamId ?? undefined);
-  const mlbStatusByMlbId = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const p of mlbRosterStatus) {
-      if (p.mlbId != null) map.set(p.mlbId, p.mlbStatus || "");
-    }
-    return map;
-  }, [mlbRosterStatus]);
-
-  // Period roster state (for viewing historical period rosters)
-  const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
-  const [periodRosterLoading, setPeriodRosterLoading] = useState(false);
-  const [availablePeriods, setAvailablePeriods] = useState<{ id: number; name: string }[]>([]);
-
+  // Resolve teamCode → team metadata + DB id, then load roster + AI.
   useEffect(() => {
-    let ok = true;
+    if (!leagueId || !code) return;
+    let canceled = false;
+    setLoading(true);
+    setError(null);
 
-    async function load() {
+    (async () => {
       try {
-        setLoading(true);
-        setError(null);
+        // getTeams returns the teams array directly (unwrapped from
+        // the response envelope). Don't `.teams` on it.
+        const teamsList = await getTeams(leagueId);
+        if (canceled) return;
+        const team = (teamsList ?? []).find((t: any) => normCode(t.code) === code);
+        if (!team) {
+          setError(`Team "${code}" not found in league.`);
+          setLoading(false);
+          return;
+        }
+        setTeamMeta({
+          id: team.id,
+          name: team.name,
+          code: team.code ?? code,
+          budget: team.budget,
+          ownerName: team.ownerUser?.name || team.ownerUser?.email || team.owner || null,
+        });
 
-        // 1. Load teams + CSV stats in parallel (independent calls)
-        const [allTeams, csvRows] = await Promise.all([
-          getTeams(leagueId),
-          getPlayerSeasonStats(),
+        // Roster comes from getTeamDetails (currentRoster: [{id, playerId,
+        // name, posPrimary, price}]). We then enrich with stats from
+        // getPlayerSeasonStats which carries the league pool with
+        // assignedPosition + per-stat numbers. Match by mlb_id where
+        // possible, fallback to playerId joined against (id) field.
+        const [detailsRes, aiRes, statsRes] = await Promise.allSettled([
+          getTeamDetails(team.id),
+          getTeamAiInsights(leagueId, team.id),
+          getPlayerSeasonStats(leagueId),
         ]);
-        if (!ok) return;
-        setFullPlayerPool(csvRows ?? []);
+        if (canceled) return;
 
-        const ogbaName = getOgbaTeamName(code);
-        const team = allTeams.find((t: any) => normCode(t.code) === code)
-          || allTeams.find((t: any) => normCode(t.name) === code)
-          || allTeams.find((t: any) => t.name.trim() === ogbaName);
-
-        const foundId = team?.id || 0;
-
-        if (foundId) {
-          setDbTeamId(foundId);
-
-          // 3. Load DB roster + trade block in parallel
-          const [details, tradeBlockData] = await Promise.all([
-            getTeamDetails(foundId),
-            getTradeBlock(foundId).catch(() => ({ playerIds: [] as number[] })),
-          ]);
-          if (!ok) return;
-          setTradeBlockIds(new Set(tradeBlockData.playerIds));
-
-          // Extract available periods from team summary
-          if ((details.periodSummaries?.length ?? 0) > 0) {
-            setAvailablePeriods((details.periodSummaries ?? []).map((ps: any) => ({
-              id: ps.periodId,
-              name: ps.label || `Period ${ps.periodId}`,
-            })));
+        if (detailsRes.status === "fulfilled") {
+          const raw = detailsRes.value.currentRoster ?? [];
+          const stats = statsRes.status === "fulfilled" ? statsRes.value : ([] as PlayerSeasonStat[]);
+          // Index stats by Prisma player id (the integer foreign key on
+          // the Roster row) — the only stable identifier available on
+          // both sides without going through mlb_id casting.
+          const statsByPid = new Map<number, PlayerSeasonStat>();
+          for (const s of stats) {
+            const pid = (s as unknown as { id?: number }).id;
+            if (pid) statsByPid.set(pid, s);
           }
 
-          // 4. Build player list from DB roster, merge in CSV stats
-          const dbRoster: any[] = details.currentRoster || [];
-          const merged: PlayerSeasonStat[] = dbRoster.map((r: any) => {
-            // teamService returns flat objects (not nested under .player)
-            const mlbId = r.mlbId || r.mlb_id || r.player?.mlbId;
-            const playerName = r.name || r.player?.name || "";
-            const posPrimary = r.posPrimary || r.player?.posPrimary || "";
-            const mlbTeam = r.mlbTeam || r.player?.mlbTeam || "";
-            const posList = r.posList || r.player?.posList || "";
-            const price = r.price ?? 0;
-
-            // Find matching CSV row by mlb_id
-            const csvMatch = mlbId
-              ? (csvRows ?? []).find((s: any) => Number(s.mlb_id || s.mlbId) === Number(mlbId))
-              : null;
-
-            const isKeeper = r.isKeeper ?? false;
-
-            const dbPlayerId = r.playerId ?? r.player?.id ?? 0;
-
-            if (csvMatch) {
-              // Use CSV stats, overlay DB fields for consistency
-              return {
-                ...csvMatch,
-                _dbPlayerId: dbPlayerId,
-                _rosterId: r.id,
-                _posList: posList || posPrimary || "",
-                assignedPosition: r.assignedPosition || "",
-                ogba_team_code: code,
-                ogba_team_name: team?.name ?? "",
-                mlb_team_abbr: mlbTeam || csvMatch.mlb_team_abbr || csvMatch.mlb_team || "",
-                player_name: csvMatch.player_name || playerName,
-                price,
-                isKeeper,
-              };
-            }
-
-            // No CSV match — build row from DB data + period stats if available
-            const pitcherPos = ["P", "SP", "RP"];
-            // For two-way players (Ohtani), use assignedPosition to determine pitcher status
-            const assignedPos = r.assignedPosition || "";
-            const effectiveIsPitcher = pitcherPos.includes(assignedPos) || pitcherPos.includes(posPrimary);
-            const ps = r.periodStats; // Per-player period stats from teamService
-            const rawIP = ps?.IP ?? 0;
-            const realIP = parseIP(rawIP); // Convert baseball notation (.1=⅓, .2=⅔) to real decimal
+          const players: RosterPlayer[] = raw.map((row) => {
+            const stat = statsByPid.get(row.playerId);
+            // assignedPosition is only present on stat rows enriched
+            // by the league pool's roster join; fall back to posPrimary
+            // when missing (free-agent or stat sync hasn't run yet).
+            const assigned = (stat as any)?.assignedPosition || row.posPrimary;
             return {
-              _dbPlayerId: dbPlayerId,
-              _rosterId: r.id,
-              _posList: posList || posPrimary || "",
-              assignedPosition: assignedPos,
-              mlb_id: String(mlbId || ""),
-              player_name: playerName,
-              ogba_team_code: code,
-              ogba_team_name: team?.name ?? "",
-              positions: assignedPos || posList || posPrimary || "UT",
-              posPrimary: assignedPos || posPrimary,
-              is_pitcher: effectiveIsPitcher,
-              R: ps?.R ?? 0, HR: ps?.HR ?? 0, RBI: ps?.RBI ?? 0, SB: ps?.SB ?? 0,
-              H: ps?.H ?? 0, AB: ps?.AB ?? 0,
-              AVG: (ps?.AB ?? 0) > 0 ? (ps?.H ?? 0) / ps!.AB : 0,
-              W: ps?.W ?? 0, SV: ps?.SV ?? 0, K: ps?.K ?? 0,
-              IP: realIP, ER: ps?.ER ?? 0, BB_H: ps?.BB_H ?? 0,
-              ERA: realIP > 0 ? ((ps?.ER ?? 0) * 9) / realIP : 0,
-              WHIP: realIP > 0 ? (ps?.BB_H ?? 0) / realIP : 0,
-              mlb_team_abbr: mlbTeam,
-              price,
-              isKeeper,
-            } as unknown as PlayerSeasonStat;
+              rosterId: row.id,
+              playerName: row.name,
+              posPrimary: row.posPrimary,
+              position: row.posPrimary,
+              assignedPosition: assigned,
+              isPitcher: PITCHER_POS.has(assigned || row.posPrimary || ""),
+              price: row.price,
+              mlbTeam: (stat as any)?.mlb_team ?? (stat as any)?.mlbTeam,
+              isKeeper: (stat as any)?.isKeeper,
+              AVG: (stat as any)?.AVG,
+              HR: (stat as any)?.HR,
+              R: (stat as any)?.R,
+              RBI: (stat as any)?.RBI,
+              SB: (stat as any)?.SB,
+              W: (stat as any)?.W,
+              SV: (stat as any)?.SV,
+              K: (stat as any)?.K,
+              ERA: (stat as any)?.ERA,
+              WHIP: (stat as any)?.WHIP,
+            };
           });
-
-          setPlayers(merged);
-        } else {
-          // Fallback: filter CSV data by team code (legacy behavior)
-          const filtered = (csvRows ?? []).filter(
-            (p: any) => normCode(p?.ogba_team_code ?? p?.team ?? p?.ogbaTeamCode) === code
-          );
-          setPlayers(filtered);
+          setRoster(players);
         }
 
-      } catch (err: unknown) {
-        if (!ok) return;
-        setError(err instanceof Error ? err.message : "Failed to load team roster");
-        setPlayers([]);
-      } finally {
-        if (ok) setLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      ok = false;
-    };
-  }, [code, leagueId, reloadTick]);
-
-  // Reset AI state when team changes (prevents showing Team A's grade on Team B)
-  useEffect(() => {
-    setAiInsights(null);
-    setAiError(null);
-    setInsightHistory([]);
-    setHistoryLoaded(false);
-    setSelectedWeekKey(null);
-    setAiLoading(false);
-  }, [dbTeamId]);
-
-  // Fetch AI insights + history in parallel once dbTeamId is available
-  useEffect(() => {
-    if (!dbTeamId || !leagueId || aiInsights || aiLoading) return;
-    let ok = true;
-    (async () => {
-      setAiLoading(true);
-      try {
-        // Fire both requests in parallel instead of sequentially
-        const [result, historyResult] = await Promise.allSettled([
-          getTeamAiInsights(leagueId, dbTeamId),
-          getTeamAiInsightsHistory(leagueId, dbTeamId),
-        ]);
-        if (!ok) return;
-        if (result.status === "fulfilled") setAiInsights(result.value);
-        if (historyResult.status === "fulfilled" && historyResult.value.weeks.length > 0) {
-          setInsightHistory(historyResult.value.weeks);
-          setSelectedWeekKey(historyResult.value.weeks[0].weekKey);
+        if (aiRes.status === "fulfilled") {
+          setAiInsights(aiRes.value);
         }
-        setHistoryLoaded(true);
-      } catch {
-        // Silently fail — insights are supplementary
+      } catch (err) {
+        if (canceled) return;
+        setError(err instanceof Error ? err.message : "Failed to load team");
       } finally {
-        if (ok) setAiLoading(false);
+        if (!canceled) setLoading(false);
       }
     })();
-    return () => { ok = false; };
-  }, [dbTeamId, leagueId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load period roster when a period is selected
-  useEffect(() => {
-    if (!selectedPeriodId || !dbTeamId) {
-      setPeriodRoster(null);
-      return;
-    }
-    let ok = true;
-    setPeriodRosterLoading(true);
-    getTeamPeriodRoster(dbTeamId, selectedPeriodId)
-      .then(data => { if (ok) setPeriodRoster(data.roster); })
-      .catch(() => { if (ok) setPeriodRoster(null); })
-      .finally(() => { if (ok) setPeriodRosterLoading(false); });
-    return () => { ok = false; };
-  }, [selectedPeriodId, dbTeamId]);
+    return () => { canceled = true; };
+  }, [leagueId, code]);
 
-  const teamName = useMemo(() => getOgbaTeamName(code) || code, [code]);
+  const hitters = useMemo(() =>
+    roster.filter(p => !p.isPitcher && p.assignedPosition !== "IL")
+      .sort((a, b) => {
+        const da = posScore(a.assignedPosition || a.posPrimary);
+        const db = posScore(b.assignedPosition || b.posPrimary);
+        if (da !== db) return da - db;
+        return (b.price ?? 0) - (a.price ?? 0);
+      }),
+    [roster]);
 
-  const isIlSlotted = (p: any) => (p?.assignedPosition ?? "") === "IL";
+  const pitchers = useMemo(() =>
+    roster.filter(p => p.isPitcher && p.assignedPosition !== "IL")
+      .sort((a, b) => {
+        // SP before RP, then price desc
+        const ap = a.assignedPosition || a.posPrimary || "";
+        const bp = b.assignedPosition || b.posPrimary || "";
+        if (ap !== bp) return ap.localeCompare(bp);
+        return (b.price ?? 0) - (a.price ?? 0);
+      }),
+    [roster]);
 
-  // Sort hitters by roster slot order (POS_SCORE: C=0, 1B=1, … DH=11), then price desc.
-  // IL-slotted players are pulled out into their own section below.
-  const hitters = useMemo(() => {
-    const list = players.filter((p) => !isPitcher(p) && !isIlSlotted(p));
-    list.sort((a, b) => {
-      const posA = a.assignedPosition || "";
-      const posB = b.assignedPosition || "";
-      const slotDiff = (POS_SCORE[posA] ?? 99) - (POS_SCORE[posB] ?? 99);
-      if (slotDiff !== 0) return slotDiff;
-      return (b.price ?? 0) - (a.price ?? 0);
-    });
-    return list;
-  }, [players]);
-  // Sort pitchers by position (SP before RP), then price desc
-  const pitchers = useMemo(() => {
-    const list = players.filter((p) => isPitcher(p) && !isIlSlotted(p));
-    list.sort((a, b) => {
-      const posA = a.assignedPosition || "";
-      const posB = b.assignedPosition || "";
-      const posDiff = (POS_SCORE[posA] ?? 99) - (POS_SCORE[posB] ?? 99);
-      if (posDiff !== 0) return posDiff;
-      return (b.price ?? 0) - (a.price ?? 0);
-    });
-    return list;
-  }, [players]);
-  // Players sitting in fantasy IL slots (assignedPosition === "IL"). Sorted by
-  // price desc so the most expensive stashes surface first.
-  const ilSlotted = useMemo(() => {
-    const list = players.filter((p) => isIlSlotted(p));
-    list.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    return list;
-  }, [players]);
-  const ilSlottedMlbIds = useMemo(() => {
-    const set = new Set<number>();
-    for (const p of ilSlotted) {
-      const id = Number((p as any)?.mlb_id ?? (p as any)?.mlbId ?? 0);
-      if (id) set.add(id);
-    }
-    return set;
-  }, [ilSlotted]);
+  const ilCount = useMemo(() =>
+    roster.filter(p => p.assignedPosition === "IL").length,
+    [roster]);
+
+  const totalSpent = useMemo(() =>
+    roster.reduce((s, p) => s + (p.price ?? 0), 0),
+    [roster]);
+
+  const isMyTeam = teamMeta?.id === myTeamId;
 
   return (
-    <div className="flex-1 min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
-      <main className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-12">
-        <header className="mb-10 text-center relative">
-          <h1 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)] mb-4">{teamName}</h1>
-          <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
-            Roster: {hitters.length} Hitters • {pitchers.length} Pitchers
-            {players.some((p: any) => p.isKeeper) && (
-              <span className="ml-3 text-amber-500">
-                • {players.filter((p: any) => p.isKeeper).length} Keepers
-              </span>
-            )}
-          </div>
-          
-          <div className="mt-8 flex justify-center gap-6">
-             <Link to="/season">
-               <Button variant="ghost" size="sm">
-                 <span className="opacity-40 ml-[-4px] mr-2">←</span> Teams
-               </Button>
-             </Link>
+    <div className="aurora-theme">
+      <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", color: "var(--am-text)" }}>
+        <AmbientBg />
 
-             {/* AI Insights auto-generate on load — no manual button needed */}
-          </div>
-        </header>
-
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-200">
-            {error}
-          </div>
-        )}
-
-        {/* AI Insights Section — auto-generates weekly */}
-        {aiLoading && !aiInsights && (
-          <div className="mb-6 flex items-center justify-center gap-2 py-6 text-xs text-[var(--lg-text-muted)] animate-pulse">
-            <Sparkles size={14} className="text-blue-400" />
-            Generating weekly insights...
-          </div>
-        )}
-        {aiError && (
-          <div className="mb-4 text-center text-xs text-red-400">{aiError}</div>
-        )}
-        {aiInsights && (() => {
-          // Determine which insight data to display based on selected week tab
-          const activeInsight: any = selectedWeekKey && insightHistory.length >= 1
-            ? insightHistory.find(w => w.weekKey === selectedWeekKey) || aiInsights
-            : aiInsights;
-          const activeGrade = activeInsight?.overallGrade || aiInsights.overallGrade;
-          const activeWeekKey = activeInsight?.weekKey || (aiInsights as any).weekKey;
-          const activeInsightsList = activeInsight?.insights || aiInsights.insights || [];
-
-          return (
-          <div className="mb-8 rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
-            {/* Header — toggle + full report cross-link */}
-            <div className="flex items-stretch">
-              <button
-                onClick={() => setAiExpanded(prev => !prev)}
-                className="flex-1 flex items-center justify-between p-4 md:p-5 hover:bg-[var(--lg-bg-card)]/30 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
-                  <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Insights</span>
-                  <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
+        <div
+          style={{
+            position: "relative",
+            zIndex: 10,
+            padding: "32px 28px 80px",
+            display: "grid",
+            gridTemplateColumns: "repeat(12, 1fr)",
+            gridAutoRows: "minmax(0, auto)",
+            gap: 14,
+            maxWidth: 1400,
+            margin: "0 auto",
+          }}
+        >
+          {/* HERO */}
+          <div style={{ gridColumn: "span 12" }}>
+            <Glass strong style={{ borderRadius: 25, padding: 22 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 22 }}>
+                <div
+                  style={{
+                    width: 76, height: 76, borderRadius: 18,
+                    background: "var(--am-irid)",
+                    display: "grid", placeItems: "center",
+                    fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 600, color: "#fff",
+                    boxShadow: "0 12px 30px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  {teamMeta ? teamMeta.code.slice(0, 3).toUpperCase() : "—"}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {activeGrade && (
-                    <span className="px-2 py-1 rounded text-xs font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] border border-[var(--lg-accent)]/20">
-                      {activeGrade}
-                    </span>
-                  )}
-                  {aiExpanded ? <ChevronUp size={14} className="text-[var(--lg-text-muted)]" /> : <ChevronDown size={14} className="text-[var(--lg-text-muted)]" />}
-                </div>
-              </button>
-              <Link
-                to={activeWeekKey ? `/report/${activeWeekKey}` : "/report"}
-                className="flex items-center gap-1.5 px-3 md:px-4 border-l border-[var(--lg-border-faint)] text-[11px] font-semibold uppercase tracking-wider text-[var(--lg-accent)] hover:bg-[var(--lg-bg-card)]/30 transition-colors"
-                title="Open This Week in Baseball — full weekly report"
-              >
-                Full Report
-                <ChevronRight size={14} />
-              </Link>
-            </div>
-
-            {/* Expandable content */}
-            {aiExpanded && (
-              <div className="px-4 pb-4 md:px-5 md:pb-5">
-                {/* Week tabs — always show when history exists (like league digest) */}
-                {insightHistory.length >= 1 && (
-                  <div className="mb-4 flex gap-1 overflow-x-auto pb-1 scrollbar-thin">
-                    {insightHistory.map((week) => {
-                      // Convert ISO week key (e.g., "2026-W14") to "Week of M/D"
-                      const weekLabel = (() => {
-                        const match = week.weekKey.match(/^(\d{4})-W(\d{1,2})$/);
-                        if (!match) return week.weekKey;
-                        const [, yearStr, weekStr] = match;
-                        const year = parseInt(yearStr);
-                        const weekNum = parseInt(weekStr);
-                        // ISO week 1 contains Jan 4; Monday of week 1
-                        const jan4 = new Date(year, 0, 4);
-                        const dayOfWeek = jan4.getDay() || 7; // Mon=1..Sun=7
-                        const mondayWeek1 = new Date(jan4);
-                        mondayWeek1.setDate(jan4.getDate() - dayOfWeek + 1);
-                        const monday = new Date(mondayWeek1);
-                        monday.setDate(mondayWeek1.getDate() + (weekNum - 1) * 7);
-                        return `Week of ${monday.getMonth() + 1}/${monday.getDate()}`;
-                      })();
-                      const isActive = week.weekKey === selectedWeekKey;
-                      return (
-                        <button
-                          key={week.weekKey}
-                          onClick={(e) => { e.stopPropagation(); setSelectedWeekKey(week.weekKey); }}
-                          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-                            isActive
-                              ? "bg-[var(--lg-accent)] text-white"
-                              : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-accent)]/30"
-                          }`}
-                        >
-                          {weekLabel}
-                          {week.overallGrade && (
-                            <span className={`ml-1.5 ${isActive ? "opacity-80" : "opacity-60"}`}>{week.overallGrade}</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <SectionLabel style={{ marginBottom: 0 }}>
+                      {currentLeagueName || "League"}
+                    </SectionLabel>
+                    {isMyTeam && <Chip strong>Your team</Chip>}
+                    {teamMeta?.ownerName && <Chip>{teamMeta.ownerName}</Chip>}
                   </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeInsightsList.map((insight: any, idx: number) => (
-                    <div key={idx} className="p-3 rounded-xl bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)]">
-                      <div className="flex items-start gap-2 mb-1">
-                        {insight.priority && (
-                          <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                            insight.priority === "high" ? "bg-red-400" :
-                            insight.priority === "medium" ? "bg-amber-400" : "bg-[var(--lg-text-muted)]"
-                          }`} />
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]">
-                              {insight.category}
-                            </span>
-                            <span className="text-xs font-semibold text-[var(--lg-text-primary)] leading-tight">{insight.title}</span>
-                          </div>
-                          <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed mt-1">{insight.detail}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ fontFamily: "var(--am-display)", fontSize: 38, lineHeight: 1, letterSpacing: -0.4 }}>
+                    {teamMeta?.name ?? (loading ? "Loading…" : "Team not found")}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
+                    {hitters.length} hitter{hitters.length === 1 ? "" : "s"} · {pitchers.length} pitcher{pitchers.length === 1 ? "" : "s"} · {ilCount} IL
+                  </div>
                 </div>
-                <div className="mt-3 text-center text-[10px] text-[var(--lg-text-muted)] opacity-50">
-                  Powered by <strong>Google Gemini</strong> & <strong>Anthropic Claude</strong>
+                <div style={{ display: "grid", gridTemplateColumns: "auto auto", gap: 24, alignItems: "end" }}>
+                  <div style={{ textAlign: "right" }}>
+                    <SectionLabel>Cap</SectionLabel>
+                    <div style={{ fontSize: 22, fontFamily: "var(--am-display)", lineHeight: 1, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+                      ${totalSpent}
+                      {teamMeta?.budget != null && (
+                        <span style={{ color: "var(--am-text-faint)", fontSize: 14 }}> / {teamMeta.budget}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <SectionLabel>Code</SectionLabel>
+                    <IridText size={28}>{teamMeta?.code ?? code}</IridText>
+                  </div>
                 </div>
               </div>
-            )}
+            </Glass>
           </div>
-          );
-        })()}
 
-        {/* Period Roster Selector */}
-        {availablePeriods.length > 0 && (
-          <div className="mb-6 flex items-center gap-3">
-            <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Period Roster</span>
-            <select
-              className="appearance-none bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-lg px-3 py-1.5 text-xs text-[var(--lg-text-primary)] cursor-pointer"
-              value={selectedPeriodId ?? ""}
-              onChange={e => setSelectedPeriodId(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">Current Roster</option>
-              {availablePeriods.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            {selectedPeriodId && (
-              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
-                Showing all players on this team during the selected period
-              </span>
-            )}
+          {error && (
+            <div style={{ gridColumn: "span 12" }}>
+              <Glass>
+                <div style={{ padding: 16, color: "var(--am-negative)", fontSize: 12 }}>
+                  {error}
+                </div>
+              </Glass>
+            </div>
+          )}
+
+          {/* HITTERS */}
+          <div style={{ gridColumn: "span 8" }}>
+            <Glass padded={false}>
+              <div style={{ padding: "16px 20px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <SectionLabel style={{ marginBottom: 0 }}>Hitters · {hitters.length}</SectionLabel>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Chip>R · HR · RBI · SB · AVG</Chip>
+                </div>
+              </div>
+              <RosterTable
+                rows={hitters}
+                columns={[
+                  { key: "AVG", label: "AVG", fmt: v => fmtAvg(v) },
+                  { key: "HR", label: "HR" },
+                  { key: "R", label: "R" },
+                  { key: "RBI", label: "RBI" },
+                  { key: "SB", label: "SB" },
+                ]}
+                emptyMessage={loading ? "Loading…" : "No hitters on this roster."}
+              />
+            </Glass>
           </div>
-        )}
 
-        {/* Period Roster View (when a period is selected) */}
-        {selectedPeriodId && (
-          <div className="mb-8">
-            {periodRosterLoading ? (
-              <div className="text-center py-8 text-sm text-[var(--lg-text-muted)] animate-pulse">Loading period roster...</div>
-            ) : periodRoster && periodRoster.length > 0 ? (
-              <ThemedTable density="compact" aria-label="Period roster">
-                <ThemedThead>
-                  <ThemedTr>
-                    <ThemedTh align="center" className="w-[50px]">POS</ThemedTh>
-                    <ThemedTh align="center">PLAYER</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">$</ThemedTh>
-                    <ThemedTh align="center" className="w-[120px]">STATUS</ThemedTh>
-                    <ThemedTh align="center" className="w-[100px]">SOURCE</ThemedTh>
-                  </ThemedTr>
-                </ThemedThead>
-                <tbody>
-                  {periodRoster.map(r => (
-                    <ThemedTr
-                      key={r.id}
-                      className={!r.isActive ? "opacity-50" : ""}
-                    >
-                      <ThemedTd align="center">
-                        <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
-                          {r.assignedPosition || mapPosition(r.posPrimary, outfieldMode)}
-                        </span>
-                      </ThemedTd>
-                      <ThemedTd align="center">
-                        <span className="text-xs font-medium text-[var(--lg-text-primary)]">{r.name}</span>
-                      </ThemedTd>
-                      <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">{r.mlbTeam || "—"}</span>
-                      </ThemedTd>
-                      <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">${r.price}</span>
-                      </ThemedTd>
-                      <ThemedTd align="center">
-                        {r.isActive ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                            {r.source === "TRADE_OUT" ? "Traded" : r.source === "WAIVER_DROP" ? "Waived" : "Dropped"}{" "}
-                            {r.releasedAt ? new Date(r.releasedAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) : ""}
-                          </span>
+          {/* AI SIDEBAR */}
+          <div style={{ gridColumn: "span 4" }}>
+            <Glass strong>
+              <SectionLabel>✦ Lineup intelligence</SectionLabel>
+              {aiInsights?.insights?.length ? (
+                <>
+                  {aiInsights.overallGrade && (
+                    <div style={{ marginTop: 4, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>Overall grade</span>
+                      <IridText size={20}>{aiInsights.overallGrade}</IridText>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {aiInsights.insights.slice(0, 4).map((r, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          padding: 10,
+                          borderRadius: 12,
+                          background: "var(--am-surface-faint)",
+                          border: "1px solid var(--am-border)",
+                        }}
+                      >
+                        <div style={{ fontSize: 10, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600, marginBottom: 2 }}>
+                          {r.category}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--am-text)" }}>{r.title}</div>
+                        {r.detail && (
+                          <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2, lineHeight: 1.45 }}>
+                            {r.detail}
+                          </div>
                         )}
-                      </ThemedTd>
-                      <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">{r.source}</span>
-                      </ThemedTd>
-                    </ThemedTr>
-                  ))}
-                </tbody>
-              </ThemedTable>
-            ) : (
-              <div className="text-center py-8 text-sm text-[var(--lg-text-muted)]">No roster data for this period.</div>
-            )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div style={{ marginTop: 4, fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+                  AI insights for this team haven't been generated this week. Check the AI Hub for league-wide recommendations.
+                </div>
+              )}
+              <div style={{ marginTop: 14 }}>
+                <Link to="/ai" style={{ textDecoration: "none" }}>
+                  <Chip strong>Open AI Hub →</Chip>
+                </Link>
+              </div>
+            </Glass>
           </div>
-        )}
 
-        <div className="mb-10 flex justify-center">
-          <div className="lg-card p-1">
-            <Link to="#hitters">
-              <Button
-                variant={activeTab === "hitters" ? "default" : "ghost"}
-                className="px-8"
-              >
-                Hitters
-              </Button>
-            </Link>
-            <Link to="#pitchers">
-              <Button
-                variant={activeTab === "pitchers" ? "default" : "ghost"}
-                className="px-8"
-              >
-                Pitchers
-              </Button>
+          {/* PITCHERS */}
+          <div style={{ gridColumn: "span 12" }}>
+            <Glass padded={false}>
+              <div style={{ padding: "16px 20px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <SectionLabel style={{ marginBottom: 0 }}>Pitchers · {pitchers.length}</SectionLabel>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Chip>W · SV · K · ERA · WHIP</Chip>
+                </div>
+              </div>
+              <RosterTable
+                rows={pitchers}
+                columns={[
+                  { key: "W", label: "W" },
+                  { key: "SV", label: "SV" },
+                  { key: "K", label: "K" },
+                  { key: "ERA", label: "ERA", fmt: v => fmtRate(v) },
+                  { key: "WHIP", label: "WHIP", fmt: v => fmtRate(v) },
+                ]}
+                emptyMessage={loading ? "Loading…" : "No pitchers on this roster."}
+              />
+            </Glass>
+          </div>
+
+          {/* Legacy escape hatch */}
+          <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>
+            <Link
+              to={`/teams/${code}/classic`}
+              style={{ fontSize: 11, color: "var(--am-text-faint)", textDecoration: "none", letterSpacing: 0.5 }}
+            >
+              Need watchlist, trade asset selector, or weekly insights history? View classic Team page →
             </Link>
           </div>
         </div>
-
-        <StatsUpdated source="synced" className="text-right mb-1" />
-        {activeTab === "hitters" ? (
-          <section id="hitters">
-            <ThemedTable density="compact" aria-label="Hitter statistics">
-                <ThemedThead>
-                  <ThemedTr>
-                    <ThemedTh align="center" className="w-[50px]">POS</ThemedTh>
-                    <ThemedTh align="center" className="w-[240px]">PLAYER</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
-                    <ThemedTh align="center" className="w-[70px]">AB</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">R</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">HR</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">RBI</ThemedTh>
-                    <ThemedTh align="center" className="w-[60px]">SB</ThemedTh>
-                    <ThemedTh align="center" className="w-[80px]">AVG</ThemedTh>
-                  </ThemedTr>
-                </ThemedThead>
-
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--lg-text-muted)]">
-                        Loading roster…
-                      </td>
-                    </tr>
-                  ) : hitters.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--lg-text-muted)]">
-                        No hitters found for this roster.
-                      </td>
-                    </tr>
-                  ) : (
-                    hitters.map((p: any) => {
-                      const key = rowKey(p);
-                      const tm = getMlbTeamAbbr(p);
-                      const elig = posEligible(p, outfieldMode);
-                      const isExpanded = expandedId === key;
-
-                      // Grand Slams (supports multiple common key names)
-                      const gs = numFromAny(p, "GS", "gs", "GSL", "gsl", "grandSlams", "grand_slams");
-
-                      return (
-                        <React.Fragment key={key}>
-                          <ThemedTr
-                            className={`border-t border-[var(--lg-border-faint)] cursor-pointer transition-all ${isExpanded ? 'bg-[var(--lg-accent)]/10' : 'hover:bg-[var(--lg-tint)]'}`}
-                            onClick={() => setExpandedId(isExpanded ? null : key)}
-                          >
-                            <ThemedTd align="center">
-                              {(() => {
-                                const rosterId = (p as any)?._rosterId as number | undefined;
-                                // Show the locked roster slot from assignedPosition
-                                const assignedPos = positionOverrides[rosterId!] || mapPosition((p as any)?.assignedPosition || (p as any)?.posPrimary || elig.split("/")[0] || "", outfieldMode);
-
-                                if (positionsLocked || !rosterId || !dbTeamId) {
-                                  // During season: fixed position label, no dropdown
-                                  return <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>;
-                                }
-
-                                // During draft/setup: allow position changes
-                                const rawPosList = (p as any)?._posList || elig || "";
-                                const posSlots = (() => {
-                                  const slots = new Set<string>();
-                                  for (const pos of rawPosList.split(/[,/| ]+/).map((s: string) => s.trim()).filter(Boolean)) {
-                                    for (const s of positionToSlots(pos)) slots.add(s);
-                                  }
-                                  return MATRIX_POSITIONS.filter(s => slots.has(s));
-                                })();
-                                return posSlots.length > 1 ? (
-                                  <select
-                                    className="appearance-none bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all outline-none text-[10px] font-mono"
-                                    value={assignedPos}
-                                    onChange={(e) => { e.stopPropagation(); handlePositionSwap(dbTeamId, rosterId, e.target.value); }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {posSlots.map(pos => <option key={pos} value={pos} className="text-black">{pos}</option>)}
-                                  </select>
-                                ) : (
-                                  <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>
-                                );
-                              })()}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              <span className="inline-flex items-center gap-1.5">
-                                {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
-                                {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
-                                {tradeBlockIds.has((p as any)?._dbPlayerId) && (
-                                  <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
-                                    <ArrowLeftRight size={10} className="inline -mt-px" /> TB
-                                  </span>
-                                )}
-                              </span>
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {tm || "—"}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.AB)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.R)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.HR)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.RBI)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.SB)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {formatAvg(p?.AVG)}
-                            </ThemedTd>
-                          </ThemedTr>
-                          {isExpanded && (
-                            <PlayerExpandedRow
-                              player={p}
-                              isTaken={true}
-                              ownerName={teamName}
-                              onViewDetail={setSelected}
-                              colSpan={9}
-                            />
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                  {/* Totals row */}
-                  {hitters.length > 0 && (() => {
-                    const totR = hitters.reduce((s, p) => s + asNum(p?.R), 0);
-                    const totHR = hitters.reduce((s, p) => s + asNum(p?.HR), 0);
-                    const totRBI = hitters.reduce((s, p) => s + asNum(p?.RBI), 0);
-                    const totSB = hitters.reduce((s, p) => s + asNum(p?.SB), 0);
-                    const totH = hitters.reduce((s, p) => s + asNum(p?.H), 0);
-                    const totAB = hitters.reduce((s, p) => s + asNum(p?.AB), 0);
-                    const teamAvg = totAB > 0 ? totH / totAB : 0;
-                    return (
-                      <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
-                        <ThemedTd align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></ThemedTd>
-                        <ThemedTd align="center">{""}</ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totAB}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totR}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totHR}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totRBI}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totSB}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{formatAvg(teamAvg)}</span></ThemedTd>
-                      </tr>
-                    );
-                  })()}
-                </tbody>
-            </ThemedTable>
-          </section>
-        ) : (
-          <section id="pitchers">
-            <ThemedTable density="compact" aria-label="Pitcher statistics">
-                <ThemedThead>
-                  <ThemedTr>
-                    <ThemedTh align="center" className="w-[50px]">POS</ThemedTh>
-                    <ThemedTh align="center" className="w-[220px]">PLAYER</ThemedTh>
-                    <ThemedTh align="center" className="w-[55px]">TM</ThemedTh>
-                    <ThemedTh align="center" className="w-[50px]">W</ThemedTh>
-                    <ThemedTh align="center" className="w-[50px]">SV</ThemedTh>
-                    <ThemedTh align="center" className="w-[55px]">K</ThemedTh>
-                    <ThemedTh align="center" className="w-[55px]">IP</ThemedTh>
-                    <ThemedTh align="center" className="w-[55px]">ER</ThemedTh>
-                    <ThemedTh align="center" className="w-[65px]" title="Walks + Hits (WHIP numerator)">BB+H</ThemedTh>
-                    <ThemedTh align="center" className="w-[65px]">ERA</ThemedTh>
-                    <ThemedTh align="center" className="w-[70px]">WHIP</ThemedTh>
-                  </ThemedTr>
-                </ThemedThead>
-
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-sm text-[var(--lg-text-muted)]">
-                        Loading roster…
-                      </td>
-                    </tr>
-                  ) : pitchers.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-sm text-[var(--lg-text-muted)]">
-                        No pitchers found for this roster.
-                      </td>
-                    </tr>
-                  ) : (
-                    pitchers.map((p: any) => {
-                      const key = rowKey(p);
-                      const tm = getMlbTeamAbbr(p);
-                      const elig = posEligible(p, outfieldMode) || "P";
-                      const isExpanded = expandedId === key;
-
-                      // Shutouts (commonly "SHO"; sometimes "SO" in custom datasets)
-                      const so = numFromAny(p, "SHO", "sho", "SO", "so", "shutouts", "shut_outs");
-
-                      return (
-                        <React.Fragment key={key}>
-                          <ThemedTr
-                            className={`border-t border-[var(--lg-border-faint)] cursor-pointer transition-all ${isExpanded ? 'bg-[var(--lg-accent)]/10' : 'hover:bg-[var(--lg-tint)]'}`}
-                            onClick={() => setExpandedId(isExpanded ? null : key)}
-                          >
-                            <ThemedTd align="center">
-                              {/* Pitchers always show P — locked during season */}
-                              <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">P</span>
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              <span className="inline-flex items-center gap-1.5">
-                                {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
-                                {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
-                                {tradeBlockIds.has((p as any)?._dbPlayerId) && (
-                                  <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
-                                    <ArrowLeftRight size={10} className="inline -mt-px" /> TB
-                                  </span>
-                                )}
-                              </span>
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {tm || "—"}
-                            </ThemedTd>
-
-                            <ThemedTd align="center">
-                              {asNum(p?.W)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.SV)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.K)}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.IP) > 0 ? asNum(p.IP).toFixed(1) : "—"}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.ER) || "—"}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.BB_H) || "—"}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.IP) > 0 ? asNum(p.ERA).toFixed(2) : "—"}
-                            </ThemedTd>
-                            <ThemedTd align="center">
-                              {asNum(p?.IP) > 0 ? asNum(p.WHIP).toFixed(3) : "—"}
-                            </ThemedTd>
-                          </ThemedTr>
-                          {isExpanded && (
-                            <PlayerExpandedRow
-                              player={p}
-                              isTaken={true}
-                              ownerName={teamName}
-                              onViewDetail={setSelected}
-                              colSpan={10}
-                            />
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                  {/* Totals row */}
-                  {pitchers.length > 0 && (() => {
-                    const totW = pitchers.reduce((s, p) => s + asNum(p?.W), 0);
-                    const totSV = pitchers.reduce((s, p) => s + asNum(p?.SV), 0);
-                    const totK = pitchers.reduce((s, p) => s + asNum(p?.K), 0);
-                    const totIP = pitchers.reduce((s, p) => s + asNum(p?.IP), 0);
-                    const totER = pitchers.reduce((s, p) => s + asNum(p?.ER), 0);
-                    const totBB = pitchers.reduce((s, p) => s + asNum(p?.BB_H), 0);
-                    // Compute ERA/WHIP from individual pitcher ERA/WHIP weighted by IP
-                    // (more accurate than summing raw ER/BB_H which may not be on every player object)
-                    let weightedER = 0, weightedBBH = 0;
-                    for (const p of pitchers) {
-                      const pip = asNum(p?.IP);
-                      if (pip > 0) {
-                        weightedER += asNum(p?.ERA) * pip / 9; // reverse: ERA = ER*9/IP → ER = ERA*IP/9
-                        weightedBBH += asNum(p?.WHIP) * pip;   // reverse: WHIP = BBH/IP → BBH = WHIP*IP
-                      }
-                    }
-                    const teamERA = totIP > 0 ? (weightedER / totIP) * 9 : 0;
-                    const teamWHIP = totIP > 0 ? weightedBBH / totIP : 0;
-                    return (
-                      <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
-                        <ThemedTd align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></ThemedTd>
-                        <ThemedTd align="center">{""}</ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totW}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totSV}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totK}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totIP > 0 ? totIP.toFixed(1) : "—"}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totER}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totBB}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totIP > 0 ? teamERA.toFixed(2) : "—"}</span></ThemedTd>
-                        <ThemedTd align="center"><span className="font-bold">{totIP > 0 ? teamWHIP.toFixed(3) : "—"}</span></ThemedTd>
-                      </tr>
-                    );
-                  })()}
-                </tbody>
-            </ThemedTable>
-          </section>
-        )}
-
-        {/* Your IL Slots — players in fantasy IL slots (Roster.assignedPosition === "IL").
-            Ghost-IL badge when the player's MLB status is no longer an "Injured …-Day" designation. */}
-        {ilSlotted.length > 0 && (
-          <section className="mt-10">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
-              {dbTeamId && myTeamId === dbTeamId ? "Your IL Slots" : "IL Slots"} ({ilSlotted.length})
-            </p>
-            <ThemedTable density="compact" aria-label="Fantasy IL slots">
-              <ThemedThead>
-                <ThemedTr>
-                  <ThemedTh align="center" className="w-[60px]">SLOT</ThemedTh>
-                  <ThemedTh align="center">PLAYER</ThemedTh>
-                  <ThemedTh align="center" className="w-[60px]">TM</ThemedTh>
-                  <ThemedTh align="center" className="w-[60px]">$</ThemedTh>
-                  <ThemedTh align="center">MLB STATUS</ThemedTh>
-                </ThemedTr>
-              </ThemedThead>
-              <tbody>
-                {ilSlotted.map((p: any) => {
-                  const mlbId = Number(p?.mlb_id ?? p?.mlbId ?? 0);
-                  const mlbStatus = mlbId ? (mlbStatusByMlbId.get(mlbId) ?? "") : "";
-                  const isGhost = !isMlbIlStatus(mlbStatus);
-                  const tm = getMlbTeamAbbr(p);
-                  return (
-                    <ThemedTr key={rowKey(p)} className="border-t border-[var(--lg-border-faint)]">
-                      <ThemedTd align="center">
-                        <span className="text-[10px] font-mono font-semibold text-red-400">IL</span>
-                      </ThemedTd>
-                      <ThemedTd align="center">
-                        <span className="inline-flex items-center gap-1.5">
-                          {p?.player_name ?? p?.name ?? ""}
-                          {(p as any)?.isKeeper && (
-                            <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>
-                          )}
-                          {isGhost && (
-                            <span
-                              className="text-[9px] font-bold uppercase text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-px rounded"
-                              title={mlbStatus ? `MLB status: ${mlbStatus}` : "No active MLB IL designation — activate or drop"}
-                            >
-                              Ghost IL
-                            </span>
-                          )}
-                        </span>
-                      </ThemedTd>
-                      <ThemedTd align="center">{tm || "—"}</ThemedTd>
-                      <ThemedTd align="center">${asNum(p?.price)}</ThemedTd>
-                      <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">{mlbStatus || "Unknown"}</span>
-                      </ThemedTd>
-                    </ThemedTr>
-                  );
-                })}
-              </tbody>
-            </ThemedTable>
-          </section>
-        )}
-
-        {/* MLB IL Candidates — players on active roster whose MLB team has placed
-            them on IL but who have NOT yet been stashed into a fantasy IL slot. */}
-        {(() => {
-          const candidates = ilPlayers.filter(
-            (p) => !(p.mlbId != null && ilSlottedMlbIds.has(p.mlbId))
-          );
-          if (candidates.length === 0) return null;
-          return (
-            <div className={ilSlotted.length > 0 ? "mt-6" : "mt-10"}>
-              <RosterAlertAccordion
-                players={candidates}
-                colorScheme="red"
-                label="MLB IL Candidates"
-                mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
-              />
-            </div>
-          );
-        })()}
-
-        {/* Minors Report */}
-        {minorsPlayers.length > 0 && (
-          <div className={(ilSlotted.length > 0 || ilPlayers.length > 0) ? "mt-4" : "mt-10"}>
-            <RosterAlertAccordion
-              players={minorsPlayers}
-              colorScheme="amber"
-              label="Minors Report"
-              mlbHeadshot={(mlbId) => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`}
-            />
-          </div>
-        )}
-
-        {/* Watchlist & Trading Block (own team only — watchlist available during DRAFT + IN_SEASON) */}
-        {dbTeamId && myTeamId === dbTeamId && seasonStatus !== "SETUP" && seasonStatus !== "COMPLETED" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
-            <div className="lg-card p-4">
-              <WatchlistPanel teamId={dbTeamId} />
-            </div>
-            <div className="lg-card p-4">
-              <TradingBlockPanel
-                teamId={dbTeamId}
-                rosterPlayers={players.filter(p => (p as any)._dbPlayerId > 0).map(p => ({
-                  id: (p as any)._dbPlayerId,
-                  name: p.mlb_full_name || p.player_name || "",
-                  posPrimary: (p.positions || (p.is_pitcher ? "P" : "UT")).toString().split(/[/,]/)[0] || "UT",
-                  mlbTeam: (p.mlb_team || p.mlbTeam || null) as string | null,
-                }))}
-              />
-            </div>
-          </div>
-        )}
-
-        {selected ? <PlayerDetailModal player={selected} onClose={() => setSelected(null)} /> : null}
-      </main>
+      </div>
     </div>
   );
+}
+
+// ─── helpers ───
+
+interface RosterTableColumn {
+  key: keyof RosterPlayer;
+  label: string;
+  fmt?: (v: unknown) => string;
+}
+
+function RosterTable({
+  rows, columns, emptyMessage,
+}: {
+  rows: RosterPlayer[];
+  columns: RosterTableColumn[];
+  emptyMessage: string;
+}) {
+  if (rows.length === 0) {
+    return (
+      <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12, textAlign: "center" }}>
+        {emptyMessage}
+      </div>
+    );
+  }
+  return (
+    <div style={{ overflow: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}>
+        <thead>
+          <tr style={{ fontSize: 10, color: "var(--am-text-faint)", letterSpacing: 1, fontWeight: 600 }}>
+            <th style={{ padding: "10px 14px", textAlign: "left", width: 50 }}>SLOT</th>
+            <th style={{ padding: "10px 14px", textAlign: "left" }}>PLAYER</th>
+            {columns.map(c => (
+              <th key={String(c.key)} style={{ padding: "10px 12px", textAlign: "right", width: 70 }}>{c.label}</th>
+            ))}
+            <th style={{ padding: "10px 14px", textAlign: "right", width: 50 }}>$</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(p => (
+            <tr key={p.rosterId} style={{ borderTop: "1px solid var(--am-border)" }}>
+              <td style={{ padding: "9px 14px" }}>
+                <span
+                  style={{
+                    fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, color: "var(--am-text-muted)",
+                    background: "var(--am-chip)", padding: "3px 6px", borderRadius: 5,
+                    display: "inline-block",
+                  }}
+                >
+                  {p.assignedPosition || p.posPrimary || "—"}
+                </span>
+              </td>
+              <td style={{ padding: "9px 14px" }}>
+                <div style={{ fontSize: 13, color: "var(--am-text)", display: "flex", alignItems: "center", gap: 6 }}>
+                  {p.playerName}
+                  {p.isKeeper && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--am-accent)", letterSpacing: 0.5 }}>KEEPER</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>
+                  {p.mlbTeam || "—"} · {p.posPrimary || "—"}
+                </div>
+              </td>
+              {columns.map(c => {
+                const raw = p[c.key];
+                const display = c.fmt ? c.fmt(raw) : (raw == null ? "—" : String(raw));
+                return (
+                  <td key={String(c.key)} style={{ padding: "9px 12px", textAlign: "right", fontSize: 12.5, color: "var(--am-text-muted)" }}>
+                    {display}
+                  </td>
+                );
+              })}
+              <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12.5, color: "var(--am-text-muted)" }}>
+                {p.price != null ? `$${p.price}` : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function fmtAvg(v: unknown): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(3).replace(/^0\./, ".");
+}
+
+function fmtRate(v: unknown): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(2);
 }

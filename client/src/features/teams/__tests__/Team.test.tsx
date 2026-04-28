@@ -58,7 +58,13 @@ vi.mock("../../auction/components/PlayerExpandedRow", () => ({
 
 
 import { getPlayerSeasonStats, getTeamDetails, getTeams } from "../../../api";
-import Team from "../pages/Team";
+// Tests target the legacy Team page (trade asset selector, watchlist
+// stars, weekly insights history, period roster viewer) which lives
+// at /teams/:teamCode/classic post PR #139 and is exported as TeamLegacy.
+// The Aurora Team page (current /teams/:teamCode) is a thin port — its
+// tests would assert different copy. When Aurora gets these features,
+// port these tests to the new component.
+import Team from "../pages/TeamLegacy";
 
 const mockDbTeams = [
   { id: 10, code: "ACES", name: "Aces" },

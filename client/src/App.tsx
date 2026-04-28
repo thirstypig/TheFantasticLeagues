@@ -11,6 +11,7 @@ import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
 import SeasonLegacy from "./features/periods/pages/SeasonLegacy";
 import Team from "./features/teams/pages/Team";
+import TeamLegacy from "./features/teams/pages/TeamLegacy";
 import TeamsIndex from "./features/teams/pages/TeamsIndex";
 import Players from "./features/players/pages/Players";
 import ActivityPage from "./features/transactions/pages/ActivityPage";
@@ -144,6 +145,12 @@ export default function App() {
                         the active league with cards linking to the existing
                         /teams/:teamCode roster page. */}
                     <Route path="/teams" element={<TeamsIndex />} />
+                    {/* Aurora Team page (PR #139). Pre-Aurora preserved
+                        at /teams/:teamCode/classic for trade asset selector,
+                        watchlist, weekly insights history, period roster
+                        viewer — features the Aurora pilot intentionally
+                        doesn't port yet. */}
+                    <Route path="/teams/:teamCode/classic" element={<TeamLegacy />} />
                     <Route path="/teams/:teamCode" element={<Team />} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team
