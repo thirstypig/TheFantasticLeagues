@@ -454,8 +454,11 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
         )}
       </Glass>
 
-      {/* Bid History — legacy chrome inside Aurora wrapper (PR-2b will deepen) */}
-      {(auctionState.log || []).length > 0 && (
+      {/* Bid History — legacy chrome inside Aurora wrapper (PR-2b will deepen).
+          Gate on NOMINATION events specifically: BidHistoryChart returns null
+          when no nominations are present (e.g. logs imported from CSV with only
+          WIN events). Without this, the Glass wrapper would render empty. */}
+      {(auctionState.log || []).some(e => e.type === 'NOMINATION') && (
         <Glass padded={false}>
           <div style={{ padding: 16 }}>
             <BidHistoryChart
