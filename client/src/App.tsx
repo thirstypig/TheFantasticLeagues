@@ -15,6 +15,7 @@ import TeamLegacy from "./features/teams/pages/TeamLegacy";
 import TeamsIndex from "./features/teams/pages/TeamsIndex";
 import Players from "./features/players/pages/Players";
 import PlayersLegacy from "./features/players/pages/PlayersLegacy";
+import PlayerDetail from "./features/players/pages/PlayerDetail";
 import ActivityPage from "./features/transactions/pages/ActivityPage";
 import Login from "./features/auth/pages/Login";
 
@@ -161,6 +162,10 @@ export default function App() {
                     {/* Pre-Aurora Players preserved for any feature that
                         the Aurora pilot doesn't port yet (PR #141). */}
                     <Route path="/players-classic" element={<PlayersLegacy />} />
+                    {/* Aurora Player Detail page (screen #5). PlayerDetailModal
+                        still ships for inline use elsewhere (Auction, Team,
+                        Trading Block, Watchlist, Board, Draft Report). */}
+                    <Route path="/players/:mlbId" element={<PlayerDetail />} />
                     <Route path="/activity" element={<ActivityPage />} />
                     <Route path="/transactions" element={<Navigate to="/activity" replace />} />
                     <Route path="/trades" element={<Navigate to="/activity" replace />} />

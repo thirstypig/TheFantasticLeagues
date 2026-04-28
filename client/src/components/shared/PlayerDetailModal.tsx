@@ -571,6 +571,17 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
   );
 }
 
+export {
+  RecentTable,
+  CareerTable,
+  ProfileField,
+  formatTransactionDate,
+  formatRelativeDate,
+  transactionBadgeClass,
+  isPitcherRow,
+  deriveMode,
+};
+
 function ProfileField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
