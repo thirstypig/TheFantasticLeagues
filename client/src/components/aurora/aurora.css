@@ -1,0 +1,82 @@
+/*
+ * Aurora — design tokens (PR #135 single-screen pilot per the
+ * Aurora System.html design handoff).
+ *
+ * Variables are scoped to a `.aurora-theme` wrapper so the rest of
+ * the app keeps rendering with the existing Liquid Glass tokens.
+ * Apply `.aurora-theme` (and `.dark` for dark mode) to a parent of
+ * any Aurora content.
+ *
+ * Tokens mirror the design's `aurora` palette in
+ * `ambient-theme.js`:
+ *   - Display font: Space Grotesk
+ *   - Iridescent gradient: teal → indigo → magenta
+ *   - Glassmorphism surfaces with 28px blur + 140% saturate
+ *   - Dark-mode-first; light is a paper-pale companion
+ */
+
+.aurora-theme {
+  /* Light defaults (paper-pale companion) */
+  --am-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --am-body: "Inter", system-ui, sans-serif;
+
+  --am-bg: #eef3ff;
+  --am-glow-1: radial-gradient(60% 60% at 8% 0%, rgba(0, 184, 148, 0.30), transparent 60%);
+  --am-glow-2: radial-gradient(55% 60% at 95% 14%, rgba(138, 43, 214, 0.22), transparent 60%);
+  --am-glow-3: radial-gradient(60% 70% at 70% 100%, rgba(214, 43, 155, 0.18), transparent 65%);
+
+  --am-surface: rgba(255, 255, 255, 0.7);
+  --am-surface-strong: rgba(255, 255, 255, 0.92);
+  --am-surface-faint: rgba(8, 12, 28, 0.03);
+  --am-border: rgba(8, 12, 28, 0.10);
+  --am-border-strong: rgba(8, 12, 28, 0.18);
+
+  --am-text: #0b1230;
+  --am-text-muted: #3a4670;
+  --am-text-faint: #7682a8;
+
+  --am-accent: #1d6df0;
+  --am-cardinal: #c41a85;
+
+  --am-irid: linear-gradient(135deg, #00b894 0%, #2f6df0 35%, #8a2bd6 70%, #d62b9b 100%);
+  --am-ring: linear-gradient(135deg, rgba(0, 184, 148, 0.55), rgba(138, 43, 214, 0.45));
+  --am-ai-strip: linear-gradient(90deg, rgba(0, 184, 148, 0.28), rgba(74, 140, 255, 0.20) 50%, rgba(214, 43, 155, 0.18) 100%);
+
+  --am-chip: rgba(8, 12, 28, 0.05);
+  --am-chip-strong: rgba(8, 12, 28, 0.10);
+
+  --am-positive: #0a7a5c;
+  --am-negative: #a3148b;
+}
+
+.aurora-theme.dark,
+.dark .aurora-theme {
+  /* Signature dark mode */
+  --am-bg: #050a14;
+  --am-glow-1: radial-gradient(55% 60% at 8% 6%, rgba(42, 240, 200, 0.20), transparent 60%);
+  --am-glow-2: radial-gradient(50% 55% at 96% 14%, rgba(177, 75, 255, 0.22), transparent 60%);
+  --am-glow-3: radial-gradient(60% 70% at 65% 100%, rgba(255, 77, 210, 0.16), transparent 65%);
+
+  --am-surface: rgba(14, 20, 36, 0.55);
+  --am-surface-strong: rgba(20, 28, 48, 0.72);
+  --am-surface-faint: rgba(255, 255, 255, 0.03);
+  --am-border: rgba(255, 255, 255, 0.10);
+  --am-border-strong: rgba(255, 255, 255, 0.18);
+
+  --am-text: #eaf2ff;
+  --am-text-muted: #a7b6d6;
+  --am-text-faint: #6c7896;
+
+  --am-accent: #5cf0d4;
+  --am-cardinal: #ff6db5;
+
+  --am-irid: linear-gradient(135deg, #2af0c8 0%, #4a8cff 35%, #b14bff 65%, #ff4dd2 100%);
+  --am-ring: linear-gradient(135deg, rgba(42, 240, 200, 0.5), rgba(74, 140, 255, 0.5), rgba(255, 77, 210, 0.5));
+  --am-ai-strip: linear-gradient(90deg, rgba(42, 240, 200, 0.16), rgba(74, 140, 255, 0.18) 50%, rgba(255, 77, 210, 0.20) 100%);
+
+  --am-chip: rgba(255, 255, 255, 0.06);
+  --am-chip-strong: rgba(255, 255, 255, 0.12);
+
+  --am-positive: #5cf0d4;
+  --am-negative: #ff6db5;
+}

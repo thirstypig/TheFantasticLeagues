@@ -6,6 +6,7 @@ import AppShell from "./components/AppShell";
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
+import HomeLegacy from "./pages/HomeLegacy";
 import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
 import Team from "./features/teams/pages/Team";
@@ -126,6 +127,11 @@ export default function App() {
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Home />} />
+                    {/* Pre-Aurora Home preserved for side-by-side comparison
+                        during the PR #135 pilot. Remove once Aurora is fully
+                        rolled out (or when the legacy features — digest,
+                        scores, news, depth charts — are ported into Aurora). */}
+                    <Route path="/home-classic" element={<HomeLegacy />} />
                     <Route path="/season" element={<Season />} />
                     {/* Teams index — Explore section's "Teams" entry per
                         the Sitemap & Navigation design. Lists all teams in
