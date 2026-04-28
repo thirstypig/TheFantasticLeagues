@@ -35,20 +35,21 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (749 server + 327 client = 1076 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (772 server + 327 client = 1099 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
 **Current reality (2026-04-19):** we don't have a formal E2E suite in CI. Every session I (Claude Code) verify user-facing changes with Playwright MCP interactive flows — that's good evidence but it's not automated. Next step is to promote the most common flows into `@playwright/test` so they run in CI.
 
-## Current coverage (Session 75 baseline, 2026-04-24)
+## Current coverage (Session 81 baseline, 2026-04-27/28)
 
-### Server — 749 passing, 7 skipped, 1 todo, 52 files
+### Server — 772 passing, 7 skipped, 1 todo, 53 files
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
 - `lib/` — utils (36), ipHash (16), leagueRuleCache (9 + 1 todo: shape, caching, TTL expiry, invalidation per-league, test isolation)
+- `db/prisma.test.ts` — 23 (PR #136 retry-middleware boundary: WRITE_OPERATIONS denylist via `it.each`, read-prefix sentinel, TRANSIENT_ERROR_CODES whitelist P1001/P1002/P1008/P1017, logic-code denylist P2002/P2003/P2025/P2034/P3000, `isTransientPrismaError` matrix over PrismaClientInitializationError + PrismaClientKnownRequestError + plain `Error` regex match for "Can't reach database server" / "pooler.supabase.com")
 - `features/auth/routes.test.ts` — 16 tests (health, me, dev login)
 - `features/auction/` — 23 routes + 8 persistence + 3 auto-finish + 11 retrospective
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)
