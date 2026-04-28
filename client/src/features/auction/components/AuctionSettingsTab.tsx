@@ -1,6 +1,20 @@
+/*
+ * AuctionSettingsTab — Aurora port (PR-3 of Auction module rollout).
+ *
+ * Personal preferences panel inside the live-auction sidebar. Renders
+ * toggle rows (sound, notifications, chat, watchlist, opening-bid picker,
+ * value column, spending pace), a default-league filter segmented control,
+ * and a rankings import affordance (CSV upload + paste).
+ *
+ * Outer chrome moves to Aurora atoms (Glass, SectionLabel, Chip-style
+ * pill buttons). Toggles use Aurora --am-* tokens for on/off states.
+ * 100% of business logic preserved: hooks, callbacks, ranking parser,
+ * preference keys/types, and Lucide icons remain untouched.
+ */
 import React, { useState, useRef } from 'react';
 import { Volume2, Bell, MessageCircle, Star, DollarSign, TrendingUp, BarChart3, Globe, Upload, FileText, Trash2 } from 'lucide-react';
 import type { AuctionPrefs, LeagueFilter } from '../hooks/useAuctionPrefs';
+import { Glass, SectionLabel } from '../../../components/aurora/atoms';
 
 interface AuctionSettingsTabProps {
   prefs: AuctionPrefs;
@@ -20,6 +34,34 @@ const TOGGLE_SETTINGS: Array<{ key: keyof AuctionPrefs; icon: React.ElementType;
   { key: 'valueColumn', icon: TrendingUp, label: 'Value / Surplus', desc: 'Show projected value and surplus during bidding' },
   { key: 'spendingPace', icon: BarChart3, label: 'Spending Pace', desc: 'Budget bars, avg cost, and hot/cold indicators on Teams tab' },
 ];
+
+const ROW_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: 12,
+  borderRadius: 12,
+  background: "var(--am-surface-faint)",
+  border: "1px solid var(--am-border)",
+  width: "100%",
+  textAlign: "left",
+  cursor: "pointer",
+  transition: "background 160ms",
+};
+
+const PILL_BTN_BASE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 12px",
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: 0.4,
+  textTransform: "uppercase",
+  borderRadius: 99,
+  cursor: "pointer",
+  transition: "background 160ms, border-color 160ms, color 160ms",
+};
 
 export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankingsCount = 0, onImportRankings, onClearRankings }: AuctionSettingsTabProps) {
   const [pasteText, setPasteText] = useState('');
@@ -64,158 +106,293 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
   };
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-3 space-y-1">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">
-        Personal Preferences
-      </div>
+    <div className="h-full overflow-y-auto">
+      <Glass padded={false}>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+          <SectionLabel>Personal Preferences</SectionLabel>
 
-      {/* Toggle settings */}
-      {TOGGLE_SETTINGS.map(s => (
-        <button
-          key={s.key}
-          onClick={() => onToggle(s.key)}
-          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-[var(--lg-tint)] transition-colors text-left group"
-        >
-          <s.icon size={16} className={prefs[s.key] ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-muted)] opacity-30'} />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-[var(--lg-text-primary)]">{s.label}</div>
-            <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">{s.desc}</div>
-          </div>
-          <div className={`w-8 h-4.5 rounded-full p-0.5 transition-colors shrink-0 ${prefs[s.key] ? 'bg-[var(--lg-accent)]' : 'bg-[var(--lg-border-subtle)]'}`}>
-            <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${prefs[s.key] ? 'translate-x-3.5' : 'translate-x-0'}`} />
-          </div>
-        </button>
-      ))}
-
-      {/* Default league filter */}
-      <div className="flex items-center gap-3 p-3 rounded-lg">
-        <Globe size={16} className="text-[var(--lg-accent)]" />
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold text-[var(--lg-text-primary)]">Default League Filter</div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">Set your default Player Pool filter</div>
-        </div>
-        <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
-          {(['ALL', 'NL', 'AL'] as LeagueFilter[]).map(f => (
-            <button
-              key={f}
-              onClick={() => onUpdate('defaultLeagueFilter', f)}
-              className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${
-                prefs.defaultLeagueFilter === f ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* My Rankings section */}
-      {onImportRankings && (
-        <>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mt-4 mb-2 pt-3 border-t border-[var(--lg-border-faint)]">
-            My Rankings
-          </div>
-
-          <div className="p-3 rounded-lg space-y-3">
-            {/* Current status */}
-            <div className="flex items-center gap-3">
-              <FileText size={16} className={rankingsCount > 0 ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-muted)] opacity-30'} />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-[var(--lg-text-primary)]">
-                  {rankingsCount > 0 ? `${rankingsCount} players ranked` : 'No rankings imported'}
-                </div>
-                <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">
-                  Upload a CSV or paste player names to add a private rank column
-                </div>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.txt"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+          {/* Toggle settings */}
+          {TOGGLE_SETTINGS.map(s => {
+            const on = !!prefs[s.key];
+            return (
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity"
+                key={s.key}
+                type="button"
+                onClick={() => onToggle(s.key)}
+                style={ROW_BASE}
               >
-                <Upload size={12} />
-                Upload CSV
-              </button>
-              <button
-                onClick={() => setShowPaste(!showPaste)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md border transition-colors ${
-                  showPaste
-                    ? 'border-[var(--lg-accent)] text-[var(--lg-accent)] bg-[var(--lg-tint)]'
-                    : 'border-[var(--lg-border-subtle)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-border-subtle)]'
-                }`}
-              >
-                Paste
-              </button>
-              {rankingsCount > 0 && (
-                <button
-                  onClick={handleClear}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] text-red-400 hover:bg-red-400/10 transition-colors ml-auto"
-                  title="Clear all rankings"
-                >
-                  <Trash2 size={12} />
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Paste textarea */}
-            {showPaste && (
-              <div className="space-y-2">
-                <textarea
-                  value={pasteText}
-                  onChange={(e) => setPasteText(e.target.value)}
-                  placeholder={"Shohei Ohtani,1\nAaron Judge,2\nMookie Betts,3\n\nor just names (one per line):\n\nShohei Ohtani\nAaron Judge\nMookie Betts"}
-                  className="w-full h-28 px-3 py-2 text-xs rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] placeholder:text-[var(--lg-text-muted)] placeholder:opacity-40 outline-none focus:border-[var(--lg-accent)] resize-none font-mono"
+                <s.icon
+                  size={16}
+                  style={{
+                    color: on ? "var(--am-accent)" : "var(--am-text-faint)",
+                    opacity: on ? 1 : 0.5,
+                    flexShrink: 0,
+                  }}
                 />
-                <button
-                  onClick={handlePasteImport}
-                  disabled={!pasteText.trim()}
-                  className="px-4 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{s.label}</div>
+                  <div style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>{s.desc}</div>
+                </div>
+                <div
+                  aria-hidden
+                  style={{
+                    width: 32,
+                    height: 18,
+                    borderRadius: 99,
+                    padding: 2,
+                    background: on ? "var(--am-accent)" : "var(--am-chip)",
+                    border: "1px solid var(--am-border)",
+                    flexShrink: 0,
+                    transition: "background 160ms",
+                  }}
                 >
-                  Import
-                </button>
-              </div>
-            )}
+                  <div
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 99,
+                      background: "#fff",
+                      transform: on ? "translateX(14px)" : "translateX(0)",
+                      transition: "transform 160ms",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+                    }}
+                  />
+                </div>
+              </button>
+            );
+          })}
 
-            {/* Import result feedback */}
-            {importResult && (
-              <div className="text-[10px] leading-snug space-y-1">
-                {importResult.imported > 0 && (
-                  <div className="text-emerald-400 font-semibold">
-                    Imported {importResult.imported} player rankings
+          {/* Default league filter */}
+          <div style={{ ...ROW_BASE, cursor: "default" }}>
+            <Globe size={16} style={{ color: "var(--am-accent)", flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>Default League Filter</div>
+              <div style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>Set your default Player Pool filter</div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                background: "var(--am-chip)",
+                borderRadius: 8,
+                padding: 2,
+                border: "1px solid var(--am-border)",
+                flexShrink: 0,
+              }}
+            >
+              {(['ALL', 'NL', 'AL'] as LeagueFilter[]).map(f => {
+                const active = prefs.defaultLeagueFilter === f;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => onUpdate('defaultLeagueFilter', f)}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: 0.4,
+                      textTransform: "uppercase",
+                      borderRadius: 6,
+                      background: active ? "var(--am-accent)" : "transparent",
+                      color: active ? "#fff" : "var(--am-text-muted)",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "background 160ms, color 160ms",
+                    }}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* My Rankings section */}
+          {onImportRankings && (
+            <>
+              <div
+                style={{
+                  marginTop: 8,
+                  paddingTop: 12,
+                  borderTop: "1px solid var(--am-border)",
+                }}
+              >
+                <SectionLabel>My Rankings</SectionLabel>
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                {/* Current status */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <FileText
+                    size={16}
+                    style={{
+                      color: rankingsCount > 0 ? "var(--am-accent)" : "var(--am-text-faint)",
+                      opacity: rankingsCount > 0 ? 1 : 0.5,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
+                      {rankingsCount > 0 ? `${rankingsCount} players ranked` : 'No rankings imported'}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>
+                      Upload a CSV or paste player names to add a private rank column
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      ...PILL_BTN_BASE,
+                      background: "var(--am-accent)",
+                      color: "#fff",
+                      border: "1px solid var(--am-accent)",
+                    }}
+                  >
+                    <Upload size={12} />
+                    Upload CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPaste(!showPaste)}
+                    style={{
+                      ...PILL_BTN_BASE,
+                      background: showPaste ? "var(--am-chip-strong)" : "var(--am-chip)",
+                      color: showPaste ? "var(--am-text)" : "var(--am-text-muted)",
+                      border: `1px solid ${showPaste ? "var(--am-border-strong)" : "var(--am-border)"}`,
+                    }}
+                  >
+                    Paste
+                  </button>
+                  {rankingsCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClear}
+                      title="Clear all rankings"
+                      style={{
+                        ...PILL_BTN_BASE,
+                        background: "var(--am-chip)",
+                        color: "rgb(248, 113, 113)",
+                        border: "1px solid var(--am-border)",
+                        marginLeft: "auto",
+                      }}
+                    >
+                      <Trash2 size={12} />
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Paste textarea */}
+                {showPaste && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <textarea
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      placeholder={"Shohei Ohtani,1\nAaron Judge,2\nMookie Betts,3\n\nor just names (one per line):\n\nShohei Ohtani\nAaron Judge\nMookie Betts"}
+                      style={{
+                        width: "100%",
+                        height: 112,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        borderRadius: 8,
+                        background: "var(--am-surface-faint)",
+                        color: "var(--am-text)",
+                        border: "1px solid var(--am-border)",
+                        outline: "none",
+                        resize: "none",
+                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        transition: "border-color 160ms, box-shadow 160ms",
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "var(--am-accent)";
+                        e.currentTarget.style.boxShadow = "0 0 0 1px var(--am-accent)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "var(--am-border)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handlePasteImport}
+                      disabled={!pasteText.trim()}
+                      style={{
+                        ...PILL_BTN_BASE,
+                        alignSelf: "flex-start",
+                        padding: "6px 14px",
+                        background: "var(--am-accent)",
+                        color: "#fff",
+                        border: "1px solid var(--am-accent)",
+                        opacity: !pasteText.trim() ? 0.3 : 1,
+                        cursor: !pasteText.trim() ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Import
+                    </button>
                   </div>
                 )}
-                {importResult.errors.length > 0 && (
-                  <div className="text-[var(--lg-text-muted)] space-y-0.5">
-                    {importResult.errors.slice(0, 5).map((err, i) => (
-                      <div key={i} className="text-amber-400/70">{err}</div>
-                    ))}
-                    {importResult.errors.length > 5 && (
-                      <div className="text-[var(--lg-text-muted)] opacity-50">
-                        ...and {importResult.errors.length - 5} more
+
+                {/* Import result feedback */}
+                {importResult && (
+                  <div style={{ fontSize: 10, lineHeight: 1.4, display: "flex", flexDirection: "column", gap: 4 }}>
+                    {importResult.imported > 0 && (
+                      <div style={{ color: "rgb(52, 211, 153)", fontWeight: 600 }}>
+                        Imported {importResult.imported} player rankings
+                      </div>
+                    )}
+                    {importResult.errors.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {importResult.errors.slice(0, 5).map((err, i) => (
+                          <div key={i} style={{ color: "rgba(251, 191, 36, 0.7)" }}>{err}</div>
+                        ))}
+                        {importResult.errors.length > 5 && (
+                          <div style={{ color: "var(--am-text-faint)", opacity: 0.6 }}>
+                            ...and {importResult.errors.length - 5} more
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </>
-      )}
+            </>
+          )}
 
-      <div className="pt-3 text-[10px] text-[var(--lg-text-muted)] opacity-40 text-center">
-        Saved locally per device
-      </div>
+          <div
+            style={{
+              paddingTop: 12,
+              fontSize: 10,
+              color: "var(--am-text-faint)",
+              opacity: 0.6,
+              textAlign: "center",
+            }}
+          >
+            Saved locally per device
+          </div>
+        </div>
+      </Glass>
     </div>
   );
 }
