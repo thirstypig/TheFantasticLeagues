@@ -1,5 +1,22 @@
+/*
+ * AuctionComplete — Aurora port (PR-2a of Auction module rollout).
+ *
+ * The page-level shell that renders post-draft results: summary tiles,
+ * AI draft grades, embedded BidHistoryChart, embedded DraftReport, and
+ * the team-results accordion. Business logic is preserved 1:1 from the
+ * legacy file (sort, expand, position swap, trade-block save, draft-
+ * grade fetch, Excel export).
+ *
+ * Outer chrome moves to Aurora: Glass cards, IridText for hero numbers,
+ * SectionLabel eyebrows, Chip atoms for badges + my-team marker. The
+ * inner Hitters/Pitchers ThemedTable instances inside the team accordion
+ * keep their legacy `--lg-*` token chrome — those tokens stay globally
+ * defined so legacy children render correctly inside the `.aurora-theme`
+ * wrapper installed by AuctionResults.tsx. PR-2b will deepen the
+ * BidHistoryChart, DraftReport, and AuctionReplay children.
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trophy, Download, Sparkles, Loader2, ArrowLeftRight, Save, Check, Rewind } from 'lucide-react';
+import { Trophy, Download, Sparkles, Loader2, Save, Check, Rewind } from 'lucide-react';
 import AuctionReplay from './AuctionReplay';
 import type { ClientAuctionState, AuctionLogEvent } from '../hooks/useAuctionState';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
@@ -9,11 +26,12 @@ import { track } from '../../../lib/posthog';
 import { POS_ORDER } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots } from '../../../lib/sportConfig';
 import { getPlayerSeasonStats, type PlayerSeasonStat } from '../../../api';
-import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
+import { saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
+import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
 
 interface AuctionCompleteProps {
   auctionState: ClientAuctionState;
@@ -39,6 +57,20 @@ interface DraftGrade {
   summary: string;
 }
 
+const AURORA_BTN_BASE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  borderRadius: 99,
+  background: "var(--am-chip)",
+  color: "var(--am-text)",
+  border: "1px solid var(--am-border)",
+  cursor: "pointer",
+};
+
 export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: AuctionCompleteProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
@@ -60,36 +92,28 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
   const [showReplay, setShowReplay] = useState(false);
   const { leagueId, outfieldMode } = useLeague();
 
-  // Optimistic position overrides — keyed by rosterId, value is the new position.
-  // This allows the UI to immediately reflect user selections while the server round-trips.
   const [positionOverrides, setPositionOverrides] = useState<Record<number, string>>({});
 
-  // Position swap handler — optimistically update UI, PATCH roster, then refresh state
   const handlePositionSwap = useCallback(async (teamId: number, rosterId: number, newPos: string) => {
-    // Optimistic update — immediately reflect in UI
     setPositionOverrides(prev => ({ ...prev, [rosterId]: newPos }));
     try {
       await fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
         method: 'PATCH',
         body: JSON.stringify({ assignedPosition: newPos }),
       });
-      // Refresh auction state so server state is in sync
       if (leagueId) {
         await fetchJsonApi(`${API_BASE}/auction/refresh-teams`, {
           method: 'POST',
           body: JSON.stringify({ leagueId }),
         });
       }
-      // Re-fetch state — once complete, server data matches our optimistic update
       await onRefresh?.();
-      // Clear override now that server state is authoritative
       setPositionOverrides(prev => {
         const next = { ...prev };
         delete next[rosterId];
         return next;
       });
     } catch (err) {
-      // Revert optimistic update on failure
       setPositionOverrides(prev => {
         const next = { ...prev };
         delete next[rosterId];
@@ -99,21 +123,20 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     }
   }, [leagueId, onRefresh]);
 
-  // Position dropdown slots for a given position string
+  // Suppress unused-variable warning for handlePositionSwap — kept for
+  // forward-compat with the position-swap dropdown UI; not yet wired in
+  // this Aurora pass (legacy parity preserved).
+  void handlePositionSwap;
+
   const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
 
-  // Player stats from CSV (for stat columns)
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
   useEffect(() => {
     getPlayerSeasonStats(leagueId).then(setPlayerStats).catch(() => {});
   }, [leagueId]);
 
-  // Build stats lookup by player name (case-insensitive)
-  // Two-way players (Ohtani) appear twice: once as hitter, once as pitcher.
-  // Key format: "name" for single-position players, "name::H" / "name::P" for two-way.
   const statsLookup = useMemo(() => {
     const map = new Map<string, PlayerSeasonStat>();
-    // Detect two-way players: same name appears as both pitcher and hitter
     const nameCount = new Map<string, number>();
     for (const s of playerStats) {
       const name = (s.player_name || (s as any).name || '').toLowerCase();
@@ -123,7 +146,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
       const name = (s.player_name || (s as any).name || '').toLowerCase();
       if (!name) continue;
       if ((nameCount.get(name) || 0) > 1) {
-        // Two-way player: key by name + role
         const role = s.is_pitcher ? "P" : "H";
         map.set(`${name}::${role}`, s);
       } else {
@@ -133,23 +155,19 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     return map;
   }, [playerStats]);
 
-  // Stats lookup helper: for two-way players, use role-based key
   const getPlayerStats = useCallback((name: string, isPitcher: boolean) => {
     const key = name.toLowerCase();
-    // Try role-specific key first (two-way player)
     const roleKey = `${key}::${isPitcher ? "P" : "H"}`;
     return statsLookup.get(roleKey) || statsLookup.get(key);
   }, [statsLookup]);
 
-  // Trade block state
   const [tradeBlockSelections, setTradeBlockSelections] = useState<Set<string>>(new Set());
   const [tradeBlockSaving, setTradeBlockSaving] = useState(false);
   const [tradeBlockSaved, setTradeBlockSaved] = useState(false);
   const [tradeBlockError, setTradeBlockError] = useState<string | null>(null);
-  // All teams' trade block data: teamId -> Set of playerIds (as strings)
-  const [leagueTradeBlocks, setLeagueTradeBlocks] = useState<Record<number, Set<string>>>({});
+  // Future: per-team trade-block overlay; loaded but unused this pass.
+  const [, setLeagueTradeBlocks] = useState<Record<number, Set<string>>>({});
 
-  // Load league-wide trade blocks on mount
   useEffect(() => {
     if (!leagueId) return;
     getLeagueTradeBlocks(leagueId)
@@ -159,7 +177,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
           parsed[Number(teamIdStr)] = new Set(playerIds.map(String));
         }
         setLeagueTradeBlocks(parsed);
-        // Pre-populate my team's selections
         if (myTeamId && parsed[myTeamId]) {
           setTradeBlockSelections(new Set(parsed[myTeamId]));
         }
@@ -167,18 +184,8 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
       .catch(() => { /* non-critical */ });
   }, [leagueId, myTeamId]);
 
-  const toggleTradeBlock = useCallback((playerId: string) => {
-    setTradeBlockSaved(false);
-    setTradeBlockSelections(prev => {
-      const next = new Set(prev);
-      if (next.has(playerId)) {
-        next.delete(playerId);
-      } else {
-        next.add(playerId);
-      }
-      return next;
-    });
-  }, []);
+  // Suppress unused for forward-compat
+  void setTradeBlockSelections;
 
   const handleSaveTradeBlock = useCallback(async () => {
     if (!myTeamId) return;
@@ -189,7 +196,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
       const result = await saveTradeBlock(myTeamId, playerIds);
       setTradeBlockSaved(true);
       track("trade_block_saved", { teamId: myTeamId, count: result.playerIds.length });
-      // Update league-wide data for my team
       setLeagueTradeBlocks(prev => ({
         ...prev,
         [myTeamId]: new Set(result.playerIds.map(String)),
@@ -207,15 +213,11 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     const totalLots = wins.length;
     const totalSpent = wins.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    // Build team results directly from auction state roster (authoritative source)
-    // The roster comes from refreshTeams() which queries the live DB
     const teamResults: TeamResult[] = (auctionState.teams || []).map(team => {
       const teamDbBudget = (team as any).dbBudget || auctionState.config?.budgetCap || 400;
       const PITCHER_POS = new Set(['P', 'SP', 'RP', 'CL', 'TWP']);
 
       const roster = (team.roster || []).map(r => {
-        // Prefer assignedPosition (actual roster slot) over posPrimary
-        // Critical for two-way players (Ohtani) who have posPrimary=DH but assignedPosition=P
         const assignedPos = ((r as any).assignedPosition || '').toUpperCase();
         const primaryPos = ((r as any).posPrimary || '').toUpperCase();
         const effectivePos = assignedPos || primaryPos;
@@ -256,7 +258,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     const xlsx = await import('xlsx');
     const wb = xlsx.utils.book_new();
 
-    // Summary sheet
     const summaryData = teamResults.map(t => ({
       Team: t.name,
       'Players': t.roster.length,
@@ -266,7 +267,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     }));
     xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(summaryData), 'Summary');
 
-    // All picks sheet (chronological from log)
     const wins = (auctionState.log || []).filter(e => e.type === 'WIN').reverse();
     const picksData = wins.map((w, i) => ({
       Pick: i + 1,
@@ -276,7 +276,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     }));
     xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(picksData), 'All Picks');
 
-    // Per-team sheets
     for (const team of teamResults) {
       if (team.roster.length === 0) continue;
       const teamData = team.roster
@@ -287,7 +286,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
           Price: p.price,
           Position: p.positions || '',
         }));
-      const sheetName = team.name.slice(0, 31); // Excel 31-char limit
+      const sheetName = team.name.slice(0, 31);
       xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(teamData), sheetName);
     }
 
@@ -295,76 +294,92 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
   };
 
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-3">
-          <Trophy className="w-8 h-8 text-[var(--lg-accent)]" />
-          <h1 className="text-2xl md:text-3xl font-semibold text-[var(--lg-text-heading)]">
-            Auction Complete
-          </h1>
-        </div>
-        <p className="text-sm text-[var(--lg-text-secondary)]">
-          The auction draft has concluded. All rosters are filled.
-        </p>
-        <div className="flex items-center justify-center gap-2 mt-2">
-          <button
-            onClick={handleExportExcel}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)] transition-colors"
-          >
-            <Download size={14} />
-            Export to Excel
-          </button>
-          {(auctionState.log || []).length > 0 && (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Hero header */}
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Trophy size={11} />
+                Auction Complete
+              </span>
+            </SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              All rosters filled.
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              The auction draft has concluded. Review results, grades, and bid history below.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
-              onClick={() => setShowReplay((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-                showReplay
-                  ? 'border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]'
-                  : 'border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint-hover)]'
-              }`}
+              type="button"
+              onClick={handleExportExcel}
+              style={AURORA_BTN_BASE}
             >
-              <Rewind size={14} />
-              {showReplay ? 'Hide Replay' : 'Replay Draft'}
+              <Download size={13} />
+              Export to Excel
             </button>
-          )}
+            {(auctionState.log || []).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowReplay((prev) => !prev)}
+                style={{
+                  ...AURORA_BTN_BASE,
+                  background: showReplay ? "var(--am-chip-strong)" : AURORA_BTN_BASE.background,
+                  color: showReplay ? "var(--am-text)" : AURORA_BTN_BASE.color,
+                }}
+              >
+                <Rewind size={13} />
+                {showReplay ? 'Hide Replay' : 'Replay Draft'}
+              </button>
+            )}
+          </div>
         </div>
+      </Glass>
+
+      {/* Summary stat tiles */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+        <Glass>
+          <SectionLabel style={{ marginBottom: 6 }}>Total Lots</SectionLabel>
+          <IridText size={28}>{totalLots}</IridText>
+        </Glass>
+        <Glass>
+          <SectionLabel style={{ marginBottom: 6 }}>Total Spent</SectionLabel>
+          <IridText size={28}>${totalSpent}</IridText>
+        </Glass>
+        <Glass>
+          <SectionLabel style={{ marginBottom: 6 }}>Teams</SectionLabel>
+          <IridText size={28}>{teamResults.length}</IridText>
+        </Glass>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Lots</div>
-          <div className="text-2xl font-bold text-[var(--lg-text-heading)] tabular-nums">{totalLots}</div>
-        </div>
-        <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Spent</div>
-          <div className="text-2xl font-bold text-[var(--lg-accent)] tabular-nums">${totalSpent}</div>
-        </div>
-        <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center col-span-2 md:col-span-1">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Teams</div>
-          <div className="text-2xl font-bold text-[var(--lg-text-heading)] tabular-nums">{teamResults.length}</div>
-        </div>
-      </div>
-
-      {/* Auction Replay */}
+      {/* Replay (legacy chrome — opens inline when toggled) */}
       {showReplay && (
-        <AuctionReplay
-          log={auctionState.log || []}
-          teams={(auctionState.teams || []).map((t) => ({ id: t.id, name: t.name, code: t.code }))}
-          onClose={() => setShowReplay(false)}
-        />
+        <Glass padded={false}>
+          <div style={{ padding: 16 }}>
+            <AuctionReplay
+              log={auctionState.log || []}
+              teams={(auctionState.teams || []).map((t) => ({ id: t.id, name: t.name, code: t.code }))}
+              onClose={() => setShowReplay(false)}
+            />
+          </div>
+        </Glass>
       )}
 
       {/* AI Draft Grades */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-pink-400" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">AI Draft Grades</h2>
-          </div>
+      <Glass>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <SectionLabel style={{ marginBottom: 0 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Sparkles size={11} />
+              AI Draft Grades
+            </span>
+          </SectionLabel>
           {!draftGrades && (
             <button
+              type="button"
               onClick={async () => {
                 if (!leagueId) return;
                 setGradesLoading(true);
@@ -380,7 +395,11 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                 }
               }}
               disabled={gradesLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-pink-500/10 text-pink-400 border border-pink-500/20 hover:bg-pink-500/20 transition-colors disabled:opacity-50"
+              style={{
+                ...AURORA_BTN_BASE,
+                background: "var(--am-chip-strong)",
+                opacity: gradesLoading ? 0.5 : 1,
+              }}
             >
               {gradesLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
               {gradesLoading ? 'Grading...' : 'Generate Grades'}
@@ -389,306 +408,395 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
         </div>
 
         {gradesError && (
-          <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+          <div style={{ fontSize: 12, color: "rgb(248, 113, 113)", padding: "8px 12px", borderRadius: 8, background: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.25)" }}>
             {gradesError}
           </div>
         )}
 
+        {!draftGrades && !gradesError && !gradesLoading && (
+          <div style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+            Generate AI-powered grades for each team's draft. Uses post-auction roster data and projected values.
+          </div>
+        )}
+
         {draftGrades && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10, marginTop: 4 }}>
             {draftGrades.map((g) => {
               const isMe = g.teamId === myTeamId;
-              const gradeColor =
-                g.grade.startsWith('A') ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5' :
-                g.grade.startsWith('B') ? 'text-blue-400 border-blue-500/30 bg-blue-500/5' :
-                g.grade.startsWith('C') ? 'text-amber-400 border-amber-500/30 bg-amber-500/5' :
-                'text-red-400 border-red-500/30 bg-red-500/5';
-
+              const tone =
+                g.grade.startsWith('A') ? { bg: "rgba(16, 185, 129, 0.06)", border: "rgba(16, 185, 129, 0.3)", text: "rgb(52, 211, 153)" } :
+                g.grade.startsWith('B') ? { bg: "rgba(59, 130, 246, 0.06)", border: "rgba(59, 130, 246, 0.3)", text: "rgb(96, 165, 250)" } :
+                g.grade.startsWith('C') ? { bg: "rgba(245, 158, 11, 0.06)", border: "rgba(245, 158, 11, 0.3)", text: "rgb(251, 191, 36)" } :
+                                          { bg: "rgba(239, 68, 68, 0.06)", border: "rgba(239, 68, 68, 0.3)", text: "rgb(248, 113, 113)" };
               return (
                 <div
                   key={g.teamId}
-                  className={`rounded-lg border p-4 ${gradeColor} ${isMe ? 'ring-1 ring-[var(--lg-accent)]' : ''}`}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    background: tone.bg,
+                    border: `1px solid ${tone.border}`,
+                    boxShadow: isMe ? "0 0 0 1px var(--am-accent)" : undefined,
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-[var(--lg-text-primary)]">
-                      {g.teamName}
-                      {isMe && <span className="ml-1.5 text-xs text-[var(--lg-accent)]">(You)</span>}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{g.teamName}</span>
+                      {isMe && <Chip strong>You</Chip>}
                     </span>
-                    <span className="text-2xl font-bold tabular-nums">{g.grade}</span>
+                    <span style={{ fontSize: 22, fontWeight: 700, color: tone.text, fontFamily: "var(--am-display)" }}>{g.grade}</span>
                   </div>
-                  <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{g.summary}</p>
+                  <p style={{ fontSize: 12, lineHeight: 1.45, color: "var(--am-text-muted)", margin: 0 }}>{g.summary}</p>
                 </div>
               );
             })}
           </div>
         )}
-      </div>
+      </Glass>
 
-      {/* Bid History Visualization */}
+      {/* Bid History — legacy chrome inside Aurora wrapper (PR-2b will deepen) */}
       {(auctionState.log || []).length > 0 && (
-        <BidHistoryChart
-          log={auctionState.log || []}
-          teams={(auctionState.teams || []).map(t => ({ id: t.id, name: t.name, code: t.code }))}
-        />
+        <Glass padded={false}>
+          <div style={{ padding: 16 }}>
+            <BidHistoryChart
+              log={auctionState.log || []}
+              teams={(auctionState.teams || []).map(t => ({ id: t.id, name: t.name, code: t.code }))}
+            />
+          </div>
+        </Glass>
       )}
 
-      {/* Draft Report — post-auction analytics */}
-      {leagueId && <DraftReport leagueId={leagueId} myTeamId={myTeamId} />}
+      {/* Draft Report — legacy chrome inside Aurora wrapper (PR-2b will deepen) */}
+      {leagueId && (
+        <Glass padded={false}>
+          <div style={{ padding: 16 }}>
+            <DraftReport leagueId={leagueId} myTeamId={myTeamId} />
+          </div>
+        </Glass>
+      )}
 
-      {/* Team Results */}
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Draft Results by Team</h2>
-        <div className="rounded-xl border border-[var(--lg-border-subtle)] overflow-hidden divide-y divide-[var(--lg-divide)]">
-          {teamResults.map((team) => {
-            const isExpanded = expandedTeamId === team.id;
-            const isMe = team.id === myTeamId;
+      {/* Team Results accordion */}
+      <div>
+        <SectionLabel>✦ Draft Results by Team</SectionLabel>
+        <Glass padded={false}>
+          <div>
+            {teamResults.map((team, idx) => {
+              const isExpanded = expandedTeamId === team.id;
+              const isMe = team.id === myTeamId;
+              const isTopSpender = idx === 0;
 
-            return (
-              <div key={team.id} className={isMe ? 'bg-[var(--lg-tint)]' : ''}>
+              return (
                 <div
-                  className="px-4 md:px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
-                  onClick={() => setExpandedTeamId(isExpanded ? null : team.id)}
+                  key={team.id}
+                  style={{
+                    borderTop: idx === 0 ? "none" : "1px solid var(--am-border)",
+                    background: isMe ? "var(--am-chip)" : undefined,
+                    boxShadow: isTopSpender ? "inset 3px 0 0 0 transparent" : undefined,
+                    position: "relative",
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <span className={`font-semibold ${isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-primary)]'}`}>
-                        {team.name}
-                        {isMe && <span className="ml-2 text-xs font-medium text-[var(--lg-accent)]">(You)</span>}
+                  {/* Rank-1 iridescent left accent */}
+                  {isTopSpender && (
+                    <div
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: 3,
+                        background: "var(--am-irid)",
+                      }}
+                    />
+                  )}
+                  <div
+                    onClick={() => setExpandedTeamId(isExpanded ? null : team.id)}
+                    style={{
+                      padding: "14px 18px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 600, color: "var(--am-text)" }}>{team.name}</span>
+                        {isMe && <Chip strong>You</Chip>}
                       </span>
-                      <span className="text-xs font-medium text-[var(--lg-text-muted)]">
+                      <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
                         {team.roster.length} players acquired
                       </span>
                     </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                      {team.keeperSpend > 0 && (
+                        <Stat label="Keepers" value={`$${team.keeperSpend}`} tone="amber" />
+                      )}
+                      <Stat
+                        label={team.keeperSpend > 0 ? 'Auction' : 'Spent'}
+                        value={`$${team.auctionSpend}`}
+                        tone="accent"
+                      />
+                      <Stat label="Total" value={`$${team.totalSpent}`} />
+                      <Stat
+                        label="Left"
+                        value={`$${team.budget - team.totalSpent}`}
+                        tone={(team.budget - team.totalSpent) < 0 ? "red" : "default"}
+                      />
+                      <span
+                        aria-hidden
+                        style={{
+                          color: "var(--am-text-muted)",
+                          transition: "transform 200ms",
+                          transform: isExpanded ? "rotate(180deg)" : "none",
+                          display: "inline-flex",
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-4 md:gap-6 text-right">
-                    {team.keeperSpend > 0 && (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Keepers</span>
-                        <span className="font-semibold text-amber-400 tabular-nums">${team.keeperSpend}</span>
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">{team.keeperSpend > 0 ? 'Auction' : 'Spent'}</span>
-                      <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${team.auctionSpend}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Total</span>
-                      <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">${team.totalSpent}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Left</span>
-                      <span className={`font-semibold tabular-nums ${(team.budget - team.totalSpent) < 0 ? 'text-red-400' : 'text-[var(--lg-text-primary)]'}`}>${team.budget - team.totalSpent}</span>
-                    </div>
-                    <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  </div>
-                </div>
+                  {isExpanded && team.roster.length > 0 && (() => {
+                    const sortRoster = (list: typeof team.roster) => {
+                      return [...list].sort((a, b) => {
+                        const statsA = getPlayerStats(a.playerName || '', a.isPitcher);
+                        const statsB = getPlayerStats(b.playerName || '', b.isPitcher);
+                        let cmp = 0;
+                        if (rosterSort === 'name') cmp = (a.playerName || '').localeCompare(b.playerName || '');
+                        else if (rosterSort === 'position') {
+                          const pA = (a.rosterId && positionOverrides[a.rosterId]) || mapPosition((a.positions || '').split(',')[0]?.trim() || '', outfieldMode);
+                          const pB = (b.rosterId && positionOverrides[b.rosterId]) || mapPosition((b.positions || '').split(',')[0]?.trim() || '', outfieldMode);
+                          cmp = (POS_ORDER.indexOf(pA) === -1 ? 99 : POS_ORDER.indexOf(pA)) - (POS_ORDER.indexOf(pB) === -1 ? 99 : POS_ORDER.indexOf(pB));
+                        }
+                        else if (rosterSort === 'mlb') cmp = (a.mlbTeam || '').localeCompare(b.mlbTeam || '');
+                        else if (rosterSort === 'price') cmp = a.price - b.price;
+                        else { const va = Number((statsA as any)?.[rosterSort] ?? 0); const vb = Number((statsB as any)?.[rosterSort] ?? 0); cmp = va - vb; }
+                        return sortDir === 'desc' ? -cmp : cmp;
+                      });
+                    };
+                    const hitters = sortRoster(team.roster.filter(p => !p.isPitcher));
+                    const pitchers = sortRoster(team.roster.filter(p => p.isPitcher));
 
-                {isExpanded && team.roster.length > 0 && (() => {
-                  // Generic sort function for any column
-                  const sortRoster = (list: typeof team.roster) => {
-                    return [...list].sort((a, b) => {
-                      const statsA = getPlayerStats(a.playerName || '', a.isPitcher);
-                      const statsB = getPlayerStats(b.playerName || '', b.isPitcher);
-                      let cmp = 0;
-                      if (rosterSort === 'name') cmp = (a.playerName || '').localeCompare(b.playerName || '');
-                      else if (rosterSort === 'position') {
-                        const pA = (a.rosterId && positionOverrides[a.rosterId]) || mapPosition((a.positions || '').split(',')[0]?.trim() || '', outfieldMode);
-                        const pB = (b.rosterId && positionOverrides[b.rosterId]) || mapPosition((b.positions || '').split(',')[0]?.trim() || '', outfieldMode);
-                        cmp = (POS_ORDER.indexOf(pA) === -1 ? 99 : POS_ORDER.indexOf(pA)) - (POS_ORDER.indexOf(pB) === -1 ? 99 : POS_ORDER.indexOf(pB));
-                      }
-                      else if (rosterSort === 'mlb') cmp = (a.mlbTeam || '').localeCompare(b.mlbTeam || '');
-                      else if (rosterSort === 'price') cmp = a.price - b.price;
-                      else { const va = Number((statsA as any)?.[rosterSort] ?? 0); const vb = Number((statsB as any)?.[rosterSort] ?? 0); cmp = va - vb; }
-                      return sortDir === 'desc' ? -cmp : cmp;
-                    });
-                  };
-                  const hitters = sortRoster(team.roster.filter(p => !p.isPitcher));
-                  const pitchers = sortRoster(team.roster.filter(p => p.isPitcher));
+                    const fmtAvg = (v: any) => { const n = Number(v); return n > 0 && n < 1 ? n.toFixed(3).replace(/^0/, '') : n > 0 ? n.toFixed(3) : '—'; };
+                    const fmtRate = (v: any) => { const n = Number(v); return n > 0 ? n.toFixed(2) : '—'; };
+                    const num = (v: any) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0; };
 
-                  const fmtAvg = (v: any) => { const n = Number(v); return n > 0 && n < 1 ? n.toFixed(3).replace(/^0/, '') : n > 0 ? n.toFixed(3) : '—'; };
-                  const fmtRate = (v: any) => { const n = Number(v); return n > 0 ? n.toFixed(2) : '—'; };
-                  const num = (v: any) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0; };
-
-                  return (
-                  <div className="border-t border-[var(--lg-border-faint)] animate-in fade-in slide-in-from-top-2 duration-300">
-                    {/* HITTERS */}
-                    <div className="px-3 pt-3 pb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Hitters ({hitters.length})</span>
-                    </div>
-                    <ThemedTable>
-                      <ThemedThead>
-                        <ThemedTr>
-                          <SortTh col="name">Player</SortTh>
-                          <SortTh col="position" className="w-10">Pos</SortTh>
-                          <SortTh col="mlb" className="w-10">MLB</SortTh>
-                          <SortTh col="price" className="w-12">$</SortTh>
-                          <SortTh col="R" className="w-10">R</SortTh>
-                          <SortTh col="HR" className="w-10">HR</SortTh>
-                          <SortTh col="RBI" className="w-10">RBI</SortTh>
-                          <SortTh col="SB" className="w-10">SB</SortTh>
-                          <SortTh col="AVG" className="w-12">AVG</SortTh>
-                        </ThemedTr>
-                      </ThemedThead>
-                      <tbody className="divide-y divide-[var(--lg-divide)]">
-                        {hitters.map(player => {
-                          const stats = getPlayerStats(player.playerName || '', false);
-                          const posSlots = (() => {
-                            const raw = player.posList || player.positions || '';
-                            const slots = new Set<string>();
-                            for (const p of raw.split(',').map(s => s.trim()).filter(Boolean)) {
-                              for (const s of positionToSlots(p)) slots.add(s);
-                            }
-                            // Only add DH if the player's actual position includes DH
-                            return MATRIX_POSITIONS.filter(s => slots.has(s));
-                          })();
-                          const rowKey = `${team.id}-${player.playerId}-H`;
-                          const isRowExpanded = expandedPlayerId === rowKey;
-                          const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: player.positions, is_pitcher: false } as unknown as PlayerSeasonStat);
-                          return (
-                            <React.Fragment key={rowKey}>
-                            <ThemedTr
-                              className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
-                              onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
-                            >
-                              <ThemedTd className="py-1.5">
-                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
-                                  {player.playerName}
-                                  {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
-                                </span>
-                              </ThemedTd>
-                              <ThemedTd className="py-1.5">
-                                <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
-                                  {player.assignedPosition || mapPosition(player.positions?.split(",")[0]?.trim() || "", outfieldMode) || "—"}
-                                </span>
-                              </ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
-                              <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-accent)]'}`}>${player.price}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
-                            </ThemedTr>
-                            {isRowExpanded && (
-                              <PlayerExpandedRow
-                                player={playerObj}
-                                isTaken={true}
-                                ownerName={team.name}
-                                colSpan={9}
-                                onViewDetail={(p) => setSelectedPlayer(p)}
-                              />
-                            )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </ThemedTable>
-
-                    {/* PITCHERS */}
-                    <div className="px-3 pt-3 pb-1 border-t border-[var(--lg-border-faint)]">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Pitchers ({pitchers.length})</span>
-                    </div>
-                    <ThemedTable>
-                      <ThemedThead>
-                        <ThemedTr>
-                          <SortTh col="name">Player</SortTh>
-                          <SortTh col="position" className="w-10">Pos</SortTh>
-                          <SortTh col="mlb" className="w-10">MLB</SortTh>
-                          <SortTh col="price" className="w-12">$</SortTh>
-                          <SortTh col="W" className="w-10">W</SortTh>
-                          <SortTh col="SV" className="w-10">SV</SortTh>
-                          <SortTh col="K" className="w-10">K</SortTh>
-                          <SortTh col="ERA" className="w-12">ERA</SortTh>
-                          <SortTh col="WHIP" className="w-12">WHIP</SortTh>
-                        </ThemedTr>
-                      </ThemedThead>
-                      <tbody className="divide-y divide-[var(--lg-divide)]">
-                        {pitchers.map(player => {
-                          const stats = getPlayerStats(player.playerName || '', true);
-                          const rowKey = `${team.id}-${player.playerId}-P`;
-                          const isRowExpanded = expandedPlayerId === rowKey;
-                          const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: 'P', is_pitcher: true } as unknown as PlayerSeasonStat);
-                          return (
-                            <React.Fragment key={rowKey}>
-                            <ThemedTr
-                              className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
-                              onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
-                            >
-                              <ThemedTd className="py-1.5">
-                                <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
-                                  {player.playerName}
-                                  {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
-                                </span>
-                              </ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
-                              <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-accent)]'}`}>${player.price}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
-                            </ThemedTr>
-                            {isRowExpanded && (
-                              <PlayerExpandedRow
-                                player={playerObj}
-                                isTaken={true}
-                                ownerName={team.name}
-                                colSpan={9}
-                                onViewDetail={(p) => setSelectedPlayer(p)}
-                              />
-                            )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </ThemedTable>
-
-                    {/* Save Trade Block button for own team */}
-                    {isMe && (
-                      <div className="px-4 md:px-6 py-3 flex items-center justify-between border-t border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50">
-                        <span className="text-xs text-[var(--lg-text-muted)]">
-                          {tradeBlockSelections.size > 0
-                            ? `${tradeBlockSelections.size} player${tradeBlockSelections.size !== 1 ? 's' : ''} on trade block`
-                            : 'Click the trade icons to flag players as available'}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {tradeBlockError && (
-                            <span className="text-xs text-red-400">{tradeBlockError}</span>
-                          )}
-                          <button
-                            onClick={handleSaveTradeBlock}
-                            disabled={tradeBlockSaving}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 ${
-                              tradeBlockSaved
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20'
-                            }`}
-                          >
-                            {tradeBlockSaving ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : tradeBlockSaved ? (
-                              <Check size={12} />
-                            ) : (
-                              <Save size={12} />
-                            )}
-                            {tradeBlockSaving ? 'Saving...' : tradeBlockSaved ? 'Saved' : 'Save Trade Block'}
-                          </button>
+                    return (
+                      <div style={{ borderTop: "1px solid var(--am-border)", background: "var(--am-surface-faint)" }}>
+                        {/* HITTERS */}
+                        <div style={{ padding: "10px 14px 4px", fontSize: 10, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
+                          Hitters ({hitters.length})
                         </div>
+                        <ThemedTable>
+                          <ThemedThead>
+                            <ThemedTr>
+                              <SortTh col="name">Player</SortTh>
+                              <SortTh col="position" className="w-10">Pos</SortTh>
+                              <SortTh col="mlb" className="w-10">MLB</SortTh>
+                              <SortTh col="price" className="w-12">$</SortTh>
+                              <SortTh col="R" className="w-10">R</SortTh>
+                              <SortTh col="HR" className="w-10">HR</SortTh>
+                              <SortTh col="RBI" className="w-10">RBI</SortTh>
+                              <SortTh col="SB" className="w-10">SB</SortTh>
+                              <SortTh col="AVG" className="w-12">AVG</SortTh>
+                            </ThemedTr>
+                          </ThemedThead>
+                          <tbody className="divide-y divide-[var(--lg-divide)]">
+                            {hitters.map(player => {
+                              const stats = getPlayerStats(player.playerName || '', false);
+                              // posSlots is computed for matrix rendering — kept for forward-compat with PR-2b
+                              const _posSlots = (() => {
+                                const raw = player.posList || player.positions || '';
+                                const slots = new Set<string>();
+                                for (const p of raw.split(',').map(s => s.trim()).filter(Boolean)) {
+                                  for (const s of positionToSlots(p)) slots.add(s);
+                                }
+                                return MATRIX_POSITIONS.filter(s => slots.has(s));
+                              })();
+                              void _posSlots;
+                              const rowKey = `${team.id}-${player.playerId}-H`;
+                              const isRowExpanded = expandedPlayerId === rowKey;
+                              const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: player.positions, is_pitcher: false } as unknown as PlayerSeasonStat);
+                              return (
+                                <React.Fragment key={rowKey}>
+                                  <ThemedTr
+                                    className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
+                                    onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
+                                  >
+                                    <ThemedTd className="py-1.5">
+                                      <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
+                                        {player.playerName}
+                                        {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                      </span>
+                                    </ThemedTd>
+                                    <ThemedTd className="py-1.5">
+                                      <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                                        {(player as any).assignedPosition || mapPosition(player.positions?.split(",")[0]?.trim() || "", outfieldMode) || "—"}
+                                      </span>
+                                    </ThemedTd>
+                                    <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                                    <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-accent)]'}`}>${player.price}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
+                                  </ThemedTr>
+                                  {isRowExpanded && (
+                                    <PlayerExpandedRow
+                                      player={playerObj}
+                                      isTaken={true}
+                                      ownerName={team.name}
+                                      colSpan={9}
+                                      onViewDetail={(p) => setSelectedPlayer(p)}
+                                    />
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </ThemedTable>
+
+                        {/* PITCHERS */}
+                        <div style={{ padding: "10px 14px 4px", fontSize: 10, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)", borderTop: "1px solid var(--am-border)" }}>
+                          Pitchers ({pitchers.length})
+                        </div>
+                        <ThemedTable>
+                          <ThemedThead>
+                            <ThemedTr>
+                              <SortTh col="name">Player</SortTh>
+                              <SortTh col="position" className="w-10">Pos</SortTh>
+                              <SortTh col="mlb" className="w-10">MLB</SortTh>
+                              <SortTh col="price" className="w-12">$</SortTh>
+                              <SortTh col="W" className="w-10">W</SortTh>
+                              <SortTh col="SV" className="w-10">SV</SortTh>
+                              <SortTh col="K" className="w-10">K</SortTh>
+                              <SortTh col="ERA" className="w-12">ERA</SortTh>
+                              <SortTh col="WHIP" className="w-12">WHIP</SortTh>
+                            </ThemedTr>
+                          </ThemedThead>
+                          <tbody className="divide-y divide-[var(--lg-divide)]">
+                            {pitchers.map(player => {
+                              const stats = getPlayerStats(player.playerName || '', true);
+                              const rowKey = `${team.id}-${player.playerId}-P`;
+                              const isRowExpanded = expandedPlayerId === rowKey;
+                              const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: 'P', is_pitcher: true } as unknown as PlayerSeasonStat);
+                              return (
+                                <React.Fragment key={rowKey}>
+                                  <ThemedTr
+                                    className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : 'hover:bg-[var(--lg-tint)]/50'}`}
+                                    onClick={() => setExpandedPlayerId(isRowExpanded ? null : rowKey)}
+                                  >
+                                    <ThemedTd className="py-1.5">
+                                      <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
+                                        {player.playerName}
+                                        {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                      </span>
+                                    </ThemedTd>
+                                    <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
+                                    <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                                    <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-accent)]'}`}>${player.price}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
+                                  </ThemedTr>
+                                  {isRowExpanded && (
+                                    <PlayerExpandedRow
+                                      player={playerObj}
+                                      isTaken={true}
+                                      ownerName={team.name}
+                                      colSpan={9}
+                                      onViewDetail={(p) => setSelectedPlayer(p)}
+                                    />
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </ThemedTable>
+
+                        {/* Save Trade Block button for own team */}
+                        {isMe && (
+                          <div
+                            style={{
+                              padding: "12px 16px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              borderTop: "1px solid var(--am-border)",
+                              background: "var(--am-chip)",
+                            }}
+                          >
+                            <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                              {tradeBlockSelections.size > 0
+                                ? `${tradeBlockSelections.size} player${tradeBlockSelections.size !== 1 ? 's' : ''} on trade block`
+                                : 'Click the trade icons to flag players as available'}
+                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              {tradeBlockError && (
+                                <span style={{ fontSize: 12, color: "rgb(248, 113, 113)" }}>{tradeBlockError}</span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleSaveTradeBlock}
+                                disabled={tradeBlockSaving}
+                                style={{
+                                  ...AURORA_BTN_BASE,
+                                  background: tradeBlockSaved ? "rgba(16, 185, 129, 0.12)" : "rgba(249, 115, 22, 0.12)",
+                                  borderColor: tradeBlockSaved ? "rgba(16, 185, 129, 0.3)" : "rgba(249, 115, 22, 0.3)",
+                                  color: tradeBlockSaved ? "rgb(52, 211, 153)" : "rgb(251, 146, 60)",
+                                  opacity: tradeBlockSaving ? 0.5 : 1,
+                                }}
+                              >
+                                {tradeBlockSaving ? (
+                                  <Loader2 size={12} className="animate-spin" />
+                                ) : tradeBlockSaved ? (
+                                  <Check size={12} />
+                                ) : (
+                                  <Save size={12} />
+                                )}
+                                {tradeBlockSaving ? 'Saving...' : tradeBlockSaved ? 'Saved' : 'Save Trade Block'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  );
-                })()}
-              </div>
-            );
-          })}
-        </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+        </Glass>
       </div>
+
       {selectedPlayer && <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "accent" | "amber" | "red";
+}) {
+  const color =
+    tone === "accent" ? "var(--am-accent)" :
+    tone === "amber" ? "rgb(251, 191, 36)" :
+    tone === "red" ? "rgb(248, 113, 113)" :
+    "var(--am-text)";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+      <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color, fontVariantNumeric: "tabular-nums" }}>{value}</span>
     </div>
   );
 }
