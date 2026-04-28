@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Glass, SectionLabel } from "../components/aurora/atoms";
 import {
   ChevronRight,
   Users,
@@ -281,16 +282,16 @@ export default function Concepts() {
   }, [hash]);
 
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 max-w-6xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Concepts Lab</h1>
-          <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400">BETA</span>
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Concepts Lab</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Concepts Lab</h1>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", padding: "3px 8px", borderRadius: 99, background: "rgba(177, 75, 255, 0.15)", color: "rgb(196, 137, 255)" }}>BETA</span>
         </div>
-        <p className="text-sm text-[var(--lg-text-secondary)]">Strategic features, SEO pages, integrations, and UX mockups we're exploring.</p>
-        <AdminCrossNav />
-      </div>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Strategic features, SEO pages, integrations, and UX mockups we're exploring.</div>
+        <div style={{ marginTop: 12 }}><AdminCrossNav /></div>
+      </Glass>
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-[var(--lg-border-faint)] overflow-x-auto">

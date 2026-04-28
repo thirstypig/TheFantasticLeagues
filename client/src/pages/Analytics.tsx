@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Glass, SectionLabel } from "../components/aurora/atoms";
 import {
   BarChart3,
   ArrowRight,
@@ -151,36 +152,26 @@ export default function Analytics() {
   const plannedCount = metrics.filter((m) => m.status === "planned").length;
 
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-[var(--lg-accent)]" />
-            <h1 className="text-2xl font-semibold text-[var(--lg-text-primary)]">
-              Analytics
-            </h1>
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><BarChart3 size={11} /> Analytics</span></SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              Product analytics powered by PostHog. Track how owners use the platform, identify adoption patterns, and make data-driven decisions about what to build next.
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/roadmap"
-              className="text-xs font-medium text-[var(--lg-accent)] hover:underline flex items-center gap-1"
-            >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <Link to="/roadmap" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Roadmap <ArrowRight className="w-3 h-3" />
             </Link>
-            <Link
-              to="/tech"
-              className="text-xs font-medium text-[var(--lg-accent)] hover:underline flex items-center gap-1"
-            >
+            <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Under the Hood <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
         </div>
-        <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
-          Product analytics powered by PostHog. Track how owners use the platform,
-          identify adoption patterns, and make data-driven decisions about what to build next.
-        </p>
-      </div>
+      </Glass>
 
       {/* Development Velocity */}
       <VelocityChart />

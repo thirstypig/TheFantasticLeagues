@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import AdminCrossNav from "../features/admin/components/AdminCrossNav";
+import { Glass, SectionLabel } from "../components/aurora/atoms";
 import {
   GitCommit,
   ChevronDown,
@@ -33,6 +34,61 @@ interface ChangelogEntry {
 }
 
 const changelog: ChangelogEntry[] = [
+  {
+    version: "0.66.0",
+    date: "Apr 28, 2026",
+    session: "Session 84",
+    title: "Aurora design system — full site rollout (PRs #145–#153)",
+    highlights: [
+      "Aurora System.html design from claude.ai/design is now live across the entire authenticated app. Site-wide chrome (PR #147): legacy AppShell sidebar replaced with the design's floating Topbar + bottom Dock. Six dock items (Home / Matchup / My Team / Standings / Players / AI) plus an overflow More popover that categorizes every legacy route. The avatar dropdown (top-right) consolidates league switcher / profile / theme toggle / sign out. Every authenticated page now renders inside .aurora-theme + AmbientBg automatically.",
+      "21 pages now have full Aurora hero treatment — Glass(strong) hero with ✦ eyebrow, Space Grotesk display heading, muted subtitle, Aurora chip-pill tabs where applicable. Pages: Home, Standings, Team, Players, PlayerDetail, Matchup, Weekly Report, AuctionValues, AuctionResults, Activity, Commissioner, Admin, AdminDashboard, AdminUsers, TodoPage, Board, Teams, AI Hub, Draft Report, Keeper Selection, Rules. Plus the lower-traffic info pages (Status, Analytics, Payouts, Profile, Concepts, Roadmap, Tech, Changelog, Archive) brought into the same pattern.",
+      "Auction module rollout completed in 3 PRs: PR-1 (#145) AuctionValues, PR-2a (#146) AuctionResults shell, PR-2b (#151) deep Aurora pass on the 3 embedded children — DraftReport / BidHistoryChart / AuctionReplay. PR-2b shipped via 3 parallel agents working in isolated git worktrees, integrated via cherry-pick. The auction live floor (PR-3) remains pending — flagged in the rollout plan as needing a dedicated session with WS load testing.",
+      "Token redirect (PR #153) — single 61-line CSS change in aurora.css that remaps every legacy --lg-* token (--lg-accent, --lg-text-primary, --lg-table-header-bg, --lg-tint, etc.) to its Aurora --am-* equivalent inside the .aurora-theme scope. Result: every ThemedTable, SortableHeader, lg-card, lg-button, status pill across the entire site picks up Aurora styling without per-component edits. Uses compound selector .aurora-theme.dark / .dark .aurora-theme to beat index.css's .dark rule on specificity (the same-specificity tie was lost otherwise because aurora.css loads first in Vite's bundle order).",
+    ],
+    changes: [
+      { type: "feat", description: "PR #147: AuroraShell.tsx — site-wide app chrome replacing legacy AppShell. Composes aurora-theme + AmbientBg + Topbar + Dock around all authenticated routes. Dock NavLink end-matching for /. More popover categorized by Explore / Insights / Draft / League / Admin. Account popover: email + Admin badge + league switcher + profile / light theme / sign out." },
+      { type: "feat", description: "PR #147: Dock + Topbar atoms ported from aurora-atoms.jsx into client/src/components/aurora/atoms.tsx with React Router NavLink wiring + onClick handlers. Iridescent active glyphs, glassmorphism pill (32px blur, 160% saturate), 0 18px 50px shadow." },
+      { type: "feat", description: "PR #145: Aurora AuctionValues (PR-1 of 3-PR auction split). Glass hero, IridText for the result count, Hitters/Pitchers Aurora chip toggle, Glass-wrapped table." },
+      { type: "feat", description: "PR #146: Aurora AuctionResults shell (PR-2a). Glass hero, iridescent stat tiles (Total Lots / Total Spent / Teams), AI Draft Grades grid in chip cards, team accordion with iridescent left-accent on rank-1 spender + tinted my-team row." },
+      { type: "feat", description: "PR #148: Aurora Activity. Glass hero, Aurora pill segmented tabs (Waivers / Roster Moves / Trades / History), Glass-wrapped tab content. Trade Context modal restyled with Glass(strong)." },
+      { type: "feat", description: "PR #149: Aurora Commissioner + Admin (5 pages) — Commissioner.tsx, Admin.tsx, AdminDashboard.tsx, AdminUsers.tsx, TodoPage.tsx. Glass hero + Aurora pill tabs across all five." },
+      { type: "feat", description: "PR #150: Aurora 6 high-impact pages — Board, Teams index, AI Hub, Draft Report Page, Keeper Selection, Rules (with chip-pill Overview/Settings tabs)." },
+      { type: "feat", description: "PR #151: Auction children deep Aurora ports (PR-2b). DraftReport (Glass + IridText for hero $ values), BidHistoryChart (TEAM_COLORS palette preserved as load-bearing visual identity, Aurora chrome around it), AuctionReplay (iridescent gradient progress bar via var(--am-irid)). Shipped via 3 parallel agents in worktrees, ~7 min wall-clock vs ~15 min sequential." },
+      { type: "feat", description: "PR #153: Aurora token redirects — legacy --lg-* tokens remapped to --am-* equivalents inside .aurora-theme. Affects --lg-accent, --lg-text-primary/-heading/-secondary/-muted/-faint, --lg-border-subtle/-faint/-strong, --lg-bg-card/-page/-surface, --lg-tint/-tint-hover, --lg-success/-error, --lg-table-header-bg/-border/-row-hover/-sticky-bg, --lg-divide. Pre-auth pages (Login/Signup/etc) sit outside .aurora-theme so their colors are unchanged." },
+      { type: "fix", description: "PR #146 follow-on: hide the Glass wrapper around BidHistoryChart when log has no NOMINATION events (e.g. logs imported from CSV with only WIN events, like OGBA's 2026 auction). Without this, the wrapper rendered an empty 32px-tall ghost card visible on browser verify." },
+      { type: "refactor", description: "Per-page Aurora wrappers stripped from Status / Analytics / Payouts / Profile / Concepts / Roadmap / Tech / Changelog / Archive — they now use Aurora atoms directly with their AdminCrossNav / Glass(strong) hero pattern." },
+      { type: "docs", description: "PR #152: CLAUDE.md /now-tldr refreshed to reflect Aurora as current focus, replacing stale 'Phase 4 UI / two silent production regressions' from session 75." },
+      { type: "test", description: "All 330 client tests stay green across the 9-PR sequence. Two text-content fixes needed during commissioner/admin port (literal 'Admin Dashboard' and 'Commissioner' H1 text to satisfy existing assertions)." },
+      { type: "perf", description: "Token-redirect approach (PR #153) is the highest-leverage change of the entire rollout — 61 lines of CSS, no per-component edits, no regression risk on the 32+ files that import ThemedTable. The strangler-fig + scoped-CSS combo is what enabled the site-wide swap without touching legacy children." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+  },
+  {
+    version: "0.65.0",
+    date: "Apr 27, 2026",
+    session: "Sessions 80–83",
+    title: "Aurora design pilot — first 8 screens (PRs #135–#144)",
+    highlights: [
+      "Aurora design system pilot from claude.ai/design Aurora System.html. Atoms ported from aurora-atoms.jsx into client/src/components/aurora/atoms.tsx — Glass, IridescentRing, Chip, Dot, SectionLabel, IridText, Sparkline, AmbientBg, AIStrip, Frame. Tokens scoped to .aurora-theme: teal → indigo → magenta iridescent gradient, Space Grotesk display font, 28px-blur 140%-saturate glassmorphism, dark-mode-first.",
+      "7 of 8 designed screens ported via the strangler-fig + *Legacy.tsx pattern: Home (#135, #137), Standings (#138), Team (#139), Players Index (#141), Player Detail (#142), Matchup (#143), Weekly Report (#144). Each port saved the existing page as XxxLegacy.tsx and exposed it at /x-classic for fallback.",
+      "WeeklyReport page net-new from design (no legacy precursor). Consumes existing /api/reports/:leagueId server endpoint that survived earlier client-UI removal.",
+    ],
+    changes: [
+      { type: "feat", description: "PR #135: Aurora Home pilot. Bento grid + glass cards + iridescent gradient hero. AmbientBg with 3 radial-glow layers + grain overlay." },
+      { type: "feat", description: "PR #137: Weekly Digest + Injured List ported into Aurora Home. AIStrip atom for AI suggestion rows." },
+      { type: "feat", description: "PR #138: Aurora Standings. Cell-intensity grading (peak score = irid gradient, ≥80% = chip-strong, rest = transparent). Rank-1 iridescent avatar background." },
+      { type: "feat", description: "PR #139: Aurora Team page. Roster tables (Hitters/Pitchers) with cap chip + iridescent code, Lineup Intelligence AIStrip." },
+      { type: "feat", description: "PR #141: Aurora Players Index. Position chip toggles, Aurora-styled stat tables, expand-row PlayerExpandedRow." },
+      { type: "feat", description: "PR #142: Aurora Player Detail at /players/:mlbId. Net-new route (PlayerDetailModal still ships for inline use). Headshot + Sparkline trend + season stat cards." },
+      { type: "feat", description: "PR #143: Aurora Matchup. My Matchup + Standings tabs. H2H scoreboard renderable but empty-state-only verified in browser (no H2H league active)." },
+      { type: "feat", description: "PR #144: Aurora Weekly Report (net-new). Sidebar nav addition under Insights." },
+      { type: "feat", description: "PR #140: Pin Prisma retry whitelist boundary + sync docs." },
+      { type: "refactor", description: "Sidebar IA preserved across the pilot — Aurora pages render inside the existing AppShell sidebar (the design's floating dock was deferred until session 84)." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+  },
   {
     version: "0.64.0",
     date: "Apr 24, 2026",
@@ -1379,37 +1435,27 @@ function ChangelogStats() {
 
 export default function Changelog() {
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <GitCommit className="w-5 h-5 text-[var(--lg-accent)]" />
-            <h1 className="text-2xl font-semibold text-[var(--lg-text-primary)]">
-              Changelog
-            </h1>
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><GitCommit size={11} /> Changelog</span></SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Changelog</h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)", maxWidth: 720 }}>
+              Release history across all development sessions. Each entry maps to a session in the build journal — features shipped, bugs fixed, and improvements made.
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/roadmap"
-              className="text-xs font-medium text-[var(--lg-accent)] hover:underline flex items-center gap-1"
-            >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <Link to="/roadmap" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Roadmap <ArrowRight className="w-3 h-3" />
             </Link>
-            <Link
-              to="/tech"
-              className="text-xs font-medium text-[var(--lg-accent)] hover:underline flex items-center gap-1"
-            >
+            <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Under the Hood <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
         </div>
-        <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
-          Release history across all development sessions. Each entry maps to a session
-          in the build journal — features shipped, bugs fixed, and improvements made.
-        </p>
-        <AdminCrossNav />
-      </div>
+        <div style={{ marginTop: 12 }}><AdminCrossNav /></div>
+      </Glass>
 
       {/* Stats */}
       <ChangelogStats />

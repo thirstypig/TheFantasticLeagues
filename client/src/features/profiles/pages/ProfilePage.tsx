@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useToast } from "../../../contexts/ToastContext";
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { Button } from "../../../components/ui/button";
 import {
   getMyProfile,
@@ -137,16 +137,16 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <div className="text-center text-sm text-[var(--lg-text-muted)] py-20">Loading profile...</div>
+      <div style={{ maxWidth: 800, margin: "0 auto" }}>
+        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Loading profile…</div></Glass>
       </div>
     );
   }
 
   if (!data?.user) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <div className="text-center text-sm text-[var(--lg-text-muted)] py-20">Profile not found.</div>
+      <div style={{ maxWidth: 800, margin: "0 auto" }}>
+        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Profile not found.</div></Glass>
       </div>
     );
   }
@@ -157,8 +157,12 @@ export default function ProfilePage() {
   // Public view (non-own profile)
   if (!isOwnProfile) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <PageHeader title={user.name || "User Profile"} subtitle="Fantasy league member" />
+      <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <Glass strong>
+          <SectionLabel>✦ Profile</SectionLabel>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>{user.name || "User Profile"}</h1>
+          <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Fantasy league member</div>
+        </Glass>
 
         <div className="mt-8 space-y-6">
           {/* Avatar + Name */}
@@ -253,8 +257,12 @@ export default function ProfilePage() {
 
   // Own profile — edit mode
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader title="My Profile" subtitle="Manage your public profile and payment methods." />
+    <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Profile</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>My Profile</h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Manage your public profile and payment methods.</div>
+      </Glass>
 
       <div className="mt-8 space-y-8">
         {/* Avatar + Identity */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AdminCrossNav from "../features/admin/components/AdminCrossNav";
 import RelatedTodos from "../features/admin/components/RelatedTodos";
+import { Glass, SectionLabel } from "../components/aurora/atoms";
 import {
   CheckCircle2,
   Circle,
@@ -36,7 +37,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 10, 2026 (Session 62)";
+const LAST_UPDATED = "April 28, 2026 (Session 84)";
 
 // ─── Product Roadmap ───
 
@@ -349,6 +350,28 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 84 — Aurora design system: full site rollout (PRs #145–#153)",
+    items: [
+      { title: "AuroraShell — site-wide app chrome", description: "Replaces legacy AppShell sidebar across the entire authenticated site. Floating Topbar (iridescent square logo + league name + chip pills + iridescent avatar disc) + bottom-center floating Dock (Home / Matchup / My Team / Standings / Players / AI + More overflow popover). Account popover: email + Admin badge + league switcher + profile / theme / sign out.", session: "84 (PR #147)" },
+      { title: "Auction module — 3 PRs to fully Aurora-ize", description: "PR-1 (#145) AuctionValues; PR-2a (#146) AuctionResults shell + AuctionComplete page wrapper; PR-2b (#151) deep Aurora pass on the 3 embedded children DraftReport / BidHistoryChart / AuctionReplay (shipped via 3 parallel agents in isolated worktrees).", session: "84" },
+      { title: "21 pages with Aurora hero treatment", description: "Glass(strong) hero with ✦ eyebrow + Space Grotesk display heading + muted subtitle + Aurora chip-pill tabs where applicable. Includes Activity, Commissioner, Admin, AdminDashboard, AdminUsers, TodoPage, Board, Teams, AI Hub, Draft Report, Keeper Selection, Rules, plus the lower-traffic info pages Status, Analytics, Payouts, Profile, Concepts, Roadmap, Tech, Changelog, Archive.", session: "84 (PRs #148–#150)" },
+      { title: "Aurora token redirects — site-wide unification", description: "Single 61-line CSS change in aurora.css that remaps every legacy --lg-* token to its Aurora --am-* equivalent inside .aurora-theme scope. Affects every ThemedTable, SortableHeader, lg-card, lg-button, status pill across the entire site without per-component edits. Compound selector .aurora-theme.dark / .dark .aurora-theme bumps specificity to (0,0,2,0) to beat index.css's .dark rule (0,0,1,0) on the same-specificity tie.", session: "84 (PR #153)" },
+    ],
+  },
+  {
+    label: "Sessions 80–83 — Aurora design pilot: first 8 screens (PRs #135–#144)",
+    items: [
+      { title: "Aurora atoms ported from claude.ai/design", description: "Atoms ported from aurora-atoms.jsx into client/src/components/aurora/atoms.tsx — Glass, IridescentRing, Chip, Dot, SectionLabel, IridText, Sparkline, AmbientBg, AIStrip, Frame. Tokens scoped to .aurora-theme: teal → indigo → magenta iridescent gradient, Space Grotesk display, 28px-blur 140%-saturate glassmorphism, dark-mode-first.", session: "80–83" },
+      { title: "Aurora Home pilot", description: "Bento grid + glass cards + iridescent gradient hero. AmbientBg with 3 radial-glow layers + grain overlay. Weekly Digest + Injured List ported into Aurora Home in #137.", session: "80 (PRs #135, #137)" },
+      { title: "Aurora Standings", description: "Cell-intensity grading on the period × team matrix (peak score = irid gradient, ≥80% = chip-strong, rest = transparent). Rank-1 iridescent avatar background.", session: "81 (PR #138)" },
+      { title: "Aurora Team page", description: "Roster tables (Hitters/Pitchers) with cap chip + iridescent code, Lineup Intelligence AIStrip.", session: "81 (PR #139)" },
+      { title: "Aurora Players Index", description: "Position chip toggles, Aurora-styled stat tables, expand-row PlayerExpandedRow.", session: "82 (PR #141)" },
+      { title: "Aurora Player Detail", description: "Net-new route at /players/:mlbId. PlayerDetailModal still ships for inline use (Auction, Team, Trading Block, Watchlist, Board, Draft Report).", session: "82 (PR #142)" },
+      { title: "Aurora Matchup", description: "My Matchup + Standings tabs. H2H scoreboard renderable; empty-state-only verified in browser (OGBA is Roto, not H2H).", session: "82 (PR #143)" },
+      { title: "Aurora Weekly Report", description: "Net-new page (no legacy precursor). Consumes existing /api/reports/:leagueId server endpoint.", session: "83 (PR #144)" },
+    ],
+  },
   {
     label: "Session 63 — Admin IA Restructure, Dashboard Rebuild, Error Correlation, Session Tracking Plan",
     items: [
@@ -808,28 +831,21 @@ export default function Roadmap() {
   const completedCount = completedFeatures.reduce((s, g) => s + g.items.length, 0);
 
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 max-w-5xl mx-auto space-y-10">
-      {/* Header */}
-      <div>
-        <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <h1 className="text-2xl font-semibold text-[var(--lg-text-primary)]">
-            Roadmap
-          </h1>
-          <Link
-            to="/tech"
-            className="text-xs font-medium text-[var(--lg-accent)] hover:underline flex items-center gap-1"
-          >
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ Roadmap</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Roadmap</h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>What we're building next — and what we've already shipped.</div>
+            <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>Last updated: {LAST_UPDATED}</div>
+          </div>
+          <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
             Under the Hood <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
-        <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
-          What we're building next — and what we've already shipped.
-        </p>
-        <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
-          Last updated: {LAST_UPDATED}
-        </p>
-        <AdminCrossNav />
-      </div>
+        <div style={{ marginTop: 12 }}><AdminCrossNav /></div>
+      </Glass>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4">
