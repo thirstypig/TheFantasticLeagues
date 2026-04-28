@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, Search, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import type { AuctionLogEvent } from '../hooks/useAuctionState';
 import { track } from '../../../lib/posthog';
+import { Glass, IridText, SectionLabel } from '../../../components/aurora/atoms';
 
 /* ================================================================
    TEAM COLOR PALETTE
    Assigned by team index position in the auction state.
+   Load-bearing visual identity — kept as Tailwind classes even under
+   Aurora chrome so each team's bid bars retain a distinct color.
    ================================================================ */
 const TEAM_COLORS = [
   { bg: 'bg-blue-500',    text: 'text-blue-500',    bar: 'bg-blue-500/80',    border: 'border-blue-500/30',   dot: 'bg-blue-400'    },
@@ -120,26 +123,34 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
   return (
     <div className="space-y-3">
       {/* Summary stats row */}
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs">
-        <span className="text-[var(--lg-text-muted)]">
-          Opening: <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">${lot.openingBid}</span>
+      <div className="flex flex-wrap gap-x-5 gap-y-1" style={{ fontSize: 11 }}>
+        <span style={{ color: "var(--am-text-muted)" }}>
+          Opening: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>${lot.openingBid}</span>
         </span>
-        <span className="text-[var(--lg-text-muted)]">
-          Final: <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${lot.finalPrice}</span>
+        <span style={{ color: "var(--am-text-muted)" }}>
+          Final: <span className="font-semibold tabular-nums" style={{ color: "var(--am-accent)" }}>${lot.finalPrice}</span>
         </span>
-        <span className="text-[var(--lg-text-muted)]">
-          Bids: <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">{lot.bidCount}</span>
+        <span style={{ color: "var(--am-text-muted)" }}>
+          Bids: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>{lot.bidCount}</span>
         </span>
-        <span className="text-[var(--lg-text-muted)]">
-          Bidders: <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">{lot.uniqueBidders}</span>
+        <span style={{ color: "var(--am-text-muted)" }}>
+          Bidders: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>{lot.uniqueBidders}</span>
         </span>
-        <span className="text-[var(--lg-text-muted)]">
-          Spread: <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">+${lot.bidSpread}</span>
+        <span style={{ color: "var(--am-text-muted)" }}>
+          Spread: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>+${lot.bidSpread}</span>
         </span>
       </div>
 
       {/* Price escalation bars */}
-      <div className="space-y-1">
+      <div
+        className="space-y-1"
+        style={{
+          background: "var(--am-surface-faint)",
+          border: "1px solid var(--am-border)",
+          borderRadius: 12,
+          padding: 10,
+        }}
+      >
         {lot.bids.map((bid, i) => {
           const widthPct = Math.max((bid.amount / barMax) * 100, 4);
           const colorIdx = teamColorMap.get(bid.teamId) ?? 0;
@@ -150,15 +161,22 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
           return (
             <div key={i} className="flex items-center gap-2 group">
               {/* Bid number */}
-              <span className="w-5 text-right text-[10px] text-[var(--lg-text-muted)] tabular-nums shrink-0">
+              <span
+                className="w-5 text-right tabular-nums shrink-0"
+                style={{ fontSize: 10, color: "var(--am-text-faint)" }}
+              >
                 {i + 1}
               </span>
 
               {/* Bar */}
               <div className="flex-1 relative">
                 <div
-                  className={`h-6 rounded ${color.bar} transition-all duration-300 flex items-center relative ${isWinner ? 'ring-1 ring-[var(--lg-success)]/50' : ''}`}
-                  style={{ width: `${widthPct}%`, minWidth: '60px' }}
+                  className={`h-6 rounded ${color.bar} transition-all duration-300 flex items-center relative`}
+                  style={{
+                    width: `${widthPct}%`,
+                    minWidth: '60px',
+                    boxShadow: isWinner ? "0 0 0 1px var(--am-positive)" : undefined,
+                  }}
                 >
                   <span className="absolute left-2 text-[11px] font-semibold text-white truncate pr-1">
                     {bid.teamName}
@@ -170,13 +188,16 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
               </div>
 
               {/* Timestamp delta */}
-              <span className="w-12 text-right text-[10px] text-[var(--lg-text-muted)] tabular-nums shrink-0">
+              <span
+                className="w-12 text-right tabular-nums shrink-0"
+                style={{ fontSize: 10, color: "var(--am-text-faint)" }}
+              >
                 {bid.isNomination ? 'nom' : `+${elapsed}s`}
               </span>
 
               {/* Winner badge */}
               {isWinner && (
-                <Trophy size={12} className="text-[var(--lg-success)] shrink-0" />
+                <Trophy size={12} className="shrink-0" style={{ color: "var(--am-positive)" }} />
               )}
             </div>
           );
@@ -255,71 +276,113 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Section heading */}
-      <div className="flex items-center gap-2">
-        <BarChart3 className="w-4 h-4 text-[var(--lg-accent)]" />
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Bid History</h2>
-      </div>
+      <SectionLabel>✦ Bid History</SectionLabel>
 
       {/* Summary row */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--lg-text-secondary)] px-1">
-        <span className="tabular-nums">
-          <span className="font-semibold text-[var(--lg-text-primary)]">{summary.totalLots}</span> lots
-        </span>
-        <span className="text-[var(--lg-text-muted)]">&middot;</span>
-        <span className="tabular-nums">
-          avg <span className="font-semibold text-[var(--lg-text-primary)]">{summary.avgBids.toFixed(1)}</span> bids/lot
-        </span>
-        <span className="text-[var(--lg-text-muted)]">&middot;</span>
-        <span className="tabular-nums">
-          avg price <span className="font-semibold text-[var(--lg-accent)]">${summary.avgPrice.toFixed(2)}</span>
-        </span>
-        {summary.hottest && (
-          <>
-            <span className="text-[var(--lg-text-muted)]">&middot;</span>
-            <span className="tabular-nums">
-              most contested: <span className="font-semibold text-[var(--lg-text-primary)]">{summary.hottest.playerName}</span> ({summary.hottest.bidCount} bids)
-            </span>
-          </>
-        )}
-      </div>
+      <Glass>
+        <div
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums"
+          style={{ fontSize: 12, color: "var(--am-text-muted)" }}
+        >
+          <span>
+            <span className="font-semibold" style={{ color: "var(--am-text)" }}>{summary.totalLots}</span> lots
+          </span>
+          <span style={{ color: "var(--am-text-faint)" }}>&middot;</span>
+          <span>
+            avg <span className="font-semibold" style={{ color: "var(--am-text)" }}>{summary.avgBids.toFixed(1)}</span> bids/lot
+          </span>
+          <span style={{ color: "var(--am-text-faint)" }}>&middot;</span>
+          <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+            avg price <IridText size={16}>${summary.avgPrice.toFixed(2)}</IridText>
+          </span>
+          {summary.hottest && (
+            <>
+              <span style={{ color: "var(--am-text-faint)" }}>&middot;</span>
+              <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                most contested:{" "}
+                <span className="font-semibold" style={{ color: "var(--am-text)" }}>
+                  {summary.hottest.playerName}
+                </span>{" "}
+                (<IridText size={13}>{summary.hottest.bidCount}</IridText> bids)
+              </span>
+            </>
+          )}
+        </div>
+      </Glass>
 
       {/* Search + sort controls */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--lg-text-muted)]" />
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--am-text-faint)" }}
+          />
           <input
             type="text"
             placeholder="Search by player or team..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-input-bg)] text-[var(--lg-text-primary)] placeholder:text-[var(--lg-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+            className="w-full pl-8 pr-3 py-2 focus:outline-none"
+            style={{
+              fontSize: 12,
+              background: "var(--am-surface-faint)",
+              border: "1px solid var(--am-border)",
+              borderRadius: 12,
+              color: "var(--am-text)",
+            }}
           />
         </div>
-        <div className="flex bg-[var(--lg-tint)] rounded-lg p-0.5 border border-[var(--lg-border-subtle)] self-start">
-          {(['lot', 'price', 'bids'] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setSortBy(mode)}
-              className={`px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md transition-all ${
-                sortBy === mode
-                  ? 'bg-[var(--lg-accent)] text-white'
-                  : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]'
-              }`}
-            >
-              {mode === 'lot' ? 'Order' : mode === 'price' ? 'Price' : 'Bids'}
-            </button>
-          ))}
+        <div
+          className="flex self-start"
+          style={{
+            background: "var(--am-surface-faint)",
+            border: "1px solid var(--am-border)",
+            borderRadius: 99,
+            padding: 3,
+            gap: 2,
+          }}
+        >
+          {(['lot', 'price', 'bids'] as const).map(mode => {
+            const active = sortBy === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setSortBy(mode)}
+                style={{
+                  padding: "5px 12px",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: 0.6,
+                  textTransform: "uppercase",
+                  borderRadius: 99,
+                  background: active ? "var(--am-chip-strong)" : "transparent",
+                  color: active ? "var(--am-text)" : "var(--am-text-muted)",
+                  border: "1px solid " + (active ? "var(--am-border-strong)" : "transparent"),
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {mode === 'lot' ? 'Order' : mode === 'price' ? 'Price' : 'Bids'}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Team color legend */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 px-1">
+      <div className="flex flex-wrap gap-x-3 gap-y-1" style={{ paddingLeft: 4 }}>
         {teams.map((team, i) => {
           const color = TEAM_COLORS[i % TEAM_COLORS.length];
           return (
-            <span key={team.id} className="inline-flex items-center gap-1 text-[10px] text-[var(--lg-text-muted)]">
+            <span
+              key={team.id}
+              className="inline-flex items-center gap-1"
+              style={{ fontSize: 10, color: "var(--am-text-muted)" }}
+            >
               <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
               {team.code}
             </span>
@@ -328,9 +391,12 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
       </div>
 
       {/* Lot list */}
-      <div className="rounded-xl border border-[var(--lg-border-subtle)] overflow-hidden divide-y divide-[var(--lg-divide)]">
+      <Glass padded={false}>
         {filteredLots.length === 0 && (
-          <div className="p-6 text-center text-sm text-[var(--lg-text-muted)]">
+          <div
+            className="p-6 text-center"
+            style={{ fontSize: 13, color: "var(--am-text-muted)" }}
+          >
             No lots match your search.
           </div>
         )}
@@ -338,26 +404,47 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
           const isExpanded = expandedPlayerId === lot.playerId;
           const colorIdx = teamColorMap.get(lot.winnerTeamId) ?? 0;
           const winnerColor = TEAM_COLORS[colorIdx % TEAM_COLORS.length];
+          const isFirst = idx === 0;
 
           return (
-            <div key={`${lot.playerId}-${idx}`}>
+            <div
+              key={`${lot.playerId}-${idx}`}
+              style={{
+                borderTop: isFirst ? "none" : "1px solid var(--am-border)",
+              }}
+            >
               {/* Lot header row */}
               <div
-                className={`px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-[var(--lg-tint)] transition-colors ${isExpanded ? 'bg-[var(--lg-tint)]' : ''}`}
+                className="px-4 py-3 flex items-center justify-between cursor-pointer transition-colors"
+                style={{
+                  background: isExpanded ? "var(--am-chip)" : "transparent",
+                }}
                 onClick={() => handleExpand(lot.playerId)}
+                onMouseEnter={(e) => {
+                  if (!isExpanded) e.currentTarget.style.background = "var(--am-chip)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isExpanded) e.currentTarget.style.background = "transparent";
+                }}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Lot number */}
-                  <span className="text-xs text-[var(--lg-text-muted)] tabular-nums w-6 text-right shrink-0">
+                  <span
+                    className="tabular-nums w-6 text-right shrink-0"
+                    style={{ fontSize: 11, color: "var(--am-text-faint)" }}
+                  >
                     {idx + 1}
                   </span>
 
                   {/* Player info */}
                   <div className="min-w-0">
-                    <div className="font-semibold text-sm text-[var(--lg-text-primary)] truncate">
+                    <div
+                      className="font-semibold truncate"
+                      style={{ fontSize: 13, color: "var(--am-text)" }}
+                    >
                       {lot.playerName}
                     </div>
-                    <div className="text-[10px] text-[var(--lg-text-muted)]">
+                    <div style={{ fontSize: 10, color: "var(--am-text-muted)" }}>
                       <span className="inline-flex items-center gap-1">
                         <span className={`w-2 h-2 rounded-full ${winnerColor.dot} shrink-0`} />
                         {lot.winnerTeamName}
@@ -368,12 +455,18 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
 
                 <div className="flex items-center gap-4 shrink-0">
                   {/* Price */}
-                  <span className="font-semibold text-[var(--lg-accent)] tabular-nums text-sm">
+                  <span
+                    className="font-semibold tabular-nums"
+                    style={{ fontSize: 13, color: "var(--am-accent)" }}
+                  >
                     ${lot.finalPrice}
                   </span>
 
                   {/* Bid count */}
-                  <span className="text-xs text-[var(--lg-text-muted)] tabular-nums w-10 text-right">
+                  <span
+                    className="tabular-nums w-10 text-right"
+                    style={{ fontSize: 11, color: "var(--am-text-muted)" }}
+                  >
                     {lot.bidCount} bid{lot.bidCount !== 1 ? 's' : ''}
                   </span>
 
@@ -394,7 +487,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                   </div>
 
                   {/* Expand chevron */}
-                  <div className="text-[var(--lg-text-muted)]">
+                  <div style={{ color: "var(--am-text-muted)" }}>
                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </div>
                 </div>
@@ -402,7 +495,13 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
 
               {/* Expanded chart */}
               {isExpanded && (
-                <div className="px-4 pb-4 pt-1 border-t border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/30 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div
+                  className="px-4 pb-4 pt-2 animate-in fade-in slide-in-from-top-2 duration-300"
+                  style={{
+                    borderTop: "1px solid var(--am-border)",
+                    background: "var(--am-chip)",
+                  }}
+                >
                   <LotChart
                     lot={lot}
                     teamColorMap={teamColorMap}
@@ -413,7 +512,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
             </div>
           );
         })}
-      </div>
+      </Glass>
     </div>
   );
 }
