@@ -19,14 +19,23 @@
  * Port the deferred features into Aurora when the pilot expands.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   AmbientBg, Glass, IridText, Chip, SectionLabel,
 } from "../../../components/aurora/atoms";
 import "../../../components/aurora/aurora.css";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats } from "../../../api";
+import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats, getSeasonStandings } from "../../../api";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
+import { getTeamPeriodRoster, type PeriodRosterEntry } from "../api";
+
+interface PeriodOption {
+  id: number;
+  name: string;
+}
+
+type PeriodMode = "season" | number; // "season" = cumulative; number = periodId
 
 interface RosterPlayer {
   rosterId: number;
@@ -68,6 +77,7 @@ function normCode(c: unknown): string {
 export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
+  const navigate = useNavigate();
   const { leagueId, currentLeagueName, myTeamId } = useLeague();
 
   const [teamMeta, setTeamMeta] = useState<{
@@ -82,6 +92,16 @@ export default function Team() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Team navigator: list of teams in the league for prev/next nav
+  const [allTeams, setAllTeams] = useState<{ id: number; name: string; code: string }[]>([]);
+
+  // Period selector: "season" = cumulative season stats (current behavior);
+  // number = a specific periodId, fetched via /teams/:id/period-roster.
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("season");
+  const [periodOptions, setPeriodOptions] = useState<PeriodOption[]>([]);
+  const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
+  const [periodLoading, setPeriodLoading] = useState(false);
+
   // Resolve teamCode → team metadata + DB id, then load roster + AI.
   useEffect(() => {
     if (!leagueId || !code) return;
@@ -95,6 +115,12 @@ export default function Team() {
         // the response envelope). Don't `.teams` on it.
         const teamsList = await getTeams(leagueId);
         if (canceled) return;
+        // Cache the team list for the navigator
+        setAllTeams(
+          (teamsList ?? [])
+            .map((t: any) => ({ id: t.id, name: t.name, code: t.code ?? "" }))
+            .filter(t => t.code)
+        );
         const team = (teamsList ?? []).find((t: any) => normCode(t.code) === code);
         if (!team) {
           setError(`Team "${code}" not found in league.`);
@@ -178,18 +204,97 @@ export default function Team() {
     return () => { canceled = true; };
   }, [leagueId, code]);
 
+  // Fetch period list for the league (one-shot per league change)
+  useEffect(() => {
+    if (!leagueId) return;
+    let canceled = false;
+    getSeasonStandings(leagueId)
+      .then(s => {
+        if (canceled) return;
+        const ids = s.periodIds ?? [];
+        const names = s.periodNames ?? [];
+        const opts: PeriodOption[] = ids.map((id, i) => ({ id, name: names[i] || `Period ${i + 1}` }));
+        setPeriodOptions(opts);
+      })
+      .catch(() => { /* non-fatal: period selector won't show */ });
+    return () => { canceled = true; };
+  }, [leagueId]);
+
+  // Fetch period-specific roster when a period is selected
+  useEffect(() => {
+    if (periodMode === "season" || !teamMeta?.id) {
+      setPeriodRoster(null);
+      return;
+    }
+    let canceled = false;
+    setPeriodLoading(true);
+    getTeamPeriodRoster(teamMeta.id, periodMode)
+      .then(res => { if (!canceled) setPeriodRoster(res.roster); })
+      .catch(() => { if (!canceled) setPeriodRoster([]); })
+      .finally(() => { if (!canceled) setPeriodLoading(false); });
+    return () => { canceled = true; };
+  }, [periodMode, teamMeta?.id]);
+
+  // Map periodRoster (when in period mode) onto the same RosterPlayer shape
+  // as the season roster — so hitters/pitchers memos work uniformly.
+  const displayRoster: RosterPlayer[] = useMemo(() => {
+    if (periodMode === "season" || !periodRoster) return roster;
+    return periodRoster.map(r => {
+      const ps = r.periodStats || {};
+      const isPitcher = PITCHER_POS.has((r.assignedPosition || r.posPrimary || "").toUpperCase());
+      // Compute derived stats client-side (route returns raw counts)
+      const ab = Number(ps.AB) || 0;
+      const h = Number(ps.H) || 0;
+      const ip = Number(ps.IP) || 0;
+      const er = Number(ps.ER) || 0;
+      const bbH = Number(ps.BB_H) || 0;
+      const avg = ab > 0 ? h / ab : 0;
+      const era = ip > 0 ? (er / ip) * 9 : 0;
+      const whip = ip > 0 ? bbH / ip : 0;
+      return {
+        rosterId: r.id,
+        playerName: r.name,
+        posPrimary: r.posPrimary,
+        position: r.posPrimary,
+        assignedPosition: r.assignedPosition || r.posPrimary,
+        isPitcher,
+        price: r.price,
+        mlbTeam: r.mlbTeam ?? undefined,
+        AVG: avg,
+        HR: Number(ps.HR) || 0,
+        R: Number(ps.R) || 0,
+        RBI: Number(ps.RBI) || 0,
+        SB: Number(ps.SB) || 0,
+        W: Number(ps.W) || 0,
+        SV: Number(ps.SV) || 0,
+        K: Number(ps.K) || 0,
+        ERA: era,
+        WHIP: whip,
+      };
+    });
+  }, [periodMode, periodRoster, roster]);
+
+  // Team navigator helpers — sort allTeams by name; resolve prev/next.
+  const sortedTeams = useMemo(
+    () => [...allTeams].sort((a, b) => a.name.localeCompare(b.name)),
+    [allTeams]
+  );
+  const currentIdx = sortedTeams.findIndex(t => normCode(t.code) === code);
+  const prevTeam = currentIdx > 0 ? sortedTeams[currentIdx - 1] : null;
+  const nextTeam = currentIdx >= 0 && currentIdx < sortedTeams.length - 1 ? sortedTeams[currentIdx + 1] : null;
+
   const hitters = useMemo(() =>
-    roster.filter(p => !p.isPitcher && p.assignedPosition !== "IL")
+    displayRoster.filter(p => !p.isPitcher && p.assignedPosition !== "IL")
       .sort((a, b) => {
         const da = posScore(a.assignedPosition || a.posPrimary);
         const db = posScore(b.assignedPosition || b.posPrimary);
         if (da !== db) return da - db;
         return (b.price ?? 0) - (a.price ?? 0);
       }),
-    [roster]);
+    [displayRoster]);
 
   const pitchers = useMemo(() =>
-    roster.filter(p => p.isPitcher && p.assignedPosition !== "IL")
+    displayRoster.filter(p => p.isPitcher && p.assignedPosition !== "IL")
       .sort((a, b) => {
         // SP before RP, then price desc
         const ap = a.assignedPosition || a.posPrimary || "";
@@ -197,15 +302,16 @@ export default function Team() {
         if (ap !== bp) return ap.localeCompare(bp);
         return (b.price ?? 0) - (a.price ?? 0);
       }),
-    [roster]);
+    [displayRoster]);
 
   const ilCount = useMemo(() =>
-    roster.filter(p => p.assignedPosition === "IL").length,
-    [roster]);
+    displayRoster.filter(p => p.assignedPosition === "IL").length,
+    [displayRoster]);
 
   const totalSpent = useMemo(() =>
-    roster.reduce((s, p) => s + (p.price ?? 0), 0),
-    [roster]);
+    displayRoster.reduce((s, p) => s + (p.price ?? 0), 0),
+    [displayRoster]);
+  void totalSpent; // displayed cap was removed; keep computed for forward-compat
 
   const isMyTeam = teamMeta?.id === myTeamId;
 
@@ -230,7 +336,24 @@ export default function Team() {
           {/* HERO */}
           <div style={{ gridColumn: "span 12" }}>
             <Glass strong style={{ borderRadius: 25, padding: 22 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 22 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr auto auto", alignItems: "center", gap: 14 }}>
+                {/* Team navigator: prev chevron */}
+                <button
+                  type="button"
+                  onClick={() => prevTeam && navigate(`/teams/${prevTeam.code}`)}
+                  disabled={!prevTeam}
+                  aria-label={prevTeam ? `Previous team: ${prevTeam.name}` : "Previous team (none)"}
+                  title={prevTeam ? `← ${prevTeam.name}` : undefined}
+                  style={{
+                    width: 36, height: 36, borderRadius: 99,
+                    background: "var(--am-chip)", border: "1px solid var(--am-border)",
+                    color: "var(--am-text)", cursor: prevTeam ? "pointer" : "not-allowed",
+                    opacity: prevTeam ? 1 : 0.4,
+                    display: "grid", placeItems: "center", padding: 0,
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
                 <div
                   style={{
                     width: 76, height: 76, borderRadius: 18,
@@ -257,9 +380,72 @@ export default function Team() {
                   </div>
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
                     {hitters.length} hitter{hitters.length === 1 ? "" : "s"} · {pitchers.length} pitcher{pitchers.length === 1 ? "" : "s"} · {ilCount} IL
+                    {periodMode !== "season" && (
+                      <> · <span style={{ color: "var(--am-accent)" }}>{periodOptions.find(p => p.id === periodMode)?.name ?? "Period"}</span></>
+                    )}
                   </div>
                 </div>
+                <Link
+                  to="/teams"
+                  style={{
+                    fontSize: 11, color: "var(--am-text-muted)", textDecoration: "none",
+                    padding: "6px 10px", borderRadius: 99,
+                    border: "1px solid var(--am-border)", background: "var(--am-chip)",
+                  }}
+                >
+                  All teams →
+                </Link>
+                {/* Team navigator: next chevron */}
+                <button
+                  type="button"
+                  onClick={() => nextTeam && navigate(`/teams/${nextTeam.code}`)}
+                  disabled={!nextTeam}
+                  aria-label={nextTeam ? `Next team: ${nextTeam.name}` : "Next team (none)"}
+                  title={nextTeam ? `${nextTeam.name} →` : undefined}
+                  style={{
+                    width: 36, height: 36, borderRadius: 99,
+                    background: "var(--am-chip)", border: "1px solid var(--am-border)",
+                    color: "var(--am-text)", cursor: nextTeam ? "pointer" : "not-allowed",
+                    opacity: nextTeam ? 1 : 0.4,
+                    display: "grid", placeItems: "center", padding: 0,
+                  }}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
+
+              {/* Period selector pills — Cumulative season + each period */}
+              {periodOptions.length > 0 && (
+                <div style={{ marginTop: 14, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)", marginRight: 4 }}>
+                    View
+                  </span>
+                  {[{ key: "season" as const, label: "Cumulative" }, ...periodOptions.map(p => ({ key: p.id, label: p.name }))].map((opt) => {
+                    const isActive = periodMode === opt.key;
+                    return (
+                      <button
+                        key={String(opt.key)}
+                        type="button"
+                        onClick={() => setPeriodMode(opt.key)}
+                        style={{
+                          padding: "5px 12px", borderRadius: 99,
+                          fontSize: 11, fontWeight: 600, letterSpacing: 0.2,
+                          background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                          color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                          border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                  {periodLoading && (
+                    <span style={{ fontSize: 11, color: "var(--am-text-faint)", marginLeft: 6 }}>loading…</span>
+                  )}
+                </div>
+              )}
             </Glass>
           </div>
 
