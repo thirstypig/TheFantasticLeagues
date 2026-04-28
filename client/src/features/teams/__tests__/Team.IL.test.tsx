@@ -73,7 +73,11 @@ vi.mock("../../trading-block/components/TradingBlockPanel", () => ({ default: ()
 // imports them, so no mock is needed here.
 
 import { getPlayerSeasonStats, getTeamDetails, getTeams } from "../../../api";
-import Team from "../pages/Team";
+// Targets the legacy Team page at /teams/:teamCode/classic. See note
+// in Team.test.tsx for context. Aurora Team has its own slim IL count
+// in the hero; the rich IL subsection (Your IL Slots, Ghost IL badge,
+// MLB IL candidates) lives in the legacy page.
+import Team from "../pages/TeamLegacy";
 
 const mockDbTeams = [{ id: 10, code: "ACES", name: "Aces" }];
 
