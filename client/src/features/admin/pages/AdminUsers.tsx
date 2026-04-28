@@ -20,6 +20,7 @@ import AdminCrossNav from "../components/AdminCrossNav";
 import { useAuth } from "../../../auth/AuthProvider";
 import { API_BASE, fetchJsonApi, ApiError } from "../../../api/base";
 import { reportError } from "../../../lib/errorBus";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import {
   ThemedTable,
   ThemedThead,
@@ -360,8 +361,12 @@ export default function AdminUsers() {
 
   if (!isAdmin) {
     return (
-      <div className="px-4 py-6 md:px-6 md:py-10">
-        <p className="text-sm text-[var(--lg-text-muted)]">Admin access required.</p>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <Glass>
+          <div style={{ padding: 8, color: "var(--am-text-muted)", fontSize: 13, textAlign: "center" }}>
+            Admin access required.
+          </div>
+        </Glass>
       </div>
     );
   }
@@ -369,18 +374,19 @@ export default function AdminUsers() {
   const rows = data?.users ?? [];
 
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 space-y-4">
-      {/* Header */}
-      <header>
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-[var(--lg-accent)]" />
-          <h1 className="text-lg font-semibold text-[var(--lg-text-primary)]">Users</h1>
-        </div>
-        <p className="text-sm text-[var(--lg-text-secondary)] mt-1">
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Admin · Users</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          User accounts.
+        </h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
           Login activity, engagement, and account management across every registered account.
-        </p>
-        <AdminCrossNav />
-      </header>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <AdminCrossNav />
+        </div>
+      </Glass>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

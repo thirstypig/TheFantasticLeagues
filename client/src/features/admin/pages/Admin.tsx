@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
-import PageHeader from "../../../components/ui/PageHeader";
 import AdminLeagueTools from "../components/AdminLeagueTools";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { subscribeErrors, type SurfacedError } from "../../../lib/errorBus";
 import {
@@ -340,45 +340,62 @@ export default function Admin() {
 
   if (!isAdmin) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <PageHeader title="Admin Dashboard" subtitle="Ops command center." />
-        <div className="lg-card p-16 text-center text-sm text-[var(--lg-text-muted)] mt-6">
-          Admin access required.
-        </div>
+      <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <Glass strong>
+          <SectionLabel>✦ Admin</SectionLabel>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            Ops command center.
+          </h1>
+        </Glass>
+        <Glass>
+          <div style={{ height: 120, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--am-text-muted)", fontSize: 13 }}>
+            Admin access required.
+          </div>
+        </Glass>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="Admin Dashboard"
-        subtitle="Ops command center — users, leagues, activity, and launch readiness."
-        rightElement={
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ Ops</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              Admin Dashboard
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              Ops command center — users, leagues, activity, and launch readiness.
+              {stats?.generatedAt && <span style={{ marginLeft: 6, color: "var(--am-text-faint)" }}>· Updated {relativeTime(stats.generatedAt)}</span>}
+            </div>
+          </div>
           <button
             onClick={refresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 text-xs font-medium text-[var(--lg-accent)] hover:underline px-3 py-1.5 rounded-md bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] disabled:opacity-50"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "6px 12px", borderRadius: 99,
+              fontSize: 12, fontWeight: 600,
+              background: "var(--am-chip)", color: "var(--am-text)",
+              border: "1px solid var(--am-border)",
+              cursor: refreshing ? "not-allowed" : "pointer",
+              opacity: refreshing ? 0.5 : 1,
+              fontFamily: "inherit",
+            }}
           >
-            {refreshing ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <RefreshCw size={12} />
-            )}
+            {refreshing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             Refresh
           </button>
-        }
-      />
-      {stats?.generatedAt && (
-        <div className="text-[10px] text-[var(--lg-text-muted)] -mt-2 mb-2">
-          Updated {relativeTime(stats.generatedAt)}
         </div>
-      )}
+      </Glass>
 
       {loading ? (
-        <div className="py-16 text-center text-sm text-[var(--lg-text-muted)]">
-          <Loader2 className="inline-block animate-spin mr-2" size={14} /> Loading dashboard…
-        </div>
+        <Glass>
+          <div style={{ padding: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--am-text-muted)", fontSize: 13 }}>
+            <Loader2 className="animate-spin" size={14} /> Loading dashboard…
+          </div>
+        </Glass>
       ) : (
         <div className="mt-6 space-y-3">
           {/* ─── Row 1: 4 stat cards ─── */}

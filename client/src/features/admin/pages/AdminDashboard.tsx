@@ -9,6 +9,7 @@ import { StatTile, StatTileSkeleton } from "../components/StatTile";
 import { MiniSparkline } from "../components/MiniSparkline";
 import { FunnelBar } from "../components/FunnelBar";
 import { reportError } from "../../../lib/errorBus";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import {
   Activity,
   ArrowLeftRight,
@@ -85,38 +86,43 @@ export default function AdminDashboard() {
   useEffect(() => { load(days); }, [days, load]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-[var(--lg-text-heading)]">
-            Dashboard
-          </h1>
-          <p className="text-sm text-[var(--lg-text-muted)] mt-1">
-            Executive overview
-            {data && (
-              <span className="ml-2 opacity-60">
-                · cached {data.cacheTTLSeconds}s
-              </span>
-            )}
-          </p>
+    <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ Admin · Dashboard</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              Executive overview.
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              5-second test: is the business healthy?
+              {data && <span style={{ marginLeft: 6, color: "var(--am-text-faint)" }}>· cached {data.cacheTTLSeconds}s</span>}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {DATE_PRESETS.map((p) => {
+              const isActive = days === p.days;
+              return (
+                <button
+                  key={p.days}
+                  onClick={() => setDays(p.days)}
+                  style={{
+                    padding: "6px 12px", borderRadius: 99,
+                    fontSize: 11, fontWeight: 600, letterSpacing: 0.2,
+                    background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                    color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                    border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex gap-1 bg-[var(--lg-tint)] p-1 rounded-lg">
-          {DATE_PRESETS.map((p) => (
-            <button
-              key={p.days}
-              onClick={() => setDays(p.days)}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                days === p.days
-                  ? "bg-[var(--lg-accent)] text-white"
-                  : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      </Glass>
 
       {/* Hero Metric */}
       {loading && !data ? (

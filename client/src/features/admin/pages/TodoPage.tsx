@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { ChevronDown, ChevronRight, Plus, Check, Circle, Loader2, ExternalLink, Calendar } from "lucide-react";
 import AdminCrossNav from "../components/AdminCrossNav";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 
 type Status = "not_started" | "in_progress" | "done";
 type Priority = "p0" | "p1" | "p2" | "p3";
@@ -136,30 +137,39 @@ export default function TodoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
-      <main className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <header className="mb-8">
-          <h1 className="text-3xl font-semibold uppercase text-[var(--lg-text-heading)]">Todo</h1>
-          <p className="text-sm text-[var(--lg-text-muted)] mt-1">Day-to-day tasks grouped by category. Click a row to expand steps.</p>
-          <AdminCrossNav />
-        </header>
-
-        {/* Stats bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 px-4 py-3 bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl">
-          <div className="flex items-center gap-6 text-xs">
-            <span className="text-[var(--lg-text-muted)]"><strong className="text-[var(--lg-text-primary)] font-bold">{totals.done}</strong> / {totals.total} done</span>
-            <span className="text-amber-400"><strong className="font-bold">{totals.inProgress}</strong> in progress</span>
-            <span className="text-slate-400"><strong className="font-bold">{totals.notStarted}</strong> not started</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-48 bg-[var(--lg-bg)] rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${totals.total > 0 ? (totals.done / totals.total) * 100 : 0}%` }} />
-            </div>
-            <span className="text-xs font-bold text-[var(--lg-text-muted)]">
-              {totals.total > 0 ? Math.round((totals.done / totals.total) * 100) : 0}%
-            </span>
-          </div>
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Admin · Todo</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          Day-to-day tasks.
+        </h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+          Grouped by category. Click a row to expand steps.
         </div>
+        <div style={{ marginTop: 12 }}>
+          <AdminCrossNav />
+        </div>
+      </Glass>
+
+      <main>
+        <Glass>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 12 }}>
+              <span style={{ color: "var(--am-text-muted)" }}><strong style={{ color: "var(--am-text)", fontWeight: 700 }}>{totals.done}</strong> / {totals.total} done</span>
+              <span style={{ color: "rgb(251, 191, 36)" }}><strong style={{ fontWeight: 700 }}>{totals.inProgress}</strong> in progress</span>
+              <span style={{ color: "var(--am-text-faint)" }}><strong style={{ fontWeight: 700 }}>{totals.notStarted}</strong> not started</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ height: 8, width: 192, background: "var(--am-surface-faint)", borderRadius: 99, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: "rgb(16, 185, 129)", width: `${totals.total > 0 ? (totals.done / totals.total) * 100 : 0}%`, transition: "width 500ms" }} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)" }}>
+                {totals.total > 0 ? Math.round((totals.done / totals.total) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+        </Glass>
+        <div style={{ height: 16 }} />
 
         {/* Filter buttons */}
         <div className="flex items-center gap-2 mb-6">
