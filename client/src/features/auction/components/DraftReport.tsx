@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { BarChart3, TrendingUp, TrendingDown, Loader2, Target, Users, DollarSign, Gavel, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+import { Glass, IridText, SectionLabel } from "../../../components/aurora/atoms";
 
 /* ── Types (matches server response) ─────────────────────────────── */
 
@@ -52,17 +53,40 @@ interface DraftReportProps {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-3 text-center">
-      <div className="text-lg font-semibold text-[var(--lg-text-primary)] tabular-nums">{value}</div>
-      <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mt-0.5">{label}</div>
-      {sub && <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5 truncate">{sub}</div>}
-    </div>
+    <Glass style={{ padding: 14, textAlign: "center" }}>
+      <SectionLabel style={{ marginBottom: 6 }}>{label}</SectionLabel>
+      <IridText size={22}>{value}</IridText>
+      {sub && (
+        <div
+          style={{
+            fontSize: 10,
+            color: "var(--am-text-faint)",
+            marginTop: 6,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {sub}
+        </div>
+      )}
+    </Glass>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mt-5 mb-2">{children}</h4>;
-}
+const AURORA_BTN_BASE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  borderRadius: 99,
+  background: "var(--am-chip-strong)",
+  color: "var(--am-text)",
+  border: "1px solid var(--am-border-strong)",
+  cursor: "pointer",
+};
 
 /* ── Component ───────────────────────────────────────────────────── */
 
@@ -86,236 +110,285 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
 
   if (!data) {
     return (
-      <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-[var(--lg-accent)]" />
-            <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Draft Report</h3>
+      <Glass>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <BarChart3 size={18} style={{ color: "var(--am-accent)" }} />
+            <SectionLabel style={{ marginBottom: 0 }}>Draft Report</SectionLabel>
           </div>
           <button
+            type="button"
             onClick={loadReport}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ ...AURORA_BTN_BASE, opacity: loading ? 0.5 : 1 }}
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <BarChart3 size={14} />}
+            {loading ? <Loader2 size={12} className="animate-spin" /> : <BarChart3 size={12} />}
             {loading ? "Analyzing..." : "View Draft Report"}
           </button>
         </div>
-        {error && <p className="text-xs text-[var(--lg-error)] mt-2">{error}</p>}
-      </div>
+        {error && (
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--am-negative)" }}>
+            {error}
+          </div>
+        )}
+      </Glass>
     );
   }
 
   const { league: lg } = data;
 
   return (
-    <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-5 space-y-1">
-      <div className="flex items-center gap-2 mb-3">
-        <BarChart3 className="w-5 h-5 text-[var(--lg-accent)]" />
-        <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Draft Report</h3>
-      </div>
+    <Glass>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <BarChart3 size={18} style={{ color: "var(--am-accent)" }} />
+          <SectionLabel style={{ marginBottom: 0 }}>Draft Report</SectionLabel>
+        </div>
 
-      {/* ── League Summary ── */}
-      <SectionLabel>League Summary</SectionLabel>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <StatCard label="Total Lots" value={lg.totalLots} />
-        <StatCard label="Total Spent" value={`$${lg.totalSpent}`} />
-        <StatCard label="Avg Price" value={`$${lg.avgPrice}`} />
-        <StatCard label="Median Price" value={`$${lg.medianPrice}`} />
-        <StatCard label="Total Bids" value={lg.totalBidsPlaced} />
-        <StatCard label="Avg Bids/Lot" value={lg.avgBidsPerLot} />
-        <StatCard
-          label="Most Expensive"
-          value={lg.mostExpensivePlayer ? `$${lg.mostExpensivePlayer.price}` : "—"}
-          sub={lg.mostExpensivePlayer ? `${lg.mostExpensivePlayer.playerName} (${lg.mostExpensivePlayer.position})` : undefined}
-        />
-        <StatCard
-          label="Cheapest Win"
-          value={lg.cheapestWin ? `$${lg.cheapestWin.price}` : "—"}
-          sub={lg.cheapestWin ? `${lg.cheapestWin.playerName} (${lg.cheapestWin.position})` : undefined}
-        />
-      </div>
-
-      {/* ── Bargains & Overpays ── */}
-      {(data.bargains.length > 0 || data.overpays.length > 0) && (
-        <>
-          <SectionLabel>Bargains & Overpays</SectionLabel>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {data.bargains.length > 0 && (
-              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <TrendingUp size={14} className="text-emerald-500" />
-                  <span className="text-xs font-semibold text-emerald-500">Top Bargains</span>
-                </div>
-                <ThemedTable>
-                  <ThemedThead>
-                    <ThemedTr>
-                      <ThemedTh>Player</ThemedTh>
-                      <ThemedTh className="text-right">Price</ThemedTh>
-                      <ThemedTh className="text-right">Value</ThemedTh>
-                      <ThemedTh className="text-right">Surplus</ThemedTh>
-                    </ThemedTr>
-                  </ThemedThead>
-                  <ThemedTbody>
-                    {data.bargains.map(b => (
-                      <ThemedTr key={b.playerName}>
-                        <ThemedTd>
-                          <span className="font-medium text-[var(--lg-text-primary)]">{b.playerName}</span>
-                          <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{b.position}</span>
-                        </ThemedTd>
-                        <ThemedTd className="text-right tabular-nums">${b.price}</ThemedTd>
-                        <ThemedTd className="text-right tabular-nums">${b.projectedValue}</ThemedTd>
-                        <ThemedTd className="text-right tabular-nums text-emerald-500 font-semibold">+${b.surplus}</ThemedTd>
-                      </ThemedTr>
-                    ))}
-                  </ThemedTbody>
-                </ThemedTable>
-              </div>
-            )}
-            {data.overpays.length > 0 && (
-              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <TrendingDown size={14} className="text-red-400" />
-                  <span className="text-xs font-semibold text-red-400">Top Overpays</span>
-                </div>
-                <ThemedTable>
-                  <ThemedThead>
-                    <ThemedTr>
-                      <ThemedTh>Player</ThemedTh>
-                      <ThemedTh className="text-right">Price</ThemedTh>
-                      <ThemedTh className="text-right">Value</ThemedTh>
-                      <ThemedTh className="text-right">Surplus</ThemedTh>
-                    </ThemedTr>
-                  </ThemedThead>
-                  <ThemedTbody>
-                    {data.overpays.map(o => (
-                      <ThemedTr key={o.playerName}>
-                        <ThemedTd>
-                          <span className="font-medium text-[var(--lg-text-primary)]">{o.playerName}</span>
-                          <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{o.position}</span>
-                        </ThemedTd>
-                        <ThemedTd className="text-right tabular-nums">${o.price}</ThemedTd>
-                        <ThemedTd className="text-right tabular-nums">${o.projectedValue}</ThemedTd>
-                        <ThemedTd className="text-right tabular-nums text-red-400 font-semibold">${o.surplus}</ThemedTd>
-                      </ThemedTr>
-                    ))}
-                  </ThemedTbody>
-                </ThemedTable>
-              </div>
-            )}
+        {/* ── League Summary ── */}
+        <div>
+          <SectionLabel>League Summary</SectionLabel>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            <StatCard label="Total Lots" value={lg.totalLots} />
+            <StatCard label="Total Spent" value={`$${lg.totalSpent}`} />
+            <StatCard label="Avg Price" value={`$${lg.avgPrice}`} />
+            <StatCard label="Median Price" value={`$${lg.medianPrice}`} />
+            <StatCard label="Total Bids" value={lg.totalBidsPlaced} />
+            <StatCard label="Avg Bids/Lot" value={lg.avgBidsPerLot} />
+            <StatCard
+              label="Most Expensive"
+              value={lg.mostExpensivePlayer ? `$${lg.mostExpensivePlayer.price}` : "—"}
+              sub={lg.mostExpensivePlayer ? `${lg.mostExpensivePlayer.playerName} (${lg.mostExpensivePlayer.position})` : undefined}
+            />
+            <StatCard
+              label="Cheapest Win"
+              value={lg.cheapestWin ? `$${lg.cheapestWin.price}` : "—"}
+              sub={lg.cheapestWin ? `${lg.cheapestWin.playerName} (${lg.cheapestWin.position})` : undefined}
+            />
           </div>
-        </>
-      )}
+        </div>
 
-      {/* ── Position Spending ── */}
-      <SectionLabel>Spending by Position</SectionLabel>
-      <div className="overflow-x-auto">
-        <ThemedTable>
-          <ThemedThead>
-            <ThemedTr>
-              <ThemedTh>Position</ThemedTh>
-              <ThemedTh className="text-right">Players</ThemedTh>
-              <ThemedTh className="text-right">Total Spent</ThemedTh>
-              <ThemedTh className="text-right">Avg Price</ThemedTh>
-            </ThemedTr>
-          </ThemedThead>
-          <ThemedTbody>
-            {data.positionSpending.map(ps => (
-              <ThemedTr key={ps.position}>
-                <ThemedTd className="font-semibold text-[var(--lg-text-primary)]">{ps.position}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">{ps.playerCount}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">${ps.totalSpent}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">${ps.avgPrice}</ThemedTd>
-              </ThemedTr>
-            ))}
-          </ThemedTbody>
-        </ThemedTable>
-      </div>
-
-      {/* ── Most Contested ── */}
-      <SectionLabel>Most Contested Players</SectionLabel>
-      <div className="overflow-x-auto">
-        <ThemedTable>
-          <ThemedThead>
-            <ThemedTr>
-              <ThemedTh>Player</ThemedTh>
-              <ThemedTh className="text-right">Price</ThemedTh>
-              <ThemedTh className="text-right">Bids</ThemedTh>
-              <ThemedTh className="text-right">Teams</ThemedTh>
-            </ThemedTr>
-          </ThemedThead>
-          <ThemedTbody>
-            {data.mostContested.map(mc => (
-              <ThemedTr key={mc.playerName}>
-                <ThemedTd>
-                  <span className="font-medium text-[var(--lg-text-primary)]">{mc.playerName}</span>
-                  <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{mc.position}</span>
-                </ThemedTd>
-                <ThemedTd className="text-right tabular-nums font-semibold text-[var(--lg-accent)]">${mc.price}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">{mc.bidCount}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">{mc.teamsInvolved}</ThemedTd>
-              </ThemedTr>
-            ))}
-          </ThemedTbody>
-        </ThemedTable>
-      </div>
-
-      {/* ── Team Efficiency ── */}
-      <SectionLabel>Team Efficiency</SectionLabel>
-      <div className="overflow-x-auto">
-        <ThemedTable>
-          <ThemedThead>
-            <ThemedTr>
-              <ThemedTh>Team</ThemedTh>
-              <ThemedTh className="text-right">Spent</ThemedTh>
-              <ThemedTh className="text-right">Players</ThemedTh>
-              <ThemedTh className="text-right">Avg $</ThemedTh>
-              <ThemedTh className="text-right">Left</ThemedTh>
-              <ThemedTh className="text-right">Surplus</ThemedTh>
-            </ThemedTr>
-          </ThemedThead>
-          <ThemedTbody>
-            {data.teamEfficiency.map(te => (
-              <ThemedTr key={te.teamId} className={te.teamId === myTeamId ? "bg-[var(--lg-tint)]" : ""}>
-                <ThemedTd className="font-medium text-[var(--lg-text-primary)]">{te.teamName}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">${te.totalSpent}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">{te.playersAcquired}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">${te.avgPrice}</ThemedTd>
-                <ThemedTd className="text-right tabular-nums">${te.budgetRemaining}</ThemedTd>
-                <ThemedTd className={`text-right tabular-nums font-semibold ${te.totalSurplus > 0 ? "text-emerald-500" : te.totalSurplus < 0 ? "text-red-400" : ""}`}>
-                  {te.totalSurplus > 0 ? "+" : ""}{te.totalSurplus === 0 ? "—" : `$${te.totalSurplus}`}
-                </ThemedTd>
-              </ThemedTr>
-            ))}
-          </ThemedTbody>
-        </ThemedTable>
-      </div>
-
-      {/* ── Spending Pace ── */}
-      <SectionLabel>Spending Pace</SectionLabel>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {data.spendingPace.map((q, i) => {
-          const prev = i > 0 ? data.spendingPace[i - 1] : null;
-          const trend = prev && q.avgPrice > 0 && prev.avgPrice > 0
-            ? q.avgPrice > prev.avgPrice ? "up" : q.avgPrice < prev.avgPrice ? "down" : null
-            : null;
-          return (
-            <div key={q.quarter} className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-3 text-center">
-              <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
-                Q{q.quarter} · {q.lotsCount} lots
-              </div>
-              <div className="flex items-center justify-center gap-1">
-                <span className="text-lg font-semibold text-[var(--lg-text-primary)] tabular-nums">
-                  ${q.avgPrice}
-                </span>
-                {trend === "up" && <ArrowUpRight size={14} className="text-red-400" />}
-                {trend === "down" && <ArrowDownRight size={14} className="text-emerald-500" />}
-              </div>
-              <div className="text-[10px] text-[var(--lg-text-muted)]">avg · ${q.totalSpent} total</div>
+        {/* ── Bargains & Overpays ── */}
+        {(data.bargains.length > 0 || data.overpays.length > 0) && (
+          <div>
+            <SectionLabel>Bargains & Overpays</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+              {data.bargains.length > 0 && (
+                <Glass
+                  style={{
+                    padding: 14,
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    background: "rgba(16, 185, 129, 0.05)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                    <TrendingUp size={14} style={{ color: "var(--am-positive)" }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--am-positive)", letterSpacing: 0.4, textTransform: "uppercase" }}>
+                      Top Bargains
+                    </span>
+                  </div>
+                  <ThemedTable>
+                    <ThemedThead>
+                      <ThemedTr>
+                        <ThemedTh>Player</ThemedTh>
+                        <ThemedTh className="text-right">Price</ThemedTh>
+                        <ThemedTh className="text-right">Value</ThemedTh>
+                        <ThemedTh className="text-right">Surplus</ThemedTh>
+                      </ThemedTr>
+                    </ThemedThead>
+                    <ThemedTbody>
+                      {data.bargains.map(b => (
+                        <ThemedTr key={b.playerName}>
+                          <ThemedTd>
+                            <span className="font-medium text-[var(--lg-text-primary)]">{b.playerName}</span>
+                            <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{b.position}</span>
+                          </ThemedTd>
+                          <ThemedTd className="text-right tabular-nums">${b.price}</ThemedTd>
+                          <ThemedTd className="text-right tabular-nums">${b.projectedValue}</ThemedTd>
+                          <ThemedTd className="text-right tabular-nums font-semibold">
+                            <span style={{ color: "var(--am-positive)" }}>+${b.surplus}</span>
+                          </ThemedTd>
+                        </ThemedTr>
+                      ))}
+                    </ThemedTbody>
+                  </ThemedTable>
+                </Glass>
+              )}
+              {data.overpays.length > 0 && (
+                <Glass
+                  style={{
+                    padding: 14,
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    background: "rgba(239, 68, 68, 0.05)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                    <TrendingDown size={14} style={{ color: "var(--am-negative)" }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--am-negative)", letterSpacing: 0.4, textTransform: "uppercase" }}>
+                      Top Overpays
+                    </span>
+                  </div>
+                  <ThemedTable>
+                    <ThemedThead>
+                      <ThemedTr>
+                        <ThemedTh>Player</ThemedTh>
+                        <ThemedTh className="text-right">Price</ThemedTh>
+                        <ThemedTh className="text-right">Value</ThemedTh>
+                        <ThemedTh className="text-right">Surplus</ThemedTh>
+                      </ThemedTr>
+                    </ThemedThead>
+                    <ThemedTbody>
+                      {data.overpays.map(o => (
+                        <ThemedTr key={o.playerName}>
+                          <ThemedTd>
+                            <span className="font-medium text-[var(--lg-text-primary)]">{o.playerName}</span>
+                            <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{o.position}</span>
+                          </ThemedTd>
+                          <ThemedTd className="text-right tabular-nums">${o.price}</ThemedTd>
+                          <ThemedTd className="text-right tabular-nums">${o.projectedValue}</ThemedTd>
+                          <ThemedTd className="text-right tabular-nums font-semibold">
+                            <span style={{ color: "var(--am-negative)" }}>${o.surplus}</span>
+                          </ThemedTd>
+                        </ThemedTr>
+                      ))}
+                    </ThemedTbody>
+                  </ThemedTable>
+                </Glass>
+              )}
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {/* ── Position Spending ── */}
+        <div>
+          <SectionLabel>Spending by Position</SectionLabel>
+          <div className="overflow-x-auto">
+            <ThemedTable>
+              <ThemedThead>
+                <ThemedTr>
+                  <ThemedTh>Position</ThemedTh>
+                  <ThemedTh className="text-right">Players</ThemedTh>
+                  <ThemedTh className="text-right">Total Spent</ThemedTh>
+                  <ThemedTh className="text-right">Avg Price</ThemedTh>
+                </ThemedTr>
+              </ThemedThead>
+              <ThemedTbody>
+                {data.positionSpending.map(ps => (
+                  <ThemedTr key={ps.position}>
+                    <ThemedTd className="font-semibold text-[var(--lg-text-primary)]">{ps.position}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">{ps.playerCount}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">${ps.totalSpent}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">${ps.avgPrice}</ThemedTd>
+                  </ThemedTr>
+                ))}
+              </ThemedTbody>
+            </ThemedTable>
+          </div>
+        </div>
+
+        {/* ── Most Contested ── */}
+        <div>
+          <SectionLabel>Most Contested Players</SectionLabel>
+          <div className="overflow-x-auto">
+            <ThemedTable>
+              <ThemedThead>
+                <ThemedTr>
+                  <ThemedTh>Player</ThemedTh>
+                  <ThemedTh className="text-right">Price</ThemedTh>
+                  <ThemedTh className="text-right">Bids</ThemedTh>
+                  <ThemedTh className="text-right">Teams</ThemedTh>
+                </ThemedTr>
+              </ThemedThead>
+              <ThemedTbody>
+                {data.mostContested.map(mc => (
+                  <ThemedTr key={mc.playerName}>
+                    <ThemedTd>
+                      <span className="font-medium text-[var(--lg-text-primary)]">{mc.playerName}</span>
+                      <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{mc.position}</span>
+                    </ThemedTd>
+                    <ThemedTd className="text-right tabular-nums font-semibold">
+                      <span style={{ color: "var(--am-accent)" }}>${mc.price}</span>
+                    </ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">{mc.bidCount}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">{mc.teamsInvolved}</ThemedTd>
+                  </ThemedTr>
+                ))}
+              </ThemedTbody>
+            </ThemedTable>
+          </div>
+        </div>
+
+        {/* ── Team Efficiency ── */}
+        <div>
+          <SectionLabel>Team Efficiency</SectionLabel>
+          <div className="overflow-x-auto">
+            <ThemedTable>
+              <ThemedThead>
+                <ThemedTr>
+                  <ThemedTh>Team</ThemedTh>
+                  <ThemedTh className="text-right">Spent</ThemedTh>
+                  <ThemedTh className="text-right">Players</ThemedTh>
+                  <ThemedTh className="text-right">Avg $</ThemedTh>
+                  <ThemedTh className="text-right">Left</ThemedTh>
+                  <ThemedTh className="text-right">Surplus</ThemedTh>
+                </ThemedTr>
+              </ThemedThead>
+              <ThemedTbody>
+                {data.teamEfficiency.map(te => (
+                  <ThemedTr key={te.teamId} className={te.teamId === myTeamId ? "bg-[var(--lg-tint)]" : ""}>
+                    <ThemedTd className="font-medium text-[var(--lg-text-primary)]">{te.teamName}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">${te.totalSpent}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">{te.playersAcquired}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">${te.avgPrice}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums">${te.budgetRemaining}</ThemedTd>
+                    <ThemedTd className="text-right tabular-nums font-semibold">
+                      <span
+                        style={{
+                          color:
+                            te.totalSurplus > 0 ? "var(--am-positive)" :
+                            te.totalSurplus < 0 ? "var(--am-negative)" :
+                            undefined,
+                        }}
+                      >
+                        {te.totalSurplus > 0 ? "+" : ""}{te.totalSurplus === 0 ? "—" : `$${te.totalSurplus}`}
+                      </span>
+                    </ThemedTd>
+                  </ThemedTr>
+                ))}
+              </ThemedTbody>
+            </ThemedTable>
+          </div>
+        </div>
+
+        {/* ── Spending Pace ── */}
+        <div>
+          <SectionLabel>Spending Pace</SectionLabel>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            {data.spendingPace.map((q, i) => {
+              const prev = i > 0 ? data.spendingPace[i - 1] : null;
+              const trend = prev && q.avgPrice > 0 && prev.avgPrice > 0
+                ? q.avgPrice > prev.avgPrice ? "up" : q.avgPrice < prev.avgPrice ? "down" : null
+                : null;
+              return (
+                <Glass key={q.quarter} style={{ padding: 14, textAlign: "center" }}>
+                  <SectionLabel style={{ marginBottom: 6 }}>
+                    Q{q.quarter} · {q.lotsCount} lots
+                  </SectionLabel>
+                  <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <IridText size={22}>${q.avgPrice}</IridText>
+                    {trend === "up" && <ArrowUpRight size={14} style={{ color: "var(--am-negative)" }} />}
+                    {trend === "down" && <ArrowDownRight size={14} style={{ color: "var(--am-positive)" }} />}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--am-text-faint)", marginTop: 4 }}>
+                    avg · ${q.totalSpent} total
+                  </div>
+                </Glass>
+              );
+            })}
+          </div>
+        </div>
       </div>
-    </div>
+    </Glass>
   );
 }

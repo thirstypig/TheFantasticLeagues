@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Rewind, FastForward, X } from 'lucide-react';
 import type { AuctionLogEvent } from '../hooks/useAuctionState';
 import { track } from '../../../lib/posthog';
+import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
 
 interface AuctionTeamBasic {
   id: number;
@@ -104,7 +105,23 @@ function getHeadshotUrl(playerId: string): string {
   return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${playerId}/headshot/67/current`;
 }
 
-export default function AuctionReplay({ log, teams, onClose }: AuctionReplayProps) {
+const CTRL_BTN_BASE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  height: 30,
+  minWidth: 30,
+  padding: "0 10px",
+  borderRadius: 99,
+  background: "var(--am-chip)",
+  color: "var(--am-text-muted)",
+  border: "1px solid var(--am-border)",
+  cursor: "pointer",
+  transition: "background 120ms ease, color 120ms ease, border-color 120ms ease",
+};
+
+export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionReplayProps) {
   const lots = useMemo(() => buildLots(log), [log]);
   const [currentLotIndex, setCurrentLotIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -182,12 +199,8 @@ export default function AuctionReplay({ log, teams, onClose }: AuctionReplayProp
     });
   }, [allBidsVisible, currentLotIndex, lots.length]);
 
-  const cycleSpeed = useCallback(() => {
-    setSpeed((prev) => {
-      if (prev === 1) return 2;
-      if (prev === 2) return 4;
-      return 1;
-    });
+  const setSpeedTo = useCallback((next: PlaybackSpeed) => {
+    setSpeed(next);
   }, []);
 
   // Show all bids immediately when skipping
@@ -197,126 +210,276 @@ export default function AuctionReplay({ log, teams, onClose }: AuctionReplayProp
 
   if (lots.length === 0) {
     return (
-      <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center">
-        <p className="text-sm text-[var(--lg-text-muted)]">No completed lots to replay.</p>
-      </div>
+      <Glass>
+        <div style={{ textAlign: "center", padding: "16px 8px" }}>
+          <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: 0 }}>
+            No completed lots to replay.
+          </p>
+        </div>
+      </Glass>
     );
   }
 
   const progressPercent = lots.length > 1 ? (currentLotIndex / (lots.length - 1)) * 100 : 100;
   const isAtEnd = currentLotIndex >= lots.length - 1 && allBidsVisible;
 
+  const speedOptions: PlaybackSpeed[] = [1, 2, 4];
+
   return (
-    <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
+    <Glass padded={false}>
       {/* Header */}
-      <div className="px-4 md:px-6 py-3 flex items-center justify-between border-b border-[var(--lg-border-faint)]">
-        <div className="flex items-center gap-2">
-          <Rewind size={16} className="text-[var(--lg-accent)]" />
-          <h3 className="text-sm font-semibold text-[var(--lg-text-heading)]">Auction Replay</h3>
-          <span className="text-xs text-[var(--lg-text-muted)] tabular-nums">
+      <div
+        style={{
+          padding: "14px 18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          borderBottom: "1px solid var(--am-border)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <div>
+            <SectionLabel style={{ marginBottom: 4 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Rewind size={11} />
+                ✦ Replay
+              </span>
+            </SectionLabel>
+            <div
+              style={{
+                fontFamily: "var(--am-display)",
+                fontSize: 20,
+                fontWeight: 300,
+                color: "var(--am-text)",
+                lineHeight: 1.1,
+              }}
+            >
+              Auction Replay
+            </div>
+          </div>
+          <Chip strong style={{ fontVariantNumeric: "tabular-nums" }}>
             Lot {currentLotIndex + 1} of {lots.length}
-          </span>
+          </Chip>
         </div>
         <button
+          type="button"
           onClick={onClose}
-          className="p-1 rounded-md text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)] transition-colors"
           aria-label="Close replay"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 30,
+            height: 30,
+            borderRadius: 99,
+            background: "transparent",
+            color: "var(--am-text-muted)",
+            border: "1px solid var(--am-border-strong)",
+            cursor: "pointer",
+            transition: "background 120ms ease, color 120ms ease",
+          }}
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-[var(--lg-border-faint)]">
+      <div
+        style={{
+          height: 3,
+          background: "var(--am-surface-faint)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
         <div
-          className="h-full bg-[var(--lg-accent)] transition-all duration-300"
-          style={{ width: `${progressPercent}%` }}
+          style={{
+            height: "100%",
+            width: `${progressPercent}%`,
+            background: "var(--am-irid)",
+            transition: "width 300ms ease",
+          }}
         />
       </div>
 
       {/* Lot content */}
       {currentLot && (
-        <div className="px-4 md:px-6 py-4 md:py-5">
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+        <div style={{ padding: "18px 18px 16px 18px" }}>
+          <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 20 }}>
             {/* Player card (left) */}
-            <div className="flex items-start gap-3 md:min-w-[200px]">
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 220, flex: "0 1 auto" }}>
               <img
                 src={getHeadshotUrl(currentLot.playerId)}
                 alt={currentLot.playerName}
-                className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover bg-[var(--lg-border-faint)] flex-shrink-0"
+                style={{
+                  width: 76,
+                  height: 76,
+                  borderRadius: 14,
+                  objectFit: "cover",
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
+                  flexShrink: 0,
+                }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/0/headshot/67/current`;
                 }}
               />
-              <div className="flex flex-col gap-1 min-w-0">
-                <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] tabular-nums">
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: 1.4,
+                    textTransform: "uppercase",
+                    color: "var(--am-text-faint)",
+                    fontWeight: 600,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
                   Lot #{currentLot.lotNumber}
                 </div>
-                <div className="text-base md:text-lg font-semibold text-[var(--lg-text-heading)] leading-tight truncate">
+                <div
+                  style={{
+                    fontFamily: "var(--am-display)",
+                    fontSize: 18,
+                    fontWeight: 400,
+                    color: "var(--am-text)",
+                    lineHeight: 1.15,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    maxWidth: 240,
+                  }}
+                >
                   {currentLot.playerName}
                 </div>
-                <div className="text-xs text-[var(--lg-text-muted)]">
-                  Nominated by <span className="font-medium text-[var(--lg-text-secondary)]">{currentLot.nominatorTeamName}</span>
+                <div style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                  Nominated by{" "}
+                  <span style={{ color: "var(--am-text)", fontWeight: 500 }}>
+                    {currentLot.nominatorTeamName}
+                  </span>
                 </div>
                 {currentLot.finalPrice != null && allBidsVisible && (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-lg font-semibold text-[var(--lg-accent)] tabular-nums">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                    <IridText size={22} weight={400}>
                       ${currentLot.finalPrice}
-                    </span>
-                    <span className="text-xs text-[var(--lg-success)] font-medium">
-                      {currentLot.winnerTeamName}
-                    </span>
+                    </IridText>
+                    {currentLot.winnerTeamName && (
+                      <Chip strong color="var(--am-text)">
+                        {currentLot.winnerTeamName}
+                      </Chip>
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
             {/* Bid timeline (right) */}
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-2 tracking-wide">
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <SectionLabel style={{ marginBottom: 8 }}>
                 Bidding ({totalBids} bid{totalBids !== 1 ? 's' : ''})
-              </div>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
+              </SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", maxHeight: 200, overflowY: "auto" }}>
                 {currentLot.bids.slice(0, visibleBidCount).map((bid, i) => {
                   const isWinning = allBidsVisible && i === totalBids - 1;
-                  const isLatest = i === visibleBidCount - 1;
+                  const isLatest = i === visibleBidCount - 1 && !isWinning;
                   return (
                     <div
                       key={i}
-                      className={`flex items-center gap-2 text-xs py-1 px-2 rounded-md transition-all duration-200 ${
-                        isWinning
-                          ? 'bg-[var(--lg-success)]/10 border border-[var(--lg-success)]/20'
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        fontSize: 12,
+                        padding: "7px 10px",
+                        borderBottom: "1px solid var(--am-border)",
+                        background: isWinning
+                          ? "var(--am-chip-strong)"
                           : isLatest
-                            ? 'bg-[var(--lg-accent)]/5 border border-[var(--lg-accent)]/10'
-                            : 'border border-transparent'
-                      }`}
+                            ? "var(--am-chip)"
+                            : "transparent",
+                        transition: "background 200ms ease",
+                      }}
                     >
-                      <span className={`w-14 text-right tabular-nums font-semibold flex-shrink-0 ${
-                        isWinning ? 'text-[var(--lg-success)]' : 'text-[var(--lg-accent)]'
-                      }`}>
+                      <span
+                        style={{
+                          width: 56,
+                          textAlign: "right",
+                          fontVariantNumeric: "tabular-nums",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          color: isWinning ? "var(--am-text)" : "var(--am-accent)",
+                        }}
+                      >
                         ${bid.amount}
                       </span>
-                      <span className={`flex-1 truncate ${
-                        isWinning ? 'font-semibold text-[var(--lg-success)]' : 'text-[var(--lg-text-secondary)]'
-                      }`}>
+                      <span
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          color: isWinning ? "var(--am-text)" : "var(--am-text-muted)",
+                          fontWeight: isWinning ? 600 : 400,
+                        }}
+                      >
                         {bid.teamName}
-                        {isWinning && <span className="ml-1 text-[10px] uppercase font-semibold"> -- Winner</span>}
+                        {isWinning && (
+                          <span
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 10,
+                              letterSpacing: 1.2,
+                              textTransform: "uppercase",
+                              fontWeight: 600,
+                              color: "var(--am-accent)",
+                            }}
+                          >
+                            — Winner
+                          </span>
+                        )}
                       </span>
-                      <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums flex-shrink-0">
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "var(--am-text-faint)",
+                          fontVariantNumeric: "tabular-nums",
+                          flexShrink: 0,
+                        }}
+                      >
                         {formatTimestamp(bid.timestamp)}
                       </span>
                     </div>
                   );
                 })}
                 {visibleBidCount === 0 && (
-                  <div className="text-xs text-[var(--lg-text-muted)] py-2 text-center">
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--am-text-muted)",
+                      padding: "12px 4px",
+                      textAlign: "center",
+                    }}
+                  >
                     {isPlaying ? 'Revealing bids...' : 'Press play to reveal bids'}
                   </div>
                 )}
                 {visibleBidCount > 0 && visibleBidCount < totalBids && !isPlaying && (
                   <button
+                    type="button"
                     onClick={handleShowAll}
-                    className="text-[10px] text-[var(--lg-accent)] hover:underline py-1 px-2"
+                    style={{
+                      marginTop: 6,
+                      alignSelf: "flex-start",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: "var(--am-accent)",
+                      background: "transparent",
+                      border: "none",
+                      padding: "4px 8px",
+                      cursor: "pointer",
+                    }}
                   >
                     Show all {totalBids - visibleBidCount} remaining bid{totalBids - visibleBidCount !== 1 ? 's' : ''}
                   </button>
@@ -328,69 +491,153 @@ export default function AuctionReplay({ log, teams, onClose }: AuctionReplayProp
       )}
 
       {/* Controls */}
-      <div className="px-4 md:px-6 py-3 border-t border-[var(--lg-border-faint)] flex items-center justify-between gap-2">
+      <div
+        style={{
+          padding: "12px 18px",
+          borderTop: "1px solid var(--am-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
         {/* Lot navigation */}
-        <div className="flex items-center gap-1">
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button
+            type="button"
             onClick={handlePrevious}
             disabled={currentLotIndex === 0}
-            className="p-1.5 rounded-md text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Previous lot"
+            style={{
+              ...CTRL_BTN_BASE,
+              opacity: currentLotIndex === 0 ? 0.35 : 1,
+              cursor: currentLotIndex === 0 ? "not-allowed" : "pointer",
+            }}
           >
-            <SkipBack size={16} />
+            <SkipBack size={14} />
           </button>
 
           <button
+            type="button"
             onClick={togglePlay}
             disabled={isAtEnd}
-            className={`p-2 rounded-lg transition-colors ${
-              isPlaying
-                ? 'bg-[var(--lg-accent)] text-white'
-                : 'bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/20'
-            } disabled:opacity-30 disabled:cursor-not-allowed`}
             aria-label={isPlaying ? 'Pause' : 'Play'}
+            style={{
+              ...CTRL_BTN_BASE,
+              background: isPlaying ? "var(--am-irid)" : "var(--am-chip-strong)",
+              color: isPlaying ? "#fff" : "var(--am-text)",
+              border: "1px solid var(--am-border-strong)",
+              opacity: isAtEnd ? 0.35 : 1,
+              cursor: isAtEnd ? "not-allowed" : "pointer",
+              minWidth: 36,
+              height: 36,
+            }}
           >
             {isPlaying ? <Pause size={16} /> : <Play size={16} />}
           </button>
 
           <button
+            type="button"
             onClick={handleNext}
             disabled={currentLotIndex >= lots.length - 1}
-            className="p-1.5 rounded-md text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Next lot"
+            style={{
+              ...CTRL_BTN_BASE,
+              opacity: currentLotIndex >= lots.length - 1 ? 0.35 : 1,
+              cursor: currentLotIndex >= lots.length - 1 ? "not-allowed" : "pointer",
+            }}
           >
-            <SkipForward size={16} />
+            <SkipForward size={14} />
           </button>
         </div>
 
-        {/* Speed control */}
-        <button
-          onClick={cycleSpeed}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold tabular-nums text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)] border border-[var(--lg-border-faint)] transition-colors"
-          aria-label={`Speed ${speed}x`}
+        {/* Speed selector — segmented chip pill */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: 3,
+            background: "var(--am-surface-faint)",
+            border: "1px solid var(--am-border)",
+            borderRadius: 99,
+          }}
+          role="group"
+          aria-label="Playback speed"
         >
-          <FastForward size={12} />
-          {speed}x
-        </button>
+          <FastForward
+            size={12}
+            style={{ color: "var(--am-text-faint)", marginLeft: 6, marginRight: 2 }}
+          />
+          {speedOptions.map((opt) => {
+            const active = speed === opt;
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setSpeedTo(opt)}
+                aria-pressed={active}
+                aria-label={`Speed ${opt}x`}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fontVariantNumeric: "tabular-nums",
+                  padding: "4px 10px",
+                  borderRadius: 99,
+                  border: "1px solid " + (active ? "var(--am-border-strong)" : "transparent"),
+                  background: active ? "var(--am-chip-strong)" : "transparent",
+                  color: active ? "var(--am-text)" : "var(--am-text-muted)",
+                  cursor: "pointer",
+                  transition: "background 120ms ease, color 120ms ease",
+                }}
+              >
+                {opt}x
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Lot scrubber */}
-        <div className="hidden md:flex items-center gap-2 flex-1 max-w-xs mx-4">
+        {/* Lot scrubber (desktop) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flex: 1,
+            maxWidth: 320,
+            minWidth: 160,
+          }}
+        >
           <input
             type="range"
             min={0}
             max={lots.length - 1}
             value={currentLotIndex}
             onChange={(e) => goToLot(Number(e.target.value))}
-            className="w-full h-1 accent-[var(--lg-accent)] cursor-pointer"
             aria-label="Lot scrubber"
+            style={{
+              width: "100%",
+              height: 4,
+              accentColor: "var(--am-accent)",
+              cursor: "pointer",
+            }}
           />
         </div>
 
-        {/* Lot counter (mobile) */}
-        <div className="md:hidden text-xs text-[var(--lg-text-muted)] tabular-nums">
-          {currentLotIndex + 1}/{lots.length}
+        {/* Lot counter */}
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--am-text-muted)",
+            fontVariantNumeric: "tabular-nums",
+            fontWeight: 500,
+            letterSpacing: 0.3,
+          }}
+        >
+          {currentLotIndex + 1} / {lots.length}
         </div>
       </div>
-    </div>
+    </Glass>
   );
 }
