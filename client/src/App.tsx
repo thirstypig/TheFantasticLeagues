@@ -28,6 +28,7 @@ const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
 const Auction = React.lazy(() => import("./features/auction/pages/Auction"));
 const AuctionResults = React.lazy(() => import("./features/auction/pages/AuctionResults"));
+const AuctionResultsLegacy = React.lazy(() => import("./features/auction/pages/AuctionResultsLegacy"));
 const AuctionValues = React.lazy(() => import("./features/auction/pages/AuctionValues"));
 const AuctionValuesLegacy = React.lazy(() => import("./features/auction/pages/AuctionValuesLegacy"));
 const KeeperSelection = React.lazy(() => import("./features/keeper-prep/pages/KeeperSelection"));
@@ -179,6 +180,9 @@ export default function App() {
                     <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
+                    {/* Aurora Auction Results (PR-2a of auction module split).
+                        Legacy preserved at /auction-results-classic. */}
+                    <Route path="/auction-results-classic" element={<ErrorBoundary name="auction-results-classic"><AuctionResultsLegacy /></ErrorBoundary>} />
                     {/* Aurora Auction Values (PR-1 of auction module split).
                         Page existed in the codebase but was orphan (no route);
                         Aurora rollout restores reachability. Legacy preserved
