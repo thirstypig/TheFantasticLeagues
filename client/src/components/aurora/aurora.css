@@ -80,3 +80,64 @@
   --am-positive: #5cf0d4;
   --am-negative: #ff6db5;
 }
+
+/*
+ * Legacy `--lg-*` token redirects.
+ *
+ * Once AuroraShell wraps the entire authenticated site, every legacy
+ * component (ThemedTable, SortableHeader, lg-card, lg-button, etc.)
+ * still references --lg-* tokens. Rather than rewrite every callsite,
+ * we remap the legacy tokens to Aurora equivalents inside the
+ * .aurora-theme scope. Single-point change, site-wide effect.
+ *
+ * The :root / .dark fallbacks in index.css remain intact for any
+ * surface that escapes the Aurora wrapper (currently: pre-auth pages
+ * — Login / Signup / etc.).
+ */
+/*
+ * Compound .aurora-theme.dark + .dark .aurora-theme selectors give
+ * specificity (0,0,2,0), beating .dark's (0,0,1,0) from index.css that
+ * defines the original --lg-* values. Without the bump, .dark loads
+ * after aurora.css and wins on the same-specificity tie.
+ */
+.aurora-theme,
+.aurora-theme.dark,
+.dark .aurora-theme {
+  /* Text colors */
+  --lg-text-primary: var(--am-text);
+  --lg-text-heading: var(--am-text);
+  --lg-text-secondary: var(--am-text-muted);
+  --lg-text-muted: var(--am-text-muted);
+  --lg-text-faint: var(--am-text-faint);
+
+  /* Accent → Aurora's iridescent companion accent */
+  --lg-accent: var(--am-accent);
+  --lg-accent-hover: var(--am-accent);
+  --lg-accent-active: var(--am-accent);
+
+  /* Borders */
+  --lg-border-subtle: var(--am-border);
+  --lg-border-faint: var(--am-border);
+  --lg-border-strong: var(--am-border-strong);
+
+  /* Surfaces */
+  --lg-bg-card: var(--am-surface-faint);
+  --lg-bg-page: var(--am-bg);
+  --lg-bg-surface: var(--am-surface-faint);
+  --lg-tint: var(--am-chip);
+  --lg-tint-hover: var(--am-chip-strong);
+
+  /* Status colors — keep Aurora's iridescent positive/negative */
+  --lg-success: var(--am-positive);
+  --lg-error: var(--am-negative);
+
+  /* Tables — header / border / row hover all align to Aurora chip system */
+  --lg-table-header-bg: var(--am-chip);
+  --lg-table-header-sticky-bg: rgb(20, 28, 48);    /* opaque match for --am-surface-strong on dark bg */
+  --lg-table-sticky-col-bg: rgb(20, 28, 48);
+  --lg-table-border: var(--am-border);
+  --lg-table-row-hover: var(--am-chip);
+
+  /* Glass divider lines */
+  --lg-divide: var(--am-border);
+}
