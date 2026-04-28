@@ -4,6 +4,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { RulesEditor } from "../components/RulesEditor";
 import type { LeagueListItem } from "../../../api";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 
 interface LeagueRule {
   id: number;
@@ -96,48 +97,54 @@ export default function Rules() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse">Loading rules...</div>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <Glass>
+          <div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Loading rules…</div>
+        </Glass>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--lg-text-heading)]">League Rules</h1>
-          <p className="text-[var(--lg-text-muted)] mt-1 text-sm font-medium">
-            {tab === "overview" ? "League format, scoring, and operations." : "Edit league settings."}
-          </p>
-        </div>
-
-        {isCommissionerOrAdmin && (
-          <div className="flex gap-1 bg-[var(--lg-tint)] p-1 rounded-xl border border-[var(--lg-border-faint)]">
-            <button
-              onClick={() => setTab("overview")}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${
-                tab === "overview"
-                  ? "bg-[var(--lg-bg-card)] text-[var(--lg-text-primary)] shadow-sm"
-                  : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setTab("settings")}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${
-                tab === "settings"
-                  ? "bg-[var(--lg-bg-card)] text-[var(--lg-text-primary)] shadow-sm"
-                  : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
-              }`}
-            >
-              Settings
-            </button>
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ League Rules</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              League Rules
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              {tab === "overview" ? "League format, scoring, and operations." : "Edit league settings."}
+            </div>
           </div>
-        )}
-      </div>
+
+          {isCommissionerOrAdmin && (
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["overview", "settings"] as const).map((t) => {
+                const isActive = tab === t;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 99,
+                      fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase",
+                      background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                      color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                      border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {t === "overview" ? "Overview" : "Settings"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Glass>
 
       {/* Settings tab — RulesEditor */}
       {tab === "settings" && isCommissionerOrAdmin && (

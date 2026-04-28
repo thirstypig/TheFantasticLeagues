@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -222,19 +222,22 @@ export default function AIHub() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="AI Insights"
-        subtitle="AI-powered analysis across every phase of your fantasy baseball season. Expand any card to see exactly what the AI analyzes."
-      />
-
-      {/* Status bar */}
-      <div className="flex items-center gap-2 mb-8 text-xs text-[var(--lg-text-muted)]">
-        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        <span className="font-medium">AI Available</span>
-        <span className="opacity-50">•</span>
-        <span className="opacity-50">Powered by Google Gemini & Anthropic Claude</span>
-      </div>
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ AI Insights</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          AI Insights
+        </h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+          AI-powered analysis across every phase of your fantasy baseball season. Expand any card to see exactly what the AI analyzes.
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 11, color: "var(--am-text-faint)" }}>
+          <span style={{ width: 6, height: 6, borderRadius: 99, background: "rgb(16, 185, 129)" }} />
+          <span style={{ fontWeight: 500, color: "var(--am-text-muted)" }}>AI Available</span>
+          <span>·</span>
+          <span>Powered by Google Gemini & Anthropic Claude</span>
+        </div>
+      </Glass>
 
       {categories.map(cat => {
         const catFeatures = features.filter(f => f.category === cat);

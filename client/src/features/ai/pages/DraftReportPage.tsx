@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, Loader2, Sparkles, ChevronDown, ChevronUp, Ba
 import { fetchJsonApi, API_BASE, fmtRate } from "../../../api/base";
 import { getPlayerSeasonStats, type PlayerSeasonStat } from "../../../api";
 import { useLeague } from "../../../contexts/LeagueContext";
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { SortableHeader } from "../../../components/ui/SortableHeader";
 import { isPitcher as isPitcherPos, mapPosition, positionToSlots, POS_ORDER } from "../../../lib/sportConfig";
@@ -486,22 +486,37 @@ export default function DraftReportPage() {
   }) : [];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <PageHeader
-          title="Draft Report"
-          subtitle="AI-powered analysis of the 2026 auction draft — grades, strategy, values, and projections for every team."
-        />
-        {report && !loading && (
-          <button
-            onClick={() => { generate(true); }}
-            className="flex-shrink-0 mt-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-accent)]/30 transition-colors"
-            title="Regenerate report with fresh data and AI analysis"
-          >
-            Regenerate
-          </button>
-        )}
-      </div>
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ AI · Draft Report</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+              Draft Report
+            </h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+              AI-powered analysis of the 2026 auction draft — grades, strategy, values, and projections for every team.
+            </div>
+          </div>
+          {report && !loading && (
+            <button
+              onClick={() => { generate(true); }}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "6px 12px", borderRadius: 99,
+                fontSize: 12, fontWeight: 600,
+                background: "var(--am-chip)", color: "var(--am-text)",
+                border: "1px solid var(--am-border)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+              title="Regenerate report with fresh data and AI analysis"
+            >
+              Regenerate
+            </button>
+          )}
+        </div>
+      </Glass>
 
       {/* Loading state */}
       {loading && (

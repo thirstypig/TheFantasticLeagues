@@ -13,8 +13,8 @@ import { getPlayerSeasonStats, type PlayerSeasonStat } from "../../../api";
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { isPitcher } from "../../../lib/playerDisplay";
-import PageHeader from "../../../components/ui/PageHeader";
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 
 function normCode(v: unknown): string {
   return String(v ?? "").trim().toUpperCase();
@@ -88,24 +88,35 @@ export default function Teams() {
   }, [players]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="Teams"
-        subtitle="Team roster counts derived from your season player pool."
-      />
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Teams</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          Teams
+        </h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+          Team roster counts derived from your season player pool.
+        </div>
+      </Glass>
 
       {error && (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300">
-          Failed to load teams – {error}
-        </div>
+        <Glass>
+          <div style={{ padding: 8, color: "rgb(248, 113, 113)", fontSize: 13, textAlign: "center" }}>
+            Failed to load teams – {error}
+          </div>
+        </Glass>
       )}
 
       {loading ? (
-        <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse text-sm">Loading teams…</div>
+        <Glass>
+          <div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Loading teams…</div>
+        </Glass>
       ) : teams.length === 0 ? (
-        <EmptyState icon={Users} title="No teams found" description="Teams will appear here once they're added to the league." compact />
+        <Glass>
+          <EmptyState icon={Users} title="No teams found" description="Teams will appear here once they're added to the league." compact />
+        </Glass>
       ) : (
-        <div className="lg-card p-0 overflow-hidden">
+        <Glass padded={false}><div style={{ overflow: "hidden", borderRadius: 24 }}>
           <ThemedTable bare>
             <ThemedThead>
               <ThemedTr>
@@ -138,7 +149,7 @@ export default function Teams() {
               ))}
             </tbody>
           </ThemedTable>
-        </div>
+        </div></Glass>
       )}
     </div>
   );
