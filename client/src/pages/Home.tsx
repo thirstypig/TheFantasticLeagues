@@ -29,6 +29,8 @@ import { useAuth } from "../auth/AuthProvider";
 import { useLeague } from "../contexts/LeagueContext";
 import { getSeasonStandings } from "../api";
 import { getTransactions, type TransactionEvent } from "../features/transactions/api";
+import { fetchJsonApi, API_BASE } from "../api/base";
+import type { DigestResponse, RosterAlertPlayer } from "./home/types";
 
 interface StandingsRow {
   teamId: number;
@@ -54,21 +56,29 @@ export default function Home() {
 
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [activity, setActivity] = useState<TransactionEvent[]>([]);
+  const [digest, setDigest] = useState<DigestResponse | null>(null);
+  const [rosterAlerts, setRosterAlerts] = useState<RosterAlertPlayer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!leagueId) return;
     let canceled = false;
     setLoading(true);
+    // Four parallel fetches — standings + activity from PR #135, plus the
+    // ported legacy data sources for parity (PR #137):
+    //   - league digest (AI weekly summary, power rankings)
+    //   - roster status (injured + minors players from /mlb/roster-status)
     Promise.allSettled([
       getSeasonStandings(leagueId),
       getTransactions({ leagueId, take: 6 }),
-    ]).then(([standingsRes, activityRes]) => {
+      fetchJsonApi<DigestResponse>(`${API_BASE}/mlb/league-digest?leagueId=${leagueId}`),
+      fetchJsonApi<{ players: RosterAlertPlayer[] }>(
+        `${API_BASE}/mlb/roster-status?leagueId=${leagueId}`,
+      ),
+    ]).then(([standingsRes, activityRes, digestRes, rosterRes]) => {
       if (canceled) return;
 
       if (standingsRes.status === "fulfilled") {
-        // Normalize the standings response shape (rows may carry P{n}
-        // period-point columns or a periodPoints array; sum either way).
         const periodIds = standingsRes.value.periodIds ?? [];
         const rows = (standingsRes.value.rows ?? []).map((row: any): StandingsRow => {
           const periodPoints = Array.isArray(row.periodPoints) && row.periodPoints.length
@@ -83,13 +93,24 @@ export default function Home() {
             periodPoints,
           };
         });
-        // Sort descending by total points
         rows.sort((a, b) => b.totalPoints - a.totalPoints);
         setStandings(rows);
       }
 
       if (activityRes.status === "fulfilled") {
         setActivity(activityRes.value.transactions ?? []);
+      }
+
+      if (digestRes.status === "fulfilled") {
+        setDigest(digestRes.value);
+      }
+
+      if (rosterRes.status === "fulfilled") {
+        // Surface only injured (IL) players in this card. Minors players
+        // are intentionally separate; the legacy Home had a separate accord-
+        // ion for them. Keep IL-focused for the slim Aurora card.
+        const ilPlayers = (rosterRes.value.players ?? []).filter(p => p.isInjured);
+        setRosterAlerts(ilPlayers);
       }
     }).finally(() => { if (!canceled) setLoading(false); });
 
@@ -174,16 +195,31 @@ export default function Home() {
                   )}
                 </div>
                 <div style={{ marginTop: 14 }}>
+                  {/* AI strip — digest headline + bold prediction when the
+                      league digest has been generated this week, else a
+                      gentle placeholder. The full digest renders as its
+                      own bento card below for richer detail. */}
                   <AIStrip
-                    subtitle="Personalized to your roster"
-                    items={[
-                      {
-                        icon: "✦",
-                        title: "AI insights are running",
-                        body: "Weekly digest, lineup recommendations, and trade suggestions appear here when ready.",
-                        cta: "Open AI Hub",
-                      },
-                    ]}
+                    subtitle={digest?.weekKey ? `Week ${digest.weekKey}` : "Personalized to your roster"}
+                    items={
+                      digest?.weekInOneSentence
+                        ? [
+                            {
+                              icon: "✦",
+                              title: digest.weekInOneSentence,
+                              body: digest.boldPrediction || digest.statOfTheWeek || "Scroll for the weekly digest.",
+                              cta: "Open AI Hub",
+                            },
+                          ]
+                        : [
+                            {
+                              icon: "✦",
+                              title: "AI insights are running",
+                              body: "Weekly digest, lineup recommendations, and trade suggestions appear here when ready.",
+                              cta: "Open AI Hub",
+                            },
+                          ]
+                    }
                   />
                 </div>
               </Glass>
@@ -369,6 +405,135 @@ export default function Home() {
               </div>
             </Glass>
           </div>
+
+          {/* WEEKLY DIGEST — AI-generated league summary, ported from
+              HomeLegacy. Shows when the digest endpoint has data; gracefully
+              hidden when not yet generated for this week. */}
+          {digest?.powerRankings && digest.powerRankings.length > 0 && (
+            <div style={{ gridColumn: "span 12" }}>
+              <Glass>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
+                  <div>
+                    <SectionLabel>✦ Weekly digest{digest.weekKey ? ` · ${digest.weekKey}` : ""}</SectionLabel>
+                    {digest.weekInOneSentence && (
+                      <div style={{ fontSize: 16, color: "var(--am-text)", fontFamily: "var(--am-display)", lineHeight: 1.35, maxWidth: 880 }}>
+                        {digest.weekInOneSentence}
+                      </div>
+                    )}
+                  </div>
+                  {digest.statOfTheWeek && (
+                    <Chip strong>STAT · {digest.statOfTheWeek.slice(0, 50)}</Chip>
+                  )}
+                </div>
+
+                <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
+                  {/* Power rankings */}
+                  <div>
+                    <SectionLabel>Power rankings</SectionLabel>
+                    <div>
+                      {digest.powerRankings.slice(0, 8).map(pr => (
+                        <div
+                          key={pr.rank}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "26px 110px 1fr",
+                            gap: 10,
+                            padding: "7px 0",
+                            borderTop: pr.rank > 1 ? "1px solid var(--am-border)" : "none",
+                            alignItems: "baseline",
+                          }}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-faint)", fontVariantNumeric: "tabular-nums" }}>
+                            {String(pr.rank).padStart(2, "0")}
+                          </div>
+                          <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--am-text)" }}>{pr.teamName}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--am-text-muted)", lineHeight: 1.45 }}>
+                            {pr.commentary}
+                            {pr.movement && pr.movement !== "→" && (
+                              <span style={{ marginLeft: 6, fontWeight: 600, color: "var(--am-text-faint)" }}>
+                                {pr.movement}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hot/cold + bold prediction */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {digest.hotTeam && (
+                      <div style={{ padding: 12, borderRadius: 14, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)" }}>
+                        <div style={{ fontSize: 10, color: "var(--am-positive)", fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>HOT TEAM</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "var(--am-display)" }}>{digest.hotTeam.name}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.45 }}>{digest.hotTeam.reason}</div>
+                      </div>
+                    )}
+                    {digest.coldTeam && (
+                      <div style={{ padding: 12, borderRadius: 14, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)" }}>
+                        <div style={{ fontSize: 10, color: "var(--am-negative)", fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>COLD TEAM</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "var(--am-display)" }}>{digest.coldTeam.name}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.45 }}>{digest.coldTeam.reason}</div>
+                      </div>
+                    )}
+                    {digest.boldPrediction && (
+                      <div style={{ padding: 12, borderRadius: 14, background: "var(--am-ai-strip)", border: "1px solid var(--am-border)" }}>
+                        <div style={{ fontSize: 10, color: "var(--am-text-faint)", fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>BOLD PREDICTION</div>
+                        <div style={{ fontSize: 12, color: "var(--am-text)", lineHeight: 1.5 }}>{digest.boldPrediction}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Glass>
+            </div>
+          )}
+
+          {/* INJURED LIST — slim 4-up of IL'd roster players, ported from
+              HomeLegacy. Hidden when nobody on the league is on IL. */}
+          {rosterAlerts.length > 0 && (
+            <div style={{ gridColumn: "span 12" }}>
+              <Glass>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <SectionLabel>Injured list · {rosterAlerts.length}</SectionLabel>
+                  <Chip>League-wide</Chip>
+                </div>
+                <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+                  {rosterAlerts.slice(0, 8).map(p => (
+                    <div
+                      key={`${p.mlbId}-${p.playerName}`}
+                      style={{
+                        padding: 12,
+                        borderRadius: 14,
+                        background: "var(--am-surface-faint)",
+                        border: "1px solid var(--am-border)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Dot color="var(--am-negative)" />
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.playerName}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+                        {p.mlbStatus} · {p.position} · {p.mlbTeam}
+                      </div>
+                      {p.ilInjury && (
+                        <div style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>{p.ilInjury}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {rosterAlerts.length > 8 && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: "var(--am-text-faint)", textAlign: "center" }}>
+                    + {rosterAlerts.length - 8} more
+                  </div>
+                )}
+              </Glass>
+            </div>
+          )}
 
           {/* CTAs — bottom row of quick links */}
           <div style={{ gridColumn: "span 12" }}>
