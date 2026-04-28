@@ -5,6 +5,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AuroraShell from "./components/aurora/AuroraShell";
 const ActivityPageLegacy = React.lazy(() => import("./features/transactions/pages/ActivityPageLegacy"));
 const InjuredListPage = React.lazy(() => import("./features/players/pages/InjuredListPage"));
+const AuctionLegacy = React.lazy(() => import("./features/auction/pages/AuctionLegacy"));
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
@@ -193,6 +194,9 @@ export default function App() {
                     <Route path="/chat" element={<Navigate to="/board" replace />} />
                     <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
+                    {/* Live-floor escape hatch (PR-3 strangler-fig). Use this
+                        if the Aurora live floor regresses mid-draft. */}
+                    <Route path="/auction-classic" element={<ErrorBoundary name="auction-classic"><AuctionLegacy /></ErrorBoundary>} />
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
                     {/* Aurora Auction Results (PR-2a of auction module split).
                         Legacy preserved at /auction-results-classic. */}

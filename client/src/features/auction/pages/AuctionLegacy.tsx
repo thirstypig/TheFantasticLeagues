@@ -22,9 +22,8 @@ import AuctionSettingsTab from '../components/AuctionSettingsTab';
 import { useAuctionPrefs } from '../hooks/useAuctionPrefs';
 import { useAuctionNotifications } from '../hooks/useAuctionNotifications';
 import { useMyRankings } from '../hooks/useMyRankings';
-import { Glass, IridText, SectionLabel } from '../../../components/aurora/atoms';
 
-export default function Auction() {
+export default function AuctionLegacy() {
   const { toast } = useToast();
   const { leagueId: currentLeagueId } = useLeague();
   const gating = useSeasonGating();
@@ -318,16 +317,21 @@ export default function Auction() {
   }
 
   if (initLoading) return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "16px", display: "flex", flexDirection: "column", gap: 16 }}>
-      <Glass><div style={{ height: 96, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} /></Glass>
-      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <Glass><div style={{ height: 240, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} /></Glass>
-          <Glass><div style={{ height: 140, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} /></Glass>
+    <div className="p-4 md:p-8 space-y-6 animate-pulse">
+      {/* Header skeleton */}
+      <div className="h-8 w-48 rounded-2xl bg-[var(--lg-tint)]" />
+      <div className="h-4 w-72 rounded-2xl bg-[var(--lg-tint)]" />
+      {/* Two-column layout skeleton */}
+      <div className="flex flex-col lg:flex-row gap-6 mt-6">
+        {/* Left panel ~60% */}
+        <div className="flex-[3] space-y-4">
+          <div className="h-64 rounded-2xl bg-[var(--lg-tint)]" />
+          <div className="h-40 rounded-2xl bg-[var(--lg-tint)]" />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <Glass><div style={{ height: 36, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} /></Glass>
-          <Glass><div style={{ height: 320, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} /></Glass>
+        {/* Right panel ~40% */}
+        <div className="flex-[2] space-y-4">
+          <div className="h-10 rounded-2xl bg-[var(--lg-tint)]" />
+          <div className="h-80 rounded-2xl bg-[var(--lg-tint)]" />
         </div>
       </div>
     </div>
@@ -335,52 +339,22 @@ export default function Auction() {
 
   // Non-commissioner sees waiting screen before auction starts
   if (activeLeagueId && auctionState && auctionState.status === 'not_started' && !isCommissioner) return (
-    <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-      <Glass strong>
-        <div style={{ textAlign: "center", padding: "24px 8px" }}>
-          <SectionLabel>✦ Auction Draft</SectionLabel>
-          <h2 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: "8px 0 12px", lineHeight: 1.1 }}>
-            Auction Draft
-          </h2>
-          <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: 0 }}>Waiting for the commissioner to start the auction…</p>
-        </div>
-      </Glass>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <h2 className="text-2xl font-semibold text-[var(--lg-text-heading)]">Auction Draft</h2>
+      <p className="text-sm text-[var(--lg-text-muted)]">Waiting for the commissioner to start the auction...</p>
     </div>
   );
 
   if (needsInit) return (
-    <div style={{ maxWidth: 760, margin: "0 auto", padding: "60px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-      <Glass strong>
-        <div style={{ textAlign: "center", padding: "24px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-          <SectionLabel>✦ Auction Draft</SectionLabel>
-          <h2 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
-            Start the auction
-          </h2>
-          <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: 0, maxWidth: 480 }}>
-            Initialize the auction to begin the live draft. <IridText size={13}>Once started, owners can nominate, bid, and watch the live floor in real time.</IridText>
-          </p>
-          <button
-            type="button"
-            onClick={() => actions.initAuction(activeLeagueId!)}
-            style={{
-              marginTop: 8,
-              padding: "12px 28px",
-              borderRadius: 99,
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: 0.4,
-              background: "var(--am-irid)",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              boxShadow: "0 14px 40px rgba(255,80,80,0.18)",
-            }}
-          >
-            Start Auction →
-          </button>
-        </div>
-      </Glass>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+      <h2 className="text-3xl font-semibold text-[var(--lg-text-heading)]">Auction Draft</h2>
+      <p className="text-sm text-[var(--lg-text-muted)]">Initialize the auction to begin the live draft.</p>
+      <button
+        onClick={() => actions.initAuction(activeLeagueId!)}
+        className="px-8 py-4 bg-[var(--lg-accent)] text-white font-semibold rounded-[var(--lg-radius-lg)] text-lg hover:opacity-90 transition-opacity"
+      >
+        Start Auction
+      </button>
     </div>
   );
 
