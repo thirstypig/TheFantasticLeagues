@@ -150,6 +150,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       defaultOpen: true,
       items: [
         { to: "/ai", label: "AI Hub", show: true },
+        { to: "/weekly-report", label: "Weekly Report", show: true },
         { to: "/draft-report", label: "Draft Report", show: true },
       ],
     },
