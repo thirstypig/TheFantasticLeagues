@@ -54,6 +54,7 @@ const JoinLeague = React.lazy(() => import("./features/leagues/pages/JoinLeague"
 const DiscoverLeagues = React.lazy(() => import("./features/leagues/pages/DiscoverLeagues"));
 const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
 const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));
+const MatchupLegacy = React.lazy(() => import("./features/matchups/pages/MatchupLegacy"));
 const TradingBlockPage = React.lazy(() => import("./features/trading-block/pages/TradingBlockPage"));
 const BoardPage = React.lazy(() => import("./features/board/pages/BoardPage"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
@@ -177,6 +178,9 @@ export default function App() {
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
                     <Route path="/draft" element={<ErrorBoundary name="draft"><Draft /></ErrorBoundary>} />
                     <Route path="/matchup" element={<MatchupPage />} />
+                    {/* Pre-Aurora Matchup preserved for any feature the
+                        Aurora pilot doesn't port yet (Aurora screen #6). */}
+                    <Route path="/matchup-classic" element={<MatchupLegacy />} />
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
