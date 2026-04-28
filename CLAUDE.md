@@ -377,7 +377,8 @@ E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e`
 - `client/src/lib/__tests__/mlbStatus.test.ts` — 6 tests (isMlbIlStatus: real MLB API format `Injured N-Day` + legacy `Injured List N-Day` + non-IL rejects + malformed cases + case sensitivity; mirror of server `ilSlotGuard.test.ts`)
 - `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)
 - `client/src/features/standings/__tests__/StatsTables.test.tsx` — 22 tests (table rendering, sorting)
-- `client/src/features/auction/__tests__/AuctionValues.test.tsx` — 10 tests (rendering, tabs, search, sorting, modal)
+- `client/src/features/auction/__tests__/AuctionValuesLegacy.test.tsx` — 10 tests against the preserved legacy code path at `/auction-values-classic` (rendering, tabs, search, sorting, modal). Renamed from `AuctionValues.test.tsx` in PR #145 when the Aurora port shipped.
+- `client/src/features/auction/__tests__/AuctionValuesAurora.test.tsx` — 3 tests for Aurora-only behavior at `/auction-values` (hero copy, `.aurora-theme` wrapper, footer escape link to `/auction-values-classic`).
 - `client/src/features/teams/__tests__/Teams.test.tsx` — 8 tests (team list, roster counts, links, empty/error states)
 - `client/src/features/teams/__tests__/Team.test.tsx` — 9 tests (roster display, tabs, manage button, loading/error)
 - `client/src/features/trades/__tests__/TradesPage.test.tsx` — 23 tests (trade list, actions, commissioner controls)

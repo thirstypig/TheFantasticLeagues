@@ -19,7 +19,12 @@ vi.mock("../../../components/shared/PlayerDetailModal", () => ({
 }));
 
 import { getAuctionValues, getLeague } from "../../../api";
-import AuctionValues from "../pages/AuctionValues";
+// Aurora rolled out at /auction-values in PR #145. The pre-Aurora page
+// is preserved at /auction-values-classic via AuctionValuesLegacy and
+// these tests pin its behavior on that legacy code path.
+// Aurora-only tests (footer escape link, etc.) live in
+// AuctionValuesAurora.test.tsx.
+import AuctionValues from "../pages/AuctionValuesLegacy";
 
 const mockHitters = [
   {
