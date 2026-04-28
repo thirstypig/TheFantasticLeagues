@@ -1,19 +1,3 @@
-/*
- * PlayerPoolTab — Aurora deep port (PR-3 of Auction module rollout).
- *
- * The browseable/searchable player pool inside the live auction floor.
- * Business logic preserved 1:1 from the legacy file: filters (group, view
- * mode, league, position, MLB team, search), sort state, personalized
- * "My Value" computation, position-fullness gating, nomination bid picker,
- * star toggling, queue, force-assign, expanded-row drilldown, rankings.
- *
- * Outer chrome moves to Aurora: Glass shell, Aurora chip-pill toggles for
- * H/P, view mode, league, search input restyled with surface-faint, chip
- * action buttons (Nom), bid picker overlay wrapped in Glass(strong) with
- * IridText for the dollar value. The inner ThemedTable retains its legacy
- * `--lg-*` token chrome — those tokens are globally defined and inherit
- * Aurora colors via PR #153 token redirects.
- */
 import React, { useState, useMemo, useEffect } from 'react';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import { getLastName } from '../../../lib/baseballUtils';
@@ -21,7 +5,6 @@ import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } f
 import { SortableHeader } from '../../../components/ui/SortableHeader';
 import { Star } from 'lucide-react';
 import { HitterStatHeaders, PitcherStatHeaders, HitterStatCells, PitcherStatCells } from '../../../components/shared/PlayerStatsColumns';
-import { Glass, IridText } from '../../../components/aurora/atoms';
 
 import {
   PlayerSeasonStat,
@@ -57,35 +40,7 @@ import { POS_ORDER, getPrimaryPosition } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots, NL_TEAMS, AL_TEAMS } from '../../../lib/sportConfig';
 import { useLeague } from '../../../contexts/LeagueContext';
 
-// ─── Aurora chip-pill style helpers ───
-// A "segmented" Aurora group: rounded container, internal padding, with
-// active items showing chip-strong + accent text and inactive items
-// showing chip-muted text.
-const SEGMENT_GROUP: React.CSSProperties = {
-  display: "inline-flex",
-  padding: 2,
-  background: "var(--am-chip)",
-  border: "1px solid var(--am-border)",
-  borderRadius: 999,
-  flexShrink: 0,
-};
-
-const segmentBtn = (active: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
-  padding: "4px 10px",
-  fontSize: 10,
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: 0.4,
-  borderRadius: 999,
-  border: "1px solid " + (active ? "var(--am-border-strong)" : "transparent"),
-  background: active ? "var(--am-chip-strong)" : "transparent",
-  color: active ? "var(--am-text)" : "var(--am-text-muted)",
-  cursor: "pointer",
-  transition: "all 150ms",
-  ...extra,
-});
-
-export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true, defaultLeagueFilter = 'ALL', rankings }: PlayerPoolTabProps) {
+export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, onQueue, isQueued, myTeamId, auctionConfig, onForceAssign, isCommissioner, starredIds, onToggleStar, activeBidPlayerId, activeBidAmount, showBidPicker = true, defaultLeagueFilter = 'ALL', rankings }: PlayerPoolTabProps) {
   const { outfieldMode } = useLeague();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -344,25 +299,24 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
   const colCount = (onToggleStar ? 9 : 8) + (hasRankings ? 1 : 0);
 
   return (
-    <Glass padded={false} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="h-full flex flex-col bg-[var(--lg-glass-bg)]">
       {/* Single-line filter bar */}
-      <div
-        style={{
-          padding: "8px 10px",
-          borderBottom: "1px solid var(--am-border)",
-          background: "var(--am-surface-faint)",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          zIndex: 10,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="px-1.5 py-1 border-b border-[var(--lg-table-border)] flex items-center gap-1 bg-[var(--lg-glass-bg-hover)] z-10">
 
         {/* H / P toggle */}
-        <div style={SEGMENT_GROUP}>
-            <button onClick={() => setViewGroup('hitters')} style={segmentBtn(viewGroup === 'hitters')}>H</button>
-            <button onClick={() => setViewGroup('pitchers')} style={segmentBtn(viewGroup === 'pitchers')}>P</button>
+        <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
+            <button
+                onClick={() => setViewGroup('hitters')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewGroup === 'hitters' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                H
+            </button>
+            <button
+                onClick={() => setViewGroup('pitchers')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                P
+            </button>
         </div>
 
         {/* Expandable Search */}
@@ -373,27 +327,27 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 12,
-              background: "var(--am-surface-faint)",
-              border: "1px solid " + (searchFocused ? "var(--am-accent)" : "var(--am-border)"),
-              color: "var(--am-text)",
-              fontSize: 12,
-              outline: "none",
-              width: searchFocused || searchQuery ? 140 : 70,
-              transition: "all 150ms",
-            }}
+            className={`px-2 py-1 rounded-md bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] placeholder:opacity-30 transition-all ${searchFocused || searchQuery ? 'w-32' : 'w-16'}`}
         />
 
         {/* All / Avail / Starred */}
-        <div style={SEGMENT_GROUP}>
-            <button onClick={() => setViewMode('all')} style={segmentBtn(viewMode === 'all')}>All</button>
-            <button onClick={() => setViewMode('remaining')} style={segmentBtn(viewMode === 'remaining')}>Avail</button>
+        <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
+            <button
+                onClick={() => setViewMode('all')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewMode === 'all' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                All
+            </button>
+            <button
+                onClick={() => setViewMode('remaining')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewMode === 'remaining' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                Avail
+            </button>
             {onToggleStar && (
                 <button
                     onClick={() => setViewMode('starred')}
-                    style={segmentBtn(viewMode === 'starred', { display: "inline-flex", alignItems: "center", gap: 3 })}
+                    className={`px-2 py-1 text-[10px] font-semibold rounded transition-all flex items-center gap-0.5 ${viewMode === 'starred' ? 'bg-amber-500/20 text-amber-400' : 'text-[var(--lg-text-muted)]'}`}
                     title="Starred players"
                 >
                     <Star size={10} fill={viewMode === 'starred' ? 'currentColor' : 'none'} />
@@ -402,29 +356,32 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
         </div>
 
         {/* NL / AL / All toggle */}
-        <div style={SEGMENT_GROUP}>
-            <button onClick={() => setFilterLeague('ALL')} style={segmentBtn(filterLeague === 'ALL')}>All</button>
-            <button onClick={() => setFilterLeague('NL')} style={segmentBtn(filterLeague === 'NL')}>NL</button>
-            <button onClick={() => setFilterLeague('AL')} style={segmentBtn(filterLeague === 'AL')}>AL</button>
+        <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
+            <button
+                onClick={() => setFilterLeague('ALL')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'ALL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                All
+            </button>
+            <button
+                onClick={() => setFilterLeague('NL')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'NL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                NL
+            </button>
+            <button
+                onClick={() => setFilterLeague('AL')}
+                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'AL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+            >
+                AL
+            </button>
         </div>
 
         {/* Pos + Team dropdowns */}
         <select
             value={filterPos}
             onChange={(e) => setFilterPos(e.target.value)}
-            style={{
-              padding: "5px 8px",
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: 0.4,
-              borderRadius: 999,
-              border: "1px solid var(--am-border)",
-              background: "var(--am-chip)",
-              color: "var(--am-text)",
-              outline: "none",
-              cursor: "pointer",
-            }}
+            className="px-1.5 py-1 text-[10px] font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] outline-none cursor-pointer"
         >
             <option value="ALL" className="text-black">Pos</option>
             {uniquePositions.map(p => <option key={p} value={p} className="text-black">{p}</option>)}
@@ -432,39 +389,17 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
         <select
             value={filterTeam}
             onChange={(e) => setFilterTeam(e.target.value)}
-            style={{
-              padding: "5px 8px",
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: 0.4,
-              borderRadius: 999,
-              border: "1px solid var(--am-border)",
-              background: "var(--am-chip)",
-              color: "var(--am-text)",
-              outline: "none",
-              cursor: "pointer",
-            }}
+            className="px-1.5 py-1 text-[10px] font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] outline-none cursor-pointer"
         >
             {uniqueTeams.map(t => <option key={t} value={t} className="text-black">{t === 'ALL' ? 'Tm' : t}</option>)}
         </select>
 
         {/* Count */}
-        <span
-          style={{
-            fontSize: 10,
-            color: "var(--am-text-faint)",
-            fontVariantNumeric: "tabular-nums",
-            marginLeft: "auto",
-            flexShrink: 0,
-          }}
-        >
-          {filteredPlayers.length}
-        </span>
+        <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums ml-auto shrink-0">{filteredPlayers.length}</span>
       </div>
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: "auto" }}>
+      <div className="flex-1 overflow-auto">
         <ThemedTable bare density="compact">
             <ThemedThead sticky>
                 <ThemedTr>
@@ -480,23 +415,16 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                     <ThemedTh className="w-14 px-1" title="Click Nom to nominate a player for auction"> </ThemedTh>
                 </ThemedTr>
             </ThemedThead>
-            <ThemedTbody className="divide-y divide-[var(--am-border)]">
+            <ThemedTbody className="divide-y divide-[var(--lg-table-border)]">
                 {filteredPlayers.map((p: PlayerSeasonStat) => {
                     const isExpanded = expandedId === p.row_id;
                     const isTaken = !!p.ogba_team_code || !!p.team;
                     const owner = teams.find((t: { code: string; name: string }) => t.code === (p.ogba_team_code || p.team));
-                    const isActiveBid = activeBidPlayerId && String(p.mlb_id) === activeBidPlayerId && activeBidAmount;
-
-                    const trClass = [
-                      isActiveBid ? "bg-[var(--am-chip-strong)] shadow-[inset_3px_0_0_0_var(--am-accent)]" : "",
-                      !isActiveBid && isExpanded ? "bg-[var(--am-chip)]" : "",
-                      isTaken ? "opacity-40" : "",
-                    ].filter(Boolean).join(" ");
 
                     return (
                         <React.Fragment key={p.row_id}>
                             <ThemedTr
-                                className={trClass}
+                                className={`${isExpanded ? 'bg-[var(--lg-tint)]' : ''} ${isTaken ? 'opacity-40' : ''}`}
                                 onClick={() => toggleExpand(p.row_id ?? '')}
                             >
                                 {/* Star */}
@@ -507,14 +435,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                             className="p-0.5 hover:scale-110 transition-transform"
                                             title={starredIds?.has(String(p.mlb_id)) ? 'Remove from watchlist' : 'Add to watchlist'}
                                         >
-                                            <Star
-                                              size={12}
-                                              style={{
-                                                color: starredIds?.has(String(p.mlb_id)) ? "rgb(251, 191, 36)" : "var(--am-text-faint)",
-                                                fill: starredIds?.has(String(p.mlb_id)) ? "rgb(251, 191, 36)" : "none",
-                                                opacity: starredIds?.has(String(p.mlb_id)) ? 1 : 0.4,
-                                              }}
-                                            />
+                                            <Star size={12} className={starredIds?.has(String(p.mlb_id)) ? 'text-amber-400 fill-amber-400' : 'text-[var(--lg-text-muted)] opacity-30'} />
                                         </button>
                                     </ThemedTd>
                                 )}
@@ -524,25 +445,25 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     return (
                                         <ThemedTd align="center" className="px-1 w-8">
                                             {myRank ? (
-                                                <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--am-accent)" }}>{myRank}</span>
+                                                <span className="text-[10px] font-bold tabular-nums text-[var(--lg-accent)]">{myRank}</span>
                                             ) : (
-                                                <span style={{ fontSize: 10, color: "var(--am-text-faint)", opacity: 0.3 }}>-</span>
+                                                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-20">-</span>
                                             )}
                                         </ThemedTd>
                                     );
                                 })()}
                                 <ThemedTd className="px-2">
-                                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--am-text)", lineHeight: 1.15 }}>
+                                    <div className="font-semibold text-sm text-[var(--lg-text-primary)] leading-tight">
                                         {p.mlb_full_name || p.player_name}
                                     </div>
-                                    <div style={{ fontSize: 10, color: "var(--am-text-muted)", display: "flex", gap: 4, alignItems: "center", fontWeight: 500, textTransform: "uppercase" }}>
-                                        <span style={{ color: "var(--am-accent)" }}>{mapPosition(getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT'), outfieldMode)}</span>
-                                        <span style={{ opacity: 0.3 }}>·</span>
+                                    <div className="text-[10px] text-[var(--lg-text-muted)] flex gap-1 items-center font-medium uppercase">
+                                        <span className="text-[var(--lg-accent)]">{mapPosition(getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT'), outfieldMode)}</span>
+                                        <span className="opacity-30">·</span>
                                         <span>{p.mlb_team || 'FA'}</span>
                                         {isTaken && (
                                             <>
-                                                <span style={{ opacity: 0.3 }}>·</span>
-                                                <span style={{ color: "var(--am-accent)" }}>{owner?.name ?? "Owned"}</span>
+                                                <span className="opacity-30">·</span>
+                                                <span className="text-[var(--lg-accent)]">{owner?.name ?? "Owned"}</span>
                                             </>
                                         )}
                                     </div>
@@ -561,16 +482,15 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                         const myVal = myTeamId ? computeMyValue(p) : null;
                                         const displayVal = myVal ?? baseVal;
 
-                                        if (!displayVal && displayVal !== 0) return <span style={{ fontSize: 12, color: "var(--am-text-faint)", opacity: 0.4, cursor: "help" }} title="No projected value available for this player">-</span>;
+                                        if (!displayVal && displayVal !== 0) return <span className="text-xs text-[var(--lg-text-muted)] opacity-30 cursor-help" title="No projected value available for this player">-</span>;
 
+                                        const isActiveBid = activeBidPlayerId && String(p.mlb_id) === activeBidPlayerId && activeBidAmount;
                                         if (isActiveBid) {
                                             const surplus = displayVal - activeBidAmount!;
-                                            const surplusColor = surplus > 0 ? "var(--am-positive)" : surplus < 0 ? "var(--am-negative)" : "var(--am-text-muted)";
                                             return (
-                                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.1 }}>
-                                                    <IridText size={13} weight={500}>${activeBidAmount}</IridText>
-                                                    <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>${displayVal}</span>
-                                                    <span style={{ fontSize: 10, fontWeight: 700, color: surplusColor }}>
+                                                <div className="flex flex-col items-center leading-tight">
+                                                    <span className="text-[10px] text-[var(--lg-text-muted)]">${displayVal}</span>
+                                                    <span className={`text-[10px] font-bold ${surplus > 0 ? 'text-emerald-400' : surplus < 0 ? 'text-red-400' : 'text-[var(--lg-text-muted)]'}`}>
                                                         {surplus > 0 ? '+' : ''}{surplus}
                                                     </span>
                                                 </div>
@@ -583,14 +503,9 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                           ? `Base: $${baseVal} → Your value: $${myVal} (${diff >= 0 ? '+' : ''}${diff} based on roster needs)`
                                           : `Projected value: $${displayVal}`;
 
-                                        const valColor =
-                                          displayVal > 10 ? "var(--am-positive)" :
-                                          displayVal > 0 ? "var(--am-text)" :
-                                          "var(--am-negative)";
-
                                         return (
                                           <span
-                                            style={{ fontSize: 12, fontWeight: 600, cursor: "help", color: valColor }}
+                                            className={`text-xs font-semibold cursor-help ${displayVal > 10 ? 'text-emerald-400' : displayVal > 0 ? 'text-[var(--lg-text-secondary)]' : 'text-red-400'}`}
                                             title={tooltip}
                                           >
                                             ${displayVal}
@@ -603,8 +518,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                 <ThemedTd align="center" className="px-1">
                                     {!isTaken && onNominate && (
                                         showBidPicker && nominatingPlayer?.mlb_id === p.mlb_id ? (
-                                            <div style={{ display: "flex", alignItems: "center", gap: 2 }} onClick={e => e.stopPropagation()}>
-                                                <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>$</span>
+                                            <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                                                <span className="text-[10px] text-[var(--lg-text-muted)]">$</span>
                                                 <input
                                                     ref={nomInputRef}
                                                     type="number"
@@ -624,17 +539,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                             setStartBidInput('1');
                                                         }
                                                     }}
-                                                    style={{
-                                                      width: 38,
-                                                      padding: "2px 4px",
-                                                      fontSize: 10,
-                                                      textAlign: "center",
-                                                      borderRadius: 8,
-                                                      border: "1px solid var(--am-border)",
-                                                      background: "var(--am-surface-faint)",
-                                                      color: "var(--am-text)",
-                                                      outline: "none",
-                                                    }}
+                                                    className="w-10 px-1 py-0.5 text-[10px] text-center rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
                                                 />
                                                 <button
                                                     onClick={() => {
@@ -643,18 +548,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                         setNominatingPlayer(null);
                                                         setStartBidInput('1');
                                                     }}
-                                                    style={{
-                                                      fontSize: 9,
-                                                      fontWeight: 700,
-                                                      textTransform: "uppercase",
-                                                      letterSpacing: 0.4,
-                                                      padding: "3px 7px",
-                                                      borderRadius: 999,
-                                                      background: "var(--am-irid)",
-                                                      color: "#fff",
-                                                      border: "1px solid var(--am-border-strong)",
-                                                      cursor: "pointer",
-                                                    }}
+                                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[var(--lg-accent)] text-white hover:opacity-90"
                                                 >
                                                     Go
                                                 </button>
@@ -672,20 +566,11 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                         onNominate(p, 1);
                                                     }
                                                 }}
-                                                style={{
-                                                  fontSize: 10,
-                                                  fontWeight: 700,
-                                                  textTransform: "uppercase",
-                                                  letterSpacing: 0.4,
-                                                  padding: "4px 10px",
-                                                  borderRadius: 999,
-                                                  border: "1px solid " + (isPositionFullForMyTeam(p) ? "var(--am-border)" : "var(--am-border-strong)"),
-                                                  background: isPositionFullForMyTeam(p) ? "var(--am-chip)" : "var(--am-chip-strong)",
-                                                  color: isPositionFullForMyTeam(p) ? "var(--am-text-faint)" : "var(--am-text)",
-                                                  cursor: isPositionFullForMyTeam(p) ? "not-allowed" : "pointer",
-                                                  opacity: isPositionFullForMyTeam(p) ? 0.6 : 1,
-                                                  transition: "all 150ms",
-                                                }}
+                                                className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md transition-all ${
+                                                    isPositionFullForMyTeam(p)
+                                                        ? 'bg-[var(--lg-border-subtle)] text-[var(--lg-text-muted)] cursor-not-allowed opacity-60'
+                                                        : 'bg-[var(--lg-accent)] text-white hover:opacity-90 active:scale-95'
+                                                }`}
                                                 title={isPositionFullForMyTeam(p) ? 'Position full for your team' : 'Nominate'}
                                             >
                                                 Nom
@@ -714,21 +599,11 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             </ThemedTbody>
         </ThemedTable>
         {filteredPlayers.length === 0 && (
-            <div
-              style={{
-                padding: "48px 0",
-                textAlign: "center",
-                fontSize: 11,
-                fontWeight: 500,
-                color: "var(--am-text-faint)",
-                textTransform: "uppercase",
-                letterSpacing: 0.6,
-              }}
-            >
+            <div className="py-12 text-center text-xs font-medium text-[var(--lg-text-muted)] uppercase">
                 No players found
             </div>
         )}
       </div>
-    </Glass>
+    </div>
   );
 }

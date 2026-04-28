@@ -1,3 +1,16 @@
+/*
+ * TeamListTab — Aurora port (PR-3 of Auction module rollout).
+ *
+ * Live-auction sidebar showing all teams' rosters, budgets remaining,
+ * position needs matrix, and spending pace. Outer chrome is Aurora
+ * (Glass surfaces, IridText for budget hero numbers, SectionLabel
+ * eyebrows, Aurora tokens via CSS vars). Inner roster table keeps the
+ * legacy ThemedTable for now — those `--lg-*` tokens are still global
+ * so it renders fine inside the `.aurora-theme` wrapper.
+ *
+ * 100% of business logic preserved: hooks, callbacks, position-needs
+ * calculation, budget arithmetic, props interface.
+ */
 import React, { useState, useEffect, useMemo } from 'react';
 import { PlayerSeasonStat } from '../../../api';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
@@ -7,6 +20,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { Flame, Snowflake } from 'lucide-react';
 import { positionToSlots } from '../../../lib/sportConfig';
+import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
 
 interface Team {
   id: number;
@@ -55,8 +69,10 @@ interface TeamListTabProps {
 const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
 
 export default function TeamListTab({ teams = [], players = [], budgetCap = 400, rosterSize = 23, pitcherMax, hitterMax, showPace = true, positionLimits, showPositionMatrix = true }: TeamListTabProps) {
+  // Suppress unused-variable warning for hitterMax (kept on props for parity / forward-compat)
+  void hitterMax;
   const { toast } = useToast();
-  const { leagueId, seasonStatus } = useLeague();
+  const { leagueId, seasonStatus, myTeamId } = useLeague();
   const priceDeemphasized = seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED";
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [detailedRoster, setDetailedRoster] = useState<RosterEntry[] | null>(null);
@@ -70,7 +86,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
         return;
     }
 
-    // If we have detailed roster for this ID already, maybe keep it? 
+    // If we have detailed roster for this ID already, maybe keep it?
     // But we want to refresh on re-expand too.
     const fetchRoster = async () => {
         try {
@@ -126,6 +142,10 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
           } catch { /* ignore */ }
       }
   };
+  // Suppress unused-variable warning for handlePositionSwap (kept for forward-compat)
+  void handlePositionSwap;
+  // Suppress unused-variable warning for positionToSlots (preserved from legacy import for parity)
+  void positionToSlots;
 
   // League-wide average cost per player for hot/cold comparison
   const leagueAvg = useMemo(() => {
@@ -134,11 +154,32 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
     return totalDrafted > 0 ? totalSpent / totalDrafted : 0;
   }, [teams, budgetCap]);
 
+  // Resolve "my team" with context fallback to legacy `team.isMe` flag
+  const resolveIsMe = (team: Team): boolean => {
+    if (myTeamId != null) return team.id === myTeamId;
+    return Boolean(team.isMe);
+  };
+
   return (
-    <div className="h-full overflow-y-auto scrollbar-hide">
+    <Glass padded={false} style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div className="h-full overflow-y-auto scrollbar-hide" style={{ flex: 1 }}>
         {/* League summary */}
         {showPace && teams.length > 0 && (
-          <div className="px-6 py-2 border-b border-[var(--lg-divide)] bg-[var(--lg-glass-bg-hover)] flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+          <div
+            style={{
+              padding: "10px 20px",
+              borderBottom: "1px solid var(--am-border)",
+              background: "var(--am-surface-faint)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: "var(--am-text-muted)",
+            }}
+          >
             <span>{teams.reduce((s, t) => s + t.rosterCount, 0)} drafted</span>
             <span>${teams.reduce((s, t) => s + (budgetCap - t.budget), 0)} spent</span>
             {teams.some(t => (t.keeperSpend ?? 0) > 0) && (
@@ -150,46 +191,126 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
 
         {/* Position Needs Matrix (AUC-07) */}
         {showPositionMatrix && teams.length > 0 && (
-          <div className="overflow-x-auto border-b border-[var(--lg-divide)]">
-            <table className="w-full text-[9px]">
-              <thead>
-                <tr className="bg-[var(--lg-glass-bg-hover)]">
-                  <th className="text-left px-2 py-1.5 font-semibold text-[var(--lg-text-muted)] uppercase tracking-wide sticky left-0 bg-[var(--lg-glass-bg-hover)] z-10 min-w-[80px]">Team</th>
-                  {MATRIX_POSITIONS.map(pos => (
-                    <th key={pos} className="px-1 py-1.5 text-center font-bold text-[var(--lg-text-muted)] uppercase" title={`${pos} — ${positionLimits?.[pos] ?? '∞'} max`}>{pos}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {teams.map(team => (
-                  <tr key={team.id} className={team.isMe ? 'bg-[var(--lg-accent)]/5' : ''}>
-                    <td className="px-2 py-1 font-semibold text-[var(--lg-text-primary)] truncate max-w-[100px] sticky left-0 bg-inherit z-10" title={team.name}>{team.name}</td>
-                    {MATRIX_POSITIONS.map(pos => {
-                      // For "P" column, show aggregate pitcher count with pitcherMax
-                      const filled = pos === "P" ? (team.pitcherCount ?? team.positionCounts?.[pos] ?? 0) : (team.positionCounts?.[pos] ?? 0);
-                      const limit = pos === "P" ? (positionLimits?.[pos] ?? pitcherMax) : positionLimits?.[pos];
-                      const isFull = limit != null && filled >= limit;
-                      return (
-                        <td key={pos} className="px-1 py-1 text-center tabular-nums">
-                          <span className={`inline-block min-w-[20px] px-0.5 rounded ${
-                            isFull ? 'bg-emerald-500/15 text-emerald-400 font-bold' : filled > 0 ? 'text-[var(--lg-text-primary)] font-semibold' : 'text-[var(--lg-text-muted)] opacity-30'
-                          }`}>
-                            {filled}{limit != null ? `/${limit}` : ''}
-                          </span>
-                        </td>
-                      );
-                    })}
+          <div style={{ padding: "12px 20px 10px", borderBottom: "1px solid var(--am-border)" }}>
+            <SectionLabel>Position Needs</SectionLabel>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", fontSize: 9, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "var(--am-surface-faint)" }}>
+                    <th
+                      style={{
+                        textAlign: "left",
+                        padding: "6px 8px",
+                        fontWeight: 600,
+                        color: "var(--am-text-faint)",
+                        textTransform: "uppercase",
+                        letterSpacing: 1.2,
+                        position: "sticky",
+                        left: 0,
+                        background: "var(--am-surface-faint)",
+                        zIndex: 10,
+                        minWidth: 80,
+                      }}
+                    >
+                      Team
+                    </th>
+                    {MATRIX_POSITIONS.map(pos => (
+                      <th
+                        key={pos}
+                        style={{
+                          padding: "6px 4px",
+                          textAlign: "center",
+                          fontWeight: 700,
+                          color: "var(--am-text-faint)",
+                          textTransform: "uppercase",
+                          letterSpacing: 1,
+                        }}
+                        title={`${pos} — ${positionLimits?.[pos] ?? '∞'} max`}
+                      >
+                        {pos}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {teams.map(team => {
+                    const isMe = resolveIsMe(team);
+                    return (
+                      <tr key={team.id} style={{ background: isMe ? "var(--am-chip)" : undefined }}>
+                        <td
+                          style={{
+                            padding: "4px 8px",
+                            fontWeight: 600,
+                            color: "var(--am-text)",
+                            maxWidth: 100,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            position: "sticky",
+                            left: 0,
+                            background: "inherit",
+                            zIndex: 10,
+                          }}
+                          title={team.name}
+                        >
+                          {team.name}
+                        </td>
+                        {MATRIX_POSITIONS.map(pos => {
+                          // For "P" column, show aggregate pitcher count with pitcherMax
+                          const filled = pos === "P" ? (team.pitcherCount ?? team.positionCounts?.[pos] ?? 0) : (team.positionCounts?.[pos] ?? 0);
+                          const limit = pos === "P" ? (positionLimits?.[pos] ?? pitcherMax) : positionLimits?.[pos];
+                          const isFull = limit != null && filled >= limit;
+                          // Aurora tones: filled = cyan-tinted via accent, full = stronger irid background, empty = muted
+                          const filledStyle: React.CSSProperties = isFull
+                            ? {
+                                background: "rgba(34, 211, 238, 0.15)",
+                                color: "var(--am-accent)",
+                                fontWeight: 700,
+                              }
+                            : filled > 0
+                            ? {
+                                color: "var(--am-text)",
+                                fontWeight: 600,
+                                background: "rgba(34, 211, 238, 0.08)",
+                              }
+                            : {
+                                color: "var(--am-text-faint)",
+                                opacity: 0.4,
+                              };
+                          return (
+                            <td key={pos} style={{ padding: "4px 4px", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  minWidth: 20,
+                                  padding: "0 3px",
+                                  borderRadius: 4,
+                                  ...filledStyle,
+                                }}
+                              >
+                                {filled}{limit != null ? `/${limit}` : ''}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        <div className="divide-y divide-[var(--lg-divide)]">
+        {/* Rosters list */}
+        <div style={{ padding: "12px 20px 4px" }}>
+          <SectionLabel>Rosters</SectionLabel>
+        </div>
+        <div>
             {teams.map((team: Team, idx: number) => {
                 const isExpanded = expandedId === team.id;
                 const isLoading = loadingIds.has(team.id);
+                const isMe = resolveIsMe(team);
 
                 const rosterSource = (isExpanded && detailedRoster) ? detailedRoster : (team.roster || []);
 
@@ -210,23 +331,47 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                 const isCold = team.rosterCount >= 2 && avgCost < leagueAvg * 0.75;
 
                 return (
-                    <div key={team.id} className={`${team.isMe ? 'bg-[var(--lg-tint)]' : ''}`}>
+                    <div
+                        key={team.id}
+                        style={{
+                            borderTop: idx === 0 ? "1px solid var(--am-border)" : "1px solid var(--am-border)",
+                            background: isMe ? "var(--am-chip)" : undefined,
+                        }}
+                    >
                         <div
-                            className="px-6 py-3 cursor-pointer hover:bg-[var(--lg-tint)] transition-all"
                             onClick={() => setExpandedId(isExpanded ? null : team.id)}
+                            style={{
+                                padding: "12px 20px",
+                                cursor: "pointer",
+                                transition: "background 200ms",
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--am-surface-faint)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = isMe ? "var(--am-chip)" : "transparent"; }}
                         >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-[var(--lg-text-muted)] font-bold text-xs w-6 opacity-30">{String(idx + 1).padStart(2, '0')}</span>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`font-semibold ${team.isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-primary)]'}`}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                                    <span
+                                        style={{
+                                            color: "var(--am-text-faint)",
+                                            fontWeight: 700,
+                                            fontSize: 12,
+                                            width: 24,
+                                            opacity: 0.5,
+                                            fontVariantNumeric: "tabular-nums",
+                                        }}
+                                    >
+                                        {String(idx + 1).padStart(2, '0')}
+                                    </span>
+                                    <div style={{ display: "flex", flexDirection: "column" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                            <span style={{ fontWeight: 600, color: isMe ? "var(--am-accent)" : "var(--am-text)" }}>
                                                 {team.name}
                                             </span>
-                                            {showPace && isHot && <Flame size={12} className="text-red-400" />}
-                                            {showPace && isCold && <Snowflake size={12} className="text-blue-400" />}
+                                            {isMe && <Chip strong>You</Chip>}
+                                            {showPace && isHot && <Flame size={12} style={{ color: "var(--am-cardinal)" }} />}
+                                            {showPace && isCold && <Snowflake size={12} style={{ color: "var(--am-accent)" }} />}
                                         </div>
-                                        <span className="text-[10px] font-medium text-[var(--lg-text-muted)] opacity-60">
+                                        <span style={{ fontSize: 10, fontWeight: 500, color: "var(--am-text-faint)", marginTop: 2 }}>
                                             {showPace
                                               ? `${team.rosterCount}/${rosterSize} · $${spent} spent${(team.keeperSpend ?? 0) > 0 ? ` (K:$${team.keeperSpend} + A:$${team.auctionSpend})` : ''} · $${remainingPerSpot.toFixed(0)}/spot`
                                               : `${team.rosterCount} / ${rosterSize} Roster`}
@@ -234,29 +379,68 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-6 text-right">
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Budget</span>
-                                        <span className="font-semibold text-[var(--lg-text-primary)]">${team.budget}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 24, textAlign: "right" }}>
+                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                                        <span
+                                            style={{
+                                                fontSize: 9,
+                                                fontWeight: 600,
+                                                letterSpacing: 1.2,
+                                                textTransform: "uppercase",
+                                                color: "var(--am-text-faint)",
+                                            }}
+                                        >
+                                            Budget
+                                        </span>
+                                        <IridText size={16} weight={600}>${team.budget}</IridText>
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Max</span>
-                                        <span className="font-semibold text-[var(--lg-accent)]">${team.maxBid}</span>
+                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                                        <span
+                                            style={{
+                                                fontSize: 9,
+                                                fontWeight: 600,
+                                                letterSpacing: 1.2,
+                                                textTransform: "uppercase",
+                                                color: "var(--am-text-faint)",
+                                            }}
+                                        >
+                                            Max
+                                        </span>
+                                        <span style={{ fontWeight: 600, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums" }}>
+                                            ${team.maxBid}
+                                        </span>
                                     </div>
-                                    <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                    <div
+                                        style={{
+                                            color: "var(--am-text-muted)",
+                                            transition: "transform 300ms",
+                                            transform: isExpanded ? "rotate(180deg)" : "none",
+                                            display: "inline-flex",
+                                        }}
+                                    >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                     </div>
                                 </div>
                             </div>
-                            {/* Budget progress bar */}
+                            {/* Budget progress bar (spending pace) */}
                             {showPace && (
-                            <div className="mt-1.5 ml-10 mr-16">
-                                <div className="h-1 rounded-full bg-[var(--lg-tint)] overflow-hidden">
+                            <div style={{ marginTop: 6, marginLeft: 40, marginRight: 64 }}>
+                                <div
+                                    style={{
+                                        height: 4,
+                                        borderRadius: 99,
+                                        background: "var(--am-surface-faint)",
+                                        overflow: "hidden",
+                                    }}
+                                >
                                     <div
-                                        className={`h-full rounded-full transition-all ${
-                                            spentPct > 85 ? 'bg-red-400' : spentPct > 60 ? 'bg-amber-400' : 'bg-emerald-400'
-                                        }`}
-                                        style={{ width: `${spentPct}%` }}
+                                        style={{
+                                            height: "100%",
+                                            borderRadius: 99,
+                                            width: `${spentPct}%`,
+                                            background: "var(--am-irid)",
+                                            transition: "width 300ms",
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -264,9 +448,26 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                         </div>
 
                         {isExpanded && (
-                            <div className="bg-black/20 border-t border-[var(--lg-border-faint)] animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div
+                                style={{
+                                    background: "var(--am-surface-faint)",
+                                    borderTop: "1px solid var(--am-border)",
+                                }}
+                                className="animate-in fade-in slide-in-from-top-2 duration-300"
+                            >
                                 {isLoading ? (
-                                    <div className="px-6 py-12 text-center text-[var(--lg-text-muted)] text-xs font-medium uppercase animate-pulse">
+                                    <div
+                                        style={{
+                                            padding: "48px 24px",
+                                            textAlign: "center",
+                                            color: "var(--am-text-muted)",
+                                            fontSize: 12,
+                                            fontWeight: 500,
+                                            letterSpacing: 1.2,
+                                            textTransform: "uppercase",
+                                        }}
+                                        className="animate-pulse"
+                                    >
                                         Loading roster...
                                     </div>
                                 ) : (
@@ -286,7 +487,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                 const stat = entry.stat;
                                                 const displayName = stat?.mlb_full_name || stat?.player_name || name;
                                                 const displayPos = entry.assignedPosition || stat?.positions || 'BN';
-                                                
+
                                                 const playerObj = stat || ({
                                                     row_id: String(mlbId),
                                                     mlb_id: String(mlbId),
@@ -301,7 +502,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
 
                                                 return (
                                                     <React.Fragment key={entry.id}>
-                                                        <ThemedTr 
+                                                        <ThemedTr
                                                             className={`cursor-pointer ${isRowExpanded ? 'bg-[var(--lg-tint)]' : ''}`}
                                                             onClick={() => setExpandedPlayerId(isRowExpanded ? null : entry.id)}
                                                         >
@@ -318,11 +519,11 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (
-                                                            <PlayerExpandedRow 
-                                                                player={playerObj} 
-                                                                isTaken={true} 
+                                                            <PlayerExpandedRow
+                                                                player={playerObj}
+                                                                isTaken={true}
                                                                 ownerName={team.name}
-                                                                colSpan={3} 
+                                                                colSpan={3}
                                                             />
                                                         )}
                                                     </React.Fragment>
@@ -345,6 +546,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                 );
             })}
         </div>
-    </div>
+      </div>
+    </Glass>
   );
 }

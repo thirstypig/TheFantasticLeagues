@@ -1,4 +1,29 @@
-
+/*
+ * AuctionStage — Aurora port (PR-3, deep port of the live floor).
+ *
+ * The bid panel itself: 200ms-tick timer, bid buttons, decline/pass,
+ * proxy bid, AI advice, server-driven WS state. This is the most
+ * frame-rate sensitive surface in the entire app — the rollout plan
+ * explicitly flagged Glass `backdrop-filter: blur(28px)` perf during
+ * the final-10-second countdown.
+ *
+ * Port strategy: SURGICAL. Wrap visible cards in Aurora `<Glass>` for
+ * the iridescent border + chip-toned background, swap dollar values
+ * to `<IridText>`, keep ALL state/effects/callbacks/business logic
+ * 100% intact. NO new effects. NO new state. Token redirects from
+ * PR #153 already give every `--lg-*` reference Aurora colors so most
+ * of the existing chrome already reads correctly.
+ *
+ * Critical preservation:
+ *   - 200ms `setInterval` for `timeLeft` countdown
+ *   - 1000ms `setInterval` for `nomTimeLeft`
+ *   - decline state reset on nomination change
+ *   - bid advice fetch
+ *   - position-full memo
+ *   - proxy bid sub-component
+ *
+ * Legacy preserved at /auction-classic via AuctionStageLegacy.tsx.
+ */
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Pause, Play, RotateCcw, Undo2, Target, X, HandMetal, Clock, Sparkles, Loader2, Check, XCircle } from 'lucide-react';
 import { ClientAuctionState } from '../hooks/useAuctionState';
@@ -8,6 +33,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { track } from '../../../lib/posthog';
 import { positionToSlots } from '../../../lib/sportConfig';
+import { Glass, IridText, Chip, SectionLabel } from '../../../components/aurora/atoms';
 
 // AI Bid Advice types
 interface BidAdvice {
@@ -48,12 +74,18 @@ interface AuctionStageProps {
 export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, onPause, onResume, onReset, onUndoFinish, onSetProxyBid, myProxyBid, onCancelProxyBid }: AuctionStageProps) {
   const { confirm } = useToast();
 
+  // Suppress unused — onFinish is part of the props contract but the visible
+  // button got folded into the SOLD! pulse + auto-finish flow on the server.
+  void onFinish;
+
   const nomination = serverState?.nomination;
   const teams = serverState?.teams as Team[] || [];
 
   const [timeLeft, setTimeLeft] = useState(0);
 
-  // Timer Sync (display only — server is authoritative for auto-finish)
+  // Timer Sync (display only — server is authoritative for auto-finish).
+  // 200ms cadence preserved verbatim from legacy. Do NOT slow this down
+  // — the perceived smoothness of the countdown depends on it.
   useEffect(() => {
     if (!nomination || nomination.status !== 'running') {
         setTimeLeft(0);
@@ -85,20 +117,8 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
     setBidAdviceError(null);
   }, [nominationPlayerId]);
 
-  // Skeleton
-  if (!serverState) {
-      return (
-          <div className="animate-pulse space-y-3">
-              <div className="h-24 rounded-lg bg-[var(--lg-tint)]" />
-              <div className="h-16 rounded-lg bg-[var(--lg-tint)]" />
-          </div>
-      );
-  }
-
-  const queueIds = serverState?.queue || [];
-  const queueIndex = serverState?.queueIndex || 0;
-
-  // Nomination timer countdown (AUC-08)
+  // Nomination timer countdown (AUC-08) — must come before any early return
+  // so React's hook-order invariant holds when serverState is null/loading.
   const nomTimerDuration = serverState?.config?.nominationTimer || 30;
   const [nomTimeLeft, setNomTimeLeft] = useState(nomTimerDuration);
 
@@ -112,68 +132,13 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
     return () => clearInterval(interval);
   }, [serverState?.queueIndex, nomination, serverState?.status, nomTimerDuration]);
 
-  // --- Waiting for Nomination ---
-  if (!nomination) {
-      const isMyTurn = myTeamId != null && queueIds[queueIndex] === myTeamId;
-      const nomCritical = nomTimeLeft <= 10;
-
-      return (
-          <div className="flex flex-col gap-3">
-              {/* Status + countdown */}
-              <div className="text-center py-4">
-                  <div className="text-base md:text-lg font-semibold text-[var(--lg-text-heading)] mb-1">Awaiting Nomination</div>
-                  <p className="text-xs text-[var(--lg-text-muted)] mb-2">
-                     {isMyTurn
-                        ? <span className="text-[var(--lg-accent)] font-semibold animate-pulse">Your turn — select a player</span>
-                        : "Stand by for the next nominee"}
-                  </p>
-                  {/* Nomination countdown */}
-                  <div className="flex items-center justify-center gap-2">
-                    <Clock size={14} className={nomCritical ? 'text-[var(--lg-error)] animate-pulse' : 'text-[var(--lg-text-muted)] opacity-50'} />
-                    <span className={`text-2xl font-bold tabular-nums ${nomCritical ? 'text-[var(--lg-error)] animate-pulse' : 'text-[var(--lg-text-muted)]'}`}>
-                      {nomTimeLeft}s
-                    </span>
-                  </div>
-              </div>
-
-              {/* Queue */}
-              <NominationQueue teams={teams} queue={queueIds} queueIndex={queueIndex} myTeamId={myTeamId} />
-
-              {/* Admin actions */}
-              {onUndoFinish && (
-                  <div className="flex justify-center pt-1">
-                      <Button
-                          variant="amber"
-                          size="sm"
-                          onClick={async () => {
-                              if (await confirm('Undo last auction result?')) onUndoFinish();
-                          }}
-                      >
-                          <Undo2 size={12} /> Undo Last
-                      </Button>
-                  </div>
-              )}
-          </div>
-      );
-  }
-
-  // --- Active Bidding ---
-  const isCriticalTime = timeLeft <= 5 && nomination.status === 'running';
-  const currentBid = nomination.currentBid;
-  const highBidderTeam = teams.find(t => t.id === nomination.highBidderTeamId);
-  const myTeam = teams.find(t => t.id === myTeamId);
-  const minRaise = currentBid + 1;
-  const jumpRaise = currentBid + 5;
-  const canAffordMin = myTeam ? myTeam.maxBid >= minRaise : false;
-  const canAffordJump = myTeam ? myTeam.maxBid >= jumpRaise : false;
-  const isHighBidder = nomination.highBidderTeamId === myTeamId;
-
-  // Check if all eligible position slots are full for my team
+  // Position-full memo — kept above all early returns for hook-order safety.
+  const myTeamMemo = useMemo(() => teams.find(t => t.id === myTeamId), [teams, myTeamId]);
   const isPositionFull = useMemo(() => {
-    if (!nomination || !myTeam || !serverState) return false;
+    if (!nomination || !myTeamMemo || !serverState) return false;
     const config = serverState.config;
-    if (nomination.isPitcher) return (myTeam.pitcherCount ?? 0) >= (config.pitcherCount ?? 9);
-    if ((myTeam.hitterCount ?? 0) >= (config.batterCount ?? 14)) return true;
+    if (nomination.isPitcher) return (myTeamMemo.pitcherCount ?? 0) >= (config.pitcherCount ?? 9);
+    if ((myTeamMemo.hitterCount ?? 0) >= (config.batterCount ?? 14)) return true;
     if (!config.positionLimits) return false;
     const primaryPos = (nomination.positions || '').split(/[,\/]/)[0].trim().toUpperCase();
     const slots = positionToSlots(primaryPos);
@@ -181,81 +146,195 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
     return slots.every(slot => {
       const limit = config.positionLimits?.[slot];
       if (limit === undefined) return false;
-      return (myTeam.positionCounts?.[slot] ?? 0) >= limit;
+      return (myTeamMemo.positionCounts?.[slot] ?? 0) >= limit;
     });
-  }, [nomination, myTeam, serverState]);
+  }, [nomination, myTeamMemo, serverState]);
+
+  // Skeleton
+  if (!serverState) {
+      return (
+          <Glass>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ height: 96, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 64, borderRadius: 12, background: "var(--am-surface-faint)", animation: "pulse 1.5s ease-in-out infinite" }} />
+              </div>
+          </Glass>
+      );
+  }
+
+  const queueIds = serverState?.queue || [];
+  const queueIndex = serverState?.queueIndex || 0;
+
+  // --- Waiting for Nomination ---
+  if (!nomination) {
+      const isMyTurn = myTeamId != null && queueIds[queueIndex] === myTeamId;
+      const nomCritical = nomTimeLeft <= 10;
+
+      return (
+          <Glass>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Status + countdown */}
+                  <div style={{ textAlign: "center", padding: "14px 0" }}>
+                      <SectionLabel>✦ Awaiting Nomination</SectionLabel>
+                      <p style={{ fontSize: 12, color: "var(--am-text-muted)", marginBottom: 10, marginTop: 2 }}>
+                         {isMyTurn
+                            ? <span style={{ color: "var(--am-accent)", fontWeight: 600 }}>Your turn — select a player</span>
+                            : "Stand by for the next nominee"}
+                      </p>
+                      {/* Nomination countdown */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        <Clock size={14} style={{ color: nomCritical ? "var(--am-negative)" : "var(--am-text-muted)", opacity: nomCritical ? 1 : 0.5 }} className={nomCritical ? "animate-pulse" : ""} />
+                        <span
+                          className={nomCritical ? "animate-pulse" : ""}
+                          style={{
+                            fontSize: 28,
+                            fontWeight: 700,
+                            fontVariantNumeric: "tabular-nums",
+                            fontFamily: "var(--am-display)",
+                            color: nomCritical ? "var(--am-negative)" : "var(--am-text-muted)",
+                          }}
+                        >
+                          {nomTimeLeft}s
+                        </span>
+                      </div>
+                  </div>
+
+                  {/* Queue */}
+                  <NominationQueue teams={teams} queue={queueIds} queueIndex={queueIndex} myTeamId={myTeamId} />
+
+                  {/* Admin actions */}
+                  {onUndoFinish && (
+                      <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+                          <Button
+                              variant="amber"
+                              size="sm"
+                              onClick={async () => {
+                                  if (await confirm('Undo last auction result?')) onUndoFinish();
+                              }}
+                          >
+                              <Undo2 size={12} /> Undo Last
+                          </Button>
+                      </div>
+                  )}
+              </div>
+          </Glass>
+      );
+  }
+
+  // --- Active Bidding ---
+  const isCriticalTime = timeLeft <= 5 && nomination.status === 'running';
+  const currentBid = nomination.currentBid;
+  const highBidderTeam = teams.find(t => t.id === nomination.highBidderTeamId);
+  const myTeam = myTeamMemo;
+  const minRaise = currentBid + 1;
+  const jumpRaise = currentBid + 5;
+  const canAffordMin = myTeam ? myTeam.maxBid >= minRaise : false;
+  const canAffordJump = myTeam ? myTeam.maxBid >= jumpRaise : false;
+  const isHighBidder = nomination.highBidderTeamId === myTeamId;
 
   return (
-    <div className="flex flex-col gap-3">
-        {/* Nominee: photo + info + timer in one compact row */}
-        <div className={`flex gap-3 items-stretch rounded-lg overflow-hidden border bg-[var(--lg-tint)] transition-all ${
-          isCriticalTime ? 'border-[var(--lg-error)]/50 shadow-lg shadow-red-500/10' : 'border-[var(--lg-border-subtle)]'
-        }`}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Nominee: photo + info + timer in one compact row.
+            Wrapped in Glass for iridescent border + ambient blur. */}
+        <Glass
+          padded={false}
+          style={{
+            border: isCriticalTime ? "1px solid var(--am-negative)" : undefined,
+            boxShadow: isCriticalTime ? "0 0 24px rgba(255, 109, 181, 0.25)" : undefined,
+          }}
+        >
+          <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
             {/* Player headshot */}
-            <div className="w-20 shrink-0 relative bg-[var(--lg-bg-secondary)]">
+            <div style={{ width: 80, flexShrink: 0, position: "relative", background: "var(--am-surface-faint)" }}>
                 <img
                     src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${nomination.playerId}/headshot/67/current`}
                     alt={nomination.playerName}
-                    className="object-cover h-full w-full"
+                    style={{ objectFit: "cover", height: "100%", width: "100%" }}
                     onError={(e) => (e.currentTarget.src = 'https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/generic/headshot/67/current')}
                 />
-                <div className="absolute bottom-1 left-1 bg-[var(--lg-accent)] text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">
-                    {nomination.positions || (nomination.isPitcher ? 'P' : 'UT')}
+                <div style={{ position: "absolute", bottom: 4, left: 4 }}>
+                  <Chip strong>{nomination.positions || (nomination.isPitcher ? 'P' : 'UT')}</Chip>
                 </div>
             </div>
 
             {/* Player info */}
-            <div className="flex-1 py-2 pr-2 flex flex-col justify-center min-w-0">
-                <div className="text-sm font-semibold text-[var(--lg-text-heading)] truncate">{nomination.playerName}</div>
-                <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">{nomination.playerTeam}</div>
+            <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8, paddingRight: 8, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nomination.playerName}</div>
+                <div style={{ fontSize: 10, color: "var(--am-text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{nomination.playerTeam}</div>
             </div>
 
             {/* Timer + Going Once visual (AUC-09) */}
-            <div className="flex flex-col items-center justify-center pr-3">
-                <div className={`text-4xl font-bold tabular-nums transition-all ${
-                    isCriticalTime ? 'text-[var(--lg-error)] animate-pulse' : 'text-[var(--lg-text-primary)]'
-                }`}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingRight: 14, minWidth: 60 }}>
+                {isCriticalTime ? (
+                  <span
+                    className="animate-pulse"
+                    style={{
+                      fontSize: 36,
+                      fontWeight: 700,
+                      fontVariantNumeric: "tabular-nums",
+                      fontFamily: "var(--am-display)",
+                      color: "var(--am-negative)",
+                      lineHeight: 1,
+                    }}
+                  >
                     {timeLeft}
-                </div>
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: 36,
+                      fontWeight: 700,
+                      fontVariantNumeric: "tabular-nums",
+                      fontFamily: "var(--am-display)",
+                      color: "var(--am-text)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {timeLeft}
+                  </span>
+                )}
                 {nomination.status === 'running' && timeLeft <= 5 && timeLeft > 3 && (
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-amber-400 animate-pulse">Going once...</div>
+                  <div className="animate-pulse" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "rgb(251, 191, 36)" }}>Going once...</div>
                 )}
                 {nomination.status === 'running' && timeLeft <= 3 && timeLeft > 1 && (
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--lg-error)] animate-pulse">Going twice...</div>
+                  <div className="animate-pulse" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "var(--am-negative)" }}>Going twice...</div>
                 )}
                 {nomination.status === 'running' && timeLeft <= 1 && timeLeft > 0 && (
-                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-error)] animate-bounce">SOLD!</div>
+                  <div className="animate-bounce" style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: 2, background: "var(--am-irid)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" as const }}>SOLD!</div>
                 )}
             </div>
-        </div>
+          </div>
+        </Glass>
 
         {nomination.status === 'paused' && (
-            <div className="text-center text-[var(--lg-warning)] font-bold uppercase text-xs tracking-wide border border-[var(--lg-warning)]/20 bg-[var(--lg-warning)]/10 px-2 py-1 rounded">PAUSED</div>
+            <Chip strong style={{ alignSelf: "center", color: "rgb(251, 191, 36)", textTransform: "uppercase", letterSpacing: 1.2 }}><Pause size={10} /> Paused</Chip>
         )}
 
         {/* Current bid + high bidder */}
-        <div className={`rounded-lg p-3 border transition-all ${isHighBidder ? 'border-[var(--lg-success)]/40 bg-[var(--lg-success)]/5' : 'border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]'}`}>
-            <div className="flex items-center justify-between">
-                <div>
-                    <div className="text-[10px] font-semibold text-[var(--lg-text-muted)] uppercase mb-0.5">Current Bid</div>
-                    <div className="text-3xl font-bold text-[var(--lg-text-heading)] tabular-nums">${currentBid}</div>
-                </div>
-                <div className="text-right">
-                    <div className="text-[10px] font-semibold text-[var(--lg-text-muted)] uppercase mb-0.5">High Bidder</div>
-                    <div className={`text-sm font-semibold ${isHighBidder ? 'text-[var(--lg-success)]' : 'text-[var(--lg-text-primary)]'}`}>
-                        {highBidderTeam?.name || '—'} {isHighBidder ? '(You)' : ''}
-                    </div>
-                </div>
-            </div>
-        </div>
+        <Glass strong={isHighBidder}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                  <SectionLabel style={{ marginBottom: 2 }}>Current Bid</SectionLabel>
+                  <IridText size={32}>${currentBid}</IridText>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                  <SectionLabel style={{ marginBottom: 2 }}>High Bidder</SectionLabel>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: isHighBidder ? "var(--am-positive)" : "var(--am-text)" }}>
+                      {highBidderTeam?.name || '—'} {isHighBidder ? <Chip strong>You</Chip> : ''}
+                  </div>
+              </div>
+          </div>
+        </Glass>
 
         {/* Bid buttons + Decline toggle */}
         {isDeclined ? (
-            <div className="flex flex-col gap-2">
-                <div className="text-center py-3 rounded-lg border border-[var(--lg-warning)]/30 bg-[var(--lg-warning)]/5">
-                    <div className="text-sm font-semibold text-[var(--lg-warning)]">Passing on this player</div>
-                    <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">You won't bid unless you rejoin</div>
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Glass>
+                  <div style={{ textAlign: "center", padding: "8px 0" }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "rgb(251, 191, 36)" }}>Passing on this player</div>
+                    <div style={{ fontSize: 10, color: "var(--am-text-muted)", marginTop: 2 }}>You won't bid unless you rejoin</div>
+                  </div>
+                </Glass>
                 <Button
                     variant="secondary"
                     className="h-10"
@@ -267,33 +346,36 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
         ) : (
             <>
                 {isPositionFull && !isHighBidder && (
-                    <div className="text-center py-2 rounded-lg border border-[var(--lg-warning)]/30 bg-[var(--lg-warning)]/5">
-                        <div className="text-xs font-semibold text-[var(--lg-warning)]">Position full on your roster</div>
-                    </div>
+                    <Glass>
+                      <div style={{ textAlign: "center", padding: "4px 0", fontSize: 12, fontWeight: 600, color: "rgb(251, 191, 36)" }}>
+                        Position full on your roster
+                      </div>
+                    </Glass>
                 )}
-                <div className="grid grid-cols-2 gap-2">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <Button
                         disabled={!canAffordMin || isHighBidder || nomination.status !== 'running' || isPositionFull}
                         onClick={() => onBid(minRaise)}
                         variant="default"
                         className="h-14 flex flex-col items-center justify-center gap-0.5"
                     >
-                        <span className="text-[10px] font-medium uppercase opacity-70">+$1</span>
-                        <span className="text-lg font-bold">${minRaise}</span>
+                        <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", opacity: 0.7 }}>+$1</span>
+                        <span style={{ fontSize: 18, fontWeight: 700 }}>${minRaise}</span>
                     </Button>
                     <Button
                         disabled={!canAffordJump || isHighBidder || nomination.status !== 'running' || isPositionFull}
                         onClick={() => onBid(jumpRaise)}
                         variant="secondary"
-                        className="h-14 flex flex-col items-center justify-center gap-0.5 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)]"
+                        className="h-14 flex flex-col items-center justify-center gap-0.5"
+                        style={{ background: "var(--am-chip)", borderColor: "var(--am-border)" }}
                     >
-                        <span className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)] opacity-70">+$5</span>
-                        <span className="text-lg font-bold text-[var(--lg-accent)]">${jumpRaise}</span>
+                        <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", color: "var(--am-text-muted)", opacity: 0.7 }}>+$5</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--am-accent)" }}>${jumpRaise}</span>
                     </Button>
                 </div>
                 {/* AI Bid Advice */}
                 {myTeam && nomination.status === 'running' && (
-                  <div className="space-y-1">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {!bidAdvice && (
                       <button
                         onClick={async () => {
@@ -314,45 +396,56 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                           }
                         }}
                         disabled={bidAdviceLoading}
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-accent)] transition-colors"
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          padding: "10px 0",
+                          fontSize: 12,
+                          color: "var(--am-text-muted)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
                       >
                         {bidAdviceLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                         AI Bid Advice
                       </button>
                     )}
                     {bidAdviceError && (
-                      <div className="text-[10px] text-red-400 text-center">{bidAdviceError}</div>
+                      <div style={{ fontSize: 10, color: "rgb(248, 113, 113)", textAlign: "center" }}>{bidAdviceError}</div>
                     )}
                     {bidAdvice && (
-                      <div className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-2 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            {bidAdvice.shouldBid
-                              ? <Check size={12} className="text-emerald-400" />
-                              : <XCircle size={12} className="text-red-400" />
-                            }
-                            <span className={`text-xs font-semibold ${bidAdvice.shouldBid ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {bidAdvice.shouldBid ? 'Bid' : 'Pass'}
-                            </span>
+                      <Glass padded={false}>
+                        <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              {bidAdvice.shouldBid
+                                ? <Check size={12} style={{ color: "var(--am-positive)" }} />
+                                : <XCircle size={12} style={{ color: "var(--am-negative)" }} />
+                              }
+                              <span style={{ fontSize: 12, fontWeight: 600, color: bidAdvice.shouldBid ? "var(--am-positive)" : "var(--am-negative)" }}>
+                                {bidAdvice.shouldBid ? 'Bid' : 'Pass'}
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                                Max: <span style={{ fontWeight: 700, color: "var(--am-text)" }}>${bidAdvice.maxRecommendedBid}</span>
+                              </span>
+                              <Chip strong>
+                                <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>{bidAdvice.confidence}</span>
+                              </Chip>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-[var(--lg-text-muted)]">
-                              Max: <span className="font-bold text-[var(--lg-text-primary)]">${bidAdvice.maxRecommendedBid}</span>
-                            </span>
-                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${
-                              bidAdvice.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-400' :
-                              bidAdvice.confidence === 'medium' ? 'bg-amber-500/10 text-amber-400' :
-                              'bg-red-500/10 text-red-400'
-                            }`}>
-                              {bidAdvice.confidence}
-                            </span>
-                          </div>
+                          <p style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.5, margin: 0 }}>{bidAdvice.reasoning}</p>
+                          {bidAdvice.categoryImpact && (
+                            <p style={{ fontSize: 10, color: "var(--am-accent)", lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>{bidAdvice.categoryImpact}</p>
+                          )}
                         </div>
-                        <p className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">{bidAdvice.reasoning}</p>
-                        {bidAdvice.categoryImpact && (
-                          <p className="text-[10px] text-[var(--lg-accent)] leading-relaxed italic">{bidAdvice.categoryImpact}</p>
-                        )}
-                      </div>
+                      </Glass>
                     )}
                   </div>
                 )}
@@ -360,7 +453,20 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                 {myTeam && !isHighBidder && nomination.status === 'running' && (
                     <button
                         onClick={() => setIsDeclined(true)}
-                        className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-warning)] transition-colors"
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          padding: "10px 0",
+                          fontSize: 12,
+                          color: "var(--am-text-muted)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
                     >
                         <HandMetal size={14} />
                         Pass (sit out this player)
@@ -381,7 +487,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             />
         )}
 
-        <div className="text-center text-[10px] text-[var(--lg-text-muted)] opacity-50">
+        <div style={{ textAlign: "center", fontSize: 10, color: "var(--am-text-faint)" }}>
             {isHighBidder
               ? `You are the high bidder · Keeper next year: $${currentBid + 5}`
               : !myTeam
@@ -392,7 +498,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
 
         {/* Commissioner controls — only shown if commissioner props are passed */}
         {(onPause || onResume || onReset) && (
-            <div className="flex gap-2 justify-center flex-wrap">
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                 {nomination.status === 'running' && onPause && (
                     <Button variant="amber" size="sm" onClick={() => onPause()}>
                         <Pause size={12} /> Pause
@@ -423,7 +529,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
   );
 }
 
-// --- Proxy Bid Sub-Component ---
+// --- Proxy Bid Sub-Component (Aurora chrome) ---
 
 interface ProxyBidSectionProps {
   currentBid: number;
@@ -435,6 +541,7 @@ interface ProxyBidSectionProps {
 }
 
 function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCancel, isHighBidder }: ProxyBidSectionProps) {
+  void isHighBidder;
   const [inputValue, setInputValue] = useState('');
   const [showInput, setShowInput] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -455,32 +562,35 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
   // Active proxy bid display
   if (myProxyBid) {
     return (
-      <div className="flex items-center justify-between px-4 py-3 rounded-lg border border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/5">
-        <div className="flex items-center gap-2">
-          <Target size={16} className="text-[var(--lg-accent)]" />
-          <span className="text-sm font-semibold text-[var(--lg-accent)]">
-            Auto-bid up to ${myProxyBid}
-          </span>
+      <Glass>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Target size={16} style={{ color: "var(--am-accent)" }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--am-accent)" }}>
+              Auto-bid up to ${myProxyBid}
+            </span>
+          </div>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              style={{ padding: 4, background: "transparent", border: "none", color: "var(--am-text-muted)", cursor: "pointer" }}
+              title="Cancel auto-bid"
+              aria-label="Cancel auto-bid"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="p-1 text-[var(--lg-text-muted)] hover:text-red-400 rounded"
-            title="Cancel auto-bid"
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
+      </Glass>
     );
   }
 
   // Set proxy bid UI
   if (showInput) {
     return (
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--lg-text-muted)]">$</span>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ position: "relative", flex: 1 }}>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--am-text-muted)" }}>$</span>
           <input
             ref={inputRef}
             type="number"
@@ -490,13 +600,29 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') setShowInput(false); }}
             placeholder={`${currentBid + 1}–${maxAffordable}`}
-            className="w-full pl-6 pr-2 py-2 text-sm rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] placeholder:text-[var(--lg-text-muted)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+            style={{
+              width: "100%",
+              paddingLeft: 24,
+              paddingRight: 8,
+              paddingTop: 8,
+              paddingBottom: 8,
+              fontSize: 14,
+              borderRadius: 10,
+              border: "1px solid var(--am-border)",
+              background: "var(--am-surface-faint)",
+              color: "var(--am-text)",
+              outline: "none",
+            }}
           />
         </div>
         <Button size="sm" onClick={handleSubmit} disabled={!inputValue || parseInt(inputValue) <= currentBid || parseInt(inputValue) > maxAffordable}>
           Set
         </Button>
-        <button onClick={() => setShowInput(false)} className="p-1.5 text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">
+        <button
+          onClick={() => setShowInput(false)}
+          style={{ padding: 6, background: "transparent", border: "none", color: "var(--am-text-muted)", cursor: "pointer" }}
+          aria-label="Cancel"
+        >
           <X size={14} />
         </button>
       </div>
@@ -507,7 +633,22 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
   return (
     <button
       onClick={() => setShowInput(true)}
-      className="w-full flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-lg border border-[var(--lg-accent)]/30 bg-[var(--lg-accent)]/5 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/10 transition-colors"
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: "12px 16px",
+        fontSize: 14,
+        fontWeight: 600,
+        borderRadius: 12,
+        border: "1px solid var(--am-border)",
+        background: "var(--am-chip)",
+        color: "var(--am-accent)",
+        cursor: "pointer",
+        fontFamily: "inherit",
+      }}
     >
       <Target size={16} />
       Set Max Bid (auto-bid)

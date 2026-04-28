@@ -1,6 +1,18 @@
+/*
+ * ChatTab — Aurora deep port (PR-3 of Auction module rollout).
+ *
+ * In-draft live chat panel. Business logic preserved 1:1 from the
+ * legacy file: useState for input, useRef for input + scroll-to-bottom,
+ * useEffect that auto-scrolls on new messages, and the `myUserId`
+ * comparison that styles the current user's bubbles distinctly.
+ *
+ * Chrome moves to Aurora: outer Glass surface, `--am-*` token bubbles,
+ * Aurora-styled input row, and a chip-button send control.
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import type { ChatMessage } from '../hooks/useAuctionState';
+import { Glass } from '../../../components/aurora/atoms';
 
 interface ChatTabProps {
   messages: ChatMessage[];
@@ -32,31 +44,82 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[var(--lg-glass-bg)]">
+    <Glass padded={false} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '10px 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
         {messages.length === 0 && (
-          <div className="text-center text-xs text-[var(--lg-text-muted)] italic py-12 opacity-50">
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: 12,
+              color: 'var(--am-text-faint)',
+              fontStyle: 'italic',
+              padding: '48px 0',
+              opacity: 0.7,
+            }}
+          >
             No messages yet. Say something!
           </div>
         )}
         {messages.map((msg, i) => {
           const isMe = msg.userId === myUserId;
+          const isLast = i === messages.length - 1;
           return (
-            <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 ${
-                isMe
-                  ? 'bg-[var(--lg-accent)] text-white'
-                  : 'bg-[var(--lg-tint)] text-[var(--lg-text-primary)]'
-              }`}>
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isMe ? 'flex-end' : 'flex-start',
+                paddingBottom: isLast ? 0 : 6,
+                borderBottom: isLast ? 'none' : '1px solid var(--am-border)',
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: '85%',
+                  borderRadius: 12,
+                  padding: '6px 10px',
+                  background: isMe ? 'var(--am-chip)' : 'transparent',
+                  color: 'var(--am-text)',
+                  border: isMe ? '1px solid var(--am-border)' : 'none',
+                }}
+              >
                 {!isMe && (
-                  <div className="text-[9px] font-semibold uppercase tracking-wide opacity-60 mb-0.5">
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1.2,
+                      color: 'var(--am-text-faint)',
+                      marginBottom: 2,
+                    }}
+                  >
                     {msg.userName}
                   </div>
                 )}
-                <div className="text-sm leading-snug break-words">{msg.text}</div>
+                <div style={{ fontSize: 13, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                  {msg.text}
+                </div>
               </div>
-              <span className="text-[9px] text-[var(--lg-text-muted)] opacity-40 mt-0.5 px-1">
+              <span
+                style={{
+                  fontSize: 10,
+                  color: 'var(--am-text-faint)',
+                  marginTop: 2,
+                  padding: '0 4px',
+                }}
+              >
                 {formatTime(msg.timestamp)}
               </span>
             </div>
@@ -66,7 +129,16 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
       </div>
 
       {/* Input bar */}
-      <div className="px-2 py-2 border-t border-[var(--lg-border-subtle)] bg-[var(--lg-glass-bg-hover)] flex items-center gap-2">
+      <div
+        style={{
+          padding: '10px 12px',
+          borderTop: '1px solid var(--am-border)',
+          background: 'var(--am-surface-faint)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
         <input
           ref={inputRef}
           type="text"
@@ -75,16 +147,41 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
           onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
           placeholder="Type a message..."
           maxLength={500}
-          className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] placeholder:text-[var(--lg-text-muted)]/40 outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            fontSize: 13,
+            borderRadius: 12,
+            border: '1px solid var(--am-border)',
+            background: 'var(--am-surface-faint)',
+            color: 'var(--am-text)',
+            outline: 'none',
+          }}
         />
         <button
+          type="button"
           onClick={handleSend}
           disabled={!input.trim()}
-          className="p-1.5 rounded-lg bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-30 transition-opacity"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '8px 12px',
+            fontSize: 12,
+            fontWeight: 600,
+            borderRadius: 99,
+            background: 'var(--am-chip-strong)',
+            color: 'var(--am-text)',
+            border: '1px solid var(--am-border-strong)',
+            cursor: input.trim() ? 'pointer' : 'not-allowed',
+            opacity: input.trim() ? 1 : 0.4,
+            transition: 'opacity 150ms',
+          }}
         >
-          <Send size={14} />
+          <Send size={13} />
         </button>
       </div>
-    </div>
+    </Glass>
   );
 }

@@ -13,7 +13,7 @@ interface AuctionLayoutProps {
   connectionStatus?: ConnectionStatus;
 }
 
-export default function AuctionLayout({ stage, context, isMuted, onToggleMute, connectionStatus }: AuctionLayoutProps) {
+export default function AuctionLayoutLegacy({ stage, context, isMuted, onToggleMute, connectionStatus }: AuctionLayoutProps) {
   const [layout, setLayout] = useState<'stacked' | 'side'>(() => {
     return (localStorage.getItem('fbst-auction-layout') as 'stacked' | 'side') || 'stacked';
   });
@@ -57,27 +57,11 @@ export default function AuctionLayout({ stage, context, isMuted, onToggleMute, c
         </div>
       </div>
 
-      {/* Connection status banner — Aurora "warning glass" treatment.
-          Per the rollout plan, shown only after a disconnect, not on first connect. */}
+      {/* Connection status banner — only show after a disconnect, not on initial connect */}
       {connectionStatus === "reconnecting" && (
-        <div
-          className="animate-pulse"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            padding: "6px 16px",
-            background: "rgba(251, 191, 36, 0.10)",
-            borderBottom: "1px solid rgba(251, 191, 36, 0.30)",
-            color: "rgb(251, 191, 36)",
-            fontSize: 12,
-            fontWeight: 500,
-            flexShrink: 0,
-          }}
-        >
+        <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/30 text-[var(--lg-warning)] text-xs font-medium shrink-0 animate-pulse">
           <Loader2 size={12} className="animate-spin" />
-          Reconnecting to auction server…
+          Reconnecting to auction server...
         </div>
       )}
 
