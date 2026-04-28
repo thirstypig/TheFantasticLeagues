@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getPublicLeagues, type PublicLeagueListItem } from "../api";
 import { useAuth } from "../../../auth/AuthProvider";
+import "../../../components/aurora/aurora.css";
+import { AmbientBg, Glass, IridText, SectionLabel, Chip } from "../../../components/aurora/atoms";
 
 export default function DiscoverLeagues() {
   const { user } = useAuth();
@@ -22,90 +24,279 @@ export default function DiscoverLeagues() {
     : leagues;
 
   return (
-    <div className="min-h-screen bg-[var(--lg-bg)] text-[var(--lg-text-primary)]">
-      {/* Simple header */}
-      <header className="border-b border-[var(--lg-border-subtle)] px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-[var(--lg-accent)] font-bold text-lg">
-          <span>TFL</span>
-          <span className="text-xs text-[var(--lg-text-muted)] font-normal">The Fantastic Leagues</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          {user ? (
-            <Link to="/" className="text-sm text-[var(--lg-accent)] hover:underline">Dashboard</Link>
-          ) : (
-            <>
-              <Link to="/login" className="text-sm text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">Log In</Link>
-              <Link to="/signup" className="px-4 py-1.5 bg-[var(--lg-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90">Sign Up</Link>
-            </>
-          )}
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold text-[var(--lg-accent)] mb-2">Discover Leagues</h1>
-        <p className="text-[var(--lg-text-muted)] mb-8">Browse public fantasy baseball leagues and join the competition.</p>
-
-        {/* Search */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search leagues..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full max-w-md px-4 py-2 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-primary)] text-sm focus:outline-none focus:border-[var(--lg-accent)]"
-          />
-        </div>
-
-        {/* League Cards */}
-        {loading ? (
-          <div className="text-[var(--lg-text-muted)] py-12 text-center">Loading leagues...</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-[var(--lg-text-muted)] mb-4">
-              {search ? "No leagues match your search." : "No public leagues yet."}
-            </div>
-            {user && (
-              <Link to="/create-league" className="px-4 py-2 bg-[var(--lg-accent)] text-white rounded-lg text-sm font-medium hover:opacity-90">
-                Create Your Own League
+    <div
+      className="aurora-theme dark"
+      style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
+    >
+      <AmbientBg />
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          padding: "60px 20px",
+          maxWidth: 1100,
+          margin: "0 auto",
+        }}
+      >
+        {/* Top-right auth link */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 28,
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <Link
+            to="/"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
+              color: "var(--am-text)",
+              minWidth: 0,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 8,
+                background: "var(--am-irid)",
+                boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "var(--am-display)",
+                fontSize: 15,
+                letterSpacing: -0.2,
+                color: "var(--am-text)",
+              }}
+            >
+              The Fantastic Leagues
+            </span>
+          </Link>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            {user ? (
+              <Link
+                to="/"
+                style={{
+                  fontSize: 13,
+                  color: "var(--am-text-muted)",
+                  textDecoration: "none",
+                }}
+              >
+                Dashboard →
               </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  style={{
+                    fontSize: 13,
+                    color: "var(--am-text-muted)",
+                    textDecoration: "none",
+                  }}
+                >
+                  Already have an account? Sign in →
+                </Link>
+                <Link
+                  to="/signup"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--am-text)",
+                    textDecoration: "none",
+                    padding: "6px 12px",
+                    borderRadius: 99,
+                    background: "var(--am-chip-strong)",
+                    border: "1px solid var(--am-border-strong)",
+                  }}
+                >
+                  Sign up
+                </Link>
+              </>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map(league => (
-              <div
-                key={league.id}
-                className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl p-5"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="text-lg font-bold text-[var(--lg-text-primary)]">{league.name}</h3>
-                    <p className="text-xs text-[var(--lg-text-muted)]">{league.season} Season · {league.scoringFormat || "Roto"} · {league.draftMode || "Auction"}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                    league.visibility === "OPEN"
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                  }`}>
-                    {league.visibility === "OPEN" ? "Open" : "Public"}
-                  </span>
-                </div>
+        </div>
 
-                {league.description && (
-                  <p className="text-sm text-[var(--lg-text-secondary)] mb-3 line-clamp-2">{league.description}</p>
-                )}
+        {/* Hero */}
+        <Glass strong style={{ marginBottom: 24 }}>
+          <SectionLabel>✦ Discover</SectionLabel>
+          <IridText size={40} weight={300}>
+            Public leagues
+          </IridText>
+          <div style={{ marginTop: 8, fontSize: 14, color: "var(--am-text-muted)" }}>
+            Browse open and public fantasy baseball leagues. Find a league, request to join, and start drafting.
+          </div>
 
-                <div className="flex items-center gap-4 text-xs text-[var(--lg-text-muted)]">
-                  <span>{league.teamsFilled}/{league.maxTeams} teams</span>
-                  {league.commissioner && <span>Commissioner: {league.commissioner}</span>}
-                  {league.entryFee ? <span>${league.entryFee} entry</span> : <span>Free</span>}
-                </div>
+          {/* Search */}
+          <div style={{ marginTop: 18 }}>
+            <input
+              type="text"
+              placeholder="Search leagues..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width: "100%",
+                maxWidth: 440,
+                padding: "10px 14px",
+                borderRadius: 12,
+                background: "var(--am-surface-faint)",
+                border: "1px solid var(--am-border)",
+                color: "var(--am-text)",
+                fontSize: 13,
+                outline: "none",
+              }}
+            />
+          </div>
+        </Glass>
 
+        {/* Cards */}
+        {loading ? (
+          <Glass>
+            <div style={{ color: "var(--am-text-muted)", textAlign: "center", padding: "32px 0" }}>
+              Loading leagues...
+            </div>
+          </Glass>
+        ) : filtered.length === 0 ? (
+          <Glass>
+            <div style={{ textAlign: "center", padding: "40px 16px" }}>
+              <SectionLabel style={{ marginBottom: 8 }}>✦ Empty</SectionLabel>
+              <div style={{ fontSize: 16, color: "var(--am-text)", marginBottom: 6 }}>
+                {search ? "No leagues match your search." : "No public leagues yet."}
               </div>
+              <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginBottom: 18 }}>
+                {search ? "Try a different name." : "Check back soon — leagues are forming all the time."}
+              </div>
+              {user && (
+                <Link
+                  to="/create-league"
+                  style={{
+                    display: "inline-block",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--am-text)",
+                    textDecoration: "none",
+                    padding: "8px 16px",
+                    borderRadius: 99,
+                    background: "var(--am-chip-strong)",
+                    border: "1px solid var(--am-border-strong)",
+                  }}
+                >
+                  Create your own league →
+                </Link>
+              )}
+            </div>
+          </Glass>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {filtered.map(league => (
+              <Glass key={league.id}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: "var(--am-display)",
+                          fontSize: 18,
+                          fontWeight: 400,
+                          color: "var(--am-text)",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {league.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 4 }}>
+                        {league.season} season · {league.scoringFormat || "Roto"} · {league.draftMode || "Auction"}
+                      </div>
+                    </div>
+                    <Chip strong>{league.visibility === "OPEN" ? "Open" : "Public"}</Chip>
+                  </div>
+
+                  {league.description && (
+                    <div
+                      style={{
+                        fontSize: 12.5,
+                        color: "var(--am-text-muted)",
+                        lineHeight: 1.5,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {league.description}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    <Chip>
+                      {league.teamsFilled}/{league.maxTeams} teams
+                    </Chip>
+                    {league.commissioner && <Chip>Commish: {league.commissioner}</Chip>}
+                    <Chip>{league.entryFee ? `$${league.entryFee} entry` : "Free"}</Chip>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "auto",
+                      paddingTop: 8,
+                      display: "flex",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "var(--am-text-muted)",
+                      }}
+                    >
+                      View →
+                    </span>
+                  </div>
+                </div>
+              </Glass>
             ))}
           </div>
         )}
-      </main>
+
+        {/* Bottom escape link */}
+        {!user && (
+          <div style={{ marginTop: 32, textAlign: "center" }}>
+            <Link
+              to="/login"
+              style={{
+                fontSize: 13,
+                color: "var(--am-text-muted)",
+                textDecoration: "none",
+              }}
+            >
+              Already have an account? Sign in →
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
