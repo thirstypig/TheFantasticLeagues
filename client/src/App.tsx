@@ -49,6 +49,7 @@ const GuideFaq = React.lazy(() => import("./pages/guide/GuideFaq"));
 const About = React.lazy(() => import("./pages/About"));
 const AIHub = React.lazy(() => import("./features/ai/pages/AIHub"));
 const DraftReportPage = React.lazy(() => import("./features/ai/pages/DraftReportPage"));
+const WeeklyReport = React.lazy(() => import("./features/reports/pages/WeeklyReport"));
 const CreateLeague = React.lazy(() => import("./features/leagues/pages/CreateLeague"));
 const JoinLeague = React.lazy(() => import("./features/leagues/pages/JoinLeague"));
 const DiscoverLeagues = React.lazy(() => import("./features/leagues/pages/DiscoverLeagues"));
@@ -212,6 +213,10 @@ export default function App() {
                     <Route path="/community" element={<ProductBoard />} />
                     <Route path="/ai" element={<AIHub />} />
                     <Route path="/draft-report" element={<DraftReportPage />} />
+                    {/* Aurora Weekly Report (screen #7). Net-new page —
+                        consumes the existing /api/reports/:leagueId server
+                        endpoint that survived the prior client-UI removal. */}
+                    <Route path="/weekly-report" element={<WeeklyReport />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
