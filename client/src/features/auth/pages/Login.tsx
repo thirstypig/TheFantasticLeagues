@@ -1,12 +1,21 @@
 // client/src/pages/Login.tsx
+//
+// Aurora pre-auth port. Login lives OUTSIDE AuroraShell, so the page
+// itself owns the `aurora-theme` wrapper + AmbientBg layer (vs in-shell
+// pages which inherit them from AuroraShell). Centered Glass-strong card
+// over the full-bleed iridescent ambient background.
+//
+// Business logic (supabase auth, redirects, error states, dev login,
+// resend confirmation) is unchanged from the legacy chrome — only the
+// surface presentation moves to Aurora tokens.
 import React, { useState } from "react";
-import GoogleSignInButton from "../../../components/GoogleSignInButton";
 import { Link, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
-import { Logo } from "../../../components/ui/Logo";
 import { supabase } from "../../../lib/supabase";
 import { track } from "../../../lib/posthog";
+import { AmbientBg, Glass } from "../../../components/aurora/atoms";
+import "../../../components/aurora/aurora.css";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
@@ -22,6 +31,8 @@ export default function Login() {
   const [devLoading, setDevLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [emailFocus, setEmailFocus] = useState(false);
+  const [passwordFocus, setPasswordFocus] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,254 +74,370 @@ export default function Login() {
     }
   };
 
+  // Shared input chrome — focus ring handled inline via state.
+  const inputStyle = (focused: boolean): React.CSSProperties => ({
+    width: "100%",
+    height: 44,
+    padding: "0 14px",
+    background: "var(--am-surface-faint)",
+    border: `1px solid ${focused ? "var(--am-accent)" : "var(--am-border)"}`,
+    boxShadow: focused ? "0 0 0 1px var(--am-accent)" : "none",
+    borderRadius: 12,
+    color: "var(--am-text)",
+    fontSize: 14,
+    outline: "none",
+    transition: "border-color 120ms ease, box-shadow 120ms ease",
+  });
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left panel — marketing / value prop */}
-      <div className="hidden md:flex md:w-[45%] lg:w-[50%] bg-gradient-to-br from-[var(--lg-bg)] via-[var(--lg-tint)] to-[var(--lg-bg)] border-r border-[var(--lg-border-faint)] flex-col justify-between p-10 lg:p-16">
-        <div>
-          <a href="https://www.thefantasticleagues.com" rel="noopener noreferrer" className="flex items-center gap-3 group">
-            <Logo size={36} />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
-              <span className="text-[10px] font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
-            </div>
-          </a>
-        </div>
+    <div
+      className="aurora-theme dark"
+      style={{
+        position: "relative",
+        minHeight: "100svh",
+        background: "var(--am-bg)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px 16px",
+      }}
+    >
+      <AmbientBg />
 
-        <div className="space-y-8">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-tight mb-3">
-              Fantasy baseball,<br />powered by AI.
-            </h1>
-            <p className="text-sm text-[var(--lg-text-secondary)] leading-relaxed max-w-sm">
-              Real-time stats, AI-powered insights, live auction drafts, and everything you need to run your league.
-            </p>
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: 440,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
+        <Glass strong padded={false} style={{ padding: "32px 28px" }}>
+          {/* Hero */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: 24 }}>
+            <div
+              aria-hidden
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "var(--am-irid)",
+                boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                marginBottom: 14,
+              }}
+            />
+            <div
+              style={{
+                fontFamily: "var(--am-display)",
+                fontSize: 18,
+                lineHeight: 1.1,
+                letterSpacing: -0.2,
+                color: "var(--am-text)",
+              }}
+            >
+              The Fantastic Leagues
+            </div>
+            <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6 }}>
+              Sign in to your league
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-sm">⚾</span>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-[var(--lg-text-primary)]">Live MLB Stats</div>
-                <div className="text-xs text-[var(--lg-text-muted)]">Real-time scoring synced with MLB API, updated daily.</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-sm">🤖</span>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-[var(--lg-text-primary)]">AI Insights</div>
-                <div className="text-xs text-[var(--lg-text-muted)]">Weekly team grades, trade analysis, and draft reports.</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-sm">📊</span>
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-[var(--lg-text-primary)]">Auction & Snake Drafts</div>
-                <div className="text-xs text-[var(--lg-text-muted)]">Live drafts with bid tracking, auto-pick, and spending pace.</div>
-              </div>
-            </div>
+          {/* OAuth */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+            <button
+              type="button"
+              onClick={() => { track("login", { method: "google" }); loginWithGoogle(); }}
+              style={{
+                width: "100%",
+                height: 44,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                padding: "0 14px",
+                borderRadius: 12,
+                background: "rgba(66, 133, 244, 0.08)",
+                border: "1px solid var(--am-border)",
+                color: "var(--am-text)",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "background 120ms ease, border-color 120ms ease",
+              }}
+            >
+              <GoogleGlyph />
+              Continue with Google
+            </button>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 text-xs text-[var(--lg-text-muted)] opacity-60">
-            <Link to="/discover" className="hover:text-[var(--lg-text-primary)] transition-colors">Discover Leagues</Link>
-            <span>·</span>
-            <Link to="/pricing" className="hover:text-[var(--lg-text-primary)] transition-colors">Pricing</Link>
-            <span>·</span>
-            <a href="https://www.thefantasticleagues.com" rel="noopener noreferrer" className="hover:text-[var(--lg-text-primary)] transition-colors">About</a>
+          {/* Divider */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <div style={{ flex: 1, height: 1, background: "var(--am-border)" }} />
+            <div style={{ fontSize: 10, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)", fontWeight: 600 }}>
+              Or with email
+            </div>
+            <div style={{ flex: 1, height: 1, background: "var(--am-border)" }} />
           </div>
-          <a
-            href="https://www.thefantasticleagues.com" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[var(--lg-text-muted)] opacity-40 hover:opacity-70 transition-opacity"
-          >
-            ← thefantasticleagues.com
-          </a>
-        </div>
-      </div>
 
-      {/* Right panel — login form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10">
-        {/* Mobile-only logo (hidden on desktop where it's in the left panel) */}
-        <div className="md:hidden mb-10">
-          <Link to="/" className="flex items-center gap-3 justify-center">
-            <Logo size={40} />
-            <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
-              <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
-            </div>
-          </Link>
-        </div>
-
-        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="lg-card p-8 md:p-10 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[var(--lg-accent)] to-transparent opacity-50" />
-
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-[var(--lg-text-heading)] mb-2">Log In</h2>
-              <p className="text-sm font-medium text-[var(--lg-text-secondary)] opacity-60">Sign in to your account</p>
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  color: "var(--am-text-faint)",
+                  fontWeight: 600,
+                  marginBottom: 6,
+                }}
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => setEmailFocus(true)}
+                onBlur={() => setEmailFocus(false)}
+                placeholder="you@example.com"
+                style={inputStyle(emailFocus)}
+              />
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <GoogleSignInButton label="Continue with Google" onClick={() => { track("login", { method: "google" }); loginWithGoogle(); }} />
-              </div>
-
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[var(--lg-border-faint)]"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase tracking-wide">
-                  <span className="bg-[var(--lg-card-bg)] px-3 text-[var(--lg-text-muted)] font-bold">Or sign in with email</span>
-                </div>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-5">
-                <div>
-                  <label className="block text-xs font-bold text-[var(--lg-text-muted)] mb-2 ml-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all placeholder:text-white/20 text-sm font-medium"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2 ml-1">
-                    <label className="block text-xs font-bold text-[var(--lg-text-muted)]">
-                      Password
-                    </label>
-                    <Link to="/forgot-password" title="Forgot Password" className="text-xs font-bold text-[var(--lg-accent)] hover:underline">
-                      Forgot Password?
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full h-12 pl-4 pr-11 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] focus:border-[var(--lg-accent)] focus:ring-1 focus:ring-[var(--lg-accent)] outline-none transition-all text-sm font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--lg-text-muted)] hover:text-white transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                {error === 'not_approved' && (
-                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300">
-                    Your email is not approved. Contact your league admin for access.
-                  </div>
-                )}
-
-                {error === 'email_not_confirmed' && (
-                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300">
-                    <p className="mb-2">Please check your email for a confirmation link before logging in.</p>
-                    {resendSuccess ? (
-                      <p className="text-xs text-green-400">Confirmation email sent! Check your inbox.</p>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleResendConfirmation}
-                        disabled={resendLoading || !email}
-                        className="text-xs font-bold text-[var(--lg-accent)] hover:underline disabled:opacity-50"
-                      >
-                        {resendLoading ? "Sending..." : "Resend confirmation email"}
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {error && error !== 'not_approved' && error !== 'email_not_confirmed' && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 active:scale-[0.98]"
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <label
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: 1.4,
+                    textTransform: "uppercase",
+                    color: "var(--am-text-faint)",
+                    fontWeight: 600,
+                  }}
                 >
-                  {loading ? "Logging in..." : "Log In"}
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  style={{
+                    fontSize: 11,
+                    color: "var(--am-text-muted)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: 2,
+                  }}
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setPasswordFocus(true)}
+                  onBlur={() => setPasswordFocus(false)}
+                  style={{ ...inputStyle(passwordFocus), paddingRight: 42 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--am-text-muted)",
+                    cursor: "pointer",
+                    padding: 4,
+                    display: "inline-flex",
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
-              </form>
+              </div>
+            </div>
 
-              {import.meta.env.DEV && (
-                <div className="pt-6 border-t border-[var(--lg-border-faint)]">
+            {error === "not_approved" && (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "rgba(255, 80, 80, 0.08)",
+                  border: "1px solid var(--am-border)",
+                  color: "var(--am-negative)",
+                  fontSize: 12,
+                }}
+              >
+                Your email is not approved. Contact your league admin for access.
+              </div>
+            )}
+
+            {error === "email_not_confirmed" && (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
+                  fontSize: 12,
+                  color: "var(--am-text)",
+                }}
+              >
+                <div style={{ marginBottom: 8 }}>
+                  Please check your email for a confirmation link before logging in.
+                </div>
+                {resendSuccess ? (
+                  <div style={{ fontSize: 11, color: "var(--am-positive)" }}>
+                    Confirmation email sent! Check your inbox.
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    disabled={devLoading}
-                    onClick={async () => {
-                      setDevLoading(true);
-                      setError("");
-                      try {
-                        const res = await fetch("/api/auth/dev-login", { method: "POST" });
-                        const { email: devEmail, password: devPwd, error: apiErr } = await res.json();
-                        if (apiErr) throw new Error(apiErr);
-                        await loginWithPassword(devEmail, devPwd);
-                        window.location.href = "/";
-                      } catch (err: unknown) {
-                        setError(err instanceof Error ? err.message : "Dev login failed");
-                      } finally {
-                        setDevLoading(false);
-                      }
+                    onClick={handleResendConfirmation}
+                    disabled={resendLoading || !email}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "var(--am-accent)",
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      cursor: resendLoading || !email ? "not-allowed" : "pointer",
+                      opacity: resendLoading || !email ? 0.5 : 1,
+                      textDecoration: "underline",
+                      textUnderlineOffset: 2,
                     }}
-                    className="flex items-center justify-center gap-2 w-full h-12 px-6 rounded-xl bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] hover:border-[var(--lg-border-subtle)] text-white font-bold text-xs uppercase tracking-wide transition-all disabled:opacity-50"
                   >
-                    <span className="text-amber-400">⚡</span> {devLoading ? "Logging in..." : "Dev Login"}
+                    {resendLoading ? "Sending..." : "Resend confirmation email"}
                   </button>
-                </div>
-              )}
-            </div>
-          </div>
+                )}
+              </div>
+            )}
 
-          <div className="mt-8 text-center">
-            <p className="text-sm font-medium text-[var(--lg-text-muted)] opacity-60 flex items-center justify-center gap-2">
-              Don't have an account?
-              <Link
-                to="/signup"
-                className="font-bold text-[var(--lg-accent)] hover:text-[var(--lg-accent-hover)] transition-colors"
+            {error && error !== "not_approved" && error !== "email_not_confirmed" && (
+              <div
+                style={{
+                  padding: 10,
+                  borderRadius: 12,
+                  background: "rgba(255, 80, 80, 0.08)",
+                  border: "1px solid var(--am-border)",
+                  color: "var(--am-negative)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                }}
               >
-                Sign Up
-              </Link>
-            </p>
-          </div>
+                {error}
+              </div>
+            )}
 
-          {/* Mobile-only footer links (hidden on desktop where they're in left panel) */}
-          <div className="md:hidden mt-10 pt-6 border-t border-[var(--lg-border-faint)] text-center space-y-3">
-            <div className="flex items-center justify-center gap-4 text-xs text-[var(--lg-text-muted)] opacity-60">
-              <Link to="/discover" className="hover:text-[var(--lg-text-primary)] transition-colors">Discover Leagues</Link>
-              <span>·</span>
-              <Link to="/pricing" className="hover:text-[var(--lg-text-primary)] transition-colors">Pricing</Link>
-              <span>·</span>
-              <a href="https://www.thefantasticleagues.com" rel="noopener noreferrer" className="hover:text-[var(--lg-text-primary)] transition-colors">About</a>
-            </div>
-            <a
-              href="https://www.thefantasticleagues.com" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-[var(--lg-text-muted)] opacity-40 hover:opacity-70 transition-opacity"
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: "100%",
+                height: 46,
+                marginTop: 4,
+                borderRadius: 99,
+                background: "var(--am-irid)",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 600,
+                border: "none",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1,
+                boxShadow: "0 8px 24px rgba(255, 80, 80, 0.32)",
+                transition: "opacity 120ms ease, transform 120ms ease",
+                letterSpacing: 0.2,
+              }}
             >
-              ← thefantasticleagues.com
-            </a>
-          </div>
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+
+          {import.meta.env.DEV && (
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--am-border)" }}>
+              <button
+                type="button"
+                disabled={devLoading}
+                onClick={async () => {
+                  setDevLoading(true);
+                  setError("");
+                  try {
+                    const res = await fetch("/api/auth/dev-login", { method: "POST" });
+                    const { email: devEmail, password: devPwd, error: apiErr } = await res.json();
+                    if (apiErr) throw new Error(apiErr);
+                    await loginWithPassword(devEmail, devPwd);
+                    window.location.href = "/";
+                  } catch (err: unknown) {
+                    setError(err instanceof Error ? err.message : "Dev login failed");
+                  } finally {
+                    setDevLoading(false);
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  height: 40,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  borderRadius: 12,
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
+                  color: "var(--am-text-muted)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                  cursor: devLoading ? "not-allowed" : "pointer",
+                  opacity: devLoading ? 0.5 : 1,
+                }}
+              >
+                <span style={{ color: "#f5b400" }}>⚡</span>
+                {devLoading ? "Logging in..." : "Dev Login"}
+              </button>
+            </div>
+          )}
+        </Glass>
+
+        {/* Sign up footer */}
+        <div style={{ textAlign: "center", fontSize: 13, color: "var(--am-text-muted)" }}>
+          New to FBST?{" "}
+          <Link
+            to="/signup"
+            style={{
+              color: "var(--am-text)",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Sign up →
+          </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+// Inline Google glyph — keeps the OAuth chip self-contained without
+// pulling the legacy GoogleSignInButton chrome into the Aurora surface.
+function GoogleGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden>
+      <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.92a8.78 8.78 0 0 0 2.68-6.6z" fill="#4285F4" />
+      <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26a5.4 5.4 0 0 1-3.04.86 5.34 5.34 0 0 1-5.02-3.7H.96v2.32A9 9 0 0 0 9 18z" fill="#34A853" />
+      <path d="M3.98 10.71A5.41 5.41 0 0 1 3.7 9c0-.59.1-1.17.28-1.71V4.97H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.82.96 4.03l3.02-2.32z" fill="#FBBC05" />
+      <path d="M9 3.58c1.32 0 2.5.45 3.43 1.34l2.58-2.58A8.97 8.97 0 0 0 9 0 9 9 0 0 0 .96 4.97L3.98 7.3A5.34 5.34 0 0 1 9 3.58z" fill="#EA4335" />
+    </svg>
   );
 }
