@@ -4,6 +4,75 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Sessions 2026-04-24/27/28 (Sessions 80–81) — Commissioner workflow finished, Sitemap & Navigation IA shipped, Aurora System pilot rolled out across 3 of 8 screens, Prisma transient-retry middleware
+
+Eleven PRs merged across two long sessions, all on `main`. Three arcs: (a) closing out the commissioner add/drop UX gap that surfaced after enforcement flipped on, (b) implementing the Sitemap & Navigation design (5-section sidebar IA + account menu + `/teams` index), and (c) starting the Aurora System rollout — Home, Standings, Team — with a `*Legacy` preservation hatch on each screen for per-page reversibility. One infrastructure PR (Prisma retry) landed in the middle to address transient Supabase pooler drops we observed during Aurora browser-verification.
+
+### Completed — Commissioner arc (PRs #126 → #131)
+
+- **PR [#126](https://github.com/thirstypig/TheFantasticLeagues/pull/126) — AddDropTab paginated** (`ccf072f`). Capped visible rows at 15 with "Showing X of N" footer. Pure UX shave for the previously-enlarged-to-show-all tables; search is the discovery affordance.
+- **PR [#127](https://github.com/thirstypig/TheFantasticLeagues/pull/127) — IL management in Teams tab** (`eaefd16`). Cross-team IL Place/Activate panels for the commissioner, with a single shared `effectiveDate` picker lifted into the tab header so all three actions (add, IL, activate) honor the same as-of date. Forwards `effectiveDate` through `AddDropPanel`'s submit body when truthy.
+- **PR [#128](https://github.com/thirstypig/TheFantasticLeagues/pull/128) — Per-row IL/Activate shortcuts** (`030f2a9`). Quick-action buttons inline in the Live Rosters grid that jump to the IL panel for the right team and scroll the player into view. Found a layout bug along the way: `RosterGrid`'s `h-96` + internal scroll meant pitcher rows were below the fold for owners with full pitching staffs ("Skunk Dogs is missing a player"). Fixed by adding an `unbounded?: boolean` prop — focused single-team views drop the height cap, the multi-team Quick View keeps it.
+- **PR [#129](https://github.com/thirstypig/TheFantasticLeagues/pull/129) — Pair add+drop in Manual Roster Management** (`1996564`). Pre-PR, commissioner clicks on Add in `IN_SEASON` returned an opaque 400 (`DROP_REQUIRED`). Solved by replacing the bespoke flow with the same shared `AddDropPanel` owners use. Same fix path also surfaced an "Acting As stale dropdown" symptom — the `_dbTeamId` field was missing from the client-side `PlayerSeasonStat` shape because the API doesn't emit it; tests had fabricated `_dbTeamId: 147` and shipped the regression. Saved a `feedback_test_fixtures.md` memory.
+- **PR [#130](https://github.com/thirstypig/TheFantasticLeagues/pull/130) — Tab restructure 6→5** (`55c244e`). Renamed Teams → Manage Rosters; removed the standalone Trades tab (`CommissionerTradeTool` moved into `CommissionerRosterTool`); promoted Team CRUD to the League tab; added a Roster Setup section to the Season tab with `RosterControls`. Added hash-redirect logic so old bookmarks (`#teams`, `#trades`) land at the right place per season phase. Plan deepened via `/compound-engineering:deepen-plan` + 9 parallel research/review agents before implementing.
+- **PR [#131](https://github.com/thirstypig/TheFantasticLeagues/pull/131) — Lock in PR #130's enrichment helper + hash redirects** (`2b575f3`). Extracted `enrichPlayersWithRosterState` from `CommissionerRosterTool` into its own pure helper at `client/src/features/commissioner/lib/enrichPlayersWithRosterState.ts`. Pins the join shape (`_dbTeamId`, `_dbPlayerId`, `_rosterId`, `assignedPosition`, `ogba_team_code`, `ogba_team_name`) so a future drift won't re-introduce the silent IDOR-shaped Acting-As bug. Tests cover the helper, the hash redirect mapping, and the new "Acting on roster for [Team Name]" feedback line.
+
+### Completed — Sitemap & Navigation arc (PRs #132 → #134)
+
+- **PR [#132](https://github.com/thirstypig/TheFantasticLeagues/pull/132) — Sidebar IA reorg** (`8d68334`). Implemented the 5-section information architecture from the design (PLAY untitled flat group + Explore + Insights + Draft + League Info + Admin). "My Team" entry conditional on `myTeamCode` from `LeagueContext`. Used `as const satisfies` on `NAV_SECTIONS` for a typed config that the runtime can iterate.
+- **PR [#133](https://github.com/thirstypig/TheFantasticLeagues/pull/133) — Account menu popover + `/my-team` redirect** (`9e91bdd`). Account menu (My Profile / Discover / Create / Pricing / Sign Out) attached to the avatar in the sidebar. Click-outside detection uses `pointerdown` (not `click`) so the trigger's own click handler doesn't race with the outside-detect. New `MyTeamRedirect` page resolves `myTeamCode` from `LeagueContext` and navigates to `/teams/:code` — keeps the canonical "/my-team" entry-point stable when team codes change between seasons.
+- **PR [#134](https://github.com/thirstypig/TheFantasticLeagues/pull/134) — `/teams` index page** (`418a851`). Cards-grid view of all 8 teams in a league with my-team sorted first + "My Team" badge + accent border. Closes the last gap in the Explore section's nav (every link has a destination now).
+
+### Completed — Aurora arc (PRs #135 → #139)
+
+The Aurora System is the in-house design language pivot — single-screen pilot first, then sequential page-by-page port. Each Aurora screen ships behind the same convention:
+
+1. The existing page is renamed `*Legacy.tsx` and routed at `/<page>-classic`.
+2. The Aurora replacement takes the original filename + route.
+3. A "View classic →" footer escape link gives users an out per page.
+4. A hash-based redirect (e.g., `#legacy` → `/<page>-classic`) catches old anchors.
+
+Atoms (`AmbientBg`, `Glass`, `IridescentRing`, `Dot`, `Chip`, `SectionLabel`, `IridText`, `Sparkline`, `AIStrip`) live at `client/src/components/aurora/`. CSS tokens are scoped to a `.aurora-theme` wrapper via `client/src/components/aurora/aurora.css` so the existing Liquid Glass + dark-mode toggle keeps working untouched on legacy screens. Visual conventions captured in a new `memory/aurora_rollout_pattern.md`.
+
+- **PR [#135](https://github.com/thirstypig/TheFantasticLeagues/pull/135) — Aurora pilot on Home (Scope B)** (`a9bd031`). Bento layout: Hero (span 8) + League Snapshot (span 4) + Standings (span 7) + Activity (span 5). Wires `getSeasonStandings` + `getTransactions` for live data, fails quiet on empty.
+- **PR [#136](https://github.com/thirstypig/TheFantasticLeagues/pull/136) — Prisma transient retry middleware** (`6c997c5`). During Aurora Home browser-verify we hit a `/api/season` 500 traced to a Supabase pooler drop ("Can't reach database server at aws-1-us-west-1.pooler.supabase.com:5432"). Built a Prisma client extension that retries read-only operations on transient connection errors. Whitelist of read ops (`findUnique`, `findMany`, `count`, `aggregate`, `groupBy`, `queryRaw`) + denylist of writes — write retries can double-apply, so they're explicitly excluded. Three retries with backoff `[100, 300, 800]ms`. `isTransientPrismaError` handles `PrismaClientInitializationError` (errorCode), `PrismaClientKnownRequestError` (code), and plain `Error` whose message names the pooler. Logger bug along the way: `logger.warn?.({...})` was a one-arg shape; the real signature is `(metadata, message)` two-arg.
+- **PR [#137](https://github.com/thirstypig/TheFantasticLeagues/pull/137) — Weekly Digest + Injured List ported into Aurora Home** (`784fd1d`). Feature parity with the legacy Home — fetches `/mlb/league-digest` and `/mlb/roster-status`, renders both inside the Aurora bento as full-width tiles. Keeps `HomeLegacy.tsx` (1,902 lines, untouched) reachable at `/home-classic`.
+- **PR [#138](https://github.com/thirstypig/TheFantasticLeagues/pull/138) — Standings ported to Aurora** (`3ec78c9`). Header card + matrix card (team × periods + total + Δ). Per-cell intensity grading: peak gets `var(--am-irid)`, ≥80% gets `var(--am-chip-strong)`, rest transparent. My-team row tinted with accent. `abbreviatePeriod` regex collapses "Mon DD - Mon DD" headers into the matrix.
+- **PR [#139](https://github.com/thirstypig/TheFantasticLeagues/pull/139) — Team page ported to Aurora** (`d7a1054`). Hero + Hitters table (span 8) + AI sidebar (span 4) + Pitchers table (span 12). Joins `getTeamDetails` + `getPlayerSeasonStats` via `Map<player.id, statRow>` to enrich for stats display (the API shape is `{ team, currentRoster, periodSummaries }`, not a flat roster). `getTeams` returns an array directly — hit a TS error first try when destructuring `.teams`. AI insights shape is `{ insights: TeamInsight[], overallGrade: string }`, not `{ summary, recommendations }` as I'd assumed.
+
+### Test changes
+
+- **PR #131** added unit tests for the extracted `enrichPlayersWithRosterState` helper, hash-redirect mapping, and the Acting-As feedback string.
+- **`/test-new` after PR #136** added `server/src/db/__tests__/prisma.test.ts` (23 tests) — pins the read/write boundary and the transient-vs-logic error boundary so a well-meaning future change can't silently move a write op into the retry whitelist. Required exporting `RETRYABLE_OPERATIONS`, `TRANSIENT_ERROR_CODES`, and `isTransientPrismaError` from `prisma.ts`.
+- Aurora ports: each Legacy preservation forced a test import retarget (e.g., `Season.test.tsx` and `Team.test.tsx` now import from `../pages/SeasonLegacy` / `../pages/TeamLegacy`) since the original pages got renamed. The legacy tests still cover the legacy ship-path at `/season-classic` and `/team/:code-classic`.
+
+### Test count delta this arc
+
+749 → **772** server tests (+23 from `prisma.test.ts`). Client + MCP + E2E counts unchanged (327 + 50 + 1 = 1150 total).
+
+### Pending at end of session
+
+- Uncommitted on `main` alongside this `/doc` sync: `server/src/db/prisma.ts` (exports the three symbols that `prisma.test.ts` imports), `server/src/db/__tests__/prisma.test.ts` (the new 23-test file), `CLAUDE.md` + `docs/TESTING.md` count bumps. Single small commit follows this entry.
+- Aurora rollout: Home + Standings + Team done. Remaining screens to port (rough order): Players, Activity, Trades, Auction, Commissioner. Each screen follows the *Legacy hatch.
+- Recommended `/clear` before the next non-trivial implementation arc — context is heavy after 11 PRs.
+
+### Concerns / Tech debt surfaced
+
+- **Aurora atoms are not yet shared with the design system documentation** — `aurora.css` lives next to the components and the tokens (`--am-*`) aren't in the central theme docs. Fine for the rollout; needs consolidation when the Aurora rollout completes and we delete the *Legacy files.
+- **Prisma retry middleware is read-only by design** — see the safety note in `server/src/db/prisma.ts`. If a future operation that *looks* like a read but has side effects (a custom raw query that does an `INSERT … RETURNING`, for example) gets added, the test in `prisma.test.ts` will only catch *named* write ops. The "every retryable op starts with `find`/`count`/`aggregate`/`groupBy`/`queryRaw`" sentinel is the second-line defense; do not weaken it.
+- **`_dbTeamId` / `_dbPlayerId` enrichment pattern is brittle** — the same shape-drift class that bit PR #129 (test fixtures fabricated a field the real API doesn't emit) could re-emerge for any client-side enriched field. Long term, either move the enrichment server-side (and add to the Zod contract) or build a shared fixture-vs-real-shape lint. Tracking in `feedback_test_fixtures.md`.
+- **`HomeLegacy.tsx` is 1,902 lines and is the only path some users follow** if they hit the "View classic →" footer. Don't delete until Aurora Home has at least one full week of zero "View classic" clicks in prod analytics.
+
+### Test Results
+
+- Server: 772 passing, 7 skipped, 1 todo (53 files)
+- Client: 327 passing (29 files)
+- MCP: 50 passing
+- E2E: 1 passing
+- Total: 1,150 green
+
+---
+
 ## Session 2026-04-23/24 (Session 75) — Roster Moves UX consolidated, Rule 2 prior-year fallback shipped, enforcement flipped on for OGBA
 
 Three distinct PRs landed in rapid succession along the path to getting `ENFORCE_ROSTER_RULES=true` live for OGBA. Writing them up together because they're one arc: Phase 5 UI consolidation → live-flip audit → Rule 2 correctness patch.

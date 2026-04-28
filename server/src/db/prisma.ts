@@ -15,7 +15,11 @@ declare global {
 // let it decide.
 //
 // Source of operation names: Prisma docs — https://www.prisma.io/docs/concepts/components/prisma-client/middleware
-const RETRYABLE_OPERATIONS = new Set<string>([
+//
+// Exported for testing — the unit test pins the read/write boundary so
+// nobody silently adds a write op to the retry list (which would
+// double-apply on a "request sent, response lost" retry).
+export const RETRYABLE_OPERATIONS = new Set<string>([
   "findUnique",
   "findUniqueOrThrow",
   "findFirst",
@@ -32,7 +36,7 @@ const RETRYABLE_OPERATIONS = new Set<string>([
 // (Supabase pooler drop, DNS blip, brief network partition). Same-tier
 // retry is appropriate; persistent failure will exhaust retries and
 // surface the original error.
-const TRANSIENT_ERROR_CODES = new Set<string>([
+export const TRANSIENT_ERROR_CODES = new Set<string>([
   "P1001", // Can't reach database server
   "P1002", // Database server timed out
   "P1008", // Operation timed out
@@ -41,7 +45,7 @@ const TRANSIENT_ERROR_CODES = new Set<string>([
 
 const RETRY_DELAYS_MS = [100, 300, 800]; // 3 attempts after the original
 
-function isTransientPrismaError(err: unknown): boolean {
+export function isTransientPrismaError(err: unknown): boolean {
   // Initialization errors carry an `errorCode` rather than a `code`.
   if (err instanceof Prisma.PrismaClientInitializationError) {
     return TRANSIENT_ERROR_CODES.has(err.errorCode ?? "");
