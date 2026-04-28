@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Trophy, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 import {
   AmbientBg, Glass, IridText, Chip, SectionLabel,
@@ -85,10 +85,16 @@ function shiftWeekKey(weekKey: string, delta: number): string {
   return `${y}-W${String(week).padStart(2, "0")}`;
 }
 
+function priorWeekKey(weekKey: string): string | null {
+  const shifted = shiftWeekKey(weekKey, -1);
+  return shifted === weekKey ? null : shifted;
+}
+
 export default function WeeklyReport() {
   const { leagueId } = useLeague();
   const [weekKey, setWeekKey] = useState<string | undefined>(undefined); // undefined = current
   const [report, setReport] = useState<WeeklyReport | null>(null);
+  const [priorReport, setPriorReport] = useState<WeeklyReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [openTeamId, setOpenTeamId] = useState<number | null>(null);
@@ -105,7 +111,32 @@ export default function WeeklyReport() {
     return () => { alive = false; };
   }, [leagueId, weekKey]);
 
+  // Fetch the prior week's digest so Power Rankings can show movement arrows
+  // (current rank vs prior rank). Failure is non-fatal — arrows just don't show.
+  useEffect(() => {
+    if (!leagueId || !report?.digest.data) return;
+    const currentWeekKey = (report.digest.data as { weekKey?: string }).weekKey;
+    if (!currentWeekKey) return;
+    const prior = priorWeekKey(currentWeekKey);
+    if (!prior) return;
+    let alive = true;
+    getWeeklyReport(leagueId, prior)
+      .then(r => { if (alive) setPriorReport(r); })
+      .catch(() => { /* non-fatal: arrows just won't appear */ });
+    return () => { alive = false; };
+  }, [leagueId, report]);
+
   const digest = report?.digest.data ?? null;
+  const priorDigest = priorReport?.digest.data ?? null;
+  const priorRankByTeam = useMemo(() => {
+    const map = new Map<string, number>();
+    const priorRows = asArray<PowerRankingRow>(priorDigest?.powerRankings);
+    priorRows.forEach((row, i) => {
+      const name = asString(row.teamName);
+      if (name) map.set(name.toLowerCase(), row.rank ?? i + 1);
+    });
+    return map;
+  }, [priorDigest]);
   const weekInOneSentence = asString(digest?.weekInOneSentence);
   const powerRankings = asArray<PowerRankingRow>(digest?.powerRankings);
   const hotTeam = asObject(digest?.hotTeam) as HotColdTeam | null;
@@ -219,12 +250,17 @@ export default function WeeklyReport() {
                   <div style={{ padding: "8px 12px 12px" }}>
                     {powerRankings.map((row, i) => {
                       const rank = row.rank ?? i + 1;
+                      const teamName = asString(row.teamName);
+                      const prior = teamName ? priorRankByTeam.get(teamName.toLowerCase()) : undefined;
+                      // delta > 0 = improved (lower rank number is better)
+                      const delta = prior !== undefined ? prior - rank : 0;
+                      const hasPrior = prior !== undefined && priorRankByTeam.size > 0;
                       return (
                         <div
                           key={i}
                           style={{
                             display: "grid",
-                            gridTemplateColumns: "40px 1fr",
+                            gridTemplateColumns: "40px 56px 1fr",
                             gap: 12,
                             padding: "10px 8px",
                             borderTop: i === 0 ? "none" : "1px solid var(--am-border)",
@@ -238,8 +274,41 @@ export default function WeeklyReport() {
                               <span style={{ fontFamily: "var(--am-display)", fontSize: 18, color: "var(--am-text-muted)" }}>{rank}</span>
                             )}
                           </div>
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: !hasPrior
+                                ? "var(--am-text-faint)"
+                                : delta > 0
+                                ? "var(--am-positive)"
+                                : delta < 0
+                                ? "var(--am-negative)"
+                                : "var(--am-text-faint)",
+                            }}
+                            title={hasPrior ? (delta === 0 ? "No change" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} from prior week`) : "No prior week data"}
+                          >
+                            {!hasPrior ? (
+                              <span style={{ fontSize: 10, fontStyle: "italic" }}>new</span>
+                            ) : delta > 0 ? (
+                              <>
+                                <ArrowUp size={12} />
+                                {Math.abs(delta)}
+                              </>
+                            ) : delta < 0 ? (
+                              <>
+                                <ArrowDown size={12} />
+                                {Math.abs(delta)}
+                              </>
+                            ) : (
+                              <Minus size={12} />
+                            )}
+                          </div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)" }}>{asString(row.teamName) || "—"}</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)" }}>{teamName || "—"}</div>
                             {row.blurb && (
                               <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.5 }}>{asString(row.blurb)}</div>
                             )}

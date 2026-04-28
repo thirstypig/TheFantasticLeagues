@@ -31,6 +31,9 @@ import { getSeasonStandings } from "../api";
 import { getTransactions, type TransactionEvent } from "../features/transactions/api";
 import { fetchJsonApi, API_BASE } from "../api/base";
 import type { DigestResponse, RosterAlertPlayer } from "./home/types";
+import HistoricalInsightsTab from "./components/HistoricalInsightsTab";
+import NewsFeedsPanel from "./components/NewsFeedsPanel";
+import MyTeamTodayPanel from "./components/MyTeamTodayPanel";
 
 interface StandingsRow {
   teamId: number;
@@ -195,32 +198,11 @@ export default function Home() {
                   )}
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  {/* AI strip — digest headline + bold prediction when the
-                      league digest has been generated this week, else a
-                      gentle placeholder. The full digest renders as its
-                      own bento card below for richer detail. */}
-                  <AIStrip
-                    subtitle={digest?.weekKey ? `Week ${digest.weekKey}` : "Personalized to your roster"}
-                    items={
-                      digest?.weekInOneSentence
-                        ? [
-                            {
-                              icon: "✦",
-                              title: digest.weekInOneSentence,
-                              body: digest.boldPrediction || digest.statOfTheWeek || "Scroll for the weekly digest.",
-                              cta: "Open AI Hub",
-                            },
-                          ]
-                        : [
-                            {
-                              icon: "✦",
-                              title: "AI insights are running",
-                              body: "Weekly digest, lineup recommendations, and trade suggestions appear here when ready.",
-                              cta: "Open AI Hub",
-                            },
-                          ]
-                    }
-                  />
+                  {/* Historical Weekly Insights with prior-week tabs (W18, W17,
+                      W16…) so users can navigate past digests. Restored from
+                      pre-Aurora pattern; feeds the same digest endpoint with
+                      a weekKey query param. */}
+                  {leagueId && <HistoricalInsightsTab leagueId={leagueId} />}
                 </div>
               </Glass>
             </IridescentRing>
@@ -534,6 +516,18 @@ export default function Home() {
               </Glass>
             </div>
           )}
+
+          {/* MY TEAM TODAY — daily player activity widget with 10am rollover */}
+          {leagueId && (
+            <div style={{ gridColumn: "span 6" }}>
+              <MyTeamTodayPanel leagueId={leagueId} />
+            </div>
+          )}
+
+          {/* NEWS FEEDS — Reddit / YouTube / Yahoo / ESPN */}
+          <div style={{ gridColumn: "span 6" }}>
+            <NewsFeedsPanel />
+          </div>
 
           {/* CTAs — bottom row of quick links */}
           <div style={{ gridColumn: "span 12" }}>

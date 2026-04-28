@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import AuroraShell from "./components/aurora/AuroraShell";
 const ActivityPageLegacy = React.lazy(() => import("./features/transactions/pages/ActivityPageLegacy"));
+const InjuredListPage = React.lazy(() => import("./features/players/pages/InjuredListPage"));
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
@@ -177,6 +178,8 @@ export default function App() {
                         still ships for inline use elsewhere (Auction, Team,
                         Trading Block, Watchlist, Board, Draft Report). */}
                     <Route path="/players/:mlbId" element={<PlayerDetail />} />
+                    {/* League-wide IL page — sortable by AL/NL + by team. Linked from Standings hero. */}
+                    <Route path="/injured-list" element={<InjuredListPage />} />
                     <Route path="/activity" element={<ActivityPage />} />
                     {/* Aurora Activity (post-shell rollout). Legacy preserved
                         for any feature the Aurora pilot doesn't deep-port yet

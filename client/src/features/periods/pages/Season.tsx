@@ -25,6 +25,7 @@ import {
 import "../../../components/aurora/aurora.css";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getSeasonStandings } from "../../../api";
+import CategoryStandingsView from "../components/CategoryStandingsView";
 
 interface MatrixRow {
   teamId: number;
@@ -50,6 +51,7 @@ export default function Season() {
   const [rows, setRows] = useState<MatrixRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"periods" | "categories">("periods");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -141,18 +143,54 @@ export default function Season() {
                     {updatedAt && ` · refreshed ${formatTimeAgo(updatedAt)}`}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <Chip>Live</Chip>
                   <Chip>Roto</Chip>
-                  <Link to="/season-classic" style={{ textDecoration: "none" }}>
-                    <Chip>Classic view →</Chip>
+                  <Link to="/injured-list" style={{ textDecoration: "none" }}>
+                    <Chip>League IL →</Chip>
                   </Link>
                 </div>
+              </div>
+              {/* View toggle: Periods matrix (default) vs Categories (Roto rank-points) */}
+              <div style={{ marginTop: 14, display: "flex", gap: 6 }}>
+                {(["periods", "categories"] as const).map((mode) => {
+                  const isActive = viewMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setViewMode(mode)}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 99,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: 0.6,
+                        textTransform: "uppercase",
+                        background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                        color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                        border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {mode === "periods" ? "By Period" : "By Category"}
+                    </button>
+                  );
+                })}
               </div>
             </Glass>
           </div>
 
-          {/* MATRIX */}
+          {/* CATEGORY STANDINGS VIEW (Roto rank-points) */}
+          {viewMode === "categories" && leagueId && (
+            <div style={{ gridColumn: "span 12" }}>
+              <CategoryStandingsView leagueId={leagueId} />
+            </div>
+          )}
+
+          {/* PERIODS MATRIX */}
+          {viewMode === "periods" && (
           <div style={{ gridColumn: "span 12" }}>
             <Glass padded={false}>
               {loading && (
@@ -294,6 +332,7 @@ export default function Season() {
               )}
             </Glass>
           </div>
+          )}
 
         </div>
       </div>
