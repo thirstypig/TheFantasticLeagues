@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (772 server + 327 client = 1099 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (772 server + 330 client = 1102 tests, ~7s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -65,7 +65,7 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 327 passing, 29 files
+### Client — 330 passing, 30 files
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
@@ -73,7 +73,8 @@ Major covered areas (selected):
 - `hooks/useSessionHeartbeat.test.ts` — 7
 - `features/players/PlayerDetailModal.test.tsx` — 14
 - `features/standings/StatsTables.test.tsx` — 22
-- `features/auction/AuctionValues.test.tsx` — 10
+- `features/auction/AuctionValuesLegacy.test.tsx` — 10 (rendering, tabs, search, sorting, modal — pinned to legacy code path at `/auction-values-classic`)
+- `features/auction/AuctionValuesAurora.test.tsx` — 3 (Aurora hero copy, `.aurora-theme` wrapper, footer escape link)
 - `features/teams/Teams.test.tsx` + `Team.test.tsx` — 17
 - `features/teams/Team.IL.test.tsx` — 4 (Your IL Slots subsection, Ghost-IL badge, stashed-dedup in MLB IL Candidates)
 - `features/transactions/components/RosterMovesTab/RosterMovesTab.test.tsx` — 11 (mode default / URL sync / IL count pill / shortcut banner / panel switching; PR #123 re-homing of PlaceOnIlModal + ActivateFromIlModal + standalone add/drop into a single tab)
