@@ -14,6 +14,7 @@ import {
   Layers,
   Settings,
   History,
+  Palette,
 } from "lucide-react";
 
 /* ── Static markdown imports via Vite ───────────────────────────── */
@@ -39,6 +40,7 @@ import audit from "../../../docs/AUDIT-2026-03-19.md?raw";
 import prismaV2 from "../../../docs/prisma_v2_draft.md?raw";
 import planAuth from "../../../docs/PLAN-AUTH-MEMBERS.md?raw";
 import roadmapDoc from "../../../docs/ROADMAP.md?raw";
+import auroraDesignSystem from "../../../docs/aurora-design-system.md?raw";
 
 /* ── Doc registry ───────────────────────────────────────────────── */
 
@@ -57,6 +59,7 @@ const docs: DocEntry[] = [
   { name: "README.md", filename: "README.md", content: readmeMd, category: "root", icon: BookOpen, description: "Project overview and getting started" },
   { name: "FEEDBACK.md", filename: "FEEDBACK.md", content: feedbackMd, category: "root", icon: History, description: "Session-by-session development log" },
   // docs/ directory
+  { name: "Aurora Design System", filename: "docs/aurora-design-system.md", content: auroraDesignSystem, category: "docs", icon: Palette, description: "Style sheet — colors, typography, atoms, tables, spacing, motion" },
   { name: "How-To Guides", filename: "docs/howto.md", content: howto, category: "docs", icon: BookOpen, description: "Step-by-step guides for common tasks" },
   { name: "Architecture Decisions", filename: "docs/decisions.md", content: decisions, category: "docs", icon: Layers, description: "Why behind key architectural choices" },
   { name: "Security Architecture", filename: "docs/SECURITY.md", content: security, category: "docs", icon: Shield, description: "Auth, authorization, and security patterns" },

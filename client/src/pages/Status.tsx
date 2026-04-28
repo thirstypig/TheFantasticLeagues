@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { Glass, SectionLabel } from "../components/aurora/atoms";
 import {
   Activity,
   ArrowRight,
@@ -125,15 +126,13 @@ export default function Status() {
   const overall = statusConfig[overallStatus];
 
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 max-w-5xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[var(--lg-accent)]" />
-            <h1 className="text-2xl font-semibold text-[var(--lg-text-primary)]">
-              System Status
-            </h1>
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Activity size={11} /> System Status</span></SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>System Status</h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Live health checks across the FBST stack.</div>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -144,11 +143,7 @@ export default function Status() {
             </Link>
           </div>
         </div>
-        <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
-          Live health checks for all system components. Pings the API server, database,
-          auth provider, and external data sources.
-        </p>
-      </div>
+      </Glass>
 
       {/* Overall Status Banner */}
       <div className={`rounded-lg border ${overall.border} ${overall.bg} p-5`}>

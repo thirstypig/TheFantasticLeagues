@@ -3,7 +3,7 @@ import { getSeasonStandings } from "../../../api";
 import { toNum } from "../../../api/base";
 import { getSettlement, SettlementData } from "../../standings/api";
 import { useLeague } from "../../../contexts/LeagueContext";
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import {
   ThemedTable,
   ThemedThead,
@@ -84,26 +84,25 @@ export default function Payouts() {
 
   if (loading)
     return (
-      <div className="text-center text-[var(--lg-text-muted)] py-20 animate-pulse text-sm">
-        Loading payouts...
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Loading payouts…</div></Glass>
       </div>
     );
 
   if (error)
     return (
-      <div className="max-w-4xl mx-auto px-4 py-10">
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300">
-          Error: {error}
-        </div>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <Glass><div style={{ padding: 14, color: "rgb(248, 113, 113)", fontSize: 13, textAlign: "center" }}>Error: {error}</div></Glass>
       </div>
     );
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="Payouts"
-        subtitle="End-of-season settlement based on final standings and league payout rules."
-      />
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Payouts</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Payouts</h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>End-of-season settlement based on final standings and league payout rules.</div>
+      </Glass>
 
       {/* Summary */}
       {settlement && (

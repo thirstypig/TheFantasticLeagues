@@ -14,7 +14,7 @@ import TrophyCaseTab from '../components/TrophyCaseTab';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { Button } from "../../../components/ui/button";
 import AIInsightsModal from '../../../components/AIInsightsModal';
-import PageHeader from '../../../components/ui/PageHeader';
+import { Glass, SectionLabel } from '../../../components/aurora/atoms';
 import { useToast } from "../../../contexts/ToastContext";
 import {
   SeasonTable, TeamSeasonRow, PeriodMeta,
@@ -463,12 +463,13 @@ export default function ArchivePage() {
   };
 
   return (
-    <div className="flex-1 min-h-screen bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)]">
-      <main className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-        <PageHeader 
-          title="Historical Archive" 
-          subtitle="League History: Season stats and draft records."
-        />
+    <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Historical Archive</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Historical Archive</h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>League History: Season stats and draft records.</div>
+      </Glass>
+      <main>
 
         {error && (
           <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300 flex items-center gap-3">

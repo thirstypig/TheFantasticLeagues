@@ -27,6 +27,7 @@ import {
   Search,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Glass, SectionLabel } from "../components/aurora/atoms";
 import MermaidDiagram from "../components/MermaidDiagram";
 
 /* ── Data ────────────────────────────────────────────────────────── */
@@ -1193,29 +1194,22 @@ function DatabaseERD() {
 
 export default function Tech() {
   return (
-    <div className="px-4 py-6 md:px-6 md:py-10 max-w-5xl mx-auto space-y-12">
-      {/* Header */}
-      <div>
-        <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <h1 className="text-2xl font-semibold text-[var(--lg-text-primary)]">
-            Under the Hood
-          </h1>
-          <Link
-            to="/roadmap"
-            className="text-xs font-medium text-[var(--lg-accent)] hover:underline flex items-center gap-1"
-          >
+    <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <SectionLabel>✦ Under the Hood</SectionLabel>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Under the Hood</h1>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)", maxWidth: 720 }}>
+              A look at what it took to build The Fantastic Leagues — the tools, the process, the decisions, and the numbers. Built from November 2025 to present across 80+ sessions, 100,000+ lines of TypeScript, and 100 million+ AI tokens.
+            </div>
+            <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>Last updated: April 28, 2026</div>
+          </div>
+          <Link to="/roadmap" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
             Roadmap <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
-        <p className="mt-2 text-sm text-[var(--lg-text-secondary)]">
-          A look at what it took to build The Fantastic Leagues — the tools, the process,
-          the decisions, and the numbers. Built from November 2025 to present across
-          57 sessions, 84,400+ lines of TypeScript, and an estimated 100 million+ AI tokens.
-        </p>
-        <p className="mt-1 text-xs text-[var(--lg-text-muted)]">
-          Last updated: April 5, 2026
-        </p>
-      </div>
+      </Glass>
 
       {/* Genesis */}
       <div>
