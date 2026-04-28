@@ -295,21 +295,6 @@ export default function Season() {
             </Glass>
           </div>
 
-          {/* Legacy escape hatch — pinned at bottom for users who relied
-              on Period detail / H2H matchups views in the old Season page. */}
-          <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>
-            <Link
-              to="/season-classic"
-              style={{
-                fontSize: 11,
-                color: "var(--am-text-faint)",
-                textDecoration: "none",
-                letterSpacing: 0.5,
-              }}
-            >
-              Need period detail or H2H matchups? View classic Standings →
-            </Link>
-          </div>
         </div>
       </div>
     </div>
