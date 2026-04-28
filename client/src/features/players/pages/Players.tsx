@@ -26,7 +26,7 @@
  * there from the footer escape link if they hit a feature gap here.
  */
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Star, Loader2 } from "lucide-react";
 import {
   AmbientBg, Glass, IridText, SectionLabel,
@@ -35,7 +35,6 @@ import '../../../components/aurora/aurora.css';
 import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type PeriodStatRow } from '../../../api';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
-import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 import { PlayerFilterBar } from '../../../components/shared/PlayerFilterBar';
 import { POS_ORDER, getPrimaryPosition, getLastName, isCMEligible, isMIEligible } from '../../../lib/baseballUtils';
 import { NL_TEAMS, AL_TEAMS, mapPosition } from '../../../lib/sportConfig';
@@ -80,9 +79,18 @@ export default function Players() {
   const setViewMode = (v: 'all' | 'remaining') => setUrlParam('mode', v, { mode: 'all' });
   const setSearchQuery = (v: string) => setUrlParam('q', v);
 
+  const navigate = useNavigate();
   const [statsMode, setStatsMode] = useState<string>('season');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
+  // Aurora "Full Profile" navigates to /players/:mlbId (the dedicated
+  // detail page) instead of opening the modal that the legacy Players
+  // page used. The modal is still alive elsewhere (Auction, Team, etc.)
+  // for inline lookup contexts; this page is its own surface now.
+  const openDetail = useCallback((p: PlayerSeasonStat) => {
+    const mlbId = String(p.mlb_id ?? '').trim();
+    if (!mlbId) return;
+    navigate(`/players/${mlbId}`, { state: { player: p } });
+  }, [navigate]);
 
   const [periodStats, setPeriodStats] = useState<PeriodStatRow[]>([]);
   const [periods, setPeriods] = useState<number[]>([]);
@@ -461,7 +469,7 @@ export default function Players() {
                           player={p}
                           isTaken={isTaken}
                           ownerName={teamLabel}
-                          onViewDetail={setSelectedPlayer}
+                          onViewDetail={openDetail}
                           colSpan={10}
                         />
                       )}
@@ -485,13 +493,6 @@ export default function Players() {
         </div>
       </div>
 
-      {selectedPlayer && (
-        <PlayerDetailModal
-          player={selectedPlayer}
-          open={!!selectedPlayer}
-          onClose={() => setSelectedPlayer(null)}
-        />
-      )}
     </div>
   );
 }
