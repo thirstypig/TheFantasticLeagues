@@ -240,7 +240,9 @@ export default function Team() {
                     boxShadow: "0 12px 30px rgba(0,0,0,0.25)",
                   }}
                 >
-                  {teamMeta ? teamMeta.code.slice(0, 3).toUpperCase() : "—"}
+                  {teamMeta?.name
+                    ? teamMeta.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase()
+                    : "—"}
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
@@ -255,21 +257,6 @@ export default function Team() {
                   </div>
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
                     {hitters.length} hitter{hitters.length === 1 ? "" : "s"} · {pitchers.length} pitcher{pitchers.length === 1 ? "" : "s"} · {ilCount} IL
-                  </div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "auto auto", gap: 24, alignItems: "end" }}>
-                  <div style={{ textAlign: "right" }}>
-                    <SectionLabel>Cap</SectionLabel>
-                    <div style={{ fontSize: 22, fontFamily: "var(--am-display)", lineHeight: 1, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
-                      ${totalSpent}
-                      {teamMeta?.budget != null && (
-                        <span style={{ color: "var(--am-text-faint)", fontSize: 14 }}> / {teamMeta.budget}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <SectionLabel>Code</SectionLabel>
-                    <IridText size={28}>{teamMeta?.code ?? code}</IridText>
                   </div>
                 </div>
               </div>

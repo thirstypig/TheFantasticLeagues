@@ -97,10 +97,7 @@ export default function TeamsIndex() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs font-mono uppercase tracking-wider text-[var(--lg-text-muted)]">
-                    {team.code}
-                  </div>
-                  <div className="mt-1 text-lg font-bold text-[var(--lg-text-heading)] truncate">
+                  <div className="text-lg font-bold text-[var(--lg-text-heading)] truncate">
                     {team.name}
                   </div>
                 </div>
