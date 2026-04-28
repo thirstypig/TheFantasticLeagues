@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getMyRoster, saveKeepers } from "../../leagues/api";
 import { getKeeperAiRecommendations, KeeperRecommendResult } from "../api";
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { mapPosition } from "../../../lib/sportConfig";
@@ -111,12 +111,16 @@ export default function KeeperSelection() {
   if (error) return <div className="text-center text-red-300 py-20 text-sm">{error}</div>;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader
-        title="Keeper Selection"
-        subtitle={`Select players to keep for ${team?.name || "Team"}`}
-        backTo={`/commissioner/${leagueId}`}
-      />
+    <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Keeper Selection</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          Keeper Selection
+        </h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+          Select players to keep for {team?.name || "Team"}.
+        </div>
+      </Glass>
 
       <div>
         <div className="space-y-6">
