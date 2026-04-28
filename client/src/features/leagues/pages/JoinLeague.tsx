@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "../../../contexts/ToastContext";
-import PageHeader from "../../../components/ui/PageHeader";
+import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { Button } from "../../../components/ui/button";
 import { getJoinInfo, joinLeague, type JoinInfoLeague } from "../api";
 import { useLeague } from "../../../contexts/LeagueContext";
@@ -54,26 +54,34 @@ export default function JoinLeague() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 md:px-6 md:py-10">
-        <div className="text-center text-sm text-[var(--lg-text-muted)] py-20">Loading league info...</div>
+      <div style={{ maxWidth: 640, margin: "0 auto" }}>
+        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Loading league info…</div></Glass>
       </div>
     );
   }
 
   if (error || !league) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 md:px-6 md:py-10">
-        <PageHeader title="Join League" subtitle="Something went wrong." />
-        <div className="mt-8 lg-card p-6 text-center">
-          <div className="text-sm text-red-400">{error || "League not found."}</div>
-        </div>
+      <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <Glass strong>
+          <SectionLabel>✦ Join League</SectionLabel>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Join League</h1>
+          <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Something went wrong.</div>
+        </Glass>
+        <Glass>
+          <div style={{ padding: 8, textAlign: "center", color: "var(--am-negative)", fontSize: 13 }}>{error || "League not found."}</div>
+        </Glass>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 md:px-6 md:py-10">
-      <PageHeader title="Join League" subtitle="You've been invited to join a league." />
+    <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Glass strong>
+        <SectionLabel>✦ Join League</SectionLabel>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Join League</h1>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>You've been invited to join a league.</div>
+      </Glass>
 
       <div className="mt-8 space-y-6">
         {/* League Card */}
