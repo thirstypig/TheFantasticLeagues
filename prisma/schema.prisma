@@ -294,6 +294,7 @@ model League {
   boardCards        BoardCard[]
   chatMessages      ChatMessage[]
   rosterSlotEvents  RosterSlotEvent[]
+  teamStatsCategoryDaily TeamStatsCategoryDaily[]
 
   @@unique([name, season])
 }
@@ -378,6 +379,7 @@ model Team {
   season        TeamStatsSeason?
   financeEvents FinanceLedger[]
   rosterSlotEvents RosterSlotEvent[]
+  categoryDaily TeamStatsCategoryDaily[]
 
   // ADD THIS:
   transactions TransactionEvent[]
@@ -581,6 +583,32 @@ model TeamStatsPeriod {
   period Period @relation(fields: [periodId], references: [id])
 
   @@unique([teamId, periodId])
+}
+
+/// Daily snapshot of team category totals + rank-points. Populated by the
+/// 11:00 UTC daily cron in server/src/index.ts (after the 13:00 UTC stats
+/// sync — confirm ordering when shipping). Powers day-over-day deltas on
+/// CategoryStandingsView and any future "stat-of-the-week" / "biggest
+/// mover" features.
+///
+/// Storage estimate: 8 teams × 10 categories × 365 days × N leagues =
+/// 29,200 rows/league/year. Trivial for Postgres.
+model TeamStatsCategoryDaily {
+  id         Int      @id @default(autoincrement())
+  teamId     Int
+  leagueId   Int
+  date       DateTime @db.Date
+  category   String   // CategoryKey: "R" | "HR" | "RBI" | "SB" | "AVG" | "W" | "S" | "K" | "ERA" | "WHIP"
+  value      Float    // raw category value at end of day
+  rank       Int      // 1 = best in this category for that day
+  rankPoints Int      // 8 for 1st in 8-team league, 7 for 2nd, etc.
+
+  team   Team   @relation(fields: [teamId], references: [id])
+  league League @relation(fields: [leagueId], references: [id])
+
+  @@unique([teamId, leagueId, date, category])
+  @@index([leagueId, date])
+  @@index([teamId, category, date])
 }
 
 /// @deprecated Use TeamStatsPeriod aggregation instead. Table left in DB for backward compat; no code reads this.

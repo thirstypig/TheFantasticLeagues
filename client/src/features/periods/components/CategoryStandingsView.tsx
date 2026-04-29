@@ -47,7 +47,14 @@ interface CategoryRow {
   value: number;
   rank: number;
   points: number;
+  /** Day-over-day rank-points delta. Used as a fallback when valueDeltaPct is unavailable. */
   pointsDelta?: number;
+  /** Day-over-day raw-value change vs the snapshot from `compareDays` ago. */
+  valueDelta?: number;
+  /** Day-over-day raw-value % change. Preferred display when present. */
+  valueDeltaPct?: number;
+  /** Rank movement (positive = improved). */
+  rankDelta?: number;
   seasonValue?: number;
 }
 
@@ -328,23 +335,30 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {top.map((r) => {
-                      // Day-over-day % change derived from rank-points
-                      // delta when the prior snapshot is available. The
-                      // server omits `pointsDelta` when there's no prior
-                      // snapshot (first load of the period) — render the
-                      // row without the % column in that case.
-                      // TODO: server doesn't currently expose the prior
-                      // raw stat value separately, so we surface
-                      // pointsDelta as a proxy for movement. Switch to a
-                      // raw-value % when a daily snapshot endpoint lands.
-                      const hasDelta =
-                        typeof r.pointsDelta === "number" && Number.isFinite(r.pointsDelta);
-                      const dPct =
-                        hasDelta && r.points - (r.pointsDelta ?? 0) !== 0
-                          ? (r.pointsDelta! / (r.points - (r.pointsDelta ?? 0))) * 100
-                          : 0;
-                      const up = hasDelta && r.pointsDelta! > 0;
-                      const down = hasDelta && r.pointsDelta! < 0;
+                      // Day-over-day display: prefer the persisted daily
+                      // snapshot's `valueDeltaPct` (raw-value % change vs
+                      // yesterday) when present. Fall back to the legacy
+                      // `pointsDelta`-derived % proxy when the snapshot
+                      // table is empty (no run yet, or first day of the
+                      // period). Both gracefully degrade to no badge.
+                      const hasValuePct =
+                        typeof r.valueDeltaPct === "number" &&
+                        Number.isFinite(r.valueDeltaPct);
+                      const hasPointsDelta =
+                        typeof r.pointsDelta === "number" &&
+                        Number.isFinite(r.pointsDelta);
+                      const dPct = hasValuePct
+                        ? r.valueDeltaPct!
+                        : hasPointsDelta && r.points - (r.pointsDelta ?? 0) !== 0
+                        ? (r.pointsDelta! / (r.points - (r.pointsDelta ?? 0))) * 100
+                        : 0;
+                      const up = hasValuePct
+                        ? r.valueDeltaPct! > 0
+                        : hasPointsDelta && r.pointsDelta! > 0;
+                      const down = hasValuePct
+                        ? r.valueDeltaPct! < 0
+                        : hasPointsDelta && r.pointsDelta! < 0;
+                      const hasDelta = hasValuePct || hasPointsDelta;
                       return (
                         <div
                           key={r.teamId}
