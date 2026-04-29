@@ -15,6 +15,7 @@ import {
   Settings,
   History,
   Palette,
+  ClipboardList,
 } from "lucide-react";
 
 /* ── Static markdown imports via Vite ───────────────────────────── */
@@ -42,13 +43,16 @@ import planAuth from "../../../docs/PLAN-AUTH-MEMBERS.md?raw";
 import roadmapDoc from "../../../docs/ROADMAP.md?raw";
 import auroraDesignSystem from "../../../docs/aurora-design-system.md?raw";
 
+// docs/plans/ — active proposals awaiting review
+import planYahooRosterMoves from "../../../docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md?raw";
+
 /* ── Doc registry ───────────────────────────────────────────────── */
 
 interface DocEntry {
   name: string;
   filename: string;
   content: string;
-  category: "root" | "docs";
+  category: "root" | "docs" | "proposal";
   icon: React.ElementType;
   description: string;
 }
@@ -75,6 +79,8 @@ const docs: DocEntry[] = [
   { name: "Prisma v2 Draft", filename: "docs/prisma_v2_draft.md", content: prismaV2, category: "docs", icon: Database, description: "Future schema redesign draft" },
   { name: "Auth + Members Plan", filename: "docs/PLAN-AUTH-MEMBERS.md", content: planAuth, category: "docs", icon: Shield, description: "Auth fixes and commissioner member management" },
   { name: "Legacy Roadmap", filename: "docs/ROADMAP.md", content: roadmapDoc, category: "docs", icon: Settings, description: "Historical security & quality roadmap" },
+  // docs/plans/ — active proposals awaiting review
+  { name: "Yahoo-Style Roster Moves", filename: "docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md", content: planYahooRosterMoves, category: "proposal", icon: ClipboardList, description: "APPROVED — auto-resolve add/drop + Swap Mode UI. Decisions resolved, PR1 ready to ship" },
 ];
 
 /* ── Simple markdown renderer ───────────────────────────────────── */
@@ -308,6 +314,7 @@ export default function Docs() {
 
   const rootDocs = docs.filter(d => d.category === "root");
   const dirDocs = docs.filter(d => d.category === "docs");
+  const proposalDocs = docs.filter(d => d.category === "proposal");
 
   const filteredDocs = useMemo(() => {
     if (!search) return docs;
@@ -369,6 +376,38 @@ export default function Docs() {
               })}
             </div>
           </div>
+
+          {/* Active proposals awaiting review */}
+          {((search ? filteredDocs.filter(d => d.category === "proposal") : proposalDocs).length > 0) && (
+            <div>
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-1">
+                <ClipboardList className="w-3 h-3" /> Active Proposals
+              </h3>
+              <div className="space-y-0.5">
+                {(search ? filteredDocs.filter(d => d.category === "proposal") : proposalDocs).map(doc => {
+                  const Icon = doc.icon;
+                  const isActive = doc.filename === activeDoc;
+                  return (
+                    <button
+                      key={doc.filename}
+                      onClick={() => setActiveDoc(doc.filename)}
+                      className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors border-l-2 ${
+                        isActive
+                          ? "bg-amber-500/10 text-amber-300 border-amber-400"
+                          : "border-amber-500/40 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{doc.name}</div>
+                        <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* docs/ directory */}
           <div>
