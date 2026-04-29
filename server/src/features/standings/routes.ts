@@ -11,6 +11,7 @@ import {
   KEY_TO_DB_FIELD,
 } from "./services/standingsService.js";
 import { createScoringEngine } from "./services/scoringEngine.js";
+import { readLeagueSnapshotForDate } from "./services/categoryDailySnapshotService.js";
 
 const router = Router();
 
@@ -169,6 +170,19 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     }))
   );
 
+  // Day-over-day category snapshot lookup (Gap 2 from
+  // docs/plans/2026-04-28-server-enhancements-post-aurora.md).
+  // Defaults to compareDays=1 (yesterday's snapshot vs today's live
+  // values). When the snapshot table is empty for that date the deltas
+  // are simply omitted — client falls back to "—".
+  const compareDays = req.query.compareDays
+    ? Math.max(1, Math.min(30, Number(req.query.compareDays) || 1))
+    : 1;
+  const compareDate = new Date();
+  compareDate.setUTCHours(0, 0, 0, 0);
+  compareDate.setUTCDate(compareDate.getUTCDate() - compareDays);
+  const dailySnapshotMap = await readLeagueSnapshotForDate(leagueId, compareDate);
+
   const categories = CATEGORY_CONFIG.map((cfg) => {
     const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
     if (prevTeamStats) {
@@ -183,6 +197,20 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     for (const row of rows) {
       const sTotals = seasonTotals.get(row.teamId);
       (row as any).seasonValue = sTotals?.[dbField] ?? 0;
+
+      // Day-over-day raw-value delta from the persisted daily snapshot.
+      // null when no snapshot exists for the compare date — client renders "—".
+      const teamSnap = dailySnapshotMap.get(row.teamId);
+      const prevSnap = teamSnap?.get(cfg.key);
+      if (prevSnap !== undefined) {
+        const valueDelta = (row.value ?? 0) - prevSnap.value;
+        const valueDeltaPct = prevSnap.value > 0
+          ? (valueDelta / prevSnap.value) * 100
+          : 0;
+        (row as any).valueDelta = valueDelta;
+        (row as any).valueDeltaPct = Number(valueDeltaPct.toFixed(2));
+        (row as any).rankDelta = prevSnap.rank - row.rank; // positive = improved
+      }
     }
     return { key: cfg.key, label: cfg.label, lowerIsBetter: cfg.lowerIsBetter, group: cfg.group, rows };
   });

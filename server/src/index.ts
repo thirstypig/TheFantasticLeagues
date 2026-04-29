@@ -57,6 +57,7 @@ import { syncAllPlayers, syncAAARosters } from './features/players/services/mlbS
 import { attachAuctionWs } from './features/auction/services/auctionWsService.js';
 import { attachDraftWs } from './features/draft/services/draftWsService.js';
 import { syncAllActivePeriods, syncDailyStats } from './features/players/services/mlbStatsSyncService.js';
+import { snapshotAllActiveLeaguesCategoryDaily } from './features/standings/services/categoryDailySnapshotService.js';
 import * as errorBuffer from './lib/errorBuffer.js';
 import { isRosterRuleError, type RosterRuleErrorCode } from "./lib/rosterRuleError.js";
 
@@ -260,6 +261,22 @@ async function main() {
     }
   });
   logger.info({}, "Scheduled daily MLB player sync at 12:00 UTC (~5 AM PT)");
+
+  // Daily category snapshot at 4:00 AM PT (11:00 UTC) — between roster sync
+  // (12:00 UTC) and stats sync (13:00 UTC). Persists each team's per-category
+  // value + rank + rank-points so CategoryStandingsView can render true
+  // day-over-day deltas. See docs/plans/2026-04-28-server-enhancements-post-aurora.md
+  // (Gap 2). Idempotent — re-runs upsert into the same row.
+  cron.schedule('0 11 * * *', async () => {
+    logger.info({}, "Starting scheduled category daily snapshot");
+    try {
+      const result = await snapshotAllActiveLeaguesCategoryDaily();
+      logger.info(result, "Category daily snapshot complete");
+    } catch (err) {
+      logger.error({ error: String(err) }, "Category daily snapshot failed");
+    }
+  });
+  logger.info({}, "Scheduled category daily snapshot at 11:00 UTC (~4 AM PT)");
 
   // Daily player stats sync at 6:00 AM PT (13:00 UTC) — 1 hour after player roster sync
   cron.schedule('0 13 * * *', async () => {

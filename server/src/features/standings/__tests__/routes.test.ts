@@ -10,6 +10,7 @@ vi.mock("../../../db/prisma.js", () => ({
     league: { findUnique: vi.fn().mockResolvedValue({ scoringFormat: "ROTO" }) },
     leagueRule: { findMany: vi.fn() },
     teamStatsPeriod: { findMany: vi.fn().mockResolvedValue([]), upsert: vi.fn().mockResolvedValue({}) },
+    teamStatsCategoryDaily: { findMany: vi.fn().mockResolvedValue([]), upsert: vi.fn().mockResolvedValue({}) },
     $transaction: vi.fn().mockResolvedValue([]),
   },
 }));
