@@ -54,24 +54,7 @@ jobs:
       - name: Audit client
         run: cd client && npm audit --audit-level=critical
 
-  deploy:
-    needs: [test, audit]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Railway deploy
-        run: |
-          if [ -n "$RAILWAY_DEPLOY_HOOK_URL" ]; then
-            curl -s -X POST "$RAILWAY_DEPLOY_HOOK_URL"
-            echo "✅ Deploy triggered on Railway"
-          elif [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
-            curl -s -X POST "$RENDER_DEPLOY_HOOK_URL"
-            echo "✅ Deploy triggered on Render (legacy)"
-          else
-            echo "⚠️ No deploy hook URL set — skipping deploy"
-            echo "Set RAILWAY_DEPLOY_HOOK_URL in GitHub repo secrets to enable auto-deploy"
-            exit 0
-          fi
-        env:
-          RAILWAY_DEPLOY_HOOK_URL: ${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+  # Deploys are handled by Railway's GitHub integration:
+  # every push to main triggers a Railway build automatically.
+  # No CI deploy step is needed (Railway has no inbound deploy
+  # webhook URL — its "Webhooks" feature is outbound-only).
