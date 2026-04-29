@@ -10,6 +10,14 @@ import { POS_ORDER } from "../../lib/sportConfig.js";
 import { mlbGameDayDate } from "../../lib/utils.js";
 import { fetchRssFeed } from "./services/rssParser.js";
 import { createPlayerNameMatcher } from "./services/playerNameMatcher.js";
+import {
+  getPlayerTodayLine,
+  deriveGameStatus,
+  buildGameStateDesc,
+  type GameStatus,
+  type PlayerStatLine,
+} from "./services/gameLogService.js";
+import { isPitcher as isPitcherPos } from "../../lib/sportConfig.js";
 
 const router = Router();
 
@@ -44,9 +52,17 @@ interface MyPlayerToday {
   playerName: string;
   mlbId: number;
   mlbTeam: string;
+  posPrimary?: string;
   gameTime: string;
   opponent: string;
   homeAway: "home" | "away";
+  /** PRE / LIVE / FINAL — derived from MLB schedule for the player's team. */
+  gameStatus?: GameStatus;
+  /** Short human-readable game state ("TOP 5", "FINAL", "7:30 PM ET"). */
+  gameStateDesc?: string;
+  /** Today's actual stat line — undefined if the player did not appear (DNP)
+   *  or if the game has not started yet. */
+  line?: PlayerStatLine;
 }
 
 // ─── Helpers ───
@@ -1009,7 +1025,9 @@ router.get(
       return res.json({ players: [] });
     }
 
-    // Get active roster players with mlbId
+    // Get active roster players with mlbId. We also pull posPrimary so we
+    // know which players are pitchers — used for the gameStatus="FINAL"-but-
+    // no-line DNP rendering on the client (a pitcher's "DNP" copy differs).
     const rosterEntries = await prisma.roster.findMany({
       where: {
         teamId: team.id,
@@ -1018,7 +1036,7 @@ router.get(
       },
       select: {
         player: {
-          select: { id: true, name: true, mlbId: true, mlbTeam: true },
+          select: { id: true, name: true, mlbId: true, mlbTeam: true, posPrimary: true },
         },
       },
     });
@@ -1027,14 +1045,23 @@ router.get(
       return res.json({ players: [] });
     }
 
-    // Get today's schedule (reuses cached data from scores endpoint)
+    // Get today's schedule (reuses cached data from scores endpoint).
+    // We hydrate the linescore so we can build "TOP 5" / "BOT 9" descriptors.
     const today = mlbGameDayDate();
+    const season = Number(today.slice(0, 4));
     const scheduleUrl = `https://statsapi.mlb.com/api/v1/schedule?date=${today}&sportId=1&hydrate=linescore`;
     const scheduleData = await mlbGetJson(scheduleUrl, 60);
 
-    // Build a map: team abbreviation -> game info
+    // Build a map: team abbreviation -> rich game info (status + linescore).
     const teamsMap = await fetchMlbTeamsMap();
-    const teamGameMap = new Map<string, { gameTime: string; opponent: string; homeAway: "home" | "away" }>();
+    interface TeamGameInfo {
+      gameTime: string;
+      opponent: string;
+      homeAway: "home" | "away";
+      gameStatus: GameStatus;
+      gameStateDesc: string;
+    }
+    const teamGameMap = new Map<string, TeamGameInfo>();
 
     for (const dateEntry of scheduleData.dates || []) {
       for (const g of dateEntry.games || []) {
@@ -1042,42 +1069,112 @@ router.get(
         const homeTeam = g.teams?.home?.team;
         const awayAbbr = awayTeam?.abbreviation ?? (awayTeam?.id ? teamsMap[awayTeam.id] : "") ?? "";
         const homeAbbr = homeTeam?.abbreviation ?? (homeTeam?.id ? teamsMap[homeTeam.id] : "") ?? "";
-        const gameTime = g.gameDate ?? "";
-
-        if (awayAbbr) {
-          teamGameMap.set(awayAbbr, { gameTime, opponent: homeAbbr, homeAway: "away" });
-        }
-        if (homeAbbr) {
-          teamGameMap.set(homeAbbr, { gameTime, opponent: awayAbbr, homeAway: "home" });
-        }
+        const gameTime: string = g.gameDate ?? "";
+        const gameStatus = deriveGameStatus(g.status?.abstractGameState);
+        const ls = g.linescore;
+        const gameStateDesc = buildGameStateDesc({
+          gameStatus,
+          detailedState: g.status?.detailedState,
+          inningHalf: ls?.inningState,
+          inning: ls?.currentInning,
+          scheduledTimeShort: gameTime,
+        });
+        const info: TeamGameInfo = { gameTime, opponent: "", homeAway: "away", gameStatus, gameStateDesc };
+        if (awayAbbr) teamGameMap.set(awayAbbr, { ...info, opponent: homeAbbr, homeAway: "away" });
+        if (homeAbbr) teamGameMap.set(homeAbbr, { ...info, opponent: awayAbbr, homeAway: "home" });
       }
     }
 
-    // Cross-reference roster with schedule
-    const players: MyPlayerToday[] = [];
+    // First pass — assemble per-player base records (no stat lines yet).
+    interface BaseRecord {
+      base: MyPlayerToday;
+      mlbId: number;
+      gameStatus: GameStatus;
+      gameStateDesc: string;
+    }
+    const baseRecords: BaseRecord[] = [];
     for (const entry of rosterEntries) {
       const p = entry.player;
-      if (!p.mlbTeam) continue;
-
+      if (!p.mlbTeam || !p.mlbId) continue;
       const game = teamGameMap.get(p.mlbTeam);
       if (!game) continue;
-
-      players.push({
-        playerName: p.name,
-        mlbId: p.mlbId!,
-        mlbTeam: p.mlbTeam,
-        gameTime: game.gameTime,
-        opponent: game.opponent,
-        homeAway: game.homeAway,
+      baseRecords.push({
+        mlbId: p.mlbId,
+        gameStatus: game.gameStatus,
+        gameStateDesc: game.gameStateDesc,
+        base: {
+          playerName: p.name,
+          mlbId: p.mlbId,
+          mlbTeam: p.mlbTeam,
+          posPrimary: p.posPrimary || undefined,
+          gameTime: game.gameTime,
+          opponent: game.opponent,
+          homeAway: game.homeAway,
+          gameStatus: game.gameStatus,
+          gameStateDesc: game.gameStateDesc,
+        },
       });
     }
 
-    // Sort by game time
+    // Second pass — parallel per-player gameLog lookups. Promise.allSettled
+    // keeps a single failure from blanking the whole panel; we log warnings
+    // and degrade gracefully (the player simply renders without `line`).
+    const lookups = await Promise.allSettled(
+      baseRecords.map((r) =>
+        getPlayerTodayLine({
+          mlbId: r.mlbId,
+          season,
+          dateStr: today,
+          gameStatus: r.gameStatus,
+          gameStateDesc: r.gameStateDesc,
+        }),
+      ),
+    );
+
+    const players: MyPlayerToday[] = baseRecords.map((rec, i) => {
+      const result = lookups[i];
+      if (result.status === "fulfilled") {
+        const { line } = result.value;
+        // For pitchers we only surface the pitching line (and vice versa) —
+        // a position player who happened to be charted in the pitching block
+        // (rare blowout-relief case) shouldn't suddenly look like a starter.
+        const filtered = filterLineByRole(line, rec.base.posPrimary);
+        return filtered ? { ...rec.base, line: filtered } : rec.base;
+      }
+      // Degrade — log and emit the base record without a line.
+      logger.warn(
+        { mlbId: rec.mlbId, error: String((result as PromiseRejectedResult).reason) },
+        "my-players-today: gameLog lookup failed",
+      );
+      return rec.base;
+    });
+
+    // Sort by game time so users see early games first.
     players.sort((a, b) => a.gameTime.localeCompare(b.gameTime));
 
-    return res.json({ players });
+    return res.json({ date: today, players });
   })
 );
+
+/** Keep only the role-appropriate line. A pitcher gets `pitching`; everyone
+ *  else gets `hitting`. We never strip both — if MLB only filed one block,
+ *  we surface what we have. */
+function filterLineByRole(
+  line: PlayerStatLine | undefined,
+  posPrimary: string | undefined,
+): PlayerStatLine | undefined {
+  if (!line) return undefined;
+  const pitcher = isPitcherPos(posPrimary || "");
+  if (pitcher) {
+    if (line.pitching) return { pitching: line.pitching };
+    // Pitcher with no pitching block but a hitting block (interleague NL
+    // pitcher hitting, or data quirk) — we suppress; a pitcher's stat-line
+    // chip should show pitching only.
+    return undefined;
+  }
+  if (line.hitting) return { hitting: line.hitting };
+  return undefined;
+}
 
 // ─── Digest + Headlines (extracted to digestRoutes.ts) ───
 import { digestRouter } from "./digestRoutes.js";
