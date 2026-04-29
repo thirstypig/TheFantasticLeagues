@@ -33,6 +33,20 @@ export async function getTransactions(params?: { leagueId?: number; teamId?: num
     return fetchJsonApi(`${API_BASE}/transactions?${q.toString()}`);
 }
 
+/**
+ * Yahoo-style auto-resolve reassignment (PR1 of plan #166). When the league
+ * has `transactions.auto_resolve_slots` enabled, the server may move other
+ * roster rows to fit the new player legally. Each move is echoed here so
+ * the client can surface a toast like "Also moved: Trea Turner 2B → SS".
+ */
+export interface AppliedReassignment {
+    rosterId: number;
+    playerId: number;
+    playerName: string;
+    oldSlot: string;
+    newSlot: string;
+}
+
 export interface IlStashParams {
     leagueId: number;
     teamId: number;
@@ -43,7 +57,7 @@ export interface IlStashParams {
     reason?: string;
 }
 
-export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number }> {
+export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
     return fetchJsonApi(`${API_BASE}/transactions/il-stash`, {
         method: 'POST',
         body: JSON.stringify(params),
@@ -59,9 +73,27 @@ export interface IlActivateParams {
     reason?: string;
 }
 
-export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number }> {
+export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
     return fetchJsonApi(`${API_BASE}/transactions/il-activate`, {
         method: 'POST',
         body: JSON.stringify(params),
     });
+}
+
+/**
+ * Format a list of auto-resolve reassignments as a single-line toast.
+ * Returns null when there are no reassignments (caller suppresses toast).
+ *
+ * Format: "{primary action}. Also moved: {Player A} {oldSlot} → {newSlot}, ..."
+ * Spec: plan #166, AddDropPanel/PlaceOnIlPanel/ActivateFromIlPanel toast wiring.
+ */
+export function formatReassignmentsToast(
+    reassignments: AppliedReassignment[] | undefined,
+    primaryActionLabel: string,
+): string | null {
+    if (!reassignments || reassignments.length === 0) return null;
+    const moves = reassignments
+        .map((r) => `${r.playerName} ${r.oldSlot} → ${r.newSlot}`)
+        .join(", ");
+    return `${primaryActionLabel} Also moved: ${moves}.`;
 }

@@ -454,6 +454,8 @@ async function main() {
     OWNERSHIP_CONFLICT: 409,
     NOT_AUTHORIZED: 403,
     NOT_TEAM_OWNER: 403,
+    NO_LEGAL_ASSIGNMENT: 400,
+    ELIGIBILITY_LOST_MID_OPERATION: 409,
   };
 
   app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {

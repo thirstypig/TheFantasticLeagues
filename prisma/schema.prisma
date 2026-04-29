@@ -73,30 +73,30 @@ enum SeasonStatus {
 // ======================
 
 model Franchise {
-  id                 Int       @id @default(autoincrement())
-  name               String    @unique
-  isPublic           Boolean   @default(false)
-  publicSlug         String?   @unique
-  inviteCode         String?   @unique
-  tradeReviewPolicy  String    @default("COMMISSIONER")
-  vetoThreshold      Int       @default(4)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  isPublic          Boolean  @default(false)
+  publicSlug        String?  @unique
+  inviteCode        String?  @unique
+  tradeReviewPolicy String   @default("COMMISSIONER")
+  vetoThreshold     Int      @default(4)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  leagues      League[]
-  memberships  FranchiseMembership[]
+  leagues     League[]
+  memberships FranchiseMembership[]
 }
 
 model FranchiseMembership {
-  id           Int        @id @default(autoincrement())
-  franchiseId  Int
-  userId       Int
-  role         LeagueRole
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id          Int        @id @default(autoincrement())
+  franchiseId Int
+  userId      Int
+  role        LeagueRole
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  franchise  Franchise @relation(fields: [franchiseId], references: [id], onDelete: Cascade)
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  franchise Franchise @relation(fields: [franchiseId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([franchiseId, userId])
   @@index([userId])
@@ -121,15 +121,15 @@ model User {
 
   isAdmin Boolean @default(false)
 
-  memberships            LeagueMembership[]
-  franchiseMemberships   FranchiseMembership[]
-  ownedTeams             Team[]             @relation("TeamOwner")
-  teamOwnerships         TeamOwnership[]
-  auditLogs              AuditLog[]
-  boardCards             BoardCard[]
-  boardReplies           BoardCardReply[]
-  productBoardCards      ProductBoardCard[]  @relation("ProductBoardCards")
-  productBoardReplies    ProductBoardReply[] @relation("ProductBoardReplies")
+  memberships          LeagueMembership[]
+  franchiseMemberships FranchiseMembership[]
+  ownedTeams           Team[]                @relation("TeamOwner")
+  teamOwnerships       TeamOwnership[]
+  auditLogs            AuditLog[]
+  boardCards           BoardCard[]
+  boardReplies         BoardCardReply[]
+  productBoardCards    ProductBoardCard[]    @relation("ProductBoardCards")
+  productBoardReplies  ProductBoardReply[]   @relation("ProductBoardReplies")
 
   pushSubscriptions      PushSubscription[]
   notificationPreference NotificationPreference?
@@ -152,21 +152,21 @@ model User {
 /// lastSeenAt is deliberately NOT indexed — preserves Postgres HOT updates
 /// and avoids dead-tuple bloat (see plan R6).
 model UserSession {
-  id          Int      @id @default(autoincrement())
-  token       String   @unique @default(cuid())
-  userId      Int
+  id     Int    @id @default(autoincrement())
+  token  String @unique @default(cuid())
+  userId Int
 
-  ipHash      String?  // HMAC-SHA256(raw ip, env.IP_HASH_SECRET)
-  ipTruncated String?  // /24 for IPv4, /48 for IPv6 — retained 90d
-  ipRaw       String?  // full IP, purged at 7d (fraud window only)
-  userAgent   String?  @db.Text
-  country     String?  // Cloudflare CF-IPCountry
+  ipHash      String? // HMAC-SHA256(raw ip, env.IP_HASH_SECRET)
+  ipTruncated String? // /24 for IPv4, /48 for IPv6 — retained 90d
+  ipRaw       String? // full IP, purged at 7d (fraud window only)
+  userAgent   String? @db.Text
+  country     String? // Cloudflare CF-IPCountry
 
   startedAt   DateTime  @default(now())
   lastSeenAt  DateTime  @default(now())
   endedAt     DateTime?
   durationSec Int?
-  endReason   String?   // "logout" | "idle" | "sweeper" | "session_cap"
+  endReason   String? // "logout" | "idle" | "sweeper" | "session_cap"
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -187,7 +187,7 @@ model UserMetrics {
   lastSeenAt               DateTime
   lastLoginAt              DateTime?
   lastActivityAt           DateTime?
-  signupSource             String?   // "google" | "yahoo" | "email" | "invite"
+  signupSource             String? // "google" | "yahoo" | "email" | "invite"
   signupUtmSource          String?
   signupUtmCampaign        String?
 
@@ -201,10 +201,10 @@ model UserMetrics {
 /// Preserves audit trail after GDPR right-to-erasure wipes everything else.
 model UserDeletionLog {
   id        Int      @id @default(autoincrement())
-  userId    Int      // original id, not FK — survives cascade
-  emailHash String   // HMAC(email, IP_HASH_SECRET)
+  userId    Int // original id, not FK — survives cascade
+  emailHash String // HMAC(email, IP_HASH_SECRET)
   deletedAt DateTime @default(now())
-  deletedBy Int?     // admin id if admin-initiated, null if self-delete
+  deletedBy Int? // admin id if admin-initiated, null if self-delete
   reason    String?
   metadata  Json?
 
@@ -212,17 +212,17 @@ model UserDeletionLog {
 }
 
 model UserProfile {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @unique
-  bio             String?  @db.VarChar(200)
-  favoriteTeam    String?  // MLB team abbreviation (e.g. "LAD", "NYY")
-  experienceLevel String?  // "1-3", "3-5", "5-10", "10+"
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  bio              String?  @db.VarChar(200)
+  favoriteTeam     String? // MLB team abbreviation (e.g. "LAD", "NYY")
+  experienceLevel  String? // "1-3", "3-5", "5-10", "10+"
   preferredFormats String[] @default([]) // ["ROTO", "H2H", "KEEPER", "DYNASTY", "POINTS"]
-  paymentHandles  Json?    // { venmo?: string, paypal?: string, zelle?: string, cashapp?: string }
-  timezone        String?  // IANA timezone (e.g. "America/Los_Angeles")
-  isPublic        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  paymentHandles   Json? // { venmo?: string, paypal?: string, zelle?: string, cashapp?: string }
+  timezone         String? // IANA timezone (e.g. "America/Los_Angeles")
+  isPublic         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -236,15 +236,15 @@ model League {
   createdAt  DateTime    @default(now())
 
   // Sport type — "baseball", "football", "basketball"
-  sport      String      @default("baseball")
+  sport String @default("baseball")
 
   isPublic   Boolean @default(false)
   publicSlug String? @unique
   inviteCode String? @unique
 
   // Scoring Format (ROTO default protects existing leagues like OGBA)
-  scoringFormat      String @default("ROTO")  // "ROTO" | "H2H_CATEGORIES" | "H2H_POINTS"
-  pointsConfig       Json?  // Points scoring weights: { "R": 1, "HR": 4, "RBI": 1, "SB": 2, ... }
+  scoringFormat      String @default("ROTO") // "ROTO" | "H2H_CATEGORIES" | "H2H_POINTS"
+  pointsConfig       Json? // Points scoring weights: { "R": 1, "HR": 4, "RBI": 1, "SB": 2, ... }
   playoffWeeks       Int    @default(3)
   playoffTeams       Int    @default(4)
   regularSeasonWeeks Int    @default(20)
@@ -254,46 +254,46 @@ model League {
   vetoThreshold     Int    @default(4)
 
   // Waiver Configuration
-  waiverType        String  @default("FAAB")           // FAAB, ROLLING_PRIORITY, REVERSE_STANDINGS, FREE_AGENT
-  faabBudget        Int     @default(200)
-  faabMinBid        Int     @default(0)
-  waiverPeriodDays  Int     @default(2)
-  processingFreq    String  @default("DAILY")           // DAILY, WEEKLY_WED, WEEKLY_SUN, etc.
-  faabTiebreaker    String  @default("ROLLING_PRIORITY") // ROLLING_PRIORITY, REVERSE_STANDINGS, RANDOM
-  acquisitionLimit  Int?                                 // null = unlimited
-  conditionalClaims Boolean @default(true)
+  waiverType        String    @default("FAAB") // FAAB, ROLLING_PRIORITY, REVERSE_STANDINGS, FREE_AGENT
+  faabBudget        Int       @default(200)
+  faabMinBid        Int       @default(0)
+  waiverPeriodDays  Int       @default(2)
+  processingFreq    String    @default("DAILY") // DAILY, WEEKLY_WED, WEEKLY_SUN, etc.
+  faabTiebreaker    String    @default("ROLLING_PRIORITY") // ROLLING_PRIORITY, REVERSE_STANDINGS, RANDOM
+  acquisitionLimit  Int? // null = unlimited
+  conditionalClaims Boolean   @default(true)
   tradeDeadline     DateTime?
   rosterLockTime    String? // "GAME_TIME" or "DAILY_LOCK"
 
   // League Discovery & Capacity
-  visibility  String  @default("PRIVATE") // PRIVATE, PUBLIC, OPEN
-  maxTeams    Int     @default(12)
-  description String? @db.Text
-  entryFee    Float?
+  visibility   String  @default("PRIVATE") // PRIVATE, PUBLIC, OPEN
+  maxTeams     Int     @default(12)
+  description  String? @db.Text
+  entryFee     Float?
   entryFeeNote String?
 
   // Franchise FK (org-level parent)
-  franchiseId  Int
-  franchise    Franchise @relation(fields: [franchiseId], references: [id])
+  franchiseId Int
+  franchise   Franchise @relation(fields: [franchiseId], references: [id])
 
-  teams             Team[]
-  memberships       LeagueMembership[]
-  transactions      TransactionEvent[]
-  historicalSeasons HistoricalSeason[]
-  rules             LeagueRule[]
-  trades            Trade[]
-  seasons           Season[]
-  periods           Period[]
-  auctionSession    AuctionSession?
-  snakeDraftSession SnakeDraftSession?
-  draftPicks        DraftPick[]
-  matchups          Matchup[]
-  invites           LeagueInvite[]
-  playerValues      PlayerValue[]
-  aiInsights        AiInsight[]
-  boardCards        BoardCard[]
-  chatMessages      ChatMessage[]
-  rosterSlotEvents  RosterSlotEvent[]
+  teams                  Team[]
+  memberships            LeagueMembership[]
+  transactions           TransactionEvent[]
+  historicalSeasons      HistoricalSeason[]
+  rules                  LeagueRule[]
+  trades                 Trade[]
+  seasons                Season[]
+  periods                Period[]
+  auctionSession         AuctionSession?
+  snakeDraftSession      SnakeDraftSession?
+  draftPicks             DraftPick[]
+  matchups               Matchup[]
+  invites                LeagueInvite[]
+  playerValues           PlayerValue[]
+  aiInsights             AiInsight[]
+  boardCards             BoardCard[]
+  chatMessages           ChatMessage[]
+  rosterSlotEvents       RosterSlotEvent[]
   teamStatsCategoryDaily TeamStatsCategoryDaily[]
 
   @@unique([name, season])
@@ -373,13 +373,13 @@ model Team {
   priorTeam   Team?  @relation("TeamHistory", fields: [priorTeamId], references: [id], onDelete: SetNull)
   nextTeams   Team[] @relation("TeamHistory")
 
-  league        League            @relation(fields: [leagueId], references: [id])
-  rosters       Roster[]
-  stats         TeamStatsPeriod[]
-  season        TeamStatsSeason?
-  financeEvents FinanceLedger[]
+  league           League                   @relation(fields: [leagueId], references: [id])
+  rosters          Roster[]
+  stats            TeamStatsPeriod[]
+  season           TeamStatsSeason?
+  financeEvents    FinanceLedger[]
   rosterSlotEvents RosterSlotEvent[]
-  categoryDaily TeamStatsCategoryDaily[]
+  categoryDaily    TeamStatsCategoryDaily[]
 
   // ADD THIS:
   transactions TransactionEvent[]
@@ -403,13 +403,13 @@ model Team {
   aiInsights AiInsight[]
 
   // Watchlist + Trading Block
-  watchlist     Watchlist[]
-  tradingBlock  TradingBlock[]
+  watchlist    Watchlist[]
+  tradingBlock TradingBlock[]
 
   // Snake Draft + H2H Matchups
-  draftPicks    DraftPick[]
-  matchupsAsA   Matchup[]   @relation("matchupTeamA")
-  matchupsAsB   Matchup[]   @relation("matchupTeamB")
+  draftPicks  DraftPick[]
+  matchupsAsA Matchup[]   @relation("matchupTeamA")
+  matchupsAsB Matchup[]   @relation("matchupTeamB")
 
   @@unique([leagueId, name])
   @@unique([leagueId, code])
@@ -431,22 +431,22 @@ model Player {
 
   createdAt DateTime @default(now())
 
-  rosters          Roster[]
-  lots             AuctionLot[]
-  aliases          PlayerAlias[]
-  transactions     TransactionEvent[]
-  tradeItems       TradeItem[]
-  waiverClaimsAdd       WaiverClaim[]      @relation("ClaimAdd")
-  waiverClaimsDrop      WaiverClaim[]      @relation("ClaimDrop")
-  waiverClaimsCondition WaiverClaim[]      @relation("ClaimCondition")
-  periodStats      PlayerStatsPeriod[]
-  dailyStats       PlayerStatsDaily[]
-  playerValues     PlayerValue[]
-  draftPicks       DraftPick[]
-  watchlistEntries Watchlist[]
-  tradingBlockEntries TradingBlock[]
-  rosterSlotEvents RosterSlotEvent[]
-  financeLedgerEntries FinanceLedger[]
+  rosters               Roster[]
+  lots                  AuctionLot[]
+  aliases               PlayerAlias[]
+  transactions          TransactionEvent[]
+  tradeItems            TradeItem[]
+  waiverClaimsAdd       WaiverClaim[]       @relation("ClaimAdd")
+  waiverClaimsDrop      WaiverClaim[]       @relation("ClaimDrop")
+  waiverClaimsCondition WaiverClaim[]       @relation("ClaimCondition")
+  periodStats           PlayerStatsPeriod[]
+  dailyStats            PlayerStatsDaily[]
+  playerValues          PlayerValue[]
+  draftPicks            DraftPick[]
+  watchlistEntries      Watchlist[]
+  tradingBlockEntries   TradingBlock[]
+  rosterSlotEvents      RosterSlotEvent[]
+  financeLedgerEntries  FinanceLedger[]
 
   @@index([name])
 }
@@ -539,11 +539,11 @@ model Period {
   endDate   DateTime
   status    String
 
-  leagueId  Int?
-  seasonId  Int?
+  leagueId Int?
+  seasonId Int?
 
-  league    League?  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  season    Season?  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  league League? @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  season Season? @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
   teamStats     TeamStatsPeriod[]
   playerStats   PlayerStatsPeriod[]
@@ -598,10 +598,10 @@ model TeamStatsCategoryDaily {
   teamId     Int
   leagueId   Int
   date       DateTime @db.Date
-  category   String   // CategoryKey: "R" | "HR" | "RBI" | "SB" | "AVG" | "W" | "S" | "K" | "ERA" | "WHIP"
-  value      Float    // raw category value at end of day
-  rank       Int      // 1 = best in this category for that day
-  rankPoints Int      // 8 for 1st in 8-team league, 7 for 2nd, etc.
+  category   String // CategoryKey: "R" | "HR" | "RBI" | "SB" | "AVG" | "W" | "S" | "K" | "ERA" | "WHIP"
+  value      Float // raw category value at end of day
+  rank       Int // 1 = best in this category for that day
+  rankPoints Int // 8 for 1st in 8-team league, 7 for 2nd, etc.
 
   team   Team   @relation(fields: [teamId], references: [id])
   league League @relation(fields: [leagueId], references: [id])
@@ -649,17 +649,17 @@ model PlayerStatsPeriod {
   SB  Int @default(0)
 
   // Batting — extended (from MLB API, for MVP/award tracking)
-  BB     Int   @default(0) // walks (baseOnBalls)
-  HBP    Int   @default(0) // hit by pitch
-  SF     Int   @default(0) // sacrifice flies
-  TB     Int   @default(0) // total bases
-  DBL    Int   @default(0) // doubles
-  TPL    Int   @default(0) // triples
-  SO     Int   @default(0) // strikeouts (batting)
-  OBP    Float @default(0)
-  SLG    Float @default(0)
-  OPS    Float @default(0)
-  GS_HR  Int   @default(0) // grand slams
+  BB    Int   @default(0) // walks (baseOnBalls)
+  HBP   Int   @default(0) // hit by pitch
+  SF    Int   @default(0) // sacrifice flies
+  TB    Int   @default(0) // total bases
+  DBL   Int   @default(0) // doubles
+  TPL   Int   @default(0) // triples
+  SO    Int   @default(0) // strikeouts (batting)
+  OBP   Float @default(0)
+  SLG   Float @default(0)
+  OPS   Float @default(0)
+  GS_HR Int   @default(0) // grand slams
 
   // Pitching
   W    Int   @default(0)
@@ -670,17 +670,17 @@ model PlayerStatsPeriod {
   BB_H Int   @default(0) // walks + hits allowed (for WHIP)
 
   // Pitching — extended (from MLB API, for Cy Young tracking)
-  L       Int   @default(0) // losses
-  GS      Int   @default(0) // games started
-  QS      Int   @default(0) // quality starts (not in MLB API — computed)
-  K9      Float @default(0) // strikeouts per 9 innings
-  BB9     Float @default(0) // walks per 9 innings
-  HR_A    Int   @default(0) // home runs allowed
-  BF      Int   @default(0) // batters faced
-  SHO     Int   @default(0) // shutouts
+  L    Int   @default(0) // losses
+  GS   Int   @default(0) // games started
+  QS   Int   @default(0) // quality starts (not in MLB API — computed)
+  K9   Float @default(0) // strikeouts per 9 innings
+  BB9  Float @default(0) // walks per 9 innings
+  HR_A Int   @default(0) // home runs allowed
+  BF   Int   @default(0) // batters faced
+  SHO  Int   @default(0) // shutouts
 
   // General
-  G       Int   @default(0) // games played/pitched
+  G Int @default(0) // games played/pitched
 
   player Player @relation(fields: [playerId], references: [id])
   period Period @relation(fields: [periodId], references: [id])
@@ -703,17 +703,17 @@ model PlayerStatsDaily {
   SB  Int @default(0)
 
   // Batting — extended
-  BB     Int   @default(0)
-  HBP    Int   @default(0)
-  SF     Int   @default(0)
-  TB     Int   @default(0)
-  DBL    Int   @default(0)
-  TPL    Int   @default(0)
-  SO     Int   @default(0)
-  OBP    Float @default(0)
-  SLG    Float @default(0)
-  OPS    Float @default(0)
-  GS_HR  Int   @default(0) // grand slams
+  BB    Int   @default(0)
+  HBP   Int   @default(0)
+  SF    Int   @default(0)
+  TB    Int   @default(0)
+  DBL   Int   @default(0)
+  TPL   Int   @default(0)
+  SO    Int   @default(0)
+  OBP   Float @default(0)
+  SLG   Float @default(0)
+  OPS   Float @default(0)
+  GS_HR Int   @default(0) // grand slams
 
   // Pitching
   W    Int   @default(0)
@@ -724,16 +724,16 @@ model PlayerStatsDaily {
   BB_H Int   @default(0) // walks + hits allowed (for WHIP)
 
   // Pitching — extended
-  L       Int   @default(0)
-  GS      Int   @default(0)
-  K9      Float @default(0)
-  BB9     Float @default(0)
-  HR_A    Int   @default(0)
-  BF      Int   @default(0)
-  SHO     Int   @default(0) // shutouts
+  L    Int   @default(0)
+  GS   Int   @default(0)
+  K9   Float @default(0)
+  BB9  Float @default(0)
+  HR_A Int   @default(0)
+  BF   Int   @default(0)
+  SHO  Int   @default(0) // shutouts
 
   // General
-  G       Int   @default(0) // games played/pitched
+  G Int @default(0) // games played/pitched
 
   player Player @relation(fields: [playerId], references: [id])
 
@@ -752,6 +752,11 @@ model Roster {
   price            Int       @default(1)
   assignedPosition String?
   isKeeper         Boolean   @default(false)
+  // Display order within `(teamId, assignedPosition)` group. Nullable —
+  // null defaults to acquiredAt ordering at read time. Populated by the
+  // Yahoo-style Swap Mode UI in PR2; PR1 ships the column unused for
+  // migration cleanliness. See plan #166 §4A.
+  displayOrder     Int?
 
   team   Team   @relation(fields: [teamId], references: [id])
   player Player @relation(fields: [playerId], references: [id])
@@ -760,6 +765,7 @@ model Roster {
   @@index([playerId])
   @@index([teamId, releasedAt])
   @@index([releasedAt, playerId])
+  @@index([teamId, assignedPosition, displayOrder])
 }
 
 model AuctionLot {
@@ -816,14 +822,14 @@ model FinanceLedger {
   player     Player?         @relation(fields: [playerId], references: [id])
   reverses   FinanceLedger?  @relation("FinanceLedgerReversal", fields: [reversalOf], references: [id])
   reversedBy FinanceLedger[] @relation("FinanceLedgerReversal")
+  // Note: partial unique index scoped to type='il_fee' AND voidedAt IS NULL
+  // is expressed in the migration SQL only (Prisma @@unique can't express
+  // WHERE clauses). See migration 20260421000000_roster_rules_foundation.
 
   @@index([teamId])
   @@index([periodId])
   @@index([playerId])
   @@index([teamId, periodId])
-  // Note: partial unique index scoped to type='il_fee' AND voidedAt IS NULL
-  // is expressed in the migration SQL only (Prisma @@unique can't express
-  // WHERE clauses). See migration 20260421000000_roster_rules_foundation.
 }
 
 // ======================
@@ -887,9 +893,9 @@ model WaiverClaim {
   aiAnalysis   Json?
 
   // Conditional claim fields
-  conditionType      String?  // "ONLY_IF_UNAVAILABLE", "ONLY_IF_AVAILABLE", "PAIR_WITH"
-  conditionPlayerId  Int?     // the player the condition references
-  conditionNote      String?  // human-readable condition description
+  conditionType     String? // "ONLY_IF_UNAVAILABLE", "ONLY_IF_AVAILABLE", "PAIR_WITH"
+  conditionPlayerId Int? // the player the condition references
+  conditionNote     String? // human-readable condition description
 
   team            Team    @relation(fields: [teamId], references: [id])
   player          Player  @relation("ClaimAdd", fields: [playerId], references: [id])
@@ -1019,7 +1025,7 @@ model LeagueInvite {
   leagueId  Int
   email     String
   role      LeagueRole   @default(OWNER)
-  invitedBy Int          // userId of commissioner who invited
+  invitedBy Int // userId of commissioner who invited
   status    InviteStatus @default(PENDING)
   createdAt DateTime     @default(now())
   expiresAt DateTime
@@ -1045,7 +1051,7 @@ model AuctionSession {
 model SnakeDraftSession {
   id        Int      @id @default(autoincrement())
   leagueId  Int      @unique
-  state     Json     // { pickOrder, currentPickIndex, picks, timerExpiresAt, status, config }
+  state     Json // { pickOrder, currentPickIndex, picks, timerExpiresAt, status, config }
   updatedAt DateTime @default(now()) @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
@@ -1055,9 +1061,9 @@ model DraftPick {
   id         Int      @id @default(autoincrement())
   leagueId   Int
   round      Int
-  pickNum    Int      // Overall pick number (1-based)
+  pickNum    Int // Overall pick number (1-based)
   teamId     Int
-  playerId   Int?     // null if skipped
+  playerId   Int? // null if skipped
   pickedAt   DateTime @default(now())
   isAutoPick Boolean  @default(false)
 
@@ -1073,20 +1079,20 @@ model DraftPick {
 // ─── H2H Matchups ───
 
 model Matchup {
-  id           Int      @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   leagueId     Int
-  week         Int      // Scoring period (1-based)
-  periodId     Int?     // Links to Period for stats resolution
+  week         Int // Scoring period (1-based)
+  periodId     Int? // Links to Period for stats resolution
   teamAId      Int
   teamBId      Int
-  result       Json?    // { teamA: { catWins, catLosses, catTies, points }, teamB: { ... } }
-  isPlayoff    Boolean  @default(false)
-  playoffRound Int?     // 1=quarterfinal, 2=semifinal, 3=final
+  result       Json? // { teamA: { catWins, catLosses, catTies, points }, teamB: { ... } }
+  isPlayoff    Boolean @default(false)
+  playoffRound Int? // 1=quarterfinal, 2=semifinal, 3=final
 
-  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  league League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   period Period? @relation(fields: [periodId], references: [id])
-  teamA  Team   @relation("matchupTeamA", fields: [teamAId], references: [id])
-  teamB  Team   @relation("matchupTeamB", fields: [teamBId], references: [id])
+  teamA  Team    @relation("matchupTeamA", fields: [teamAId], references: [id])
+  teamB  Team    @relation("matchupTeamB", fields: [teamBId], references: [id])
 
   @@unique([leagueId, week, teamAId, teamBId])
   @@index([leagueId, week])
@@ -1095,11 +1101,11 @@ model Matchup {
 
 model AiInsight {
   id        Int      @id @default(autoincrement())
-  type      String   // "weekly", "season_summary", etc.
+  type      String // "weekly", "season_summary", etc.
   leagueId  Int
   teamId    Int
-  weekKey   String   // e.g. "2026-W13" — dedup key for once-per-week generation
-  data      Json     // { insights, overallGrade, mode, ... }
+  weekKey   String // e.g. "2026-W13" — dedup key for once-per-week generation
+  data      Json // { insights, overallGrade, mode, ... }
   createdAt DateTime @default(now())
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
@@ -1114,10 +1120,10 @@ model AiInsight {
 model AuditLog {
   id           Int      @id @default(autoincrement())
   userId       Int
-  action       String   // e.g. TRADE_PROCESS, WAIVER_PROCESS, AUCTION_INIT, AUCTION_RESET, RULES_UPDATE
-  resourceType String   // e.g. Trade, WaiverClaim, Auction, LeagueRule
-  resourceId   String?  // ID of the affected resource (string for flexibility)
-  metadata     Json?    // Additional context (JSON)
+  action       String // e.g. TRADE_PROCESS, WAIVER_PROCESS, AUCTION_INIT, AUCTION_RESET, RULES_UPDATE
+  resourceType String // e.g. Trade, WaiverClaim, Auction, LeagueRule
+  resourceId   String? // ID of the affected resource (string for flexibility)
+  metadata     Json? // Additional context (JSON)
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1170,7 +1176,7 @@ model Watchlist {
   teamId    Int
   playerId  Int
   note      String?  @db.VarChar(200)
-  tags      String[] @default([])     // "trade-target", "add-drop", "monitor"
+  tags      String[] @default([]) // "trade-target", "add-drop", "monitor"
   createdAt DateTime @default(now())
 
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -1187,7 +1193,7 @@ model TradingBlock {
   id        Int      @id @default(autoincrement())
   teamId    Int
   playerId  Int
-  askingFor String?  @db.VarChar(200)  // "Need SP", "Looking for SB"
+  askingFor String?  @db.VarChar(200) // "Need SP", "Looking for SB"
   createdAt DateTime @default(now())
 
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -1201,25 +1207,25 @@ model TradingBlock {
 //  League Board — card-based async communication
 // ======================
 model BoardCard {
-  id        Int      @id @default(autoincrement())
-  leagueId  Int
-  userId    Int?     // null for system-generated cards
-  column    String   // "pinned", "activity", "trade_block", "banter"
-  title     String
-  body      String?  @db.Text
-  type      String   // "user", "system", "trade", "waiver", "stat_alert", "award", "poll"
-  metadata  Json?    // for polls: { options, votes }, for trades: { tradeId }, etc.
-  pinned    Boolean  @default(false)
-  periodId  Int?     // for auto-archiving by period
-  expiresAt DateTime? // auto-expire (trade block posts expire at trade deadline)
-  thumbsUp  Int      @default(0)
-  thumbsDown Int     @default(0)
-  createdAt DateTime @default(now())
-  deletedAt DateTime? // soft delete
+  id         Int       @id @default(autoincrement())
+  leagueId   Int
+  userId     Int? // null for system-generated cards
+  column     String // "pinned", "activity", "trade_block", "banter"
+  title      String
+  body       String?   @db.Text
+  type       String // "user", "system", "trade", "waiver", "stat_alert", "award", "poll"
+  metadata   Json? // for polls: { options, votes }, for trades: { tradeId }, etc.
+  pinned     Boolean   @default(false)
+  periodId   Int? // for auto-archiving by period
+  expiresAt  DateTime? // auto-expire (trade block posts expire at trade deadline)
+  thumbsUp   Int       @default(0)
+  thumbsDown Int       @default(0)
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime? // soft delete
 
-  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id])
-  replies   BoardCardReply[]
+  league  League           @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user    User?            @relation(fields: [userId], references: [id])
+  replies BoardCardReply[]
 
   @@index([leagueId, column])
   @@index([leagueId, periodId])
@@ -1227,23 +1233,23 @@ model BoardCard {
 }
 
 model BoardCardReply {
-  id       Int      @id @default(autoincrement())
-  cardId   Int
-  userId   Int
-  body     String
+  id        Int      @id @default(autoincrement())
+  cardId    Int
+  userId    Int
+  body      String
   createdAt DateTime @default(now())
 
-  card     BoardCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user     User      @relation(fields: [userId], references: [id])
+  card BoardCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id])
 
   @@index([cardId])
 }
 
 model BoardVote {
-  id       Int    @id @default(autoincrement())
-  cardId   Int
-  userId   Int
-  vote     String // "up" or "down"
+  id     Int    @id @default(autoincrement())
+  cardId Int
+  userId Int
+  vote   String // "up" or "down"
 
   @@unique([cardId, userId])
 }
@@ -1255,11 +1261,11 @@ model BoardVote {
 model ProductBoardCard {
   id         Int       @id @default(autoincrement())
   userId     Int
-  channel    String    // "announcements", "marketplace", "general"
+  channel    String // "announcements", "marketplace", "general"
   title      String
   body       String?   @db.Text
-  type       String    // "announcement", "league_listing", "free_agent", "discussion"
-  metadata   Json?     // for listings: { sport, format, buyIn, spotsOpen }
+  type       String // "announcement", "league_listing", "free_agent", "discussion"
+  metadata   Json? // for listings: { sport, format, buyIn, spotsOpen }
   thumbsUp   Int       @default(0)
   thumbsDown Int       @default(0)
   createdAt  DateTime  @default(now())
@@ -1327,7 +1333,7 @@ model ChatMessage {
   userId    Int
   text      String    @db.Text
   type      String    @default("user") // "user", "system"
-  metadata  Json?     // for system messages: { activityType, tradeId, etc. }
+  metadata  Json? // for system messages: { activityType, tradeId, etc. }
   createdAt DateTime  @default(now())
   deletedAt DateTime? // soft delete for moderation
 
@@ -1356,25 +1362,24 @@ model ChatReadCursor {
  * computes billable stints directly from this table instead of pairing
  * TransactionEvent rows — removes a fragile indirection for money-sensitive
  * accounting (see plan architecture review).
- *
  * Each (IL_STASH, IL_ACTIVATE, IL_RELEASE) row is written inside the same
  * transaction as the Roster mutation that caused it. Commissioner backdates
  * use the effective date as effDate, not now().
  */
 model RosterSlotEvent {
-  id        Int      @id @default(autoincrement())
-  teamId    Int
-  playerId  Int
-  leagueId  Int
-  event     String   // "IL_STASH" | "IL_ACTIVATE" | "IL_RELEASE"
-  effDate   DateTime // respects commissioner backdate; anchored at UTC midnight
-  createdAt DateTime @default(now())
-  createdBy Int?     // user id of actor
-  reason    String?  // optional commissioner justification
+  id                 Int       @id @default(autoincrement())
+  teamId             Int
+  playerId           Int
+  leagueId           Int
+  event              String // "IL_STASH" | "IL_ACTIVATE" | "IL_RELEASE"
+  effDate            DateTime // respects commissioner backdate; anchored at UTC midnight
+  createdAt          DateTime  @default(now())
+  createdBy          Int? // user id of actor
+  reason             String? // optional commissioner justification
   // Evidence capture — what the MLB feed returned at stash time. Best-effort
   // freshness marker; not load-bearing for enforcement, used for audit.
-  mlbStatusSnapshot     String?
-  mlbStatusFetchedAt    DateTime?
+  mlbStatusSnapshot  String?
+  mlbStatusFetchedAt DateTime?
 
   team   Team   @relation(fields: [teamId], references: [id])
   player Player @relation(fields: [playerId], references: [id])
@@ -1393,13 +1398,12 @@ model RosterSlotEvent {
  * it inserts a row here inside the originating transaction. A separate
  * drainer picks up uncompleted rows and processes them under its own
  * advisory lock.
- *
  * Initial implementation: in-process setInterval-based drainer. Forward-
  * compatible with pg-boss if/when FBST goes multi-container.
  */
 model OutboxEvent {
   id          Int       @id @default(autoincrement())
-  kind        String    // "IL_FEE_RECONCILE" etc.
+  kind        String // "IL_FEE_RECONCILE" etc.
   payload     Json
   attempts    Int       @default(0)
   lastError   String?

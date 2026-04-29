@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ilActivate } from "../../../transactions/api";
+import { ilActivate, formatReassignmentsToast } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
+import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
 import { slotsFor } from "../../../../lib/positionEligibility";
 import type { RosterMovesPlayer } from "./types";
@@ -35,6 +36,7 @@ interface Props {
  * different direction.
  */
 export default function ActivateFromIlPanel({ leagueId, teamId, players, onComplete, effectiveDate, initialActivatePlayerId }: Props) {
+  const { toast } = useToast();
   const [activatePlayerId, setActivatePlayerId] = useState<number | null>(initialActivatePlayerId ?? null);
   const [dropPlayerId, setDropPlayerId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -89,13 +91,19 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
     setSubmitting(true);
     setError(null);
     try {
-      await ilActivate({
+      const response = await ilActivate({
         leagueId,
         teamId,
         activatePlayerId: Number(activatePlayerId),
         dropPlayerId: Number(dropPlayerId),
         ...(effectiveDate ? { effectiveDate } : {}),
       });
+      const activateName = activatePlayer?.player_name || activatePlayer?.name || "player";
+      const toastMsg = formatReassignmentsToast(
+        response.appliedReassignments,
+        `Activated ${activateName}.`,
+      );
+      if (toastMsg) toast(toastMsg, "success");
       setActivatePlayerId(null);
       setDropPlayerId(null);
       onComplete();

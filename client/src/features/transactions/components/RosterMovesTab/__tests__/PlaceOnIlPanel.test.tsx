@@ -10,6 +10,12 @@ import type { RosterMovesPlayer } from "../types";
 // wrapper (that belongs to ../__tests__/api.test.ts).
 vi.mock("../../../../transactions/api", () => ({
   ilStash: vi.fn().mockResolvedValue({ success: true }),
+  formatReassignmentsToast: vi.fn().mockReturnValue(null),
+}));
+
+const mockToast = vi.fn();
+vi.mock("../../../../../contexts/ToastContext", () => ({
+  useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
 }));
 
 vi.mock("../../../../../lib/errorBus", () => ({
@@ -155,5 +161,27 @@ describe("PlaceOnIlPanel effectiveDate forwarding", () => {
     expect(ilStash).toHaveBeenCalledTimes(1);
     const payload = vi.mocked(ilStash).mock.calls[0][0];
     expect(payload).not.toHaveProperty("effectiveDate");
+  });
+});
+
+describe("PlaceOnIlPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", () => {
+  it("calls toast() when server returns appliedReassignments", async () => {
+    // Override the formatter to return a non-null string so we can assert
+    // the toast call without needing to keep the real format in lockstep.
+    const { formatReassignmentsToast } = await import("../../../../transactions/api");
+    vi.mocked(formatReassignmentsToast).mockReturnValueOnce("Stashed Buxton. Also moved: X 2B → SS.");
+    vi.mocked(ilStash).mockResolvedValueOnce({
+      success: true,
+      stashPlayerId: 500,
+      addPlayerId: 999,
+      appliedReassignments: [
+        { rosterId: 7, playerId: 5, playerName: "X", oldSlot: "2B", newSlot: "SS" },
+      ],
+    });
+    await setUpAndSubmit(undefined);
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.stringContaining("Also moved"),
+      "success",
+    );
   });
 });
