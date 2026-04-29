@@ -1,10 +1,24 @@
 # Yahoo-Style Roster Moves — Implementation Plan
 
 **Date:** 2026-04-29
-**Status:** PROPOSAL — awaiting design review
+**Status:** APPROVED — open questions resolved, ready for PR1 implementation
 **Author:** Plan agent (synthesis from codebase audit + Yahoo/ESPN/Sleeper UX prior art)
 
-> **Reviewers**: read sections 1-3 for the goal and design north star, section 11 for open questions you need to weigh in on, and section 10 for the proposed PR breakdown. Sections 4-9 are implementation details — skim or skip if you trust the high level.
+> **Reviewers**: read sections 1-3 for the goal and design north star, section 11 for the resolved decisions, and section 10 for the proposed PR breakdown. Sections 4-9 are implementation details — skim or skip if you trust the high level.
+
+## ✅ Resolved decisions (2026-04-29)
+
+| # | Question | Decision |
+|---|----------|----------|
+| Q1 | Daily eligibility sync race | **A** — re-read `posList` inside transaction; throw `ELIGIBILITY_LOST_MID_OPERATION` on drift, client retries |
+| Q2 | Auto-resolve UX | **A** — silent + toast (Yahoo behavior, single-click adds) |
+| Q3 | Pitcher slots | **C with drag-reorder** — single `P` pool in storage; new `Roster.displayOrder: Int?` field; Swap Mode renders 9 drag-reorderable P cells |
+| Q4 | Backdated transactions | **A** — today's `posList`, document in runbook |
+| Q5 | OF labeling | **resolved by code** — `SLOT_CODES` confirms single `OF` slot, capacity 3; same drag-reorder pattern as P |
+| Q6 | Roster sort jumps | **C** — pulse changed rows with iridescent border for ~5s after auto-resolve |
+| Q7 | Keepers in Swap Mode | **B** — gold ring visual flag; NOT lock-pinned (matcher treats keepers identically to non-keepers) |
+
+These decisions are load-bearing for the implementation. Any change requires re-opening the proposal.
 
 ---
 
@@ -282,9 +296,9 @@ Eligibility chips: small pill row under each player name showing `slotsFor(posLi
 - `/now-tldr` line; runbook for "matcher failed" at `docs/solutions/`
 - Estimated: **2 sessions**
 
-## 11. Risks & Open Questions
+## 11. Risks & Open Questions — RESOLVED
 
-> **These are the items I need a decision on before implementation.**
+> **All resolved 2026-04-29.** See the "Resolved decisions" table at the top of the doc for the canonical answers. Original questions retained below for context.
 
 1. **Daily eligibility sync race.** The 12:00 UTC cron at `server/src/index.ts` updates `Player.posList`. If a sync runs between request submission and processing, the matcher might see a different eligibility set than the client. *Mitigation:* matcher reads `posList` inside the transaction; if `ELIGIBILITY_LOST_MID_OPERATION` fires, the user retries. Acceptable since the sync only runs daily. **Decision needed:** OK with this mitigation, or do you want a stricter pin to request-time eligibility?
 

@@ -80,7 +80,7 @@ const docs: DocEntry[] = [
   { name: "Auth + Members Plan", filename: "docs/PLAN-AUTH-MEMBERS.md", content: planAuth, category: "docs", icon: Shield, description: "Auth fixes and commissioner member management" },
   { name: "Legacy Roadmap", filename: "docs/ROADMAP.md", content: roadmapDoc, category: "docs", icon: Settings, description: "Historical security & quality roadmap" },
   // docs/plans/ — active proposals awaiting review
-  { name: "Yahoo-Style Roster Moves", filename: "docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md", content: planYahooRosterMoves, category: "proposal", icon: ClipboardList, description: "PROPOSAL — auto-resolve add/drop + Swap Mode UI. Awaiting design review (open questions in §11)" },
+  { name: "Yahoo-Style Roster Moves", filename: "docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md", content: planYahooRosterMoves, category: "proposal", icon: ClipboardList, description: "APPROVED — auto-resolve add/drop + Swap Mode UI. Decisions resolved, PR1 ready to ship" },
 ];
 
 /* ── Simple markdown renderer ───────────────────────────────────── */
