@@ -25,6 +25,15 @@ import {
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { assertAddEligibleForDropSlot } from "./lib/positionInherit.js";
+import {
+  isAutoResolveEnabled,
+  loadSlotCapacities,
+  buildCandidatesForTeam,
+  verifyEligibilityUnchanged,
+  applyAssignments,
+  resolveLineup,
+  type AppliedReassignment,
+} from "./lib/autoResolveLineup.js";
 import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 
 /**
@@ -192,6 +201,14 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   // 4. Position-inherit pre-check (plan Q8 follow-on). Added player must be
   //    eligible for the dropped player's exact slot. Only fires when enforce
   //    is true — pre-flight DB lookups stay out of the legacy path.
+  //
+  //    Yahoo-style auto-resolve (PR1 of plan #166): when the league rule
+  //    `transactions.auto_resolve_slots` is true, skip the strict pairwise
+  //    check and let the bipartite matcher (inside the transaction) figure
+  //    out a legal end-state. The matcher may shuffle other players to make
+  //    room — those reassignments are echoed back via `appliedReassignments`.
+  const autoResolve = enforce ? await isAutoResolveEnabled(prisma, leagueId) : false;
+
   let dropRosterPreview: { id: number; assignedPosition: string | null } | null = null;
   if (enforce && dropPlayerId) {
     dropRosterPreview = await prisma.roster.findFirst({
@@ -204,7 +221,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         code: "IL_UNKNOWN_PLAYER",
       });
     }
-    if (dropRosterPreview.assignedPosition && dropRosterPreview.assignedPosition !== "IL") {
+    if (!autoResolve && dropRosterPreview.assignedPosition && dropRosterPreview.assignedPosition !== "IL") {
       const add = await prisma.player.findUnique({
         where: { id: playerId },
         select: { name: true, posList: true },
@@ -230,6 +247,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   const season = league?.season ?? new Date().getFullYear();
 
   // 4. Perform Transaction (Atomic) — lock team row to prevent concurrent roster limit bypass
+  let appliedReassignments: AppliedReassignment[] = [];
   try {
   await prisma.$transaction(async (tx) => {
     // Acquire row-level lock on the team to serialize concurrent claims
@@ -285,6 +303,34 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
 
     const player = await tx.player.findUnique({ where: { id: playerId }, select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true, mlbTeam: true } });
 
+    // Process drop FIRST so matcher (when on) sees the post-drop state.
+    let droppedRosterId: number | null = null;
+    if (dropPlayerId) {
+      const dropRoster = await tx.roster.findFirst({
+        where: { teamId, playerId: dropPlayerId, releasedAt: null }
+      });
+
+      if (dropRoster) {
+        droppedRosterId = dropRoster.id;
+        await tx.roster.update({ where: { id: dropRoster.id }, data: { releasedAt: effective, source: "DROP" } });
+
+        const dropPlayer = await tx.player.findUnique({ where: { id: dropPlayerId } });
+        await tx.transactionEvent.create({
+          data: {
+            rowHash: `DROP-${crypto.randomUUID()}-${dropPlayerId}`,
+            leagueId,
+            season,
+            effDate: effective,
+            submittedAt: new Date(),
+            teamId,
+            playerId: dropPlayerId,
+            transactionRaw: `Dropped ${dropPlayer?.name}`,
+            transactionType: 'DROP'
+          }
+        });
+      }
+    }
+
     // Position inheritance: added player takes the dropped player's exact
     // slot. If there's no drop (pre-season or flag off), fall back to the
     // legacy "primary position" slot mapping.
@@ -296,7 +342,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       ? inheritedPos
       : legacyAssignedPos;
 
-    await tx.roster.create({
+    const newRoster = await tx.roster.create({
       data: { teamId, playerId, source: 'waiver_claim', acquiredAt: effective, assignedPosition: assignedPos }
     });
     const rowHash = `CLAIM-${crypto.randomUUID()}-${playerId}`;
@@ -315,28 +361,53 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       }
     });
 
-    if (dropPlayerId) {
-      const dropRoster = await tx.roster.findFirst({
-        where: { teamId, playerId: dropPlayerId, releasedAt: null }
-      });
+    // Yahoo-style auto-resolve: run bipartite matcher to resolve position
+    // conflicts that the strict pairwise check would have rejected. Only
+    // when (a) enforce is on AND (b) the league rule has it enabled. Reads
+    // a fresh in-tx view so the daily eligibility sync doesn't race us.
+    if (autoResolve && dropPlayerId && inheritedPos && inheritedPos !== "IL") {
+      const slotCapacities = await loadSlotCapacities(tx, leagueId);
+      const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
 
-      if (dropRoster) {
-        await tx.roster.update({ where: { id: dropRoster.id }, data: { releasedAt: effective, source: "DROP" } });
+      // Build rosterRowToPlayerId for echo (newRoster id → playerId).
+      const rosterRowToPlayerId = new Map<number, number>();
+      for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
+      // Augment names map with the new player for the toast.
+      if (player?.name) playerNames.set(newRoster.id, player.name);
 
-        const dropPlayer = await tx.player.findUnique({ where: { id: dropPlayerId } });
-        await tx.transactionEvent.create({
-          data: {
-            rowHash: `DROP-${crypto.randomUUID()}-${dropPlayerId}`,
-            leagueId,
-            season,
-            effDate: effective,
-            submittedAt: new Date(),
-            teamId,
-            playerId: dropPlayerId,
-            transactionRaw: `Dropped ${dropPlayer?.name}`,
-            transactionType: 'DROP'
+      let result = resolveLineup(candidates, slotCapacities);
+
+      if (result.ok === false) {
+        // Re-read posList for involved players. If they shifted, retry once.
+        const refreshed = await verifyEligibilityUnchanged(tx, candidates);
+        if (refreshed) {
+          result = resolveLineup(refreshed, slotCapacities);
+          if (result.ok === false) {
+            throw new RosterRuleError(
+              "ELIGIBILITY_LOST_MID_OPERATION",
+              "Player eligibility changed during processing. Please retry.",
+              { unfilledSlots: result.unfilledSlots, unassignedPlayers: result.unassignedPlayers },
+            );
           }
-        });
+        } else {
+          throw new RosterRuleError(
+            "NO_LEGAL_ASSIGNMENT",
+            result.reason,
+            { unfilledSlots: result.unfilledSlots, unassignedPlayers: result.unassignedPlayers },
+          );
+        }
+      }
+
+      // Apply slot reassignments (excluding the new row's already-set slot
+      // if matcher kept it). Filter out no-op assignments where the matcher
+      // picked the same slot the row already has.
+      if (result.ok) {
+        appliedReassignments = await applyAssignments(
+          tx,
+          result.assignments,
+          playerNames,
+          rosterRowToPlayerId,
+        );
       }
     }
   }, { timeout: 30_000 });
@@ -369,7 +440,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     },
   });
 
-  return res.json({ success: true, playerId });
+  return res.json({ success: true, playerId, appliedReassignments });
 }));
 
 /**
@@ -561,16 +632,22 @@ router.post(
     if (!addPlayer) {
       return res.status(404).json({ error: `Add player #${addPlayerId} not found.` });
     }
-    try {
-      assertAddEligibleForDropSlot(
-        { name: addPlayer.name, posList: addPlayer.posList },
-        stashSlot,
-      );
-    } catch (err) {
-      if (isRosterRuleError(err)) {
-        return res.status(400).json({ error: err.message, code: err.code });
+
+    // Yahoo-style auto-resolve: when on, defer position-fit check to the
+    // matcher (runs in-tx). Strict pairwise check stays as the legacy path.
+    const autoResolveStash = await isAutoResolveEnabled(prisma, leagueId);
+    if (!autoResolveStash) {
+      try {
+        assertAddEligibleForDropSlot(
+          { name: addPlayer.name, posList: addPlayer.posList },
+          stashSlot,
+        );
+      } catch (err) {
+        if (isRosterRuleError(err)) {
+          return res.status(400).json({ error: err.message, code: err.code });
+        }
+        throw err;
       }
-      throw err;
     }
 
     // Pre-transaction: addPlayer's current owner (for god-mode cross-team release).
@@ -589,6 +666,7 @@ router.post(
     const season = league?.season ?? new Date().getFullYear();
 
     // Transaction: atomic stash + add.
+    let stashAppliedReassignments: AppliedReassignment[] = [];
     try {
       await prisma.$transaction(async (tx) => {
         // Row-lock the team to serialize concurrent stashes.
@@ -638,12 +716,52 @@ router.post(
           data: { assignedPosition: "IL" },
         });
         // Create addPlayer on the slot stashPlayer just vacated (position-inherit).
-        await tx.roster.create({
+        const newStashRoster = await tx.roster.create({
           data: {
             teamId, playerId: addPlayerId!, source: "il_stash",
             acquiredAt: effective, assignedPosition: stashSlot,
           },
         });
+
+        // Yahoo-style auto-resolve: re-shuffle the active roster if the
+        // strict inherited slot turned out to be infeasible (e.g., the
+        // added player can't actually play the stashed player's slot).
+        if (autoResolveStash) {
+          const slotCapacities = await loadSlotCapacities(tx, leagueId);
+          const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
+          const rosterRowToPlayerId = new Map<number, number>();
+          for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
+          if (addPlayer.name) playerNames.set(newStashRoster.id, addPlayer.name);
+
+          let result = resolveLineup(candidates, slotCapacities);
+          if (result.ok === false) {
+            const refreshed = await verifyEligibilityUnchanged(tx, candidates);
+            if (refreshed) {
+              result = resolveLineup(refreshed, slotCapacities);
+              if (result.ok === false) {
+                throw new RosterRuleError(
+                  "ELIGIBILITY_LOST_MID_OPERATION",
+                  "Player eligibility changed during processing. Please retry.",
+                  { unfilledSlots: result.unfilledSlots, unassignedPlayers: result.unassignedPlayers },
+                );
+              }
+            } else {
+              throw new RosterRuleError(
+                "NO_LEGAL_ASSIGNMENT",
+                result.reason,
+                { unfilledSlots: result.unfilledSlots, unassignedPlayers: result.unassignedPlayers },
+              );
+            }
+          }
+          if (result.ok) {
+            stashAppliedReassignments = await applyAssignments(
+              tx,
+              result.assignments,
+              playerNames,
+              rosterRowToPlayerId,
+            );
+          }
+        }
 
         // Append-only IL stint log — authoritative record for Phase 3 fee reconciler.
         await tx.rosterSlotEvent.create({
@@ -711,7 +829,7 @@ router.post(
       await enqueueReconcileForEffective(leagueId, effective);
     }
 
-    return res.json({ success: true, stashPlayerId, addPlayerId });
+    return res.json({ success: true, stashPlayerId, addPlayerId, appliedReassignments: stashAppliedReassignments });
   }),
 );
 
@@ -795,16 +913,22 @@ router.post(
     if (!activatePlayer) {
       return res.status(404).json({ error: `Activate player #${activatePlayerId} not found.` });
     }
-    try {
-      assertAddEligibleForDropSlot(
-        { name: activatePlayer.name, posList: activatePlayer.posList },
-        targetSlot,
-      );
-    } catch (err) {
-      if (isRosterRuleError(err)) {
-        return res.status(400).json({ error: err.message, code: err.code });
+
+    // Yahoo-style auto-resolve: when on, defer position-fit check to the
+    // matcher (runs in-tx). Strict pairwise check stays as the legacy path.
+    const autoResolveActivate = await isAutoResolveEnabled(prisma, leagueId);
+    if (!autoResolveActivate) {
+      try {
+        assertAddEligibleForDropSlot(
+          { name: activatePlayer.name, posList: activatePlayer.posList },
+          targetSlot,
+        );
+      } catch (err) {
+        if (isRosterRuleError(err)) {
+          return res.status(400).json({ error: err.message, code: err.code });
+        }
+        throw err;
       }
-      throw err;
     }
 
     // Guard: effective must be after dropRoster.acquiredAt (symmetric with /drop).
@@ -818,6 +942,7 @@ router.post(
     const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
     const season = league?.season ?? new Date().getFullYear();
 
+    let activateAppliedReassignments: AppliedReassignment[] = [];
     try {
       await prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
@@ -850,6 +975,44 @@ router.post(
           where: { id: ilRoster.id },
           data: { assignedPosition: targetSlot },
         });
+
+        // Yahoo-style auto-resolve: re-shuffle the active roster if the
+        // strict inherited slot turned out to be infeasible.
+        if (autoResolveActivate) {
+          const slotCapacities = await loadSlotCapacities(tx, leagueId);
+          const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
+          const rosterRowToPlayerId = new Map<number, number>();
+          for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
+
+          let result = resolveLineup(candidates, slotCapacities);
+          if (result.ok === false) {
+            const refreshed = await verifyEligibilityUnchanged(tx, candidates);
+            if (refreshed) {
+              result = resolveLineup(refreshed, slotCapacities);
+              if (result.ok === false) {
+                throw new RosterRuleError(
+                  "ELIGIBILITY_LOST_MID_OPERATION",
+                  "Player eligibility changed during processing. Please retry.",
+                  { unfilledSlots: result.unfilledSlots, unassignedPlayers: result.unassignedPlayers },
+                );
+              }
+            } else {
+              throw new RosterRuleError(
+                "NO_LEGAL_ASSIGNMENT",
+                result.reason,
+                { unfilledSlots: result.unfilledSlots, unassignedPlayers: result.unassignedPlayers },
+              );
+            }
+          }
+          if (result.ok) {
+            activateAppliedReassignments = await applyAssignments(
+              tx,
+              result.assignments,
+              playerNames,
+              rosterRowToPlayerId,
+            );
+          }
+        }
 
         await tx.rosterSlotEvent.create({
           data: {
@@ -902,7 +1065,7 @@ router.post(
       await enqueueReconcileForEffective(leagueId, effective);
     }
 
-    return res.json({ success: true, activatePlayerId, dropPlayerId });
+    return res.json({ success: true, activatePlayerId, dropPlayerId, appliedReassignments: activateAppliedReassignments });
   }),
 );
 

@@ -19,6 +19,11 @@ vi.mock("../../../../../api/base", () => ({
   API_BASE: "/api",
 }));
 
+const mockToast = vi.fn();
+vi.mock("../../../../../contexts/ToastContext", () => ({
+  useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
+}));
+
 vi.mock("../../../../../lib/errorBus", () => ({
   reportError: vi.fn(),
 }));
@@ -287,5 +292,87 @@ describe("AddDropPanel — effectiveDate forwarding (commissioner backdate)", ()
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body).not.toHaveProperty("effectiveDate");
+  });
+});
+
+describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", () => {
+  // The server returns `appliedReassignments: [...]` when auto_resolve_slots
+  // is on AND the matcher reshuffled other roster rows to fit the new player.
+  // The panel surfaces those moves as a single-line success toast.
+
+  beforeEach(() => {
+    mockToast.mockClear();
+  });
+
+  it("renders a toast with reassignments when server returns appliedReassignments", async () => {
+    mockSeasonStatus.value = "IN_SEASON";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      playerId: 100,
+      appliedReassignments: [
+        {
+          rosterId: 7,
+          playerId: 5,
+          playerName: "Trea Turner",
+          oldSlot: "2B",
+          newSlot: "SS",
+        },
+        {
+          rosterId: 8,
+          playerId: 6,
+          playerName: "Alec Bohm",
+          oldSlot: "SS",
+          newSlot: "CM",
+        },
+      ],
+    } as any);
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
+    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+
+    expect(mockToast).toHaveBeenCalledTimes(1);
+    const [msg, variant] = mockToast.mock.calls[0];
+    expect(msg).toContain("Jake Bauers");
+    expect(msg).toContain("Trea Turner 2B → SS");
+    expect(msg).toContain("Alec Bohm SS → CM");
+    expect(variant).toBe("success");
+  });
+
+  it("does NOT render a toast when appliedReassignments is empty (clean add+drop)", async () => {
+    mockSeasonStatus.value = "IN_SEASON";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      playerId: 100,
+      appliedReassignments: [],
+    } as any);
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
+    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  it("does NOT render a toast when appliedReassignments is missing (legacy server)", async () => {
+    // Older server build without the auto-resolve patch — response has no
+    // `appliedReassignments` field at all. Panel must tolerate this.
+    mockSeasonStatus.value = "IN_SEASON";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockResolvedValueOnce({ success: true, playerId: 100 } as any);
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Jake Bauers"));
+    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
+    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+
+    expect(mockToast).not.toHaveBeenCalled();
   });
 });

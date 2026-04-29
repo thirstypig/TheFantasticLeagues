@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { fetchJsonApi, API_BASE } from "../../../../api/base";
 import { useLeague } from "../../../../contexts/LeagueContext";
+import { useToast } from "../../../../contexts/ToastContext";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
 import { slotsFor } from "../../../../lib/positionEligibility";
+import { formatReassignmentsToast, type AppliedReassignment } from "../../api";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -34,6 +36,7 @@ interface Props {
  */
 export default function AddDropPanel({ leagueId, teamId, players, onComplete, effectiveDate }: Props) {
   const { seasonStatus } = useLeague();
+  const { toast } = useToast();
   const inSeason = seasonStatus === "IN_SEASON";
 
   const [query, setQuery] = useState("");
@@ -100,7 +103,11 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete, ef
       // typically don't have _dbPlayerId; send mlbId as the canonical key
       // and include playerId only when the row was already enriched.
       const addDbId = selectedAdd._dbPlayerId;
-      await fetchJsonApi(`${API_BASE}/transactions/claim`, {
+      const response = await fetchJsonApi<{
+        success: boolean;
+        playerId: number;
+        appliedReassignments?: AppliedReassignment[];
+      }>(`${API_BASE}/transactions/claim`, {
         method: "POST",
         body: JSON.stringify({
           leagueId,
@@ -111,6 +118,14 @@ export default function AddDropPanel({ leagueId, teamId, players, onComplete, ef
           ...(effectiveDate ? { effectiveDate } : {}),
         }),
       });
+      // Yahoo-style auto-resolve: if the server reshuffled other roster
+      // rows to fit the new player legally, surface the moves as a toast.
+      const playerName = selectedAdd.player_name || selectedAdd.name || "player";
+      const toastMsg = formatReassignmentsToast(
+        response.appliedReassignments,
+        `Claimed ${playerName}.`,
+      );
+      if (toastMsg) toast(toastMsg, "success");
       // Reset panel state so the next move starts clean.
       setAddMlbId(null);
       setDropPlayerId("");

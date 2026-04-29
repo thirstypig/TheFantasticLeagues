@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ilStash } from "../../../transactions/api";
+import { ilStash, formatReassignmentsToast } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
+import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
 import { slotsFor } from "../../../../lib/positionEligibility";
 import { isMlbIlStatus } from "../../../../lib/mlbStatus";
@@ -41,6 +42,7 @@ interface Props {
  * submits, so they don't hit a 400 and have to re-read the error.
  */
 export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, effectiveDate, initialStashPlayerId }: Props) {
+  const { toast } = useToast();
   const [stashPlayerId, setStashPlayerId] = useState<number | null>(initialStashPlayerId ?? null);
   const [query, setQuery] = useState("");
   const [addMlbId, setAddMlbId] = useState<number | null>(null);
@@ -100,13 +102,20 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
     setSubmitting(true);
     setError(null);
     try {
-      await ilStash({
+      const response = await ilStash({
         leagueId,
         teamId,
         stashPlayerId: Number(stashPlayerId),
         addMlbId,
         ...(effectiveDate ? { effectiveDate } : {}),
       });
+      // Yahoo-style auto-resolve: surface any reshuffles as a toast.
+      const addName = selectedAdd?.player_name || selectedAdd?.name || "player";
+      const toastMsg = formatReassignmentsToast(
+        response.appliedReassignments,
+        `Stashed ${stashPlayer?.player_name || stashPlayer?.name || "player"}, added ${addName}.`,
+      );
+      if (toastMsg) toast(toastMsg, "success");
       setStashPlayerId(null);
       setAddMlbId(null);
       setQuery("");

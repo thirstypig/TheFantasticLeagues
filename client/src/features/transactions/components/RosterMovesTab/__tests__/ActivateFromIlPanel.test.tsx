@@ -7,6 +7,12 @@ import type { RosterMovesPlayer } from "../types";
 
 vi.mock("../../../../transactions/api", () => ({
   ilActivate: vi.fn().mockResolvedValue({ success: true }),
+  formatReassignmentsToast: vi.fn().mockReturnValue(null),
+}));
+
+const mockToast = vi.fn();
+vi.mock("../../../../../contexts/ToastContext", () => ({
+  useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
 }));
 
 vi.mock("../../../../../lib/errorBus", () => ({
@@ -105,5 +111,25 @@ describe("ActivateFromIlPanel effectiveDate forwarding", () => {
     expect(ilActivate).toHaveBeenCalledTimes(1);
     const payload = vi.mocked(ilActivate).mock.calls[0][0];
     expect(payload).not.toHaveProperty("effectiveDate");
+  });
+});
+
+describe("ActivateFromIlPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", () => {
+  it("calls toast() when server returns appliedReassignments", async () => {
+    const { formatReassignmentsToast } = await import("../../../../transactions/api");
+    vi.mocked(formatReassignmentsToast).mockReturnValueOnce("Activated Buxton. Also moved: X 2B → SS.");
+    vi.mocked(ilActivate).mockResolvedValueOnce({
+      success: true,
+      activatePlayerId: 500,
+      dropPlayerId: 600,
+      appliedReassignments: [
+        { rosterId: 7, playerId: 5, playerName: "X", oldSlot: "2B", newSlot: "SS" },
+      ],
+    });
+    await setUpAndSubmit(undefined);
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.stringContaining("Also moved"),
+      "success",
+    );
   });
 });

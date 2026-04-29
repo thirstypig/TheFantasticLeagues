@@ -23,7 +23,9 @@ export type RosterRuleErrorCode =
   | "NOT_ON_IL"               // attempting to activate a player who isn't in an IL slot
   | "OWNERSHIP_CONFLICT"      // new Roster window would overlap an existing window — maps to 409
   | "NOT_AUTHORIZED"          // auth failure — not admin, not commissioner, not allowed via owner self-serve — maps to 403
-  | "NOT_TEAM_OWNER";         // auth failure — league member but does not own the target team — maps to 403
+  | "NOT_TEAM_OWNER"          // auth failure — league member but does not own the target team — maps to 403
+  | "NO_LEGAL_ASSIGNMENT"     // Yahoo-style auto-resolve couldn't fit the proposed roster into available slots
+  | "ELIGIBILITY_LOST_MID_OPERATION"; // Player.posList changed between pre-flight read and transaction commit
 
 /**
  * Typed error thrown by roster-rule guards. Route layer catches it and maps

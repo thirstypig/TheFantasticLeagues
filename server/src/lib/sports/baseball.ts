@@ -88,6 +88,13 @@ export const DEFAULT_RULES = [
   // Exempt from isLocked (see CommissionerService.updateRules) so commissioners
   // can change the policy mid-season without unlocking every rule.
   { category: "transactions", key: "owner_self_serve", value: "false", label: "Owner self-serve roster moves" },
+  // Yahoo-style auto-resolve (plan #166, PR1). When 'true', the bipartite
+  // matcher resolves position conflicts on /claim, /il-stash, /il-activate
+  // by shuffling other roster rows into legal slots. When 'false', falls
+  // back to the strict pairwise check (POSITION_INELIGIBLE error).
+  // Default 'false' for new leagues; OGBA (id 20) is seeded 'true' via
+  // the 20260429000000 migration.
+  { category: "transactions", key: "auto_resolve_slots", value: "false", label: "Auto-resolve slot conflicts (Yahoo-style)" },
   // Bonuses
   { category: "bonuses", key: "grand_slam", value: "5", label: "Grand Slam Bonus ($)" },
   { category: "bonuses", key: "shutout", value: "5", label: "Shutout Bonus ($)" },
