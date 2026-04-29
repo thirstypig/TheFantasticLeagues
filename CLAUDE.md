@@ -3,7 +3,7 @@
 ## Current status
 
 <!-- now-tldr -->
-Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. App is live for OGBA, the auction has wrapped, and the season is in flight. Roster-rules enforcement landed and is on for OGBA. **Aurora design system rollout is complete** — every routed page from login through admin uses the unified Aurora chrome (floating Topbar + bottom Dock for authenticated routes; centered Glass cards for pre-auth). 8 of 8 design-bundle screens are ported, including the live auction floor (PR #157) and the 7 pre-auth + onboarding pages (PR #158). The token-redirect mechanism in `aurora.css` (PR #153) means every legacy `ThemedTable` / `lg-card` / `lg-button` instance reads Aurora colors via the `--am-*` namespace inside `.aurora-theme`. Style sheet doc lives at `docs/aurora-design-system.md` (linked from `/docs`). **Current focus shifted to component-level deep ports** (RulesEditor, SeasonManager, StatTile, FunnelBar, etc — Aurora colors via redirects but still legacy bento layouts) and **server-side enhancements** for two known gaps: real boxscore stat lines on My Team Today, and true daily snapshots for category day-over-day deltas. Live-floor browser verification owed for next OGBA pre-draft window.
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. App is live for OGBA, the auction has wrapped, and the season is in flight. Roster-rules enforcement landed and is on for OGBA. **Aurora design system rollout is complete** — every routed page from login through admin uses the unified Aurora chrome (floating Topbar + bottom Dock for authenticated routes; centered Glass cards for pre-auth). 8 of 8 design-bundle screens are ported, including the live auction floor (PR #157) and the 7 pre-auth + onboarding pages (PR #158). The token-redirect mechanism in `aurora.css` (PR #153) means every legacy `ThemedTable` / `lg-card` / `lg-button` instance reads Aurora colors via the `--am-*` namespace inside `.aurora-theme`. Style sheet doc lives at `docs/aurora-design-system.md` (linked from `/docs`). Component-level deep ports (RulesEditor, SeasonManager, StatTile, FunnelBar) shipped in PR #159; Gap 2 daily category snapshots shipped in PR #160. **Current focus is Gap 1**: real boxscore stat lines on My Team Today (proposal at `docs/plans/2026-04-28-server-enhancements-post-aurora.md`). Live-floor browser verification owed for next OGBA pre-draft window. Production confirmed Aurora-live as of 2026-04-29 after a multi-hour Supabase IPv4-deprecation + session-pool-exhaustion debug — runbook at `docs/solutions/deployment/supabase-railway-ipv6-pooler-and-pool-exhaustion.md`.
 <!-- /now-tldr -->
 
 ## Project Overview
@@ -327,7 +327,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (772 server + 327 client + 50 MCP + 1 E2E = 1150 tests, 27 feature modules)
+### Current Test Coverage (785 server + 327 client + 50 MCP + 1 E2E = 1163 tests, 27 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 

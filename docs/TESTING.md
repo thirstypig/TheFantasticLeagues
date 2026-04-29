@@ -44,7 +44,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 
 ## Current coverage (Session 81 baseline, 2026-04-27/28)
 
-### Server — 772 passing, 7 skipped, 1 todo, 53 files
+### Server — 785 passing, 7 skipped, 1 todo, 54 files
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -54,7 +54,7 @@ Major covered areas (selected):
 - `features/auction/` — 23 routes + 8 persistence + 3 auto-finish + 11 retrospective
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)
 - `features/waivers/routes.test.ts` — 12 (submit, process, cancel)
-- `features/standings/` — 26 service + 7 integration + 11 routes
+- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation)
 - `features/seasons/` — 14 service + 5 routes
 - `features/players/mlbSyncService.test.ts` — 28 (roster sync, position eligibility, Rule 2 prior-year 20-GP fallback)
 - `features/archive/routes.test.ts` — 38
