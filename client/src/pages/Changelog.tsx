@@ -35,6 +35,36 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.68.0",
+    date: "Apr 28, 2026",
+    session: "Session 85 (cont.) — final polish",
+    title: "Aurora rollout finished — pre-auth pages, live floor, period selector, post-rollout polish (PRs #155–#158)",
+    highlights: [
+      "PR #155: Block A cleanup + 5 regressions restored + power-rankings movement arrows. The 3 regressions (Historical Weekly Insights tabs, Reddit/YouTube/Yahoo/ESPN news feeds, My Team Today daily widget) shipped via 3 parallel agents in worktrees, plus 2 new features (League-wide IL page at /injured-list, Category-based Roto Standings on /season). Power Rankings on Weekly Report now show ▲/▼ rank-change vs prior week (fetched in parallel; non-fatal if unavailable).",
+      "PR #156: Team page period selector + team navigator. The selector toggles between cumulative season stats (default) and any prior period — and crucially uses the HISTORICAL roster for prior periods (`/api/teams/:teamId/period-roster?periodId=X`), so what you see is the actual lineup that was on the team at the end of that period. Lineups change all season as players move; the cumulative view alone is misleading. Plus prev/next chevrons in the hero + 'All teams →' pill (period selection persists across navigation).",
+      "PR #157: Aurora live auction floor (~3000 LOC, 10 files). The final design-bundle screen. Strangler-fig with full legacy preservation at /auction-classic. Auction.tsx + AuctionStage.tsx done in foreground (highest risk — 200ms timer + WS bid storm); PlayerPoolTab + TeamListTab + AuctionSettingsTab + ChatTab done by 4 parallel agents. SOLD! pulse uses iridescent gradient text-fill instead of red — Aurora aesthetic turns 'alarming' into 'triumphant'. Live-floor browser verify owed for next OGBA pre-draft window (current state has draft already complete).",
+      "PR #158: Pre-auth + onboarding pages — Login, Signup, ForgotPassword, ResetPassword, DiscoverLeagues, CreateLeague, JoinLeague. The first impression of the app is now Aurora. 5 background agents in parallel (~4 min wall-clock). Centered Glass(strong) cards + iridescent square logo + Space Grotesk display heading + iridescent pill submit CTAs. Pre-auth pages add their own aurora-theme + AmbientBg wrapper since they sit outside AuroraShell.",
+    ],
+    changes: [
+      { type: "feat", description: "PR #155: Block A cleanup — drop classic Standings escape link, drop salary cap + 3-letter team-code badge from Team page hero (now shows team-name initials like 'LD' for 'Los Doyers'), hide 3-letter code from /teams index card display." },
+      { type: "feat", description: "PR #155: HistoricalInsightsTab.tsx — Weekly AI Insights with prior-week tab strip (W18 / W17 / W16…) on Home. Wraps existing /api/mlb/league-digest/weeks + /api/mlb/league-digest?weekKey= endpoints." },
+      { type: "feat", description: "PR #155: NewsFeedsPanel.tsx — Reddit / YouTube / Yahoo / ESPN headlines with subtle source-color chips, source filter pills, mixed reverse-chron timeline. Wraps existing /api/mlb RSS endpoints." },
+      { type: "feat", description: "PR #155: MyTeamTodayPanel.tsx — Daily player activity widget with 10am-rollover rule. Server has schedule data; boxscore stat lines TODO (separate server enhancement)." },
+      { type: "feat", description: "PR #155: InjuredListPage at /injured-list — three views: All / By League (AL/NL split) / By Team. Linked from Season hero via 'League IL →' chip." },
+      { type: "feat", description: "PR #155: CategoryStandingsView — restored the pre-Aurora Roto category-rank standings (8 pts for 1st in HR, 7 for 2nd, etc.) plus per-category leader cards with day-over-day % change indicator. Wired into Season as 'By Category' tab pill." },
+      { type: "feat", description: "PR #155: WeeklyReport Power Rankings now show ▲/▼ rank-change arrows vs prior week. Fetches prior digest in parallel; gracefully degrades to 'new' italic if no prior data." },
+      { type: "feat", description: "PR #156: Team page period selector — cumulative season + each prior period. Uses /api/teams/:teamId/period-roster?periodId=X (already existed server-side from TeamLegacy era) to show the historical roster as it was at the END of the selected period, with stats from that period only. Computes derived AVG/ERA/WHIP client-side." },
+      { type: "feat", description: "PR #156: Team page navigator — prev/next chevrons in hero + 'All teams →' pill. Teams alphabetized; chevrons disable at boundaries; period selection persists across navigation." },
+      { type: "feat", description: "PR #157: Aurora live auction floor — Auction.tsx, AuctionStage.tsx (200ms-tick timer preserved verbatim), AuctionLayout.tsx (Aurora warning-glass for reconnect banner), PlayerPoolTab.tsx, TeamListTab.tsx, AuctionSettingsTab.tsx, ChatTab.tsx. Plus ContextDeck/NominationQueue/MyNominationQueue inherit Aurora colors via PR #153 token redirects without code changes. Legacy preserved at /auction-classic." },
+      { type: "feat", description: "PR #158: Login + Signup + ForgotPassword + ResetPassword + DiscoverLeagues — pre-auth pages now Aurora-styled with centered Glass card + iridescent square logo + Space Grotesk display + iridescent pill CTAs. Each page adds its own aurora-theme dark + AmbientBg wrapper since they sit outside AuroraShell." },
+      { type: "feat", description: "PR #158: CreateLeague + JoinLeague — onboarding pages get Glass(strong) hero treatment matching the other Aurora pages." },
+      { type: "fix", description: "PR #155 follow-on: Empty Glass wrapper around BidHistoryChart on /auction-results — gated render on 'log has at least one NOMINATION event' since BidHistoryChart returns null when log only has WIN events (CSV-imported auction logs). Without the gate the wrapper rendered an empty 32px-tall ghost card." },
+      { type: "perf", description: "Parallel-agent worktree pattern matured across 4 PRs (#151, #155, #157, #158). 3-5 agents in isolated worktrees finish 60-80% faster than sequential. Agent brief format ('target file + Aurora pattern reference + critical preservation list + don't-do list') is reproducible." },
+    ],
+    todoLink: "/todo",
+    roadmapLink: "/roadmap",
+  },
+  {
     version: "0.66.0",
     date: "Apr 28, 2026",
     session: "Session 84",

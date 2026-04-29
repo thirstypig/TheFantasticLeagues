@@ -37,7 +37,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 28, 2026 (Session 84)";
+const LAST_UPDATED = "April 28, 2026 (Session 85 — Aurora rollout complete)";
 
 // ─── Product Roadmap ───
 
@@ -350,6 +350,15 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 85 — Aurora rollout finished: pre-auth + onboarding + live floor + final polish (PRs #155–#158)",
+    items: [
+      { title: "Block A cleanup + 5 regressions/features + power rankings arrows (PR #155)", description: "Drop classic Standings link + salary cap + 3-letter team codes from public display. Restore pre-Aurora regressions: Historical Weekly Insights tabs (W18/W17/…), Reddit/YouTube/Yahoo/ESPN news feeds, My Team Today daily widget. Plus new features: League-wide IL page (/injured-list with All / AL+NL / By Team views), Category-based Roto standings (8/7/6/… rank-points across 10 categories) on /season as 'By Category' tab. Power Rankings on Weekly Report show ▲/▼ arrows vs prior week. Shipped via 3 parallel agents.", session: "85 (PR #155)" },
+      { title: "Team page period selector + team navigator (PR #156)", description: "Toggle between cumulative season stats and any prior period. When viewing prior period, displays the HISTORICAL roster (players who were on the team at the END of that period) with stats from that period only — uses /api/teams/:teamId/period-roster?periodId=X. Plus prev/next team chevrons + 'All teams →' pill in hero; period selection persists across navigation.", session: "85 (PR #156)" },
+      { title: "Aurora live auction floor — PR-3 (PR #157)", description: "The final design-bundle screen. ~3000 LOC across 10 files. Auction.tsx + AuctionStage.tsx (200ms-tick timer preserved verbatim) done in foreground. PlayerPoolTab + TeamListTab + AuctionSettingsTab + ChatTab done by 4 parallel agents in worktrees. Strangler-fig with full legacy preservation at /auction-classic. SOLD! pulse uses iridescent gradient text-fill instead of red. Live-floor browser verify owed for next OGBA pre-draft window.", session: "85 (PR #157)" },
+      { title: "Pre-auth + onboarding pages (PR #158)", description: "Login + Signup + ForgotPassword + ResetPassword + DiscoverLeagues + CreateLeague + JoinLeague — all 7 pages now Aurora-styled. Pre-auth pages add their own aurora-theme + AmbientBg wrapper since they sit outside AuroraShell. 5 background agents in parallel (~4 min wall-clock total).", session: "85 (PR #158)" },
+    ],
+  },
   {
     label: "Session 84 — Aurora design system: full site rollout (PRs #145–#153)",
     items: [

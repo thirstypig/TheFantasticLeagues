@@ -1,4 +1,20 @@
-import React, { useEffect, useState } from "react";
+/*
+ * SeasonManager — Aurora deep port.
+ *
+ * Renders the season-lifecycle manager (SETUP → DRAFT → IN_SEASON →
+ * COMPLETED transitions, period CRUD, season locking) inside the
+ * Commissioner page's Season tab. Business logic — status transitions,
+ * confirmations, validation, idempotency, useToast — is preserved 1:1
+ * from the legacy implementation. Only chrome moves to Aurora atoms.
+ *
+ * Outer surfaces become `<Glass>` cards. Phase indicator becomes a
+ * tinted `<Chip strong>`. Phase advance CTA is an iridescent pill;
+ * secondary actions are chip-pill buttons. Inputs use `am-surface-faint`
+ * + `am-border` with accent focus. Destructive period delete uses
+ * `var(--am-negative)`.
+ */
+import React, { useEffect, useState, type CSSProperties } from "react";
+import { Check, Trash2 } from "lucide-react";
 import {
   getSeasons,
   getCurrentSeason,
@@ -12,10 +28,7 @@ import {
 import { getLeagues, type LeagueListItem } from "../../../api";
 import { createLeagueSeason } from "../api";
 import { useToast } from "../../../contexts/ToastContext";
-
-function cls(...xs: Array<string | false | null | undefined>) {
-  return xs.filter(Boolean).join(" ");
-}
+import { Glass, Chip, SectionLabel } from "../../../components/aurora/atoms";
 
 const STATUS_STEPS: SeasonStatus[] = ["SETUP", "DRAFT", "IN_SEASON", "COMPLETED"];
 const STATUS_LABELS_BASE: Record<SeasonStatus, string> = {
@@ -24,11 +37,14 @@ const STATUS_LABELS_BASE: Record<SeasonStatus, string> = {
   IN_SEASON: "In Season",
   COMPLETED: "Completed",
 };
-const STATUS_COLORS: Record<SeasonStatus, string> = {
-  SETUP: "bg-blue-500/20 text-blue-400",
-  DRAFT: "bg-amber-500/20 text-amber-400",
-  IN_SEASON: "bg-green-500/20 text-green-400",
-  COMPLETED: "bg-[var(--lg-text-muted)]/20 text-[var(--lg-text-muted)]",
+
+// Phase-tinted chip palette. SETUP=blue, DRAFT=amber, IN_SEASON=positive,
+// COMPLETED=muted. Tints are translucent so they ride the Glass tone.
+const PHASE_TINT: Record<SeasonStatus, { bg: string; border: string; text: string }> = {
+  SETUP: { bg: "rgba(59, 130, 246, 0.12)", border: "rgba(59, 130, 246, 0.32)", text: "rgb(96, 165, 250)" },
+  DRAFT: { bg: "rgba(245, 158, 11, 0.14)", border: "rgba(245, 158, 11, 0.32)", text: "rgb(251, 191, 36)" },
+  IN_SEASON: { bg: "rgba(16, 185, 129, 0.12)", border: "rgba(16, 185, 129, 0.32)", text: "rgb(52, 211, 153)" },
+  COMPLETED: { bg: "var(--am-chip)", border: "var(--am-border)", text: "var(--am-text-muted)" },
 };
 
 const NEXT_STATUS: Record<string, SeasonStatus> = {
@@ -41,6 +57,66 @@ const TRANSITION_WARNINGS: Record<string, string> = {
   DRAFT: "This will lock all league rules. Rules cannot be changed after this point. Are you sure?",
   IN_SEASON: "This will start the season. Make sure all periods are configured. Continue?",
   COMPLETED: "This will mark the season as completed. All periods must be completed first. Continue?",
+};
+
+// ─── Aurora chrome helpers ───
+const SECTION_HEADING: CSSProperties = {
+  fontFamily: "var(--am-display)",
+  fontSize: 18,
+  fontWeight: 400,
+  color: "var(--am-text)",
+  margin: 0,
+  letterSpacing: -0.2,
+};
+
+const INPUT_STYLE: CSSProperties = {
+  width: "100%",
+  background: "var(--am-surface-faint)",
+  border: "1px solid var(--am-border)",
+  borderRadius: 10,
+  padding: "8px 12px",
+  fontSize: 13,
+  color: "var(--am-text)",
+  outline: "none",
+};
+
+const LABEL_STYLE: CSSProperties = {
+  display: "block",
+  fontSize: 10,
+  letterSpacing: 1.2,
+  textTransform: "uppercase",
+  color: "var(--am-text-faint)",
+  fontWeight: 600,
+  marginBottom: 6,
+};
+
+const CHIP_BTN: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 600,
+  borderRadius: 99,
+  background: "var(--am-chip)",
+  color: "var(--am-text)",
+  border: "1px solid var(--am-border)",
+  cursor: "pointer",
+};
+
+const IRIDESCENT_PILL: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 16px",
+  fontSize: 13,
+  fontWeight: 600,
+  borderRadius: 99,
+  background: "var(--am-irid)",
+  color: "#fff",
+  border: "1px solid var(--am-border-strong)",
+  cursor: "pointer",
+  boxShadow: "0 6px 20px rgba(255,80,80,0.22)",
 };
 
 interface Props {
@@ -195,283 +271,436 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 text-center text-sm text-[var(--lg-text-muted)]">
-        Loading seasons…
-      </div>
+      <Glass>
+        <div style={{ textAlign: "center", padding: "16px 8px", fontSize: 13, color: "var(--am-text-muted)" }}>
+          Loading seasons…
+        </div>
+      </Glass>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div
+          style={{
+            borderRadius: 14,
+            border: "1px solid rgba(220, 38, 38, 0.32)",
+            background: "rgba(220, 38, 38, 0.10)",
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "rgb(248, 113, 113)",
+          }}
+        >
           {error}
         </div>
       )}
 
       {/* Current Season or Create */}
       {currentSeason ? (
-        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--lg-text-heading)]">
-                {currentSeason.year} Season
-              </h3>
-              <span className={cls("mt-1 inline-block rounded-full px-3 py-0.5 text-xs font-semibold", STATUS_COLORS[currentSeason.status])}>
-                {STATUS_LABELS[currentSeason.status]}
-              </span>
-            </div>
+        <Glass padded={false}>
+          <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <SectionLabel>Current Season</SectionLabel>
+                <h3 style={SECTION_HEADING}>{currentSeason.year} Season</h3>
+                <span>
+                  <Chip
+                    strong
+                    color={PHASE_TINT[currentSeason.status].text}
+                    style={{
+                      background: PHASE_TINT[currentSeason.status].bg,
+                      borderColor: PHASE_TINT[currentSeason.status].border,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {STATUS_LABELS[currentSeason.status]}
+                  </Chip>
+                </span>
+              </div>
 
-            {NEXT_STATUS[currentSeason.status] && (
-              <button
-                onClick={() => onTransition(currentSeason.id, NEXT_STATUS[currentSeason.status])}
-                disabled={busy}
-                className={cls(
-                  "rounded-xl bg-[var(--lg-accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity",
-                  busy && "opacity-60 cursor-not-allowed"
-                )}
-              >
-                Advance to {STATUS_LABELS[NEXT_STATUS[currentSeason.status]]}
-              </button>
-            )}
-          </div>
-
-          {/* Status Stepper */}
-          <div className="flex items-center gap-1">
-            {STATUS_STEPS.map((step, idx) => {
-              const stepIdx = STATUS_STEPS.indexOf(step);
-              const currentIdx = STATUS_STEPS.indexOf(currentSeason.status);
-              const isComplete = stepIdx < currentIdx;
-              const isCurrent = stepIdx === currentIdx;
-
-              return (
-                <React.Fragment key={step}>
-                  {idx > 0 && (
-                    <div className={cls(
-                      "flex-1 h-0.5",
-                      isComplete ? "bg-[var(--lg-accent)]" : "bg-[var(--lg-border-subtle)]"
-                    )} />
-                  )}
-                  <div className={cls(
-                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold",
-                    isCurrent && "bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] ring-1 ring-[var(--lg-accent)]/30",
-                    isComplete && "text-[var(--lg-accent)]",
-                    !isCurrent && !isComplete && "text-[var(--lg-text-muted)]"
-                  )}>
-                    {isComplete ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    ) : (
-                      <span className={cls(
-                        "w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px]",
-                        isCurrent ? "border-[var(--lg-accent)] text-[var(--lg-accent)]" : "border-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]"
-                      )}>
-                        {idx + 1}
-                      </span>
-                    )}
-                    <span className="hidden sm:inline">{STATUS_LABELS[step]}</span>
-                  </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
-
-          {/* Periods List */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-[var(--lg-text-heading)]">
-                Periods ({currentSeason.periods.length})
-              </h4>
-              {(currentSeason.status !== "COMPLETED") && (
+              {NEXT_STATUS[currentSeason.status] && (
                 <button
-                  onClick={() => setShowPeriodForm(!showPeriodForm)}
-                  className="text-xs text-[var(--lg-accent)] hover:underline"
+                  type="button"
+                  onClick={() => onTransition(currentSeason.id, NEXT_STATUS[currentSeason.status])}
+                  disabled={busy}
+                  style={{
+                    ...IRIDESCENT_PILL,
+                    opacity: busy ? 0.5 : 1,
+                    cursor: busy ? "not-allowed" : "pointer",
+                  }}
                 >
-                  {showPeriodForm ? "Cancel" : "+ Add Period"}
+                  Advance to {STATUS_LABELS[NEXT_STATUS[currentSeason.status]]}
                 </button>
               )}
             </div>
 
-            {showPeriodForm && (
-              <div className="mb-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4 space-y-3">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Name</label>
-                    <input
-                      className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
-                      placeholder="e.g. P1"
-                      value={periodName}
-                      onChange={(e) => setPeriodName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
-                      value={periodStart}
-                      onChange={(e) => setPeriodStart(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-[var(--lg-text-muted)] mb-1">End Date</label>
-                    <input
-                      type="date"
-                      className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
-                      value={periodEnd}
-                      onChange={(e) => setPeriodEnd(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={onCreatePeriod}
-                    disabled={busy || !periodName || !periodStart || !periodEnd}
-                    className={cls(
-                      "rounded-lg bg-[var(--lg-accent)] px-4 py-2 text-sm font-semibold text-white",
-                      (busy || !periodName || !periodStart || !periodEnd) && "opacity-60 cursor-not-allowed"
-                    )}
-                  >
-                    Create Period
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Status Stepper */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {STATUS_STEPS.map((step, idx) => {
+                const stepIdx = STATUS_STEPS.indexOf(step);
+                const currentIdx = STATUS_STEPS.indexOf(currentSeason.status);
+                const isComplete = stepIdx < currentIdx;
+                const isCurrent = stepIdx === currentIdx;
 
-            {currentSeason.periods.length === 0 ? (
-              <div className="text-sm text-[var(--lg-text-muted)] italic">No periods yet.</div>
-            ) : (
-              <div className="space-y-2">
-                {currentSeason.periods.map((p) => (
-                  <div key={p.id}>
-                    {editingPeriodId === p.id ? (
-                      /* Edit form */
-                      <div className="rounded-xl border border-[var(--lg-accent)]/30 bg-[var(--lg-bg-surface)] px-4 py-3 space-y-3">
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          <div>
-                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Name</label>
-                            <input
-                              className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-1.5 text-sm text-[var(--lg-text-primary)] outline-none"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Start Date</label>
-                            <input
-                              type="date"
-                              className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-1.5 text-sm text-[var(--lg-text-primary)] outline-none"
-                              value={editStart}
-                              onChange={(e) => setEditStart(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">End Date</label>
-                            <input
-                              type="date"
-                              className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-1.5 text-sm text-[var(--lg-text-primary)] outline-none"
-                              value={editEnd}
-                              onChange={(e) => setEditEnd(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => setEditingPeriodId(null)}
-                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={onSaveEditPeriod}
-                            disabled={busy || !editName || !editStart || !editEnd}
-                            className={cls(
-                              "rounded-lg bg-[var(--lg-accent)] px-4 py-1.5 text-xs font-semibold text-white",
-                              (busy || !editName || !editStart || !editEnd) && "opacity-60 cursor-not-allowed"
-                            )}
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Display row */
-                      <div className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-3 group">
-                        <div>
-                          <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{p.name}</div>
-                          <div className="text-xs text-[var(--lg-text-muted)]">
-                            {new Date(p.startDate).toLocaleDateString()} – {new Date(p.endDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {p.status !== "completed" && (
-                            <button
-                              onClick={() => startEditPeriod(p)}
-                              className="text-xs text-[var(--lg-accent)] hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              Edit
-                            </button>
-                          )}
-                          <select
-                            value={p.status}
-                            onChange={(e) => onUpdatePeriodStatus(p.id, e.target.value)}
-                            disabled={busy}
-                            className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-2 py-1 text-xs text-[var(--lg-text-primary)] outline-none"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="active">Active</option>
-                            <option value="completed">Completed</option>
-                          </select>
-                          {p.status === "pending" && (
-                            <button
-                              onClick={() => onDeletePeriod(p.id)}
-                              disabled={busy}
-                              className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Delete Period"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                return (
+                  <React.Fragment key={step}>
+                    {idx > 0 && (
+                      <div
+                        style={{
+                          flex: 1,
+                          height: 2,
+                          background: isComplete ? "var(--am-irid)" : "var(--am-border)",
+                          borderRadius: 1,
+                        }}
+                      />
                     )}
-                  </div>
-                ))}
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 12px",
+                        borderRadius: 99,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: isCurrent ? "var(--am-chip-strong)" : "transparent",
+                        border: "1px solid " + (isCurrent ? "var(--am-border-strong)" : "transparent"),
+                        color: isComplete
+                          ? "var(--am-accent)"
+                          : isCurrent
+                            ? "var(--am-text)"
+                            : "var(--am-text-muted)",
+                      }}
+                    >
+                      {isComplete ? (
+                        <Check size={13} strokeWidth={2.5} />
+                      ) : (
+                        <span
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: 99,
+                            border: `2px solid ${isCurrent ? "var(--am-text)" : "var(--am-border)"}`,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 10,
+                            color: isCurrent ? "var(--am-text)" : "var(--am-text-muted)",
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                      )}
+                      <span style={{ display: "none" }} className="sm:inline">
+                        {STATUS_LABELS[step]}
+                      </span>
+                      <span className="hidden sm:inline">{STATUS_LABELS[step]}</span>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Periods List */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <SectionLabel style={{ marginBottom: 0 }}>
+                  Periods ({currentSeason.periods.length})
+                </SectionLabel>
+                {currentSeason.status !== "COMPLETED" && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPeriodForm(!showPeriodForm)}
+                    style={CHIP_BTN}
+                  >
+                    {showPeriodForm ? "Cancel" : "+ Add Period"}
+                  </button>
+                )}
               </div>
-            )}
+
+              {showPeriodForm && (
+                <div
+                  style={{
+                    marginBottom: 14,
+                    borderRadius: 14,
+                    border: "1px solid var(--am-border)",
+                    background: "var(--am-surface-faint)",
+                    padding: 14,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
+                >
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <label style={LABEL_STYLE}>Name</label>
+                      <input
+                        style={INPUT_STYLE}
+                        placeholder="e.g. P1"
+                        value={periodName}
+                        onChange={(e) => setPeriodName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={LABEL_STYLE}>Start Date</label>
+                      <input
+                        type="date"
+                        style={INPUT_STYLE}
+                        value={periodStart}
+                        onChange={(e) => setPeriodStart(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={LABEL_STYLE}>End Date</label>
+                      <input
+                        type="date"
+                        style={INPUT_STYLE}
+                        value={periodEnd}
+                        onChange={(e) => setPeriodEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={onCreatePeriod}
+                      disabled={busy || !periodName || !periodStart || !periodEnd}
+                      style={{
+                        ...IRIDESCENT_PILL,
+                        padding: "8px 14px",
+                        fontSize: 12,
+                        opacity: busy || !periodName || !periodStart || !periodEnd ? 0.5 : 1,
+                        cursor: busy || !periodName || !periodStart || !periodEnd ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Create Period
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {currentSeason.periods.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--am-text-muted)", fontStyle: "italic" }}>
+                  No periods yet.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {currentSeason.periods.map((p) => (
+                    <div key={p.id}>
+                      {editingPeriodId === p.id ? (
+                        /* Edit form */
+                        <div
+                          style={{
+                            borderRadius: 14,
+                            border: "1px solid var(--am-accent)",
+                            background: "var(--am-surface-faint)",
+                            padding: 14,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 12,
+                          }}
+                        >
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div>
+                              <label style={LABEL_STYLE}>Name</label>
+                              <input
+                                style={INPUT_STYLE}
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label style={LABEL_STYLE}>Start Date</label>
+                              <input
+                                type="date"
+                                style={INPUT_STYLE}
+                                value={editStart}
+                                onChange={(e) => setEditStart(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label style={LABEL_STYLE}>End Date</label>
+                              <input
+                                type="date"
+                                style={INPUT_STYLE}
+                                value={editEnd}
+                                onChange={(e) => setEditEnd(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPeriodId(null)}
+                              style={{
+                                ...CHIP_BTN,
+                                background: "transparent",
+                                border: "1px solid transparent",
+                                color: "var(--am-text-muted)",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={onSaveEditPeriod}
+                              disabled={busy || !editName || !editStart || !editEnd}
+                              style={{
+                                ...IRIDESCENT_PILL,
+                                padding: "6px 14px",
+                                fontSize: 12,
+                                opacity: busy || !editName || !editStart || !editEnd ? 0.5 : 1,
+                                cursor:
+                                  busy || !editName || !editStart || !editEnd ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Display row */
+                        <div
+                          className="group"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            borderRadius: 14,
+                            border: "1px solid var(--am-border)",
+                            background: "var(--am-surface-faint)",
+                            padding: "12px 16px",
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
+                              {p.name}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2 }}>
+                              {new Date(p.startDate).toLocaleDateString()} –{" "}
+                              {new Date(p.endDate).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {p.status !== "completed" && (
+                              <button
+                                type="button"
+                                onClick={() => startEditPeriod(p)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{
+                                  ...CHIP_BTN,
+                                  padding: "4px 10px",
+                                  fontSize: 11,
+                                  background: "transparent",
+                                  border: "1px solid transparent",
+                                  color: "var(--am-accent)",
+                                }}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <select
+                              value={p.status}
+                              onChange={(e) => onUpdatePeriodStatus(p.id, e.target.value)}
+                              disabled={busy}
+                              style={{
+                                ...INPUT_STYLE,
+                                width: "auto",
+                                padding: "4px 8px",
+                                fontSize: 11,
+                                borderRadius: 99,
+                              }}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="active">Active</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                            {p.status === "pending" && (
+                              <button
+                                type="button"
+                                onClick={() => onDeletePeriod(p.id)}
+                                disabled={busy}
+                                title="Delete Period"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 26,
+                                  height: 26,
+                                  borderRadius: 99,
+                                  background: "rgba(220, 38, 38, 0.10)",
+                                  border: "1px solid rgba(220, 38, 38, 0.28)",
+                                  color: "var(--am-negative)",
+                                  cursor: busy ? "not-allowed" : "pointer",
+                                  padding: 0,
+                                }}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </Glass>
       ) : (
-        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-4">
-          <h3 className="text-lg font-semibold text-[var(--lg-text-heading)]">No Active Season</h3>
-          <p className="text-sm text-[var(--lg-text-muted)]">Create a new season below to get started.</p>
-        </div>
+        <Glass>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <SectionLabel>Current Season</SectionLabel>
+            <h3 style={SECTION_HEADING}>No Active Season</h3>
+            <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: 0 }}>
+              Create a new season below to get started.
+            </p>
+          </div>
+        </Glass>
       )}
 
       {/* Past Seasons */}
       {seasons.filter((s) => s.status === "COMPLETED").length > 0 && (
-        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-          <h4 className="text-sm font-semibold text-[var(--lg-text-heading)] mb-3">Past Seasons</h4>
-          <div className="space-y-2">
-            {seasons.filter((s) => s.status === "COMPLETED").map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-2">
-                <span className="text-sm text-[var(--lg-text-primary)]">{s.year}</span>
-                <span className="text-xs text-[var(--lg-text-muted)]">{s.periods.length} periods</span>
-              </div>
-            ))}
+        <Glass>
+          <SectionLabel>Past Seasons</SectionLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {seasons
+              .filter((s) => s.status === "COMPLETED")
+              .map((s) => (
+                <div
+                  key={s.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    borderRadius: 12,
+                    border: "1px solid var(--am-border)",
+                    background: "var(--am-surface-faint)",
+                    padding: "8px 14px",
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: "var(--am-text)" }}>{s.year}</span>
+                  <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+                    {s.periods.length} periods
+                  </span>
+                </div>
+              ))}
           </div>
-        </div>
+        </Glass>
       )}
 
       {/* Create New League Season */}
-      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-semibold text-[var(--lg-text-heading)]">Create New Season</h4>
+      <Glass>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <SectionLabel style={{ marginBottom: 0 }}>Create New Season</SectionLabel>
           {currentSeason && (
             <button
+              type="button"
               onClick={() => setShowCreateForm(!showCreateForm)}
-              className="text-xs text-[var(--lg-accent)] hover:underline"
+              style={CHIP_BTN}
             >
               {showCreateForm ? "Cancel" : "+ New Season"}
             </button>
@@ -479,8 +708,9 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
         </div>
 
         {!showCreateForm && currentSeason ? (
-          <p className="text-xs text-[var(--lg-text-muted)]">
-            Create a new league season with fresh teams and settings. Optionally clone from an existing season.
+          <p style={{ fontSize: 12, color: "var(--am-text-muted)", margin: 0 }}>
+            Create a new league season with fresh teams and settings. Optionally clone from an
+            existing season.
           </p>
         ) : (
           <form
@@ -506,19 +736,19 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                 setBusy(false);
               }
             }}
-            className="space-y-4"
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Copy From (Optional)</label>
+                <label style={LABEL_STYLE}>Copy From (Optional)</label>
                 <select
-                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
+                  style={INPUT_STYLE}
                   value={copyFromId ?? ""}
                   onChange={(e) => {
                     const id = Number(e.target.value) || null;
                     setCopyFromId(id);
                     if (id) {
-                      const source = allLeagues.find(l => l.id === id);
+                      const source = allLeagues.find((l) => l.id === id);
                       if (source) {
                         setNewLeagueName(source.name);
                         setNewLeagueYear(source.season + 1);
@@ -527,33 +757,49 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                   }}
                 >
                   <option value="">Start Fresh</option>
-                  {allLeagues.map(l => (
-                    <option key={l.id} value={l.id}>{l.name} {l.season}</option>
+                  {allLeagues.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name} {l.season}
+                    </option>
                   ))}
                 </select>
-                {copyFromId && <p className="mt-1 text-xs text-[var(--lg-accent)]">Teams, members, rules, and rosters will be copied from the source season.</p>}
+                {copyFromId && (
+                  <p style={{ marginTop: 4, fontSize: 11, color: "var(--am-accent)" }}>
+                    Teams, members, rules, and rosters will be copied from the source season.
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">League Name</label>
+                <label style={LABEL_STYLE}>League Name</label>
                 <input
-                  className={`w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none ${copyFromId ? "opacity-60 cursor-not-allowed" : ""}`}
+                  style={{
+                    ...INPUT_STYLE,
+                    opacity: copyFromId ? 0.6 : 1,
+                    cursor: copyFromId ? "not-allowed" : "text",
+                  }}
                   value={newLeagueName}
-                  onChange={(e) => { if (!copyFromId) setNewLeagueName(e.target.value); }}
+                  onChange={(e) => {
+                    if (!copyFromId) setNewLeagueName(e.target.value);
+                  }}
                   readOnly={!!copyFromId}
                   placeholder="e.g. OGBA"
                   required
                 />
-                {copyFromId && <p className="mt-1 text-xs text-[var(--lg-text-muted)]">Inherited from source league.</p>}
+                {copyFromId && (
+                  <p style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-muted)" }}>
+                    Inherited from source league.
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Season Year</label>
+                <label style={LABEL_STYLE}>Season Year</label>
                 <input
                   type="number"
                   min={2020}
                   max={2100}
-                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none font-mono"
+                  style={{ ...INPUT_STYLE, fontFamily: "var(--am-mono, ui-monospace)" }}
                   value={newLeagueYear}
                   onChange={(e) => setNewLeagueYear(Number(e.target.value))}
                   required
@@ -561,9 +807,9 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Draft Type</label>
+                <label style={LABEL_STYLE}>Draft Type</label>
                 <select
-                  className="w-full rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none"
+                  style={INPUT_STYLE}
                   value={newDraftMode}
                   onChange={(e) => setNewDraftMode(e.target.value as "AUCTION" | "DRAFT")}
                 >
@@ -573,21 +819,24 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
                 type="submit"
                 disabled={busy || !newLeagueName.trim()}
-                className={cls(
-                  "rounded-lg bg-[var(--lg-accent)] px-4 py-2 text-sm font-semibold text-white",
-                  (busy || !newLeagueName.trim()) && "opacity-60 cursor-not-allowed"
-                )}
+                style={{
+                  ...IRIDESCENT_PILL,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  opacity: busy || !newLeagueName.trim() ? 0.5 : 1,
+                  cursor: busy || !newLeagueName.trim() ? "not-allowed" : "pointer",
+                }}
               >
                 Create Season
               </button>
             </div>
           </form>
         )}
-      </div>
+      </Glass>
     </div>
   );
 }

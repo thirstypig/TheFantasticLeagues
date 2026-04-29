@@ -1,8 +1,28 @@
+/*
+ * RulesEditor — Aurora deep port.
+ *
+ * Renders inside an Aurora-wrapped page (Settings/Rules and Commissioner →
+ * League tab). The outer page already provides AmbientBg + .aurora-theme,
+ * so this component skips the wrapper and uses Aurora atoms directly:
+ *
+ *   - <Glass padded={false}> for the outer card
+ *   - <SectionLabel> eyebrows per category section
+ *   - <Chip> + <Dot> for the lock-state indicator
+ *   - --am-* CSS vars for typography, borders, surface-faint inputs
+ *   - --am-irid as the Save button background pill
+ *
+ * Business logic (rule fetch, validation guards, edit mode, lock check,
+ * onSaved callback, category grouping, RULE_CONFIGS dependsOn handling) is
+ * preserved 1:1 from the legacy version. The legacy variant lives in
+ * git history; no /x-classic fallback is required since this component is
+ * only ever rendered inside Aurora pages.
+ */
 import React, { useEffect, useState, useMemo } from "react";
+import { Lock, Pencil } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
-import { Button } from "../../../components/ui/button";
 import { useToast } from "../../../contexts/ToastContext";
+import { Glass, SectionLabel, Chip, Dot } from "../../../components/aurora/atoms";
 
 import overviewIcon from '../../../assets/icons/overview.svg';
 import rosterIcon from '../../../assets/icons/roster.svg';
@@ -100,6 +120,32 @@ const CATEGORY_ICONS: Record<string, string> = {
   // SVG later if/when transactions grows more toggles.
 };
 
+// --- Aurora style primitives reused inside the component ---
+const AURORA_BTN_BASE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 16px",
+  fontSize: 12,
+  fontWeight: 600,
+  borderRadius: 99,
+  border: "1px solid var(--am-border)",
+  cursor: "pointer",
+  background: "var(--am-chip)",
+  color: "var(--am-text)",
+};
+
+const AURORA_INPUT: React.CSSProperties = {
+  width: "100%",
+  background: "var(--am-surface-faint)",
+  border: "1px solid var(--am-border)",
+  borderRadius: 12,
+  padding: "8px 12px",
+  color: "var(--am-text)",
+  outline: "none",
+  fontSize: 13,
+};
+
 // --- Component ---
 export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagueId: number; canEdit?: boolean; onSaved?: () => void }) {
   const { user } = useAuth();
@@ -174,87 +220,212 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-400">Loading rules...</div>;
-  if (error) return <div className="p-8 text-center text-red-400">Error: {error}</div>;
+  if (loading) {
+    return (
+      <Glass>
+        <div style={{ padding: 24, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>
+          Loading rules...
+        </div>
+      </Glass>
+    );
+  }
+  if (error) {
+    return (
+      <Glass>
+        <div style={{ padding: 24, textAlign: "center", color: "var(--am-negative)", fontSize: 13 }}>
+          Error: {error}
+        </div>
+      </Glass>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[var(--lg-text-heading)]">League Rules</h2>
-          <p className="text-[var(--lg-text-muted)] mt-1 text-sm font-medium">
-            {isLocked ? "Rules are locked for the current season." : "View and edit league settings."}
-          </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header — title + lock chip + edit/save controls */}
+      <Glass>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+            <SectionLabel style={{ marginBottom: 0 }}>✦ League Rules</SectionLabel>
+            <h2 style={{
+              fontFamily: "var(--am-display)",
+              fontSize: 26,
+              fontWeight: 300,
+              color: "var(--am-text)",
+              margin: 0,
+              lineHeight: 1.1,
+              letterSpacing: -0.2,
+            }}>
+              {isLocked ? "Locked for the season." : "View and edit league settings."}
+            </h2>
+            <div style={{ display: "inline-flex", gap: 8, marginTop: 4 }}>
+              {isLocked ? (
+                <Chip color="var(--am-text)" style={{ background: "var(--am-chip-strong)" }}>
+                  <Dot color="var(--am-cardinal)" />
+                  Rules locked
+                </Chip>
+              ) : (
+                <Chip color="var(--am-text-muted)">
+                  <Dot color="var(--am-accent)" />
+                  Editable
+                </Chip>
+              )}
+            </div>
+          </div>
+
+          {canEdit && !isLocked && (
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              {editMode ? (
+                <>
+                  <button
+                    type="button"
+                    style={AURORA_BTN_BASE}
+                    onClick={() => { setEditMode(false); setPendingChanges({}); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{
+                      ...AURORA_BTN_BASE,
+                      background: "var(--am-irid)",
+                      border: "1px solid var(--am-border-strong)",
+                      color: "#fff",
+                      opacity: saving ? 0.6 : 1,
+                      boxShadow: "0 6px 20px rgba(255,80,80,0.18)",
+                    }}
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditMode(true)}
+                  style={{
+                    ...AURORA_BTN_BASE,
+                    background: "var(--am-irid)",
+                    border: "1px solid var(--am-border-strong)",
+                    color: "#fff",
+                    boxShadow: "0 6px 20px rgba(255,80,80,0.18)",
+                  }}
+                >
+                  <Pencil size={12} />
+                  Edit Rules
+                </button>
+              )}
+            </div>
+          )}
+          {isLocked && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--am-text-faint)" }}>
+              <Lock size={12} />
+              Read-only
+            </div>
+          )}
         </div>
 
-        {canEdit && !isLocked && (
-          <div className="flex gap-3">
-            {editMode ? (
-              <div className="flex gap-4">
-                <Button variant="outline" size="sm" onClick={() => { setEditMode(false); setPendingChanges({}); }}>Cancel</Button>
-                <Button variant="emerald" size="sm" onClick={handleSave} disabled={saving}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </Button>
+        <div
+          style={{
+            marginTop: 16,
+            padding: "10px 14px",
+            borderRadius: 12,
+            background: "var(--am-surface-faint)",
+            border: "1px solid var(--am-border)",
+            fontSize: 11,
+            color: "var(--am-text-muted)",
+            lineHeight: 1.5,
+          }}
+        >
+          Waiver, trade, playoff, and discovery settings (max teams, entry fee, FAAB budget, trade deadline, roster lock) live in the other Commissioner tabs — they write directly to the League model. See <span style={{ fontFamily: "var(--am-mono, monospace)", color: "var(--am-text)" }}>docs/RULES_AUDIT.md</span> for the full map.
+        </div>
+      </Glass>
+
+      {/* Category sections */}
+      {CATEGORY_ORDER.map(cat => {
+        const catRules = grouped[cat];
+        if (!catRules) return null;
+
+        return (
+          <Glass key={cat} padded={false}>
+            <div style={{ padding: "18px 22px 8px", borderBottom: "1px solid var(--am-border)", display: "flex", alignItems: "center", gap: 12 }}>
+              {CATEGORY_ICONS[cat] ? (
+                <img
+                  src={CATEGORY_ICONS[cat]}
+                  alt={cat}
+                  style={{ width: 22, height: 22, opacity: 0.75, filter: 'brightness(0) invert(1) opacity(0.75)' }}
+                />
+              ) : (
+                <span style={{ fontSize: 18 }}>📄</span>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <SectionLabel style={{ marginBottom: 0 }}>✦ {cat.replace('_', ' ')}</SectionLabel>
+                <span style={{
+                  fontFamily: "var(--am-display)",
+                  fontSize: 18,
+                  fontWeight: 400,
+                  color: "var(--am-text)",
+                  textTransform: "capitalize",
+                  letterSpacing: -0.1,
+                }}>
+                  {cat.replace('_', ' ')}
+                </span>
               </div>
-            ) : (
-              <Button variant="default" onClick={() => setEditMode(true)}>
-                Edit Rules
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
 
-      <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-tint)] px-4 py-3 mb-8 text-xs text-[var(--lg-text-muted)]">
-        Waiver, trade, playoff, and discovery settings (max teams, entry fee, FAAB budget, trade deadline, roster lock) live in the other Commissioner tabs — they write directly to the League model. See <span className="font-mono">docs/RULES_AUDIT.md</span> for the full map.
-      </div>
+            <div
+              style={{
+                padding: 22,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: "20px 32px",
+              }}
+            >
+              {catRules.map(rule => {
+                const config = RULE_CONFIGS[rule.key] || { type: 'text' };
 
-      <div className="space-y-8">
-        {CATEGORY_ORDER.map(cat => {
-          const catRules = grouped[cat];
-          if (!catRules) return null;
+                if (config.dependsOn) {
+                  const depVal = ruleMap[config.dependsOn.key];
+                  if (depVal !== config.dependsOn.value) return null;
+                }
 
-          return (
-            <section key={cat} className="lg-card p-0 overflow-hidden relative">
-              <div className="bg-[var(--lg-table-header-bg)] px-8 py-6 flex items-center gap-4 border-b border-[var(--lg-glass-border)]">
-                {CATEGORY_ICONS[cat] ? (
-                  <img
-                    src={CATEGORY_ICONS[cat]}
-                    alt={cat}
-                    className="w-8 h-8 opacity-80"
-                    style={{ filter: 'brightness(0) invert(1) opacity(0.6)' }}
-                  />
-                ) : (
-                  <span className="text-2xl">📄</span>
-                )}
-                <h2 className="text-xl font-bold tracking-tight text-[var(--lg-text-heading)] capitalize">{cat.replace('_', ' ')}</h2>
-              </div>
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                {catRules.map(rule => {
-                  const config = RULE_CONFIGS[rule.key] || { type: 'text' };
+                const val = pendingChanges[rule.id] ?? rule.value;
+                const isEditing = editMode && !isLocked;
 
-                  if (config.dependsOn) {
-                    const depVal = ruleMap[config.dependsOn.key];
-                    if (depVal !== config.dependsOn.value) return null;
-                  }
-
-                  const val = pendingChanges[rule.id] ?? rule.value;
-                  const isEditing = editMode && !isLocked;
-
-                  return (
-                    <div key={rule.id} className="space-y-2">
-                      <label className="block text-xs font-bold text-[var(--lg-text-muted)] uppercase tracking-wide opacity-60 ml-1">{rule.label}</label>
-                      <div>
-                        {RenderInput(rule, val, config, isEditing, (v) => handleChange(rule.id, v))}
-                      </div>
+                return (
+                  <div
+                    key={rule.id}
+                    style={{
+                      padding: 14,
+                      background: "var(--am-surface-faint)",
+                      border: "1px solid var(--am-border)",
+                      borderRadius: 12,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                      opacity: isLocked ? 0.6 : 1,
+                    }}
+                  >
+                    <label style={{
+                      display: "block",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: 1.2,
+                      textTransform: "uppercase",
+                      color: "var(--am-text-faint)",
+                    }}>
+                      {rule.label}
+                    </label>
+                    <div>
+                      {RenderInput(rule, val, config, isEditing, (v) => handleChange(rule.id, v))}
                     </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Glass>
+        );
+      })}
     </div>
   );
 }
@@ -265,22 +436,64 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     if (config.type === 'checkbox_list' || config.type === 'json_object_counts') {
       try {
         const obj = JSON.parse(val);
-        if (Array.isArray(obj)) return <div className="text-[var(--lg-text-primary)] text-sm font-bold flex flex-wrap gap-2">{obj.map(item => (
-          <span key={item} className="bg-[var(--lg-tint)] px-2.5 py-1 rounded-lg border border-[var(--lg-border-faint)]">{item}</span>
-        ))}</div>;
+        if (Array.isArray(obj)) return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {obj.map(item => (
+              <span
+                key={item}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 99,
+                  background: "var(--am-chip)",
+                  border: "1px solid var(--am-border)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--am-text)",
+                }}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        );
         return (
-          <div className="flex flex-wrap gap-2">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {Object.entries(obj).map(([k, v]) => (
-              <span key={k} className="bg-[var(--lg-tint)] px-3 py-1.5 rounded-xl border border-[var(--lg-border-faint)] text-xs font-bold tracking-tight text-[var(--lg-text-primary)]">
-                <span className="text-[var(--lg-text-muted)] opacity-40 uppercase text-xs tracking-wide mr-2">{k}</span>
+              <span
+                key={k}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 99,
+                  background: "var(--am-chip)",
+                  border: "1px solid var(--am-border)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--am-text)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{k}</span>
                 {String(v)}
               </span>
             ))}
           </div>
         );
-      } catch { return <span className="text-[var(--lg-text-primary)] font-bold">{val}</span>; }
+      } catch {
+        return <span style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)" }}>{val}</span>;
+      }
     }
-    return <div className="text-xl font-bold text-[var(--lg-text-primary)] tracking-tight">{val}<span className="text-[var(--lg-accent)] ml-1 opacity-60">{config.suffix}</span></div>;
+    return (
+      <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
+        <span style={{ fontFamily: "var(--am-display)", fontSize: 22, fontWeight: 400, color: "var(--am-text)", letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>
+          {val}
+        </span>
+        {config.suffix && (
+          <span style={{ fontSize: 13, color: "var(--am-accent)", fontWeight: 500 }}>{config.suffix}</span>
+        )}
+      </div>
+    );
   }
 
   if (config.type === 'select') {
@@ -288,7 +501,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
       <select
         value={val}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-[var(--lg-glass-bg)] border border-[var(--lg-glass-border)] rounded-lg px-3 py-2 text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
+        style={AURORA_INPUT}
       >
         {config.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
       </select>
@@ -297,7 +510,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
 
   if (config.type === 'slider') {
     return (
-      <div className="flex items-center gap-4">
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <input
           type="range"
           min={config.min}
@@ -305,25 +518,31 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
           step={config.step ?? 1}
           value={val}
           onChange={e => onChange(e.target.value)}
-          className="flex-1 accent-[var(--lg-accent)] h-2 bg-[var(--lg-tint-hover)] rounded-lg appearance-none cursor-pointer"
+          style={{ flex: 1, accentColor: "var(--am-accent)", cursor: "pointer" }}
         />
-        <span className="w-8 text-right font-mono text-[var(--lg-text-primary)]">{val}</span>
+        <span style={{ width: 32, textAlign: "right", fontFamily: "var(--am-mono, monospace)", color: "var(--am-text)", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+          {val}
+        </span>
       </div>
     );
   }
 
   if (config.type === 'number') {
     return (
-      <div className="relative">
+      <div style={{ position: "relative" }}>
         <input
           type="number"
           min={config.min}
           max={config.max}
           value={val}
           onChange={e => onChange(e.target.value)}
-          className="w-full bg-[var(--lg-glass-bg)] border border-[var(--lg-glass-border)] rounded-lg px-3 py-2 text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] pr-8"
+          style={{ ...AURORA_INPUT, paddingRight: config.suffix ? 28 : 12 }}
         />
-        {config.suffix && <span className="absolute right-3 top-2 text-[var(--lg-text-muted)] opacity-40">{config.suffix}</span>}
+        {config.suffix && (
+          <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--am-text-faint)", fontSize: 12 }}>
+            {config.suffix}
+          </span>
+        )}
       </div>
     );
   }
@@ -339,20 +558,29 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     };
 
     return (
-      <div className="flex flex-wrap gap-2">
-        {config.listOptions?.map(opt => (
-          <button
-            key={opt}
-            onClick={() => toggle(opt)}
-            className={`px-3 py-1 rounded text-xs font-semibold border transition-colors ${
-              current.includes(opt)
-                ? "bg-[var(--lg-accent)] border-[var(--lg-accent)] text-white"
-                : "bg-[var(--lg-glass-bg)] border-[var(--lg-glass-border)] text-[var(--lg-text-muted)] hover:border-[var(--lg-accent)]"
-            }`}
-          >
-            {opt}
-          </button>
-        ))}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {config.listOptions?.map(opt => {
+          const active = current.includes(opt);
+          return (
+            <button
+              key={opt}
+              onClick={() => toggle(opt)}
+              type="button"
+              style={{
+                padding: "4px 10px",
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                background: active ? "var(--am-irid)" : "var(--am-surface-faint)",
+                border: `1px solid ${active ? "var(--am-border-strong)" : "var(--am-border)"}`,
+                color: active ? "#fff" : "var(--am-text-muted)",
+              }}
+            >
+              {opt}
+            </button>
+          );
+        })}
       </div>
     );
   }
@@ -368,16 +596,39 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     };
 
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(60px, 1fr))", gap: 6 }}>
         {config.listOptions?.map(opt => (
-          <div key={opt} className="bg-[var(--lg-glass-bg)] p-2 rounded border border-[var(--lg-glass-border)] flex flex-col items-center">
-            <span className="text-xs text-[var(--lg-text-muted)] font-bold mb-1">{opt}</span>
+          <div
+            key={opt}
+            style={{
+              background: "var(--am-chip)",
+              border: "1px solid var(--am-border)",
+              borderRadius: 10,
+              padding: 6,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{opt}</span>
             <input
               type="number"
               min="0"
               value={current[opt] || 0}
               onChange={e => updateCount(opt, Number(e.target.value))}
-              className="w-full bg-black/20 text-center text-[var(--lg-text-primary)] text-sm rounded py-1 border border-[var(--lg-glass-border-subtle)] focus:border-[var(--lg-accent)]"
+              style={{
+                width: "100%",
+                background: "var(--am-surface-faint)",
+                color: "var(--am-text)",
+                fontSize: 13,
+                textAlign: "center",
+                border: "1px solid var(--am-border)",
+                borderRadius: 6,
+                padding: "2px 4px",
+                outline: "none",
+                fontVariantNumeric: "tabular-nums",
+              }}
             />
           </div>
         ))}
@@ -390,7 +641,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
       type="text"
       value={val}
       onChange={e => onChange(e.target.value)}
-      className="w-full bg-[var(--lg-glass-bg)] border border-[var(--lg-glass-border)] rounded-lg px-3 py-2 text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
+      style={AURORA_INPUT}
     />
   );
 }
