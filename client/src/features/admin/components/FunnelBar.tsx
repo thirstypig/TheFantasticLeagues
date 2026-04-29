@@ -1,4 +1,14 @@
+/*
+ * FunnelBar — Aurora chrome port.
+ *
+ * Used in AdminDashboard's conversion funnels section. Outer chrome moves
+ * to Glass; track uses `--am-surface-faint`, fill uses the iridescent
+ * gradient (`--am-irid`). Step labels muted; conversion percentages render
+ * via IridText (size 11 — the bigger numeric per the brief). Drop-off
+ * indicator is a small chip with `--am-negative` accent.
+ */
 import React from "react";
+import { Glass, IridText } from "../../../components/aurora/atoms";
 
 interface FunnelStage {
   label: string;
@@ -13,41 +23,98 @@ interface FunnelBarProps {
 
 function FunnelBarInner({ label, stages }: FunnelBarProps) {
   return (
-    <div className="lg-card p-5">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-[var(--lg-text-muted)] mb-4">
+    <Glass>
+      <h3
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
+          color: "var(--am-text-muted)",
+          marginBottom: 16,
+          marginTop: 0,
+        }}
+      >
         {label}
       </h3>
-      <div className="space-y-3">
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {stages.map((stage, i) => {
           const isFirst = i === 0;
           const dropOff = isFirst ? null : stages[i - 1].count - stage.count;
           return (
             <div key={stage.label}>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="font-medium text-[var(--lg-text-primary)]">{stage.label}</span>
-                <span className="text-[var(--lg-text-muted)]" style={{ fontVariantNumeric: "tabular-nums" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: 11,
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ fontWeight: 500, color: "var(--am-text)" }}>{stage.label}</span>
+                <span
+                  style={{
+                    color: "var(--am-text-muted)",
+                    fontVariantNumeric: "tabular-nums",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
                   {stage.count.toLocaleString()}
                   {!isFirst && dropOff != null && dropOff > 0 && (
-                    <span className="text-[var(--lg-negative)] ml-1.5">
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "1px 6px",
+                        borderRadius: 99,
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: "var(--am-negative)",
+                        background: "color-mix(in srgb, var(--am-negative) 12%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--am-negative) 28%, transparent)",
+                      }}
+                    >
                       −{dropOff}
                     </span>
                   )}
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-[var(--lg-tint)] overflow-hidden">
+              <div
+                style={{
+                  height: 8,
+                  borderRadius: 99,
+                  background: "var(--am-surface-faint)",
+                  overflow: "hidden",
+                  border: "1px solid var(--am-border)",
+                }}
+              >
                 <div
-                  className="h-full rounded-full bg-[var(--lg-accent)] transition-all"
-                  style={{ width: `${Math.max(stage.percent, 2)}%` }}
+                  style={{
+                    height: "100%",
+                    width: `${Math.max(stage.percent, 2)}%`,
+                    background: "var(--am-irid)",
+                    borderRadius: 99,
+                    transition: "width 240ms ease",
+                  }}
                 />
               </div>
-              <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5 text-right" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {stage.percent}%
+              <div
+                style={{
+                  marginTop: 2,
+                  textAlign: "right",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                <IridText size={11}>{stage.percent}%</IridText>
               </div>
             </div>
           );
         })}
       </div>
-    </div>
+    </Glass>
   );
 }
 

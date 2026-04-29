@@ -1,7 +1,17 @@
-import React from "react";
+/*
+ * StatTile + StatTileSkeleton — Aurora chrome port.
+ *
+ * Used in AdminDashboard's stat tile grid. Outer chrome moves to Glass
+ * with `--am-chip` hover state; hero number renders via IridText (the
+ * standard hero-number Aurora atom); labels/sublabels use `--am-text-muted`
+ * and `--am-text-faint`; trend ▲/▼ use `--am-positive` / `--am-negative`.
+ * MiniSparkline is preserved as-is — its API is not touched.
+ */
+import React, { useState, CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { MiniSparkline } from "./MiniSparkline";
+import { Glass, IridText } from "../../../components/aurora/atoms";
 
 interface SparklinePoint {
   week: string;
@@ -28,10 +38,10 @@ interface StatTileProps {
   insight?: InsightData;
 }
 
-const INSIGHT_COLORS = {
-  high: "bg-[#D55E00]/5 border-[#D55E00]/15",
-  medium: "bg-[#E69F00]/5 border-[#E69F00]/15",
-  low: "bg-[#0072B2]/5 border-[#0072B2]/15",
+const INSIGHT_TONE: Record<InsightData["priority"], { bg: string; border: string }> = {
+  high: { bg: "rgba(213, 94, 0, 0.06)", border: "rgba(213, 94, 0, 0.22)" },
+  medium: { bg: "rgba(230, 159, 0, 0.06)", border: "rgba(230, 159, 0, 0.22)" },
+  low: { bg: "rgba(0, 114, 178, 0.06)", border: "rgba(0, 114, 178, 0.22)" },
 };
 
 function StatTileInner({
@@ -46,58 +56,96 @@ function StatTileInner({
   insight,
 }: StatTileProps) {
   const isEmpty = status === "empty";
+  const [hovered, setHovered] = useState(false);
+
+  const glassStyle: CSSProperties = {
+    background: hovered ? "var(--am-chip)" : undefined,
+    transition: "background 160ms ease",
+    opacity: isEmpty ? 0.6 : 1,
+    borderStyle: isEmpty ? "dashed" : undefined,
+    cursor: "pointer",
+  };
 
   return (
     <Link
       to={href}
-      className={`block lg-card p-5 transition-all hover:shadow-lg group ${
-        isEmpty ? "border-dashed opacity-60" : ""
-      }`}
       title={tooltip}
+      style={{ textDecoration: "none", display: "block" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-xs font-medium uppercase tracking-wider text-[var(--lg-text-muted)]">
-          {label}
-        </span>
-        <DeltaBadge delta={delta} />
-      </div>
-
-      <div className="flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          <div
-            className="text-3xl font-bold tracking-tight text-[var(--lg-text-heading)]"
-            style={{ fontVariantNumeric: "tabular-nums" }}
+      <Glass style={glassStyle}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: "var(--am-text-muted)",
+            }}
           >
-            {isEmpty ? "---" : formattedValue}
-          </div>
-          <div className="text-xs text-[var(--lg-text-muted)] mt-1 truncate">
-            {isEmpty ? "Collecting data..." : subtitle}
-          </div>
+            {label}
+          </span>
+          <DeltaBadge delta={delta} />
         </div>
 
-        {sparkline.length > 1 && !isEmpty && (
-          <div className="w-20 h-8 shrink-0">
-            <MiniSparkline data={sparkline} />
-          </div>
-        )}
-      </div>
-
-      {insight && (
-        <div className={`mt-3 rounded-md p-2.5 text-xs leading-relaxed border ${INSIGHT_COLORS[insight.priority]}`}>
-          <div className="flex items-start gap-1.5">
-            {insight.generatedBy === "ai" && (
-              <Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-[var(--lg-text-muted)] opacity-60" />
-            )}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ minWidth: 0 }}>
             <div>
-              <p className="text-[var(--lg-text-muted)]">{insight.analysis}</p>
-              <div className="flex items-start gap-1 mt-1.5">
-                <ArrowRight className="h-3 w-3 mt-0.5 shrink-0 text-[var(--lg-accent)]" />
-                <p className="font-medium text-[var(--lg-text-primary)]">{insight.action}</p>
+              <IridText size={28}>{isEmpty ? "---" : formattedValue}</IridText>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--am-text-faint)",
+                marginTop: 6,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {isEmpty ? "Collecting data..." : subtitle}
+            </div>
+          </div>
+
+          {sparkline.length > 1 && !isEmpty && (
+            <div style={{ width: 80, height: 32, flexShrink: 0 }}>
+              <MiniSparkline data={sparkline} />
+            </div>
+          )}
+        </div>
+
+        {insight && (
+          <div
+            style={{
+              marginTop: 12,
+              borderRadius: 10,
+              padding: "10px 12px",
+              fontSize: 11,
+              lineHeight: 1.5,
+              background: INSIGHT_TONE[insight.priority].bg,
+              border: `1px solid ${INSIGHT_TONE[insight.priority].border}`,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+              {insight.generatedBy === "ai" && (
+                <Sparkles
+                  size={12}
+                  style={{ marginTop: 2, flexShrink: 0, color: "var(--am-text-faint)", opacity: 0.7 }}
+                />
+              )}
+              <div>
+                <p style={{ color: "var(--am-text-muted)", margin: 0 }}>{insight.analysis}</p>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 4, marginTop: 6 }}>
+                  <ArrowRight size={12} style={{ marginTop: 2, flexShrink: 0, color: "var(--am-accent)" }} />
+                  <p style={{ fontWeight: 500, color: "var(--am-text)", margin: 0 }}>{insight.action}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Glass>
     </Link>
   );
 }
@@ -107,13 +155,22 @@ export const StatTile = React.memo(StatTileInner);
 function DeltaBadge({ delta }: { delta: number }) {
   if (delta === 0) return null;
   const isPositive = delta > 0;
+  const tone = isPositive ? "var(--am-positive)" : "var(--am-negative)";
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
-        isPositive
-          ? "text-[var(--lg-positive)] bg-[var(--lg-positive)]/10"
-          : "text-[var(--lg-negative)] bg-[var(--lg-negative)]/10"
-      }`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 2,
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "2px 8px",
+        borderRadius: 99,
+        color: tone,
+        background: `color-mix(in srgb, ${tone} 12%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${tone} 28%, transparent)`,
+        fontVariantNumeric: "tabular-nums",
+      }}
     >
       {isPositive ? "▲" : "▼"} {Math.abs(delta)}%
     </span>
@@ -122,13 +179,14 @@ function DeltaBadge({ delta }: { delta: number }) {
 
 export function StatTileSkeleton() {
   return (
-    <div className="lg-card p-5 animate-pulse" aria-hidden="true">
-      <div className="flex items-start justify-between mb-3">
-        <div className="h-3 w-20 rounded bg-[var(--lg-tint-hover)]" />
-        <div className="h-5 w-12 rounded-full bg-[var(--lg-tint-hover)]" />
+    <Glass style={{ animation: "am-pulse 1.6s ease-in-out infinite" } as CSSProperties} aria-hidden="true">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ height: 10, width: 80, borderRadius: 4, background: "var(--am-surface-faint)" }} />
+        <div style={{ height: 18, width: 48, borderRadius: 99, background: "var(--am-surface-faint)" }} />
       </div>
-      <div className="h-8 w-24 rounded bg-[var(--lg-tint-hover)] mb-2" />
-      <div className="h-3 w-32 rounded bg-[var(--lg-tint-hover)]" />
-    </div>
+      <div style={{ height: 28, width: 96, borderRadius: 6, background: "var(--am-surface-faint)", marginBottom: 8 }} />
+      <div style={{ height: 10, width: 128, borderRadius: 4, background: "var(--am-surface-faint)" }} />
+      <style>{`@keyframes am-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }`}</style>
+    </Glass>
   );
 }
