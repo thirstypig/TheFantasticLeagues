@@ -1,8 +1,12 @@
 # Yahoo-Style Roster Moves — Implementation Plan
 
 **Date:** 2026-04-29
-**Status:** APPROVED — open questions resolved, ready for PR1 implementation
+**Status:** PR1 SHIPPED (#167) — PR2 pending (Swap Mode UI + `/lineup` endpoint)
 **Author:** Plan agent (synthesis from codebase audit + Yahoo/ESPN/Sleeper UX prior art)
+
+> **Implementation status as of 2026-04-29:**
+> - ✅ **PR1 merged as commit `658822b`** — server-side auto-resolve, bipartite matcher, three endpoint integrations, `Roster.displayOrder` schema field, `LeagueRule(transactions.auto_resolve_slots)` flag, toast wiring on all 3 RosterMoves panels. +37 server tests / +5 client tests.
+> - 🚧 **PR2 pending** — Swap Mode UI, `POST /api/teams/:teamId/lineup` endpoint, drag-reorder UX populating `Roster.displayOrder`, commissioner integration, Aurora visual polish.
 
 > **Reviewers**: read sections 1-3 for the goal and design north star, section 11 for the resolved decisions, and section 10 for the proposed PR breakdown. Sections 4-9 are implementation details — skim or skip if you trust the high level.
 
