@@ -68,6 +68,7 @@ const Pricing = React.lazy(() => import("./pages/Pricing"));
 const Concepts = React.lazy(() => import("./pages/Concepts"));
 const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
+const RosterHubPreview = React.lazy(() => import("./pages/design/RosterHubPreview"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -253,6 +254,12 @@ export default function App() {
                         docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md
                         §5B + §8. Ships components that PR2 will reuse. */}
                     <Route path="/design/swap-mode" element={<SwapModePreview />} />
+                    {/* v2 design preview — hub-and-spokes Team page redesign,
+                        per the §0 deepening synthesis in
+                        docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md.
+                        Renders the same `RosterHub` component family that PR2
+                        will mount on the real /teams/:code owner view. */}
+                    <Route path="/design/roster-hub" element={<RosterHubPreview />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
