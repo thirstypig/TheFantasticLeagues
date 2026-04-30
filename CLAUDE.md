@@ -3,7 +3,7 @@
 ## Current status
 
 <!-- now-tldr -->
-Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. App is live for OGBA, the auction has wrapped, and the season is in flight. Roster-rules enforcement landed and is on for OGBA. **Aurora design system rollout is complete** — every routed page from login through admin uses the unified Aurora chrome (floating Topbar + bottom Dock for authenticated routes; centered Glass cards for pre-auth). 8 of 8 design-bundle screens are ported, including the live auction floor (PR #157) and the 7 pre-auth + onboarding pages (PR #158). The token-redirect mechanism in `aurora.css` (PR #153) means every legacy `ThemedTable` / `lg-card` / `lg-button` instance reads Aurora colors via the `--am-*` namespace inside `.aurora-theme`. Style sheet doc lives at `docs/aurora-design-system.md` (linked from `/docs`). All four post-Aurora enhancement gaps closed: component-level deep ports (PR #159), Gap 2 daily category snapshots (PR #160), Gap 1 boxscore stat lines (PR #163). Production confirmed Aurora-live 2026-04-29 after a multi-hour Supabase IPv4-deprecation + session-pool-exhaustion debug — runbook at `docs/solutions/deployment/supabase-railway-ipv6-pooler-and-pool-exhaustion.md`. **Next focus**: live-floor browser verification owed for next OGBA pre-draft window; otherwise feature-complete pending user feedback.
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. App is live for OGBA, the auction has wrapped, and the season is in flight. **Aurora design system rollout is complete** — every routed page from login through admin uses the unified Aurora chrome (floating Topbar + bottom Dock for authenticated routes; centered Glass cards for pre-auth). All four post-Aurora gaps closed (component deep ports #159, Gap 2 #160, Gap 1 #163, Activity History columns #165). Production confirmed Aurora-live after a multi-hour Supabase IPv4-deprecation + session-pool debug — runbook at `docs/solutions/deployment/supabase-railway-ipv6-pooler-and-pool-exhaustion.md`. **Current focus: Yahoo-style roster moves**. PR1 (server auto-resolve via bipartite matching, replaces strict-pairwise `assertAddEligibleForDropSlot`) shipped as #167. Three design-preview iterations in progress: v1 cards (#169), v2 hub-and-spokes table (#172), v3 consolidated-with-stats + GP-numbers + sub-routes (#174 awaiting review). 10-agent deepening pass (#171) pivoted PR2 from a standalone Swap Mode page to a hub-and-spokes Team page redesign — plan + user-feedback log at `docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md` §0/§0.5. PR2 implementation blocked on v3 review. Tests: 1,256 across server/client/MCP/E2E (+106 today). Style sheet at `docs/aurora-design-system.md` (linked from `/docs`). Live-floor browser verification still owed for next OGBA pre-draft window.
 <!-- /now-tldr -->
 
 ## Project Overview
@@ -327,7 +327,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (813 server + 327 client + 50 MCP + 1 E2E = 1191 tests, 27 feature modules)
+### Current Test Coverage (850 server + 355 client + 50 MCP + 1 E2E = 1256 tests, 27 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 
