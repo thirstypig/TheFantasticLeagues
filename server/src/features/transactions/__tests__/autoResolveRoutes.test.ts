@@ -1,11 +1,12 @@
 // server/src/features/transactions/__tests__/autoResolveRoutes.test.ts
 //
 // Integration tests for the Yahoo-style auto-resolve hook on /claim,
-// /il-stash, and /il-activate. Mirrors the mocking pattern in routes.test.ts
-// but adds the LeagueRule(transactions.auto_resolve_slots) flag flips needed
-// to exercise both the matcher path and the legacy strict-pairwise fallback.
+// /il-stash, and /il-activate. Mirrors the mocking pattern in routes.test.ts.
 //
-// PR1 — plan #166 §10. Reads `appliedReassignments` off the response.
+// As of PR2 cuts §0 the auto-resolve runs unconditionally; the legacy
+// strict-pairwise fallback (gated by the deleted LeagueRule flag) is gone.
+// Tests verify `appliedReassignments` on the response and the matcher's
+// NO_LEGAL_ASSIGNMENT path when no shuffle can produce a legal end-state.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { NextFunction } from "express";
@@ -107,17 +108,10 @@ const ROSTER_POSITIONS = JSON.stringify({
   C: 2, "1B": 1, "2B": 1, "3B": 1, SS: 1, MI: 1, CM: 1, OF: 5, DH: 1,
 });
 
-const RULES_AUTO_ON = [
+const RULES_DEFAULT = [
   { category: "roster", key: "pitcher_count", value: "9" },
   { category: "roster", key: "batter_count", value: "14" },
   { category: "roster", key: "roster_positions", value: ROSTER_POSITIONS },
-  { category: "transactions", key: "auto_resolve_slots", value: "true" },
-];
-const RULES_AUTO_OFF = [
-  { category: "roster", key: "pitcher_count", value: "9" },
-  { category: "roster", key: "batter_count", value: "14" },
-  { category: "roster", key: "roster_positions", value: ROSTER_POSITIONS },
-  { category: "transactions", key: "auto_resolve_slots", value: "false" },
 ];
 
 /**
@@ -159,9 +153,9 @@ beforeEach(() => {
 });
 
 describe("POST /transactions/claim — Yahoo-style auto-resolve", () => {
-  it("flag ON + slot conflict resolved → 200 with appliedReassignments populated", async () => {
-    // Seed LeagueRule rows (cached) so isAutoResolveEnabled returns true.
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_ON);
+  it("slot conflict resolved → 200 with appliedReassignments populated", async () => {
+    // Seed LeagueRule rows (cached) for slot-capacity lookup.
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
 
     // Player 100 is Mookie (OF,2B). Drop is Trea Turner at SS.
     // Pre-tx existingRoster check: player 100 not on any roster yet.
@@ -215,26 +209,8 @@ describe("POST /transactions/claim — Yahoo-style auto-resolve", () => {
     expect(Array.isArray(res.body.appliedReassignments)).toBe(true);
   });
 
-  it("flag OFF (legacy) + slot conflict → 400 POSITION_INELIGIBLE (preserves old behavior)", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_OFF);
-
-    mockPrisma.roster.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 50, assignedPosition: "SS" });
-    mockPrisma.player.findUnique.mockResolvedValue({
-      name: "Juan Soto", posList: "OF",
-    });
-
-    const res = await supertest(app).post("/transactions/claim").send({
-      leagueId: 20, teamId: 10, playerId: 100, dropPlayerId: 200,
-    });
-
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("POSITION_INELIGIBLE");
-  });
-
-  it("flag ON + matcher infeasible → 400 with NO_LEGAL_ASSIGNMENT", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_ON);
+  it("matcher infeasible → 400 with NO_LEGAL_ASSIGNMENT", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
 
     mockPrisma.roster.findFirst
       .mockResolvedValueOnce(null)
@@ -281,8 +257,8 @@ describe("POST /transactions/claim — Yahoo-style auto-resolve", () => {
     expect(res.body.code).toBe("NO_LEGAL_ASSIGNMENT");
   });
 
-  it("flag ON + drop player is on IL → matcher does NOT run (IL slot inheritance handled upstream)", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_ON);
+  it("drop player is on IL → matcher does NOT run (IL slot inheritance handled upstream)", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
 
     mockPrisma.roster.findFirst
       .mockResolvedValueOnce(null)
@@ -307,8 +283,8 @@ describe("POST /transactions/claim — Yahoo-style auto-resolve", () => {
 });
 
 describe("POST /transactions/il-stash — Yahoo-style auto-resolve", () => {
-  it("flag ON + reshuffle works → 200 with appliedReassignments", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_ON);
+  it("reshuffle works → 200 with appliedReassignments", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
 
     mockPrisma.roster.findFirst
       .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") }) // stashRoster
@@ -342,29 +318,11 @@ describe("POST /transactions/il-stash — Yahoo-style auto-resolve", () => {
     expect(Array.isArray(res.body.appliedReassignments)).toBe(true);
   });
 
-  it("flag OFF + position-incompatible add → 400 POSITION_INELIGIBLE (legacy)", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_OFF);
-
-    mockPrisma.roster.findFirst.mockResolvedValueOnce({
-      id: 50, assignedPosition: "SS", acquiredAt: new Date("2026-04-01Z"),
-    });
-    mockPrisma.player.findUnique.mockResolvedValue({
-      id: 100, name: "OF Only", posPrimary: "OF",
-      posList: "OF", mlbId: 1, mlbTeam: "LAD",
-    });
-
-    const res = await supertest(app).post("/transactions/il-stash").send({
-      leagueId: 20, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
-    });
-
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("POSITION_INELIGIBLE");
-  });
 });
 
 describe("POST /transactions/il-activate — Yahoo-style auto-resolve", () => {
-  it("flag ON + reshuffle works → 200 with appliedReassignments", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_ON);
+  it("reshuffle works → 200 with appliedReassignments", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
 
     mockPrisma.roster.findFirst
       .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" }) // ilRoster
@@ -400,33 +358,12 @@ describe("POST /transactions/il-activate — Yahoo-style auto-resolve", () => {
     expect(Array.isArray(res.body.appliedReassignments)).toBe(true);
   });
 
-  it("flag OFF + activate player can't fill drop slot → 400 POSITION_INELIGIBLE (legacy)", async () => {
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_OFF);
-
-    mockPrisma.roster.findFirst
-      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
-      .mockResolvedValueOnce({
-        id: 50, assignedPosition: "C",
-        acquiredAt: new Date("2026-04-01Z"),
-      });
-    mockPrisma.player.findUnique.mockResolvedValue({
-      id: 42, name: "OF Only", posList: "OF",
-    });
-
-    const res = await supertest(app).post("/transactions/il-activate").send({
-      leagueId: 20, teamId: 10,
-      activatePlayerId: 42, dropPlayerId: 100,
-    });
-
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("POSITION_INELIGIBLE");
-  });
 });
 
 describe("Auto-resolve response shape — appliedReassignments contract", () => {
   it("/claim no-reshuffle path still returns appliedReassignments: []", async () => {
     // Flag on, but the new player happens to fit incumbent slot exactly.
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_ON);
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
     mockPrisma.roster.findFirst
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
@@ -454,27 +391,4 @@ describe("Auto-resolve response shape — appliedReassignments contract", () => 
     expect(res.body.appliedReassignments).toEqual([]);
   });
 
-  it("/claim flag OFF still returns appliedReassignments: [] in response shape", async () => {
-    // Flag off — legacy path returns `[]` because the response variable is
-    // initialized empty and never populated when auto-resolve is skipped.
-    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_AUTO_OFF);
-    mockPrisma.roster.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
-    mockPrisma.player.findUnique.mockResolvedValue({
-      name: "OF", posList: "OF",
-    });
-    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
-    mockTx.roster.findFirst.mockResolvedValue({ id: 50, teamId: 10, playerId: 200 });
-    mockTx.player.findUnique.mockResolvedValueOnce({
-      id: 100, name: "OF", posPrimary: "OF", posList: "OF", mlbId: 1, mlbTeam: "LAD",
-    });
-
-    const res = await supertest(app).post("/transactions/claim").send({
-      leagueId: 20, teamId: 10, playerId: 100, dropPlayerId: 200,
-    });
-
-    expect(res.status).toBe(200);
-    expect(res.body.appliedReassignments).toEqual([]);
-  });
 });

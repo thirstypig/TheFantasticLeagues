@@ -1,12 +1,11 @@
 // server/src/features/transactions/lib/__tests__/autoResolveLineup.test.ts
 //
 // Contract tests for the bridge module that wires `slotMatcher` into Prisma
-// — `isAutoResolveEnabled`, `loadSlotCapacities`, `verifyEligibilityUnchanged`.
-// Pure unit tests; the live Prisma client is mocked.
+// — `loadSlotCapacities`, `verifyEligibilityUnchanged`. Pure unit tests; the
+// live Prisma client is mocked.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-  isAutoResolveEnabled,
   loadSlotCapacities,
   verifyEligibilityUnchanged,
 } from "../autoResolveLineup.js";
@@ -22,27 +21,6 @@ function makeClient(rules: Array<{ category: string; key: string; value: string 
 
 beforeEach(() => {
   _clearLeagueRuleCache();
-});
-
-describe("isAutoResolveEnabled", () => {
-  it("returns true when LeagueRule(transactions.auto_resolve_slots) === 'true'", async () => {
-    const client = makeClient([
-      { category: "transactions", key: "auto_resolve_slots", value: "true" },
-    ]);
-    expect(await isAutoResolveEnabled(client, 20)).toBe(true);
-  });
-
-  it("returns false when the rule is 'false'", async () => {
-    const client = makeClient([
-      { category: "transactions", key: "auto_resolve_slots", value: "false" },
-    ]);
-    expect(await isAutoResolveEnabled(client, 20)).toBe(false);
-  });
-
-  it("returns false when the rule row is missing (default)", async () => {
-    const client = makeClient([]);
-    expect(await isAutoResolveEnabled(client, 20)).toBe(false);
-  });
 });
 
 describe("loadSlotCapacities", () => {
@@ -132,19 +110,3 @@ describe("verifyEligibilityUnchanged", () => {
   });
 });
 
-describe("LeagueRule contract — auto_resolve_slots", () => {
-  it("OGBA league (id 20) seed migration should default 'true' on read", async () => {
-    // This mirrors what the SQL migration would have inserted.
-    const client = makeClient([
-      { category: "transactions", key: "auto_resolve_slots", value: "true" },
-    ]);
-    expect(await isAutoResolveEnabled(client, 20)).toBe(true);
-  });
-
-  it("non-OGBA league seed migration should default 'false' on read", async () => {
-    const client = makeClient([
-      { category: "transactions", key: "auto_resolve_slots", value: "false" },
-    ]);
-    expect(await isAutoResolveEnabled(client, 99)).toBe(false);
-  });
-});

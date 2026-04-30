@@ -580,23 +580,9 @@ describe("POST /transactions/claim — Phase 2 enforcement (ENFORCE=true)", () =
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it("rejects claim with position-incompatible drop (POSITION_INELIGIBLE)", async () => {
-    mockPrisma.roster.findFirst
-      .mockResolvedValueOnce(null)  // existingRoster check (player 100 not rostered)
-      .mockResolvedValueOnce({ id: 50, assignedPosition: "SS" }); // drop player at SS
-    mockPrisma.player.findUnique.mockResolvedValue({
-      name: "Juan Soto", posList: "OF",
-    });
-
-    const res = await supertest(app).post("/transactions/claim").send({
-      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200,
-    });
-
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("POSITION_INELIGIBLE");
-    expect(res.body.error).toContain("SS");
-    expect(res.body.error).toContain("Juan Soto");
-  });
+  // Legacy POSITION_INELIGIBLE strict-pairwise rejection is gone — auto-resolve
+  // runs unconditionally as of PR2 cuts §0. Equivalent matcher-infeasibility
+  // coverage lives in autoResolveRoutes.test.ts (NO_LEGAL_ASSIGNMENT).
 
   it("accepts claim when added player is eligible for drop slot; added player inherits the slot", async () => {
     mockPrisma.roster.findFirst
@@ -804,22 +790,8 @@ describe("POST /transactions/il-stash", () => {
     expect(res.body.code).toBe("MLB_FEED_UNAVAILABLE");
   });
 
-  it("rejects when add player is position-incompatible with stash player's slot", async () => {
-    mockPrisma.roster.findFirst.mockResolvedValueOnce({
-      id: 50, assignedPosition: "SS", acquiredAt: new Date("2026-04-01Z"),
-    });
-    mockPrisma.player.findUnique.mockResolvedValue({
-      id: 100, name: "OF Only", posPrimary: "OF", posList: "OF",
-      mlbId: 123, mlbTeam: "LAA",
-    });
-
-    const res = await supertest(app).post("/transactions/il-stash").send({
-      leagueId: 1, teamId: 10, stashPlayerId: 42, addPlayerId: 100,
-    });
-
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("POSITION_INELIGIBLE");
-  });
+  // Legacy POSITION_INELIGIBLE strict-pairwise rejection is gone — auto-resolve
+  // runs unconditionally as of PR2 cuts §0. See autoResolveRoutes.test.ts.
 
   it("rejects when stash player is not on the team's active roster", async () => {
     mockPrisma.roster.findFirst.mockResolvedValueOnce(null);
@@ -920,22 +892,8 @@ describe("POST /transactions/il-activate", () => {
     expect(res.body.code).toBe("NOT_ON_IL");
   });
 
-  it("rejects when activate player is not position-eligible for drop slot", async () => {
-    mockPrisma.roster.findFirst
-      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
-      .mockResolvedValueOnce({ id: 50, assignedPosition: "C", acquiredAt: new Date("2026-04-01Z") });
-    mockPrisma.player.findUnique.mockResolvedValue({
-      id: 42, name: "OF-Only", posList: "OF",
-    });
-
-    const res = await supertest(app).post("/transactions/il-activate").send({
-      leagueId: 1, teamId: 10,
-      activatePlayerId: 42, dropPlayerId: 100,
-    });
-
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("POSITION_INELIGIBLE");
-  });
+  // Legacy POSITION_INELIGIBLE strict-pairwise rejection is gone — auto-resolve
+  // runs unconditionally as of PR2 cuts §0. See autoResolveRoutes.test.ts.
 
   it("rejects when drop player is on IL (should use /transactions/drop instead)", async () => {
     mockPrisma.roster.findFirst
