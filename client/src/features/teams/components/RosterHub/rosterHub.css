@@ -288,3 +288,61 @@
   background: var(--am-chip);
   outline: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+ * v3 additions — consolidated table with sectioned hitter/pitcher
+ * bodies. Keep at the end so v3 styles cascade over v2 when they
+ * share a class.
+ * ═══════════════════════════════════════════════════════════════ */
+
+/*
+ * Section label row — the small "Hitters · 14" / "Pitchers · 9"
+ * banner that appears above each `<thead>` column-header row in the
+ * v3 consolidated table.
+ */
+.am-roster-v3-table .am-roster-section-thead .am-roster-section-label {
+  padding: 14px 12px 6px;
+  font-size: 10.5px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--am-text-muted);
+  font-weight: 600;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.am-roster-v3-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--am-border);
+  vertical-align: middle;
+}
+
+/* Frozen-ish first column — the position cell. Doesn't actually pin
+ * via position:sticky here (that's a PR2 enhancement) but visually
+ * separates the affordance from the stats columns. */
+.am-roster-v3-table tbody td:first-child,
+.am-roster-v3-table thead th:first-child {
+  background: var(--am-surface-faint);
+}
+
+/* Re-attach the pending iridescent bar on v3 rows — v2's `::before`
+ * relies on the row being position:relative which `tr` is by default
+ * (most browsers). Doubled here for safety with the v3 table-layout. */
+.am-roster-v3-table .am-roster-row-pending {
+  position: relative;
+}
+
+/* On v3, the row glow uses a softer outline-style ring instead of
+ * `box-shadow: 0 0 0 1px ...` because table rows clip box-shadow at
+ * the cell boundary. Switch to `outline` which paints over the cells. */
+.am-roster-v3-table .am-roster-row-eligible {
+  animation: none;
+  outline: 1px solid rgba(74, 140, 255, 0.55);
+  outline-offset: -1px;
+  background: color-mix(in srgb, #2f6df0 5%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .am-roster-v3-table .am-roster-row-eligible {
+    animation: am-roster-row-pulse 2.4s ease-in-out infinite;
+  }
+}

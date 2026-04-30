@@ -69,6 +69,7 @@ const Concepts = React.lazy(() => import("./pages/Concepts"));
 const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
 const RosterHubPreview = React.lazy(() => import("./pages/design/RosterHubPreview"));
+const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Preview"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -260,6 +261,12 @@ export default function App() {
                         Renders the same `RosterHub` component family that PR2
                         will mount on the real /teams/:code owner view. */}
                     <Route path="/design/roster-hub" element={<RosterHubPreview />} />
+                    {/* v3 design preview — adds the 5 user refinements
+                        captured in §0.5 of the plan: consolidated stats
+                        table, GP numbers in the merged Position+Eligibility
+                        column, and inline sub-routes (no modals). PR2 will
+                        wire `RosterHubV3` onto the real /teams/:code page. */}
+                    <Route path="/design/roster-hub-v3" element={<RosterHubV3Preview />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>

@@ -516,6 +516,33 @@ export default function RosterHubPreview() {
         minHeight: "100svh",
       }}
     >
+      {/* v3 superseded-by banner — points users at the latest iteration. */}
+      <div
+        role="note"
+        style={{
+          padding: "10px 14px",
+          borderRadius: 12,
+          border: "1px solid var(--am-border-strong)",
+          background: "color-mix(in srgb, #d62b9b 8%, transparent)",
+          fontSize: 12.5,
+          color: "var(--am-text)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <span aria-hidden style={{ fontSize: 14 }}>✦</span>
+        <span style={{ flex: 1 }}>
+          v3 with 5 refinements (consolidated stats table, GP numbers, no modals) at{" "}
+          <Link
+            to="/design/roster-hub-v3"
+            style={{ color: "var(--am-text)", fontWeight: 600, textDecoration: "underline" }}
+          >
+            /design/roster-hub-v3 →
+          </Link>
+        </span>
+      </div>
+
       <Glass strong>
         <SectionLabel>✦ Design preview · v2 · admin only</SectionLabel>
         <h1
