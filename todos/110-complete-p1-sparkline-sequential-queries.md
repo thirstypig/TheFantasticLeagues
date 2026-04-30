@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "110"
 tags: [code-review, performance, admin]
@@ -29,3 +29,4 @@ Minimal change — wrap lines 200-209 in `Promise.all`. Reduces wall-clock to ~1
 
 ## Work Log
 - **2026-04-17**: Flagged unanimously by performance-oracle, architecture, simplicity, typescript reviewers.
+- **2026-04-30**: Solution 2 shipped (dashboard-perf-and-types branch). All 7 `weeklySparkline()` calls + `weeklyActiveUsersSparkline` + the prior-active-users `groupBy` now run inside a single `Promise.all` — wall-clock collapses from 7×N sequential round-trips to one round-trip per parallel batch. Replaced the `(prisma as any)[...]` runtime model lookup with a typed `SparklineModel` union + per-model `count()` map (compile-time delegate dispatch, zero `any`). Per-week loop inside each `weeklySparkline` is also parallelized via `Promise.all(Array.from({length: weeks}))`. Solution 1 (single `GROUP BY date_trunc`) deferred — captured as a TODO comment alongside the parallel call site.

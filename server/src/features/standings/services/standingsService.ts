@@ -594,8 +594,18 @@ async function computeWithPeriodStats(
   });
 }
 
-// In-memory TTL cache — stats change only on daily cron syncs (12:00 + 13:00 UTC)
-const standingsCache = new Map<number, { data: Awaited<ReturnType<typeof getSeasonStandingsUncached>>; expiry: number }>();
+// In-memory TTL cache — stats change only on daily cron syncs (12:00 + 13:00 UTC).
+// `pending` enables stampede prevention: if a second request arrives while the
+// first is still computing, both share the same in-flight Promise rather than
+// firing parallel `getSeasonStandingsUncached()` calls (mirrors the dashboard
+// service cache pattern).
+type StandingsResult = Awaited<ReturnType<typeof getSeasonStandingsUncached>>;
+interface StandingsCacheEntry {
+  data?: StandingsResult;
+  expiry: number;
+  pending?: Promise<StandingsResult>;
+}
+const standingsCache = new Map<number, StandingsCacheEntry>();
 const STANDINGS_CACHE_TTL = 120_000; // 2 minutes
 
 export function clearStandingsCache(leagueId?: number): void {
@@ -619,10 +629,19 @@ export async function getSeasonStandings(
   seasonRows: Array<{ rank: number; teamId: number; teamName: string; totalPoints: number }>;
 }> {
   const cached = standingsCache.get(leagueId);
-  if (cached && cached.expiry > Date.now()) return cached.data;
-  const result = await getSeasonStandingsUncached(leagueId);
-  standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
-  return result;
+  if (cached?.data && cached.expiry > Date.now()) return cached.data;
+  if (cached?.pending) return cached.pending;
+
+  const pending = getSeasonStandingsUncached(leagueId);
+  standingsCache.set(leagueId, { data: cached?.data, expiry: 0, pending });
+  try {
+    const result = await pending;
+    standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
+    return result;
+  } catch (err) {
+    standingsCache.delete(leagueId);
+    throw err;
+  }
 }
 
 async function getSeasonStandingsUncached(leagueId: number) {

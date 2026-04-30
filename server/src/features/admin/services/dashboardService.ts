@@ -128,6 +128,9 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
 
   // Batch all count queries in a single $transaction (one DB connection)
   // to avoid exhausting Supabase's small session-mode pool.
+  // NOTE: `totalUsers` doubles as the funnel's "Signed Up" count — the prior
+  // implementation issued an identical second `prisma.user.count()` for
+  // `totalSignups` which was wasted work.
   const [
     totalUsers, currentUsers, priorUsers,
     currentSessions, priorSessions,
@@ -136,7 +139,7 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
     currentWaivers, priorWaivers,
     currentInsights, priorInsights,
     currentTransactions, priorTransactions,
-    totalSignups, profileSetups, firstActions,
+    profileSetups, firstActions,
     seasonsWithTeams, seasonsWithRosters, seasonsCompleted,
     usersCreated30dAgo,
     recentActivity,
@@ -157,8 +160,7 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
     prisma.aiInsight.count({ where: { createdAt: { gte: priorFrom, lt: from } } }),
     prisma.transactionEvent.count({ where: { createdAt: { gte: from } } }),
     prisma.transactionEvent.count({ where: { createdAt: { gte: priorFrom, lt: from } } }),
-    // Funnel: Onboarding
-    prisma.user.count(),
+    // Funnel: Onboarding (totalSignups uses `totalUsers` from above)
     prisma.user.count({ where: { name: { not: null } } }),
     prisma.user.count({
       where: { OR: [{ ownedTeams: { some: {} } }, { teamOwnerships: { some: {} } }] },
@@ -181,6 +183,7 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
       },
     }),
   ]);
+  const totalSignups = totalUsers;
 
   // Retention: active user counts (groupBy not supported in $transaction)
   const [active30dRows, active7dRows] = await Promise.all([
@@ -196,23 +199,37 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
   const usersActive30d = active30dRows.length;
   const usersActive7d = active7dRows.length;
 
-  // Phase 3: Sparklines sequentially (each fires N queries internally)
-  const userSparkline = await weeklySparkline("User", "createdAt", days, from);
-  const sessionSparkline = await weeklySparkline("UserSession", "startedAt", days, from);
-  const seasonSparkline = await weeklySparkline("Season", "createdAt", days, from);
-  const tradeSparkline = await weeklySparkline("Trade", "createdAt", days, from);
-  const insightSparkline = await weeklySparkline("AiInsight", "createdAt", days, from);
-  const txSparkline = await weeklySparkline("TransactionEvent", "createdAt", days, from);
+  // Sparklines + hero in parallel — each weeklySparkline still fires N
+  // queries internally (one per week) but the 7 model series no longer run
+  // back-to-back. Wall-clock drops from 7×N to ~N (the longest series).
+  // TODO: replace per-week COUNT loop with a single GROUP BY date_trunc
+  // ('week', "createdAt") raw query for a true 91→7 reduction.
+  const [
+    userSparkline,
+    sessionSparkline,
+    seasonSparkline,
+    tradeSparkline,
+    insightSparkline,
+    txSparkline,
+    heroSparkline,
+    priorActiveUserRows,
+  ] = await Promise.all([
+    weeklySparkline("user", "createdAt", days, from),
+    weeklySparkline("userSession", "startedAt", days, from),
+    weeklySparkline("season", "createdAt", days, from),
+    weeklySparkline("trade", "createdAt", days, from),
+    weeklySparkline("aiInsight", "createdAt", days, from),
+    weeklySparkline("transactionEvent", "createdAt", days, from),
+    weeklyActiveUsersSparkline(days, from),
+    prisma.userSession.groupBy({
+      by: ["userId"],
+      where: { startedAt: { gte: priorFrom, lt: from } },
+    }),
+  ]);
 
   // ─── Build Hero ───
   const activeUsers = usersActive30d;
-  const heroSparkline = await weeklyActiveUsersSparkline(days, from);
-  const priorActiveUsers = await prisma.userSession.groupBy({
-    by: ["userId"],
-    where: {
-      startedAt: { gte: priorFrom, lt: from },
-    },
-  }).then(r => r.length);
+  const priorActiveUsers = priorActiveUserRows.length;
 
   const hero: HeroMetric = {
     label: "Active Users",
@@ -377,26 +394,52 @@ function formatNum(n: number): string {
   return String(n);
 }
 
+/**
+ * Models that expose a `count({ where: { [dateField]: { gte, lt } } })`
+ * delegate. Restricting via this union both eliminates the `prisma as any`
+ * escape hatch and makes a typo on the model name a compile error.
+ */
+type SparklineModel =
+  | "user"
+  | "userSession"
+  | "season"
+  | "trade"
+  | "aiInsight"
+  | "transactionEvent";
+
 async function weeklySparkline(
-  model: string,
+  model: SparklineModel,
   dateField: string,
   days: number,
   from: Date,
 ): Promise<SparklinePoint[]> {
   const weeks = Math.min(Math.ceil(days / 7), 30);
-  const points: SparklinePoint[] = [];
-  for (let i = weeks - 1; i >= 0; i--) {
-    const weekEnd = new Date(from);
-    weekEnd.setDate(weekEnd.getDate() + (weeks - i) * 7);
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekStart.getDate() - 7);
+  // Per-model `count()` calls fire in parallel for the same series — N
+  // round-trips wall-clocked at one round-trip apiece instead of N×N.
+  return Promise.all(
+    Array.from({ length: weeks }, (_, idx) => {
+      const i = weeks - 1 - idx;
+      const weekEnd = new Date(from);
+      weekEnd.setDate(weekEnd.getDate() + (weeks - i) * 7);
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 7);
 
-    const count = await (prisma as any)[model[0].toLowerCase() + model.slice(1)].count({
-      where: { [dateField]: { gte: weekStart, lt: weekEnd } },
-    });
-    points.push({ week: `W${weeks - i}`, value: count });
-  }
-  return points;
+      const where = { [dateField]: { gte: weekStart, lt: weekEnd } };
+      const countByModel: Record<SparklineModel, () => Promise<number>> = {
+        user: () => prisma.user.count({ where }),
+        userSession: () => prisma.userSession.count({ where }),
+        season: () => prisma.season.count({ where }),
+        trade: () => prisma.trade.count({ where }),
+        aiInsight: () => prisma.aiInsight.count({ where }),
+        transactionEvent: () => prisma.transactionEvent.count({ where }),
+      };
+
+      return countByModel[model]().then((value) => ({
+        week: `W${weeks - i}`,
+        value,
+      }));
+    }),
+  );
 }
 
 async function weeklyActiveUsersSparkline(
@@ -404,18 +447,20 @@ async function weeklyActiveUsersSparkline(
   from: Date,
 ): Promise<SparklinePoint[]> {
   const weeks = Math.min(Math.ceil(days / 7), 30);
-  const points: SparklinePoint[] = [];
-  for (let i = weeks - 1; i >= 0; i--) {
-    const weekEnd = new Date(from);
-    weekEnd.setDate(weekEnd.getDate() + (weeks - i) * 7);
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekStart.getDate() - 7);
+  return Promise.all(
+    Array.from({ length: weeks }, (_, idx) => {
+      const i = weeks - 1 - idx;
+      const weekEnd = new Date(from);
+      weekEnd.setDate(weekEnd.getDate() + (weeks - i) * 7);
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 7);
 
-    const result = await prisma.userSession.groupBy({
-      by: ["userId"],
-      where: { startedAt: { gte: weekStart, lt: weekEnd } },
-    });
-    points.push({ week: `W${weeks - i}`, value: result.length });
-  }
-  return points;
+      return prisma.userSession
+        .groupBy({
+          by: ["userId"],
+          where: { startedAt: { gte: weekStart, lt: weekEnd } },
+        })
+        .then((result) => ({ week: `W${weeks - i}`, value: result.length }));
+    }),
+  );
 }

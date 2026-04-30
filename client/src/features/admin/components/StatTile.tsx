@@ -12,18 +12,10 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { MiniSparkline } from "./MiniSparkline";
 import { Glass, IridText } from "../../../components/aurora/atoms";
+import type { InlineInsight, SparklinePoint } from "../types";
 
-interface SparklinePoint {
-  week: string;
-  value: number;
-}
-
-interface InsightData {
-  analysis: string;
-  action: string;
-  priority: "high" | "medium" | "low";
-  generatedBy: "rules" | "ai";
-}
+// Local alias preserves the previous public name without redeclaring.
+type InsightData = InlineInsight;
 
 interface StatTileProps {
   id: string;

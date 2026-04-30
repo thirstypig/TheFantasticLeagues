@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "112"
 tags: [code-review, typescript, quality]
@@ -25,3 +25,4 @@ Type drift risk from independent definitions:
 
 ## Work Log
 - **2026-04-17**: Flagged by typescript, architecture, simplicity reviewers.
+- **2026-04-30**: Created `client/src/features/admin/types.ts` with the canonical `SparklinePoint`, `HeroMetric`, `StatTileData`, `FunnelStage`, `FunnelData`, `ActivityEntry`, `InlineInsight`, `DashboardResponse`, plus the `INSIGHT_COLORS` Tailwind tokens. `AdminDashboard.tsx`, `StatTile.tsx`, and `MiniSparkline.tsx` now import from there (StatTile keeps a `type InsightData = InlineInsight` local alias to preserve its existing prop-name surface). Server-side, `dashboardInsightEngine.ts` re-exports `InlineInsight` from `dashboardService.ts` instead of redeclaring (server cannot import the client `types.ts` across the runtime boundary; the wire shape is mirrored manually with a comment in both files flagging the duplication).

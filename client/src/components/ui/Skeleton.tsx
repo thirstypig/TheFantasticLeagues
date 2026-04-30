@@ -1,6 +1,11 @@
 /**
  * Skeleton — shimmer placeholder for loading states.
  * Respects prefers-reduced-motion (animation disabled via index.css).
+ *
+ * Only `PageSkeleton` is exported publicly; the inner `Skeleton` helper is
+ * a private composition primitive. The previous `CardGridSkeleton` and
+ * default `Skeleton` exports had no consumers and were removed in the
+ * dashboard cleanup pass.
  */
 
 function Skeleton({ className = "" }: { className?: string }) {
@@ -32,21 +37,3 @@ export function PageSkeleton() {
     </div>
   );
 }
-
-/** Card grid skeleton (for Home page sections) */
-export function CardGridSkeleton({ count = 4 }: { count?: number }) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2" role="status" aria-label="Loading">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="lg-card p-6 space-y-3">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-        </div>
-      ))}
-      <span className="sr-only">Loading content...</span>
-    </div>
-  );
-}
-
-export default Skeleton;

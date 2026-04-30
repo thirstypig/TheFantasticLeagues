@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "106"
 tags: [code-review, typescript, quality, home]
@@ -64,6 +64,14 @@ Solution 1, done incrementally across 2-3 sub-tasks.
 ## Work Log
 
 - **2026-04-16** (Session 67 `/ce:review`): Flagged by kieran-typescript-reviewer (C1) and performance-oracle (REACT-4).
+- **2026-04-30**: Most of the original surface had already been resolved by the Aurora pilot rewrite (#135 / #137) — Home.tsx is now ~590 lines and the news feed / digest / my-team-today panels have all moved into typed sub-modules (`pages/components/NewsFeedsPanel.tsx`, `MyTeamTodayPanel.tsx`) and a typed shared types file (`pages/home/types.ts`). The `useState<any[]>` bag and the inline `makeHeadline` (~40 lines of template strings) live only in `HomeLegacy.tsx` now, which is preserved as the `/home-classic` Aurora-rollback escape hatch and is not the subject of further refactors.
+  
+  Residual cleanups landed in this branch:
+  - `(row: any)` in the standings post-processor → narrowed to `Record<string, unknown>` with explicit field-by-field coercion.
+  - `(a as any).effectiveDate / .transactionType / .createdAt` casts on the activity feed → consolidated into a single typed local intersection (`TransactionEvent & { ... }`) instead of repeated inline casts.
+  - Digest state already uses `DigestResponse` (todo 088); confirmed no remaining `useState<any>` declarations in `Home.tsx`.
+  
+  `makeHeadline` extraction + dedicated unit tests are not done — they would only apply to `HomeLegacy.tsx`, which is on a deprecation path. Marking the todo complete because the active Home page meets the acceptance criteria; if the legacy page is ever reactivated we'd reopen this.
 
 ## Resources
 

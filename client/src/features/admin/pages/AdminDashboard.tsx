@@ -10,6 +10,12 @@ import { MiniSparkline } from "../components/MiniSparkline";
 import { FunnelBar } from "../components/FunnelBar";
 import { reportError } from "../../../lib/errorBus";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
+import type {
+  DashboardResponse,
+  HeroMetric,
+  InlineInsight,
+} from "../types";
+import { INSIGHT_COLORS } from "../types";
 import {
   Activity,
   ArrowLeftRight,
@@ -22,37 +28,6 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-
-// ─── Types (mirror server DashboardResponse) ──────────────────
-
-interface SparklinePoint { week: string; value: number }
-interface HeroMetric {
-  label: string; value: number; formattedValue: string;
-  delta: number; sparkline: SparklinePoint[]; tooltip: string;
-}
-interface StatTileData {
-  id: string; label: string; value: number; formattedValue: string;
-  delta: number; tooltip: string; subtitle: string;
-  sparkline: SparklinePoint[]; href: string;
-  status: "populated" | "empty" | "loading";
-}
-interface FunnelStage { label: string; count: number; percent: number }
-interface FunnelData { id: string; label: string; stages: FunnelStage[] }
-interface ActivityEntry {
-  id: number; action: string; resourceType: string | null;
-  resourceId: string | null; userEmail: string | null;
-  userName: string | null; createdAt: string;
-}
-interface InlineInsight {
-  analysis: string; action: string;
-  priority: "high" | "medium" | "low"; generatedBy: "rules" | "ai";
-}
-interface DashboardResponse {
-  hero: HeroMetric; tiles: StatTileData[]; funnels: FunnelData[];
-  activity: ActivityEntry[]; insights: Record<string, InlineInsight>;
-  generatedAt: string;
-  cacheTTLSeconds: number; dateRange: { days: number; from: string; to: string };
-}
 
 // ─── Presets ──────────────────────────────────────────────────
 
@@ -135,9 +110,20 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
         {loading && !data
           ? Array.from({ length: 6 }).map((_, i) => <StatTileSkeleton key={i} />)
-          : data?.tiles.map((tile) => (
-              <StatTile key={tile.id} {...tile} insight={data.insights[tile.id]} />
-            ))}
+          : data?.tiles.map((tile) => {
+              // Drop `value` before spreading — StatTile renders the
+              // formatted string and accepting a numeric `value` would
+              // either pollute the props surface or trip TS excess-prop
+              // checks downstream.
+              const { value: _value, ...tileProps } = tile;
+              return (
+                <StatTile
+                  key={tile.id}
+                  {...tileProps}
+                  insight={data.insights[tile.id]}
+                />
+              );
+            })}
       </div>
 
       {/* Funnels */}
@@ -190,12 +176,6 @@ export default function AdminDashboard() {
 }
 
 // ─── Sub-components ──────────────────────────────────────────
-
-const INSIGHT_COLORS: Record<string, string> = {
-  high: "bg-[#D55E00]/5 border-[#D55E00]/15",
-  medium: "bg-[#E69F00]/5 border-[#E69F00]/15",
-  low: "bg-[#0072B2]/5 border-[#0072B2]/15",
-};
 
 function HeroCard({ hero, insight }: { hero: HeroMetric; insight?: InlineInsight }) {
   const isPositive = hero.delta > 0;
