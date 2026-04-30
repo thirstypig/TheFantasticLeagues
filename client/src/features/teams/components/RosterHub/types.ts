@@ -31,7 +31,70 @@ export interface RosterHubPlayer {
   statSnapshot?: string;
   /** Keeper visual flag (gold ring + ★ glyph). */
   isKeeper?: boolean;
+
+  /* ── v3 additions (consolidated table) ──
+   *
+   * Per §0.5 refinement #1 the roster hub becomes THE Team page roster
+   * section, replacing the separate hitter/pitcher stats tables. These
+   * fields carry the role-aware stats consumed by `RosterRowV3`. PR2
+   * will populate from the existing `/api/players/:id/season-stats`
+   * shape mapped onto `RosterHubPlayer`.
+   */
+  /** True iff this row should render in the pitchers section. */
+  isPitcher?: boolean;
+  /** Hitter stats — undefined for pitchers. */
+  hitterStats?: HitterStats;
+  /** Pitcher stats — undefined for hitters. */
+  pitcherStats?: PitcherStats;
+
+  /**
+   * Per §0.5 refinement #3: games played at each eligible position.
+   * Drives the merged Position+Eligibility column (PositionEligibilityCell).
+   * Omitted positions render without a count (e.g. MI, DH, structural slots).
+   *
+   * PR2 plumbs this from `Player.posGames` (a `Record<SlotCode, number>`
+   * JSON column populated by the existing `syncPositionEligibility` cron
+   * which already computes per-position GP for Rule 1/2 logic).
+   */
+  gamesPlayedByPosition?: Partial<Record<SlotCode, number>>;
 }
+
+/** OGBA hitter stat columns (mirrors Team.tsx's existing hitters table). */
+export interface HitterStats {
+  R?: number;
+  HR?: number;
+  RBI?: number;
+  SB?: number;
+  AVG?: number | string;
+}
+
+/** OGBA pitcher stat columns (mirrors Team.tsx's existing pitchers table). */
+export interface PitcherStats {
+  IP?: number | string;
+  W?: number;
+  SV?: number;
+  K?: number;
+  ERA?: number | string;
+  WHIP?: number | string;
+}
+
+/**
+ * v3 visual states demonstrated by the preview's floating toggler.
+ * Each maps to an annotated snapshot of mock state in
+ * `RosterHubV3Preview`. v3 adds three sub-route states (claim / il-stash
+ * / il-activate) which replace the table with an inline panel mock,
+ * and removes the modal-based `freeAgentPanel` state from v2.
+ */
+export type RosterHubV3PreviewState =
+  | "idle"
+  | "playerSelected"
+  | "pendingMultiple"
+  | "dragging"
+  | "subrouteClaim"
+  | "subrouteIlStash"
+  | "subrouteIlActivate"
+  | "mobile"
+  | "rowMenuOpen";
 
 /**
  * One queued change. Records both endpoints of a swap so the UI can
