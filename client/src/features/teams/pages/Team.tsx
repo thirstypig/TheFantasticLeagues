@@ -36,6 +36,7 @@ import {
   type RosterHubPlayer,
 } from "../components/RosterHub";
 import type { RowAction } from "../components/RosterHub/RowActionMenu";
+import { toHubPlayer } from "../lib/toHubPlayer";
 // Cross-feature import: roster mutations live in the transactions feature.
 // Per CLAUDE.md "Cross-Feature Dependencies", this is documented in the
 // project root. The v3 hub remounts these existing panels as inline sub-routes
@@ -377,39 +378,13 @@ export default function Team() {
 
   const ilCount = ilPlayers.length;
 
-  // ── RosterHubV3 plumbing ───────────────────────────────────────
-  // Map our internal RosterPlayer shape to the RosterHubPlayer shape the
-  // v3 components consume. Stat fields are role-aware (hitterStats vs
-  // pitcherStats); posList carries the full eligibility list so the
-  // PositionEligibilityCell can render multi-chip ("OF · 2B · MI") for
-  // multi-position players. gamesByPos drives the Yahoo-style GP suffixes
-  // ("OF (12) · 2B (3) · MI") — synthetic distribution today, real per-
-  // position GP from MLB Stats API ships when Player.posGames lands.
-  const toHubPlayer = useCallback((p: RosterPlayer): RosterHubPlayer => {
-    const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
-    return {
-      rosterId: p.rosterId,
-      playerId: p.playerId,
-      name: p.playerName,
-      posList: p.posList || p.posPrimary || "",
-      posPrimary: p.posPrimary || "",
-      assignedSlot: (slot === "IL" ? "IL" : slot) as RosterHubPlayer["assignedSlot"],
-      mlbTeam: p.mlbTeam,
-      isKeeper: p.isKeeper,
-      isPitcher: !!p.isPitcher,
-      gamesPlayedByPosition: p.gamesByPos as RosterHubPlayer["gamesPlayedByPosition"],
-      hitterStats: p.isPitcher
-        ? undefined
-        : { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },
-      pitcherStats: p.isPitcher
-        ? { W: p.W, SV: p.SV, K: p.K, ERA: p.ERA, WHIP: p.WHIP }
-        : undefined,
-    };
-  }, []);
-
-  const hubHitters = useMemo(() => hitters.map(toHubPlayer), [hitters, toHubPlayer]);
-  const hubPitchers = useMemo(() => pitchers.map(toHubPlayer), [pitchers, toHubPlayer]);
-  const hubIl = useMemo(() => ilPlayers.map(toHubPlayer), [ilPlayers, toHubPlayer]);
+  // RosterHubV3 plumbing — toHubPlayer is extracted to ../lib/toHubPlayer
+  // so the mapping is unit-testable in isolation. See its docblock for
+  // the contracts it pins down (playerId stability, posList fallback,
+  // assignedSlot canonicalization, role-aware stats).
+  const hubHitters = useMemo(() => hitters.map(toHubPlayer), [hitters]);
+  const hubPitchers = useMemo(() => pitchers.map(toHubPlayer), [pitchers]);
+  const hubIl = useMemo(() => ilPlayers.map(toHubPlayer), [ilPlayers]);
 
   // Permission gating mirrors ActivityPage — owner OR commissioner OR admin
   // can mutate; everyone else gets a view-only hub (no action menus).

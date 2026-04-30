@@ -112,7 +112,7 @@ const techStack = [
       { name: "React Testing Library", desc: "Component testing" },
       { name: "Supertest", desc: "HTTP-level route testing" },
       { name: "ESLint", desc: "Code linting with TypeScript rules" },
-      { name: "730 tests", desc: "473 server + 187 client + 50 MCP tests passing" },
+      { name: "1,273 tests", desc: "850 server + 372 client + 50 MCP + 1 E2E tests passing" },
     ],
   },
   {
