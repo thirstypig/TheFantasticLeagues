@@ -1,13 +1,91 @@
 # Yahoo-Style Roster Moves — Implementation Plan
 
 **Date:** 2026-04-29
-**Status:** PR1 SHIPPED (#167) — PR2 pending (Swap Mode UI + `/lineup` endpoint)
-**Author:** Plan agent (synthesis from codebase audit + Yahoo/ESPN/Sleeper UX prior art)
+**Status:** ⚠️ **PIVOT PROPOSED** — PR1 SHIPPED (#167); PR2 redesign pending review
+**Author:** Plan agent (synthesis from codebase audit + Yahoo/ESPN/Sleeper UX prior art) + 10-agent deepening pass
 
 > **Implementation status as of 2026-04-29:**
 > - ✅ **PR1 merged as commit `658822b`** — server-side auto-resolve, bipartite matcher, three endpoint integrations, `Roster.displayOrder` schema field, `LeagueRule(transactions.auto_resolve_slots)` flag, toast wiring on all 3 RosterMoves panels. +37 server tests / +5 client tests.
-> - ✅ **Visual preview merged as commit `a8616c5`** (PR #169) — admin-only at `/design/swap-mode`. Click-through of all 7 visual states with mock data. PR2 will reuse the same components.
-> - 🚧 **PR2 pending** — Swap Mode UI wire-up, `POST /api/teams/:teamId/lineup` endpoint, drag-reorder UX populating `Roster.displayOrder`, commissioner integration.
+> - ✅ **Visual preview merged as commit `a8616c5`** (PR #169) — admin-only at `/design/swap-mode`. Click-through of all 7 visual states with mock data.
+> - ⚠️ **User feedback after preview review (2026-04-29)**: "I don't see the free agent swap nor the IL stash or activate either. Also, why aren't we using tables? The Swap Mode UI… not sure how it is supposed to work." Triggered a 10-agent deepening pass — see §0 below.
+> - 🚧 **PR2 redesign proposed** — see §0 (Deepening synthesis) for the new direction.
+
+## §0 — Deepening synthesis (2026-04-29) — MAJOR PIVOT PROPOSED
+
+After user review of the visual preview surfaced three concerns (missing flows / why not tables / interaction unclear), 10 specialized research agents performed a deepening pass on the plan. Their findings converge unanimously on a substantially different direction than originally proposed.
+
+### Agents that ran
+
+| Agent | Finding |
+|-------|---------|
+| `best-practices-researcher` | Yahoo / ESPN / Fantrax 2026 = **hub-and-spokes**, NOT one mega-page. Position pill itself is the affordance. No "Swap Mode" toggle in modern Yahoo. |
+| `architecture-strategist` | Direction B (narrow scope), HIGH confidence. User confusion is a *navigation/labeling* problem, not composition. |
+| `code-simplicity-reviewer` | ~40% of PR2 surface area can be cut: drop `/lineup` endpoint, drop `Roster.displayOrder`, drop the LeagueRule flag, collapse 3 error codes to 1. |
+| `agent-native-reviewer` | Two API gaps: (a) `slotsFor()` is client-side only — needs `GET /api/players/:id/eligible-slots`, (b) `displayOrder` would have UI without API parity. |
+| `framework-docs-researcher` | **`@dnd-kit` is already installed** at `TeamRosterManager.tsx`. Don't add framer-motion. Sample drag-and-drop code provided. |
+| `julik-frontend-races-reviewer` | 5 race conditions identified — most critical: cross-tab roster mutation (need `rosterVersion` etag + 409 STALE_ROSTER). |
+| `performance-oracle` | Mobile Safari backdrop-filter + animated borders = 30-45fps cliff. `appliedReassignments.playerName` is N+1 risk. Memoize `SlotCell` with `React.memo`. |
+| `repo-research-analyst` | `ThemedTable` already supports everything needed (frozen columns, sortable, per-row actions). Cards-based `RosterGrid` is the awkward outlier. |
+| `learnings-researcher` | `positionToSlots()` is canonical eligibility helper. Past learnings: `table-layout: fixed`, `min-w-[600px]` mobile, no backdrop-blur on sticky headers. |
+| `kieran-typescript-reviewer` | API contracts use `string` slots when `SlotCode` literal type exists. Adopt Zod-as-source-of-truth pattern from `shared/api/playerSeasonStats.ts`. |
+
+### The unanimous direction shift
+
+**Abandon the standalone Swap Mode page entirely.** The new direction:
+
+1. **Hub = the existing Team page roster table** (`/teams/:code`). It becomes the unified roster-management surface. No new page.
+2. **Switch the roster display from `RosterGrid` (cards) to `ThemedTable`** — matches Players, AuctionValues, ActivityHistory, all of which use the canonical table primitive.
+3. **Position pill on each row is the primary affordance** (Yahoo's actual production model). Tap pill → legal destinations highlight green/iridescent across the roster + IL pool → tap to commit. No mode toggle.
+4. **Existing AddDrop / IL Stash / IL Activate panels stay** as focused subviews, but their *entry points* live on the row's pill menu (e.g., "Add free agent here", "Stash on IL", "Drop"). One hub, four spokes.
+5. **dnd-kit drag-and-drop** as an alternative to click-then-click (we already have it installed, used in `TeamRosterManager.tsx`). Keyboard-accessible by default. Mobile-friendly with TouchSensor.
+6. **Each click/drag is a fire-on-change PATCH** to `/api/teams/:teamId/roster/:rosterId` (the existing endpoint), not a batched Save. Matches the existing `RosterGrid` and `AuctionCompleteLegacy` patterns. Optimistic update + revert on failure.
+
+### What gets cut from PR2 (per simplicity reviewer)
+
+- ❌ Standalone `SwapMode.tsx` page → instead enhance `Team.tsx`
+- ❌ `POST /api/teams/:teamId/lineup` endpoint → reuse existing per-row PATCH
+- ❌ `Roster.displayOrder` field → revert PR1's migration; use `acquiredAt` as implicit order
+- ❌ `LeagueRule(transactions.auto_resolve_slots)` flag → always-on (OGBA is the only league anyway)
+- ❌ Drag-reorder pitchers/OF → not needed; sort client-side by stat
+- ❌ 3 error codes (`NO_LEGAL_ASSIGNMENT`, `INVALID_LINEUP`, `ELIGIBILITY_LOST_MID_OPERATION`) → collapse to single `error` + `reason` string
+- ❌ 7 visual states → 4 (idle, selected, pending, submitting)
+- ❌ Framer Motion `layout` reflow on auto-resolve pulse → CSS transition only
+- ❌ Standalone `SwapStateProvider` context → component-local `useReducer`
+
+### What gets added (from race + perf + agent-native + ts reviewers)
+
+- ✅ **Cross-tab safety**: every PATCH carries `If-Unmodified-Since` (or `rosterVersion` etag); server returns `409 STALE_ROSTER` on mismatch; client refetches and reconciles
+- ✅ **`GET /api/players/:id/eligible-slots?leagueId=X`** — server endpoint exposing `slotsFor(posList)` for agent parity
+- ✅ **Memoize `SlotCell` and `RosterRow`** with `React.memo` keyed on `(playerId, assignedPosition, isSelected, isEligible)`
+- ✅ **Type-safe slot codes**: replace `string` with `SlotCode` (literal union from `client/src/lib/sports/baseball.ts:27`) in all API contracts
+- ✅ **Zod schemas at `shared/api/rosterMoves.ts`**: server validates outbound, client validates inbound, contract-test ensures alignment
+- ✅ **Mobile perf**: animate `opacity` only (not background-image / border-color); `prefers-reduced-motion` fallback; remove backdrop-filter from animated cells
+- ✅ **N+1 prevention**: `playerName` flows through `RosterCandidate` → `SlotAssignment` → response without extra DB reads
+- ✅ **Pending row visual treatment**: left-edge accent bar + tinted row background + inline "↩ revert" icon — establishes a NEW shared pattern that future batch-save tables can reuse
+
+### Revised rollout — single PR2
+
+PR2 becomes substantially smaller and more focused:
+
+- Modify `Team.tsx` to render roster via `ThemedTable` (replacing `RosterGrid`'s card layout for owner view)
+- Add per-row position pill with click-to-highlight-eligible behavior
+- Add per-row "..." action menu surfacing existing AddDrop / IL Stash / IL Activate panels as modals
+- Wire dnd-kit for optional drag-to-swap (uses existing PATCH endpoint)
+- Add `GET /api/players/:id/eligible-slots` endpoint
+- Revert PR1's `Roster.displayOrder` migration (add a migration to drop the column + index)
+- Remove `LeagueRule(transactions.auto_resolve_slots)` flag — collapse to always-on path
+- Tests: ~25 (down from ~42 originally projected)
+
+Estimated: **1.5 sessions** (down from 2 sessions)
+
+### Open questions for user (must answer before PR2 starts)
+
+1. **Approve the pivot?** The new direction is materially different from what you signed off on in §11's resolved decisions. The user-research signal (your reaction to the preview + 10-agent independent convergence) strongly suggests this is right, but it's still a re-vote.
+2. **`Roster.displayOrder` migration revert** — PR1 already shipped this column. Reverting is a backward-incompatible schema change but trivial since nothing populates it yet. OK to revert?
+3. **Replace `RosterGrid` cards on the Team page** — this is the most invasive UI change. Owners currently see cards for the active roster; they'd see a table going forward. Visually consistent with the rest of the app, but a user-facing change. Approve?
+4. **dnd-kit drag-and-drop as primary or secondary affordance?** Click-then-click is more discoverable; drag is faster for power users. Default to both (dnd-kit supports both via `useDraggable` + `onClick`)?
+
+> Sections 1-12 below preserve the original plan as historical context. The active plan from this point forward is §0 (this section). Section 11 (resolved decisions) is partially superseded — Q3 (`Roster.displayOrder` for drag-reorder) and Q6 (iridescent pulse + Framer Motion) are particularly affected.
 
 ## Spec corrections (2026-04-29, post-preview)
 
