@@ -15,6 +15,7 @@
 // pages (see `Admin.tsx`).
 
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Glass, SectionLabel } from "../../components/aurora/atoms";
 import { useAuth } from "../../auth/AuthProvider";
 import { SwapMode } from "../../features/transactions/components/SwapMode";
@@ -359,6 +360,9 @@ export default function SwapModePreview() {
           Use the floating control panel (top-right) to cycle through the seven canonical states. Clicking any
           occupant in the cards selects them and lights up their eligible slots, demonstrating the
           "valid slots light up" north star.
+        </p>
+        <p style={{ marginTop: 8, fontSize: 12, color: "var(--am-text-faint)" }}>
+          This is the v1 (cards-based) approach. <Link to="/design/roster-hub" style={{ color: "var(--am-text-muted)" }}>v2 preview at /design/roster-hub →</Link>
         </p>
       </Glass>
 

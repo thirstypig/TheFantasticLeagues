@@ -1,0 +1,290 @@
+/*
+ * RosterHub preview styles. Co-located with the components that
+ * consume them so PR2 can extract candidate utilities to `aurora.css`
+ * once the patterns are validated on real data.
+ *
+ * The most novel pattern here is the "pending row" treatment:
+ *   - 4px iridescent left-edge accent bar
+ *   - Subtle iridescent tint on the row background
+ *   - Inline ↩ revert affordance at the right edge
+ * Documented because PR2 may want to make this a reusable utility
+ * for future batch-save tables.
+ */
+
+/* ─── Eligible-slot glow (used on rows when a player is selected) ─── */
+
+@keyframes am-roster-row-pulse {
+  0% {
+    box-shadow: 0 0 0 1px rgba(74, 140, 255, 0.40), 0 0 14px rgba(138, 43, 214, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(214, 43, 155, 0.55), 0 0 24px rgba(74, 140, 255, 0.28);
+  }
+  100% {
+    box-shadow: 0 0 0 1px rgba(74, 140, 255, 0.40), 0 0 14px rgba(138, 43, 214, 0.12);
+  }
+}
+
+/* prefers-reduced-motion fallback — replace pulse with a static ring
+ * tinted in iridescent purple. Per perf-oracle guidance: no animated
+ * properties when the OS prefers stillness. */
+@media (prefers-reduced-motion: reduce) {
+  .am-roster-row-eligible {
+    animation: none !important;
+    box-shadow: 0 0 0 1px rgba(138, 43, 214, 0.45), 0 0 8px rgba(74, 140, 255, 0.20) !important;
+  }
+}
+
+/* ─── Pending-change row treatment ─────────────────────────────── */
+
+/*
+ * The accent bar is rendered as a ::before pseudo-element so the row
+ * height stays exactly equal to non-pending rows (no layout shift
+ * when a row enters/exits the pending state).
+ */
+.am-roster-row-pending {
+  position: relative;
+  background: color-mix(in srgb, #2f6df0 8%, transparent);
+}
+
+.am-roster-row-pending::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #00b894 0%, #2f6df0 50%, #d62b9b 100%);
+  pointer-events: none;
+}
+
+/* Modified-name marker — small dot prefix before the player name on
+ * pending rows. Matches the "*" / "•" hint mentioned in the spec. */
+.am-roster-row-pending .am-roster-name-modified-marker {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, #00b894, #d62b9b);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* Inline revert icon — visible at right edge of pending rows. */
+.am-roster-revert-button {
+  background: transparent;
+  border: 0;
+  padding: 4px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #7682a8;
+  font-size: 13px;
+  line-height: 1;
+  transition: color 120ms ease, background 120ms ease;
+  /* Touch target ≥ 32px once padding is included; adjacent rows pad
+   * the row up to 44px to satisfy the iOS guideline. */
+  min-width: 32px;
+  min-height: 32px;
+}
+.am-roster-revert-button:hover,
+.am-roster-revert-button:focus-visible {
+  color: #2f6df0;
+  background: rgba(47, 109, 240, 0.10);
+  outline: none;
+}
+
+/* ─── Position pill — interactive variant ─────────────────────── */
+
+.am-roster-pill {
+  /* Touch target floor — 44×44 minimum on mobile (iOS HIG). On desktop
+   * the visual box can be smaller but the click area still extends. */
+  min-width: 44px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  border: 1px solid var(--am-border);
+  background: var(--am-chip);
+  color: var(--am-text-muted);
+  transition: opacity 160ms ease, color 160ms ease;
+}
+
+.am-roster-pill:hover,
+.am-roster-pill:focus-visible {
+  outline: none;
+  color: var(--am-text);
+  border-color: var(--am-border-strong);
+}
+
+/* Selected pill — iridescent fill, white text. */
+.am-roster-pill[data-selected="true"] {
+  background: var(--am-irid);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* Eligible (non-selected) pill — iridescent ring + ambient glow. */
+.am-roster-pill[data-eligible="true"] {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(74, 140, 255, 0.55), 0 0 10px rgba(138, 43, 214, 0.18);
+  color: var(--am-text);
+}
+
+/* Ineligible pill — dimmed when another player is selected. */
+.am-roster-pill[data-dimmed="true"] {
+  opacity: 0.35;
+}
+
+/* ─── Row-level eligibility highlight ─────────────────────────── */
+
+/*
+ * When a player is selected, eligible destination *rows* gain a
+ * full-row ring (not per-cell). Single overlay rather than per-cell
+ * border animation per perf-oracle guidance.
+ */
+.am-roster-row-eligible {
+  animation: am-roster-row-pulse 2.4s ease-in-out infinite;
+  border-radius: 8px;
+  background: color-mix(in srgb, #2f6df0 4%, transparent);
+}
+
+.am-roster-row-dimmed {
+  opacity: 0.42;
+}
+
+/* ─── Drag-and-drop visual state ──────────────────────────────── */
+
+.am-roster-row-dragging-source {
+  opacity: 0.35;
+  background: var(--am-chip);
+}
+
+.am-roster-row-drop-target {
+  background: color-mix(in srgb, #00b894 6%, transparent);
+}
+
+.am-roster-ghost {
+  position: fixed;
+  z-index: 60;
+  background: var(--am-surface-strong);
+  border: 1px solid var(--am-border-strong);
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--am-text);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* ─── Mobile collapsed view ───────────────────────────────────── */
+
+/*
+ * At ≤640px the table collapses to a list-row layout. Each row spans
+ * the viewport width with three regions: pill / name / actions.
+ *
+ * Note: we use `min-h-svh` semantics on the page wrapper rather than
+ * `100vh` per the iOS Safari learning. AppShell handles overflow.
+ */
+@media (max-width: 640px) {
+  .am-roster-mobile-row {
+    display: grid;
+    grid-template-columns: 64px 1fr 44px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--am-border);
+    min-height: 60px;
+  }
+
+  .am-roster-mobile-row:first-child {
+    border-top: 1px solid var(--am-border);
+  }
+}
+
+/* ─── Action menu (per-row "...") ─────────────────────────────── */
+
+.am-roster-action-menu {
+  position: absolute;
+  z-index: 30;
+  min-width: 200px;
+  background: var(--am-surface-strong);
+  border: 1px solid var(--am-border-strong);
+  border-radius: 14px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+.am-roster-action-menu button {
+  text-align: left;
+  font-size: 12.5px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--am-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.am-roster-action-menu button:hover,
+.am-roster-action-menu button:focus-visible {
+  background: var(--am-chip-strong);
+  outline: none;
+}
+
+.am-roster-action-menu button[data-destructive="true"] {
+  color: #c41a85;
+}
+
+.am-roster-action-menu hr {
+  border: 0;
+  border-top: 1px solid var(--am-border);
+  margin: 4px 6px;
+}
+
+/* ─── Action trigger button (the "..." icon) ──────────────────── */
+
+.am-roster-action-trigger {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--am-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.am-roster-action-trigger:hover,
+.am-roster-action-trigger:focus-visible {
+  color: var(--am-text);
+  background: var(--am-chip);
+  outline: none;
+}
