@@ -80,7 +80,7 @@ const docs: DocEntry[] = [
   { name: "Auth + Members Plan", filename: "docs/PLAN-AUTH-MEMBERS.md", content: planAuth, category: "docs", icon: Shield, description: "Auth fixes and commissioner member management" },
   { name: "Legacy Roadmap", filename: "docs/ROADMAP.md", content: roadmapDoc, category: "docs", icon: Settings, description: "Historical security & quality roadmap" },
   // docs/plans/ — active proposals awaiting review
-  { name: "Yahoo-Style Roster Moves", filename: "docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md", content: planYahooRosterMoves, category: "proposal", icon: ClipboardList, description: "PR1 SHIPPED. PR2 design preview at /design/swap-mode (admin only)" },
+  { name: "Yahoo-Style Roster Moves", filename: "docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md", content: planYahooRosterMoves, category: "proposal", icon: ClipboardList, description: "⚠️ PR2 PIVOT after 10-agent deepening — see §0. Hub-and-spokes via Team page table, no standalone Swap Mode" },
 ];
 
 /* ── Simple markdown renderer ───────────────────────────────────── */
