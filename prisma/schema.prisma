@@ -1115,6 +1115,10 @@ model AiInsight {
   @@index([teamId])
   @@index([leagueId])
   @@index([leagueId, type])
+  // Matches the (type, leagueId, weekKey) filter used by 3 query sites
+  // (digest dedup + reportBuilder lookups). The 4-col unique above can
+  // serve type+leagueId but must scan for weekKey. See Issue #086.
+  @@index([type, leagueId, weekKey])
 }
 
 model AuditLog {

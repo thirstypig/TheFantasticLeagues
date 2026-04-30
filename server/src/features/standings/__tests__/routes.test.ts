@@ -179,6 +179,150 @@ describe("GET /period-category-standings", () => {
   });
 });
 
+// ── Season-to-date weighted averaging (Issue #109) ──────────────
+//
+// `/period-category-standings` exposes `seasonValue` per category row.
+// Rate stats (AVG/ERA/WHIP) must be computed by re-aggregating their
+// underlying components (H/AB, ER/IP, BB_H/IP) across periods, NOT by
+// arithmetic mean of the per-period rate. The classic counter-example:
+// .300 in 100 AB and .200 in 400 AB is .220, NOT the unweighted .250.
+
+describe("GET /period-category-standings — season-to-date weighted averaging", () => {
+  // Two periods with very different volumes, designed so weighted vs
+  // unweighted produce visibly different numbers.
+  const periodOneStats = [
+    {
+      team: { id: 1, name: "Team A", code: "TMA" },
+      R: 10, HR: 2, RBI: 8, SB: 1,
+      AVG: 0.300, // 30 H / 100 AB
+      W: 1, S: 0, ERA: 9.00, // 10 ER, 10 IP
+      WHIP: 1.50, // BB_H = 15, IP = 10
+      K: 5,
+      H: 30, AB: 100, ER: 10, IP: 10, BB_H: 15,
+    },
+  ];
+  const periodTwoStats = [
+    {
+      team: { id: 1, name: "Team A", code: "TMA" },
+      R: 40, HR: 8, RBI: 32, SB: 4,
+      AVG: 0.200, // 80 H / 400 AB
+      W: 4, S: 0, ERA: 1.00, // 10 ER, 90 IP
+      WHIP: 1.00, // BB_H = 90, IP = 90
+      K: 20,
+      H: 80, AB: 400, ER: 10, IP: 90, BB_H: 90,
+    },
+  ];
+
+  beforeEach(() => {
+    // Two periods covered by allPeriods; computeTeamStatsFromDb returns
+    // current period (period 5 = period 2 in this fixture). The OTHER
+    // period is fetched separately.
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5, status: "active" });
+    mockPrisma.period.findUnique.mockResolvedValue({
+      id: 5,
+      startDate: new Date("2026-04-15"),
+      endDate: new Date("2026-04-30"),
+    });
+    mockPrisma.period.findMany.mockResolvedValue([
+      { id: 4, startDate: new Date("2026-04-01"), endDate: new Date("2026-04-14") },
+      { id: 5, startDate: new Date("2026-04-15"), endDate: new Date("2026-04-30") },
+    ]);
+    // Track call count to differentiate periods
+    let call = 0;
+    mockComputeTeamStatsFromDb.mockImplementation(async (_leagueId: number, pid: number) => {
+      call++;
+      // First call (the route's own current-period call) → periodTwoStats (id 5)
+      // Subsequent calls inside Promise.all are for non-current periods → periodOneStats (id 4)
+      if (pid === 5) return periodTwoStats;
+      return periodOneStats;
+    });
+    mockComputeStandingsFromStats.mockReturnValue([
+      { teamId: 1, teamName: "Team A", points: 10, rank: 1, delta: 0 },
+    ]);
+    mockComputeCategoryRows.mockImplementation((stats: any[]) =>
+      stats.map((s) => ({
+        teamId: s.team.id,
+        teamName: s.team.name,
+        teamCode: s.team.code,
+        value: 0,
+        rank: 1,
+        points: 1,
+      })),
+    );
+  });
+
+  it("computes AVG by sum(H)/sum(AB), not arithmetic mean of period AVG", async () => {
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+    expect(res.status).toBe(200);
+
+    const avgCat = res.body.categories.find((c: any) => c.key === "AVG");
+    expect(avgCat).toBeDefined();
+    const teamA = avgCat.rows.find((r: any) => r.teamId === 1);
+
+    // Correct (weighted): (30 + 80) / (100 + 400) = 110/500 = 0.220
+    // Wrong (unweighted period mean): (0.300 + 0.200) / 2 = 0.250
+    expect(teamA.seasonValue).toBeCloseTo(0.220, 3);
+    expect(teamA.seasonValue).not.toBeCloseTo(0.250, 3);
+  });
+
+  it("computes ERA by sum(ER)*9/sum(IP), not arithmetic mean of period ERA", async () => {
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    const eraCat = res.body.categories.find((c: any) => c.key === "ERA");
+    const teamA = eraCat.rows.find((r: any) => r.teamId === 1);
+
+    // Correct (weighted): (10 + 10) * 9 / (10 + 90) = 180/100 = 1.80
+    // Wrong (unweighted period mean): (9.00 + 1.00) / 2 = 5.00
+    expect(teamA.seasonValue).toBeCloseTo(1.80, 2);
+    expect(teamA.seasonValue).not.toBeCloseTo(5.00, 2);
+  });
+
+  it("computes WHIP by sum(BB_H)/sum(IP), not arithmetic mean of period WHIP", async () => {
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    const whipCat = res.body.categories.find((c: any) => c.key === "WHIP");
+    const teamA = whipCat.rows.find((r: any) => r.teamId === 1);
+
+    // Correct (weighted): (15 + 90) / (10 + 90) = 105/100 = 1.05
+    // Wrong (unweighted period mean): (1.50 + 1.00) / 2 = 1.25
+    expect(teamA.seasonValue).toBeCloseTo(1.05, 2);
+    expect(teamA.seasonValue).not.toBeCloseTo(1.25, 2);
+  });
+
+  it("returns 0 for rate stats when components are zero (divide-by-zero guard)", async () => {
+    // Override: a team with zero AB and zero IP across all periods.
+    const emptyHittingPitching = [
+      {
+        team: { id: 1, name: "Team A", code: "TMA" },
+        R: 0, HR: 0, RBI: 0, SB: 0,
+        AVG: 0, W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
+        H: 0, AB: 0, ER: 0, IP: 0, BB_H: 0,
+      },
+    ];
+    mockComputeTeamStatsFromDb.mockReset();
+    mockComputeTeamStatsFromDb.mockResolvedValue(emptyHittingPitching);
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+    expect(res.status).toBe(200);
+
+    for (const key of ["AVG", "ERA", "WHIP"]) {
+      const cat = res.body.categories.find((c: any) => c.key === key);
+      const teamA = cat.rows.find((r: any) => r.teamId === 1);
+      // Existing convention is to return 0 (not null) — see services/standingsService.ts.
+      expect(teamA.seasonValue).toBe(0);
+    }
+  });
+
+  it("preserves counting stats as straight sums (not weighted)", async () => {
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    const rCat = res.body.categories.find((c: any) => c.key === "R");
+    const teamA = rCat.rows.find((r: any) => r.teamId === 1);
+    // R = 10 + 40 = 50
+    expect(teamA.seasonValue).toBe(50);
+  });
+});
+
 // ── GET /season ──────────────────────────────────────────────────
 
 describe("GET /season", () => {

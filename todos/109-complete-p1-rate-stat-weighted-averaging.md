@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "109"
 tags: [code-review, correctness, standings]
@@ -27,10 +27,11 @@ Add H, AB, ER, IP, BB_H to the season totals accumulation. Compute AVG = total_H
 - **Risk**: Low — covered by standings tests
 
 ## Acceptance Criteria
-- [ ] Season AVG = sum(H) / sum(AB) across periods, not avg(AVG)
-- [ ] Season ERA = sum(ER) * 9 / sum(IP), not avg(ERA)
-- [ ] Season WHIP = sum(BB_H) / sum(IP), not avg(WHIP)
-- [ ] Standings tests pass
+- [x] Season AVG = sum(H) / sum(AB) across periods, not avg(AVG)
+- [x] Season ERA = sum(ER) * 9 / sum(IP), not avg(ERA)
+- [x] Season WHIP = sum(BB_H) / sum(IP), not avg(WHIP)
+- [x] Standings tests pass
 
 ## Work Log
 - **2026-04-17** (Session 67 review): Flagged by performance-oracle as P0 correctness bug.
+- **2026-04-30**: Implemented Solution 1. Extended `TeamStatRow` with optional H/AB/ER/IP/BB_H components and populated them in both DB compute paths (`computeWithDailyStats`, `computeWithPeriodStats`) plus the CSV path (`aggregatePeriodStatsFromCsv`). Rewrote the season-totals reducer in `server/src/features/standings/routes.ts:122-160` to recompute rate stats from accumulated components instead of dividing per-period rates by period count. Divide-by-zero falls back to 0 (matches existing service convention). Added 5 new route tests in `server/src/features/standings/__tests__/routes.test.ts` proving (a) AVG/ERA/WHIP all use weighted formulas, (b) unweighted period-mean values are explicitly rejected, (c) zero-AB / zero-IP returns 0, (d) counting stats remain straight sums. All 855 server tests pass.

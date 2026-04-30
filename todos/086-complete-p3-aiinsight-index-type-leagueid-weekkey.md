@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "086"
 tags: [code-review, performance, database]
@@ -23,3 +23,4 @@ Add `@@index([type, leagueId, weekKey])` to AiInsight model in next migration.
 | Date | Action | Learnings |
 |------|--------|-----------|
 | 2026-03-24 | Created from performance review | Low priority — tiny table |
+| 2026-04-30 | Added `@@index([type, leagueId, weekKey])` to `AiInsight` in `prisma/schema.prisma` and shipped migration `20260430000000_aiinsight_3col_index/migration.sql` (CREATE INDEX only — no drops, fully additive). Railway runs `prisma migrate deploy` on boot per memory note, so the index lands automatically on next deploy. | Manually wrote migration SQL because shared Supabase note in MEMORY.md warns that `prisma migrate dev` would write to prod from local. Pattern matches existing migration files. |
