@@ -120,24 +120,44 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     )
   );
 
-  const seasonTotals = new Map<number, Record<string, number>>();
+  // Season totals across all periods. Counting stats accumulate directly.
+  // Rate stats (AVG/ERA/WHIP) are recomputed from accumulated components
+  // (H/AB/ER/IP/BB_H) so cross-period weighting is correct — see Issue #109.
+  // (Unweighted period-mean would compute .250 for .300/100AB + .200/400AB
+  //  instead of the correct .220.)
+  const seasonTotals = new Map<number, {
+    R: number; HR: number; RBI: number; SB: number;
+    W: number; S: number; K: number;
+    H: number; AB: number; ER: number; IP: number; BB_H: number;
+    AVG: number; ERA: number; WHIP: number;
+  }>();
   for (const pStats of allPeriodStats) {
     for (const t of pStats) {
-      const prev = seasonTotals.get(t.team.id) ?? { R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, K: 0, ERA: 0, WHIP: 0 };
+      const prev = seasonTotals.get(t.team.id) ?? {
+        R: 0, HR: 0, RBI: 0, SB: 0,
+        W: 0, S: 0, K: 0,
+        H: 0, AB: 0, ER: 0, IP: 0, BB_H: 0,
+        AVG: 0, ERA: 0, WHIP: 0,
+      };
       prev.R += t.R; prev.HR += t.HR; prev.RBI += t.RBI; prev.SB += t.SB;
       prev.W += t.W; prev.S += t.S; prev.K += t.K;
-      // Rate stats: accumulate for averaging (components not available in TeamStatRow)
-      prev.AVG += t.AVG; prev.ERA += t.ERA; prev.WHIP += t.WHIP;
+      // Accumulate rate-stat components for weighted averaging.
+      prev.H += t.H ?? 0;
+      prev.AB += t.AB ?? 0;
+      prev.ER += t.ER ?? 0;
+      prev.IP += t.IP ?? 0;
+      prev.BB_H += t.BB_H ?? 0;
       seasonTotals.set(t.team.id, prev);
     }
   }
-  const periodCount = allPeriodStats.length;
-  if (periodCount > 0) {
-    for (const totals of seasonTotals.values()) {
-      totals.AVG /= periodCount;
-      totals.ERA /= periodCount;
-      totals.WHIP /= periodCount;
-    }
+  for (const totals of seasonTotals.values()) {
+    // AVG = sum(H) / sum(AB).
+    totals.AVG = totals.AB > 0 ? totals.H / totals.AB : 0;
+    // ERA = sum(ER) * 9 / sum(IP).
+    totals.ERA = totals.IP > 0 ? (totals.ER / totals.IP) * 9 : 0;
+    // WHIP = sum(BB+H) / sum(IP). NB: the "BB_H" column already stores
+    // walks-plus-hits-allowed (pitching), per services/standingsService.ts.
+    totals.WHIP = totals.IP > 0 ? totals.BB_H / totals.IP : 0;
   }
 
   const currentStandings = computeStandingsFromStats(teamStats);
@@ -196,7 +216,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     const dbField = KEY_TO_DB_FIELD[cfg.key] || cfg.key;
     for (const row of rows) {
       const sTotals = seasonTotals.get(row.teamId);
-      (row as any).seasonValue = sTotals?.[dbField] ?? 0;
+      (row as any).seasonValue = (sTotals as Record<string, number> | undefined)?.[dbField] ?? 0;
 
       // Day-over-day raw-value delta from the persisted daily snapshot.
       // null when no snapshot exists for the compare date — client renders "—".

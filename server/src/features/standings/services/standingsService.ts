@@ -30,7 +30,15 @@ export interface TeamStatRow {
   ERA: number;
   WHIP: number;
   K: number;
-  [key: string]: number | { id: number; name: string; code: string };
+  // Underlying components for rate stats. Optional because not all callers
+  // populate them (e.g. legacy DB-snapshot rows in `period-category-standings`).
+  // Required for correct cross-period weighted averaging — see Issue #109.
+  H?: number;
+  AB?: number;
+  ER?: number;
+  IP?: number;
+  BB_H?: number;
+  [key: string]: number | { id: number; name: string; code: string } | undefined;
 }
 
 /** A single category ranking row */
@@ -291,6 +299,12 @@ export function aggregatePeriodStatsFromCsv(
       ERA,
       WHIP,
       K: team.K,
+      // Components for weighted cross-period averaging (Issue #109)
+      H: team.H,
+      AB: team.AB,
+      ER: team.ER,
+      IP: team.IP,
+      BB_H: team.BB_H,
     });
     idx++;
   }
@@ -485,6 +499,8 @@ async function computeWithDailyStats(
       W: acc.W, S: acc.S, K: acc.K,
       ERA: acc.IP > 0 ? (acc.ER / acc.IP) * 9 : 0,
       WHIP: acc.IP > 0 ? acc.BB_H / acc.IP : 0,
+      // Components for weighted cross-period averaging (Issue #109)
+      H: acc.H, AB: acc.AB, ER: acc.ER, IP: acc.IP, BB_H: acc.BB_H,
     };
   });
 }
@@ -573,6 +589,8 @@ async function computeWithPeriodStats(
       W, S, K,
       ERA: IP > 0 ? (ER / IP) * 9 : 0,
       WHIP: IP > 0 ? BB_H / IP : 0,
+      // Components for weighted cross-period averaging (Issue #109)
+      H, AB, ER, IP, BB_H,
     };
   });
 }
