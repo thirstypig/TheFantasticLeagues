@@ -159,9 +159,13 @@ export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<
 }
 
 export async function fetchJsonPublic<T>(url: string): Promise<T> {
+  // Mirror fetchJsonApi's 30s timeout — public fetches (MLB stats API,
+  // RSS aggregators) can stall on a flaky upstream and never reject without
+  // an AbortController.
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     credentials: "omit",
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   const requestId = res.headers.get("x-request-id");

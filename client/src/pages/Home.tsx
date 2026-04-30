@@ -83,15 +83,20 @@ export default function Home() {
 
       if (standingsRes.status === "fulfilled") {
         const periodIds = standingsRes.value.periodIds ?? [];
-        const rows = (standingsRes.value.rows ?? []).map((row: any): StandingsRow => {
-          const periodPoints = Array.isArray(row.periodPoints) && row.periodPoints.length
-            ? periodIds.map((_pid: number, i: number) => toNum(row.periodPoints[i]))
-            : periodIds.map((pid: number) => toNum(row[`P${pid}`]));
+        // Standings rows are `Record<string, unknown>` at the API boundary
+        // (the server returns dynamic `Pn` columns plus an optional
+        // `periodPoints` array). Narrow each field as we extract it.
+        const rows = (standingsRes.value.rows ?? []).map((row): StandingsRow => {
+          const r = row as Record<string, unknown>;
+          const periodPointsRaw = r.periodPoints;
+          const periodPoints = Array.isArray(periodPointsRaw) && periodPointsRaw.length
+            ? periodIds.map((_pid, i) => toNum(periodPointsRaw[i]))
+            : periodIds.map((pid) => toNum(r[`P${pid}`]));
           return {
-            teamId: row.teamId,
-            teamName: row.teamName,
-            teamCode: row.teamCode,
-            owner: row.owner,
+            teamId: Number(r.teamId),
+            teamName: String(r.teamName ?? ""),
+            teamCode: typeof r.teamCode === "string" ? r.teamCode : undefined,
+            owner: typeof r.owner === "string" ? r.owner : undefined,
             totalPoints: sumNums(periodPoints),
             periodPoints,
           };
@@ -356,15 +361,24 @@ export default function Home() {
               )}
               <div style={{ marginTop: 6 }}>
                 {activity.map((a, i) => {
-                  const ago = timeAgo((a as any).effectiveDate ?? (a as any).createdAt);
-                  const type = String((a as any).transactionType ?? (a as any).type ?? "Move");
+                  // The server augments TransactionEvent with optional legacy
+                  // fields (effDate, effDateRaw, transactionRaw, etc.) plus a
+                  // few that aren't on the public type yet — read those via a
+                  // narrow once-cast here rather than littering the body.
+                  const extras = a as TransactionEvent & {
+                    effectiveDate?: string;
+                    createdAt?: string;
+                    transactionType?: string;
+                  };
+                  const ago = timeAgo(extras.effectiveDate ?? extras.createdAt);
+                  const type = String(extras.transactionType ?? a.type ?? "Move");
                   const text =
-                    (a as any).playerAliasRaw ??
-                    (a as any).transactionRaw ??
-                    [type, (a as any).ogbaTeamName].filter(Boolean).join(" · ");
+                    a.playerAliasRaw ??
+                    a.transactionRaw ??
+                    [type, a.ogbaTeamName].filter(Boolean).join(" · ");
                   return (
                     <div
-                      key={(a as any).id ?? i}
+                      key={a.id ?? i}
                       style={{
                         display: "grid",
                         gridTemplateColumns: "44px 70px 1fr",

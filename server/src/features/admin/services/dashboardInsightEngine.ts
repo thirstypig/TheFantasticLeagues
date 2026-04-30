@@ -7,14 +7,9 @@
  * Cap: 1 insight per tile to avoid noise.
  */
 
-import type { DashboardResponse, StatTileData } from "./dashboardService.js";
+import type { DashboardResponse, InlineInsight } from "./dashboardService.js";
 
-export interface InlineInsight {
-  analysis: string;
-  action: string;
-  priority: "high" | "medium" | "low";
-  generatedBy: "rules" | "ai";
-}
+export type { InlineInsight };
 
 type InsightRule = (ctx: DashboardResponse) => {
   tileId: string;

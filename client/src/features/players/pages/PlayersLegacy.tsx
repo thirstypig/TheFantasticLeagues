@@ -73,9 +73,8 @@ export default function PlayersLegacy() {
   const [filterPos, setFilterPos] = useState<string>('ALL');
   const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('NL');
 
-  // Sort — desc derived from URL
-  const setSortDesc = (_v: boolean) => {}; // no-op, managed via URL
-
+  // Sort — desc derived from URL; no setter needed because the URL search
+  // params are the single source of truth (any "set" goes through setSearchParams).
   const handleSort = (key: string) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
