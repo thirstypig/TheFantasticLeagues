@@ -6,7 +6,24 @@
 
 > **Implementation status as of 2026-04-29:**
 > - ✅ **PR1 merged as commit `658822b`** — server-side auto-resolve, bipartite matcher, three endpoint integrations, `Roster.displayOrder` schema field, `LeagueRule(transactions.auto_resolve_slots)` flag, toast wiring on all 3 RosterMoves panels. +37 server tests / +5 client tests.
-> - 🚧 **PR2 pending** — Swap Mode UI, `POST /api/teams/:teamId/lineup` endpoint, drag-reorder UX populating `Roster.displayOrder`, commissioner integration, Aurora visual polish.
+> - ✅ **Visual preview merged as commit `a8616c5`** (PR #169) — admin-only at `/design/swap-mode`. Click-through of all 7 visual states with mock data. PR2 will reuse the same components.
+> - 🚧 **PR2 pending** — Swap Mode UI wire-up, `POST /api/teams/:teamId/lineup` endpoint, drag-reorder UX populating `Roster.displayOrder`, commissioner integration.
+
+## Spec corrections (2026-04-29, post-preview)
+
+Surfaced during PR #169 build — original plan diverged from codebase. Plan now matches code:
+
+| Original | Corrected | Source of truth |
+|----------|-----------|-----------------|
+| `CI` slot label | `CM` (corner-man, 1B/3B eligible) | `client/src/lib/sports/baseball.ts:27` `SLOT_CODES` |
+| `UT` / `UTIL` slot label | `DH` (designated hitter, hitters-only) | Same — and "UTIL" was misleading since DH is bat-only |
+| OF capacity 3 | OF capacity **5** | `client/src/lib/sports/baseball.ts:209` `rosterSlots` |
+| C capacity 1 | C capacity **2** | Same — OGBA has two catcher slots |
+| `--am-glow` token | Token doesn't exist; preview uses `am-glow-pulse` keyframe over `--am-irid` colors | `client/src/components/aurora/aurora.css` |
+| `--am-positive-warm` for keeper gold | Token doesn't exist; preview uses `#fbbf24` (amber-400) | Same — PR2 should add a token |
+| `framer-motion` for slot animations | Not installed; preview uses CSS transitions (200ms ease) | `client/package.json` |
+
+Active roster math now matches reality: 2C + 1·1B + 1·2B + 1·3B + 1·SS + 1·MI + 1·CM + 5·OF + 1·DH + 9·P = **23 active slots, 0 bench**. ✅
 
 > **Reviewers**: read sections 1-3 for the goal and design north star, section 11 for the resolved decisions, and section 10 for the proposed PR breakdown. Sections 4-9 are implementation details — skim or skip if you trust the high level.
 
@@ -38,9 +55,9 @@ These decisions are load-bearing for the implementation. Any change requires re-
 
 ## 2. User Stories
 
-1. **Owner add/drop with auto-resolve.** "I'm adding Mookie Betts (2B/OF) and dropping Aaron Judge (OF). My OF slots are full and 2B has Trea Turner. The server figures out: park Betts at 2B, slide Turner to SS (he's MI-eligible), the previous SS goes to UTIL." User sees a toast: "Claimed Betts. Moved Turner 2B→SS, Bohm SS→UTIL."
+1. **Owner add/drop with auto-resolve.** "I'm adding Mookie Betts (2B/OF) and dropping Aaron Judge (OF). My OF slots are full and 2B has Trea Turner. The server figures out: park Betts at 2B, slide Turner to SS (he's MI-eligible), the previous SS goes to MI." User sees a toast: "Claimed Betts. Moved Turner 2B→SS, Bohm SS→MI."
 
-2. **Owner pure swap (Swap Mode).** "I want to bench my struggling 2B for tonight's matchup but I have no bench. I open Swap Mode, click my 2B, see the MI/UTIL slots glow, click UTIL, and my UTIL guy moves to 2B. I click Save and the lineup is committed atomically."
+2. **Owner pure swap (Swap Mode).** "I want to bench my struggling 2B for tonight's matchup but I have no bench. I open Swap Mode, click my 2B, see the MI/DH slots glow, click MI, and my MI guy moves to 2B. I click Save and the lineup is committed atomically."
 
 3. **Commissioner-on-behalf.** Commissioner pulls up a team in `CommissionerRosterTool`, can either use the existing per-row dropdown override OR open Swap Mode with that team's context for a guided rearrangement.
 
@@ -89,7 +106,7 @@ interface MatchResult {
 
 function resolveLineup(
   candidates: RosterCandidate[],
-  slotCapacities: Record<string, number>, // e.g. { C:1, "1B":1, "2B":1, ..., MI:1, CI:1, UT:1, P:9 }
+  slotCapacities: Record<string, number>, // e.g. { C:2, "1B":1, "2B":1, "3B":1, SS:1, MI:1, CM:1, OF:5, DH:1, P:9 }
 ): MatchResult;
 ```
 
@@ -162,7 +179,7 @@ New `LeagueRule` row: `transactions.auto_resolve_slots`, default `true` for OGBA
 Files (existing): `client/src/features/roster/components/AddDropPanel.tsx`, `PlaceOnIlPanel.tsx`, `ActivateFromIlPanel.tsx`.
 
 Change: on success, read `appliedReassignments` from response and surface a toast. Format:
-> "Claimed Mookie Betts (2B). Also moved: Trea Turner 2B → SS, Alec Bohm SS → UTIL."
+> "Claimed Mookie Betts (2B). Also moved: Trea Turner 2B → SS, Alec Bohm SS → MI."
 
 On `NO_LEGAL_ASSIGNMENT`: show inline error with the `reason` string from the server (already populated with which slots/players were unfillable).
 
@@ -174,7 +191,7 @@ Mounted as a new tab in the Roster Moves area, alongside the existing Add/Drop /
 
 **Component structure:**
 - `SwapMode` — top-level container
-  - `PositionGroupCard` × 5 (Catchers, Infield, Outfield, MI/CI/UTIL, Pitchers)
+  - `PositionGroupCard` × 5 (Catchers, Infield, Outfield, Flex (MI/CM/DH), Pitchers)
     - `SlotCell` × N (one per active slot in that group)
       - shows occupant player + chip row of their `slotsFor(posList)`
 - `SwapStateProvider` — React context holding pending swaps queue
@@ -255,19 +272,19 @@ interface LineupUpdateError {
 ## 8. Aurora Visual Spec — Swap Mode
 
 Layout: 5 glass cards stacked vertically on mobile, 2-3 column grid on desktop:
-- Card 1: **Catchers** — 1 slot (C)
+- Card 1: **Catchers** — 2 slots (C × 2)
 - Card 2: **Infield** — 4 slots (1B, 2B, 3B, SS)
-- Card 3: **Outfield** — 3 slots (OF1, OF2, OF3) — single OF slot vocabulary per `SLOT_CODES`
-- Card 4: **Flex** — 3 slots (MI, CI, UT)
-- Card 5: **Pitchers** — 9 slots (P×9)
+- Card 3: **Outfield** — 5 slots (OF × 5) — single OF slot code per `SLOT_CODES`, capacity 5
+- Card 4: **Flex** — 3 slots (MI, CM, DH)
+- Card 5: **Pitchers** — 9 slots (P × 9)
 
 Tokens (consume from `--am-*` namespace per CLAUDE.md Aurora rollout):
 - `--am-irid` for selected player ring
-- `--am-glow` for eligible slot animation
+- `am-glow-pulse` keyframe (defined in `client/src/features/transactions/components/SwapMode/swapMode.css`) for eligible slot animation — uses `--am-irid` color stops (no `--am-glow` token; PR2 may promote the keyframe to `aurora.css` if reusable elsewhere)
 - `--am-glass` for card background
 - `--am-text-dim` for ineligible slot opacity treatment
 
-Eligibility chips: small pill row under each player name showing `slotsFor(posList)` (e.g., "2B · SS · MI · UT"). When that player is selected, the matching position group cards get a subtle pulsing border.
+Eligibility chips: small pill row under each player name showing `slotsFor(posList)` (e.g., "2B · SS · MI · DH"). When that player is selected, the matching position group cards get a subtle pulsing border.
 
 ## 9. Test Plan
 
