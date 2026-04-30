@@ -195,6 +195,78 @@ describe("GET /players/:mlbId", () => {
   });
 });
 
+// ── GET /players/:mlbId/eligible-slots ───────────────────────────
+
+describe("GET /players/:mlbId/eligible-slots", () => {
+  it("returns deduped slot union + per-position breakdown for a multi-position player", async () => {
+    mockPrisma.player.findFirst.mockResolvedValue({
+      id: 1, mlbId: 605141, name: "Mookie Betts", posList: "OF,2B", posPrimary: "OF",
+    });
+
+    const res = await supertest(app).get("/players/605141/eligible-slots");
+    expect(res.status).toBe(200);
+    expect(res.body.playerId).toBe(1);
+    expect(res.body.mlbId).toBe(605141);
+    expect(res.body.posList).toBe("OF,2B");
+    // 2B → ["2B", "MI"]; OF → ["OF"]; deduped union preserves first-seen order.
+    expect(res.body.eligibleSlots).toEqual(["OF", "2B", "MI"]);
+    expect(res.body.perPosition).toEqual([
+      { position: "OF", slots: ["OF"] },
+      { position: "2B", slots: ["2B", "MI"] },
+    ]);
+  });
+
+  it("falls back to posPrimary when posList is empty", async () => {
+    mockPrisma.player.findFirst.mockResolvedValue({
+      id: 2, mlbId: 545361, name: "Mike Trout", posList: null, posPrimary: "CF",
+    });
+
+    const res = await supertest(app).get("/players/545361/eligible-slots");
+    expect(res.status).toBe(200);
+    // CF maps to OF in positionToSlots.
+    expect(res.body.posList).toBe("CF");
+    expect(res.body.eligibleSlots).toEqual(["OF"]);
+    expect(res.body.perPosition).toEqual([{ position: "CF", slots: ["OF"] }]);
+  });
+
+  it("returns 404 for unknown player", async () => {
+    mockPrisma.player.findFirst.mockResolvedValue(null);
+
+    const res = await supertest(app).get("/players/999999/eligible-slots");
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for invalid mlbId", async () => {
+    const res = await supertest(app).get("/players/abc/eligible-slots");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Invalid MLB ID");
+  });
+
+  it("resolves Ohtani's derived pitcher ID (1660271) to the real ID (660271)", async () => {
+    mockPrisma.player.findFirst.mockResolvedValue({
+      id: 3, mlbId: 660271, name: "Shohei Ohtani", posList: "DH,P", posPrimary: "DH",
+    });
+
+    const res = await supertest(app).get("/players/1660271/eligible-slots");
+    expect(res.status).toBe(200);
+    expect(mockPrisma.player.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { mlbId: 660271 } }),
+    );
+    expect(res.body.eligibleSlots).toEqual(["DH", "P"]);
+  });
+
+  it("returns empty arrays for a player with no recognized positions", async () => {
+    mockPrisma.player.findFirst.mockResolvedValue({
+      id: 4, mlbId: 1, name: "Unknown", posList: "", posPrimary: "",
+    });
+
+    const res = await supertest(app).get("/players/1/eligible-slots");
+    expect(res.status).toBe(200);
+    expect(res.body.eligibleSlots).toEqual([]);
+    expect(res.body.perPosition).toEqual([]);
+  });
+});
+
 // ── GET /players/:mlbId/fielding ─────────────────────────────────
 
 describe("GET /players/:mlbId/fielding", () => {
