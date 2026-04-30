@@ -56,12 +56,16 @@ interface RosterPlayer {
   rosterId: number;
   playerName: string;
   posPrimary?: string;
+  /** Comma-separated full eligibility list ("OF,2B"). Drives multi-chip render. */
+  posList?: string;
   position?: string;
   assignedPosition?: string;
   isPitcher?: boolean;
   price?: number;
   mlbTeam?: string;
   isKeeper?: boolean;
+  /** Per-position GP — synthetic today, real when Player.posGames lands. */
+  gamesByPos?: Record<string, number>;
   // Hitter stats (when available)
   AVG?: number | string;
   HR?: number;
@@ -218,12 +222,18 @@ export default function Team() {
               rosterId: row.id,
               playerName: row.name,
               posPrimary: row.posPrimary,
+              // posList is the full eligibility list (e.g. "OF,2B"). Server
+              // started exposing it on TeamDetailResponse alongside posPrimary
+              // — falling back to posPrimary keeps single-position players
+              // rendering cleanly when posList is null.
+              posList: row.posList || row.posPrimary,
               position: row.posPrimary,
               assignedPosition: assigned,
               isPitcher: PITCHER_POS.has(assigned || row.posPrimary || ""),
               price: row.price,
-              mlbTeam: (stat as any)?.mlb_team ?? (stat as any)?.mlbTeam,
-              isKeeper: (stat as any)?.isKeeper,
+              mlbTeam: row.mlbTeam || (stat as any)?.mlb_team || (stat as any)?.mlbTeam || undefined,
+              isKeeper: row.isKeeper ?? (stat as any)?.isKeeper,
+              gamesByPos: row.gamesByPos,
               AVG: (stat as any)?.AVG,
               HR: (stat as any)?.HR,
               R: (stat as any)?.R,
@@ -362,25 +372,28 @@ export default function Team() {
   // ── RosterHubV3 plumbing ───────────────────────────────────────
   // Map our internal RosterPlayer shape to the RosterHubPlayer shape the
   // v3 components consume. Stat fields are role-aware (hitterStats vs
-  // pitcherStats); posList falls back to posPrimary while we wait for
-  // Player.posList enrichment to land in TeamDetailResponse.
+  // pitcherStats); posList carries the full eligibility list so the
+  // PositionEligibilityCell can render multi-chip ("OF · 2B · MI") for
+  // multi-position players. gamesByPos drives the Yahoo-style GP suffixes
+  // ("OF (12) · 2B (3) · MI") — synthetic distribution today, real per-
+  // position GP from MLB Stats API ships when Player.posGames lands.
   const toHubPlayer = useCallback((p: RosterPlayer): RosterHubPlayer => {
     const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
     return {
       rosterId: p.rosterId,
       // RosterHubPlayer.playerId is the DB id; we don't surface it on
-      // RosterPlayer yet, so reuse rosterId as a stable React key. PR2.B2
-      // will plumb the real playerId when we wire optimistic mutations.
+      // RosterPlayer yet, so reuse rosterId as a stable React key. A future
+      // mutation slice will plumb the real playerId when we wire optimistic
+      // updates.
       playerId: p.rosterId,
       name: p.playerName,
-      // posList isn't on TeamDetailResponse.currentRoster — fall back to
-      // posPrimary so the eligibility cell shows at least one chip.
-      posList: p.posPrimary || "",
+      posList: p.posList || p.posPrimary || "",
       posPrimary: p.posPrimary || "",
       assignedSlot: (slot === "IL" ? "IL" : slot) as RosterHubPlayer["assignedSlot"],
       mlbTeam: p.mlbTeam,
       isKeeper: p.isKeeper,
       isPitcher: !!p.isPitcher,
+      gamesPlayedByPosition: p.gamesByPos as RosterHubPlayer["gamesPlayedByPosition"],
       hitterStats: p.isPitcher
         ? undefined
         : { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },
