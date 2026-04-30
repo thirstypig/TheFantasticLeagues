@@ -63,13 +63,34 @@ After user review of the visual preview surfaced three concerns (missing flows /
 - ✅ **N+1 prevention**: `playerName` flows through `RosterCandidate` → `SlotAssignment` → response without extra DB reads
 - ✅ **Pending row visual treatment**: left-edge accent bar + tinted row background + inline "↩ revert" icon — establishes a NEW shared pattern that future batch-save tables can reuse
 
-### Revised rollout — single PR2
+## §0.5 — User feedback on v2 preview (2026-04-29) — 5 refinements
 
-PR2 becomes substantially smaller and more focused:
+User reviewed `/design/roster-hub` (PR #172) and approved direction with these refinements:
+
+1. **Roster hub becomes THE Team page** — the consolidated table replaces the existing separate hitter / pitcher stats tables, not just slot management. Single table, all 23 active rows, role-aware stat columns.
+2. **No popup modals** — "hard to see all stats." AddDrop / IL Stash / IL Activate flows must NOT render as modal overlays. Use focused sub-routes or inline row expansion instead. Stats stay visible at all times.
+3. **Merged Position + Eligibility column with games-played numbers** — show e.g. `OF (12) · 2B (3) · MI` inline, where `(N)` is GP at that position. This is exactly Yahoo's pattern. Quality of eligibility matters, not just presence.
+4. **Direction confirmed**: roster-hub (v2) > swap-mode (v1). Pivot approved at the architectural level.
+5. **Yahoo copy is fine** — explicit permission to mirror Yahoo's UX directly. No need to differentiate.
+
+### Implications for PR2 spec
+
+- The "consolidated table replaces hitter+pitcher tables" decision means PR2 also touches `Team.tsx`'s stat sections, not just the roster grid. Larger surface than v2 preview suggested.
+- "No modals" needs an alternative home for AddDrop / IL Stash / IL Activate panels. Best path: focused sub-routes (`/teams/:code/manage/claim`, `/teams/:code/manage/il-stash`, `/teams/:code/manage/il-activate`) since these are already 80% of a "page" in shape. The existing AddDropPanel etc. components stay; only their mount surface changes.
+- "Eligibility-with-games-played" requires server-side data we don't currently surface. Need to add `gamesPlayedByPosition: Record<string, number>` to player data. The position-eligibility cron (`syncPositionEligibility` in `server/src/index.ts`) already computes per-position GP under the hood for Rule 1/2 logic — just plumb it through `Player.posList` enrichment or as a sibling field `Player.posGames` (`Record<SlotCode, number>` JSON column).
+
+### Revised rollout — v3 design preview first, then PR2
+
+Adding one more design iteration before code: v3 preview at `/design/roster-hub-v3` incorporating the 5 refinements. Cheap (~2 hrs), high-signal — same loop that caught the cards-vs-tables and missing-flows issues.
+
+After v3 approval:
+
+PR2 ships with:
 
 - Modify `Team.tsx` to render roster via `ThemedTable` (replacing `RosterGrid`'s card layout for owner view)
-- Add per-row position pill with click-to-highlight-eligible behavior
-- Add per-row "..." action menu surfacing existing AddDrop / IL Stash / IL Activate panels as modals
+- **Replace the separate hitter/pitcher stats tables** with the consolidated roster hub table (per refinement #1)
+- Per-row position pill **with games-played numbers** (per refinement #3)
+- Per-row "..." action menu navigating to **focused sub-routes** (per refinement #2, NO modals)
 - Wire dnd-kit for optional drag-to-swap (uses existing PATCH endpoint)
 - Add `GET /api/players/:id/eligible-slots` endpoint
 - Revert PR1's `Roster.displayOrder` migration (add a migration to drop the column + index)
