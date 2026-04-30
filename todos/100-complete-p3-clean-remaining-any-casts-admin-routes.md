@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "100"
 tags: [code-review, type-safety, cleanup, admin]
@@ -61,6 +61,7 @@ Solution 1, after #099 lands.
 
 - **2026-04-16** (Session 66 `/ce:review`): Flagged by kieran-typescript-reviewer. Blocked on #099 flipping `.passthrough()` to `.strict()` for clean downstream types.
 - Supersedes the remaining scope of earlier todo 093.
+- **2026-04-30**: Closed via PR `chore/admin-routes-typing-and-public-cleanup`. Removed all `(t: any) =>`, `(c: any) =>`, `(todo as any)[key]`, and the manual property-copy loop. The PATCH handler now uses `Object.assign(todo, updates)` with `updates` typed as `z.infer<typeof updateTodoSchema>`. `computeTodoSummary` lost its hand-written `Array<{ tasks: any[] }>` annotation in favor of inferred types. The `(t.priority ?? "p2") as ...` cast is gone — the priority union flows from the schema directly.
 
 ## Resources
 

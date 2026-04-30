@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "108"
 tags: [code-review, cleanup, quality]
@@ -62,6 +62,7 @@ Address all items in a single commit:
 ## Work Log
 
 - **2026-04-16** (Session 67 `/ce:review`): Aggregated from code-simplicity-reviewer, kieran-typescript-reviewer, architecture-strategist.
+- **2026-04-30**: Closed via PR `chore/admin-routes-typing-and-public-cleanup`. Items 1, 3, and 4 were already shipped before this session — the report API no longer ships `raw`, `publicRouter` no longer has a default export, and `ReportPage` itself was removed when the client UI was retired (CLAUDE.md `reports` row notes "client removed"). Item 2 was also already removed (`getCategoriesForSport` no longer exported from `standingsService`). This PR addresses the surviving residue: the second `PITCHER_CODES.includes(... as any)` cast at line 552 of `standingsService.ts` was rewritten to `.some(code => code === pos)` to match the existing pattern at line 455. Item 6 (FanGraphs audit refactor) deferred — separate todo if desired.
 
 ## Resources
 

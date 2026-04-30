@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "090"
 tags: [code-review, dead-code, architecture]
@@ -77,6 +77,7 @@ This is low severity — both endpoints are read-only and harmless — but they 
 | Date | Action | Learnings |
 |------|--------|-----------|
 | 2026-04-09 | Created from code review | Architecture + simplicity agents both flagged |
+| 2026-04-30 | Closed via PR `chore/admin-routes-typing-and-public-cleanup` | The orphaned `GET /api/public/leagues/:slug` detail handler had already been removed in a prior session (Changelog entry confirms). The surviving slug-flavored endpoint is `GET /api/public/leagues/:slug/standings`, which legitimately uses `publicSlug` for lookup, so it stays. Removed `publicSlug: true` from the listing's `select` — no client consumes it. Did NOT consolidate the listing with `GET /api/leagues/public` because the response shapes differ (different filter field — `isPublic` vs `visibility` — and different selected fields, including commissioner/team counts in the leagues-router version). Both endpoints currently have zero client consumers; flagging the listing duplication for a future review-driven decision rather than blind deletion. |
 
 ## Resources
 
