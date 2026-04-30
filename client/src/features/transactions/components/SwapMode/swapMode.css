@@ -1,0 +1,30 @@
+/*
+ * SwapMode preview keyframes. Scoped to am-* class names so they don't
+ * collide with anything else in the app. Eligible-slot pulse and
+ * "row changed" pulse referenced from `SlotCell.tsx` inline styles.
+ *
+ * NOTE: this file should be imported by the consuming page (the preview
+ * imports it directly). PR2 may move these into `aurora.css` once the
+ * `--am-glow` token is formalized.
+ */
+
+@keyframes am-glow-pulse {
+  0% {
+    box-shadow: 0 0 0 2px rgba(74, 140, 255, 0.45), 0 0 12px rgba(138, 43, 214, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(214, 43, 155, 0.65), 0 0 26px rgba(74, 140, 255, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(74, 140, 255, 0.45), 0 0 12px rgba(138, 43, 214, 0.18);
+  }
+}
+
+@keyframes am-pulse-changed {
+  0% {
+    box-shadow: 0 0 0 2px rgba(0, 184, 148, 0.55), 0 0 24px rgba(0, 184, 148, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(0, 184, 148, 0), 0 0 0 rgba(0, 184, 148, 0);
+  }
+}

@@ -67,6 +67,7 @@ const BoardPage = React.lazy(() => import("./features/board/pages/BoardPage"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
 const Concepts = React.lazy(() => import("./pages/Concepts"));
 const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
+const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -247,6 +248,11 @@ export default function App() {
                         consumes the existing /api/reports/:leagueId server
                         endpoint that survived the prior client-UI removal. */}
                     <Route path="/weekly-report" element={<WeeklyReport />} />
+                    {/* Static design preview for the PR2 Swap Mode UI
+                        (admin-gated inside the page). Plan reference:
+                        docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md
+                        §5B + §8. Ships components that PR2 will reuse. */}
+                    <Route path="/design/swap-mode" element={<SwapModePreview />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
