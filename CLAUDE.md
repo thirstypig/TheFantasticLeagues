@@ -169,6 +169,7 @@ Some features import from other features' services or components.
 - `trades/pages/TradesPage` imports `teams/components/TeamRosterView`
 - `auction/pages/AuctionValues` imports `components/shared/PlayerDetailModal`
 - `teams/pages/Team` imports `components/shared/PlayerDetailModal`
+- `teams/pages/Team` imports `transactions/components/RosterMovesTab/AddDropPanel`, `PlaceOnIlPanel`, `ActivateFromIlPanel` (Yahoo-style v3 hub remounts these existing panels as inline sub-routes under `/teams/:code/manage/{claim,il-stash,il-activate}` per plan §0.5 refinement #2 "no modals" — replaces the modal entry point on Team page; the panels themselves are unchanged)
 - `components/shared/PlayerDetailModal` imports `hooks/usePlayerNews` (RSS feed aggregation for news section)
 - `archive/pages/ArchivePage` imports `players/components/EditPlayerNameModal`, `teams/components/EditTeamNameModal`, `admin/components/ArchiveAdminPanel`, `components/shared/StatsTables`
 - `periods/pages/Season` imports `components/shared/StatsTables`
