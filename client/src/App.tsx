@@ -170,6 +170,16 @@ export default function App() {
                         doesn't port yet. */}
                     <Route path="/teams/:teamCode/classic" element={<TeamLegacy />} />
                     <Route path="/teams/:teamCode" element={<Team />} />
+                    {/* Aurora roster-hub v3 sub-routes — replace the old modal
+                        flow on Team page (per plan §0.5 refinement #2 "no
+                        modals"). Each manages a focused mutation flow: claim
+                        (free-agent add+drop), il-stash (place on IL +
+                        replacement), il-activate (return from IL + drop).
+                        Team renders its header + a SubrouteContainer wrapping
+                        the existing RosterMovesTab panels. */}
+                    <Route path="/teams/:teamCode/manage/claim" element={<Team />} />
+                    <Route path="/teams/:teamCode/manage/il-stash" element={<Team />} />
+                    <Route path="/teams/:teamCode/manage/il-activate" element={<Team />} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team
                         shortcut (PR #132) and external bookmarks both land here. */}

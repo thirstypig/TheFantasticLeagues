@@ -122,18 +122,22 @@ function MobileRowV3Impl({
             ↩
           </button>
         )}
-        <button
-          type="button"
-          ref={triggerRef}
-          className="am-roster-action-trigger"
-          onClick={onTriggerClick}
-          aria-label={`Open actions menu for ${player.name}`}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-        >
-          …
-        </button>
-        <RowActionMenu actions={actions} open={menuOpen} onClose={() => setMenuOpen(false)} anchorRect={anchorRect} />
+        {actions.length > 0 && (
+          <>
+            <button
+              type="button"
+              ref={triggerRef}
+              className="am-roster-action-trigger"
+              onClick={onTriggerClick}
+              aria-label={`Open actions menu for ${player.name}`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              …
+            </button>
+            <RowActionMenu actions={actions} open={menuOpen} onClose={() => setMenuOpen(false)} anchorRect={anchorRect} />
+          </>
+        )}
       </div>
     </div>
   );

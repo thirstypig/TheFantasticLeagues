@@ -18,17 +18,32 @@
  * period roster viewer) is preserved at /teams/:teamCode/classic.
  * Port the deferred features into Aurora when the pilot expands.
  */
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useMatch, useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   AmbientBg, Glass, IridText, Chip, SectionLabel,
 } from "../../../components/aurora/atoms";
 import "../../../components/aurora/aurora.css";
+import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats, getSeasonStandings } from "../../../api";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry } from "../api";
+import {
+  RosterHubV3,
+  SubrouteContainer,
+  type RosterHubPlayer,
+} from "../components/RosterHub";
+import type { RowAction } from "../components/RosterHub/RowActionMenu";
+// Cross-feature import: roster mutations live in the transactions feature.
+// Per CLAUDE.md "Cross-Feature Dependencies", this is documented in the
+// project root. The v3 hub remounts these existing panels as inline sub-routes
+// (per plan §0.5 refinement #2 "no modals") rather than rewriting them.
+import AddDropPanel from "../../transactions/components/RosterMovesTab/AddDropPanel";
+import PlaceOnIlPanel from "../../transactions/components/RosterMovesTab/PlaceOnIlPanel";
+import ActivateFromIlPanel from "../../transactions/components/RosterMovesTab/ActivateFromIlPanel";
+import type { RosterMovesPlayer } from "../../transactions/components/RosterMovesTab/types";
 
 interface PeriodOption {
   id: number;
@@ -64,6 +79,12 @@ interface RosterPlayer {
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
 
+// Stable empty primitives for RosterHubV3 props that this slice doesn't
+// drive (eligibility highlights + pending changes). Defining at module
+// scope avoids React.memo cache busts on every render.
+const EMPTY_ID_SET: ReadonlySet<number> = new Set();
+const NOOP = () => {};
+
 function posScore(p?: string) {
   if (!p) return 99;
   const i = POS_ORDER.indexOf(p);
@@ -78,7 +99,22 @@ export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
   const navigate = useNavigate();
-  const { leagueId, currentLeagueName, myTeamId } = useLeague();
+  const { me } = useAuth();
+  const authUser = me?.user;
+  const { leagueId, currentLeagueName, myTeamId, leagueRules } = useLeague();
+
+  // Sub-route detection for the manage flows. Each match flips the table
+  // surface to a SubrouteContainer wrapping the existing transactions panel.
+  const claimMatch = useMatch("/teams/:teamCode/manage/claim");
+  const ilStashMatch = useMatch("/teams/:teamCode/manage/il-stash");
+  const ilActivateMatch = useMatch("/teams/:teamCode/manage/il-activate");
+  const manageMode: "claim" | "il-stash" | "il-activate" | null = claimMatch
+    ? "claim"
+    : ilStashMatch
+    ? "il-stash"
+    : ilActivateMatch
+    ? "il-activate"
+    : null;
 
   const [teamMeta, setTeamMeta] = useState<{
     id: number;
@@ -88,9 +124,19 @@ export default function Team() {
     ownerName?: string | null;
   } | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  // Full league player pool — fed to the transactions panels as `players`.
+  // Same data the existing RosterMovesTab consumes from ActivityPage.
+  const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
   const [aiInsights, setAiInsights] = useState<TeamInsightsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Selection state for the position-pill highlight. No-op for mutation in
+  // this slice — the action menu drives the actual moves via sub-routes.
+  const [selectedRosterId, setSelectedRosterId] = useState<number | null>(null);
+  // Bumped after a panel completes successfully — re-runs the data-load
+  // effect to refresh roster and stats after a mutation. Mirrors
+  // ActivityPage's `loadData()` callback pattern.
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Team navigator: list of teams in the league for prev/next nav
   const [allTeams, setAllTeams] = useState<{ id: number; name: string; code: string }[]>([]);
@@ -150,6 +196,9 @@ export default function Team() {
         if (detailsRes.status === "fulfilled") {
           const raw = detailsRes.value.currentRoster ?? [];
           const stats = statsRes.status === "fulfilled" ? statsRes.value : ([] as PlayerSeasonStat[]);
+          // Cache the full league pool for the transactions panels — same
+          // shape ActivityPage hands to RosterMovesTab.
+          setPlayers(stats);
           // Index stats by Prisma player id (the integer foreign key on
           // the Roster row) — the only stable identifier available on
           // both sides without going through mlb_id casting.
@@ -202,7 +251,7 @@ export default function Team() {
     })();
 
     return () => { canceled = true; };
-  }, [leagueId, code]);
+  }, [leagueId, code, reloadKey]);
 
   // Fetch period list for the league (one-shot per league change)
   useEffect(() => {
@@ -304,9 +353,110 @@ export default function Team() {
       }),
     [displayRoster]);
 
-  const ilCount = useMemo(() =>
-    displayRoster.filter(p => p.assignedPosition === "IL").length,
+  const ilPlayers = useMemo(() =>
+    displayRoster.filter(p => p.assignedPosition === "IL"),
     [displayRoster]);
+
+  const ilCount = ilPlayers.length;
+
+  // ── RosterHubV3 plumbing ───────────────────────────────────────
+  // Map our internal RosterPlayer shape to the RosterHubPlayer shape the
+  // v3 components consume. Stat fields are role-aware (hitterStats vs
+  // pitcherStats); posList falls back to posPrimary while we wait for
+  // Player.posList enrichment to land in TeamDetailResponse.
+  const toHubPlayer = useCallback((p: RosterPlayer): RosterHubPlayer => {
+    const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
+    return {
+      rosterId: p.rosterId,
+      // RosterHubPlayer.playerId is the DB id; we don't surface it on
+      // RosterPlayer yet, so reuse rosterId as a stable React key. PR2.B2
+      // will plumb the real playerId when we wire optimistic mutations.
+      playerId: p.rosterId,
+      name: p.playerName,
+      // posList isn't on TeamDetailResponse.currentRoster — fall back to
+      // posPrimary so the eligibility cell shows at least one chip.
+      posList: p.posPrimary || "",
+      posPrimary: p.posPrimary || "",
+      assignedSlot: (slot === "IL" ? "IL" : slot) as RosterHubPlayer["assignedSlot"],
+      mlbTeam: p.mlbTeam,
+      isKeeper: p.isKeeper,
+      isPitcher: !!p.isPitcher,
+      hitterStats: p.isPitcher
+        ? undefined
+        : { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },
+      pitcherStats: p.isPitcher
+        ? { W: p.W, SV: p.SV, K: p.K, ERA: p.ERA, WHIP: p.WHIP }
+        : undefined,
+    };
+  }, []);
+
+  const hubHitters = useMemo(() => hitters.map(toHubPlayer), [hitters, toHubPlayer]);
+  const hubPitchers = useMemo(() => pitchers.map(toHubPlayer), [pitchers, toHubPlayer]);
+  const hubIl = useMemo(() => ilPlayers.map(toHubPlayer), [ilPlayers, toHubPlayer]);
+
+  // Permission gating mirrors ActivityPage — owner OR commissioner OR admin
+  // can mutate; everyone else gets a view-only hub (no action menus).
+  const isCommissioner = !!(authUser?.isAdmin ||
+    authUser?.memberships?.some(
+      (m: { leagueId: string | number; role: string }) =>
+        Number(m.leagueId) === leagueId && m.role === "COMMISSIONER",
+    ));
+  const isOwnerSelfServe =
+    leagueRules?.transactions?.owner_self_serve === "true";
+  const canManage =
+    !!authUser?.isAdmin ||
+    isCommissioner ||
+    (isOwnerSelfServe && teamMeta?.id === myTeamId);
+
+  // Build the row action menu. Empty array = no "..." trigger renders
+  // (RosterRowV3/MobileRowV3 hide it when actions.length === 0). Drop is
+  // commissioner-only IL drop and is deferred per design preview note.
+  const buildActions = useCallback((p: RosterHubPlayer): RowAction[] => {
+    if (!canManage) return [];
+    const onIl = p.assignedSlot === "IL";
+    if (onIl) {
+      return [{
+        key: "activate-il",
+        label: "Activate from IL",
+        glyph: "→",
+        onSelect: () => navigate(`/teams/${code}/manage/il-activate`),
+      }];
+    }
+    return [
+      {
+        key: "claim",
+        label: "Add free agent (drop this)",
+        glyph: "+",
+        onSelect: () => navigate(`/teams/${code}/manage/claim`),
+      },
+      {
+        key: "il-stash",
+        label: "Place on IL",
+        glyph: "✚",
+        onSelect: () => navigate(`/teams/${code}/manage/il-stash`),
+      },
+    ];
+  }, [canManage, navigate, code]);
+
+  // Pill-click selection is display-only in this slice — the visual
+  // highlight signals "this row is the focus" but no mutation is queued
+  // (the action menu is the mutation entry point until drag-to-mutate
+  // and pending-changes save land in a follow-up).
+  const onPillClick = useCallback((rosterId: number) => {
+    setSelectedRosterId(prev => (prev === rosterId ? null : rosterId));
+  }, []);
+
+  // Sub-route exit — return to the Team page top-level URL.
+  const onBackToRoster = useCallback(() => {
+    navigate(`/teams/${code}`);
+  }, [navigate, code]);
+
+  // Panel `onComplete` — bump reloadKey to refetch roster + stats. Then
+  // navigate back to the table so the user sees the new state immediately.
+  const onPanelComplete = useCallback(() => {
+    setReloadKey(k => k + 1);
+    navigate(`/teams/${code}`);
+  }, [navigate, code]);
 
   const totalSpent = useMemo(() =>
     displayRoster.reduce((s, p) => s + (p.price ?? 0), 0),
@@ -459,27 +609,73 @@ export default function Team() {
             </div>
           )}
 
-          {/* HITTERS */}
+          {/* ROSTER — v3 hub with merged hitter/pitcher table OR sub-route
+              container when a manage flow is active. Span 8 keeps the
+              AI sidebar at span 4 alongside (matches the legacy layout). */}
           <div style={{ gridColumn: "span 8" }}>
-            <Glass padded={false}>
-              <div style={{ padding: "16px 20px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <SectionLabel style={{ marginBottom: 0 }}>Hitters · {hitters.length}</SectionLabel>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Chip>R · HR · RBI · SB · AVG</Chip>
-                </div>
-              </div>
-              <RosterTable
-                rows={hitters}
-                columns={[
-                  { key: "AVG", label: "AVG", fmt: v => fmtAvg(v) },
-                  { key: "HR", label: "HR" },
-                  { key: "R", label: "R" },
-                  { key: "RBI", label: "RBI" },
-                  { key: "SB", label: "SB" },
-                ]}
-                emptyMessage={loading ? "Loading…" : "No hitters on this roster."}
+            {manageMode ? (
+              <SubrouteContainer
+                title={
+                  manageMode === "claim"
+                    ? "Add free agent"
+                    : manageMode === "il-stash"
+                    ? "Place on IL"
+                    : "Activate from IL"
+                }
+                blurb={
+                  manageMode === "claim"
+                    ? "Pick a free agent and the player on your roster they'll replace. Auto-resolve handles slot conflicts."
+                    : manageMode === "il-stash"
+                    ? "Move an injured player to your IL slot and bring in a replacement at their vacated position."
+                    : "Return a player from IL and pick an active-roster player to drop in their place."
+                }
+                onBack={onBackToRoster}
+              >
+                {!canManage ? (
+                  <div style={{ padding: 16, color: "var(--am-text-muted)", fontSize: 12 }}>
+                    Roster transactions on this team are not available to you.
+                  </div>
+                ) : !leagueId || !teamMeta ? (
+                  <div style={{ padding: 16, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>
+                ) : manageMode === "claim" ? (
+                  <AddDropPanel
+                    leagueId={leagueId}
+                    teamId={teamMeta.id}
+                    players={players as unknown as RosterMovesPlayer[]}
+                    onComplete={onPanelComplete}
+                  />
+                ) : manageMode === "il-stash" ? (
+                  <PlaceOnIlPanel
+                    leagueId={leagueId}
+                    teamId={teamMeta.id}
+                    players={players as unknown as RosterMovesPlayer[]}
+                    onComplete={onPanelComplete}
+                  />
+                ) : (
+                  <ActivateFromIlPanel
+                    leagueId={leagueId}
+                    teamId={teamMeta.id}
+                    players={players as unknown as RosterMovesPlayer[]}
+                    onComplete={onPanelComplete}
+                  />
+                )}
+              </SubrouteContainer>
+            ) : (
+              <RosterHubV3
+                hitters={hubHitters}
+                pitchers={hubPitchers}
+                ilPlayers={hubIl}
+                selectedRosterId={selectedRosterId}
+                eligibleRosterIds={EMPTY_ID_SET}
+                pendingRosterIds={EMPTY_ID_SET}
+                pendingCount={0}
+                showSelectionBanner={false}
+                onPillClick={onPillClick}
+                buildActions={buildActions}
+                onRevertAll={NOOP}
+                onSave={NOOP}
               />
-            </Glass>
+            )}
           </div>
 
           {/* AI SIDEBAR */}
@@ -531,28 +727,9 @@ export default function Team() {
             </Glass>
           </div>
 
-          {/* PITCHERS */}
-          <div style={{ gridColumn: "span 12" }}>
-            <Glass padded={false}>
-              <div style={{ padding: "16px 20px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <SectionLabel style={{ marginBottom: 0 }}>Pitchers · {pitchers.length}</SectionLabel>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <Chip>W · SV · K · ERA · WHIP</Chip>
-                </div>
-              </div>
-              <RosterTable
-                rows={pitchers}
-                columns={[
-                  { key: "W", label: "W" },
-                  { key: "SV", label: "SV" },
-                  { key: "K", label: "K" },
-                  { key: "ERA", label: "ERA", fmt: v => fmtRate(v) },
-                  { key: "WHIP", label: "WHIP", fmt: v => fmtRate(v) },
-                ]}
-                emptyMessage={loading ? "Loading…" : "No pitchers on this roster."}
-              />
-            </Glass>
-          </div>
+          {/* Pitchers section is now inside RosterHubV3 (consolidated table)
+              per plan §0.5 refinement #1. The separate Glass block was
+              removed when the v3 hub took over the roster surface. */}
 
           {/* Legacy escape hatch */}
           <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>
@@ -569,96 +746,5 @@ export default function Team() {
   );
 }
 
-// ─── helpers ───
-
-interface RosterTableColumn {
-  key: keyof RosterPlayer;
-  label: string;
-  fmt?: (v: unknown) => string;
-}
-
-function RosterTable({
-  rows, columns, emptyMessage,
-}: {
-  rows: RosterPlayer[];
-  columns: RosterTableColumn[];
-  emptyMessage: string;
-}) {
-  if (rows.length === 0) {
-    return (
-      <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12, textAlign: "center" }}>
-        {emptyMessage}
-      </div>
-    );
-  }
-  return (
-    <div style={{ overflow: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}>
-        <thead>
-          <tr style={{ fontSize: 10, color: "var(--am-text-faint)", letterSpacing: 1, fontWeight: 600 }}>
-            <th style={{ padding: "10px 14px", textAlign: "left", width: 50 }}>SLOT</th>
-            <th style={{ padding: "10px 14px", textAlign: "left" }}>PLAYER</th>
-            {columns.map(c => (
-              <th key={String(c.key)} style={{ padding: "10px 12px", textAlign: "right", width: 70 }}>{c.label}</th>
-            ))}
-            <th style={{ padding: "10px 14px", textAlign: "right", width: 50 }}>$</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(p => (
-            <tr key={p.rosterId} style={{ borderTop: "1px solid var(--am-border)" }}>
-              <td style={{ padding: "9px 14px" }}>
-                <span
-                  style={{
-                    fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, color: "var(--am-text-muted)",
-                    background: "var(--am-chip)", padding: "3px 6px", borderRadius: 5,
-                    display: "inline-block",
-                  }}
-                >
-                  {p.assignedPosition || p.posPrimary || "—"}
-                </span>
-              </td>
-              <td style={{ padding: "9px 14px" }}>
-                <div style={{ fontSize: 13, color: "var(--am-text)", display: "flex", alignItems: "center", gap: 6 }}>
-                  {p.playerName}
-                  {p.isKeeper && (
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--am-accent)", letterSpacing: 0.5 }}>KEEPER</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>
-                  {p.mlbTeam || "—"} · {p.posPrimary || "—"}
-                </div>
-              </td>
-              {columns.map(c => {
-                const raw = p[c.key];
-                const display = c.fmt ? c.fmt(raw) : (raw == null ? "—" : String(raw));
-                return (
-                  <td key={String(c.key)} style={{ padding: "9px 12px", textAlign: "right", fontSize: 12.5, color: "var(--am-text-muted)" }}>
-                    {display}
-                  </td>
-                );
-              })}
-              <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12.5, color: "var(--am-text-muted)" }}>
-                {p.price != null ? `$${p.price}` : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function fmtAvg(v: unknown): string {
-  if (v == null) return "—";
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(3).replace(/^0\./, ".");
-}
-
-function fmtRate(v: unknown): string {
-  if (v == null) return "—";
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2);
-}
+// Old `RosterTable`, `fmtAvg`, `fmtRate` helpers were removed when v3
+// took over the roster surface — `RosterRowV3` owns its own formatting.
