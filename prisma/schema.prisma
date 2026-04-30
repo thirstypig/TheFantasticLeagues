@@ -752,11 +752,6 @@ model Roster {
   price            Int       @default(1)
   assignedPosition String?
   isKeeper         Boolean   @default(false)
-  // Display order within `(teamId, assignedPosition)` group. Nullable —
-  // null defaults to acquiredAt ordering at read time. Populated by the
-  // Yahoo-style Swap Mode UI in PR2; PR1 ships the column unused for
-  // migration cleanliness. See plan #166 §4A.
-  displayOrder     Int?
 
   team   Team   @relation(fields: [teamId], references: [id])
   player Player @relation(fields: [playerId], references: [id])
@@ -765,7 +760,6 @@ model Roster {
   @@index([playerId])
   @@index([teamId, releasedAt])
   @@index([releasedAt, playerId])
-  @@index([teamId, assignedPosition, displayOrder])
 }
 
 model AuctionLot {
