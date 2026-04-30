@@ -7,6 +7,8 @@ vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     player: { findMany: vi.fn(), findFirst: vi.fn() },
     roster: { findMany: vi.fn() },
+    period: { findMany: vi.fn() },
+    playerStatsPeriod: { findMany: vi.fn() },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
@@ -243,6 +245,28 @@ describe("GET /player-season-stats", () => {
     expect(res.body.stats[0].dollar_value).toBe(0);
   });
 
+  // todo #114 — every season-stats row must surface the full extended-stat set so
+  // agent consumers don't have to guess which fields are present.
+  it("includes the full extended-stat field set on every row (todo #114)", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 545361, name: "Mike Trout", posPrimary: "CF", posList: "CF", mlbTeam: "LAA" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/player-season-stats?leagueId=1");
+    expect(res.status).toBe(200);
+    const row = res.body.stats[0];
+    // 13 extended fields the sync stores but the API previously hid:
+    // batting: BB, HBP, SF, TB, DBL, TPL, SO, OBP, SLG, OPS
+    // pitching: L, GS, K9, BB9, HR_A, BF
+    const extendedBatting = ["BB", "HBP", "SF", "TB", "DBL", "TPL", "SO", "OBP", "SLG", "OPS"];
+    const extendedPitching = ["L", "GS", "K9", "BB9", "HR_A", "BF"];
+    for (const f of [...extendedBatting, ...extendedPitching]) {
+      expect(row).toHaveProperty(f);
+      expect(typeof row[f]).toBe("number");
+    }
+  });
+
   it.skip("OBSOLETE: Ohtani split — expands Ohtani into hitter + pitcher rows in season stats", async () => {
     mockPrisma.player.findMany.mockResolvedValue([
       { id: 10, mlbId: 660271, name: "Shohei Ohtani", posPrimary: "TWP", posList: "TWP", mlbTeam: "LAD" },
@@ -270,6 +294,48 @@ describe("GET /player-period-stats", () => {
     const res = await supertest(app).get("/player-period-stats");
     expect(res.status).toBe(200);
     expect(res.body.stats).toEqual([]);
+  });
+
+  // todo #114 — period-stats rows must also surface the extended fields that
+  // PlayerStatsPeriod has stored in the DB since the sync pipeline added them.
+  it("exposes all extended PlayerStatsPeriod fields on each row (todo #114)", async () => {
+    mockPrisma.period.findMany.mockResolvedValue([
+      { id: 7, name: "Period 1", status: "active", startDate: new Date(), endDate: new Date() },
+    ]);
+    mockPrisma.playerStatsPeriod.findMany.mockResolvedValue([
+      {
+        playerId: 1,
+        AB: 100, H: 30, R: 15, HR: 5, RBI: 20, SB: 2, GS_HR: 0,
+        BB: 12, HBP: 1, SF: 1, TB: 50, DBL: 5, TPL: 0, SO: 25,
+        OBP: 0.36, SLG: 0.500, OPS: 0.860,
+        W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, SHO: 0,
+        L: 0, GS: 0, QS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0,
+        G: 30,
+        player: { id: 1, mlbId: 545361, name: "Mike Trout", posPrimary: "CF", mlbTeam: "LAA" },
+      },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/player-period-stats?leagueId=1");
+    expect(res.status).toBe(200);
+    expect(res.body.stats).toHaveLength(1);
+    const row = res.body.stats[0];
+    // OBP/SLG/OPS — the headline-level demand from #114
+    expect(row.OBP).toBeCloseTo(0.36, 4);
+    expect(row.SLG).toBeCloseTo(0.500, 4);
+    expect(row.OPS).toBeCloseTo(0.860, 4);
+    // Other extended batting fields
+    expect(row.BB).toBe(12);
+    expect(row.HBP).toBe(1);
+    expect(row.SF).toBe(1);
+    expect(row.TB).toBe(50);
+    expect(row.DBL).toBe(5);
+    expect(row.TPL).toBe(0);
+    expect(row.SO).toBe(25);
+    // Extended pitching shape (zero for a hitter row, but still surfaced)
+    for (const f of ["L", "GS", "K9", "BB9", "HR_A", "BF"]) {
+      expect(row).toHaveProperty(f);
+    }
   });
 });
 

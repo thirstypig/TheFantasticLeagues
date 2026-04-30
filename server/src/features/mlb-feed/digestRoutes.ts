@@ -95,15 +95,20 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
     return res.status(503).json({ error: "League digest is temporarily unavailable" });
   }
 
-  // Persist digest
+  // Persist digest. Include the structured awards rankings (todo #115) so
+  // agents/UIs can read raw z-score composite data without re-parsing AI prose.
   const firstTeamId = (await prisma.team.findFirst({ where: { leagueId }, select: { id: true } }))?.id ?? 0;
+  const persistedPayload = {
+    ...(result.result as Record<string, unknown>),
+    awards: digestCtx.awardsRankings ?? null,
+  };
   await prisma.aiInsight.create({
     data: {
       type: "league_digest",
       leagueId,
       teamId: firstTeamId,
       weekKey,
-      data: result.result as any,
+      data: persistedPayload as any,
     },
   }).catch(err => {
     if (!(err as any)?.code?.includes("P2002")) {
@@ -111,7 +116,7 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
     }
   });
 
-  res.json({ ...result.result, generatedAt: new Date().toISOString(), weekKey, isCurrentWeek: true, voteResults: { yes: 0, no: 0, myVote: null } });
+  res.json({ ...result.result, awards: digestCtx.awardsRankings ?? null, generatedAt: new Date().toISOString(), weekKey, isCurrentWeek: true, voteResults: { yes: 0, no: 0, myVote: null } });
 }));
 
 // POST /api/mlb/league-digest/vote — Vote on the Trade of the Week

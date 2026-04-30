@@ -19,6 +19,26 @@ export type SeasonStatEntry = {
   GS_HR: number; // grand slams
   W: number; SV: number; K: number; IP: number; ER: number; BB_H: number; ERA: number; WHIP: number;
   SHO: number; // shutouts
+
+  // Batting — extended (todo #114; surfaced for MVP/agent consumers)
+  BB: number;   // walks (baseOnBalls)
+  HBP: number;  // hit by pitch
+  SF: number;   // sacrifice flies
+  TB: number;   // total bases
+  DBL: number;  // doubles
+  TPL: number;  // triples
+  SO: number;   // strikeouts (batting)
+  OBP: number;  // on-base %
+  SLG: number;  // slugging %
+  OPS: number;  // OBP + SLG
+
+  // Pitching — extended (todo #114; surfaced for Cy Young/agent consumers)
+  L: number;    // losses
+  GS: number;   // games started
+  K9: number;   // strikeouts per 9 innings
+  BB9: number;  // walks per 9 innings
+  HR_A: number; // home runs allowed
+  BF: number;   // batters faced
 };
 
 const LAST_SEASON = 2025;
@@ -26,8 +46,17 @@ let lastSeasonCache: Map<string, SeasonStatEntry> | null = null;
 let lastSeasonPromise: Promise<Map<string, SeasonStatEntry>> | null = null;
 
 /** Parse hitting/pitching stats from an MLB API person object into our flat format */
+function emptySeasonStatEntry(): SeasonStatEntry {
+  return {
+    G: 0, R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0, GS_HR: 0,
+    W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, ERA: 0, WHIP: 0, SHO: 0,
+    BB: 0, HBP: 0, SF: 0, TB: 0, DBL: 0, TPL: 0, SO: 0, OBP: 0, SLG: 0, OPS: 0,
+    L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0,
+  };
+}
+
 function parseSeasonStats(person: any): SeasonStatEntry {
-  const entry: SeasonStatEntry = { G: 0, R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, AVG: 0, GS_HR: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, ERA: 0, WHIP: 0, SHO: 0 };
+  const entry: SeasonStatEntry = emptySeasonStatEntry();
   if (!person.stats) return entry;
 
   for (const statGroup of person.stats) {
@@ -45,6 +74,22 @@ function parseSeasonStats(person: any): SeasonStatEntry {
       entry.SB = split.stolenBases || 0;
       entry.AVG = entry.AB > 0 ? entry.H / entry.AB : 0;
       entry.GS_HR = split.grandSlams || 0;
+
+      // Extended batting fields (todo #114)
+      entry.BB = split.baseOnBalls || 0;
+      entry.HBP = split.hitByPitch || 0;
+      entry.SF = split.sacFlies || 0;
+      entry.TB = split.totalBases || 0;
+      entry.DBL = split.doubles || 0;
+      entry.TPL = split.triples || 0;
+      entry.SO = split.strikeOuts || 0;
+      // MLB API can return OBP/SLG/OPS as strings (".342") — coerce safely
+      const obp = Number(split.obp);
+      const slg = Number(split.slg);
+      const ops = Number(split.ops);
+      entry.OBP = Number.isFinite(obp) ? obp : 0;
+      entry.SLG = Number.isFinite(slg) ? slg : 0;
+      entry.OPS = Number.isFinite(ops) ? ops : 0;
     } else if (groupName === "pitching") {
       entry.G = Math.max(entry.G, split.gamesPlayed || 0);
       entry.W = split.wins || 0;
@@ -59,6 +104,17 @@ function parseSeasonStats(person: any): SeasonStatEntry {
       entry.ERA = ip > 0 ? (er / ip) * 9 : 0;
       entry.WHIP = ip > 0 ? bbH / ip : 0;
       entry.SHO = split.shutouts || 0;
+
+      // Extended pitching fields (todo #114)
+      entry.L = split.losses || 0;
+      entry.GS = split.gamesStarted || 0;
+      entry.HR_A = split.homeRuns || 0; // for pitching group, HR = HR allowed
+      entry.BF = split.battersFaced || 0;
+      // K/9 and BB/9: prefer MLB-provided fields, else compute from IP
+      const k9 = Number(split.strikeoutsPer9Inn);
+      const bb9 = Number(split.walksPer9Inn);
+      entry.K9 = Number.isFinite(k9) ? k9 : (ip > 0 ? (entry.K * 9) / ip : 0);
+      entry.BB9 = Number.isFinite(bb9) ? bb9 : (ip > 0 ? ((split.baseOnBalls || 0) * 9) / ip : 0);
     }
   }
   return entry;
@@ -75,15 +131,17 @@ function loadCsvFallback(): Map<string, SeasonStatEntry> {
     const r = row as Record<string, string>;
     const mlbId = (r["mlb_id"] ?? "").trim();
     if (!mlbId) continue;
-    m.set(mlbId, {
-      G: Number(r["G"]) || 0,
-      R: Number(r["R"]) || 0, HR: Number(r["HR"]) || 0, RBI: Number(r["RBI"]) || 0,
-      SB: Number(r["SB"]) || 0, H: Number(r["H"]) || 0, AB: Number(r["AB"]) || 0,
-      AVG: Number(r["AVG"]) || 0, GS_HR: Number(r["GS_HR"]) || 0,
-      W: Number(r["W"]) || 0, SV: Number(r["SV"]) || 0,
-      K: Number(r["K"]) || 0, IP: Number(r["IP"]) || 0, ER: Number(r["ER"]) || 0, BB_H: Number(r["BB_H"]) || 0,
-      ERA: Number(r["ERA"]) || 0, WHIP: Number(r["WHIP"]) || 0, SHO: Number(r["SHO"]) || 0,
-    });
+    const entry = emptySeasonStatEntry();
+    entry.G = Number(r["G"]) || 0;
+    entry.R = Number(r["R"]) || 0; entry.HR = Number(r["HR"]) || 0; entry.RBI = Number(r["RBI"]) || 0;
+    entry.SB = Number(r["SB"]) || 0; entry.H = Number(r["H"]) || 0; entry.AB = Number(r["AB"]) || 0;
+    entry.AVG = Number(r["AVG"]) || 0; entry.GS_HR = Number(r["GS_HR"]) || 0;
+    entry.W = Number(r["W"]) || 0; entry.SV = Number(r["SV"]) || 0;
+    entry.K = Number(r["K"]) || 0; entry.IP = Number(r["IP"]) || 0; entry.ER = Number(r["ER"]) || 0;
+    entry.BB_H = Number(r["BB_H"]) || 0;
+    entry.ERA = Number(r["ERA"]) || 0; entry.WHIP = Number(r["WHIP"]) || 0; entry.SHO = Number(r["SHO"]) || 0;
+    // Extended fields aren't in the legacy CSV — leave as 0 defaults from emptySeasonStatEntry()
+    m.set(mlbId, entry);
   }
   return m;
 }
@@ -293,6 +351,10 @@ export function splitTwoWayStats<T extends {
   AB: number; H: number; R: number; HR: number; RBI: number; SB: number; AVG: number;
   W: number; SV: number; K: number; IP: number; ER: number; BB_H: number; ERA: number; WHIP: number;
   dollar_value?: number; value?: number;
+  // Extended fields (todo #114) — typed as optional so existing callers don't break
+  BB?: number; HBP?: number; SF?: number; TB?: number; DBL?: number; TPL?: number;
+  SO?: number; OBP?: number; SLG?: number; OPS?: number;
+  L?: number; GS?: number; K9?: number; BB9?: number; HR_A?: number; BF?: number;
 }>(
   stats: T[],
   valuesMap?: Map<string, { value: number }>,
@@ -300,7 +362,18 @@ export function splitTwoWayStats<T extends {
   for (const s of stats) {
     if (!TWO_WAY_PLAYERS.has(Number(s.mlb_id))) continue;
     if (s.is_pitcher) {
+      // Zero hitting stats (incl. extended hitting fields)
       s.AB = 0; s.H = 0; s.R = 0; s.HR = 0; s.RBI = 0; s.SB = 0; s.AVG = 0;
+      if (s.BB !== undefined) s.BB = 0;
+      if (s.HBP !== undefined) s.HBP = 0;
+      if (s.SF !== undefined) s.SF = 0;
+      if (s.TB !== undefined) s.TB = 0;
+      if (s.DBL !== undefined) s.DBL = 0;
+      if (s.TPL !== undefined) s.TPL = 0;
+      if (s.SO !== undefined) s.SO = 0;
+      if (s.OBP !== undefined) s.OBP = 0;
+      if (s.SLG !== undefined) s.SLG = 0;
+      if (s.OPS !== undefined) s.OPS = 0;
       if (valuesMap) {
         const nameKey = s.player_name.toLowerCase();
         const normKey = normalizeName(s.player_name);
@@ -311,7 +384,14 @@ export function splitTwoWayStats<T extends {
         }
       }
     } else {
+      // Zero pitching stats (incl. extended pitching fields)
       s.W = 0; s.SV = 0; s.K = 0; s.IP = 0; s.ER = 0; s.BB_H = 0; s.ERA = 0; s.WHIP = 0;
+      if (s.L !== undefined) s.L = 0;
+      if (s.GS !== undefined) s.GS = 0;
+      if (s.K9 !== undefined) s.K9 = 0;
+      if (s.BB9 !== undefined) s.BB9 = 0;
+      if (s.HR_A !== undefined) s.HR_A = 0;
+      if (s.BF !== undefined) s.BF = 0;
     }
   }
   return stats;

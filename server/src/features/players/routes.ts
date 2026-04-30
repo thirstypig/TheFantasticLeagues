@@ -364,6 +364,13 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         RBI: ss?.RBI ?? 0, SB: ss?.SB ?? 0, AVG: ss?.AVG ?? 0, GS_HR: ss?.GS_HR ?? 0,
         W: ss?.W ?? 0, SV: ss?.SV ?? 0, K: ss?.K ?? 0,
         IP: ss?.IP ?? 0, ER: ss?.ER ?? 0, BB_H: ss?.BB_H ?? 0, ERA: ss?.ERA ?? 0, WHIP: ss?.WHIP ?? 0, SHO: ss?.SHO ?? 0,
+        // Extended batting (todo #114): walks, HBP, SF, TB, doubles, triples, K, OBP, SLG, OPS
+        BB: ss?.BB ?? 0, HBP: ss?.HBP ?? 0, SF: ss?.SF ?? 0, TB: ss?.TB ?? 0,
+        DBL: ss?.DBL ?? 0, TPL: ss?.TPL ?? 0, SO: ss?.SO ?? 0,
+        OBP: ss?.OBP ?? 0, SLG: ss?.SLG ?? 0, OPS: ss?.OPS ?? 0,
+        // Extended pitching (todo #114): losses, GS, K/9, BB/9, HR allowed, BF
+        L: ss?.L ?? 0, GS: ss?.GS ?? 0, K9: ss?.K9 ?? 0, BB9: ss?.BB9 ?? 0,
+        HR_A: ss?.HR_A ?? 0, BF: ss?.BF ?? 0,
         mlb_team: mlbTeam,
         mlbTeam: mlbTeam,
         fantasy_value: roster?.price,
@@ -427,7 +434,12 @@ dataRouter.get("/player-period-stats", requireAuth, asyncHandler(async (req, res
       positions: ps.player.posPrimary ?? "",
       is_pitcher: isPitcher,
       AB: ps.AB, H: ps.H, R: ps.R, HR: ps.HR, RBI: ps.RBI, SB: ps.SB, AVG, GS_HR: ps.GS_HR, G: ps.G,
-      W: ps.W, SV: ps.SV, K: ps.K, IP: ps.IP, ERA, WHIP, SHO: ps.SHO,
+      W: ps.W, SV: ps.SV, K: ps.K, IP: ps.IP, ER: ps.ER, BB_H: ps.BB_H, ERA, WHIP, SHO: ps.SHO,
+      // Extended batting (todo #114) — already stored in PlayerStatsPeriod, just exposing
+      BB: ps.BB, HBP: ps.HBP, SF: ps.SF, TB: ps.TB, DBL: ps.DBL, TPL: ps.TPL, SO: ps.SO,
+      OBP: ps.OBP, SLG: ps.SLG, OPS: ps.OPS,
+      // Extended pitching (todo #114) — already stored, just exposing
+      L: ps.L, GS: ps.GS, QS: ps.QS, K9: ps.K9, BB9: ps.BB9, HR_A: ps.HR_A, BF: ps.BF,
       mlb_team: ps.player.mlbTeam ?? "",
       periodId: activePeriod.id,
       periodName: activePeriod.name,

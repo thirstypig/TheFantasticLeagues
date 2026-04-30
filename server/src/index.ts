@@ -36,7 +36,7 @@ import { periodsRouter } from "./features/periods/index.js";
 import { seasonsRouter } from "./features/seasons/index.js";
 import { playersRouter, playerDataRouter } from "./features/players/index.js";
 import { franchiseRouter } from "./features/franchises/index.js";
-import { mlbFeedRouter } from "./features/mlb-feed/index.js";
+import { mlbFeedRouter, awardsRouter } from "./features/mlb-feed/index.js";
 import { watchlistRouter } from "./features/watchlist/index.js";
 import { tradingBlockRouter } from "./features/trading-block/index.js";
 import { boardRouter } from "./features/board/index.js";
@@ -231,6 +231,8 @@ async function main() {
   app.use('/api', playerDataRouter);
   app.use("/api", franchiseRouter);
   app.use("/api/mlb", mlbFeedRouter);
+  // todo #115: GET /api/leagues/:leagueId/awards?weekKey=...
+  app.use("/api/leagues", awardsRouter);
   app.use("/api", reportsRouter);
   app.use("/api/watchlist", watchlistRouter);
   app.use("/api/trading-block", tradingBlockRouter);

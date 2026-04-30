@@ -52,6 +52,18 @@ export const PlayerSeasonStatSchema = z.object({
   AVG: z.union([z.number(), z.string()]).optional(),
   GS_HR: z.number().optional(),
 
+  // Hitter stats — extended (todo #114; surfaced for MVP/agent consumers)
+  BB: z.number().optional(),  // walks
+  HBP: z.number().optional(), // hit by pitch
+  SF: z.number().optional(),  // sacrifice flies
+  TB: z.number().optional(),  // total bases
+  DBL: z.number().optional(), // doubles
+  TPL: z.number().optional(), // triples
+  // SO is also defined below for pitchers; both share the field name (batter Ks vs pitcher Ks)
+  OBP: z.union([z.number(), z.string()]).optional(),
+  SLG: z.union([z.number(), z.string()]).optional(),
+  OPS: z.union([z.number(), z.string()]).optional(),
+
   // Pitcher stats
   W: z.number().optional(),
   SV: z.number().optional(),
@@ -64,6 +76,14 @@ export const PlayerSeasonStatSchema = z.object({
   SHO: z.number().optional(),
   GS: z.number().optional(),
   SO: z.number().optional(),
+
+  // Pitcher stats — extended (todo #114; surfaced for Cy Young/agent consumers)
+  L: z.number().optional(),     // losses
+  QS: z.number().optional(),    // quality starts (period stats only — computed)
+  K9: z.union([z.number(), z.string()]).optional(),  // K/9
+  BB9: z.union([z.number(), z.string()]).optional(), // BB/9
+  HR_A: z.number().optional(),  // HR allowed
+  BF: z.number().optional(),    // batters faced
 
   // Auction / value context
   dollar_value: z.number().optional(),
