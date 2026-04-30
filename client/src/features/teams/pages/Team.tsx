@@ -54,6 +54,12 @@ type PeriodMode = "season" | number; // "season" = cumulative; number = periodId
 
 interface RosterPlayer {
   rosterId: number;
+  /**
+   * Prisma Player.id — stable DB identifier across roster mutations
+   * (acquiring + dropping the same player produces a new rosterId but
+   * the same playerId). Used as the key for /api/players/:id/* calls.
+   */
+  playerId: number;
   playerName: string;
   posPrimary?: string;
   /** Comma-separated full eligibility list ("OF,2B"). Drives multi-chip render. */
@@ -220,6 +226,7 @@ export default function Team() {
             const assigned = (stat as any)?.assignedPosition || row.posPrimary;
             return {
               rosterId: row.id,
+              playerId: row.playerId,
               playerName: row.name,
               posPrimary: row.posPrimary,
               // posList is the full eligibility list (e.g. "OF,2B"). Server
@@ -312,6 +319,7 @@ export default function Team() {
       const whip = ip > 0 ? bbH / ip : 0;
       return {
         rosterId: r.id,
+        playerId: r.playerId,
         playerName: r.name,
         posPrimary: r.posPrimary,
         position: r.posPrimary,
@@ -381,11 +389,7 @@ export default function Team() {
     const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
     return {
       rosterId: p.rosterId,
-      // RosterHubPlayer.playerId is the DB id; we don't surface it on
-      // RosterPlayer yet, so reuse rosterId as a stable React key. A future
-      // mutation slice will plumb the real playerId when we wire optimistic
-      // updates.
-      playerId: p.rosterId,
+      playerId: p.playerId,
       name: p.playerName,
       posList: p.posList || p.posPrimary || "",
       posPrimary: p.posPrimary || "",
