@@ -24,9 +24,7 @@ import {
 } from "../../lib/ilSlotGuard.js";
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
-import { assertAddEligibleForDropSlot } from "./lib/positionInherit.js";
 import {
-  isAutoResolveEnabled,
   loadSlotCapacities,
   buildCandidatesForTeam,
   verifyEligibilityUnchanged,
@@ -198,17 +196,11 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     }
   }
 
-  // 4. Position-inherit pre-check (plan Q8 follow-on). Added player must be
-  //    eligible for the dropped player's exact slot. Only fires when enforce
-  //    is true — pre-flight DB lookups stay out of the legacy path.
-  //
-  //    Yahoo-style auto-resolve (PR1 of plan #166): when the league rule
-  //    `transactions.auto_resolve_slots` is true, skip the strict pairwise
-  //    check and let the bipartite matcher (inside the transaction) figure
-  //    out a legal end-state. The matcher may shuffle other players to make
+  // 4. Drop-target preview. The bipartite matcher (inside the transaction)
+  //    figures out the legal end-state and may shuffle other players to make
   //    room — those reassignments are echoed back via `appliedReassignments`.
-  const autoResolve = enforce ? await isAutoResolveEnabled(prisma, leagueId) : false;
-
+  //    The pre-flight strict-pairwise check was removed when auto-resolve
+  //    became unconditional (PR2 cuts §0).
   let dropRosterPreview: { id: number; assignedPosition: string | null } | null = null;
   if (enforce && dropPlayerId) {
     dropRosterPreview = await prisma.roster.findFirst({
@@ -220,25 +212,6 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         error: `Drop player (id ${dropPlayerId}) is not on this team's active roster.`,
         code: "IL_UNKNOWN_PLAYER",
       });
-    }
-    if (!autoResolve && dropRosterPreview.assignedPosition && dropRosterPreview.assignedPosition !== "IL") {
-      const add = await prisma.player.findUnique({
-        where: { id: playerId },
-        select: { name: true, posList: true },
-      });
-      if (add) {
-        try {
-          assertAddEligibleForDropSlot(
-            { name: add.name, posList: add.posList },
-            dropRosterPreview.assignedPosition,
-          );
-        } catch (err) {
-          if (isRosterRuleError(err)) {
-            return res.status(400).json({ error: err.message, code: err.code });
-          }
-          throw err;
-        }
-      }
     }
   }
 
@@ -362,10 +335,9 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     });
 
     // Yahoo-style auto-resolve: run bipartite matcher to resolve position
-    // conflicts that the strict pairwise check would have rejected. Only
-    // when (a) enforce is on AND (b) the league rule has it enabled. Reads
-    // a fresh in-tx view so the daily eligibility sync doesn't race us.
-    if (autoResolve && dropPlayerId && inheritedPos && inheritedPos !== "IL") {
+    // conflicts. Reads a fresh in-tx view so the daily eligibility sync
+    // doesn't race us.
+    if (enforce && dropPlayerId && inheritedPos && inheritedPos !== "IL") {
       const slotCapacities = await loadSlotCapacities(tx, leagueId);
       const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
 
@@ -633,22 +605,9 @@ router.post(
       return res.status(404).json({ error: `Add player #${addPlayerId} not found.` });
     }
 
-    // Yahoo-style auto-resolve: when on, defer position-fit check to the
-    // matcher (runs in-tx). Strict pairwise check stays as the legacy path.
-    const autoResolveStash = await isAutoResolveEnabled(prisma, leagueId);
-    if (!autoResolveStash) {
-      try {
-        assertAddEligibleForDropSlot(
-          { name: addPlayer.name, posList: addPlayer.posList },
-          stashSlot,
-        );
-      } catch (err) {
-        if (isRosterRuleError(err)) {
-          return res.status(400).json({ error: err.message, code: err.code });
-        }
-        throw err;
-      }
-    }
+    // Yahoo-style auto-resolve: position-fit is deferred to the bipartite
+    // matcher (runs in-tx). The strict pre-flight pairwise check was removed
+    // when auto-resolve became unconditional (PR2 cuts §0).
 
     // Pre-transaction: addPlayer's current owner (for god-mode cross-team release).
     const existingRoster = await prisma.roster.findFirst({
@@ -726,7 +685,7 @@ router.post(
         // Yahoo-style auto-resolve: re-shuffle the active roster if the
         // strict inherited slot turned out to be infeasible (e.g., the
         // added player can't actually play the stashed player's slot).
-        if (autoResolveStash) {
+        {
           const slotCapacities = await loadSlotCapacities(tx, leagueId);
           const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
           const rosterRowToPlayerId = new Map<number, number>();
@@ -914,22 +873,9 @@ router.post(
       return res.status(404).json({ error: `Activate player #${activatePlayerId} not found.` });
     }
 
-    // Yahoo-style auto-resolve: when on, defer position-fit check to the
-    // matcher (runs in-tx). Strict pairwise check stays as the legacy path.
-    const autoResolveActivate = await isAutoResolveEnabled(prisma, leagueId);
-    if (!autoResolveActivate) {
-      try {
-        assertAddEligibleForDropSlot(
-          { name: activatePlayer.name, posList: activatePlayer.posList },
-          targetSlot,
-        );
-      } catch (err) {
-        if (isRosterRuleError(err)) {
-          return res.status(400).json({ error: err.message, code: err.code });
-        }
-        throw err;
-      }
-    }
+    // Yahoo-style auto-resolve: position-fit is deferred to the bipartite
+    // matcher (runs in-tx). The strict pre-flight pairwise check was removed
+    // when auto-resolve became unconditional (PR2 cuts §0).
 
     // Guard: effective must be after dropRoster.acquiredAt (symmetric with /drop).
     if (effective <= dropRoster.acquiredAt) {
@@ -978,7 +924,7 @@ router.post(
 
         // Yahoo-style auto-resolve: re-shuffle the active roster if the
         // strict inherited slot turned out to be infeasible.
-        if (autoResolveActivate) {
+        {
           const slotCapacities = await loadSlotCapacities(tx, leagueId);
           const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
           const rosterRowToPlayerId = new Map<number, number>();

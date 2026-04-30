@@ -34,10 +34,10 @@ export async function getTransactions(params?: { leagueId?: number; teamId?: num
 }
 
 /**
- * Yahoo-style auto-resolve reassignment (PR1 of plan #166). When the league
- * has `transactions.auto_resolve_slots` enabled, the server may move other
- * roster rows to fit the new player legally. Each move is echoed here so
- * the client can surface a toast like "Also moved: Trea Turner 2B → SS".
+ * Yahoo-style auto-resolve reassignment. The server runs a bipartite matcher
+ * on every claim / IL stash / IL activate and may move other roster rows to
+ * fit the new player legally. Each move is echoed here so the client can
+ * surface a toast like "Also moved: Trea Turner 2B → SS".
  */
 export interface AppliedReassignment {
     rosterId: number;

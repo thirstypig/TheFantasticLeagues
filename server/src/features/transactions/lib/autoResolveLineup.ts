@@ -31,21 +31,6 @@ export interface AppliedReassignment {
 }
 
 /**
- * Read the per-league `transactions.auto_resolve_slots` rule. Defaults to
- * `false` (legacy strict pairwise) when the row is missing, so leagues that
- * haven't been migrated stay on the old behavior.
- *
- * The migration seeds `true` for OGBA, `false` for everyone else.
- */
-export async function isAutoResolveEnabled(
-  client: Prisma.TransactionClient | { leagueRule: { findMany: any } },
-  leagueId: number,
-): Promise<boolean> {
-  const rules = await getLeagueRules(client as any, leagueId);
-  return rules.transactions?.auto_resolve_slots === "true";
-}
-
-/**
  * Build the per-slot capacity map for a league from `LeagueRule`. Falls back
  * to OGBA's standard 14-batter / 9-pitcher shape when rule rows are missing.
  *
