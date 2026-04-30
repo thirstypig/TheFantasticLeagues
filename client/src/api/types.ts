@@ -70,9 +70,37 @@ export type TeamDetailResponse = {
   currentRoster: Array<{
     id: number;
     playerId: number;
+    /** Stable MLB API id when present; null for filler/synthetic players. */
+    mlbId?: number | null;
     name: string;
     posPrimary: string;
+    /**
+     * Comma-separated full eligibility list (e.g. "OF,2B"). Drives the
+     * Team page hub's merged Position+Eligibility column. Same source as
+     * Player.posList — populated by the daily syncPositionEligibility cron.
+     */
+    posList?: string | null;
+    mlbTeam?: string | null;
+    /** ISO timestamp (string at the wire). */
+    acquiredAt?: string;
     price: number;
+    assignedPosition?: string | null;
+    isKeeper?: boolean;
+    /**
+     * Games played per declared position. Drives the GP suffixes in the
+     * v3 hub's PositionEligibilityCell (e.g. "OF (12) · 2B (3) · MI").
+     * Synthetic distribution today — TeamService.buildGamesByPos splits a
+     * 20-game total 60/40 between primary and the rest. Real per-position
+     * GP from MLB Stats API ships when the Player.posGames JSON column
+     * lands (PR2.B6).
+     */
+    gamesByPos?: Record<string, number>;
+    periodStats?: {
+      W: number; SV: number; K: number; IP: number;
+      ER: number; BB_H: number;
+      R: number; HR: number; RBI: number; SB: number;
+      AB: number; H: number;
+    } | null;
   }>;
   periodSummaries?: Array<{
     periodId: number;
