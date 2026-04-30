@@ -8,6 +8,12 @@ import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import { mlbGetJson } from "../../lib/mlbApi.js";
 import { logger } from "../../lib/logger.js";
 import { OHTANI_MLB_ID, OHTANI_PITCHER_MLB_ID } from "../../lib/sportConfig.js";
+import { positionToSlots } from "../../lib/sports/baseball.js";
+import type {
+  EligibleSlotsResponse,
+  PositionEligibility,
+  SlotCode,
+} from "../../../../shared/api/rosterMoves.js";
 import { DataService } from "./services/dataService.js";
 import {
   getLastSeasonStats,
@@ -198,6 +204,71 @@ router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
       mlbTeam: player.mlbTeam ?? "",
     },
   });
+}));
+
+/**
+ * GET /players/:mlbId/eligible-slots
+ *
+ * Server-side wrapper around `positionToSlots(posList)`. Returns the slot codes
+ * the player can legally fill, both as a deduped union and broken down per
+ * declared position. Lets agents and the v3 client ask "which slots is this
+ * player eligible for?" without re-implementing the position-mapping table.
+ *
+ * Optional `leagueId` is reserved for future per-league position-policy
+ * variations (outfield mode, dh games threshold, etc.) — not consulted yet.
+ *
+ * Plan: docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md §0
+ */
+router.get("/:mlbId/eligible-slots", requireAuth, asyncHandler(async (req, res) => {
+  const rawMlbId = Number(req.params.mlbId);
+  if (!Number.isFinite(rawMlbId) || rawMlbId <= 0) {
+    return res.status(400).json({ error: "Invalid MLB ID" });
+  }
+  // Resolve derived Ohtani pitcher ID → real MLB ID. Same pattern as /fielding.
+  const mlbId = rawMlbId === OHTANI_PITCHER_MLB_ID ? OHTANI_MLB_ID : rawMlbId;
+
+  const player = await prisma.player.findFirst({
+    where: { mlbId },
+    select: { id: true, mlbId: true, name: true, posList: true, posPrimary: true },
+  });
+
+  if (!player) {
+    return res.status(404).json({ error: "Not found" });
+  }
+
+  const posList = player.posList ?? player.posPrimary ?? "";
+  const positions = posList
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const perPosition: PositionEligibility[] = positions.map((position) => ({
+    position,
+    slots: positionToSlots(position) as SlotCode[],
+  }));
+
+  // Union of all slots across declared positions (deduped, order preserved).
+  const seen = new Set<SlotCode>();
+  const eligibleSlots: SlotCode[] = [];
+  for (const entry of perPosition) {
+    for (const slot of entry.slots) {
+      if (!seen.has(slot)) {
+        seen.add(slot);
+        eligibleSlots.push(slot);
+      }
+    }
+  }
+
+  const body: EligibleSlotsResponse = {
+    playerId: player.id,
+    mlbId: player.mlbId,
+    name: player.name,
+    posList,
+    eligibleSlots,
+    perPosition,
+  };
+
+  return res.json(body);
 }));
 
 /**

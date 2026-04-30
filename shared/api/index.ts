@@ -3,3 +3,4 @@
  * Add new schemas here as they are introduced — see docs/CONTRACT_TESTING.md.
  */
 export * from "./playerSeasonStats";
+export * from "./rosterMoves";
