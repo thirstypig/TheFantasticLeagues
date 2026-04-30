@@ -34,7 +34,6 @@ publicRouter.get(
         name: true,
         season: true,
         draftMode: true,
-        publicSlug: true,
       },
       orderBy: [{ season: "desc" }, { name: "asc" }],
     });

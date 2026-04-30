@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "094"
 tags: [code-review, documentation, zod]
@@ -58,6 +58,7 @@ Solution 1.
 ## Work Log
 
 - **2026-04-14** (Session 65 `/ce:review`): Flagged by kieran-typescript-reviewer as a nit, not a bug.
+- **2026-04-30**: Comment lives at `server/src/features/admin/routes.ts` lines 439–441 directly above `MILESTONE_VALUES`, making the convention discoverable to anyone editing either schema. Closed in same PR as #093/#100.
 
 ## Resources
 

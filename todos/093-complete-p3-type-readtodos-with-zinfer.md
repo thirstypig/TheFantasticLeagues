@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "093"
 tags: [code-review, type-safety, cleanup]
@@ -73,6 +73,7 @@ Object.assign(todo, updates);  // updates is already typed from validateBody(upd
 ## Work Log
 
 - **2026-04-14** (Session 65 `/ce:review`): Flagged by kieran-typescript-reviewer + architecture-strategist as the natural follow-up to #092.
+- **2026-04-30**: Closed via PR `chore/admin-routes-typing-and-public-cleanup`. `readTodos`/`writeTodos` are typed against `z.infer<typeof todoFileSchema>` (the `TodoFile` alias) so all downstream callers — PATCH, POST, DELETE handlers and `computeTodoSummary` — flow off the inferred shape with no `any`. Cast removal handled in #100 in the same PR.
 
 ## Resources
 

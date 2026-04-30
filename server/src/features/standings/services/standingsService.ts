@@ -549,9 +549,8 @@ async function computeWithPeriodStats(
       if (!stats) continue;
 
       const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-      const assignedAsP = PITCHER_CODES.includes(
-        (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase() as any
-      );
+      const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
+      const assignedAsP = PITCHER_CODES.some(code => code === pos);
 
       const countHitting = !isTwoWay || !assignedAsP;
       const countPitching = !isTwoWay || assignedAsP;

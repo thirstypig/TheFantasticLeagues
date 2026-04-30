@@ -519,16 +519,14 @@ const updateTodoSchema = z.object({
 
 router.patch("/admin/todos/:todoId", requireAuth, requireAdmin, validateBody(updateTodoSchema), asyncHandler(async (req, res) => {
   const { todoId } = req.params;
-  const updates = req.body;
+  const updates = req.body as z.infer<typeof updateTodoSchema>;
   const data = readTodos();
 
   let found = false;
   for (const cat of data.categories) {
-    const todo = cat.tasks.find((t: any) => t.id === todoId);
+    const todo = cat.tasks.find((t) => t.id === todoId);
     if (todo) {
-      for (const key of Object.keys(updates)) {
-        (todo as any)[key] = (updates as any)[key];
-      }
+      Object.assign(todo, updates);
       todo.updatedAt = new Date().toISOString();
       found = true;
       break;
@@ -559,7 +557,7 @@ router.post("/admin/todos", requireAuth, requireAdmin, validateBody(addTodoSchem
   const { categoryId, title, priority, owner, instructions, targetDate, roadmapLink, conceptLink, milestone } = req.body;
   const data = readTodos();
 
-  const cat = data.categories.find((c: any) => c.id === categoryId);
+  const cat = data.categories.find((c) => c.id === categoryId);
   if (!cat) return res.status(404).json({ error: "Category not found" });
 
   const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "").substring(0, 60);
@@ -591,7 +589,7 @@ router.delete("/admin/todos/:todoId", requireAuth, requireAdmin, asyncHandler(as
 
   let found = false;
   for (const cat of data.categories) {
-    const idx = cat.tasks.findIndex((t: any) => t.id === todoId);
+    const idx = cat.tasks.findIndex((t) => t.id === todoId);
     if (idx !== -1) {
       cat.tasks.splice(idx, 1);
       found = true;
@@ -678,7 +676,7 @@ const STATUS_WEIGHT: Record<string, number> = { in_progress: 0, not_started: 1 }
 
 function computeTodoSummary(): AdminStatsResponse["todos"] {
   const data = readTodos();
-  const categories: Array<{ id: string; title: string; tasks: any[] }> = data.categories ?? [];
+  const categories = data.categories ?? [];
 
   let total = 0;
   let notStarted = 0;
@@ -705,7 +703,7 @@ function computeTodoSummary(): AdminStatsResponse["todos"] {
           id: String(t.id),
           title: String(t.title ?? ""),
           status: t.status,
-          priority: (t.priority ?? "p2") as "p0" | "p1" | "p2" | "p3",
+          priority: t.priority ?? "p2",
           categoryTitle: String(cat.title ?? cat.id ?? ""),
         });
       }
