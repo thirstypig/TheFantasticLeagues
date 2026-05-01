@@ -36,12 +36,18 @@ export interface RosterPlayerInput {
   /** Days since `mlbStatus` was observed — drives ghost-IL chip body. */
   mlbStatusDaysAgo?: number;
   // Hitter stats (when available)
+  AB?: number;
+  H?: number;
   AVG?: number | string;
   HR?: number;
   R?: number;
   RBI?: number;
   SB?: number;
   // Pitcher stats
+  IP?: number | string;
+  /** Hits + walks allowed combined (matches WHIP numerator). */
+  BB_H?: number;
+  ER?: number;
   W?: number;
   SV?: number;
   K?: number;
@@ -132,12 +138,29 @@ export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
     return {
       ...base,
       isPitcher: true,
-      pitcherStats: { W: p.W, SV: p.SV, K: p.K, ERA: p.ERA, WHIP: p.WHIP },
+      pitcherStats: {
+        IP: p.IP,
+        BB_H: p.BB_H,
+        K: p.K,
+        W: p.W,
+        SV: p.SV,
+        ER: p.ER,
+        ERA: p.ERA,
+        WHIP: p.WHIP,
+      },
     };
   }
   return {
     ...base,
     isPitcher: false,
-    hitterStats: { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },
+    hitterStats: {
+      AB: p.AB,
+      H: p.H,
+      R: p.R,
+      HR: p.HR,
+      RBI: p.RBI,
+      SB: p.SB,
+      AVG: p.AVG,
+    },
   };
 }

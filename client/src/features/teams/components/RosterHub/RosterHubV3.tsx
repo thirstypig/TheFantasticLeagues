@@ -89,6 +89,21 @@ interface RosterHubV3Props {
   onRevertItem?: (id: string) => void;
   /** FA scenario: drop pool slot — rendered between active roster and IL. */
   dropPoolSlot?: React.ReactNode;
+  /**
+   * Lineup intelligence slot — rendered between the active roster card
+   * and the IL section, full-width. Session-89 polish moved AI insights
+   * out of the right rail (`Team.tsx` was 8/4 split) and into the page
+   * flow so the roster table can claim full horizontal real estate for
+   * the wider stat column set (AB/H for hitters, BB+H/ER for pitchers).
+   */
+  intelSlot?: React.ReactNode;
+  /**
+   * Number of IL slots — drives both the section header ("Injured List · N
+   * slots") and the count of empty drop targets. Plumbed from
+   * `leagueRules.il.slot_count` in Team.tsx (default 2 — matches the
+   * server-side `loadLeagueIlSlotCount` fallback in `ilSlotGuard.ts`).
+   */
+  ilTotalSlots?: number;
 
   /**
    * Commissioner-mode backdate. When defined, the PendingChangeBar
@@ -135,12 +150,22 @@ function useIsMobile(forceMobile?: boolean): boolean {
 // Column widths: Pos·Eligibility carries multi-chip cells like
 // `1B (12)·CM·DH·OF` so it needs the most room. Actions only carries the
 // kebab `…` so 64px is plenty (the drag handle has moved to the left of
-// the player name — see Player cell). Sums fit within the 880px min-width
-// minus a slack column to absorb padding.
+// the player name — see Player cell). Sums fit within the 1100px min-
+// width minus a slack column to absorb padding.
+//
+// Session 89 widened the stat panel:
+//   - Hitters added AB + H (so users can verify AVG = H/AB inline).
+//   - Pitchers added BB+H (the WHIP numerator that the wire format
+//     stores combined as `BB_H`) and ER (the ERA numerator). Hits-
+//     allowed and walks-allowed are NOT split — that would require a
+//     destructive Prisma migration. The combined column is labeled
+//     `BB+H` so the relationship to WHIP = (BB+H)/IP is explicit.
 const HITTER_COLS = [
   { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 180 },
   { key: "name", label: "Player", align: "left" as const, width: 200 },
-  { key: "R", label: "R", align: "right" as const, width: 56 },
+  { key: "AB", label: "AB", align: "right" as const, width: 56 },
+  { key: "H", label: "H", align: "right" as const, width: 48 },
+  { key: "R", label: "R", align: "right" as const, width: 48 },
   { key: "HR", label: "HR", align: "right" as const, width: 56 },
   { key: "RBI", label: "RBI", align: "right" as const, width: 64 },
   { key: "SB", label: "SB", align: "right" as const, width: 56 },
@@ -152,9 +177,11 @@ const PITCHER_COLS = [
   { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 180 },
   { key: "name", label: "Player", align: "left" as const, width: 200 },
   { key: "IP", label: "IP", align: "right" as const, width: 56 },
+  { key: "BB_H", label: "BB+H", align: "right" as const, width: 64 },
+  { key: "K", label: "K", align: "right" as const, width: 48 },
   { key: "W", label: "W", align: "right" as const, width: 48 },
   { key: "SV", label: "SV", align: "right" as const, width: 56 },
-  { key: "K", label: "K", align: "right" as const, width: 48 },
+  { key: "ER", label: "ER", align: "right" as const, width: 48 },
   { key: "ERA", label: "ERA", align: "right" as const, width: 64 },
   { key: "WHIP", label: "WHIP", align: "right" as const, width: 64 },
   { key: "act", label: "Actions", align: "right" as const, width: 64 },
@@ -254,6 +281,8 @@ export function RosterHubV3({
   dropPoolSlot,
   effectiveDate,
   onEffectiveDateChange,
+  intelSlot,
+  ilTotalSlots,
   dndEnabled,
   shakeRowId,
   ilStashEligible,
@@ -393,7 +422,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 700,
+                    minWidth: 880,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -441,7 +470,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 740,
+                    minWidth: 1020,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -485,13 +514,18 @@ export function RosterHubV3({
           agnostic to the pending-changes shape. */}
       {dropPoolSlot}
 
+      {/* Session-89: Lineup Intelligence sits between the active
+          roster and the IL section, full-width. Render-prop'd by the
+          parent so the hub stays AI-agnostic. */}
+      {intelSlot}
+
       <IlSectionV3
         players={ilPlayers}
         selectedRosterId={selectedRosterId}
         eligibleRosterIds={eligibleRosterIds}
         pendingRosterIds={pendingRosterIds}
         isMobile={isMobile}
-        totalSlots={5}
+        totalSlots={ilTotalSlots ?? 2}
         onPillClick={onPillClick}
         buildActions={buildActions}
         onRevert={onRevert}

@@ -173,9 +173,15 @@ function RosterRowV3Impl({
           (number of cells must match the parent's headers), and the
           `player.isPitcher` discriminant narrows which stat object is
           available — per todo #153, the discriminated union encodes the
-          mutual-exclusion invariant in the type system. */}
+          mutual-exclusion invariant in the type system.
+          Session 89 widened the column set: hitters render AB/H ahead
+          of R so users can verify AVG = H/AB; pitchers render IP/BB+H
+          (combined wire-format `BB_H`) before K and ER before ERA so
+          users can verify ERA = (ER × 9) / IP and WHIP = (BB+H) / IP. */}
       {!player.isPitcher ? (
         <>
+          <StatTd>{fmt(player.hitterStats?.AB)}</StatTd>
+          <StatTd>{fmt(player.hitterStats?.H)}</StatTd>
           <StatTd>{fmt(player.hitterStats?.R)}</StatTd>
           <StatTd>{fmt(player.hitterStats?.HR)}</StatTd>
           <StatTd>{fmt(player.hitterStats?.RBI)}</StatTd>
@@ -185,9 +191,11 @@ function RosterRowV3Impl({
       ) : (
         <>
           <StatTd>{fmt(player.pitcherStats?.IP, 1)}</StatTd>
+          <StatTd>{fmt(player.pitcherStats?.BB_H)}</StatTd>
+          <StatTd>{fmt(player.pitcherStats?.K)}</StatTd>
           <StatTd>{fmt(player.pitcherStats?.W)}</StatTd>
           <StatTd>{fmt(player.pitcherStats?.SV)}</StatTd>
-          <StatTd>{fmt(player.pitcherStats?.K)}</StatTd>
+          <StatTd>{fmt(player.pitcherStats?.ER)}</StatTd>
           <StatTd>{fmt(player.pitcherStats?.ERA, 2)}</StatTd>
           <StatTd>{fmt(player.pitcherStats?.WHIP, 2)}</StatTd>
         </>
