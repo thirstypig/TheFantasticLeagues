@@ -1,0 +1,7 @@
+{
+  "name": "@fbst/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cross-side Zod schemas (client + server source-of-truth contracts). See docs/CONTRACT_TESTING.md."
+}
