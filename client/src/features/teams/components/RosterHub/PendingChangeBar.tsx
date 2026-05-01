@@ -7,9 +7,22 @@
 //   - Right: Revert all + Save buttons; both disable while saving
 //   - Below the row: optional inline error banner with retry affordance
 //
-// Per-row revert is rendered inline on each RosterRowV3 (not in this bar).
+// FA scenario extension (FA-#3): when callers pass `items`, the bar
+// expands to render one row per pending change with a kind-specific
+// badge — SWAP (cyan) for swaps, FA ADD (green) for fa_add. Per-item
+// revert lives on each row. Callers that don't pass items keep the
+// count-only Hub UX.
+//
 // The component renders nothing when `count === 0` AND there is no error
 // to surface — keeps the chrome out of the way on a clean roster.
+
+export interface PendingChangeBarItem {
+  id: string;
+  kind: "swap" | "fa_add";
+  /** Human-readable summary, e.g. "Mookie Betts → 2B" or
+   *  "Add Trout · drop Stanton". Caller decides phrasing. */
+  text: string;
+}
 
 interface PendingChangeBarProps {
   count: number;
@@ -23,6 +36,13 @@ interface PendingChangeBarProps {
   onRetry?: () => void;
   /** Dismiss the error without retrying. */
   onDismissError?: () => void;
+  /** Optional per-change rows (FA scenario). When present, the bar
+   *  expands beneath the count row with one li per item + its badge +
+   *  per-item Revert. Omit on the Hub-only call site to preserve the
+   *  count-only chrome. */
+  items?: ReadonlyArray<PendingChangeBarItem>;
+  /** Per-item revert handler. Required when `items` is non-empty. */
+  onRevertItem?: (id: string) => void;
 }
 
 export function PendingChangeBar({
@@ -33,6 +53,8 @@ export function PendingChangeBar({
   saveError = null,
   onRetry,
   onDismissError,
+  items,
+  onRevertItem,
 }: PendingChangeBarProps) {
   if (count <= 0 && !saveError) return null;
   const noun = count === 1 ? "change" : "changes";
@@ -117,6 +139,83 @@ export function PendingChangeBar({
             </button>
           </div>
         </div>
+      )}
+
+      {items && items.length > 0 && (
+        <ul
+          role="list"
+          aria-label="Pending change list"
+          style={{
+            listStyle: "none",
+            padding: "8px 10px",
+            margin: 0,
+            background: "var(--am-card)",
+            border: "1px solid var(--am-border)",
+            borderRadius: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          {items.map((it) => (
+            <li
+              key={it.id}
+              data-testid="pending-change-row"
+              data-kind={it.kind}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr auto",
+                alignItems: "center",
+                gap: 8,
+                padding: "5px 4px",
+                fontSize: 12,
+                color: "var(--am-text)",
+              }}
+            >
+              <span
+                aria-label={it.kind === "swap" ? "Swap" : "Free agent add"}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "2px 6px",
+                  borderRadius: 6,
+                  background:
+                    it.kind === "fa_add"
+                      ? "color-mix(in srgb, #22c55e 22%, transparent)"
+                      : "color-mix(in srgb, #22d3ee 22%, transparent)",
+                  color: it.kind === "fa_add" ? "#22c55e" : "#22d3ee",
+                  letterSpacing: 0.4,
+                }}
+              >
+                {it.kind === "fa_add" ? "FA ADD" : "SWAP"}
+              </span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {it.text}
+              </span>
+              {onRevertItem && (
+                <button
+                  type="button"
+                  onClick={() => onRevertItem(it.id)}
+                  aria-label={`Revert ${it.text}`}
+                  disabled={saving}
+                  style={{
+                    fontSize: 11,
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    border: "1px solid transparent",
+                    background: "transparent",
+                    color: "var(--am-text-muted)",
+                    cursor: saving ? "not-allowed" : "pointer",
+                    opacity: saving ? 0.5 : 1,
+                    minHeight: 22,
+                  }}
+                >
+                  Undo
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
 
       {saveError && (

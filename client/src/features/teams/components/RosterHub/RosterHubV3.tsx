@@ -71,6 +71,12 @@ interface RosterHubV3Props {
   saving?: boolean;
   saveError?: string | null;
   onDismissError?: () => void;
+  /** FA scenario: itemized pending-change rows in the bar. */
+  pendingItems?: ReadonlyArray<{ id: string; kind: "swap" | "fa_add"; text: string }>;
+  /** FA scenario: per-item revert handler (Undo button on each row). */
+  onRevertItem?: (id: string) => void;
+  /** FA scenario: drop pool slot — rendered between active roster and IL. */
+  dropPoolSlot?: React.ReactNode;
 
   /**
    * When true, each rendered row is wrapped in a per-row adapter that
@@ -184,6 +190,9 @@ export function RosterHubV3({
   saving,
   saveError,
   onDismissError,
+  pendingItems,
+  onRevertItem,
+  dropPoolSlot,
   dndEnabled,
   shakeRowId,
   forceMobile,
@@ -221,6 +230,8 @@ export function RosterHubV3({
             saveError={saveError ?? null}
             onRetry={onSave}
             onDismissError={onDismissError}
+            items={pendingItems}
+            onRevertItem={onRevertItem}
           />
           {showSelectionBanner && selectedPlayerName && (
             <div
@@ -372,6 +383,11 @@ export function RosterHubV3({
           )}
         </div>
       </Glass>
+
+      {/* FA scenario: drop pool surface (FA-#5) sits between active
+          roster and IL. Render-prop'd by the parent so the hub stays
+          agnostic to the pending-changes shape. */}
+      {dropPoolSlot}
 
       <IlSectionV3
         players={ilPlayers}

@@ -11,6 +11,9 @@ export { PositionPill } from "./PositionPill";
 export { EligibilityChips } from "./EligibilityChips";
 export { RowActionMenu } from "./RowActionMenu";
 export { PendingChangeBar } from "./PendingChangeBar";
+export type { PendingChangeBarItem } from "./PendingChangeBar";
+export { FreeAgentPanel, encodeFaDndId, decodeFaDndId, FA_DND_ID_PREFIX } from "./FreeAgentPanel";
+export { DropPool } from "./DropPool";
 export { IlSection } from "./IlSection";
 
 // v3 (consolidated table + GP numbers + sub-routes — see types for spec ref)

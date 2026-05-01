@@ -183,7 +183,7 @@ describe("usePendingChanges", () => {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       const parsed = JSON.parse(raw!);
-      expect(parsed.v).toBe(1);
+      expect(parsed.v).toBe(2);
       expect(parsed.changes).toHaveLength(1);
       expect(parsed.changes[0].id).toBe("abc");
     });
@@ -203,7 +203,7 @@ describe("usePendingChanges", () => {
       const stale = Date.now() - 2 * 60 * 60 * 1000;
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ v: 1, savedAt: stale, changes: [{ ...makeSwap(), id: "x" }] }),
+        JSON.stringify({ v: 2, savedAt: stale, changes: [{ ...makeSwap(), id: "x" }] }),
       );
       expect(readPersistedChanges(42)).toBeNull();
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -213,7 +213,7 @@ describe("usePendingChanges", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          v: 1,
+          v: 2,
           savedAt: Date.now() - 60 * 1000,
           changes: [{ ...makeSwap(), id: "x" }],
         }),
@@ -221,6 +221,18 @@ describe("usePendingChanges", () => {
       const out = readPersistedChanges(42);
       expect(out).toHaveLength(1);
       expect(out![0].id).toBe("x");
+    });
+
+    it("readPersistedChanges discards v1 entries (FA-scenario schema bump)", () => {
+      // PR #207 wrote v:1 swap-only blobs; this PR's fa_add variant
+      // bumps the schema. v1 entries are silently dropped rather than
+      // auto-migrated. See PersistedState.v doc in usePendingChanges.ts.
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ v: 1, savedAt: Date.now(), changes: [{ ...makeSwap(), id: "x" }] }),
+      );
+      expect(readPersistedChanges(42)).toBeNull();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
     it("readPersistedChanges silently drops malformed JSON", () => {
@@ -239,7 +251,7 @@ describe("usePendingChanges", () => {
     it("clearPersistedChanges removes the entry", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ v: 1, savedAt: Date.now(), changes: [] }),
+        JSON.stringify({ v: 2, savedAt: Date.now(), changes: [] }),
       );
       clearPersistedChanges(42);
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -268,6 +280,137 @@ describe("usePendingChanges", () => {
         result.current.addChange(makeSwap());
       });
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+  });
+
+  // ─── FA scenario (this PR) ──────────────────────────────────────
+  //
+  // The fa_add variant queues a free-agent claim alongside a displaced
+  // roster player. The hook itself is kind-agnostic — these tests pin
+  // the wire shape callers must use and the round-trip via
+  // localStorage so persistence stays compatible with the v2 schema.
+
+  describe("fa_add variant", () => {
+    function makeFaAdd(
+      overrides: Partial<Extract<PendingChange, { kind: "fa_add" }>> = {},
+    ): Omit<PendingChange, "id"> {
+      return {
+        kind: "fa_add",
+        mlbId: 660271,
+        faName: "Shohei Ohtani",
+        targetSlot: "DH",
+        displaced: {
+          rosterId: 7,
+          playerId: 707,
+          mlbId: 545361,
+          name: "Mike Trout",
+          slot: "OF",
+        },
+        ...overrides,
+      } as Omit<PendingChange, "id">;
+    }
+
+    it("queues an fa_add change with all displaced metadata intact", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeFaAdd());
+      });
+      expect(result.current.state.changes).toHaveLength(1);
+      const change = result.current.state.changes[0];
+      expect(change.kind).toBe("fa_add");
+      if (change.kind === "fa_add") {
+        expect(change.mlbId).toBe(660271);
+        expect(change.faName).toBe("Shohei Ohtani");
+        expect(change.targetSlot).toBe("DH");
+        expect(change.displaced.rosterId).toBe(7);
+        expect(change.displaced.name).toBe("Mike Trout");
+      }
+    });
+
+    it("revertChange removes only the targeted fa_add", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange({ ...makeFaAdd(), id: "fa-1" } as PendingChange);
+        result.current.addChange({
+          ...makeFaAdd({
+            mlbId: 545361,
+            faName: "Trout",
+            displaced: {
+              rosterId: 8,
+              playerId: 808,
+              mlbId: 700,
+              name: "Bench Guy",
+              slot: "BN",
+            },
+          }),
+          id: "fa-2",
+        } as PendingChange);
+      });
+      expect(result.current.state.changes).toHaveLength(2);
+      act(() => {
+        result.current.revertChange("fa-1");
+      });
+      expect(result.current.state.changes).toHaveLength(1);
+      expect(result.current.state.changes[0].id).toBe("fa-2");
+    });
+
+    it("mixed swap + fa_add changes flow through save() in queue order", async () => {
+      const saveFn = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn, persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeSwap());
+        result.current.addChange(makeFaAdd());
+      });
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(saveFn).toHaveBeenCalledTimes(1);
+      const batch = saveFn.mock.calls[0][0] as PendingChange[];
+      expect(batch).toHaveLength(2);
+      expect(batch[0].kind).toBe("swap");
+      expect(batch[1].kind).toBe("fa_add");
+      expect(result.current.state.changes).toHaveLength(0);
+    });
+
+    it("save() failure preserves fa_add changes in the queue (atomic / FA-#4)", async () => {
+      const saveFn = vi.fn().mockRejectedValue(new Error("server 500"));
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn, persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeFaAdd());
+      });
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(result.current.state.error).toBe("server 500");
+      expect(result.current.state.changes).toHaveLength(1);
+      expect(result.current.state.changes[0].kind).toBe("fa_add");
+    });
+
+    it("persists fa_add changes under v2 schema and round-trips via readPersistedChanges", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange({ ...makeFaAdd(), id: "fa-r" } as PendingChange);
+      });
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw!);
+      expect(parsed.v).toBe(2);
+      expect(parsed.changes[0].kind).toBe("fa_add");
+
+      const restored = readPersistedChanges(42);
+      expect(restored).toHaveLength(1);
+      expect(restored![0].id).toBe("fa-r");
+      expect(restored![0].kind).toBe("fa_add");
     });
   });
 });
