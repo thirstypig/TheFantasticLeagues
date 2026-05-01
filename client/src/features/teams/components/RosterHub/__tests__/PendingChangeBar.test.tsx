@@ -151,4 +151,120 @@ describe("PendingChangeBar", () => {
     );
     expect(screen.queryByTestId("pending-change-row")).toBeNull();
   });
+
+  // ─── Complex-batch scenario (this PR) ──────────────────────────
+
+  it("renders the dependency badge when an item has dependsOn (Complex-#2)", () => {
+    render(
+      <PendingChangeBar
+        count={2}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[
+          { id: "p1", kind: "il_stash", text: "Stash Trout · freed OF" },
+          {
+            id: "c1",
+            kind: "fa_add",
+            text: "Add Ohtani · drop Bench Guy",
+            dependsOn: "IL stash #1",
+          },
+        ]}
+        onRevertItem={() => {}}
+      />,
+    );
+    const dep = screen.getByTestId("pending-change-dependson");
+    expect(dep).toHaveTextContent(/depends on IL stash #1/i);
+  });
+
+  it("paints a row as failed when errorReason is set (Complex-#6)", () => {
+    render(
+      <PendingChangeBar
+        count={1}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[
+          {
+            id: "fa1",
+            kind: "fa_add",
+            text: "Add Ohtani · drop Bench Guy",
+            errorReason: "Player no longer FA — cancel this change",
+          },
+        ]}
+        onRevertItem={() => {}}
+      />,
+    );
+    const row = screen.getByTestId("pending-change-row");
+    expect(row).toHaveAttribute("data-failed", "true");
+    expect(screen.getByTestId("pending-change-error")).toHaveTextContent(
+      /no longer FA/i,
+    );
+  });
+
+  it("rows without dependsOn or errorReason render data-failed=false", () => {
+    render(
+      <PendingChangeBar
+        count={1}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[{ id: "s1", kind: "swap", text: "Trout 2B ↔ Bogaerts SS" }]}
+        onRevertItem={() => {}}
+      />,
+    );
+    const row = screen.getByTestId("pending-change-row");
+    expect(row).toHaveAttribute("data-failed", "false");
+    expect(screen.queryByTestId("pending-change-dependson")).toBeNull();
+    expect(screen.queryByTestId("pending-change-error")).toBeNull();
+  });
+
+  it("clicking the row toggles data-expanded for mobile tap-to-expand (Complex-#7)", () => {
+    render(
+      <PendingChangeBar
+        count={1}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[
+          {
+            id: "il1",
+            kind: "il_stash",
+            text: "Stash Trout · freed OF",
+            secondary: "Auto-resolved: A → BN, B → 2B",
+          },
+        ]}
+        onRevertItem={() => {}}
+      />,
+    );
+    const row = screen.getByTestId("pending-change-row");
+    expect(row).toHaveAttribute("data-expanded", "false");
+    // Click on the summary (find via the textContent — row's first child).
+    const summary = row.querySelector("summary")!;
+    fireEvent.click(summary);
+    expect(row).toHaveAttribute("data-expanded", "true");
+    fireEvent.click(summary);
+    expect(row).toHaveAttribute("data-expanded", "false");
+  });
+
+  it("clicking the Undo button does not toggle expanded state", () => {
+    const onRevertItem = vi.fn();
+    render(
+      <PendingChangeBar
+        count={1}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[
+          {
+            id: "il1",
+            kind: "il_stash",
+            text: "Stash Trout · freed OF",
+            secondary: "Auto-resolved: A → BN",
+          },
+        ]}
+        onRevertItem={onRevertItem}
+      />,
+    );
+    const row = screen.getByTestId("pending-change-row");
+    expect(row).toHaveAttribute("data-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: /Revert Stash Trout/ }));
+    expect(onRevertItem).toHaveBeenCalledWith("il1");
+    expect(row).toHaveAttribute("data-expanded", "false");
+  });
 });
