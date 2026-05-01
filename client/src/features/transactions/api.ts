@@ -1,5 +1,14 @@
 
 import { fetchJsonApi, API_BASE } from '../../api/base';
+import type {
+    AppliedReassignment as SharedAppliedReassignment,
+    ClaimRequest,
+    ClaimResponse,
+    IlStashRequest,
+    IlStashResponse,
+    IlActivateRequest,
+    IlActivateResponse,
+} from '@shared/api/rosterMoves';
 
 export interface TransactionEvent {
   id: number;
@@ -14,7 +23,7 @@ export interface TransactionEvent {
   status: string; // PENDING, APPROVED, REJECTED
   team?: { name: string };
   player?: { name: string };
-  
+
   // Legacy / Raw fields
   effDate?: string;
   effDateRaw?: string;
@@ -38,47 +47,34 @@ export async function getTransactions(params?: { leagueId?: number; teamId?: num
  * on every claim / IL stash / IL activate and may move other roster rows to
  * fit the new player legally. Each move is echoed here so the client can
  * surface a toast like "Also moved: Trea Turner 2B → SS".
+ *
+ * Sourced from `@shared/api/rosterMoves` to keep the wire shape in sync.
  */
-export interface AppliedReassignment {
-    rosterId: number;
-    playerId: number;
-    playerName: string;
-    oldSlot: string;
-    newSlot: string;
-}
+export type AppliedReassignment = SharedAppliedReassignment;
 
-export interface IlStashParams {
-    leagueId: number;
-    teamId: number;
-    stashPlayerId: number;
-    addPlayerId?: number;
-    addMlbId?: number;
-    effectiveDate?: string;
-    reason?: string;
-}
+// Request param types — re-exported from shared so component-side imports
+// don't have to dual-import. Wire shape is enforced server-side via Zod.
+export type ClaimParams = ClaimRequest;
+export type IlStashParams = IlStashRequest;
+export type IlActivateParams = IlActivateRequest;
 
-export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
+export async function ilStash(params: IlStashParams): Promise<IlStashResponse> {
     return fetchJsonApi(`${API_BASE}/transactions/il-stash`, {
         method: 'POST',
         body: JSON.stringify(params),
     });
 }
 
-export interface IlActivateParams {
-    leagueId: number;
-    teamId: number;
-    activatePlayerId: number;
-    dropPlayerId: number;
-    effectiveDate?: string;
-    reason?: string;
-}
-
-export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
+export async function ilActivate(params: IlActivateParams): Promise<IlActivateResponse> {
     return fetchJsonApi(`${API_BASE}/transactions/il-activate`, {
         method: 'POST',
         body: JSON.stringify(params),
     });
 }
+
+// Re-export the response types so components can import the canonical shapes
+// without dual-importing from `@shared`.
+export type { ClaimResponse, IlStashResponse, IlActivateResponse };
 
 /**
  * Format a list of auto-resolve reassignments as a single-line toast.

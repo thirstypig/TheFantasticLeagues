@@ -17,10 +17,17 @@ beforeEach(() => {
 
 describe("ilStash", () => {
   it("POSTs to /api/transactions/il-stash with the full param payload", async () => {
+    // Server response now echoes mlbId + name for both stash and add players
+    // (todo #136). The api wrapper just passes the response through.
     vi.mocked(fetchJsonApi).mockResolvedValue({
       success: true,
       stashPlayerId: 42,
+      stashPlayerMlbId: 545361,
+      stashPlayerName: "Mike Trout",
       addPlayerId: 100,
+      addPlayerMlbId: 123,
+      addPlayerName: "Jo Adell",
+      appliedReassignments: [],
     });
 
     const result = await ilStash({
@@ -43,14 +50,28 @@ describe("ilStash", () => {
         }),
       }),
     );
-    expect(result).toEqual({ success: true, stashPlayerId: 42, addPlayerId: 100 });
+    // Echo fields flow through unchanged
+    expect(result).toMatchObject({
+      success: true,
+      stashPlayerId: 42,
+      stashPlayerName: "Mike Trout",
+      stashPlayerMlbId: 545361,
+      addPlayerId: 100,
+      addPlayerName: "Jo Adell",
+      addPlayerMlbId: 123,
+    });
   });
 
   it("forwards addMlbId / effectiveDate / reason when provided", async () => {
     vi.mocked(fetchJsonApi).mockResolvedValue({
       success: true,
       stashPlayerId: 42,
+      stashPlayerMlbId: 545361,
+      stashPlayerName: "Mike Trout",
       addPlayerId: 999,
+      addPlayerMlbId: 500743,
+      addPlayerName: "Some Add",
+      appliedReassignments: [],
     });
 
     await ilStash({
@@ -87,7 +108,12 @@ describe("ilActivate", () => {
     vi.mocked(fetchJsonApi).mockResolvedValue({
       success: true,
       activatePlayerId: 42,
+      activatePlayerMlbId: 999,
+      activatePlayerName: "Activated Guy",
       dropPlayerId: 1633,
+      dropPlayerMlbId: 222,
+      dropPlayerName: "Dropped Guy",
+      appliedReassignments: [],
     });
 
     const result = await ilActivate({
@@ -110,14 +136,25 @@ describe("ilActivate", () => {
         }),
       }),
     );
-    expect(result).toEqual({ success: true, activatePlayerId: 42, dropPlayerId: 1633 });
+    expect(result).toMatchObject({
+      success: true,
+      activatePlayerId: 42,
+      activatePlayerName: "Activated Guy",
+      dropPlayerId: 1633,
+      dropPlayerName: "Dropped Guy",
+    });
   });
 
   it("forwards effectiveDate / reason when provided", async () => {
     vi.mocked(fetchJsonApi).mockResolvedValue({
       success: true,
       activatePlayerId: 42,
+      activatePlayerMlbId: 999,
+      activatePlayerName: "Activated Guy",
       dropPlayerId: 1633,
+      dropPlayerMlbId: 222,
+      dropPlayerName: "Dropped Guy",
+      appliedReassignments: [],
     });
 
     await ilActivate({

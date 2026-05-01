@@ -253,6 +253,28 @@ describe("POST /transactions/claim", () => {
     expect(res.body.error).toContain("already on team");
   });
 
+  // ── Response envelope echo (todo #136) ────────────────────────
+  // Server now echoes the claimed player's name + mlbId so the client can
+  // render success toasts without a second round-trip.
+  it("echoes mlbId and name of the claimed player in the success envelope", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    // Default mockTx.player.findUnique returns Mike Trout / mlbId 545361.
+    expect(res.body).toMatchObject({
+      success: true,
+      playerId: 100,
+      name: "Mike Trout",
+      mlbId: 545361,
+    });
+    expect(Array.isArray(res.body.appliedReassignments)).toBe(true);
+  });
+
   it("handles claim with drop player", async () => {
     mockPrisma.roster.findFirst.mockResolvedValue(null);
     mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
@@ -793,6 +815,41 @@ describe("POST /transactions/il-stash", () => {
     expect(types).toContain("ADD");
   });
 
+  // ── Response envelope echo (todo #136) ────────────────────────
+  // Server now echoes name + mlbId for both stash and add players.
+  it("echoes mlbId+name for both stash and add players in the success envelope", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") })
+      .mockResolvedValueOnce(null);
+    // Distinct lookups: addPlayer (id=100) and stashPlayer (id=42).
+    mockPrisma.player.findUnique.mockImplementation(async ({ where }: any) => {
+      if (where.id === 100) {
+        return { id: 100, name: "Jo Adell", posPrimary: "OF", posList: "OF", mlbId: 123, mlbTeam: "LAA" };
+      }
+      if (where.id === 42) {
+        return { id: 42, name: "Mike Trout", mlbId: 545361 };
+      }
+      return null;
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10,
+      stashPlayerId: 42, addPlayerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      success: true,
+      stashPlayerId: 42,
+      stashPlayerMlbId: 545361,
+      stashPlayerName: "Mike Trout",
+      addPlayerId: 100,
+      addPlayerMlbId: 123,
+      addPlayerName: "Jo Adell",
+    });
+  });
+
   it("rejects when MLB status is not an 'Injured …-Day' designation (NOT_MLB_IL)", async () => {
     mockPrisma.roster.findFirst.mockResolvedValueOnce({
       id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
@@ -918,6 +975,42 @@ describe("POST /transactions/il-activate", () => {
       .map((c: any[]) => c[0].data.transactionType);
     expect(types).toContain("IL_ACTIVATE");
     expect(types).toContain("DROP");
+  });
+
+  // ── Response envelope echo (todo #136) ────────────────────────
+  it("echoes mlbId+name for both activate and drop players in the success envelope", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") });
+    mockPrisma.player.findUnique.mockImplementation(async ({ where }: any) => {
+      if (where.id === 42) {
+        return { id: 42, name: "Activated Guy", posList: "OF,1B", mlbId: 999 };
+      }
+      if (where.id === 100) {
+        return { id: 100, name: "Dropped Guy", mlbId: 222 };
+      }
+      return null;
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      success: true,
+      activatePlayerId: 42,
+      activatePlayerMlbId: 999,
+      activatePlayerName: "Activated Guy",
+      dropPlayerId: 100,
+      dropPlayerMlbId: 222,
+      dropPlayerName: "Dropped Guy",
+    });
   });
 
   it("rejects when activate player is not on IL (NOT_ON_IL)", async () => {
