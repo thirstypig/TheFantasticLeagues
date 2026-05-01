@@ -324,6 +324,27 @@ export const IlActivateResponseSchema = z.object({
 });
 export type IlActivateResponse = z.infer<typeof IlActivateResponseSchema>;
 
+/**
+ * Body: PATCH /api/teams/:teamId/roster/:rosterId
+ *
+ * Swap-only mutation used by the v3 hub's drag-to-swap flow. The wire
+ * shape grew an optional `effectiveDate` in the commissioner-mode rollout
+ * so backdated swaps can be audited (commissioners sometimes need to
+ * correct retroactively per league rules). The server treats the date as
+ * advisory metadata for the audit trail today — the swap itself doesn't
+ * write a Roster.acquiredAt mutation, so backdated values are visible in
+ * logs but don't trigger period-stats recompute. See PR description for
+ * the explicit non-recompute carve-out.
+ */
+export const RosterPositionUpdateSchema = z.object({
+  assignedPosition: z.string().max(5).nullable(),
+  effectiveDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+    .optional(),
+});
+export type RosterPositionUpdateRequest = z.infer<typeof RosterPositionUpdateSchema>;
+
 export const RosterMovesPlayerSchema = z.object({
   // Identification — at least one of (mlb_id, _dbPlayerId) must be set.
   mlb_id: z.union([z.string(), z.number()]).optional(),

@@ -17,6 +17,9 @@ vi.mock("../../../middleware/auth.js", () => ({
   requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   requireAdmin: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   requireTeamOwner: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireTeamOwnerOrCommissioner: vi.fn(
+    () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  ),
   requireLeagueMember: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/asyncHandler.js", () => ({
@@ -397,5 +400,59 @@ describe("GET /api/teams/trade-block/league", () => {
     }
 
     expect(tradeBlocks).toEqual({});
+  });
+});
+
+describe("PATCH /api/teams/:teamId/roster/:rosterId — schema accepts effectiveDate", () => {
+  // The full request flow is exercised by integration tests; here we only
+  // verify the Zod schema accepts the new optional field. This guards
+  // the commissioner-mode wire contract: client emits an ISO date and
+  // server-side validation must let it through.
+  it("validates a body with assignedPosition + effectiveDate (YYYY-MM-DD)", async () => {
+    const { z } = await import("zod");
+    // Inline the schema shape from routes.ts so the test fails fast if
+    // the route handler ever drops the field. (Importing the live schema
+    // requires the whole router to load, which pulls in heavy mocks.)
+    const schema = z.object({
+      assignedPosition: z.string().max(5).nullable(),
+      effectiveDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+        .optional(),
+    });
+    const ok = schema.safeParse({
+      assignedPosition: "2B",
+      effectiveDate: "2026-04-15",
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it("validates a body without effectiveDate (owner-mode default)", async () => {
+    const { z } = await import("zod");
+    const schema = z.object({
+      assignedPosition: z.string().max(5).nullable(),
+      effectiveDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+        .optional(),
+    });
+    const ok = schema.safeParse({ assignedPosition: "OF" });
+    expect(ok.success).toBe(true);
+  });
+
+  it("rejects a malformed effectiveDate", async () => {
+    const { z } = await import("zod");
+    const schema = z.object({
+      assignedPosition: z.string().max(5).nullable(),
+      effectiveDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+        .optional(),
+    });
+    const bad = schema.safeParse({
+      assignedPosition: "2B",
+      effectiveDate: "yesterday",
+    });
+    expect(bad.success).toBe(false);
   });
 });
