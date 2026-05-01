@@ -30,7 +30,7 @@ import { prisma } from "../../../db/prisma.js";
 const mockPrisma = prisma as any;
 
 import express from "express";
-import { awardsRouter } from "../awardsRoutes.js";
+import { awardsRouter } from "../routes.js";
 import supertest from "supertest";
 
 const app = express();
