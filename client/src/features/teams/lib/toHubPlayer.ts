@@ -30,6 +30,11 @@ export interface RosterPlayerInput {
   isKeeper?: boolean;
   /** Per-position GP — synthetic today, real when Player.posGames lands. */
   gamesByPos?: Record<string, number>;
+  /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …).
+   *  Verbatim per direction-lock IL #1 — never normalized. */
+  mlbStatus?: string | null;
+  /** Days since `mlbStatus` was observed — drives ghost-IL chip body. */
+  mlbStatusDaysAgo?: number;
   // Hitter stats (when available)
   AVG?: number | string;
   HR?: number;
@@ -115,6 +120,8 @@ export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
     mlbTeam: p.mlbTeam,
     isKeeper: p.isKeeper,
     gamesPlayedByPosition: narrowGamesByPos(p.gamesByPos),
+    mlbStatus: p.mlbStatus ?? undefined,
+    mlbStatusDaysAgo: p.mlbStatusDaysAgo,
   };
   // Per todo #153 — RosterHubPlayer is a discriminated union on
   // `isPitcher`. Branch the return value so the type system knows which

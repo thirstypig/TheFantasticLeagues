@@ -13,16 +13,45 @@
 // revert lives on each row. Callers that don't pass items keep the
 // count-only Hub UX.
 //
+// IL scenario extension (this PR): two more badge variants — IL STASH
+// (amber) and IL ACTIVATE (cyan). Optional `secondary` line per row
+// renders explicit auto-resolve text for ≥3-player cascades per
+// direction-lock IL #5.
+//
 // The component renders nothing when `count === 0` AND there is no error
 // to surface — keeps the chrome out of the way on a clean roster.
 
+export type PendingChangeBarItemKind = "swap" | "fa_add" | "il_stash" | "il_activate";
+
 export interface PendingChangeBarItem {
   id: string;
-  kind: "swap" | "fa_add";
+  kind: PendingChangeBarItemKind;
   /** Human-readable summary, e.g. "Mookie Betts → 2B" or
    *  "Add Trout · drop Stanton". Caller decides phrasing. */
   text: string;
+  /** Optional second-line explicit cascade text — IL scenario direction-lock #5
+   *  surfaces this for ≥3-player auto-resolve cascades. Rendered as a smaller
+   *  muted line beneath `text`. */
+  secondary?: string;
 }
+
+const BADGE_LABELS: Record<PendingChangeBarItemKind, string> = {
+  swap: "SWAP",
+  fa_add: "FA ADD",
+  il_stash: "IL STASH",
+  il_activate: "IL ACTIVATE",
+};
+
+const BADGE_TONES: Record<PendingChangeBarItemKind, { fg: string; mix: number }> = {
+  // Cyan = "pending swap" (matches direction-lock #7 dot).
+  swap: { fg: "#22d3ee", mix: 22 },
+  // Green = additive (FA add).
+  fa_add: { fg: "#22c55e", mix: 22 },
+  // Amber = IL semantics (mirrors IL section red/amber palette).
+  il_stash: { fg: "#f59e0b", mix: 22 },
+  // Cyan = activation back to active roster.
+  il_activate: { fg: "#22d3ee", mix: 22 },
+};
 
 interface PendingChangeBarProps {
   count: number;
@@ -157,7 +186,9 @@ export function PendingChangeBar({
             gap: 4,
           }}
         >
-          {items.map((it) => (
+          {items.map((it) => {
+            const tone = BADGE_TONES[it.kind];
+            return (
             <li
               key={it.id}
               data-testid="pending-change-row"
@@ -173,24 +204,41 @@ export function PendingChangeBar({
               }}
             >
               <span
-                aria-label={it.kind === "swap" ? "Swap" : "Free agent add"}
+                aria-label={BADGE_LABELS[it.kind]}
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
                   padding: "2px 6px",
                   borderRadius: 6,
-                  background:
-                    it.kind === "fa_add"
-                      ? "color-mix(in srgb, #22c55e 22%, transparent)"
-                      : "color-mix(in srgb, #22d3ee 22%, transparent)",
-                  color: it.kind === "fa_add" ? "#22c55e" : "#22d3ee",
+                  background: `color-mix(in srgb, ${tone.fg} ${tone.mix}%, transparent)`,
+                  color: tone.fg,
                   letterSpacing: 0.4,
+                  whiteSpace: "nowrap",
                 }}
               >
-                {it.kind === "fa_add" ? "FA ADD" : "SWAP"}
+                {BADGE_LABELS[it.kind]}
               </span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {it.text}
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {it.text}
+                </span>
+                {it.secondary && (
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 11,
+                      color: "var(--am-text-muted)",
+                      marginTop: 2,
+                      lineHeight: 1.4,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    data-testid="pending-change-secondary"
+                  >
+                    {it.secondary}
+                  </span>
+                )}
               </span>
               {onRevertItem && (
                 <button
@@ -214,7 +262,8 @@ export function PendingChangeBar({
                 </button>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

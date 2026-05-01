@@ -22,6 +22,8 @@ import {
   assertNoGhostIl,
   type MlbStatusCheck,
 } from "../../lib/ilSlotGuard.js";
+import { getMlbPlayerStatus } from "../../lib/mlbApi.js";
+import { SyncIlStatusBodySchema } from "../../../../shared/api/rosterMoves.js";
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import {
@@ -518,12 +520,19 @@ const ilStashSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
   stashPlayerId: z.number().int().positive(),
+  /** Optional pairing player. When omitted, the v3 hub's stash-only mode
+   *  applies — the freed slot becomes empty and the server's bipartite
+   *  matcher (still runs in-tx) re-shuffles the rest of the active roster
+   *  to fill it from BN if possible. The IL slot transition still fires;
+   *  the active-roster shape just changes by -1 active player.
+   *  Phase 2's "add required" invariant only applies to /transactions/claim
+   *  and /transactions/drop — IL stash is structurally a slot transition,
+   *  not an active-roster departure (the player remains rostered, just
+   *  in the IL slot). */
   addPlayerId: z.number().int().positive().optional(),
   addMlbId: z.union([z.number(), z.string()]).optional(),
   effectiveDate: effectiveDateSchema,
   reason: z.string().max(500).optional(),
-}).refine(d => d.addPlayerId || d.addMlbId, {
-  message: "addPlayerId or addMlbId required",
 });
 
 /**
@@ -570,6 +579,9 @@ router.post(
     const isBackdated = effDateRaw != null;
 
     // Pre-transaction: resolve addPlayer (by id or via mlbId lookup).
+    // Stash-only mode (v3 hub IL scenario) — skip when neither id nor
+    // mlbId is provided. The IL slot transition still fires; the active
+    // roster shape just changes by -1.
     let addPlayerId = addPlayerIdInput as number | undefined;
     if (!addPlayerId && addMlbId != null) {
       const mlbIdNum = Number(addMlbId);
@@ -579,9 +591,7 @@ router.post(
       }
       addPlayerId = p.id;
     }
-    if (!addPlayerId) {
-      return res.status(400).json({ error: "Missing addPlayerId or addMlbId" });
-    }
+    const stashOnly = addPlayerId == null;
 
     // Pre-transaction: fetch stashPlayer's current Roster row on this team.
     const stashRoster = await prisma.roster.findFirst({
@@ -616,11 +626,14 @@ router.post(
     }
 
     // Pre-transaction: position-inherit eligibility for add player.
-    const addPlayer = await prisma.player.findUnique({
-      where: { id: addPlayerId },
-      select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true, mlbTeam: true },
-    });
-    if (!addPlayer) {
+    // Stash-only mode: skip the add-player resolution entirely.
+    const addPlayer = stashOnly
+      ? null
+      : await prisma.player.findUnique({
+          where: { id: addPlayerId! },
+          select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true, mlbTeam: true },
+        });
+    if (!stashOnly && !addPlayer) {
       return res.status(404).json({ error: `Add player #${addPlayerId} not found.` });
     }
 
@@ -629,10 +642,12 @@ router.post(
     // when auto-resolve became unconditional (PR2 cuts §0).
 
     // Pre-transaction: addPlayer's current owner (for god-mode cross-team release).
-    const existingRoster = await prisma.roster.findFirst({
-      where: { playerId: addPlayerId, team: { leagueId }, releasedAt: null },
-      include: { team: true },
-    });
+    const existingRoster = stashOnly
+      ? null
+      : await prisma.roster.findFirst({
+          where: { playerId: addPlayerId!, team: { leagueId }, releasedAt: null },
+          include: { team: true },
+        });
     if (existingRoster && !isBackdated && existingRoster.teamId !== teamId) {
       return res.status(400).json({ error: `Add player is already on team: ${existingRoster.team.name}` });
     }
@@ -665,8 +680,9 @@ router.post(
         await assertNoGhostIl(tx, teamId);
 
         // Ownership-window overlap guard for addPlayer.
+        // Skipped entirely in stash-only mode (no add player to validate).
         const excludeRosterIds: number[] = [];
-        if (existingRoster && existingRoster.teamId !== teamId) {
+        if (!stashOnly && existingRoster && existingRoster.teamId !== teamId) {
           await tx.roster.update({
             where: { id: existingRoster.id },
             data: { releasedAt: effective, source: "COMMISSIONER_REASSIGN" },
@@ -676,17 +692,19 @@ router.post(
             data: {
               rowHash: `REASSIGN-DROP-${crypto.randomUUID()}-${addPlayerId}`,
               leagueId, season, effDate: effective, submittedAt: new Date(),
-              teamId: existingRoster.teamId, playerId: addPlayerId,
+              teamId: existingRoster.teamId, playerId: addPlayerId!,
               transactionRaw: `Commissioner reassign (IL stash) — released from ${existingRoster.team.name}`,
               transactionType: 'DROP',
             },
           });
         }
-        await assertNoOwnershipConflict(tx, {
-          leagueId, playerId: addPlayerId!,
-          acquiredAt: effective, releasedAt: null,
-          excludeRosterIds,
-        });
+        if (!stashOnly) {
+          await assertNoOwnershipConflict(tx, {
+            leagueId, playerId: addPlayerId!,
+            acquiredAt: effective, releasedAt: null,
+            excludeRosterIds,
+          });
+        }
 
         // Move stashPlayer to IL slot.
         await tx.roster.update({
@@ -694,12 +712,18 @@ router.post(
           data: { assignedPosition: "IL" },
         });
         // Create addPlayer on the slot stashPlayer just vacated (position-inherit).
-        const newStashRoster = await tx.roster.create({
-          data: {
-            teamId, playerId: addPlayerId!, source: "il_stash",
-            acquiredAt: effective, assignedPosition: stashSlot,
-          },
-        });
+        // Stash-only mode: skip the create — the freed slot stays empty
+        // and the matcher reshuffles the rest of the roster to fill it
+        // from BN if a position-eligible bench player exists.
+        let newStashRoster: { id: number } | null = null;
+        if (!stashOnly) {
+          newStashRoster = await tx.roster.create({
+            data: {
+              teamId, playerId: addPlayerId!, source: "il_stash",
+              acquiredAt: effective, assignedPosition: stashSlot,
+            },
+          });
+        }
 
         // Yahoo-style auto-resolve: re-shuffle the active roster if the
         // strict inherited slot turned out to be infeasible (e.g., the
@@ -709,7 +733,9 @@ router.post(
           const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
           const rosterRowToPlayerId = new Map<number, number>();
           for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
-          if (addPlayer.name) playerNames.set(newStashRoster.id, addPlayer.name);
+          if (addPlayer && newStashRoster && addPlayer.name) {
+            playerNames.set(newStashRoster.id, addPlayer.name);
+          }
 
           let result = resolveLineup(candidates, slotCapacities);
           if (result.ok === false) {
@@ -762,15 +788,17 @@ router.post(
             transactionType: "IL_STASH",
           },
         });
-        await tx.transactionEvent.create({
-          data: {
-            rowHash: `CLAIM-${crypto.randomUUID()}-${addPlayerId}`,
-            leagueId, season, effDate: effective, submittedAt: new Date(),
-            teamId, playerId: addPlayerId!,
-            transactionRaw: `IL stash — added ${addPlayer.name}`,
-            transactionType: "ADD",
-          },
-        });
+        if (!stashOnly && addPlayer) {
+          await tx.transactionEvent.create({
+            data: {
+              rowHash: `CLAIM-${crypto.randomUUID()}-${addPlayerId}`,
+              leagueId, season, effDate: effective, submittedAt: new Date(),
+              teamId, playerId: addPlayerId!,
+              transactionRaw: `IL stash — added ${addPlayer.name}`,
+              transactionType: "ADD",
+            },
+          });
+        }
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {
@@ -788,7 +816,8 @@ router.post(
       action: "TRANSACTION_IL_STASH",
       resourceType: "Transaction",
       metadata: {
-        leagueId, teamId, stashPlayerId, addPlayerId,
+        leagueId, teamId, stashPlayerId, addPlayerId: addPlayerId ?? null,
+        stashOnly,
         effectiveDate: effective.toISOString(),
         backdated: isBackdated,
         mlbStatusSnapshot: mlbCheck.status,
@@ -808,7 +837,13 @@ router.post(
     }
 
     invalidateLeagueCaches(leagueId);
-    return res.json({ success: true, stashPlayerId, addPlayerId, appliedReassignments: stashAppliedReassignments });
+    return res.json({
+      success: true,
+      stashPlayerId,
+      addPlayerId: addPlayerId ?? null,
+      stashOnly,
+      appliedReassignments: stashAppliedReassignments,
+    });
   }),
 );
 
@@ -1033,6 +1068,76 @@ router.post(
 
     invalidateLeagueCaches(leagueId);
     return res.json({ success: true, activatePlayerId, dropPlayerId, appliedReassignments: activateAppliedReassignments });
+  }),
+);
+
+/**
+ * POST /api/transactions/sync-il-status
+ *
+ * Out-of-band MLB status refetch for a single roster player. Powers the
+ * v3 hub's ghost-IL "Resync" affordance (IL scenario direction-lock #3).
+ *
+ * Read-only — does NOT mutate any roster row or transaction event. Calls
+ * the existing `getMlbPlayerStatus` helper (cached 6h, MLB statsapi 40-man
+ * feed) and echoes the raw status string back per IL #1 (verbatim, no
+ * normalization). When the player isn't on their MLB team's 40-man (e.g.
+ * minor league assignment) the response carries `mlbStatus: null` so the
+ * client can dismiss the chip.
+ *
+ * Permission gate mirrors the IL stash/activate routes — owner or
+ * commissioner; everyone else gets a 403 from `requireTeamOwnerOrCommissioner`.
+ */
+router.post(
+  "/transactions/sync-il-status",
+  requireAuth,
+  validateBody(SyncIlStatusBodySchema),
+  requireTeamOwnerOrCommissioner(),
+  asyncHandler(async (req, res) => {
+    const { playerId } = req.body as { playerId: number; teamId: number };
+
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      select: { id: true, name: true, mlbId: true, mlbTeam: true },
+    });
+    if (!player) {
+      return res.status(404).json({ error: `Player #${playerId} not found.` });
+    }
+    if (!player.mlbId || !player.mlbTeam) {
+      return res.status(200).json({
+        playerId: player.id,
+        mlbId: player.mlbId ?? null,
+        mlbStatus: null,
+        fetchedAt: new Date().toISOString(),
+      });
+    }
+
+    let mlbStatus: string | null = null;
+    let fetchedAt = new Date();
+    try {
+      const result = await getMlbPlayerStatus(player.mlbId, player.mlbTeam);
+      if (result) {
+        mlbStatus = result.status;
+        fetchedAt = new Date(result.fetchedAt);
+      }
+    } catch (err) {
+      // Read-only — fail OPEN here. The chip stays visible; the user can
+      // retry later. Log for ops visibility.
+      logger.error(
+        { error: String(err), playerId, mlbId: player.mlbId, mlbTeam: player.mlbTeam },
+        "sync-il-status: MLB feed fetch failed",
+      );
+      return res.status(503).json({
+        error: "MLB status feed is unavailable right now. Try again in a few minutes.",
+        code: "MLB_FEED_UNAVAILABLE",
+      });
+    }
+
+    return res.json({
+      playerId: player.id,
+      mlbId: player.mlbId,
+      mlbStatus,
+      fetchedAt: fetchedAt.toISOString(),
+    });
   }),
 );
 

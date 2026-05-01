@@ -1,6 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useRosterHubDrag, encodeDndId, decodeDndId } from "../useRosterHubDrag";
+import {
+  useRosterHubDrag,
+  encodeDndId,
+  decodeDndId,
+  encodeIlDndId,
+  decodeIlDndId,
+  encodeIlEmptyDndId,
+  isIlEmptyDndId,
+  isMlbIlStatusUi,
+} from "../useRosterHubDrag";
 import type { RosterHubPlayer } from "../../components/RosterHub/types";
 
 // Minimal subset of player shape needed by the hook.
@@ -353,5 +362,313 @@ describe("useRosterHubDrag — FA scenario", () => {
       result.current.handleDragStart({ active: { id: "fa-row-222" } } as any);
     });
     expect(result.current.dimSection).toBe("hitters");
+  });
+});
+
+// ─── IL scenario (this PR) ────────────────────────────────────────
+//
+// Two flows:
+//   - Stash: Hub-source row → empty IL slot droppable. Gated client-side
+//     by `isMlbIlStatusUi(mlbStatus)`; server is authoritative.
+//   - Activate: IL-source row → active hub row. Cross-role rejected.
+
+describe("IL id helpers", () => {
+  it("encodeIlDndId / decodeIlDndId round-trip", () => {
+    expect(decodeIlDndId(encodeIlDndId(99))).toBe(99);
+  });
+  it("decodeIlDndId returns null for non-IL prefix", () => {
+    expect(decodeIlDndId(encodeDndId(99))).toBeNull();
+  });
+  it("isIlEmptyDndId matches the empty-slot prefix", () => {
+    expect(isIlEmptyDndId(encodeIlEmptyDndId(0))).toBe(true);
+    expect(isIlEmptyDndId(encodeIlEmptyDndId(2))).toBe(true);
+    expect(isIlEmptyDndId(encodeDndId(2))).toBe(false);
+  });
+  it("isMlbIlStatusUi accepts MLB IL statuses verbatim", () => {
+    expect(isMlbIlStatusUi("Injured 10-Day")).toBe(true);
+    expect(isMlbIlStatusUi("Injured 60-Day")).toBe(true);
+    expect(isMlbIlStatusUi("Injured List 15-Day")).toBe(true); // legacy
+    expect(isMlbIlStatusUi("Active")).toBe(false);
+    expect(isMlbIlStatusUi("Paternity")).toBe(false);
+    expect(isMlbIlStatusUi(null)).toBe(false);
+    expect(isMlbIlStatusUi(undefined)).toBe(false);
+  });
+});
+
+describe("useRosterHubDrag — IL stash (hub row → empty IL slot)", () => {
+  function mkPlayer(overrides: Partial<RosterHubPlayer>): RosterHubPlayer {
+    return {
+      rosterId: 1,
+      playerId: 101,
+      name: "Test",
+      posList: "OF",
+      posPrimary: "OF",
+      assignedSlot: "OF",
+      isPitcher: false,
+      ...overrides,
+    } as RosterHubPlayer;
+  }
+
+  const HITTER_INJURED = mkPlayer({
+    rosterId: 1,
+    playerId: 101,
+    name: "Trea Turner",
+    posList: "SS",
+    posPrimary: "SS",
+    assignedSlot: "SS",
+    mlbStatus: "Injured 10-Day",
+  });
+
+  const HITTER_HEALTHY = mkPlayer({
+    rosterId: 2,
+    playerId: 102,
+    name: "Mookie",
+    posList: "OF",
+    posPrimary: "OF",
+    assignedSlot: "OF",
+    mlbStatus: "Active",
+  });
+
+  it("ilStashEligible flips true when an injured Hub row is being dragged", () => {
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_INJURED, HITTER_HEALTHY],
+        onSwap: vi.fn(),
+        onIlStash: vi.fn(),
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeDndId(1) } } as any);
+    });
+    expect(result.current.ilStashEligible).toBe(true);
+    act(() => {
+      result.current.handleDragCancel();
+      result.current.handleDragStart({ active: { id: encodeDndId(2) } } as any);
+    });
+    expect(result.current.ilStashEligible).toBe(false);
+  });
+
+  it("dropping an injured hub row on an empty IL slot fires onIlStash with verbatim mlbStatus", () => {
+    const onIlStash = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_INJURED, HITTER_HEALTHY],
+        onSwap: vi.fn(),
+        onIlStash,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeDndId(1) } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: encodeDndId(1) },
+        over: { id: encodeIlEmptyDndId(0) },
+      } as any);
+    });
+    expect(onIlStash).toHaveBeenCalledTimes(1);
+    const change = onIlStash.mock.calls[0][0];
+    expect(change.kind).toBe("il_stash");
+    expect(change.playerId).toBe(101);
+    expect(change.rosterId).toBe(1);
+    expect(change.mlbStatus).toBe("Injured 10-Day"); // verbatim per IL #1
+    expect(change.freed).toBe("SS");
+  });
+
+  it("dropping a healthy hub row on an empty IL slot shake-rejects + toasts (no onIlStash)", () => {
+    const onIlStash = vi.fn();
+    const onToast = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_INJURED, HITTER_HEALTHY],
+        onSwap: vi.fn(),
+        onIlStash,
+        onToast,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeDndId(2) } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: encodeDndId(2) },
+        over: { id: encodeIlEmptyDndId(0) },
+      } as any);
+    });
+    expect(onIlStash).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledWith(expect.stringMatching(/isn't on the MLB IL/));
+    expect(result.current.shakeRowId).toBe(2);
+  });
+});
+
+describe("useRosterHubDrag — IL activate (IL row → active hub row)", () => {
+  function mkPlayer(overrides: Partial<RosterHubPlayer>): RosterHubPlayer {
+    return {
+      rosterId: 1,
+      playerId: 101,
+      name: "Test",
+      posList: "OF",
+      posPrimary: "OF",
+      assignedSlot: "OF",
+      isPitcher: false,
+      ...overrides,
+    } as RosterHubPlayer;
+  }
+
+  const ACTIVE_OF = mkPlayer({
+    rosterId: 5,
+    playerId: 505,
+    name: "Active OF",
+    posList: "OF",
+    posPrimary: "OF",
+    assignedSlot: "OF",
+  });
+  const ACTIVE_SS = mkPlayer({
+    rosterId: 6,
+    playerId: 606,
+    name: "Active SS",
+    posList: "SS",
+    posPrimary: "SS",
+    assignedSlot: "SS",
+  });
+  const ACTIVE_P = mkPlayer({
+    rosterId: 7,
+    playerId: 707,
+    isPitcher: true,
+    posList: "SP",
+    posPrimary: "SP",
+    assignedSlot: "P",
+  });
+
+  const IL_OF = mkPlayer({
+    rosterId: 50,
+    playerId: 5050,
+    name: "Soto",
+    posList: "OF",
+    posPrimary: "OF",
+    assignedSlot: "IL",
+    mlbStatus: "Injured 60-Day",
+  });
+  const IL_PITCHER = mkPlayer({
+    rosterId: 60,
+    playerId: 6060,
+    isPitcher: true,
+    posList: "SP",
+    posPrimary: "SP",
+    name: "Yamamoto",
+    assignedSlot: "IL",
+    mlbStatus: "Injured 15-Day",
+  });
+
+  it("IL row drag start sets activeIlDragId (NOT activeDragId)", () => {
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [ACTIVE_OF, ACTIVE_SS],
+        ilPlayers: [IL_OF],
+        onSwap: vi.fn(),
+        onIlActivate: vi.fn(),
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeIlDndId(50) } } as any);
+    });
+    expect(result.current.activeIlDragId).toBe(50);
+    expect(result.current.activeDragId).toBeNull();
+  });
+
+  it("IL → eligible active slot fires onIlActivate with displaced metadata", () => {
+    const onIlActivate = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [ACTIVE_OF, ACTIVE_SS],
+        ilPlayers: [IL_OF],
+        onSwap: vi.fn(),
+        onIlActivate,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeIlDndId(50) } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: encodeIlDndId(50) },
+        over: { id: encodeDndId(5) }, // ACTIVE_OF
+      } as any);
+    });
+    expect(onIlActivate).toHaveBeenCalledTimes(1);
+    const change = onIlActivate.mock.calls[0][0];
+    expect(change.kind).toBe("il_activate");
+    expect(change.playerId).toBe(5050);
+    expect(change.rosterId).toBe(50);
+    expect(change.targetSlot).toBe("OF");
+    expect(change.displaced.rosterId).toBe(5);
+    expect(change.displaced.playerId).toBe(505);
+  });
+
+  it("IL → ineligible slot shake-rejects + toasts (no onIlActivate)", () => {
+    const onIlActivate = vi.fn();
+    const onToast = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [ACTIVE_OF, ACTIVE_SS],
+        ilPlayers: [IL_OF],
+        onSwap: vi.fn(),
+        onIlActivate,
+        onToast,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeIlDndId(50) } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: encodeIlDndId(50) },
+        over: { id: encodeDndId(6) }, // ACTIVE_SS — IL_OF only OF-eligible
+      } as any);
+    });
+    expect(onIlActivate).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledWith(expect.stringMatching(/isn't eligible at SS/));
+    expect(result.current.shakeRowId).toBe(6);
+  });
+
+  it("Cross-role IL activation rejected per IL #7 (IL pitcher → hitter slot)", () => {
+    const onIlActivate = vi.fn();
+    const onToast = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [ACTIVE_OF, ACTIVE_P],
+        ilPlayers: [IL_PITCHER],
+        onSwap: vi.fn(),
+        onIlActivate,
+        onToast,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeIlDndId(60) } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: encodeIlDndId(60) },
+        over: { id: encodeDndId(5) }, // ACTIVE_OF — wrong role
+      } as any);
+    });
+    expect(onIlActivate).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledWith(expect.stringMatching(/Cannot activate .* (in|into) a hitter slot/));
+  });
+
+  it("IL drag dropTargetIds reflects one-way IL→slot eligibility", () => {
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [ACTIVE_OF, ACTIVE_SS],
+        ilPlayers: [IL_OF],
+        onSwap: vi.fn(),
+        onIlActivate: vi.fn(),
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: encodeIlDndId(50) } } as any);
+    });
+    expect(result.current.dropTargetIds.has(5)).toBe(true); // OF row
+    expect(result.current.dropTargetIds.has(6)).toBe(false); // SS row
   });
 });

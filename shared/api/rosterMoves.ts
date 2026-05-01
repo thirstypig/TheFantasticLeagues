@@ -149,6 +149,36 @@ export type EligibleSlotsResponse = z.infer<typeof EligibleSlotsResponseSchema>;
  * enrichment for own-team rows; the panels' runtime guards (`_dbPlayerId
  * ?? 0 > 0`) protect against stragglers.
  */
+/**
+ * Body: POST /api/transactions/sync-il-status
+ *
+ * Force a single-player MLB status refetch. Used by the v3 hub's
+ * "Resync" affordance on the ghost-IL warning chip (IL scenario
+ * direction-lock #3) — when a player on the active roster carries an
+ * `mlbStatus` string but hasn't yet been auto-stashed (cron lag), the
+ * UI surfaces a chip and lets the user trigger an out-of-band refetch.
+ *
+ * The response carries the freshly fetched status string verbatim
+ * (per IL #1 — no normalization). When the player isn't on the team's
+ * 40-man, `status` is null and the client should treat that as
+ * "no MLB status; chip can be dismissed".
+ */
+export const SyncIlStatusBodySchema = z.object({
+  teamId: z.number().int().positive(),
+  playerId: z.number().int().positive(),
+});
+export type SyncIlStatusBody = z.infer<typeof SyncIlStatusBodySchema>;
+
+export const SyncIlStatusResponseSchema = z.object({
+  playerId: z.number(),
+  mlbId: z.number().nullable(),
+  /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …) or null
+   *  when the player isn't on the team's 40-man. */
+  mlbStatus: z.string().nullable(),
+  fetchedAt: z.string(),
+});
+export type SyncIlStatusResponse = z.infer<typeof SyncIlStatusResponseSchema>;
+
 export const RosterMovesPlayerSchema = z.object({
   // Identification — at least one of (mlb_id, _dbPlayerId) must be set.
   mlb_id: z.union([z.string(), z.number()]).optional(),

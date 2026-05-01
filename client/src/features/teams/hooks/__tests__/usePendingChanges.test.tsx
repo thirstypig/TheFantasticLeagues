@@ -183,7 +183,7 @@ describe("usePendingChanges", () => {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       const parsed = JSON.parse(raw!);
-      expect(parsed.v).toBe(2);
+      expect(parsed.v).toBe(3);
       expect(parsed.changes).toHaveLength(1);
       expect(parsed.changes[0].id).toBe("abc");
     });
@@ -203,7 +203,7 @@ describe("usePendingChanges", () => {
       const stale = Date.now() - 2 * 60 * 60 * 1000;
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ v: 2, savedAt: stale, changes: [{ ...makeSwap(), id: "x" }] }),
+        JSON.stringify({ v: 3, savedAt: stale, changes: [{ ...makeSwap(), id: "x" }] }),
       );
       expect(readPersistedChanges(42)).toBeNull();
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -213,7 +213,7 @@ describe("usePendingChanges", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          v: 2,
+          v: 3,
           savedAt: Date.now() - 60 * 1000,
           changes: [{ ...makeSwap(), id: "x" }],
         }),
@@ -224,12 +224,22 @@ describe("usePendingChanges", () => {
     });
 
     it("readPersistedChanges discards v1 entries (FA-scenario schema bump)", () => {
-      // PR #207 wrote v:1 swap-only blobs; this PR's fa_add variant
-      // bumps the schema. v1 entries are silently dropped rather than
-      // auto-migrated. See PersistedState.v doc in usePendingChanges.ts.
+      // PR #207 wrote v:1 swap-only blobs; the FA scenario added the
+      // fa_add variant and bumped to v:2; the IL scenario adds
+      // il_stash + il_activate and bumps to v:3. Older entries are
+      // silently dropped rather than auto-migrated.
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({ v: 1, savedAt: Date.now(), changes: [{ ...makeSwap(), id: "x" }] }),
+      );
+      expect(readPersistedChanges(42)).toBeNull();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+
+    it("readPersistedChanges discards v2 entries (IL-scenario schema bump)", () => {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ v: 2, savedAt: Date.now(), changes: [{ ...makeSwap(), id: "x" }] }),
       );
       expect(readPersistedChanges(42)).toBeNull();
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -251,7 +261,7 @@ describe("usePendingChanges", () => {
     it("clearPersistedChanges removes the entry", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ v: 2, savedAt: Date.now(), changes: [] }),
+        JSON.stringify({ v: 3, savedAt: Date.now(), changes: [] }),
       );
       clearPersistedChanges(42);
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -394,7 +404,7 @@ describe("usePendingChanges", () => {
       expect(result.current.state.changes[0].kind).toBe("fa_add");
     });
 
-    it("persists fa_add changes under v2 schema and round-trips via readPersistedChanges", () => {
+    it("persists fa_add changes under current schema and round-trips via readPersistedChanges", () => {
       const { result } = renderHook(() =>
         usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
       );
@@ -404,13 +414,184 @@ describe("usePendingChanges", () => {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       const parsed = JSON.parse(raw!);
-      expect(parsed.v).toBe(2);
+      expect(parsed.v).toBe(3);
       expect(parsed.changes[0].kind).toBe("fa_add");
 
       const restored = readPersistedChanges(42);
       expect(restored).toHaveLength(1);
       expect(restored![0].id).toBe("fa-r");
       expect(restored![0].kind).toBe("fa_add");
+    });
+  });
+
+  // ─── IL scenario (this PR) ──────────────────────────────────────
+  //
+  // The il_stash / il_activate variants queue an injured-list move
+  // alongside the displaced active player (when bench is full —
+  // omitted when bench has space per direction-lock IL #4). Save
+  // dispatches via the existing `/api/transactions/il-stash` and
+  // `/api/transactions/il-activate` endpoints; the hook itself stays
+  // kind-agnostic.
+
+  describe("il_stash variant", () => {
+    function makeIlStash(
+      overrides: Partial<Extract<PendingChange, { kind: "il_stash" }>> = {},
+    ): Omit<PendingChange, "id"> {
+      return {
+        kind: "il_stash",
+        playerId: 707,
+        mlbId: 545361,
+        rosterId: 7,
+        name: "Mike Trout",
+        mlbStatus: "Injured 10-Day",
+        freed: "OF",
+        ...overrides,
+      } as Omit<PendingChange, "id">;
+    }
+
+    it("queues an il_stash change with verbatim mlbStatus (IL #1)", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeIlStash());
+      });
+      expect(result.current.state.changes).toHaveLength(1);
+      const change = result.current.state.changes[0];
+      expect(change.kind).toBe("il_stash");
+      if (change.kind === "il_stash") {
+        expect(change.mlbStatus).toBe("Injured 10-Day"); // verbatim
+        expect(change.freed).toBe("OF");
+        expect(change.rosterId).toBe(7);
+      }
+    });
+
+    it("save() dispatches il_stash through saveFn in queue order", async () => {
+      const saveFn = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn, persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeIlStash());
+      });
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(saveFn).toHaveBeenCalledTimes(1);
+      const batch = saveFn.mock.calls[0][0] as PendingChange[];
+      expect(batch).toHaveLength(1);
+      expect(batch[0].kind).toBe("il_stash");
+      expect(result.current.state.changes).toHaveLength(0);
+    });
+
+    it("persists il_stash changes under v3 schema and round-trips", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange({ ...makeIlStash(), id: "il-s" } as PendingChange);
+      });
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw!);
+      expect(parsed.v).toBe(3);
+      expect(parsed.changes[0].kind).toBe("il_stash");
+
+      const restored = readPersistedChanges(42);
+      expect(restored).toHaveLength(1);
+      expect(restored![0].kind).toBe("il_stash");
+    });
+  });
+
+  describe("il_activate variant", () => {
+    function makeIlActivate(
+      overrides: Partial<Extract<PendingChange, { kind: "il_activate" }>> = {},
+    ): Omit<PendingChange, "id"> {
+      return {
+        kind: "il_activate",
+        playerId: 808,
+        mlbId: 660271,
+        rosterId: 8,
+        name: "Yamamoto",
+        targetSlot: "P",
+        displaced: {
+          rosterId: 9,
+          playerId: 909,
+          mlbId: 700,
+          name: "Reliever Guy",
+        },
+        ...overrides,
+      } as Omit<PendingChange, "id">;
+    }
+
+    it("queues an il_activate change with displaced metadata", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeIlActivate());
+      });
+      const change = result.current.state.changes[0];
+      expect(change.kind).toBe("il_activate");
+      if (change.kind === "il_activate") {
+        expect(change.targetSlot).toBe("P");
+        expect(change.displaced?.name).toBe("Reliever Guy");
+      }
+    });
+
+    it("queues an il_activate without displaced (IL #4: bench has space)", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeIlActivate({ displaced: undefined }));
+      });
+      const change = result.current.state.changes[0];
+      expect(change.kind).toBe("il_activate");
+      if (change.kind === "il_activate") {
+        expect(change.displaced).toBeUndefined();
+      }
+    });
+
+    it("mixed swap + il_stash + il_activate flow through save() in order", async () => {
+      const saveFn = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn, persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeSwap());
+        result.current.addChange({
+          kind: "il_stash",
+          playerId: 707,
+          mlbId: 545361,
+          rosterId: 7,
+          name: "Trout",
+          mlbStatus: "Injured 10-Day",
+          freed: "OF",
+        });
+        result.current.addChange(makeIlActivate());
+      });
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(saveFn).toHaveBeenCalledTimes(1);
+      const batch = saveFn.mock.calls[0][0] as PendingChange[];
+      expect(batch.map((c) => c.kind)).toEqual(["swap", "il_stash", "il_activate"]);
+    });
+
+    it("save() failure preserves il_activate in the queue (atomic)", async () => {
+      const saveFn = vi.fn().mockRejectedValue(new Error("server 500"));
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, saveFn, persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeIlActivate());
+      });
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(result.current.state.error).toBe("server 500");
+      expect(result.current.state.changes).toHaveLength(1);
     });
   });
 });

@@ -51,13 +51,16 @@ export interface IlStashParams {
     leagueId: number;
     teamId: number;
     stashPlayerId: number;
+    /** Pairing add — optional in v3 hub stash-only mode. When omitted, the
+     *  freed active slot stays empty and the server's matcher reshuffles the
+     *  rest of the active roster from BN. */
     addPlayerId?: number;
     addMlbId?: number;
     effectiveDate?: string;
     reason?: string;
 }
 
-export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
+export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number | null; stashOnly?: boolean; appliedReassignments?: AppliedReassignment[] }> {
     return fetchJsonApi(`${API_BASE}/transactions/il-stash`, {
         method: 'POST',
         body: JSON.stringify(params),
@@ -75,6 +78,33 @@ export interface IlActivateParams {
 
 export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
     return fetchJsonApi(`${API_BASE}/transactions/il-activate`, {
+        method: 'POST',
+        body: JSON.stringify(params),
+    });
+}
+
+export interface SyncIlStatusResult {
+    playerId: number;
+    mlbId: number | null;
+    /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …) or null
+     *  when the player isn't on their MLB team's 40-man. */
+    mlbStatus: string | null;
+    fetchedAt: string;
+}
+
+/**
+ * Force a single-player MLB status refetch — powers the v3 hub's
+ * ghost-IL "Resync" chip (IL scenario direction-lock #3). Read-only,
+ * does NOT mutate roster state. Returns 503 with `MLB_FEED_UNAVAILABLE`
+ * if the statsapi feed is down; the UI surfaces this and lets the user
+ * retry later.
+ */
+export async function syncIlStatus(params: {
+    leagueId: number;
+    teamId: number;
+    playerId: number;
+}): Promise<SyncIlStatusResult> {
+    return fetchJsonApi(`${API_BASE}/transactions/sync-il-status`, {
         method: 'POST',
         body: JSON.stringify(params),
     });

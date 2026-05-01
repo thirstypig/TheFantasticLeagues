@@ -71,8 +71,15 @@ interface RosterHubV3Props {
   saving?: boolean;
   saveError?: string | null;
   onDismissError?: () => void;
-  /** FA scenario: itemized pending-change rows in the bar. */
-  pendingItems?: ReadonlyArray<{ id: string; kind: "swap" | "fa_add"; text: string }>;
+  /** FA scenario: itemized pending-change rows in the bar. IL scenario
+   *  extends with il_stash + il_activate kinds and an optional cascade-
+   *  preview `secondary` line per direction-lock IL #5. */
+  pendingItems?: ReadonlyArray<{
+    id: string;
+    kind: "swap" | "fa_add" | "il_stash" | "il_activate";
+    text: string;
+    secondary?: string;
+  }>;
   /** FA scenario: per-item revert handler (Undo button on each row). */
   onRevertItem?: (id: string) => void;
   /** FA scenario: drop pool slot — rendered between active roster and IL. */
@@ -88,6 +95,9 @@ interface RosterHubV3Props {
   dndEnabled?: boolean;
   /** rosterId currently in shake-reject state, or null. */
   shakeRowId?: number | null;
+  /** IL scenario: when true, an active drag is stash-eligible. Empty IL
+   *  slots highlight a "Drop here to stash" affordance. */
+  ilStashEligible?: boolean;
 
   forceMobile?: boolean;
 }
@@ -195,6 +205,7 @@ export function RosterHubV3({
   dropPoolSlot,
   dndEnabled,
   shakeRowId,
+  ilStashEligible,
   forceMobile,
 }: RosterHubV3Props) {
   const isMobile = useIsMobile(forceMobile);
@@ -399,6 +410,9 @@ export function RosterHubV3({
         onPillClick={onPillClick}
         buildActions={buildActions}
         onRevert={onRevert}
+        dndEnabled={dndEnabled}
+        ilStashEligible={ilStashEligible}
+        shakeRowId={shakeRowId}
       />
 
       {dragSim && (

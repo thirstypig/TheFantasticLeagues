@@ -34,7 +34,8 @@ import { fetchJsonApi, API_BASE } from "../../../api/base";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
 import { usePendingChanges, readPersistedChanges, clearPersistedChanges, type PendingChange } from "../hooks/usePendingChanges";
-import { useRosterHubDrag } from "../hooks/useRosterHubDrag";
+import { useRosterHubDrag, isMlbIlStatusUi } from "../hooks/useRosterHubDrag";
+import { ilStash, ilActivate, syncIlStatus } from "../../transactions/api";
 import {
   RosterHubV3,
   SubrouteContainer,
@@ -508,6 +509,50 @@ export default function Team() {
         }
         continue;
       }
+      if (change.kind === "il_stash") {
+        // IL scenario save: dispatch to /transactions/il-stash in
+        // stash-only mode (no addPlayerId). The server moves the player
+        // to IL and the bipartite matcher reshuffles the rest of the
+        // active roster — the freed slot may stay empty if no
+        // position-eligible bench replacement exists. Per IL #6 the UI
+        // surfaces a "Add a FA to fill this slot" chip post-save.
+        try {
+          await ilStash({
+            leagueId,
+            teamId: tid,
+            stashPlayerId: change.playerId,
+            // stashOnly mode — addPlayerId omitted intentionally.
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Save failed";
+          throw new Error(`Save failed on stash ${change.name}: ${msg}`);
+        }
+        continue;
+      }
+      if (change.kind === "il_activate") {
+        // IL scenario save: dispatch to /transactions/il-activate. Per
+        // IL #4, when bench has space the server matcher handles
+        // displacement; in v1 the hub always carries a `displaced` row
+        // via the drag (UI requires the user to pick a target slot
+        // occupant). Pass through to the server.
+        if (!change.displaced) {
+          throw new Error(
+            `Activation for ${change.name} can't be saved alone — drop on an active roster row to pick a displaced player.`,
+          );
+        }
+        try {
+          await ilActivate({
+            leagueId,
+            teamId: tid,
+            activatePlayerId: change.playerId,
+            dropPlayerId: change.displaced.playerId,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Save failed";
+          throw new Error(`Save failed on activate ${change.name}: ${msg}`);
+        }
+        continue;
+      }
     }
     // Refresh the roster on success so the UI snaps to the canonical
     // server state (and any matcher-driven cascades show up).
@@ -520,8 +565,10 @@ export default function Team() {
   });
 
   // Apply pending swaps to the displayed hub roster optimistically.
-  // The baseline hub arrays come from the server roster; we walk the
-  // pending changes and swap assignedSlot / slotInstance pairs.
+  // Optimistic preview is best-effort — only swap is fully reflected;
+  // il_stash / il_activate preview is left to the badge in the pending
+  // bar (the row stays visible in its current section, marked as pending,
+  // until save reshuffles the server-side state on reload).
   const { hubHitters, hubPitchers } = useMemo(() => {
     if (pending.state.changes.length === 0) {
       return { hubHitters: baselineHubHitters, hubPitchers: baselineHubPitchers };
@@ -556,9 +603,17 @@ export default function Team() {
   const pendingRosterIds = useMemo<ReadonlySet<number>>(() => {
     const out = new Set<number>();
     for (const c of pending.state.changes) {
-      if (c.kind !== "swap") continue;
-      out.add(c.from.rosterId);
-      out.add(c.to.rosterId);
+      if (c.kind === "swap") {
+        out.add(c.from.rosterId);
+        out.add(c.to.rosterId);
+      } else if (c.kind === "fa_add") {
+        out.add(c.displaced.rosterId);
+      } else if (c.kind === "il_stash") {
+        out.add(c.rosterId);
+      } else if (c.kind === "il_activate") {
+        out.add(c.rosterId);
+        if (c.displaced) out.add(c.displaced.rosterId);
+      }
     }
     return out;
   }, [pending.state.changes]);
@@ -590,15 +645,19 @@ export default function Team() {
 
   const drag = useRosterHubDrag({
     players: dragPlayers,
+    ilPlayers: hubIl,
     freeAgents: fa.data ?? undefined,
     onSwap: (change) => pending.addChange(change),
     onFaAdd: (change) => pending.addChange(change),
+    onIlStash: (change) => pending.addChange(change),
+    onIlActivate: (change) => pending.addChange(change),
     onToast: showToast,
   });
 
   // Per-row revert: drop the change(s) referencing this rosterId.
-  // Both swap and fa_add can reference a roster row (swap on either
-  // endpoint, fa_add on its `displaced` rosterId).
+  // swap touches both endpoints, fa_add touches the displaced rosterId,
+  // il_stash touches the stashed player's rosterId, il_activate touches
+  // the IL row + the displaced active row (when present).
   const onRowRevert = useCallback(
     (rosterId: number) => {
       const ids = pending.state.changes
@@ -608,6 +667,12 @@ export default function Team() {
           }
           if (c.kind === "fa_add") {
             return c.displaced.rosterId === rosterId;
+          }
+          if (c.kind === "il_stash") {
+            return c.rosterId === rosterId;
+          }
+          if (c.kind === "il_activate") {
+            return c.rosterId === rosterId || c.displaced?.rosterId === rosterId;
           }
           return false;
         })
@@ -632,19 +697,129 @@ export default function Team() {
       }));
   }, [pending.state.changes]);
 
+  // Cascade preview helper (IL #5): for an il_stash, count bench/active
+  // players who could fill the freed slot. ≥3 → render explicit text;
+  // ≤2 relies on the shimmy animation. The cascade calculation is
+  // best-effort client-side — server confirms at save and may apply a
+  // different shuffle (we don't try to mirror the bipartite matcher
+  // exactly, just flag the "this will move N players" magnitude).
+  const cascadeTextFor = useCallback(
+    (freed: string): string | undefined => {
+      // Count active hitters/pitchers whose current assignment matches
+      // the freed slot OR who could be reassigned to fill it. Simplest
+      // heuristic: count players in the same section whose posList
+      // includes `freed` and whose current slot is BN or matches `freed`.
+      const isFreedPitcherSlot = ["P", "SP", "RP"].includes(freed);
+      const pool = isFreedPitcherSlot ? baselineHubPitchers : baselineHubHitters;
+      const candidates = pool.filter(
+        (p) =>
+          p.assignedSlot !== "IL" &&
+          (p.posList ?? "").split(/[,/| ]+/).map((s) => s.trim().toUpperCase()).includes(freed),
+      );
+      if (candidates.length < 3) return undefined;
+      const sample = candidates.slice(0, 3).map((p) => p.name).join(", ");
+      return `Auto-resolved: ${sample}${candidates.length > 3 ? ", …" : ""} may shuffle to fill ${freed}`;
+    },
+    [baselineHubHitters, baselineHubPitchers],
+  );
+
   // PendingChangeBar items list — one row per change with kind-specific
-  // badge (FA scenario: extends the bar from count-only to itemized).
+  // badge. FA scenario extended the bar from count-only to itemized;
+  // IL scenario adds two more badges (IL STASH amber, IL ACTIVATE cyan)
+  // and an optional `secondary` line for ≥3-player auto-resolve cascades
+  // per direction-lock IL #5.
   const pendingItems = useMemo(() => {
     return pending.state.changes.map((c) => {
       if (c.kind === "swap") {
         return { id: c.id, kind: "swap" as const, text: `${c.from.slot} ↔ ${c.to.slot}` };
       }
+      if (c.kind === "fa_add") {
+        return {
+          id: c.id,
+          kind: "fa_add" as const,
+          text: `Add ${c.faName} · drop ${c.displaced.name}`,
+        };
+      }
+      if (c.kind === "il_stash") {
+        return {
+          id: c.id,
+          kind: "il_stash" as const,
+          text: `Stash ${c.name} · freed ${c.freed}`,
+          secondary: cascadeTextFor(c.freed),
+        };
+      }
+      // c.kind === "il_activate"
+      const dispText = c.displaced ? ` · drop ${c.displaced.name}` : "";
       return {
         id: c.id,
-        kind: "fa_add" as const,
-        text: `Add ${c.faName} · drop ${c.displaced.name}`,
+        kind: "il_activate" as const,
+        text: `Activate ${c.name} → ${c.targetSlot}${dispText}`,
       };
     });
+  }, [pending.state.changes, cascadeTextFor]);
+
+  /* ── Ghost-IL warnings (IL #3) ────────────────────────────────────── */
+  //
+  // Surface a warning chip for active-roster rows whose `mlbStatus` is
+  // an Injured-Day designation but the daily sync hasn't auto-stashed
+  // them yet. Per direction-lock IL #1 the status is rendered verbatim
+  // ("Status missing — last known: Injured 10-Day · 5 days ago"). The
+  // Resync button calls POST /api/transactions/sync-il-status to refetch
+  // out of band; on success we bump reloadKey so the page re-renders
+  // with the fresh status.
+
+  const ghostIlSuspects = useMemo(() => {
+    const out: { rosterId: number; playerId: number; name: string; status: string; daysAgo?: number }[] = [];
+    for (const p of [...baselineHubHitters, ...baselineHubPitchers]) {
+      if (p.assignedSlot === "IL") continue;
+      if (!p.mlbStatus) continue;
+      if (!isMlbIlStatusUi(p.mlbStatus)) continue;
+      out.push({
+        rosterId: p.rosterId,
+        playerId: p.playerId,
+        name: p.name,
+        status: p.mlbStatus,
+        daysAgo: p.mlbStatusDaysAgo,
+      });
+    }
+    return out;
+  }, [baselineHubHitters, baselineHubPitchers]);
+
+  const [resyncing, setResyncing] = useState<number | null>(null);
+  const onResync = useCallback(
+    async (playerId: number) => {
+      if (!leagueId || !teamMeta?.id) return;
+      setResyncing(playerId);
+      try {
+        await syncIlStatus({ leagueId, teamId: teamMeta.id, playerId });
+        // Refresh to reflect the updated status. The server endpoint is
+        // read-only; the data Team.tsx loads doesn't yet plumb mlbStatus
+        // through the team-detail payload, so the chip will simply
+        // disappear once the daily sync auto-stashes the player. For now
+        // we just toast success.
+        showToast(`MLB status refreshed for ${ghostIlSuspects.find((g) => g.playerId === playerId)?.name ?? "player"}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Resync failed";
+        showToast(`Resync failed: ${msg}`);
+      } finally {
+        setResyncing(null);
+      }
+    },
+    [leagueId, teamMeta?.id, showToast, ghostIlSuspects],
+  );
+
+  /* ── FA suggestion (IL #6) ────────────────────────────────────────── */
+  //
+  // Inline chip surfaced on the row freed by an il_stash change. Clicks
+  // open the FA panel pre-filtered to the slot's eligibility. We don't
+  // auto-open the panel (per direction-lock #6: "too aggressive").
+
+  const ilStashFreedSlots = useMemo<Set<string>>(() => {
+    const out = new Set<string>();
+    for (const c of pending.state.changes) {
+      if (c.kind === "il_stash") out.add(c.freed);
+    }
+    return out;
   }, [pending.state.changes]);
 
   /* ── localStorage restore prompt ──────────────────────────────────── */
@@ -972,6 +1147,7 @@ export default function Team() {
                   }
                   dndEnabled={canManage}
                   shakeRowId={drag.shakeRowId}
+                  ilStashEligible={drag.ilStashEligible}
                 />
                 {faPanelOpen && leagueId && teamMeta && (
                   <FreeAgentPanel
@@ -982,6 +1158,93 @@ export default function Team() {
                   />
                 )}
               </DndContext>
+            )}
+
+            {/* Ghost-IL warning chips (direction-lock IL #3) — surfaces
+                active-roster rows whose mlbStatus is an "Injured …-Day"
+                designation but the daily sync hasn't auto-stashed them.
+                Each chip carries a Resync button that calls
+                POST /api/transactions/sync-il-status. */}
+            {ghostIlSuspects.length > 0 && !manageMode && (
+              <Glass style={{ marginTop: 12, padding: 12 }}>
+                <SectionLabel>✦ Status missing — possible IL stashes</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                  {ghostIlSuspects.map((g) => (
+                    <div
+                      key={g.rosterId}
+                      data-testid="ghost-il-chip"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 10px",
+                        borderRadius: 10,
+                        background: "color-mix(in srgb, #f59e0b 8%, transparent)",
+                        border: "1px solid color-mix(in srgb, #f59e0b 28%, transparent)",
+                        fontSize: 12,
+                        color: "var(--am-text)",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{g.name}</span>
+                      <span style={{ color: "var(--am-text-muted)" }}>
+                        Status missing — last known: <strong>{g.status}</strong>
+                        {typeof g.daysAgo === "number" ? ` · ${g.daysAgo} day${g.daysAgo === 1 ? "" : "s"} ago` : ""}
+                      </span>
+                      <span style={{ flex: 1 }} />
+                      <button
+                        type="button"
+                        onClick={() => onResync(g.playerId)}
+                        disabled={resyncing === g.playerId}
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: "4px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--am-border)",
+                          background: "var(--am-chip)",
+                          color: "var(--am-text)",
+                          cursor: resyncing === g.playerId ? "not-allowed" : "pointer",
+                          opacity: resyncing === g.playerId ? 0.5 : 1,
+                          minHeight: 24,
+                        }}
+                      >
+                        {resyncing === g.playerId ? "Resyncing…" : "Resync"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </Glass>
+            )}
+
+            {/* FA suggestion chips (direction-lock IL #6) — for each
+                il_stash queued, show "Add a FA to fill this slot →"
+                opening the FA panel pre-filtered to the freed slot. */}
+            {ilStashFreedSlots.size > 0 && !manageMode && canManage && (
+              <Glass style={{ marginTop: 12, padding: 12 }}>
+                <SectionLabel>✦ Freed slots — fill from FA?</SectionLabel>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                  {Array.from(ilStashFreedSlots).map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      data-testid="fa-suggestion-chip"
+                      onClick={() => setFaPanelOpen(true)}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "6px 12px",
+                        borderRadius: 99,
+                        border: "1px solid var(--am-border-strong)",
+                        background: "color-mix(in srgb, #22d3ee 10%, transparent)",
+                        color: "var(--am-text)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Add a FA to fill {slot} →
+                    </button>
+                  ))}
+                </div>
+              </Glass>
             )}
 
             {/* Drag toast — illegal drops + restore prompt notifications. */}

@@ -3,8 +3,7 @@
 // Pending-changes state machine for the v3 roster hub. The Hub scenario
 // (per docs/plans/2026-04-30-roster-hub-direction-lock.md) covers
 // position swaps; the FA scenario adds free-agent adds with a displaced
-// drop. IL stash/activate are still routed through the existing manage
-// sub-routes and out of scope here.
+// drop; the IL scenario (this PR) adds stash + activate variants.
 //
 // Each pending change is one of:
 //   - `swap` — two roster players exchanging assignedSlot values.
@@ -12,6 +11,15 @@
 //     existing roster player into the drop pool. Save resolves via the
 //     existing /api/transactions/claim endpoint (which handles the
 //     bipartite auto-resolve matcher server-side).
+//   - `il_stash` — move an IL-eligible roster player into an IL slot.
+//     The freed active slot is auto-resolved server-side; per IL #4,
+//     stash without a paired add is allowed (legacy `il-stash` endpoint
+//     still expects an addPlayerId, so for v1 the hub passes the
+//     dropped row's slot to the auto-resolver — but that's a server
+//     concern; the variant only carries what the UI needs to render).
+//   - `il_activate` — move a player back from IL onto an active slot,
+//     optionally displacing an existing roster player. `displaced` is
+//     OMITTED when bench has space (IL #4: "skip displacement").
 //
 // Drag wiring (DndContext) and visual rendering (PendingChangeBar) live
 // in the Team page + RosterHub component family respectively.
@@ -72,6 +80,48 @@ export type PendingChange =
         name: string;
         slot: SlotCode | "IL";
       };
+    }
+  | {
+      id: string;
+      kind: "il_stash";
+      /** Prisma Player.id of the player being stashed. */
+      playerId: number;
+      /** MLB stats id (carried for /il-stash endpoint + audit). */
+      mlbId: number;
+      /** Roster row being moved — server uses this to locate the IL
+       *  slot transition without relying on a fresh roster lookup. */
+      rosterId: number;
+      /** Display name of the stashed player (UI labelling). */
+      name: string;
+      /** Raw MLB statsapi status string ("Injured 10-Day"). Verbatim
+       *  per direction-lock IL #1 — never normalized. */
+      mlbStatus: string;
+      /** The slot the stashed player vacates. The freed slot drives the
+       *  cascade preview (IL #5) + the FA suggestion chip target (IL #6). */
+      freed: SlotCode;
+    }
+  | {
+      id: string;
+      kind: "il_activate";
+      /** Prisma Player.id of the IL-rostered player being activated. */
+      playerId: number;
+      /** MLB stats id of the activated player. */
+      mlbId: number;
+      /** rosterId of the IL row (for revert + UI labelling). */
+      rosterId: number;
+      /** Display name of the activated player. */
+      name: string;
+      /** Slot to occupy after activation. Server confirms eligibility. */
+      targetSlot: SlotCode;
+      /** Optional displaced roster player. OMITTED when bench has space
+       *  per direction-lock IL #4 — the server-side matcher handles the
+       *  no-displacement case via a free bench slot. */
+      displaced?: {
+        rosterId: number;
+        playerId: number;
+        mlbId: number;
+        name: string;
+      };
     };
 
 /**
@@ -97,11 +147,12 @@ export interface PendingChangesState {
 interface PersistedState {
   /** Schema version — bump if PendingChange shape changes incompatibly.
    *  v1: swap-only (Hub scenario, PR #207).
-   *  v2: adds fa_add variant (FA scenario, this PR). v1 entries are
-   *  discarded silently rather than auto-migrated — the FA UI doesn't
-   *  exist in v1 saved blobs anyway, and the cost of a one-time discard
-   *  is dwarfed by the safety win of "no partial-shape entries". */
-  v: 2;
+   *  v2: adds fa_add variant (FA scenario).
+   *  v3: adds il_stash + il_activate variants (IL scenario, this PR).
+   *  v1/v2 entries are discarded silently rather than auto-migrated —
+   *  the cost of a one-time discard is dwarfed by the safety win of
+   *  "no partial-shape entries". */
+  v: 3;
   /** Unix ms when this snapshot was written. Used for TTL discard. */
   savedAt: number;
   changes: PendingChange[];
@@ -163,7 +214,7 @@ export function readPersistedChanges(teamId: number): PendingChange[] | null {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedState;
-    if (!parsed || parsed.v !== 2 || !Array.isArray(parsed.changes)) {
+    if (!parsed || parsed.v !== 3 || !Array.isArray(parsed.changes)) {
       window.localStorage.removeItem(key);
       return null;
     }
@@ -203,7 +254,7 @@ function writePersistedChanges(teamId: number, changes: PendingChange[]): void {
       window.localStorage.removeItem(key);
       return;
     }
-    const payload: PersistedState = { v: 2, savedAt: Date.now(), changes };
+    const payload: PersistedState = { v: 3, savedAt: Date.now(), changes };
     window.localStorage.setItem(key, JSON.stringify(payload));
   } catch {
     // Quota exceeded or disabled storage — fail silently. Pending state
