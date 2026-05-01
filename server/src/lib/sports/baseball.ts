@@ -80,6 +80,14 @@ export const DEFAULT_RULES = [
   { category: "draft", key: "nomination_timer", value: "30", label: "Nomination Timer (seconds)" },
   { category: "draft", key: "keeper_count", value: "4", label: "Keepers per Team" },
   // IL
+  // Session 89: `il.slot_count` is the source of truth for both server-side
+  // `assertIlSlotAvailable` (loadLeagueIlSlotCount in lib/ilSlotGuard.ts —
+  // already reads this rule, with a default of 2) and the client-side
+  // RosterHubV3 IL section (renders this many empty drop targets and the
+  // section header count). Seeding it explicitly here so OGBA's default
+  // matches the documented league rule rather than relying on the
+  // server's fallback.
+  { category: "il", key: "slot_count", value: "2", label: "IL Slots" },
   { category: "il", key: "il_slot_1_cost", value: "10", label: "1st IL Slot Cost ($)" },
   { category: "il", key: "il_slot_2_cost", value: "15", label: "2nd IL Slot Cost ($)" },
   // Transactions — permission toggles.
