@@ -157,6 +157,127 @@ describe("syncAllPlayers", () => {
     expect(result.teams).toBe(1);
   });
 
+  // ── mlbStatus plumbing (ghost-IL chip wake-up) ───────────────────
+  //
+  // The 40-man roster API includes `status.description` per entry
+  // ("Active", "Injured 10-Day", "Injured 60-Day", "Restricted", …).
+  // Per direction-lock IL #1 the value is written verbatim — no
+  // normalization. When the API omits the field we preserve the
+  // existing Player.mlbStatus rather than blowing it away (same
+  // pattern as posList preservation under syncPositionEligibility).
+
+  it("writes mlbStatus verbatim from API on create", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          {
+            person: { id: 660271, fullName: "Shohei Ohtani" },
+            position: { abbreviation: "DH", type: "Hitter" },
+            status: { code: "A", description: "Active" },
+          },
+          {
+            person: { id: 605141, fullName: "Mookie Betts" },
+            position: { abbreviation: "SS", type: "Hitter" },
+            status: { code: "D10", description: "Injured 10-Day" },
+          },
+        ],
+      });
+
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.player.create.mockResolvedValue({ id: 1 });
+
+    await syncAllPlayers(2026);
+
+    expect(mockPrisma.player.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ mlbId: 660271, mlbStatus: "Active" }),
+    });
+    expect(mockPrisma.player.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ mlbId: 605141, mlbStatus: "Injured 10-Day" }),
+    });
+  });
+
+  it("writes mlbStatus verbatim from API on update", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          {
+            person: { id: 660271, fullName: "Shohei Ohtani" },
+            position: { abbreviation: "DH", type: "Hitter" },
+            status: { code: "D60", description: "Injured 60-Day" },
+          },
+        ],
+      });
+
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 660271, mlbTeam: "LAD", posPrimary: "DH", posList: "DH", mlbStatus: "Active" },
+    ]);
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    await syncAllPlayers(2026);
+
+    expect(mockPrisma.player.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: expect.objectContaining({ mlbStatus: "Injured 60-Day" }),
+    });
+  });
+
+  it("preserves existing mlbStatus when API omits status field (transient gap)", async () => {
+    // Simulates the API returning a roster entry without status — the cron
+    // shouldn't blow away a known status because of a one-tick API hiccup.
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          {
+            person: { id: 660271, fullName: "Shohei Ohtani" },
+            position: { abbreviation: "DH", type: "Hitter" },
+            // no `status` field
+          },
+        ],
+      });
+
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 660271, mlbTeam: "LAD", posPrimary: "DH", posList: "DH", mlbStatus: "Injured 10-Day" },
+    ]);
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    await syncAllPlayers(2026);
+
+    // The update payload must NOT carry an mlbStatus key — preserving the
+    // existing value. Other fields (name, mlbTeam, posPrimary) still flow.
+    const updateCall = mockPrisma.player.update.mock.calls[0][0];
+    expect(updateCall.data).not.toHaveProperty("mlbStatus");
+    expect(updateCall.data).toMatchObject({ name: "Shohei Ohtani", mlbTeam: "LAD" });
+  });
+
+  it("preserves existing mlbStatus when API returns empty status.description", async () => {
+    // Defense in depth: `status: { code: "A" }` with no description should
+    // also fall through to the preservation branch.
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          {
+            person: { id: 660271, fullName: "Shohei Ohtani" },
+            position: { abbreviation: "DH", type: "Hitter" },
+            status: { code: "A" }, // description missing
+          },
+        ],
+      });
+
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 660271, mlbTeam: "LAD", posPrimary: "DH", posList: "DH", mlbStatus: "Injured 10-Day" },
+    ]);
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    await syncAllPlayers(2026);
+
+    const updateCall = mockPrisma.player.update.mock.calls[0][0];
+    expect(updateCall.data).not.toHaveProperty("mlbStatus");
+  });
+
   it.skip("OBSOLETE: Ohtani split — resolves TWP position to DH for two-way players (Ohtani)", async () => {
     mockMlbGetJson
       .mockResolvedValueOnce(mockTeams)
