@@ -70,6 +70,7 @@ const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
 const RosterHubPreview = React.lazy(() => import("./pages/design/RosterHubPreview"));
 const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Preview"));
+const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRosterHubDeferred"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -277,6 +278,11 @@ export default function App() {
                         column, and inline sub-routes (no modals). PR2 will
                         wire `RosterHubV3` onto the real /teams/:code page. */}
                     <Route path="/design/roster-hub-v3" element={<RosterHubV3Preview />} />
+                    {/* Direction-lock preview for the v3 deferred items —
+                        drag-to-mutate (primary) + pending-changes save/revert
+                        (secondary). Local state only, no backend wiring.
+                        Reference: roster_hub_v3_shipped.md memory note. */}
+                    <Route path="/design/roster-hub-deferred" element={<DesignRosterHubDeferred />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
