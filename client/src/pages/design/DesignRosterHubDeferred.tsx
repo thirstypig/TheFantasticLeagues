@@ -2,17 +2,21 @@
 //
 // Entry point for the Roster Hub deferred-items design preview.
 //
-// Hosts FOUR scenarios via a top-of-page tab switcher:
+// Hosts FIVE scenarios via a top-of-page tab switcher:
 //
 //   1. Hub mutations          (default — original PR #198 preview)
 //   2. Free agent add/drop    (side panel, drag FA → roster)
 //   3. IL management          (stash + activate via drag)
 //   4. Complex batch          (multi-step pending changes list)
+//   5. Waiver claim           (EXPLORATION — not yet direction-locked;
+//                              waivers piggyback on the FA panel as a
+//                              second tab w/ priority + FAAB)
 //
 // Each scenario lives in its own file under
-// `./rosterHubScenarios/DesignScenario{Hub,FA,IL,Complex}.tsx` so a
-// reviewer can read them independently. Mock data + shared visual
-// primitives (rows, pills, badges) live in `./rosterHubScenarios/`.
+// `./rosterHubScenarios/DesignScenario{Hub,FA,IL,Complex,Waiver}.tsx`
+// so a reviewer can read them independently. Mock data + shared
+// visual primitives (rows, pills, badges) live in
+// `./rosterHubScenarios/`.
 //
 // The active scenario is persisted in the URL via `?scenario=` so a
 // reviewer can deep-link to a specific state. The page is admin-gated.
@@ -26,18 +30,20 @@ import { DesignScenarioHub } from "./rosterHubScenarios/DesignScenarioHub";
 import { DesignScenarioFA } from "./rosterHubScenarios/DesignScenarioFA";
 import { DesignScenarioIL } from "./rosterHubScenarios/DesignScenarioIL";
 import { DesignScenarioComplex } from "./rosterHubScenarios/DesignScenarioComplex";
+import { DesignScenarioWaiver } from "./rosterHubScenarios/DesignScenarioWaiver";
 
-type ScenarioKey = "hub" | "fa" | "il" | "complex";
+type ScenarioKey = "hub" | "fa" | "il" | "complex" | "waiver";
 
 const SCENARIOS: { key: ScenarioKey; label: string; subtitle: string }[] = [
   { key: "hub", label: "Hub mutations", subtitle: "drag-to-mutate + pending save/revert" },
   { key: "fa", label: "Free agent add/drop", subtitle: "side panel · drag FA → slot" },
   { key: "il", label: "IL management", subtitle: "stash + activate · red INJURED badge" },
   { key: "complex", label: "Complex batch", subtitle: "multi-step pending changes list" },
+  { key: "waiver", label: "Waiver claim", subtitle: "exploration · priority + FAAB on FA panel" },
 ];
 
 function isScenarioKey(s: string | null | undefined): s is ScenarioKey {
-  return s === "hub" || s === "fa" || s === "il" || s === "complex";
+  return s === "hub" || s === "fa" || s === "il" || s === "complex" || s === "waiver";
 }
 
 export default function DesignRosterHubDeferred() {
@@ -100,9 +106,11 @@ export default function DesignRosterHubDeferred() {
         </h1>
         <p style={{ marginTop: 10, fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.6 }}>
           Direction lock for <strong>drag-to-mutate</strong>, <strong>FA add/drop</strong>,{" "}
-          <strong>IL management</strong>, and <strong>complex multi-step batches</strong>. Each
-          scenario is a separate, navigable preview state. Backend wiring follows after sign-off
-          per scenario. NO live API calls — all local mock state.
+          <strong>IL management</strong>, and <strong>complex multi-step batches</strong>. Plus
+          a 5th <em>exploration</em> scenario — <strong>Waiver claim</strong> — proposing
+          waivers piggyback on the FA panel. Each scenario is a separate, navigable preview
+          state. Backend wiring follows after sign-off per scenario. NO live API calls — all
+          local mock state.
         </p>
       </Glass>
 
@@ -112,6 +120,7 @@ export default function DesignRosterHubDeferred() {
       {active === "fa" && <DesignScenarioFA />}
       {active === "il" && <DesignScenarioIL />}
       {active === "complex" && <DesignScenarioComplex />}
+      {active === "waiver" && <DesignScenarioWaiver />}
     </div>
   );
 }
