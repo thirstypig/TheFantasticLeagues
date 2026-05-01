@@ -10,6 +10,22 @@ import { PositionEligibilityCell } from "./PositionEligibilityCell";
 import { RowActionMenu, type RowAction } from "./RowActionMenu";
 import type { RosterHubPlayer } from "./types";
 
+/**
+ * Mobile-row DnD wiring. Same shape as RosterRowV3's RosterRowDnd but
+ * keyed for an HTMLDivElement. The grab handle uses long-press via
+ * dnd-kit's TouchSensor (250ms activation distance).
+ */
+export interface MobileRowDnd {
+  rowRef?: React.Ref<HTMLDivElement>;
+  dragHandleAttrs?: React.HTMLAttributes<HTMLButtonElement> & {
+    role?: string;
+    tabIndex?: number;
+  };
+  isDragging?: boolean;
+  isOverEligible?: boolean;
+  rowStyle?: React.CSSProperties;
+}
+
 interface MobileRowV3Props {
   player: RosterHubPlayer;
   role: "hitter" | "pitcher";
@@ -20,6 +36,8 @@ interface MobileRowV3Props {
   onPillClick: () => void;
   onRevert?: () => void;
   actions: RowAction[];
+  dnd?: MobileRowDnd;
+  isShakeRejecting?: boolean;
 }
 
 function statSummaryFor(player: RosterHubPlayer): string {
@@ -63,6 +81,8 @@ function MobileRowV3Impl({
   onPillClick,
   onRevert,
   actions,
+  dnd,
+  isShakeRejecting,
 }: MobileRowV3Props) {
   // `role` is still used by the React.memo comparator (so swapping a
   // hitter row for a pitcher row remounts cleanly) but stat rendering
@@ -83,9 +103,17 @@ function MobileRowV3Impl({
   if (isPending) classes.push("am-roster-row-pending");
   if (isEligible && !isPending) classes.push("am-roster-row-eligible");
   if (isDimmed) classes.push("am-roster-row-dimmed");
+  if (dnd?.isDragging) classes.push("am-roster-row-dragging-source");
+  if (dnd?.isOverEligible) classes.push("am-roster-row-drop-target");
+  if (isShakeRejecting) classes.push("am-roster-row-shake");
 
   return (
-    <div className={classes.join(" ")}>
+    <div
+      className={classes.join(" ")}
+      ref={dnd?.rowRef}
+      style={dnd?.rowStyle}
+      data-roster-row={String(player.rosterId)}
+    >
       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
         <PositionEligibilityCell
           posList={player.posList}
@@ -118,6 +146,17 @@ function MobileRowV3Impl({
         </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "flex-end" }}>
+        {dnd?.dragHandleAttrs && (
+          <button
+            type="button"
+            {...dnd.dragHandleAttrs}
+            className="am-roster-drag-handle"
+            aria-label={`Drag ${player.name} to reassign slot`}
+            title="Long-press to drag"
+          >
+            ⋮⋮
+          </button>
+        )}
         {isPending && onRevert && (
           <button
             type="button"
@@ -158,6 +197,12 @@ export const MobileRowV3 = React.memo(MobileRowV3Impl, (prev, next) => {
     prev.isSelected === next.isSelected &&
     prev.isEligible === next.isEligible &&
     prev.isDimmed === next.isDimmed &&
-    prev.isPending === next.isPending
+    prev.isPending === next.isPending &&
+    prev.isShakeRejecting === next.isShakeRejecting &&
+    prev.dnd?.isDragging === next.dnd?.isDragging &&
+    prev.dnd?.isOverEligible === next.dnd?.isOverEligible &&
+    prev.dnd?.rowStyle === next.dnd?.rowStyle &&
+    prev.dnd?.rowRef === next.dnd?.rowRef &&
+    prev.dnd?.dragHandleAttrs === next.dnd?.dragHandleAttrs
   );
 });

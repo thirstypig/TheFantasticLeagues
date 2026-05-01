@@ -19,6 +19,28 @@ import { PositionEligibilityCell } from "./PositionEligibilityCell";
 import { RowActionMenu, type RowAction } from "./RowActionMenu";
 import type { RosterHubPlayer } from "./types";
 
+/**
+ * Optional DnD wiring supplied by a parent `<DndContext>`. When omitted,
+ * the row renders without drag affordance — keeps the component usable
+ * in static contexts (preview, view-only roster pages) without paying
+ * the cost of dnd-kit refs.
+ */
+export interface RosterRowDnd {
+  /** Ref forwarded to the underlying <tr>. Used as both drag and drop ref. */
+  rowRef?: React.Ref<HTMLTableRowElement>;
+  /** Spread on the grab-handle button — listeners + attributes from useDraggable. */
+  dragHandleAttrs?: React.HTMLAttributes<HTMLButtonElement> & {
+    role?: string;
+    tabIndex?: number;
+  };
+  /** True when this row is currently lifted by dnd-kit. */
+  isDragging?: boolean;
+  /** True when a drag is hovering over this row AND it's a legal drop. */
+  isOverEligible?: boolean;
+  /** Inline transform/style from dnd-kit (translation while dragging). */
+  rowStyle?: React.CSSProperties;
+}
+
 interface RosterRowV3Props {
   player: RosterHubPlayer;
   /** Which stat columns this row should render. Caller controls layout. */
@@ -32,6 +54,10 @@ interface RosterRowV3Props {
   onPillClick: () => void;
   onRevert?: () => void;
   actions: RowAction[];
+  /** When provided, renders a ⋮⋮ grab handle and wires the row as a drop target. */
+  dnd?: RosterRowDnd;
+  /** True when row should shake (illegal drop landed on it). */
+  isShakeRejecting?: boolean;
 }
 
 function fmt(v: number | string | undefined, digits = 0): string {
@@ -62,6 +88,8 @@ function RosterRowV3Impl({
   onPillClick,
   onRevert,
   actions,
+  dnd,
+  isShakeRejecting,
 }: RosterRowV3Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -78,11 +106,17 @@ function RosterRowV3Impl({
   if (isPending) rowClasses.push("am-roster-row-pending");
   if (isEligible && !isPending) rowClasses.push("am-roster-row-eligible");
   if (isDimmed) rowClasses.push("am-roster-row-dimmed");
-  if (isDragSource) rowClasses.push("am-roster-row-dragging-source");
-  if (isDropTarget) rowClasses.push("am-roster-row-drop-target");
+  if (isDragSource || dnd?.isDragging) rowClasses.push("am-roster-row-dragging-source");
+  if (isDropTarget || dnd?.isOverEligible) rowClasses.push("am-roster-row-drop-target");
+  if (isShakeRejecting) rowClasses.push("am-roster-row-shake");
 
   return (
-    <ThemedTr className={rowClasses.join(" ")}>
+    <ThemedTr
+      className={rowClasses.join(" ")}
+      innerRef={dnd?.rowRef}
+      style={dnd?.rowStyle}
+      extraProps={{ "data-roster-row": String(player.rosterId) } as React.HTMLAttributes<HTMLTableRowElement>}
+    >
       {/* Position + Eligibility (merged) */}
       <ThemedTd>
         <PositionEligibilityCell
@@ -144,6 +178,17 @@ function RosterRowV3Impl({
       {/* Actions cell */}
       <ThemedTd align="right">
         <div style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+          {dnd?.dragHandleAttrs && (
+            <button
+              type="button"
+              {...dnd.dragHandleAttrs}
+              className="am-roster-drag-handle"
+              aria-label={`Drag ${player.name} to reassign slot`}
+              title="Drag to swap"
+            >
+              ⋮⋮
+            </button>
+          )}
           {isPending && onRevert && (
             <button
               type="button"
@@ -198,6 +243,15 @@ export const RosterRowV3 = React.memo(RosterRowV3Impl, (prev, next) => {
     prev.isDimmed === next.isDimmed &&
     prev.isPending === next.isPending &&
     prev.isDragSource === next.isDragSource &&
-    prev.isDropTarget === next.isDropTarget
+    prev.isDropTarget === next.isDropTarget &&
+    prev.isShakeRejecting === next.isShakeRejecting &&
+    // dnd is a shallow object; compare its scalar fields. The two refs/
+    // attrs change identity on every dnd-kit render, so we deliberately
+    // re-render when they change.
+    prev.dnd?.isDragging === next.dnd?.isDragging &&
+    prev.dnd?.isOverEligible === next.dnd?.isOverEligible &&
+    prev.dnd?.rowStyle === next.dnd?.rowStyle &&
+    prev.dnd?.rowRef === next.dnd?.rowRef &&
+    prev.dnd?.dragHandleAttrs === next.dnd?.dragHandleAttrs
   );
 });
