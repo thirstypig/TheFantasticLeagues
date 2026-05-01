@@ -8,6 +8,8 @@ import {
   ThemedTr,
   ThemedTd,
 } from "../../../components/ui/ThemedTable";
+import { isBackdated } from "../lib/backdated";
+import { formatRelativeTime } from "../../../lib/timeUtils";
 
 type HistoryItem =
   | { type: "trade"; date: Date; data: TradeProposal }
@@ -101,6 +103,7 @@ function summarizeTradePlayers(t: TradeProposal): string {
 export default function ActivityHistoryTab({ completedTrades, transactions }: Props) {
   const [historyRange, setHistoryRange] = useState<string>("30");
   const [historyType, setHistoryType] = useState<string>("all");
+  const [backdatedOnly, setBackdatedOnly] = useState<boolean>(false);
 
   const mergedHistory = useMemo<HistoryItem[]>(() => {
     const tradeEvents: HistoryItem[] = completedTrades.map((t) => ({
@@ -129,8 +132,16 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
       items = items.filter((i) => i.date >= cutoff);
     }
 
+    if (backdatedOnly) {
+      // Trades don't carry an effective-date concept distinct from
+      // creation, so they always fail the backdated test by design.
+      items = items.filter(
+        (i) => i.type === "transaction" && isBackdated(i.data),
+      );
+    }
+
     return items;
-  }, [mergedHistory, historyRange, historyType]);
+  }, [mergedHistory, historyRange, historyType, backdatedOnly]);
 
   return (
     <div className="space-y-4">
@@ -155,6 +166,20 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
           <option value="trades">Trades Only</option>
           <option value="transactions">Roster Moves Only</option>
         </select>
+        <button
+          type="button"
+          aria-pressed={backdatedOnly}
+          onClick={() => setBackdatedOnly((v) => !v)}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            backdatedOnly
+              ? "border-amber-500/50 bg-amber-500/15 text-amber-300"
+              : "border-[var(--lg-border)] bg-transparent text-[var(--lg-text-muted)] hover:bg-[var(--lg-tint)]"
+          }`}
+          title="Show only commissioner-submitted transactions whose effective date precedes the submission timestamp"
+        >
+          <span aria-hidden>📅</span>
+          Backdated only
+        </button>
         <span className="text-xs text-[var(--lg-text-muted)] font-medium ml-2">
           {filteredHistory.length} {filteredHistory.length === 1 ? "event" : "events"}
         </span>
@@ -202,10 +227,47 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
                 }
 
                 const tx = item.data as TransactionEvent;
+                const txBackdated = isBackdated(tx);
+                const submittedAgo = tx.submittedAt
+                  ? formatRelativeTime(tx.submittedAt)
+                  : null;
+                const effectiveAgo = tx.effDate
+                  ? formatRelativeTime(tx.effDate)
+                  : null;
+                const backdatedTooltip =
+                  submittedAgo && effectiveAgo
+                    ? `Submitted ${submittedAgo} · effective ${effectiveAgo}`
+                    : "Effective date precedes submission";
                 return (
-                  <ThemedTr key={`tx-${tx.id}`} className="group hover:bg-[var(--lg-tint)]">
+                  <ThemedTr
+                    key={`tx-${tx.id}`}
+                    className="group hover:bg-[var(--lg-tint)]"
+                    extraProps={
+                      txBackdated
+                        ? ({ "data-testid": "history-row-backdated" } as React.HTMLAttributes<HTMLTableRowElement>)
+                        : undefined
+                    }
+                  >
                     <ThemedTd className="pl-8">
-                      {tx.effDate ? new Date(tx.effDate).toLocaleDateString() : tx.effDateRaw}
+                      <div className="flex flex-col gap-1">
+                        <span>
+                          {tx.submittedAt
+                            ? new Date(tx.submittedAt).toLocaleDateString()
+                            : tx.effDate
+                              ? new Date(tx.effDate).toLocaleDateString()
+                              : tx.effDateRaw}
+                        </span>
+                        {txBackdated && tx.effDate && (
+                          <span
+                            data-testid="backdated-marker"
+                            title={backdatedTooltip}
+                            className="inline-flex items-center gap-1 self-start rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300"
+                          >
+                            <span aria-hidden>📅</span>
+                            Effective: {new Date(tx.effDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </ThemedTd>
                     <ThemedTd>{tx.team?.name || tx.ogbaTeamName || "—"}</ThemedTd>
                     <ThemedTd>{tx.player?.name || tx.playerAliasRaw || "—"}</ThemedTd>

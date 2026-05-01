@@ -217,6 +217,30 @@ describe("GET /transactions", () => {
     expect(res.body.take).toBe(50);
     expect(res.body.skip).toBe(0);
   });
+
+  it("includes effDate + submittedAt on each row (backdated-marker contract)", async () => {
+    // The activity-log "Backdated" filter + per-row chip on the client
+    // depends on `effDate` and `submittedAt` being present on every row
+    // returned from this endpoint. The findMany call uses Prisma's default
+    // selection (no `select` clause) so all scalar fields are emitted —
+    // this test pins that behavior so a future PR can't add a `select`
+    // that drops either field without flipping the test red.
+    const submittedAt = new Date("2026-04-15T18:00:00.000Z");
+    const effDate = new Date("2026-04-10T00:00:00.000Z");
+    mockPrisma.transactionEvent.count.mockResolvedValue(1);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([
+      { id: 1, leagueId: 1, transactionType: "ADD", effDate, submittedAt },
+    ]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1");
+    expect(res.status).toBe(200);
+    expect(res.body.transactions[0].effDate).toBe(effDate.toISOString());
+    expect(res.body.transactions[0].submittedAt).toBe(submittedAt.toISOString());
+
+    // Pin: no `select` clause is passed to findMany — all scalars flow through.
+    const findManyCall = mockPrisma.transactionEvent.findMany.mock.calls[0][0];
+    expect(findManyCall.select).toBeUndefined();
+  });
 });
 
 // ── POST /transactions/claim ─────────────────────────────────────
