@@ -16,6 +16,15 @@ import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
 import { listGhostIlPlayersForTeam } from "../../lib/ilSlotGuard.js";
 import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
+import {
+  auditLeagueIlPlayers,
+  performBulkIlStash,
+  cleanupDroppedRosterRows,
+} from "./services/bulkOperationsService.js";
+import {
+  BulkIlStashRequestSchema,
+  CleanupDroppedRequestSchema,
+} from "../../../../shared/api/commissioner.js";
 
 // --- Zod Schemas ---
 
@@ -1192,6 +1201,84 @@ router.get(
       totalTeamsWithGhosts: withGhosts.length,
       totalGhosts,
     });
+  }),
+);
+
+/**
+ * GET /api/commissioner/:leagueId/il-audit
+ *
+ * League-wide IL audit: returns every player on an active roster (NOT
+ * already on an IL slot) whose live MLB status begins with "Injured".
+ * These are the candidates the commissioner can sweep into IL slots via
+ * the companion bulk endpoint below.
+ *
+ * Read-only; fails open on per-player MLB feed errors (logs and skips).
+ */
+router.get(
+  "/commissioner/:leagueId/il-audit",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    if (!Number.isFinite(leagueId)) {
+      return res.status(400).json({ error: "Invalid leagueId" });
+    }
+    const result = await auditLeagueIlPlayers(leagueId);
+    return res.json(result);
+  }),
+);
+
+/**
+ * POST /api/commissioner/:leagueId/bulk-il-stash
+ *
+ * Sweep every supplied (teamId, playerId) entry into an IL slot. Each entry
+ * runs in its own transaction; per-entry failures don't roll back earlier
+ * successes. Idempotent on a per-entry basis — a player already on IL is
+ * recorded as a `noop` success rather than a failure.
+ *
+ * Body: { entries: [{ teamId, playerId }, ...] }
+ * Response: { succeeded: [...], failed: [...] }
+ */
+router.post(
+  "/commissioner/:leagueId/bulk-il-stash",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  validateBody(BulkIlStashRequestSchema),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    if (!Number.isFinite(leagueId)) {
+      return res.status(400).json({ error: "Invalid leagueId" });
+    }
+    const { entries } = req.body as { entries: Array<{ teamId: number; playerId: number }> };
+    const result = await performBulkIlStash(leagueId, entries, req.user!.id);
+    return res.json(result);
+  }),
+);
+
+/**
+ * POST /api/commissioner/:leagueId/cleanup-dropped
+ *
+ * Hard-delete `Roster` rows whose `releasedAt` is older than `olderThanDays`
+ * days. The historical TransactionEvent rows survive (Roster has no
+ * downstream FKs that block deletion). Routinely run by commissioners after
+ * heavy mid-season churn to keep the Roster table compact.
+ *
+ * Body: { olderThanDays: number (1..3650) }
+ * Response: { deletedCount, cutoff }
+ */
+router.post(
+  "/commissioner/:leagueId/cleanup-dropped",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  validateBody(CleanupDroppedRequestSchema),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    if (!Number.isFinite(leagueId)) {
+      return res.status(400).json({ error: "Invalid leagueId" });
+    }
+    const { olderThanDays } = req.body as { olderThanDays: number };
+    const result = await cleanupDroppedRosterRows(leagueId, olderThanDays, req.user!.id);
+    return res.json(result);
   }),
 );
 
