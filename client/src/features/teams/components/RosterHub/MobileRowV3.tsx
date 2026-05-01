@@ -59,11 +59,11 @@ function statSummaryFor(player: RosterHubPlayer): string {
   }
   const s = player.pitcherStats ?? {};
   const parts: string[] = [];
-  if (s.W != null && s.SV != null && s.W >= s.SV) {
-    parts.push(`${s.W}W`);
-  } else if (s.W != null) {
-    parts.push(`${s.W}W`);
+  if (s.IP != null) {
+    const ip = typeof s.IP === "number" ? s.IP.toFixed(1) : s.IP;
+    parts.push(`${ip} IP`);
   }
+  if (s.W != null) parts.push(`${s.W}W`);
   if (s.SV != null && s.SV > 0) parts.push(`${s.SV} SV`);
   if (s.K != null) parts.push(`${s.K} K`);
   if (s.ERA != null) parts.push(`${typeof s.ERA === "number" ? s.ERA.toFixed(2) : s.ERA} ERA`);

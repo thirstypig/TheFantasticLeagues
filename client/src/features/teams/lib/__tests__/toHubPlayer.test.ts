@@ -113,10 +113,14 @@ describe("toHubPlayer — role-aware stats", () => {
     const result = toHubPlayer(
       makeInput({
         isPitcher: false,
-        R: 11, HR: 3, RBI: 15, SB: 0, AVG: ".270",
+        AB: 40, H: 11, R: 11, HR: 3, RBI: 15, SB: 0, AVG: ".275",
       }),
     );
-    expect(result.hitterStats).toEqual({ R: 11, HR: 3, RBI: 15, SB: 0, AVG: ".270" });
+    // Session 89 added AB and H (so users can verify AVG = H/AB
+    // inline). The mapper passes them through unchanged.
+    expect(result.hitterStats).toEqual({
+      AB: 40, H: 11, R: 11, HR: 3, RBI: 15, SB: 0, AVG: ".275",
+    });
     expect(result.pitcherStats).toBeUndefined();
   });
 
@@ -124,10 +128,15 @@ describe("toHubPlayer — role-aware stats", () => {
     const result = toHubPlayer(
       makeInput({
         isPitcher: true,
-        W: 4, SV: 0, K: 34, ERA: 2.6, WHIP: 1.16,
+        IP: 22.1, BB_H: 25, K: 34, W: 4, SV: 0, ER: 6, ERA: 2.6, WHIP: 1.12,
       }),
     );
-    expect(result.pitcherStats).toEqual({ W: 4, SV: 0, K: 34, ERA: 2.6, WHIP: 1.16 });
+    // Session 89 added IP, BB_H (combined hits + walks allowed —
+    // matches the WHIP numerator the wire format already carries) and
+    // ER (the ERA numerator) so users can verify the rate stats.
+    expect(result.pitcherStats).toEqual({
+      IP: 22.1, BB_H: 25, K: 34, W: 4, SV: 0, ER: 6, ERA: 2.6, WHIP: 1.12,
+    });
     expect(result.hitterStats).toBeUndefined();
   });
 
