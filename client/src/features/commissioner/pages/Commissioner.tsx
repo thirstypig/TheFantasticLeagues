@@ -28,6 +28,7 @@ import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
 import RosterControls from "../../roster/components/RosterControls";
 import LeagueHealthTab from "../components/LeagueHealthTab";
+import BulkOpsPanel from "../components/BulkOpsPanel";
 import KeeperPrepDashboard from "../../keeper-prep/components/KeeperPrepDashboard";
 import SeasonManager from "../components/SeasonManager";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
@@ -1448,6 +1449,15 @@ export default function Commissioner() {
                           onUpdate={() => { /* no-op or refresh */ }}
                         />
                     </div>
+                  )}
+
+                  {/* Bulk operations: League IL audit + Roster cleanup
+                      (feat/commissioner-bulk-ops). Read-only feature for
+                      pre-IN_SEASON phases — server endpoint requires
+                      commissioner/admin and the panel still renders the audit
+                      table when there are no in-flight rosters. */}
+                  {!gating.isReadOnly && (
+                    <BulkOpsPanel leagueId={lid} />
                   )}
                 </div>
             )}
