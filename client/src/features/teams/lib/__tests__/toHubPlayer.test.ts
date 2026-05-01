@@ -214,6 +214,33 @@ describe("toHubPlayer — unknown slot input fallback (todo #132)", () => {
   });
 });
 
+describe("toHubPlayer — discriminated union narrowing (todo #153)", () => {
+  it("hitter result narrows to hitterStats branch via the isPitcher discriminant", () => {
+    // Per todo #153 — `RosterHubPlayer` is a discriminated union on
+    // `isPitcher`. Inside the false branch only `hitterStats` is in scope
+    // (TypeScript flags `.pitcherStats` access at compile time). This
+    // test pins the runtime contract.
+    const result = toHubPlayer(makeInput({ isPitcher: false, R: 5 }));
+    if (result.isPitcher) {
+      throw new Error("expected hitter row, got pitcher");
+    }
+    // Inside this branch, `result.hitterStats` is statically known.
+    expect(result.hitterStats?.R).toBe(5);
+    // @ts-expect-error pitcherStats does not exist on the hitter branch
+    expect(result.pitcherStats).toBeUndefined();
+  });
+
+  it("pitcher result narrows to pitcherStats branch via the isPitcher discriminant", () => {
+    const result = toHubPlayer(makeInput({ isPitcher: true, W: 7 }));
+    if (!result.isPitcher) {
+      throw new Error("expected pitcher row, got hitter");
+    }
+    expect(result.pitcherStats?.W).toBe(7);
+    // @ts-expect-error hitterStats does not exist on the pitcher branch
+    expect(result.hitterStats).toBeUndefined();
+  });
+});
+
 describe("toHubPlayer — passthrough metadata", () => {
   it("passes mlbTeam and isKeeper through", () => {
     const result = toHubPlayer(
