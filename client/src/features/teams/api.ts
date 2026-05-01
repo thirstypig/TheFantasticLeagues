@@ -13,10 +13,22 @@ export async function getTeams(leagueId?: number): Promise<any[]> {
   return resp.teams;
 }
 
-export async function updateRosterPosition(teamId: number, rosterId: number, position: string | null): Promise<any> {
+export async function updateRosterPosition(
+  teamId: number,
+  rosterId: number,
+  position: string | null,
+  /**
+   * Optional commissioner-mode backdate. Advisory only — the swap doesn't
+   * update Roster.acquiredAt today (server logs it for audit, doesn't
+   * recompute period stats). Pass YYYY-MM-DD or full ISO datetime.
+   */
+  effectiveDate?: string,
+): Promise<any> {
+  const body: Record<string, unknown> = { assignedPosition: position };
+  if (effectiveDate) body.effectiveDate = effectiveDate;
   return fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ assignedPosition: position }),
+    body: JSON.stringify(body),
   });
 }
 
