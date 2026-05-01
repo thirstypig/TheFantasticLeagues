@@ -39,6 +39,22 @@ interface RosterHubPlayerBase {
   statSnapshot?: string;
   /** Keeper visual flag (gold ring + ★ glyph). */
   isKeeper?: boolean;
+  /**
+   * Raw MLB statsapi status string ("Injured 10-Day", "Active", …).
+   * Verbatim per direction-lock IL #1 — never normalized at this layer.
+   * Powers the IL drag eligibility gate (`isMlbIlStatusUi`) and the
+   * ghost-IL warning chip on active-roster rows whose MLB status is
+   * an Injured-Day designation but the daily sync hasn't auto-stashed
+   * them yet.
+   */
+  mlbStatus?: string | null;
+  /**
+   * Days since `mlbStatus` was observed (best-effort, from the player
+   * row's `updatedAt` or the cron's last-fetched timestamp). Used by
+   * the ghost-IL chip body: "Status missing — last known: X · N days ago".
+   * Optional; when absent the chip elides the day count.
+   */
+  mlbStatusDaysAgo?: number;
 
   /**
    * Per §0.5 refinement #3: games played at each eligible position.

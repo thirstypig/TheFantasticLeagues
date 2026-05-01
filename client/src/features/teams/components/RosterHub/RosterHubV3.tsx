@@ -95,6 +95,9 @@ interface RosterHubV3Props {
   dndEnabled?: boolean;
   /** rosterId currently in shake-reject state, or null. */
   shakeRowId?: number | null;
+  /** IL scenario: when true, an active drag is stash-eligible. Empty IL
+   *  slots highlight a "Drop here to stash" affordance. */
+  ilStashEligible?: boolean;
 
   forceMobile?: boolean;
 }
@@ -202,6 +205,7 @@ export function RosterHubV3({
   dropPoolSlot,
   dndEnabled,
   shakeRowId,
+  ilStashEligible,
   forceMobile,
 }: RosterHubV3Props) {
   const isMobile = useIsMobile(forceMobile);
@@ -406,6 +410,9 @@ export function RosterHubV3({
         onPillClick={onPillClick}
         buildActions={buildActions}
         onRevert={onRevert}
+        dndEnabled={dndEnabled}
+        ilStashEligible={ilStashEligible}
+        shakeRowId={shakeRowId}
       />
 
       {dragSim && (
