@@ -117,8 +117,12 @@ function RosterRowV3Impl({
         </div>
       </ThemedTd>
 
-      {/* Role-aware stat cells. */}
-      {role === "hitter" ? (
+      {/* Role-aware stat cells. The `role` prop drives the column layout
+          (number of cells must match the parent's headers), and the
+          `player.isPitcher` discriminant narrows which stat object is
+          available — per todo #153, the discriminated union encodes the
+          mutual-exclusion invariant in the type system. */}
+      {!player.isPitcher ? (
         <>
           <StatTd>{fmt(player.hitterStats?.R)}</StatTd>
           <StatTd>{fmt(player.hitterStats?.HR)}</StatTd>

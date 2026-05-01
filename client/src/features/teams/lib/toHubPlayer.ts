@@ -105,7 +105,7 @@ function narrowGamesByPos(
 
 export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
   const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
-  return {
+  const base = {
     rosterId: p.rosterId,
     playerId: p.playerId,
     name: p.playerName,
@@ -114,13 +114,23 @@ export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
     assignedSlot: narrowSlot(slot),
     mlbTeam: p.mlbTeam,
     isKeeper: p.isKeeper,
-    isPitcher: !!p.isPitcher,
     gamesPlayedByPosition: narrowGamesByPos(p.gamesByPos),
-    hitterStats: p.isPitcher
-      ? undefined
-      : { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },
-    pitcherStats: p.isPitcher
-      ? { W: p.W, SV: p.SV, K: p.K, ERA: p.ERA, WHIP: p.WHIP }
-      : undefined,
+  };
+  // Per todo #153 — RosterHubPlayer is a discriminated union on
+  // `isPitcher`. Branch the return value so the type system knows which
+  // role-keyed stat object is populated. Hitter rows always carry a
+  // hitterStats object (possibly empty) so RosterRowV3 renders "—" for
+  // missing fields rather than crashing on `.hitterStats!.HR`.
+  if (p.isPitcher) {
+    return {
+      ...base,
+      isPitcher: true,
+      pitcherStats: { W: p.W, SV: p.SV, K: p.K, ERA: p.ERA, WHIP: p.WHIP },
+    };
+  }
+  return {
+    ...base,
+    isPitcher: false,
+    hitterStats: { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },
   };
 }
