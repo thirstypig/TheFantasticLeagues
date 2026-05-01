@@ -193,7 +193,7 @@ describe("usePendingChanges", () => {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       const parsed = JSON.parse(raw!);
-      expect(parsed.v).toBe(3);
+      expect(parsed.v).toBe(4);
       expect(parsed.changes).toHaveLength(1);
       expect(parsed.changes[0].id).toBe("abc");
     });
@@ -213,7 +213,12 @@ describe("usePendingChanges", () => {
       const stale = Date.now() - 2 * 60 * 60 * 1000;
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ v: 3, savedAt: stale, changes: [{ ...makeSwap(), id: "x" }] }),
+        JSON.stringify({
+          v: 4,
+          savedAt: stale,
+          changes: [{ ...makeSwap(), id: "x" }],
+          effectiveDate: null,
+        }),
       );
       expect(readPersistedChanges(42)).toBeNull();
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -223,9 +228,10 @@ describe("usePendingChanges", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
-          v: 3,
+          v: 4,
           savedAt: Date.now() - 60 * 1000,
           changes: [{ ...makeSwap(), id: "x" }],
+          effectiveDate: null,
         }),
       );
       const out = readPersistedChanges(42);
@@ -235,9 +241,9 @@ describe("usePendingChanges", () => {
 
     it("readPersistedChanges discards v1 entries (FA-scenario schema bump)", () => {
       // PR #207 wrote v:1 swap-only blobs; the FA scenario added the
-      // fa_add variant and bumped to v:2; the IL scenario adds
-      // il_stash + il_activate and bumps to v:3. Older entries are
-      // silently dropped rather than auto-migrated.
+      // fa_add variant and bumped to v:2; the IL scenario bumped to
+      // v:3; the commissioner-mode rollout (effectiveDate) bumped to
+      // v:4. Older entries are silently dropped rather than auto-migrated.
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({ v: 1, savedAt: Date.now(), changes: [{ ...makeSwap(), id: "x" }] }),
@@ -250,6 +256,15 @@ describe("usePendingChanges", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({ v: 2, savedAt: Date.now(), changes: [{ ...makeSwap(), id: "x" }] }),
+      );
+      expect(readPersistedChanges(42)).toBeNull();
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+
+    it("readPersistedChanges discards v3 entries (effectiveDate schema bump)", () => {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ v: 3, savedAt: Date.now(), changes: [{ ...makeSwap(), id: "x" }] }),
       );
       expect(readPersistedChanges(42)).toBeNull();
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -271,7 +286,7 @@ describe("usePendingChanges", () => {
     it("clearPersistedChanges removes the entry", () => {
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ v: 3, savedAt: Date.now(), changes: [] }),
+        JSON.stringify({ v: 4, savedAt: Date.now(), changes: [], effectiveDate: null }),
       );
       clearPersistedChanges(42);
       expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
@@ -424,7 +439,7 @@ describe("usePendingChanges", () => {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       const parsed = JSON.parse(raw!);
-      expect(parsed.v).toBe(3);
+      expect(parsed.v).toBe(4);
       expect(parsed.changes[0].kind).toBe("fa_add");
 
       const restored = readPersistedChanges(42);
@@ -504,7 +519,7 @@ describe("usePendingChanges", () => {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       expect(raw).not.toBeNull();
       const parsed = JSON.parse(raw!);
-      expect(parsed.v).toBe(3);
+      expect(parsed.v).toBe(4);
       expect(parsed.changes[0].kind).toBe("il_stash");
 
       const restored = readPersistedChanges(42);
@@ -602,6 +617,127 @@ describe("usePendingChanges", () => {
       });
       expect(result.current.state.error).toBe("server 500");
       expect(result.current.state.changes).toHaveLength(1);
+    });
+  });
+
+  // ─── Commissioner-mode extensions ─────────────────────────────────
+  //
+  // These cover the two pieces of the commissioner rollout that
+  // touch the hook itself: the per-(user, team) localStorage key and
+  // the persisted/forwarded `effectiveDate`. The picker UI is tested
+  // separately in PendingChangeBar.test.tsx.
+
+  describe("commissioner-mode (effectiveDate + userId scoping)", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    it("scopes the localStorage key per (user, team) when userId is provided", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: 7, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeSwap());
+      });
+      expect(window.localStorage.getItem("fbst:hub-pending:7:42")).not.toBeNull();
+      // Legacy team-only key is NOT written when userId is supplied.
+      expect(window.localStorage.getItem("fbst:hub-pending:42")).toBeNull();
+    });
+
+    it("falls back to the legacy team-only key when userId is null", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: null, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeSwap());
+      });
+      expect(window.localStorage.getItem("fbst:hub-pending:42")).not.toBeNull();
+    });
+
+    it("two different commissioners on the same team use separate keys", () => {
+      const a = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: 1, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      const b = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: 2, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        a.result.current.addChange(makeSwap());
+        b.result.current.addChange({
+          ...makeSwap({ from: { rosterId: 9, playerId: 109, slot: "1B" } }),
+        } as Omit<PendingChange, "id">);
+      });
+      expect(window.localStorage.getItem("fbst:hub-pending:1:42")).not.toBeNull();
+      expect(window.localStorage.getItem("fbst:hub-pending:2:42")).not.toBeNull();
+    });
+
+    it("setEffectiveDate updates state and persists alongside changes", () => {
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: 7, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeSwap());
+        result.current.setEffectiveDate("2026-04-15");
+      });
+      expect(result.current.state.effectiveDate).toBe("2026-04-15");
+      const raw = window.localStorage.getItem("fbst:hub-pending:7:42")!;
+      expect(JSON.parse(raw).effectiveDate).toBe("2026-04-15");
+    });
+
+    it("readPersistedChanges restores the effectiveDate via readPersistedSnapshot", async () => {
+      // Direct round-trip: set state, then check that another instance
+      // sees both the queue and the date when re-mounted.
+      const first = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: 7, saveFn: vi.fn(), persistDebounceMs: 0 }),
+      );
+      act(() => {
+        first.result.current.addChange(makeSwap());
+        first.result.current.setEffectiveDate("2026-04-15");
+      });
+      first.unmount();
+
+      // Read it back out explicitly through the snapshot helper. (The
+      // hook itself doesn't auto-hydrate today — Team.tsx prompts the
+      // user via the restore flow — so we check the storage primitive
+      // that powers that prompt.)
+      const { readPersistedSnapshot } = await import("../usePendingChanges");
+      const snapshot = readPersistedSnapshot(42, 7);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot!.changes).toHaveLength(1);
+      expect(snapshot!.effectiveDate).toBe("2026-04-15");
+    });
+
+    it("forwards effectiveDate to saveFn ctx and resets it on saveSuccess", async () => {
+      const saveFn = vi.fn().mockResolvedValue(undefined);
+      const { result } = renderHook(() =>
+        usePendingChanges({ teamId: 42, userId: 7, saveFn, persistDebounceMs: 0 }),
+      );
+      act(() => {
+        result.current.addChange(makeSwap());
+        result.current.setEffectiveDate("2026-04-15");
+      });
+      await act(async () => {
+        await result.current.save();
+      });
+      expect(saveFn).toHaveBeenCalledTimes(1);
+      const ctx = saveFn.mock.calls[0][1];
+      expect(ctx).toEqual({ effectiveDate: "2026-04-15" });
+      // Reset on success so the next batch starts clean.
+      expect(result.current.state.effectiveDate).toBeNull();
+    });
+
+    it("clearPersistedChanges removes both scoped and legacy keys", () => {
+      window.localStorage.setItem(
+        "fbst:hub-pending:7:42",
+        JSON.stringify({ v: 4, savedAt: Date.now(), changes: [], effectiveDate: null }),
+      );
+      window.localStorage.setItem(
+        "fbst:hub-pending:42",
+        JSON.stringify({ v: 4, savedAt: Date.now(), changes: [], effectiveDate: null }),
+      );
+      clearPersistedChanges(42, 7);
+      expect(window.localStorage.getItem("fbst:hub-pending:7:42")).toBeNull();
+      expect(window.localStorage.getItem("fbst:hub-pending:42")).toBeNull();
     });
   });
 });

@@ -196,20 +196,35 @@ export interface PendingChangesState {
    * inline error banner (Complex-#4 + Complex-#6).
    */
   failures: ReadonlyArray<PendingChangeFailure>;
+  /**
+   * Commissioner-mode backdate. When set, the saveFn is expected to
+   * forward this value as `effectiveDate` on every mutation API call so
+   * the server-side audit trail (TransactionEvent.effectiveDate) reflects
+   * the chosen date. Owner-mode hubs leave this null and the server
+   * defaults to "now". Persisted alongside changes so a 1hr-old batch
+   * restored from localStorage carries its date too.
+   *
+   * Format: YYYY-MM-DD (HTML5 date input native shape) or full ISO.
+   */
+  effectiveDate: string | null;
 }
 
 interface PersistedState {
   /** Schema version — bump if PendingChange shape changes incompatibly.
    *  v1: swap-only (Hub scenario, PR #207).
    *  v2: adds fa_add variant (FA scenario).
-   *  v3: adds il_stash + il_activate variants (IL scenario, this PR).
-   *  v1/v2 entries are discarded silently rather than auto-migrated —
+   *  v3: adds il_stash + il_activate variants (IL scenario).
+   *  v4: adds effectiveDate (commissioner-mode backdate).
+   *  v1/v2/v3 entries are discarded silently rather than auto-migrated —
    *  the cost of a one-time discard is dwarfed by the safety win of
    *  "no partial-shape entries". */
-  v: 3;
+  v: 4;
   /** Unix ms when this snapshot was written. Used for TTL discard. */
   savedAt: number;
   changes: PendingChange[];
+  /** Commissioner-mode backdate, persisted alongside the queue so a
+   *  1hr-old restored batch keeps its chosen date. Null in owner mode. */
+  effectiveDate: string | null;
 }
 
 type Action =
@@ -224,7 +239,8 @@ type Action =
       failures: ReadonlyArray<PendingChangeFailure>;
     }
   | { type: "clearError" }
-  | { type: "hydrate"; changes: PendingChange[] };
+  | { type: "hydrate"; changes: PendingChange[]; effectiveDate?: string | null }
+  | { type: "setEffectiveDate"; effectiveDate: string | null };
 
 // ─── Reducer ───────────────────────────────────────────────────────
 
@@ -258,6 +274,9 @@ function reducer(state: PendingChangesState, action: Action): PendingChangesStat
         error: null,
         lastSavedAt: action.at,
         failures: [],
+        // Reset the date to null on successful save so the next batch
+        // starts fresh — the user can re-enter a backdate if needed.
+        effectiveDate: null,
       };
     case "saveError":
       return {
@@ -269,7 +288,14 @@ function reducer(state: PendingChangesState, action: Action): PendingChangesStat
     case "clearError":
       return { ...state, error: null, failures: [] };
     case "hydrate":
-      return { ...state, changes: action.changes };
+      return {
+        ...state,
+        changes: action.changes,
+        effectiveDate:
+          action.effectiveDate !== undefined ? action.effectiveDate : state.effectiveDate,
+      };
+    case "setEffectiveDate":
+      return { ...state, effectiveDate: action.effectiveDate };
   }
 }
 
@@ -422,8 +448,26 @@ export function describeKindBreakdown(b: KindBreakdown): string {
 const STORAGE_PREFIX = "fbst:hub-pending:";
 const TTL_MS = 60 * 60 * 1000; // 1 hour per direction-lock #5
 
-function storageKey(teamId: number | null | undefined): string | null {
+/**
+ * Build the per-(user, team) storage key. Commissioner mode introduced
+ * a real cross-team scoping problem: a single admin bouncing between
+ * `/teams/A` and `/teams/B` would otherwise overwrite the other team's
+ * pending batch. The key is now `fbst:hub-pending:<userId>:<teamId>` —
+ * legacy `fbst:hub-pending:<teamId>` entries are accepted on read for a
+ * one-time grace period (logged out + re-loaded discards them via TTL).
+ *
+ * userId may be null/undefined — happens during the auth-resolve flicker.
+ * In that window we fall back to the legacy team-only key so an
+ * authenticated user doesn't lose a queue mid-session.
+ */
+function storageKey(
+  teamId: number | null | undefined,
+  userId?: number | string | null,
+): string | null {
   if (teamId == null || !Number.isFinite(teamId) || teamId <= 0) return null;
+  if (userId != null && (typeof userId === "number" ? userId > 0 : String(userId).length > 0)) {
+    return `${STORAGE_PREFIX}${userId}:${teamId}`;
+  }
   return `${STORAGE_PREFIX}${teamId}`;
 }
 
@@ -431,56 +475,111 @@ function storageKey(teamId: number | null | undefined): string | null {
  * Read persisted pending changes for a team. Returns null when absent,
  * malformed, or expired beyond TTL. Side-effect: deletes the entry when
  * expired so we don't keep prompting "restore?" on stale data.
+ *
+ * Backwards compatibility: when called without a userId, reads the
+ * legacy team-only key. When called with a userId, reads the scoped
+ * key first and falls back to the legacy key (so a session opened
+ * before the commissioner-mode rollout still finds its batch).
  */
-export function readPersistedChanges(teamId: number): PendingChange[] | null {
+export function readPersistedChanges(
+  teamId: number,
+  userId?: number | string | null,
+): PendingChange[] | null {
+  return readPersistedSnapshot(teamId, userId)?.changes ?? null;
+}
+
+/**
+ * Lower-level read returning the full snapshot (changes + effectiveDate).
+ * Callers that need to restore the full state — including a backdate
+ * chosen in commissioner mode — should use this; the `readPersistedChanges`
+ * narrow form is preserved for the existing call sites that only care
+ * about the queue.
+ */
+export function readPersistedSnapshot(
+  teamId: number,
+  userId?: number | string | null,
+): { changes: PendingChange[]; effectiveDate: string | null } | null {
   if (typeof window === "undefined") return null;
-  const key = storageKey(teamId);
-  if (!key) return null;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedState;
-    if (!parsed || parsed.v !== 3 || !Array.isArray(parsed.changes)) {
-      window.localStorage.removeItem(key);
-      return null;
+
+  // Try the user-scoped key first, then fall back to the legacy
+  // team-only key so older persisted batches still restore.
+  const candidates: string[] = [];
+  const scopedKey = storageKey(teamId, userId);
+  if (scopedKey) candidates.push(scopedKey);
+  const legacyKey = storageKey(teamId);
+  if (legacyKey && legacyKey !== scopedKey) candidates.push(legacyKey);
+
+  for (const key of candidates) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as PersistedState;
+      // Accept current (v4) — older versions are silently discarded.
+      if (!parsed || parsed.v !== 4 || !Array.isArray(parsed.changes)) {
+        window.localStorage.removeItem(key);
+        continue;
+      }
+      if (Date.now() - parsed.savedAt > TTL_MS) {
+        window.localStorage.removeItem(key);
+        continue;
+      }
+      return {
+        changes: parsed.changes,
+        effectiveDate: parsed.effectiveDate ?? null,
+      };
+    } catch {
+      try {
+        window.localStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
     }
-    if (Date.now() - parsed.savedAt > TTL_MS) {
-      window.localStorage.removeItem(key);
-      return null;
-    }
-    return parsed.changes;
-  } catch {
+  }
+  return null;
+}
+
+/** Clear persisted changes for a team (called after successful save / discard). */
+export function clearPersistedChanges(
+  teamId: number,
+  userId?: number | string | null,
+): void {
+  if (typeof window === "undefined") return;
+  // Clear both the scoped and legacy keys so a stale legacy entry
+  // doesn't resurrect after a save.
+  const keys = new Set<string>();
+  const scopedKey = storageKey(teamId, userId);
+  if (scopedKey) keys.add(scopedKey);
+  const legacyKey = storageKey(teamId);
+  if (legacyKey) keys.add(legacyKey);
+  for (const key of keys) {
     try {
       window.localStorage.removeItem(key);
     } catch {
       /* ignore */
     }
-    return null;
   }
 }
 
-/** Clear persisted changes for a team (called after successful save / discard). */
-export function clearPersistedChanges(teamId: number): void {
+function writePersistedChanges(
+  teamId: number,
+  changes: PendingChange[],
+  effectiveDate: string | null,
+  userId?: number | string | null,
+): void {
   if (typeof window === "undefined") return;
-  const key = storageKey(teamId);
+  const key = storageKey(teamId, userId);
   if (!key) return;
   try {
-    window.localStorage.removeItem(key);
-  } catch {
-    /* ignore */
-  }
-}
-
-function writePersistedChanges(teamId: number, changes: PendingChange[]): void {
-  if (typeof window === "undefined") return;
-  const key = storageKey(teamId);
-  if (!key) return;
-  try {
-    if (changes.length === 0) {
+    if (changes.length === 0 && !effectiveDate) {
       window.localStorage.removeItem(key);
       return;
     }
-    const payload: PersistedState = { v: 3, savedAt: Date.now(), changes };
+    const payload: PersistedState = {
+      v: 4,
+      savedAt: Date.now(),
+      changes,
+      effectiveDate,
+    };
     window.localStorage.setItem(key, JSON.stringify(payload));
   } catch {
     // Quota exceeded or disabled storage — fail silently. Pending state
@@ -498,12 +597,27 @@ export interface UsePendingChangesOptions {
   teamId: number | null;
 
   /**
-   * Save fn supplied by the caller. Receives the queued changes and
-   * resolves on success or rejects with an Error to surface as the
+   * Authenticated user id used to scope the localStorage key per
+   * (user, team). Optional — when omitted we fall back to the legacy
+   * team-only key. This matters in commissioner mode, where a single
+   * admin may bounce between different teams' hubs and would
+   * otherwise see one team's pending batch on another team's page.
+   */
+  userId?: number | string | null;
+
+  /**
+   * Save fn supplied by the caller. Receives the queued changes plus
+   * the optional commissioner-mode effectiveDate so the caller can
+   * forward it on each per-change mutation API call.
+   *
+   * Resolves on success or rejects with an Error to surface as the
    * banner's `error` state. Implementation-side concerns (atomicity,
    * mutation-API choice) live in the caller.
    */
-  saveFn: (changes: PendingChange[]) => Promise<void>;
+  saveFn: (
+    changes: PendingChange[],
+    ctx: { effectiveDate: string | null },
+  ) => Promise<void>;
 
   /**
    * Optional debounce window for localStorage writes. Defaults to
@@ -516,6 +630,12 @@ export interface UsePendingChangesApi {
   state: PendingChangesState;
   /** Queue a new change. Generates an id if not supplied. */
   addChange: (change: PendingChangeInput & { id?: string }) => void;
+  /**
+   * Set or clear the commissioner-mode backdate. Owner-mode hubs leave
+   * this null (the picker isn't rendered). The chosen value is
+   * persisted alongside the queue for 1hr-restore parity.
+   */
+  setEffectiveDate: (effectiveDate: string | null) => void;
   /**
    * Remove a single change by id. Per Complex-#2: when the targeted
    * change is a parent in the dependency graph (i.e. another queued
@@ -550,13 +670,14 @@ export interface UsePendingChangesApi {
  * FA/IL scenarios will pass their own.
  */
 export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingChangesApi {
-  const { teamId, saveFn, persistDebounceMs = 500 } = opts;
+  const { teamId, userId = null, saveFn, persistDebounceMs = 500 } = opts;
   const [state, dispatch] = useReducer(reducer, {
     changes: [],
     saving: false,
     error: null,
     lastSavedAt: null,
     failures: [],
+    effectiveDate: null,
   });
 
   // Hold the latest saveFn in a ref so `save()` doesn't re-create on
@@ -567,18 +688,20 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
     saveFnRef.current = saveFn;
   }, [saveFn]);
 
-  // Debounced localStorage writer.
+  // Debounced localStorage writer. Persist both the queue and the
+  // commissioner-mode backdate together so a 1hr-restored batch carries
+  // its chosen date.
   const persistTimerRef = useRef<number | null>(null);
   useEffect(() => {
     if (teamId == null) return;
     if (typeof window === "undefined") return;
     if (persistDebounceMs <= 0) {
-      writePersistedChanges(teamId, state.changes);
+      writePersistedChanges(teamId, state.changes, state.effectiveDate, userId);
       return;
     }
     if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
     persistTimerRef.current = window.setTimeout(() => {
-      writePersistedChanges(teamId, state.changes);
+      writePersistedChanges(teamId, state.changes, state.effectiveDate, userId);
     }, persistDebounceMs);
     return () => {
       if (persistTimerRef.current) {
@@ -586,7 +709,7 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
         persistTimerRef.current = null;
       }
     };
-  }, [state.changes, teamId, persistDebounceMs]);
+  }, [state.changes, state.effectiveDate, teamId, userId, persistDebounceMs]);
 
   const addChange = useCallback<UsePendingChangesApi["addChange"]>((change) => {
     const id = change.id ?? makeChangeId();
@@ -622,13 +745,19 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
     dispatch({ type: "clearError" });
   }, []);
 
+  const setEffectiveDate = useCallback((effectiveDate: string | null) => {
+    dispatch({ type: "setEffectiveDate", effectiveDate });
+  }, []);
+
   const save = useCallback(async () => {
     if (state.changes.length === 0) return;
     dispatch({ type: "saveStart" });
     try {
-      await saveFnRef.current(state.changes);
+      await saveFnRef.current(state.changes, {
+        effectiveDate: state.effectiveDate,
+      });
       dispatch({ type: "saveSuccess", at: Date.now() });
-      if (teamId != null) clearPersistedChanges(teamId);
+      if (teamId != null) clearPersistedChanges(teamId, userId);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save failed";
       // Atomic rollback per Complex-#4: the queue is preserved (the
@@ -640,7 +769,7 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
         err instanceof PendingChangeBatchError ? err.failures : [];
       dispatch({ type: "saveError", message, failures });
     }
-  }, [state.changes, teamId]);
+  }, [state.changes, state.effectiveDate, teamId, userId]);
 
   return useMemo(
     () => ({
@@ -651,8 +780,9 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
       save,
       clearError,
       dependencies,
+      setEffectiveDate,
     }),
-    [state, addChange, revertChange, revertAll, save, clearError, dependencies],
+    [state, addChange, revertChange, revertAll, save, clearError, dependencies, setEffectiveDate],
   );
 }
 

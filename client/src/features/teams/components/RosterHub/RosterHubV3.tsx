@@ -91,6 +91,17 @@ interface RosterHubV3Props {
   dropPoolSlot?: React.ReactNode;
 
   /**
+   * Commissioner-mode backdate. When defined, the PendingChangeBar
+   * renders an "Apply moves on:" date picker. Owner-mode hubs leave both
+   * `effectiveDate` and `onEffectiveDateChange` undefined and the picker
+   * is suppressed. The wire format is YYYY-MM-DD (HTML5 date input).
+   */
+  effectiveDate?: string | null;
+  /** Setter for the commissioner-mode backdate. Required when the picker
+   *  should be rendered. */
+  onEffectiveDateChange?: (effectiveDate: string | null) => void;
+
+  /**
    * When true, each rendered row is wrapped in a per-row adapter that
    * calls `useDraggable` + `useDroppable` and passes the result through
    * to the row's `dnd` prop. The caller MUST render this hub inside a
@@ -241,6 +252,8 @@ export function RosterHubV3({
   pendingItems,
   onRevertItem,
   dropPoolSlot,
+  effectiveDate,
+  onEffectiveDateChange,
   dndEnabled,
   shakeRowId,
   ilStashEligible,
@@ -282,6 +295,8 @@ export function RosterHubV3({
             onDismissError={onDismissError}
             items={pendingItems}
             onRevertItem={onRevertItem}
+            effectiveDate={effectiveDate}
+            onEffectiveDateChange={onEffectiveDateChange}
           />
           {showSelectionBanner && selectedPlayerName && (
             <div

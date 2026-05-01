@@ -4,14 +4,24 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { TeamService } from "./services/teamService.js";
-import { requireAuth, requireTeamOwner, requireLeagueMember } from "../../middleware/auth.js";
+import { requireAuth, requireTeamOwner, requireTeamOwnerOrCommissioner, requireLeagueMember } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
 
+// Swap-only mutation. `effectiveDate` is advisory metadata for the
+// commissioner-mode backdate flow — the swap itself doesn't write a
+// Roster.acquiredAt mutation today (slot reassignment is not a
+// transaction in the audit-log sense), so a backdated date is logged
+// but does NOT trigger period-stats recompute. Documented as a
+// follow-up in the commissioner-mode PR description.
 const rosterUpdateSchema = z.object({
   assignedPosition: z.string().max(5).nullable(),
+  effectiveDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
+    .optional(),
 });
 
 const router = Router();
@@ -431,34 +441,93 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // PATCH /api/teams/:teamId/roster/:rosterId
-// Update roster details (e.g. assigned position)
-router.patch("/:teamId/roster/:rosterId", requireAuth, requireTeamOwner("teamId"), validateBody(rosterUpdateSchema), asyncHandler(async (req, res) => {
+// Update roster details (e.g. assigned position).
+//
+// Authorization: admin / commissioner / owner-with-self-serve. The path
+// param is teamId only, so we resolve leagueId from the team row before
+// delegating to `requireTeamOwnerOrCommissioner`. The hop is documented
+// in the commissioner-mode rollout (PR-of-record) — without it, a
+// league commissioner couldn't drag-swap on another team's hub even
+// though the surrounding mutation endpoints (claim / il-stash /
+// il-activate) already permit it.
+const resolveLeagueIdFromTeam: import("express").RequestHandler = async (req, res, next) => {
   const teamId = Number(req.params.teamId);
-  const rosterId = Number(req.params.rosterId);
-
-  if (Number.isNaN(teamId) || Number.isNaN(rosterId)) {
-    return res.status(400).json({ error: "Invalid IDs" });
+  if (!Number.isFinite(teamId)) {
+    return res.status(400).json({ error: "Invalid teamId" });
   }
-
-  // Verify Roster belongs to Team
-  const rosterItem = await prisma.roster.findUnique({
-    where: { id: rosterId },
-    include: { team: true }
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { leagueId: true },
   });
-
-  if (!rosterItem || rosterItem.teamId !== teamId) {
-    return res.status(404).json({ error: "Roster item not found for this team" });
+  if (!team) return res.status(404).json({ error: "Team not found" });
+  // Stash leagueId on req.body so requireTeamOwnerOrCommissioner can
+  // resolve it via its body-first lookup. Body is already an object thanks
+  // to express.json() at the app level.
+  if (req.body && typeof req.body === "object") {
+    (req.body as Record<string, unknown>).leagueId = team.leagueId;
   }
+  return next();
+};
 
-  const { assignedPosition } = req.body;
+router.patch(
+  "/:teamId/roster/:rosterId",
+  requireAuth,
+  validateBody(rosterUpdateSchema),
+  resolveLeagueIdFromTeam,
+  requireTeamOwnerOrCommissioner({ teamIdSource: "teamId" }),
+  asyncHandler(async (req, res) => {
+    const teamId = Number(req.params.teamId);
+    const rosterId = Number(req.params.rosterId);
 
-  const updated = await prisma.roster.update({
-    where: { id: rosterId },
-    data: { assignedPosition },
-  });
+    if (Number.isNaN(teamId) || Number.isNaN(rosterId)) {
+      return res.status(400).json({ error: "Invalid IDs" });
+    }
 
-  res.json({ roster: updated });
-}));
+    // Verify Roster belongs to Team
+    const rosterItem = await prisma.roster.findUnique({
+      where: { id: rosterId },
+      include: { team: true },
+    });
+
+    if (!rosterItem || rosterItem.teamId !== teamId) {
+      return res.status(404).json({ error: "Roster item not found for this team" });
+    }
+
+    const { assignedPosition, effectiveDate } = req.body as {
+      assignedPosition: string | null;
+      effectiveDate?: string;
+    };
+
+    // effectiveDate is advisory metadata for the commissioner-mode
+    // backdate flow. Today the swap doesn't update Roster.acquiredAt
+    // (slot reassignment is not an audit-log transaction) — so a
+    // backdated value is logged but does NOT trigger period-stats
+    // recompute. Future: write a TransactionEvent of type "POSITION"
+    // and let the recompute decide if the period boundary is crossed.
+    if (effectiveDate) {
+      logger.info(
+        {
+          event: "roster_position_swap_backdate",
+          teamId,
+          rosterId,
+          assignedPosition,
+          effectiveDate,
+          authorizedVia: ((req as unknown) as Record<string, unknown>).authorizedVia ?? null,
+          userId: req.user?.id ?? null,
+          requestId: req.requestId,
+        },
+        "swap accepted with effectiveDate (advisory; no period recompute)",
+      );
+    }
+
+    const updated = await prisma.roster.update({
+      where: { id: rosterId },
+      data: { assignedPosition },
+    });
+
+    res.json({ roster: updated });
+  }),
+);
 
 // ─── Trade Block ────────────────────────────────────────────────────────────
 
