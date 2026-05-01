@@ -18,9 +18,11 @@
  * period roster viewer) is preserved at /teams/:teamCode/classic.
  * Port the deferred features into Aurora when the pilot expands.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useMatch, useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DndContext } from "@dnd-kit/core";
+import { useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
 import {
   AmbientBg, Glass, IridText, Chip, SectionLabel,
 } from "../../../components/aurora/atoms";
@@ -29,7 +31,9 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats, getSeasonStandings } from "../../../api";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
-import { getTeamPeriodRoster, type PeriodRosterEntry } from "../api";
+import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
+import { usePendingChanges, readPersistedChanges, clearPersistedChanges, type PendingChange } from "../hooks/usePendingChanges";
+import { useRosterHubDrag } from "../hooks/useRosterHubDrag";
 import {
   RosterHubV3,
   SubrouteContainer,
@@ -91,10 +95,9 @@ const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
 
 // Stable empty primitives for RosterHubV3 props that this slice doesn't
-// drive (eligibility highlights + pending changes). Defining at module
-// scope avoids React.memo cache busts on every render.
+// drive (eligibility highlights). Defining at module scope avoids
+// React.memo cache busts on every render.
 const EMPTY_ID_SET: ReadonlySet<number> = new Set();
-const NOOP = () => {};
 
 function posScore(p?: string) {
   if (!p) return 99;
@@ -382,8 +385,8 @@ export default function Team() {
   // so the mapping is unit-testable in isolation. See its docblock for
   // the contracts it pins down (playerId stability, posList fallback,
   // assignedSlot canonicalization, role-aware stats).
-  const hubHitters = useMemo(() => hitters.map(toHubPlayer), [hitters]);
-  const hubPitchers = useMemo(() => pitchers.map(toHubPlayer), [pitchers]);
+  const baselineHubHitters = useMemo(() => hitters.map(toHubPlayer), [hitters]);
+  const baselineHubPitchers = useMemo(() => pitchers.map(toHubPlayer), [pitchers]);
   const hubIl = useMemo(() => ilPlayers.map(toHubPlayer), [ilPlayers]);
 
   // Permission gating mirrors ActivityPage — owner OR commissioner OR admin
@@ -432,11 +435,173 @@ export default function Team() {
 
   // Pill-click selection is display-only in this slice — the visual
   // highlight signals "this row is the focus" but no mutation is queued
-  // (the action menu is the mutation entry point until drag-to-mutate
-  // and pending-changes save land in a follow-up).
+  // (drag-to-mutate is the new mutation entry point for swaps).
   const onPillClick = useCallback((rosterId: number) => {
     setSelectedRosterId(prev => (prev === rosterId ? null : rosterId));
   }, []);
+
+  /* ── Pending changes (Hub scenario: swap only) ────────────────────── */
+
+  // Save fn: serialize pending swaps to PATCH /api/teams/:teamId/roster/:rosterId
+  // calls. Atomicity per direction-lock #4: if any single mutation fails,
+  // we fail the whole batch and keep the queue in place so the user can
+  // retry. We don't rollback successful mutations — the server-side
+  // matcher handles that on the next save attempt by reading current
+  // assignedPosition values.
+  const saveFn = useCallback(async (changes: PendingChange[]) => {
+    if (!teamMeta?.id) throw new Error("Team not loaded");
+    const tid = teamMeta.id;
+    // Each swap = 2 PATCH calls (one per side). Run sequentially so
+    // ordered failures surface a meaningful error code; concurrency
+    // wins are negligible at this scale (<5 swaps typical).
+    for (const change of changes) {
+      if (change.kind !== "swap") continue;
+      try {
+        await updateRosterPosition(tid, change.from.rosterId, change.to.slot);
+        await updateRosterPosition(tid, change.to.rosterId, change.from.slot);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Save failed";
+        throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
+      }
+    }
+    // Refresh the roster on success so the UI snaps to the canonical
+    // server state (and any matcher-driven cascades show up).
+    setReloadKey(k => k + 1);
+  }, [teamMeta?.id]);
+
+  const pending = usePendingChanges({
+    teamId: teamMeta?.id ?? null,
+    saveFn,
+  });
+
+  // Apply pending swaps to the displayed hub roster optimistically.
+  // The baseline hub arrays come from the server roster; we walk the
+  // pending changes and swap assignedSlot / slotInstance pairs.
+  const { hubHitters, hubPitchers } = useMemo(() => {
+    if (pending.state.changes.length === 0) {
+      return { hubHitters: baselineHubHitters, hubPitchers: baselineHubPitchers };
+    }
+    const all = [...baselineHubHitters, ...baselineHubPitchers];
+    type MutableHubPlayer = {
+      -readonly [K in keyof RosterHubPlayer]: RosterHubPlayer[K];
+    };
+    const byId = new Map<number, MutableHubPlayer>(
+      all.map((p) => [p.rosterId, { ...p } as MutableHubPlayer]),
+    );
+    for (const c of pending.state.changes) {
+      if (c.kind !== "swap") continue;
+      const a = byId.get(c.from.rosterId);
+      const b = byId.get(c.to.rosterId);
+      if (!a || !b) continue;
+      const aSlot = a.assignedSlot;
+      const aInst = a.slotInstance;
+      a.assignedSlot = b.assignedSlot;
+      a.slotInstance = b.slotInstance;
+      b.assignedSlot = aSlot;
+      b.slotInstance = aInst;
+    }
+    const next: RosterHubPlayer[] = Array.from(byId.values());
+    return {
+      hubHitters: next.filter((p) => !p.isPitcher),
+      hubPitchers: next.filter((p) => p.isPitcher),
+    };
+  }, [pending.state.changes, baselineHubHitters, baselineHubPitchers]);
+
+  // Set of rosterIds that have a pending change targeting them.
+  const pendingRosterIds = useMemo<ReadonlySet<number>>(() => {
+    const out = new Set<number>();
+    for (const c of pending.state.changes) {
+      if (c.kind !== "swap") continue;
+      out.add(c.from.rosterId);
+      out.add(c.to.rosterId);
+    }
+    return out;
+  }, [pending.state.changes]);
+
+  // Drag wiring — feed it the FULL active roster (hitters+pitchers, not IL)
+  // so eligibility checks see all candidate slots.
+  const dragPlayers = useMemo(() => [...hubHitters, ...hubPitchers], [hubHitters, hubPitchers]);
+
+  // Tiny ephemeral toast for illegal drops. Kept inline (not the global
+  // error bus) because it's purely a UX nudge, not a real error.
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToastMsg(null), 2200);
+  }, []);
+  useEffect(() => () => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+  }, []);
+
+  const drag = useRosterHubDrag({
+    players: dragPlayers,
+    onSwap: (change) => pending.addChange(change),
+    onToast: showToast,
+  });
+
+  // Per-row revert: drop the change(s) referencing this rosterId.
+  const onRowRevert = useCallback(
+    (rosterId: number) => {
+      const ids = pending.state.changes
+        .filter((c) => c.kind === "swap" && (c.from.rosterId === rosterId || c.to.rosterId === rosterId))
+        .map((c) => c.id);
+      for (const id of ids) pending.revertChange(id);
+    },
+    [pending],
+  );
+
+  /* ── localStorage restore prompt ──────────────────────────────────── */
+
+  const [restorePrompt, setRestorePrompt] = useState<{
+    teamId: number;
+    changes: PendingChange[];
+  } | null>(null);
+  const restoreCheckedRef = useRef<number | null>(null);
+  useEffect(() => {
+    const tid = teamMeta?.id;
+    if (!tid || restoreCheckedRef.current === tid) return;
+    // Only check once per team load.
+    restoreCheckedRef.current = tid;
+    const persisted = readPersistedChanges(tid);
+    if (persisted && persisted.length > 0) {
+      setRestorePrompt({ teamId: tid, changes: persisted });
+    }
+  }, [teamMeta?.id]);
+
+  const onRestorePending = useCallback(() => {
+    if (!restorePrompt) return;
+    for (const c of restorePrompt.changes) pending.addChange(c);
+    setRestorePrompt(null);
+  }, [restorePrompt, pending]);
+
+  const onDiscardPersisted = useCallback(() => {
+    if (restorePrompt) clearPersistedChanges(restorePrompt.teamId);
+    setRestorePrompt(null);
+  }, [restorePrompt]);
+
+  /* ── Navigate-away guard ──────────────────────────────────────────── */
+
+  // Browser-level: beforeunload prompt when the queue isn't empty AND not saving.
+  useEffect(() => {
+    if (pending.state.changes.length === 0) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Modern browsers ignore the message string; setting returnValue
+      // is what triggers the native confirm dialog.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [pending.state.changes.length]);
+
+  // dnd-kit sensor setup for the DndContext wrapping the hub.
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
 
   // Sub-route exit — return to the Team page top-level URL.
   const onBackToRoster = useCallback(() => {
@@ -653,20 +818,96 @@ export default function Team() {
                 )}
               </SubrouteContainer>
             ) : (
-              <RosterHubV3
-                hitters={hubHitters}
-                pitchers={hubPitchers}
-                ilPlayers={hubIl}
-                selectedRosterId={selectedRosterId}
-                eligibleRosterIds={EMPTY_ID_SET}
-                pendingRosterIds={EMPTY_ID_SET}
-                pendingCount={0}
-                showSelectionBanner={false}
-                onPillClick={onPillClick}
-                buildActions={buildActions}
-                onRevertAll={NOOP}
-                onSave={NOOP}
-              />
+              <DndContext
+                sensors={dndSensors}
+                onDragStart={drag.handleDragStart}
+                onDragEnd={drag.handleDragEnd}
+                onDragCancel={drag.handleDragCancel}
+              >
+                <RosterHubV3
+                  hitters={hubHitters}
+                  pitchers={hubPitchers}
+                  ilPlayers={hubIl}
+                  selectedRosterId={selectedRosterId}
+                  eligibleRosterIds={drag.dropTargetIds}
+                  pendingRosterIds={pendingRosterIds}
+                  pendingCount={pending.state.changes.length}
+                  dimSection={drag.dimSection}
+                  showSelectionBanner={false}
+                  onPillClick={onPillClick}
+                  buildActions={buildActions}
+                  onRevert={onRowRevert}
+                  onRevertAll={pending.revertAll}
+                  onSave={pending.save}
+                  saving={pending.state.saving}
+                  saveError={pending.state.error}
+                  onDismissError={pending.clearError}
+                  dndEnabled={canManage}
+                  shakeRowId={drag.shakeRowId}
+                />
+              </DndContext>
+            )}
+
+            {/* Drag toast — illegal drops + restore prompt notifications. */}
+            {toastMsg && (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  position: "fixed",
+                  bottom: 24,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "var(--am-surface-strong)",
+                  border: "1px solid var(--am-border-strong)",
+                  borderRadius: 12,
+                  padding: "10px 16px",
+                  fontSize: 13,
+                  color: "var(--am-text)",
+                  backdropFilter: "blur(20px) saturate(160%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                  zIndex: 100,
+                }}
+              >
+                {toastMsg}
+              </div>
+            )}
+
+            {/* localStorage restore prompt — appears once per team load
+                when persisted pending changes are within the 1hr TTL. */}
+            {restorePrompt && (
+              <Glass strong style={{ marginTop: 12, padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text)" }}>
+                    Restore {restorePrompt.changes.length} pending change{restorePrompt.changes.length === 1 ? "" : "s"} from earlier?
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={onDiscardPersisted}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: "6px 12px",
+                        borderRadius: 8, border: "1px solid var(--am-border)",
+                        background: "transparent", color: "var(--am-text-muted)", cursor: "pointer",
+                      }}
+                    >
+                      Discard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onRestorePending}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: "6px 14px",
+                        borderRadius: 8, border: "1px solid transparent",
+                        background: "var(--am-irid)", color: "#fff", cursor: "pointer",
+                      }}
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              </Glass>
             )}
           </div>
 
