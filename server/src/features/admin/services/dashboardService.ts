@@ -6,6 +6,7 @@
  * All queries in a single transaction for consistent snapshot.
  */
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { computeInsights } from "./dashboardInsightEngine.js";
@@ -199,11 +200,11 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
   const usersActive30d = active30dRows.length;
   const usersActive7d = active7dRows.length;
 
-  // Sparklines + hero in parallel — each weeklySparkline still fires N
-  // queries internally (one per week) but the 7 model series no longer run
-  // back-to-back. Wall-clock drops from 7×N to ~N (the longest series).
-  // TODO: replace per-week COUNT loop with a single GROUP BY date_trunc
-  // ('week', "createdAt") raw query for a true 91→7 reduction.
+  // Sparklines + hero in parallel. Each series is now a single raw GROUP BY
+  // query (week-bucketed) instead of N per-week COUNT calls. Combined with
+  // Promise.all, total wall-clock is bounded by 7 round-trips rather than
+  // 7×weeks (was ~210 queries at the 30-week cap; now 7 queries total).
+  // Critical under DATABASE_URL `connection_limit=1` (Supabase pooler).
   const [
     userSparkline,
     sessionSparkline,
@@ -395,9 +396,9 @@ function formatNum(n: number): string {
 }
 
 /**
- * Models that expose a `count({ where: { [dateField]: { gte, lt } } })`
- * delegate. Restricting via this union both eliminates the `prisma as any`
- * escape hatch and makes a typo on the model name a compile error.
+ * Models the sparklines support. Bound to a static config below so both the
+ * model name and the date field are validated at compile-time — the raw SQL
+ * never sees user-controlled identifiers.
  */
 type SparklineModel =
   | "user"
@@ -407,39 +408,63 @@ type SparklineModel =
   | "aiInsight"
   | "transactionEvent";
 
+const SPARKLINE_CONFIG: Record<
+  SparklineModel,
+  { tableName: string; dateField: string }
+> = {
+  user: { tableName: "User", dateField: "createdAt" },
+  userSession: { tableName: "UserSession", dateField: "startedAt" },
+  season: { tableName: "Season", dateField: "createdAt" },
+  trade: { tableName: "Trade", dateField: "createdAt" },
+  aiInsight: { tableName: "AiInsight", dateField: "createdAt" },
+  transactionEvent: { tableName: "TransactionEvent", dateField: "createdAt" },
+};
+
+/**
+ * Bucket-fill a sparse list of `(bucket, n)` rows into a dense `weeks`-length
+ * array. Postgres returns no row for buckets with zero events, so callers must
+ * not assume the result covers every week. Out-of-range buckets are dropped
+ * defensively (shouldn't happen — the WHERE clause clamps the input range).
+ */
+function fillBuckets(
+  rows: Array<{ bucket: number; n: bigint }>,
+  weeks: number,
+): SparklinePoint[] {
+  const counts = new Array<number>(weeks).fill(0);
+  for (const row of rows) {
+    if (row.bucket >= 0 && row.bucket < weeks) {
+      counts[row.bucket] = Number(row.n);
+    }
+  }
+  return counts.map((value, idx) => ({ week: `W${idx + 1}`, value }));
+}
+
 async function weeklySparkline(
   model: SparklineModel,
-  dateField: string,
+  // dateField kept in the signature so call sites read self-documenting; we
+  // re-derive it from SPARKLINE_CONFIG below to keep the SQL safe.
+  _dateField: string,
   days: number,
   from: Date,
 ): Promise<SparklinePoint[]> {
   const weeks = Math.min(Math.ceil(days / 7), 30);
-  // Per-model `count()` calls fire in parallel for the same series — N
-  // round-trips wall-clocked at one round-trip apiece instead of N×N.
-  return Promise.all(
-    Array.from({ length: weeks }, (_, idx) => {
-      const i = weeks - 1 - idx;
-      const weekEnd = new Date(from);
-      weekEnd.setDate(weekEnd.getDate() + (weeks - i) * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekStart.getDate() - 7);
+  const to = new Date(from.getTime() + weeks * 7 * 86400000);
+  const { tableName, dateField } = SPARKLINE_CONFIG[model];
 
-      const where = { [dateField]: { gte: weekStart, lt: weekEnd } };
-      const countByModel: Record<SparklineModel, () => Promise<number>> = {
-        user: () => prisma.user.count({ where }),
-        userSession: () => prisma.userSession.count({ where }),
-        season: () => prisma.season.count({ where }),
-        trade: () => prisma.trade.count({ where }),
-        aiInsight: () => prisma.aiInsight.count({ where }),
-        transactionEvent: () => prisma.transactionEvent.count({ where }),
-      };
-
-      return countByModel[model]().then((value) => ({
-        week: `W${weeks - i}`,
-        value,
-      }));
-    }),
-  );
+  // One round-trip per series. `Prisma.raw` for table/column identifiers is
+  // safe here because both come from the static SPARKLINE_CONFIG, never from
+  // request input. Bucket index 0 = oldest week; weeks-1 = newest.
+  const rows = await prisma.$queryRaw<Array<{ bucket: number; n: bigint }>>`
+    SELECT
+      FLOOR(EXTRACT(EPOCH FROM (${Prisma.raw(`"${dateField}"`)} - ${from}::timestamptz)) / 604800)::int AS bucket,
+      COUNT(*)::bigint AS n
+    FROM ${Prisma.raw(`"${tableName}"`)}
+    WHERE ${Prisma.raw(`"${dateField}"`)} >= ${from}::timestamptz
+      AND ${Prisma.raw(`"${dateField}"`)} < ${to}::timestamptz
+    GROUP BY 1
+    ORDER BY 1
+  `;
+  return fillBuckets(rows, weeks);
 }
 
 async function weeklyActiveUsersSparkline(
@@ -447,20 +472,19 @@ async function weeklyActiveUsersSparkline(
   from: Date,
 ): Promise<SparklinePoint[]> {
   const weeks = Math.min(Math.ceil(days / 7), 30);
-  return Promise.all(
-    Array.from({ length: weeks }, (_, idx) => {
-      const i = weeks - 1 - idx;
-      const weekEnd = new Date(from);
-      weekEnd.setDate(weekEnd.getDate() + (weeks - i) * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekStart.getDate() - 7);
+  const to = new Date(from.getTime() + weeks * 7 * 86400000);
 
-      return prisma.userSession
-        .groupBy({
-          by: ["userId"],
-          where: { startedAt: { gte: weekStart, lt: weekEnd } },
-        })
-        .then((result) => ({ week: `W${weeks - i}`, value: result.length }));
-    }),
-  );
+  // `COUNT(DISTINCT "userId")` per bucket — a single integer per row, no
+  // unbounded user-list shipped over the wire.
+  const rows = await prisma.$queryRaw<Array<{ bucket: number; n: bigint }>>`
+    SELECT
+      FLOOR(EXTRACT(EPOCH FROM ("startedAt" - ${from}::timestamptz)) / 604800)::int AS bucket,
+      COUNT(DISTINCT "userId")::bigint AS n
+    FROM "UserSession"
+    WHERE "startedAt" >= ${from}::timestamptz
+      AND "startedAt" < ${to}::timestamptz
+    GROUP BY 1
+    ORDER BY 1
+  `;
+  return fillBuckets(rows, weeks);
 }
