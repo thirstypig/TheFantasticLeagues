@@ -128,17 +128,36 @@ function zScores(vals: number[]): number[] {
 // ─── Main computation ───
 
 /**
+ * Throw `signal.reason` (or a fresh AbortError) if the signal has been
+ * aborted. Mirrors the standard `signal.throwIfAborted()` for runtimes that
+ * don't yet expose it; calling it between aggregation stages lets us bail out
+ * promptly when the caller cancels (todo #138).
+ */
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException("Aborted", "AbortError");
+  }
+}
+
+/**
  * Compute MVP / Cy Young rankings for a league, summing stats across all
  * active+completed periods at the time of the call.
  *
  * `weekKey` is included in the output for caching/snapshotting; it does NOT
  * filter the period set (which is always "season-to-date").
+ *
+ * Pass `signal` to allow the caller to cancel the compute mid-flight (e.g.
+ * when an HTTP client disconnects). The signal is checked between aggregation
+ * stages so we don't keep burning DB time after a cancellation.
  */
 export async function computeAwardsRankings(
   leagueId: number,
   weekKey: string,
+  signal?: AbortSignal,
 ): Promise<AwardsRankings> {
   const computedAt = new Date().toISOString();
+
+  throwIfAborted(signal);
 
   // Gather active/completed periods + rostered players for this league
   const [activePeriods, teams] = await Promise.all([
@@ -172,24 +191,25 @@ export async function computeAwardsRankings(
     teams.flatMap(t => t.rosters.map(r => [r.player.id, { name: r.player.name, team: t.name }])),
   );
 
-  // Aggregate stats across all periods (sum)
-  const [playerStats, ipSums] = await Promise.all([
-    prisma.playerStatsPeriod.groupBy({
-      by: ["playerId"],
-      where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
-      _sum: {
-        AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
-        BB: true, TB: true, SO: true,
-        W: true, SV: true, K: true, ER: true, L: true, GS: true, HR_A: true,
-      },
-    }),
-    prisma.playerStatsPeriod.groupBy({
-      by: ["playerId"],
-      where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
-      _sum: { IP: true, BB_H: true },
-    }),
-  ]);
-  const ipMap = new Map(ipSums.map(r => [r.playerId, { IP: r._sum.IP ?? 0, BB_H: r._sum.BB_H ?? 0 }]));
+  throwIfAborted(signal);
+
+  // Aggregate stats across all periods in a single groupBy. Previously this
+  // issued two parallel groupBys with identical where clauses (one for the
+  // counting-stat sums, one for IP / BB_H) and merged the IP map post-hoc;
+  // under `connection_limit=1` the two queries serialized on the wire, which
+  // doubled the DB cost of every uncached awards request (todo #138).
+  const playerStats = await prisma.playerStatsPeriod.groupBy({
+    by: ["playerId"],
+    where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
+    _sum: {
+      AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
+      BB: true, TB: true, SO: true,
+      W: true, SV: true, K: true, ER: true, L: true, GS: true, HR_A: true,
+      IP: true, BB_H: true,
+    },
+  });
+
+  throwIfAborted(signal);
 
   // ── MVP: hitters with AB >= MIN_AB_FOR_MVP ──
   const hitterRows = playerStats
@@ -253,15 +273,16 @@ export async function computeAwardsRankings(
       }));
   }
 
+  throwIfAborted(signal);
+
   // ── Cy Young: pitchers with IP >= MIN_IP and GS >= MIN_GS ──
   const starterRows = playerStats
     .filter(p => {
-      const ip = ipMap.get(p.playerId)?.IP ?? 0;
+      const ip = p._sum.IP ?? 0;
       return ip >= MIN_IP_FOR_CY_YOUNG && (p._sum.GS ?? 0) >= MIN_GS_FOR_STARTER;
     })
     .map(p => {
-      const ipData = ipMap.get(p.playerId) ?? { IP: 0, BB_H: 0 };
-      const ip = ipData.IP, bbh = ipData.BB_H;
+      const ip = p._sum.IP ?? 0, bbh = p._sum.BB_H ?? 0;
       const w = p._sum.W ?? 0, l = p._sum.L ?? 0, k = p._sum.K ?? 0;
       const er = p._sum.ER ?? 0, sv = p._sum.SV ?? 0, hra = p._sum.HR_A ?? 0;
       const era = ip > 0 ? (er * 9) / ip : 99;

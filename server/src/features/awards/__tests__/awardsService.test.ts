@@ -82,9 +82,9 @@ describe("computeAwardsRankings — empty league", () => {
       { name: "Aces", rosters: [{ player: { id: 1, name: "Solo" } }] },
     ]);
     // Only 1 qualified hitter — pool < 3
-    mockPrisma.playerStatsPeriod.groupBy
-      .mockResolvedValueOnce([statsRow(1, { AB: MIN_AB_FOR_MVP + 50, HR: 5, H: 30, RBI: 20, R: 25 })])
-      .mockResolvedValueOnce([{ playerId: 1, _sum: { IP: 0, BB_H: 0 } }]);
+    mockPrisma.playerStatsPeriod.groupBy.mockResolvedValueOnce([
+      statsRow(1, { AB: MIN_AB_FOR_MVP + 50, HR: 5, H: 30, RBI: 20, R: 25 }),
+    ]);
 
     const result = await computeAwardsRankings(1, "2026-W13");
     expect(result.hitterPool).toBe(1);
@@ -116,18 +116,16 @@ describe("computeAwardsRankings — MVP", () => {
   });
 
   it("ranks top-3 hitters by composite z-score and includes raw stats", async () => {
-    mockPrisma.playerStatsPeriod.groupBy
-      .mockResolvedValueOnce([
-        // Slugger: huge OPS via lots of HR + TB
-        statsRow(1, { AB: 200, H: 70, HR: 25, RBI: 60, R: 50, SB: 5, BB: 30, TB: 160, SO: 40 }),
-        // Speedy: high SB, modest power
-        statsRow(2, { AB: 200, H: 60, HR: 5, RBI: 30, R: 40, SB: 30, BB: 20, TB: 90, SO: 50 }),
-        // Average Joe: middling everything
-        statsRow(3, { AB: 200, H: 50, HR: 8, RBI: 25, R: 25, SB: 5, BB: 15, TB: 80, SO: 60 }),
-        // Below Threshold: filtered out (AB < MIN_AB_FOR_MVP)
-        statsRow(4, { AB: MIN_AB_FOR_MVP - 1, H: 10, HR: 3 }),
-      ])
-      .mockResolvedValueOnce([]); // ipSums (no pitchers)
+    mockPrisma.playerStatsPeriod.groupBy.mockResolvedValueOnce([
+      // Slugger: huge OPS via lots of HR + TB
+      statsRow(1, { AB: 200, H: 70, HR: 25, RBI: 60, R: 50, SB: 5, BB: 30, TB: 160, SO: 40 }),
+      // Speedy: high SB, modest power
+      statsRow(2, { AB: 200, H: 60, HR: 5, RBI: 30, R: 40, SB: 30, BB: 20, TB: 90, SO: 50 }),
+      // Average Joe: middling everything
+      statsRow(3, { AB: 200, H: 50, HR: 8, RBI: 25, R: 25, SB: 5, BB: 15, TB: 80, SO: 60 }),
+      // Below Threshold: filtered out (AB < MIN_AB_FOR_MVP)
+      statsRow(4, { AB: MIN_AB_FOR_MVP - 1, H: 10, HR: 3 }),
+    ]);
 
     const result = await computeAwardsRankings(42, "2026-W13");
 
@@ -155,13 +153,11 @@ describe("computeAwardsRankings — MVP", () => {
   });
 
   it("z-scores are signed and per-component", async () => {
-    mockPrisma.playerStatsPeriod.groupBy
-      .mockResolvedValueOnce([
-        statsRow(1, { AB: 200, H: 70, HR: 30, RBI: 60, R: 50, SB: 0, BB: 30, TB: 180, SO: 40 }),
-        statsRow(2, { AB: 200, H: 60, HR: 0, RBI: 30, R: 40, SB: 0, BB: 20, TB: 90, SO: 50 }),
-        statsRow(3, { AB: 200, H: 50, HR: 0, RBI: 25, R: 25, SB: 0, BB: 15, TB: 80, SO: 60 }),
-      ])
-      .mockResolvedValueOnce([]);
+    mockPrisma.playerStatsPeriod.groupBy.mockResolvedValueOnce([
+      statsRow(1, { AB: 200, H: 70, HR: 30, RBI: 60, R: 50, SB: 0, BB: 30, TB: 180, SO: 40 }),
+      statsRow(2, { AB: 200, H: 60, HR: 0, RBI: 30, R: 40, SB: 0, BB: 20, TB: 90, SO: 50 }),
+      statsRow(3, { AB: 200, H: 50, HR: 0, RBI: 25, R: 25, SB: 0, BB: 15, TB: 80, SO: 60 }),
+    ]);
 
     const result = await computeAwardsRankings(42, "2026-W13");
     const top = result.mvp[0];
@@ -197,24 +193,21 @@ describe("computeAwardsRankings — Cy Young", () => {
   });
 
   it("ranks top-3 starters by composite z-score with correct sign on rate stats", async () => {
-    mockPrisma.playerStatsPeriod.groupBy
-      .mockResolvedValueOnce([
-        // Ace: low ERA, lots of K
-        statsRow(10, { W: 10, L: 2, K: 90, GS: 12, ER: 18, HR_A: 5, H: 50 }),
-        // Workhorse: lots of IP, decent stats
-        statsRow(11, { W: 8, L: 5, K: 70, GS: 12, ER: 30, HR_A: 12, H: 80 }),
-        // Mid Rotation
-        statsRow(12, { W: 6, L: 6, K: 50, GS: 10, ER: 35, HR_A: 14, H: 90 }),
-        // Below IP Threshold: filtered out
-        statsRow(13, { W: 1, L: 0, K: 5, GS: MIN_GS_FOR_STARTER, ER: 1 }),
-      ])
-      .mockResolvedValueOnce([
-        { playerId: 10, _sum: { IP: 80, BB_H: 60 } },
-        { playerId: 11, _sum: { IP: 90, BB_H: 90 } },
-        { playerId: 12, _sum: { IP: 70, BB_H: 100 } },
-        // Below IP threshold
-        { playerId: 13, _sum: { IP: MIN_IP_FOR_CY_YOUNG - 1, BB_H: 5 } },
-      ]);
+    // Single merged groupBy: IP/BB_H now live alongside the counting stats
+    // (todo #138 — collapsed two redundant groupBys into one).
+    mockPrisma.playerStatsPeriod.groupBy.mockResolvedValueOnce([
+      // Ace: low ERA, lots of K
+      statsRow(10, { W: 10, L: 2, K: 90, GS: 12, ER: 18, HR_A: 5, H: 50, IP: 80, BB_H: 60 }),
+      // Workhorse: lots of IP, decent stats
+      statsRow(11, { W: 8, L: 5, K: 70, GS: 12, ER: 30, HR_A: 12, H: 80, IP: 90, BB_H: 90 }),
+      // Mid Rotation
+      statsRow(12, { W: 6, L: 6, K: 50, GS: 10, ER: 35, HR_A: 14, H: 90, IP: 70, BB_H: 100 }),
+      // Below IP Threshold: filtered out
+      statsRow(13, {
+        W: 1, L: 0, K: 5, GS: MIN_GS_FOR_STARTER, ER: 1,
+        IP: MIN_IP_FOR_CY_YOUNG - 1, BB_H: 5,
+      }),
+    ]);
 
     const result = await computeAwardsRankings(42, "2026-W13");
 
@@ -238,6 +231,46 @@ describe("computeAwardsRankings — Cy Young", () => {
 
     expect(result.cyYoung.map(c => c.rank)).toEqual([1, 2, 3]);
     expect(result.cyYoung[0].cyScore).toBeGreaterThan(result.cyYoung[2].cyScore);
+  });
+});
+
+// ── AbortSignal threading (todo #138) ───────────────────────────
+
+describe("computeAwardsRankings — AbortSignal", () => {
+  it("throws synchronously when called with an already-aborted signal", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    // Even before any DB work runs, the function should bail out.
+    // We assert no Prisma calls were made — the abort was honored at the
+    // first `throwIfAborted` check.
+    await expect(
+      computeAwardsRankings(1, "2026-W13", controller.signal),
+    ).rejects.toThrow();
+
+    expect(mockPrisma.period.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.team.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.playerStatsPeriod.groupBy).not.toHaveBeenCalled();
+  });
+
+  it("throws after the initial Prisma reads when the signal aborts mid-flight", async () => {
+    const controller = new AbortController();
+    mockPrisma.period.findMany.mockImplementation(async () => {
+      // Caller cancels while the period query is in flight.
+      controller.abort();
+      return [{ id: 10 }];
+    });
+    mockPrisma.team.findMany.mockResolvedValue([
+      { name: "Aces", rosters: [{ player: { id: 1, name: "Solo" } }] },
+    ]);
+
+    await expect(
+      computeAwardsRankings(1, "2026-W13", controller.signal),
+    ).rejects.toThrow();
+
+    // The merged groupBy should NOT have been issued — we bailed at the
+    // pre-aggregation throwIfAborted check.
+    expect(mockPrisma.playerStatsPeriod.groupBy).not.toHaveBeenCalled();
   });
 });
 
