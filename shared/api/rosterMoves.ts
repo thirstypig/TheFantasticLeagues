@@ -103,3 +103,78 @@ export const EligibleSlotsResponseSchema = z.object({
   perPosition: z.array(PositionEligibilitySchema),
 });
 export type EligibleSlotsResponse = z.infer<typeof EligibleSlotsResponseSchema>;
+
+/**
+ * Player row consumed by the RosterMovesTab panels (AddDropPanel,
+ * PlaceOnIlPanel, ActivateFromIlPanel).
+ *
+ * The panels expect a heterogeneous array containing BOTH free-agent rows
+ * (from `getPlayerSeasonStats` — no roster enrichment) and own-team roster
+ * rows (joined with `getTeamDetails.currentRoster` so `_dbPlayerId`,
+ * `_dbTeamId`, and `assignedPosition` are populated).
+ *
+ * Background: the panels filter drop/stash/IL candidates with
+ *   `p._dbTeamId === teamId && (p._dbPlayerId ?? 0) > 0`
+ * which means roster rows MUST carry those enrichment fields or the
+ * dropdown will be empty. Until this schema landed, the type was an
+ * all-optional bag at `client/.../RosterMovesTab/types.ts` and a raw
+ * `getPlayerSeasonStats` payload could be cast in (via `as unknown as`)
+ * with no compile-time signal that the enrichment was missing — the bug
+ * pattern flagged in `MEMORY.md` `feedback_partial_browser_verification.md`
+ * (todo #116).
+ *
+ * The schema below codifies the shape; `loadRosterMovePlayers()` is the
+ * single producer that guarantees the enrichment fields are populated for
+ * the active team.
+ *
+ * Identifier conventions (mirrors AddDropPanel comments):
+ *   - `mlb_id` — set on every row (server `getPlayerSeasonStats`); panel
+ *     keys the FA "add" selection on this. String to avoid float/int
+ *     mismatches across legacy CSV vs DB rows.
+ *   - `_dbPlayerId` — Prisma `Player.id`, only set on rows that joined
+ *     against a `Roster` row. The panel's drop/stash/IL filters require
+ *     this to be > 0.
+ *   - `_dbTeamId` — Prisma `Team.id` of the rostering team. Used by the
+ *     `tid === teamId` filter so a panel only offers the user's own
+ *     roster as drop candidates.
+ *   - `assignedPosition` — the literal slot the roster row currently
+ *     fills (`"1B"`, `"OF"`, `"IL"`, `"BN"`, …). Distinct from
+ *     `posPrimary` (the player's MLB primary position) — a player on the
+ *     IL slot has `assignedPosition === "IL"` even though `posPrimary`
+ *     is "1B". The Activate-from-IL panel splits its dropdowns on this
+ *     exact distinction.
+ *
+ * All fields are marked optional at the wire level because both row
+ * shapes flow through the same array. The loader contract guarantees
+ * enrichment for own-team rows; the panels' runtime guards (`_dbPlayerId
+ * ?? 0 > 0`) protect against stragglers.
+ */
+export const RosterMovesPlayerSchema = z.object({
+  // Identification — at least one of (mlb_id, _dbPlayerId) must be set.
+  mlb_id: z.union([z.string(), z.number()]).optional(),
+  mlbId: z.union([z.string(), z.number()]).optional(),
+  player_name: z.string().optional(),
+  name: z.string().optional(),
+
+  // Enrichment fields — populated by `loadRosterMovePlayers` when the
+  // row corresponds to a Roster entry on the active team.
+  _dbPlayerId: z.number().optional(),
+  _dbTeamId: z.number().optional(),
+  assignedPosition: z.string().optional(),
+
+  // Position metadata — drives slot-eligibility checks.
+  posPrimary: z.string().optional(),
+  positions: z.string().optional(),
+
+  // Status flags.
+  mlbStatus: z.string().optional(),
+  is_pitcher: z.union([z.boolean(), z.number()]).optional(),
+
+  // Team-pool metadata used as a fallback by ActivityPage (`teams.find(t
+  // => t.name === p.ogba_team_name)?.id`). Kept on the schema so the
+  // loader's mapping doesn't strip it.
+  ogba_team_code: z.string().optional(),
+  ogba_team_name: z.string().optional(),
+  team: z.string().optional(),
+});
+export type RosterMovesPlayer = z.infer<typeof RosterMovesPlayerSchema>;

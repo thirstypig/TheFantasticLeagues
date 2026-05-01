@@ -35,6 +35,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import WaiverClaimForm from "../../waivers/components/WaiverClaimForm";
 import RosterMovesTab from "../components/RosterMovesTab";
 import { canManageRoster, REASON_COPY } from "../lib/permissions";
+import { loadRosterMovePlayers } from "../lib/loadRosterMovePlayers";
 import { TradeCard, LeagueTradeCard, CreateTradeForm } from "../../trades/pages/TradesPage";
 import TeamRosterView from "../../teams/components/TeamRosterView";
 import ActivityWaiversTab from "../components/ActivityWaiversTab";
@@ -138,6 +139,25 @@ export default function ActivityPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Once a team is selected, swap the raw stats payload for the enriched
+  // RosterMovesPlayer shape (own-team rows tagged with _dbPlayerId,
+  // _dbTeamId, assignedPosition). Without this enrichment the roster-moves
+  // panels' drop dropdown is empty in production — todo #116.
+  useEffect(() => {
+    if (!currentLeagueId || !selectedTeamId) return;
+    let canceled = false;
+    loadRosterMovePlayers(currentLeagueId, selectedTeamId)
+      .then((enriched) => {
+        if (!canceled) setPlayers(enriched);
+      })
+      .catch((err) => {
+        console.error("loadRosterMovePlayers failed", err);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [currentLeagueId, selectedTeamId]);
 
   const handleClaim = async (player: PlayerSeasonStat) => {
     if (claimInFlight) return;
@@ -348,7 +368,13 @@ export default function ActivityPage() {
                     myTeamId={selectedTeamId}
                     myTeamBudget={teams.find(t => t.id === selectedTeamId)?.budget ?? 400}
                     myRoster={players.filter((p: any) => {
-                      const tid = (p as any)._dbTeamId || teams.find(t => t.name === p.ogba_team_name)?.id;
+                      // _dbTeamId is populated by loadRosterMovePlayers for
+                      // the selected team's roster rows. Fall back to the
+                      // ogba_team_name lookup when an older payload (no
+                      // enrichment yet) is mid-flight — keeps the waiver
+                      // form populated during the first render before the
+                      // loader effect resolves.
+                      const tid = p._dbTeamId ?? teams.find(t => t.name === p.ogba_team_name)?.id;
                       return tid === selectedTeamId;
                     })}
                     onComplete={loadData}
