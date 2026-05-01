@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
+import { logger } from "../../lib/logger.js";
 import {
   computeTeamStatsFromDb,
   computeStandingsFromStats,
@@ -14,6 +15,33 @@ import { createScoringEngine } from "./services/scoringEngine.js";
 import { readLeagueSnapshotForDate } from "./services/categoryDailySnapshotService.js";
 
 const router = Router();
+
+/**
+ * Persist `TeamStatsPeriod` snapshots for the given period. Used by the
+ * `/period-category-standings` endpoint to seed the "previous state" data that
+ * powers points/value deltas on the next request.
+ *
+ * Exported for testing — production callers must invoke it as fire-and-forget
+ * (`void persistTeamStatsPeriodSnapshot(...)`) so the response path doesn't
+ * block on N database writes serialized by the `connection_limit=1` pool.
+ */
+export async function persistTeamStatsPeriodSnapshot(
+  periodId: number,
+  teamStats: Array<{
+    team: { id: number };
+    R: number; HR: number; RBI: number; SB: number; AVG: number;
+    W: number; S: number; ERA: number; WHIP: number; K: number;
+  }>,
+): Promise<void> {
+  if (teamStats.length === 0) return;
+  await prisma.$transaction(
+    teamStats.map(t => prisma.teamStatsPeriod.upsert({
+      where: { teamId_periodId: { teamId: t.team.id, periodId } },
+      update: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
+      create: { teamId: t.team.id, periodId, R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
+    }))
+  );
+}
 
 // --- Period standings: /api/standings/period/current ---
 
@@ -182,12 +210,23 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     prevStandingsMap = new Map(prevStandings.map(s => [s.teamId, s.points]));
   }
 
-  await prisma.$transaction(
-    teamStats.map(t => prisma.teamStatsPeriod.upsert({
-      where: { teamId_periodId: { teamId: t.team.id, periodId: pid } },
-      update: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
-      create: { teamId: t.team.id, periodId: pid, R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
-    }))
+  // Fire-and-forget snapshot persistence (todo #134).
+  //
+  // Previously this was an awaited `$transaction(map(... upsert ...))` on the
+  // GET hot path. Two problems:
+  //   1. GETs should not block on writes — broke HTTP caching semantics and
+  //      added a serialization point on every standings page load.
+  //   2. Production runs `connection_limit=1` against Supabase. The N-statement
+  //      transaction held the only connection across N round trips, serializing
+  //      every concurrent standings view.
+  //
+  // The cron (`syncAllActivePeriods` at 13:00 UTC) writes `PlayerStatsPeriod`,
+  // not `TeamStatsPeriod` — so we can't simply drop the persistence. Instead we
+  // dispatch the upsert after the response is already in flight. Pattern matches
+  // the post-trade AI analysis fire-and-forget. If the dispatch fails the worst
+  // case is the next request shows zero deltas (transient, self-healing).
+  void persistTeamStatsPeriodSnapshot(pid, teamStats).catch((err: unknown) =>
+    logger.warn({ err, periodId: pid, leagueId }, "Standings snapshot persist failed"),
   );
 
   // Day-over-day category snapshot lookup (Gap 2 from

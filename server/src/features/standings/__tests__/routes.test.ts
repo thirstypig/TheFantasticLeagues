@@ -177,6 +177,33 @@ describe("GET /period-category-standings", () => {
     expect(res.body.periodId).toBe(7);
     expect(mockComputeTeamStatsFromDb).toHaveBeenCalledWith(1, 7);
   });
+
+  // Todo #134 regression: GET handlers must not block on writes. Production runs
+  // `connection_limit=1`, so an awaited `$transaction(map(... upsert ...))` on the
+  // read path serialized every concurrent standings view. The snapshot persistence
+  // is now fire-and-forget — invoked but not awaited, and the response is sent
+  // without waiting for the transaction to settle.
+  it("does not await prisma.$transaction on the read path (todo #134)", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([]);
+
+    // Force `$transaction` to hang. If the handler awaits the snapshot persist
+    // the response would never resolve. We assert the response comes back well
+    // before the transaction resolves — proving fire-and-forget.
+    let resolveTx: (value: unknown[]) => void = () => {};
+    const txPending = new Promise<unknown[]>(resolve => { resolveTx = resolve; });
+    mockPrisma.$transaction.mockReturnValue(txPending);
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    // Response returned without the transaction settling.
+    expect(res.status).toBe(200);
+    expect(res.body.periodId).toBe(5);
+
+    // Cleanup — let the dangling transaction settle so vitest doesn't warn.
+    resolveTx([]);
+  });
 });
 
 // ── Season-to-date weighted averaging (Issue #109) ──────────────
