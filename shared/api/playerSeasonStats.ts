@@ -33,7 +33,12 @@ export const PlayerSeasonStatSchema = z.object({
   ogba_team_code: z.string().optional(),
   ogba_team_name: z.string().optional(),
   group: z.enum(["H", "P"]).optional(),
-  is_pitcher: z.union([z.boolean(), z.number()]).optional(),
+  // Per todo #144 — narrowed to boolean. Server emits a real boolean
+  // (`players/routes.ts:105, 432`); CSV-import paths coerce via `toBool`
+  // at the boundary (`server/src/data/playerSeasonStats.ts:133`). The
+  // legacy `z.number()` variant lived in the schema only to soak up
+  // historical data shapes that no live route still produces.
+  is_pitcher: z.boolean().optional(),
   positions: z.string().optional(),
   posPrimary: z.string().optional(),
   mlb_team: z.string().optional(),
@@ -49,7 +54,12 @@ export const PlayerSeasonStatSchema = z.object({
   HR: z.number().optional(),
   RBI: z.number().optional(),
   SB: z.number().optional(),
-  AVG: z.union([z.number(), z.string()]).optional(),
+  // Per todo #144 — narrowed from `z.union([z.number(), z.string()])`.
+  // Server emits a real number (`players/routes.ts:435`,
+  // `statsService.ts` derives via `n / d`); CSV importers coerce via
+  // `toNum` at the boundary. Consumers no longer need defensive
+  // `Number(stat.AVG)` calls; the type system carries the contract.
+  AVG: z.number().nullable().optional(),
   GS_HR: z.number().optional(),
 
   // Hitter stats — extended (todo #114; surfaced for MVP/agent consumers)
@@ -60,19 +70,20 @@ export const PlayerSeasonStatSchema = z.object({
   DBL: z.number().optional(), // doubles
   TPL: z.number().optional(), // triples
   // SO is also defined below for pitchers; both share the field name (batter Ks vs pitcher Ks)
-  OBP: z.union([z.number(), z.string()]).optional(),
-  SLG: z.union([z.number(), z.string()]).optional(),
-  OPS: z.union([z.number(), z.string()]).optional(),
+  // Per todo #144 — narrowed rate stats. See AVG note above.
+  OBP: z.number().nullable().optional(),
+  SLG: z.number().nullable().optional(),
+  OPS: z.number().nullable().optional(),
 
   // Pitcher stats
   W: z.number().optional(),
   SV: z.number().optional(),
   K: z.number().optional(),
-  IP: z.union([z.number(), z.string()]).optional(),
-  ER: z.union([z.number(), z.string()]).optional(),
-  ERA: z.union([z.number(), z.string()]).optional(),
-  BB_H: z.union([z.number(), z.string()]).optional(),
-  WHIP: z.union([z.number(), z.string()]).optional(),
+  IP: z.number().nullable().optional(),
+  ER: z.number().nullable().optional(),
+  ERA: z.number().nullable().optional(),
+  BB_H: z.number().nullable().optional(),
+  WHIP: z.number().nullable().optional(),
   SHO: z.number().optional(),
   GS: z.number().optional(),
   SO: z.number().optional(),
@@ -80,8 +91,8 @@ export const PlayerSeasonStatSchema = z.object({
   // Pitcher stats — extended (todo #114; surfaced for Cy Young/agent consumers)
   L: z.number().optional(),     // losses
   QS: z.number().optional(),    // quality starts (period stats only — computed)
-  K9: z.union([z.number(), z.string()]).optional(),  // K/9
-  BB9: z.union([z.number(), z.string()]).optional(), // BB/9
+  K9: z.number().nullable().optional(),  // K/9
+  BB9: z.number().nullable().optional(), // BB/9
   HR_A: z.number().optional(),  // HR allowed
   BF: z.number().optional(),    // batters faced
 
