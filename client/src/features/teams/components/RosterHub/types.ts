@@ -101,8 +101,14 @@ export type RosterHubPlayer = RosterHubPlayerBase &
       }
   );
 
-/** OGBA hitter stat columns (mirrors Team.tsx's existing hitters table). */
+/**
+ * OGBA hitter stat columns. Session-89 added AB and H so users can
+ * verify the rate stat (AVG = H/AB) at a glance — mirrors Yahoo's
+ * roster table which shows the inputs alongside the derived rate.
+ */
 export interface HitterStats {
+  AB?: number;
+  H?: number;
   R?: number;
   HR?: number;
   RBI?: number;
@@ -110,12 +116,22 @@ export interface HitterStats {
   AVG?: number | string;
 }
 
-/** OGBA pitcher stat columns (mirrors Team.tsx's existing pitchers table). */
+/**
+ * OGBA pitcher stat columns. Session-89 added H+BB (combined — that's
+ * the form the schema carries via `BB_H`) and ER so users can verify
+ * the rate stats: ERA = (ER × 9) / IP, WHIP = (BB+H) / IP. Hits-allowed
+ * and walks-allowed are stored as a sum on the wire (`PlayerStatsPeriod.BB_H`)
+ * — splitting them would require a destructive Prisma migration, which
+ * would need explicit confirmation per CLAUDE.md.
+ */
 export interface PitcherStats {
   IP?: number | string;
+  /** Hits + walks allowed combined — the wire-format `BB_H` field; matches WHIP numerator. */
+  BB_H?: number;
+  K?: number;
   W?: number;
   SV?: number;
-  K?: number;
+  ER?: number;
   ERA?: number | string;
   WHIP?: number | string;
 }
