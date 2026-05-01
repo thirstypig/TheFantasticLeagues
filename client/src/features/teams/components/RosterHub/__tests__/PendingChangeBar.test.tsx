@@ -104,4 +104,51 @@ describe("PendingChangeBar", () => {
     expect(screen.queryByText(/pending change/i)).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("lingering error");
   });
+
+  // ─── FA scenario items list (this PR) ──────────────────────────
+
+  it("renders one row per pending change with kind-specific badge", () => {
+    render(
+      <PendingChangeBar
+        count={2}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[
+          { id: "s1", kind: "swap", text: "Trout 2B ↔ Bogaerts SS" },
+          { id: "f1", kind: "fa_add", text: "Add Ohtani · drop Stanton" },
+        ]}
+        onRevertItem={() => {}}
+      />,
+    );
+    const rows = screen.getAllByTestId("pending-change-row");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute("data-kind", "swap");
+    expect(rows[0]).toHaveTextContent("SWAP");
+    expect(rows[0]).toHaveTextContent("Trout 2B ↔ Bogaerts SS");
+    expect(rows[1]).toHaveAttribute("data-kind", "fa_add");
+    expect(rows[1]).toHaveTextContent("FA ADD");
+    expect(rows[1]).toHaveTextContent("Add Ohtani · drop Stanton");
+  });
+
+  it("Undo button per row fires onRevertItem with the change id", () => {
+    const onRevertItem = vi.fn();
+    render(
+      <PendingChangeBar
+        count={1}
+        onRevertAll={() => {}}
+        onSave={() => {}}
+        items={[{ id: "fa-9", kind: "fa_add", text: "Add Ohtani · drop Stanton" }]}
+        onRevertItem={onRevertItem}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Revert Add Ohtani/ }));
+    expect(onRevertItem).toHaveBeenCalledWith("fa-9");
+  });
+
+  it("omits the items list when items prop is not passed (Hub-only call site)", () => {
+    render(
+      <PendingChangeBar count={2} onRevertAll={() => {}} onSave={() => {}} />,
+    );
+    expect(screen.queryByTestId("pending-change-row")).toBeNull();
+  });
 });

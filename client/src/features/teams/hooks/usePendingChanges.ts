@@ -2,17 +2,26 @@
 //
 // Pending-changes state machine for the v3 roster hub. The Hub scenario
 // (per docs/plans/2026-04-30-roster-hub-direction-lock.md) covers
-// position swaps only — drops, FA add, and IL stash/activate are handled
-// by the existing manage sub-routes and are explicitly out of scope here.
+// position swaps; the FA scenario adds free-agent adds with a displaced
+// drop. IL stash/activate are still routed through the existing manage
+// sub-routes and out of scope here.
 //
-// Each pending change is a "swap" — two players exchanging assignedSlot
-// values. The hook owns the queue, persistence, and save orchestration.
+// Each pending change is one of:
+//   - `swap` — two roster players exchanging assignedSlot values.
+//   - `fa_add` — pull a free agent onto the roster, displacing an
+//     existing roster player into the drop pool. Save resolves via the
+//     existing /api/transactions/claim endpoint (which handles the
+//     bipartite auto-resolve matcher server-side).
+//
 // Drag wiring (DndContext) and visual rendering (PendingChangeBar) live
 // in the Team page + RosterHub component family respectively.
 //
-// Per direction-lock #4: per-row revert is a single-item undo (NOT
+// Per direction-lock #4 (Hub): per-row revert is a single-item undo (NOT
 // "revert all"). Per #2 save is explicit-click only. Per #5 localStorage
 // backup persists across navigation with 1hr TTL.
+// Per direction-lock FA-#3: pending-changes panel IS the batch — fa_adds
+// are queued like swaps and committed atomically on Save (FA-#4 inherited
+// from Hub: all-or-nothing).
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type { SlotCode } from "../../../lib/positionEligibility";
@@ -20,9 +29,9 @@ import type { SlotCode } from "../../../lib/positionEligibility";
 // ─── Types ─────────────────────────────────────────────────────────
 
 /**
- * One queued change. Hub scenario only handles `swap`. The `kind`
- * discriminator is in place so future scenarios (FA add/drop, IL) can
- * extend without restructuring callers.
+ * One queued change. The `kind` discriminator lets the hub-, FA-, and
+ * IL-scenarios share a single queue. Save dispatches per-kind via the
+ * caller-supplied `saveFn`.
  */
 export type PendingChange =
   | {
@@ -35,7 +44,48 @@ export type PendingChange =
        */
       from: { rosterId: number; playerId: number; slot: SlotCode | "IL" };
       to: { rosterId: number; playerId: number; slot: SlotCode | "IL" };
+    }
+  | {
+      id: string;
+      kind: "fa_add";
+      /** MLB stats id of the FA being claimed. Canonical wire key for
+       *  /api/transactions/claim — accepts mlbId for FAs not yet in the
+       *  Roster table. */
+      mlbId: number;
+      /** Display name of the FA (UI labelling only). */
+      faName: string;
+      /** Optional Prisma Player.id when the FA happens to be enriched
+       *  client-side (rare for true FAs). Sent alongside mlbId when
+       *  present. */
+      playerId?: number;
+      /** The slot the FA should occupy after the claim. Drives
+       *  optimistic preview + server-side eligibility check. */
+      targetSlot: SlotCode | "BN";
+      /** Roster player who must be dropped to make room. The Hub's
+       *  bipartite auto-resolver runs server-side via /transactions/claim;
+       *  this field captures the user's chosen drop target so the UI
+       *  can show "Add X · drop Y" and the drop-pool can list them. */
+      displaced: {
+        rosterId: number;
+        playerId: number;
+        mlbId: number;
+        name: string;
+        slot: SlotCode | "IL";
+      };
     };
+
+/**
+ * `PendingChange` minus its id — used as the input shape for
+ * `addChange()`. Distributes correctly over the discriminated union
+ * (so callers can pass either a swap-shaped or fa_add-shaped object
+ * without TypeScript merging the variants into a no-keys-in-common
+ * intersection).
+ */
+export type PendingChangeInput = PendingChange extends infer T
+  ? T extends { id: string }
+    ? Omit<T, "id">
+    : never
+  : never;
 
 export interface PendingChangesState {
   changes: PendingChange[];
@@ -45,8 +95,13 @@ export interface PendingChangesState {
 }
 
 interface PersistedState {
-  /** Schema version — bump if PendingChange shape changes incompatibly. */
-  v: 1;
+  /** Schema version — bump if PendingChange shape changes incompatibly.
+   *  v1: swap-only (Hub scenario, PR #207).
+   *  v2: adds fa_add variant (FA scenario, this PR). v1 entries are
+   *  discarded silently rather than auto-migrated — the FA UI doesn't
+   *  exist in v1 saved blobs anyway, and the cost of a one-time discard
+   *  is dwarfed by the safety win of "no partial-shape entries". */
+  v: 2;
   /** Unix ms when this snapshot was written. Used for TTL discard. */
   savedAt: number;
   changes: PendingChange[];
@@ -108,7 +163,7 @@ export function readPersistedChanges(teamId: number): PendingChange[] | null {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedState;
-    if (!parsed || parsed.v !== 1 || !Array.isArray(parsed.changes)) {
+    if (!parsed || parsed.v !== 2 || !Array.isArray(parsed.changes)) {
       window.localStorage.removeItem(key);
       return null;
     }
@@ -148,7 +203,7 @@ function writePersistedChanges(teamId: number, changes: PendingChange[]): void {
       window.localStorage.removeItem(key);
       return;
     }
-    const payload: PersistedState = { v: 1, savedAt: Date.now(), changes };
+    const payload: PersistedState = { v: 2, savedAt: Date.now(), changes };
     window.localStorage.setItem(key, JSON.stringify(payload));
   } catch {
     // Quota exceeded or disabled storage — fail silently. Pending state
@@ -183,7 +238,7 @@ export interface UsePendingChangesOptions {
 export interface UsePendingChangesApi {
   state: PendingChangesState;
   /** Queue a new change. Generates an id if not supplied. */
-  addChange: (change: Omit<PendingChange, "id"> & { id?: string }) => void;
+  addChange: (change: PendingChangeInput & { id?: string }) => void;
   /** Remove a single change by id. */
   revertChange: (id: string) => void;
   /** Drop every queued change. */
