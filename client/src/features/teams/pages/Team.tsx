@@ -30,6 +30,7 @@ import "../../../components/aurora/aurora.css";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats, getSeasonStandings } from "../../../api";
+import { fetchJsonApi, API_BASE } from "../../../api/base";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
 import { usePendingChanges, readPersistedChanges, clearPersistedChanges, type PendingChange } from "../hooks/usePendingChanges";
@@ -38,7 +39,10 @@ import {
   RosterHubV3,
   SubrouteContainer,
   type RosterHubPlayer,
+  FreeAgentPanel,
+  DropPool,
 } from "../components/RosterHub";
+import { useFreeAgents } from "../hooks/useFreeAgents";
 import type { RowAction } from "../components/RosterHub/RowActionMenu";
 import { toHubPlayer } from "../lib/toHubPlayer";
 // Cross-feature import: roster mutations live in the transactions feature.
@@ -455,24 +459,50 @@ export default function Team() {
   // assignedPosition values.
   const saveFn = useCallback(async (changes: PendingChange[]) => {
     if (!teamMeta?.id) throw new Error("Team not loaded");
+    if (!leagueId) throw new Error("League not loaded");
     const tid = teamMeta.id;
-    // Each swap = 2 PATCH calls (one per side). Run sequentially so
-    // ordered failures surface a meaningful error code; concurrency
-    // wins are negligible at this scale (<5 swaps typical).
+    // Atomic-on-failure (FA-#4 inherits from Hub-#4): each entry runs
+    // sequentially; first failure throws and aborts the rest. Earlier
+    // successful mutations are NOT rolled back — server matcher reads
+    // current state on the next save attempt, so a retry resumes safely.
     for (const change of changes) {
-      if (change.kind !== "swap") continue;
-      try {
-        await updateRosterPosition(tid, change.from.rosterId, change.to.slot);
-        await updateRosterPosition(tid, change.to.rosterId, change.from.slot);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Save failed";
-        throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
+      if (change.kind === "swap") {
+        try {
+          await updateRosterPosition(tid, change.from.rosterId, change.to.slot);
+          await updateRosterPosition(tid, change.to.rosterId, change.from.slot);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Save failed";
+          throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
+        }
+        continue;
+      }
+      if (change.kind === "fa_add") {
+        // FA scenario save: dispatch to the existing /transactions/claim
+        // endpoint. Server's bipartite matcher resolves slots; we only
+        // need to send mlbId + dropPlayerId (the displaced roster
+        // player's playerId). Mirrors AddDropPanel's wire shape.
+        try {
+          await fetchJsonApi(`${API_BASE}/transactions/claim`, {
+            method: "POST",
+            body: JSON.stringify({
+              leagueId,
+              teamId: tid,
+              mlbId: String(change.mlbId),
+              ...(change.playerId ? { playerId: change.playerId } : {}),
+              dropPlayerId: change.displaced.playerId,
+            }),
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Save failed";
+          throw new Error(`Save failed on add ${change.faName} · drop ${change.displaced.name}: ${msg}`);
+        }
+        continue;
       }
     }
     // Refresh the roster on success so the UI snaps to the canonical
     // server state (and any matcher-driven cascades show up).
     setReloadKey(k => k + 1);
-  }, [teamMeta?.id]);
+  }, [teamMeta?.id, leagueId]);
 
   const pending = usePendingChanges({
     teamId: teamMeta?.id ?? null,
@@ -540,22 +570,72 @@ export default function Team() {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
   }, []);
 
+  /* ── FA panel (FA scenario) ────────────────────────────────────── */
+
+  const [faPanelOpen, setFaPanelOpen] = useState(false);
+  // Only fetch when both: panel is open AND user can manage. Read-only
+  // visitors don't need the FA pool fetched against their session.
+  const faFetchEnabled = faPanelOpen && canManage && !!leagueId;
+  const fa = useFreeAgents(faFetchEnabled ? leagueId : null);
+
   const drag = useRosterHubDrag({
     players: dragPlayers,
+    freeAgents: fa.data ?? undefined,
     onSwap: (change) => pending.addChange(change),
+    onFaAdd: (change) => pending.addChange(change),
     onToast: showToast,
   });
 
   // Per-row revert: drop the change(s) referencing this rosterId.
+  // Both swap and fa_add can reference a roster row (swap on either
+  // endpoint, fa_add on its `displaced` rosterId).
   const onRowRevert = useCallback(
     (rosterId: number) => {
       const ids = pending.state.changes
-        .filter((c) => c.kind === "swap" && (c.from.rosterId === rosterId || c.to.rosterId === rosterId))
+        .filter((c) => {
+          if (c.kind === "swap") {
+            return c.from.rosterId === rosterId || c.to.rosterId === rosterId;
+          }
+          if (c.kind === "fa_add") {
+            return c.displaced.rosterId === rosterId;
+          }
+          return false;
+        })
         .map((c) => c.id);
       for (const id of ids) pending.revertChange(id);
     },
     [pending],
   );
+
+  // Drop pool rows — one per fa_add change. Hidden when no fa_adds
+  // are queued (DropPool returns null on empty).
+  const dropPoolRows = useMemo(() => {
+    return pending.state.changes
+      .filter((c): c is Extract<PendingChange, { kind: "fa_add" }> => c.kind === "fa_add")
+      .map((c) => ({
+        changeId: c.id,
+        rosterId: c.displaced.rosterId,
+        playerId: c.displaced.playerId,
+        name: c.displaced.name,
+        faName: c.faName,
+        slot: String(c.displaced.slot),
+      }));
+  }, [pending.state.changes]);
+
+  // PendingChangeBar items list — one row per change with kind-specific
+  // badge (FA scenario: extends the bar from count-only to itemized).
+  const pendingItems = useMemo(() => {
+    return pending.state.changes.map((c) => {
+      if (c.kind === "swap") {
+        return { id: c.id, kind: "swap" as const, text: `${c.from.slot} ↔ ${c.to.slot}` };
+      }
+      return {
+        id: c.id,
+        kind: "fa_add" as const,
+        text: `Add ${c.faName} · drop ${c.displaced.name}`,
+      };
+    });
+  }, [pending.state.changes]);
 
   /* ── localStorage restore prompt ──────────────────────────────────── */
 
@@ -829,6 +909,34 @@ export default function Team() {
                 onDragEnd={drag.handleDragEnd}
                 onDragCancel={drag.handleDragCancel}
               >
+                {/* FA scenario "+ Add free agent" affordance. Disabled
+                    while a save is in flight; same hub action surface,
+                    so the FA panel slides in alongside the roster
+                    rather than navigating away from it. */}
+                {canManage && (
+                  <div style={{ marginBottom: 10, display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={() => setFaPanelOpen((v) => !v)}
+                      disabled={pending.state.saving}
+                      aria-pressed={faPanelOpen}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "8px 14px",
+                        borderRadius: 10,
+                        border: "1px solid var(--am-border-strong)",
+                        background: faPanelOpen ? "var(--am-chip-strong)" : "var(--am-chip)",
+                        color: "var(--am-text)",
+                        cursor: pending.state.saving ? "not-allowed" : "pointer",
+                        opacity: pending.state.saving ? 0.5 : 1,
+                        minHeight: 36,
+                      }}
+                    >
+                      {faPanelOpen ? "Close free agents" : "+ Add free agent"}
+                    </button>
+                  </div>
+                )}
                 <RosterHubV3
                   hitters={hubHitters}
                   pitchers={hubPitchers}
@@ -847,9 +955,22 @@ export default function Team() {
                   saving={pending.state.saving}
                   saveError={pending.state.error}
                   onDismissError={pending.clearError}
+                  pendingItems={pendingItems}
+                  onRevertItem={pending.revertChange}
+                  dropPoolSlot={
+                    <DropPool rows={dropPoolRows} onRestore={pending.revertChange} />
+                  }
                   dndEnabled={canManage}
                   shakeRowId={drag.shakeRowId}
                 />
+                {faPanelOpen && leagueId && teamMeta && (
+                  <FreeAgentPanel
+                    leagueId={leagueId}
+                    teamId={teamMeta.id}
+                    isOpen={faPanelOpen}
+                    onClose={() => setFaPanelOpen(false)}
+                  />
+                )}
               </DndContext>
             )}
 

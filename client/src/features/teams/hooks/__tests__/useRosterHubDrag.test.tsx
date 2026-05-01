@@ -171,3 +171,187 @@ describe("useRosterHubDrag", () => {
     expect(onSwap).not.toHaveBeenCalled();
   });
 });
+
+// ─── FA scenario (this PR) ────────────────────────────────────────
+//
+// FA-source drag uses a different id prefix (`fa-row-${mlbId}`). When
+// activated, the hook routes drops to onFaAdd with the displaced
+// roster player attached. Eligibility is one-way (FA → target slot)
+// vs the Hub's bidirectional swap rule.
+
+describe("useRosterHubDrag — FA scenario", () => {
+  const HITTER_2B = mkPlayer({ rosterId: 1, posList: "2B,SS", assignedSlot: "2B" });
+  const HITTER_OF = mkPlayer({ rosterId: 3, playerId: 103, posList: "OF", assignedSlot: "OF" });
+  const PITCHER_SP = mkPlayer({ rosterId: 10, playerId: 110, isPitcher: true, posList: "SP", posPrimary: "SP", assignedSlot: "P" });
+
+  const FA_OF = {
+    rowKey: "545361-H",
+    mlbId: 545361,
+    name: "Mike Trout",
+    posList: "OF",
+    posPrimary: "OF",
+    mlbTeam: "LAA",
+    isPitcher: false,
+    projectedDollars: 38,
+    statSnapshot: "40 HR · .301 AVG",
+  };
+  const FA_2B = {
+    rowKey: "111-H",
+    mlbId: 111,
+    name: "Some 2B",
+    posList: "2B",
+    posPrimary: "2B",
+    mlbTeam: "BOS",
+    isPitcher: false,
+    projectedDollars: 12,
+    statSnapshot: "",
+  };
+
+  const FA_PITCHER = {
+    rowKey: "222-P",
+    mlbId: 222,
+    name: "Closer",
+    posList: "RP",
+    posPrimary: "RP",
+    mlbTeam: "BOS",
+    isPitcher: true,
+    projectedDollars: 8,
+    statSnapshot: "",
+  };
+
+  it("FA drag start populates activeFaDragMlbId (NOT activeDragId)", () => {
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_2B, HITTER_OF],
+        freeAgents: [FA_OF, FA_2B],
+        onSwap: vi.fn(),
+        onFaAdd: vi.fn(),
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: "fa-row-545361" } } as any);
+    });
+    expect(result.current.activeFaDragMlbId).toBe(545361);
+    expect(result.current.activeDragId).toBeNull();
+  });
+
+  it("FA drop on eligible roster slot fires onFaAdd with displaced metadata", () => {
+    const onFaAdd = vi.fn();
+    const onSwap = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_2B, HITTER_OF],
+        freeAgents: [FA_OF],
+        onSwap,
+        onFaAdd,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: "fa-row-545361" } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: "fa-row-545361" },
+        over: { id: encodeDndId(3) }, // HITTER_OF
+      } as any);
+    });
+    expect(onSwap).not.toHaveBeenCalled();
+    expect(onFaAdd).toHaveBeenCalledTimes(1);
+    const change = onFaAdd.mock.calls[0][0];
+    expect(change.kind).toBe("fa_add");
+    expect(change.mlbId).toBe(545361);
+    expect(change.targetSlot).toBe("OF");
+    expect(change.displaced.rosterId).toBe(3);
+    expect(change.displaced.playerId).toBe(103);
+    expect(change.displaced.slot).toBe("OF");
+  });
+
+  it("FA drop on ineligible slot shake-rejects + toasts (no onFaAdd)", () => {
+    const onFaAdd = vi.fn();
+    const onToast = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_2B, HITTER_OF],
+        freeAgents: [FA_2B], // 2B-only FA
+        onSwap: vi.fn(),
+        onFaAdd,
+        onToast,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: "fa-row-111" } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: "fa-row-111" },
+        over: { id: encodeDndId(3) }, // HITTER_OF — 2B FA can't fill OF
+      } as any);
+    });
+    expect(onFaAdd).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledTimes(1);
+    expect(onToast.mock.calls[0][0]).toMatch(/isn't eligible at OF/);
+    expect(result.current.shakeRowId).toBe(3);
+  });
+
+  it("FA cross-section drop (hitter FA → pitcher slot) shake-rejects", () => {
+    const onFaAdd = vi.fn();
+    const onToast = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_2B, PITCHER_SP],
+        freeAgents: [FA_OF],
+        onSwap: vi.fn(),
+        onFaAdd,
+        onToast,
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: "fa-row-545361" } } as any);
+    });
+    act(() => {
+      result.current.handleDragEnd({
+        active: { id: "fa-row-545361" },
+        over: { id: encodeDndId(10) },
+      } as any);
+    });
+    expect(onFaAdd).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledWith(expect.stringMatching(/Cannot place .* in a pitcher slot/));
+  });
+
+  it("FA drag dropTargetIds reflects one-way FA→slot eligibility", () => {
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_2B, HITTER_OF],
+        freeAgents: [FA_OF],
+        onSwap: vi.fn(),
+        onFaAdd: vi.fn(),
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: "fa-row-545361" } } as any);
+    });
+    // FA is OF-only — only HITTER_OF is a valid target.
+    expect(result.current.dropTargetIds.has(3)).toBe(true);
+    expect(result.current.dropTargetIds.has(1)).toBe(false);
+  });
+
+  it("FA drag dimSection dims the opposite role (hitter FA dims pitchers)", () => {
+    const { result } = renderHook(() =>
+      useRosterHubDrag({
+        players: [HITTER_2B, PITCHER_SP],
+        freeAgents: [FA_OF, FA_PITCHER],
+        onSwap: vi.fn(),
+        onFaAdd: vi.fn(),
+      }),
+    );
+    act(() => {
+      result.current.handleDragStart({ active: { id: "fa-row-545361" } } as any);
+    });
+    expect(result.current.dimSection).toBe("pitchers");
+    act(() => {
+      result.current.handleDragCancel();
+      result.current.handleDragStart({ active: { id: "fa-row-222" } } as any);
+    });
+    expect(result.current.dimSection).toBe("hitters");
+  });
+});
