@@ -4,3 +4,4 @@
  */
 export * from "./playerSeasonStats";
 export * from "./rosterMoves";
+export * from "./awards";

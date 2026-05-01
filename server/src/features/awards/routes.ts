@@ -17,7 +17,11 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
 import { getWeekKey } from "../../lib/utils.js";
-import { computeAwardsRankings, type AwardsRankings } from "./services/awardsService.js";
+import { computeAwardsRankings } from "./services/awardsService.js";
+import {
+  AwardsRankingsSchema,
+  type AwardsResponse,
+} from "../../../../shared/api/awards.js";
 
 const router = Router();
 
@@ -64,22 +68,31 @@ router.get(
 
     if (persisted?.data && typeof persisted.data === "object") {
       const data = persisted.data as Record<string, unknown>;
-      const awards = data.awards as AwardsRankings | null | undefined;
-      if (awards && Array.isArray(awards.mvp)) {
-        return res.json({
-          ...awards,
+      // Validate the persisted blob via the shared Zod schema (todo #118).
+      // Pre-#115 digests have no `awards` field at all; malformed digests
+      // (e.g. shape changes that landed without backfill) would previously
+      // ship garbage to consumers via a blind cast. On any validation
+      // failure, fall through to compute so consumers get a fresh, valid
+      // payload instead of the bad persisted one.
+      const parsed = AwardsRankingsSchema.safeParse(data.awards);
+      if (parsed.success) {
+        const body: AwardsResponse = {
+          ...parsed.data,
           source: "persisted",
           digestGeneratedAt: persisted.createdAt.toISOString(),
-        });
+        };
+        return res.json(body);
       }
     }
 
-    // Fall back to on-demand compute (covers pre-#115 digests + ad hoc queries).
-    // Pass the request's abort signal so the service can stop work early when
-    // the client disconnects mid-flight.
+    // Fall back to on-demand compute (covers pre-#115 digests, malformed
+    // persisted blobs, and ad hoc queries). Pass the request's abort signal
+    // so the service can stop work early when the client disconnects
+    // mid-flight.
     const signal = abortSignalForRequest(req);
     const rankings = await computeAwardsRankings(leagueId, weekKey, signal);
-    res.json({ ...rankings, source: "computed" });
+    const body: AwardsResponse = { ...rankings, source: "computed" };
+    res.json(body);
   }),
 );
 
