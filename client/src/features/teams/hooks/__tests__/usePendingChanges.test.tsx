@@ -57,14 +57,24 @@ describe("usePendingChanges", () => {
       expect(result.current.state.changes[0].id).toBe("custom-id");
     });
 
-    it("revertChange removes only the targeted id", () => {
+    it("revertChange removes only the targeted id when there are no dependencies", () => {
       const { result } = renderHook(() =>
         usePendingChanges({ teamId: 42, saveFn: vi.fn(), persistDebounceMs: 0 }),
       );
+      // Two independent swaps — disjoint rosterIds + slots so the
+      // Complex-#2 dependency detector finds no edges, and revert
+      // of "a" leaves "b" alone.
       act(() => {
-        result.current.addChange({ ...makeSwap(), id: "a" } as PendingChange);
         result.current.addChange({
-          ...makeSwap({ from: { rosterId: 3, playerId: 103, slot: "OF" } }),
+          kind: "swap",
+          from: { rosterId: 1, playerId: 101, slot: "2B" },
+          to: { rosterId: 2, playerId: 102, slot: "SS" },
+          id: "a",
+        } as PendingChange);
+        result.current.addChange({
+          kind: "swap",
+          from: { rosterId: 50, playerId: 150, slot: "OF" },
+          to: { rosterId: 51, playerId: 151, slot: "DH" },
           id: "b",
         } as PendingChange);
       });

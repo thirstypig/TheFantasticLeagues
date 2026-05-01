@@ -33,7 +33,14 @@ import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats, getS
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
-import { usePendingChanges, readPersistedChanges, clearPersistedChanges, type PendingChange } from "../hooks/usePendingChanges";
+import {
+  usePendingChanges,
+  readPersistedChanges,
+  clearPersistedChanges,
+  kindBreakdown,
+  describeKindBreakdown,
+  type PendingChange,
+} from "../hooks/usePendingChanges";
 import { useRosterHubDrag, isMlbIlStatusUi } from "../hooks/useRosterHubDrag";
 import { ilStash, ilActivate, syncIlStatus } from "../../transactions/api";
 import {
@@ -42,6 +49,8 @@ import {
   type RosterHubPlayer,
   FreeAgentPanel,
   DropPool,
+  SaveDiffPreviewModal,
+  type DiffRow,
 } from "../components/RosterHub";
 import { useFreeAgents } from "../hooks/useFreeAgents";
 import type { RowAction } from "../components/RosterHub/RowActionMenu";
@@ -727,17 +736,65 @@ export default function Team() {
   // badge. FA scenario extended the bar from count-only to itemized;
   // IL scenario adds two more badges (IL STASH amber, IL ACTIVATE cyan)
   // and an optional `secondary` line for ≥3-player auto-resolve cascades
-  // per direction-lock IL #5.
+  // per direction-lock IL #5. Complex scenario adds:
+  //   - `dependsOn` — rendered when the change is a child of an earlier
+  //     change in the dependency graph (Complex-#2).
+  //   - `errorReason` — the per-change failure reason from the most
+  //     recent save attempt (Complex-#6).
+  //
+  // `humanLabelFor` converts a change to a "Drop #1"-style label that
+  // dependency badges reference. Index is 1-based for user-facing.
+  const humanLabelFor = useCallback(
+    (change: PendingChange, idx1: number) => {
+      switch (change.kind) {
+        case "swap":
+          return `Swap #${idx1}`;
+        case "fa_add":
+          return `FA add #${idx1}`;
+        case "il_stash":
+          return `IL stash #${idx1}`;
+        case "il_activate":
+          return `IL activate #${idx1}`;
+      }
+    },
+    [],
+  );
+
   const pendingItems = useMemo(() => {
-    return pending.state.changes.map((c) => {
+    const failuresById = new Map<string, string>();
+    for (const f of pending.state.failures) failuresById.set(f.changeId, f.reason);
+    // Lookup parent label by id — used to render the dependsOn badge.
+    const labelById = new Map<string, string>();
+    pending.state.changes.forEach((c, i) => {
+      labelById.set(c.id, humanLabelFor(c, i + 1));
+    });
+    const parentOf = new Map<string, string>();
+    for (const e of pending.dependencies) {
+      // For a child with multiple parents we keep the first; the badge is
+      // a hint, not exhaustive.
+      if (!parentOf.has(e.child)) parentOf.set(e.child, e.parent);
+    }
+
+    return pending.state.changes.map((c, i) => {
+      const dependsOnId = parentOf.get(c.id);
+      const dependsOn = dependsOnId ? labelById.get(dependsOnId) : undefined;
+      const errorReason = failuresById.get(c.id);
       if (c.kind === "swap") {
-        return { id: c.id, kind: "swap" as const, text: `${c.from.slot} ↔ ${c.to.slot}` };
+        return {
+          id: c.id,
+          kind: "swap" as const,
+          text: `${c.from.slot} ↔ ${c.to.slot}`,
+          dependsOn,
+          errorReason,
+        };
       }
       if (c.kind === "fa_add") {
         return {
           id: c.id,
           kind: "fa_add" as const,
           text: `Add ${c.faName} · drop ${c.displaced.name}`,
+          dependsOn,
+          errorReason,
         };
       }
       if (c.kind === "il_stash") {
@@ -746,17 +803,116 @@ export default function Team() {
           kind: "il_stash" as const,
           text: `Stash ${c.name} · freed ${c.freed}`,
           secondary: cascadeTextFor(c.freed),
+          dependsOn,
+          errorReason,
         };
       }
       // c.kind === "il_activate"
       const dispText = c.displaced ? ` · drop ${c.displaced.name}` : "";
+      void i;
       return {
         id: c.id,
         kind: "il_activate" as const,
         text: `Activate ${c.name} → ${c.targetSlot}${dispText}`,
+        dependsOn,
+        errorReason,
       };
     });
-  }, [pending.state.changes, cascadeTextFor]);
+  }, [
+    pending.state.changes,
+    pending.state.failures,
+    pending.dependencies,
+    cascadeTextFor,
+    humanLabelFor,
+  ]);
+
+  /* ── Save diff-preview modal (Complex-#3) ────────────────────────── */
+  //
+  // Threshold: ≤2 changes save directly via the bar; ≥3 surface the
+  // confirm modal with diff preview. Per Complex-#4, atomic save is
+  // already enforced by `usePendingChanges` — the modal renders any
+  // resulting per-change failures inline so the user can revert the
+  // offending row(s) and retry without re-typing the rest.
+
+  const [diffPreviewOpen, setDiffPreviewOpen] = useState(false);
+  const SAVE_CONFIRM_THRESHOLD = 3;
+
+  const onSaveClick = useCallback(() => {
+    if (pending.state.changes.length >= SAVE_CONFIRM_THRESHOLD) {
+      setDiffPreviewOpen(true);
+      return;
+    }
+    void pending.save();
+  }, [pending]);
+
+  // Confirm path: trigger the save and let the auto-close effect below
+  // dismiss the modal on success. Failures keep the modal open so the
+  // inline error banners stay visible.
+  const onConfirmSave = useCallback(async () => {
+    await pending.save();
+  }, [pending]);
+
+  // Auto-close on save success: when the queue empties and there's no
+  // error, the modal isn't needed any more. This handles both the
+  // direct ≥3 confirm path and any subsequent retry.
+  useEffect(() => {
+    if (
+      diffPreviewOpen &&
+      !pending.state.saving &&
+      pending.state.changes.length === 0 &&
+      pending.state.error == null
+    ) {
+      setDiffPreviewOpen(false);
+    }
+  }, [
+    diffPreviewOpen,
+    pending.state.saving,
+    pending.state.changes.length,
+    pending.state.error,
+  ]);
+
+  // Diff rows — one per queued change. Reuses the pendingItems labels
+  // for consistency; the modal layout adds the per-row "1.", "2.", …
+  // numbering and the inline failure banner.
+  const diffRows = useMemo<DiffRow[]>(() => {
+    return pending.state.changes.map((c, i) => {
+      const dependsOnId = pending.dependencies.find((e) => e.child === c.id)?.parent;
+      const dependsOnIdx = dependsOnId
+        ? pending.state.changes.findIndex((x) => x.id === dependsOnId) + 1
+        : null;
+      const dependsOn = dependsOnIdx
+        ? humanLabelFor(
+            pending.state.changes[dependsOnIdx - 1],
+            dependsOnIdx,
+          )
+        : undefined;
+      // Build a more verbose text for the modal. The bar uses tighter
+      // copy ("DROP Marcus Semien"); the modal can afford the projected
+      // dollar amount and the explicit "drops X" suffix per the spec.
+      let text: string;
+      switch (c.kind) {
+        case "swap": {
+          text = `SWAP ${c.from.slot} ↔ ${c.to.slot}`;
+          break;
+        }
+        case "fa_add": {
+          text = `FA ADD ${c.faName} — drops ${c.displaced.name}`;
+          break;
+        }
+        case "il_stash": {
+          text = `IL STASH ${c.name} (${c.mlbStatus})`;
+          break;
+        }
+        case "il_activate": {
+          const drop = c.displaced ? ` — drops ${c.displaced.name}` : "";
+          text = `IL ACTIVATE ${c.name} → ${c.targetSlot}${drop}`;
+          break;
+        }
+      }
+      void i;
+      return { id: c.id, kind: c.kind, text, dependsOn };
+    });
+  }, [pending.state.changes, pending.dependencies, humanLabelFor]);
 
   /* ── Ghost-IL warnings (IL #3) ────────────────────────────────────── */
   //
@@ -1136,7 +1292,7 @@ export default function Team() {
                   buildActions={buildActions}
                   onRevert={onRowRevert}
                   onRevertAll={pending.revertAll}
-                  onSave={pending.save}
+                  onSave={onSaveClick}
                   saving={pending.state.saving}
                   saveError={pending.state.error}
                   onDismissError={pending.clearError}
@@ -1280,6 +1436,17 @@ export default function Team() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
                   <div style={{ fontSize: 13, color: "var(--am-text)" }}>
                     Restore {restorePrompt.changes.length} pending change{restorePrompt.changes.length === 1 ? "" : "s"} from earlier?
+                    <span
+                      data-testid="restore-prompt-breakdown"
+                      style={{
+                        display: "block",
+                        marginTop: 4,
+                        fontSize: 11.5,
+                        color: "var(--am-text-muted)",
+                      }}
+                    >
+                      {describeKindBreakdown(kindBreakdown(restorePrompt.changes))}
+                    </span>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -1362,6 +1529,20 @@ export default function Team() {
           {/* Pitchers section is now inside RosterHubV3 (consolidated table)
               per plan §0.5 refinement #1. The separate Glass block was
               removed when the v3 hub took over the roster surface. */}
+
+          {/* Save diff preview modal (Complex-#3) — opens when ≥3 changes
+              are queued and the user clicks Save. Confirms the batch
+              before committing; renders inline per-row failure banners
+              if the save attempt surfaced a PendingChangeBatchError. */}
+          <SaveDiffPreviewModal
+            open={diffPreviewOpen}
+            rows={diffRows}
+            failures={pending.state.failures}
+            saving={pending.state.saving}
+            onConfirm={onConfirmSave}
+            onCancel={() => setDiffPreviewOpen(false)}
+            onRevertItem={pending.revertChange}
+          />
 
           {/* Legacy escape hatch */}
           <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>

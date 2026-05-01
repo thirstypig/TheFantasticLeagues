@@ -18,8 +18,25 @@
 // renders explicit auto-resolve text for ≥3-player cascades per
 // direction-lock IL #5.
 //
+// Complex-batch scenario extension (this PR):
+//   - `dependsOn` per item — the human-readable label of the parent
+//     change (e.g. "Drop #1") rendered as a subtle "↳ depends on …"
+//     badge under the row text. Per direction-lock Complex-#2,
+//     dependency-aware revert is owned by `usePendingChanges`; this
+//     bar's job is just to surface the relationship.
+//   - Mobile condensed view at <768px — rows render badge + name only,
+//     details (slot, secondary line) revealed on tap-to-expand. Per
+//     direction-lock Complex-#7. CSS-only via media query so SSR-safe.
+//   - Per-row failure banner — when the most recent save attempt
+//     surfaced a `PendingChangeBatchError`, the offending row paints
+//     a red border + inline error reason. Mirrors the modal's render
+//     so the bar is informative even without re-opening the modal.
+//
 // The component renders nothing when `count === 0` AND there is no error
 // to surface — keeps the chrome out of the way on a clean roster.
+
+import { useState } from "react";
+import "./rosterHub.css";
 
 export type PendingChangeBarItemKind = "swap" | "fa_add" | "il_stash" | "il_activate";
 
@@ -33,6 +50,13 @@ export interface PendingChangeBarItem {
    *  surfaces this for ≥3-player auto-resolve cascades. Rendered as a smaller
    *  muted line beneath `text`. */
   secondary?: string;
+  /** Optional dependency badge — rendered as "↳ depends on Drop #1" under
+   *  the row when set. Set by the caller from the dependency graph
+   *  computed by `usePendingChanges` per direction-lock Complex-#2. */
+  dependsOn?: string;
+  /** Optional inline failure reason — "Player no longer FA — cancel this
+   *  change". When set, the row paints red. Per Complex-#6. */
+  errorReason?: string;
 }
 
 const BADGE_LABELS: Record<PendingChangeBarItemKind, string> = {
@@ -186,87 +210,18 @@ export function PendingChangeBar({
             gap: 4,
           }}
         >
-          {items.map((it) => {
-            const tone = BADGE_TONES[it.kind];
-            return (
-            <li
+          {items.map((it) => (
+            <PendingChangeRow
               key={it.id}
-              data-testid="pending-change-row"
-              data-kind={it.kind}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto",
-                alignItems: "center",
-                gap: 8,
-                padding: "5px 4px",
-                fontSize: 12,
-                color: "var(--am-text)",
-              }}
-            >
-              <span
-                aria-label={BADGE_LABELS[it.kind]}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: "2px 6px",
-                  borderRadius: 6,
-                  background: `color-mix(in srgb, ${tone.fg} ${tone.mix}%, transparent)`,
-                  color: tone.fg,
-                  letterSpacing: 0.4,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {BADGE_LABELS[it.kind]}
-              </span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {it.text}
-                </span>
-                {it.secondary && (
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: 11,
-                      color: "var(--am-text-muted)",
-                      marginTop: 2,
-                      lineHeight: 1.4,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    data-testid="pending-change-secondary"
-                  >
-                    {it.secondary}
-                  </span>
-                )}
-              </span>
-              {onRevertItem && (
-                <button
-                  type="button"
-                  onClick={() => onRevertItem(it.id)}
-                  aria-label={`Revert ${it.text}`}
-                  disabled={saving}
-                  style={{
-                    fontSize: 11,
-                    padding: "2px 8px",
-                    borderRadius: 6,
-                    border: "1px solid transparent",
-                    background: "transparent",
-                    color: "var(--am-text-muted)",
-                    cursor: saving ? "not-allowed" : "pointer",
-                    opacity: saving ? 0.5 : 1,
-                    minHeight: 22,
-                  }}
-                >
-                  Undo
-                </button>
-              )}
-            </li>
-            );
-          })}
+              item={it}
+              saving={saving}
+              onRevertItem={onRevertItem}
+            />
+          ))}
         </ul>
       )}
 
+      {/* Save error banner — see below for the full row. */}
       {saveError && (
         <div
           role="alert"
@@ -334,5 +289,137 @@ export function PendingChangeBar({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Per-row renderer for the pending-changes list. Owns its own
+ * tap-to-expand state for the mobile condensed view (Complex-#7).
+ *
+ * Layout:
+ *   - Always-visible summary row: badge + name + revert button
+ *   - Below 768px: tap to toggle the body (secondary, dependsOn,
+ *     errorReason)
+ *   - 768px+: body always visible (CSS forces `display: block`)
+ *
+ * Responsiveness is CSS-driven — no JS resize listeners — so the
+ * server can render the same markup the client hydrates without
+ * a layout flicker on narrow viewports.
+ */
+function PendingChangeRow({
+  item,
+  saving = false,
+  onRevertItem,
+}: {
+  item: PendingChangeBarItem;
+  saving: boolean;
+  onRevertItem?: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const tone = BADGE_TONES[item.kind];
+  const failed = !!item.errorReason;
+  const hasBody = !!item.secondary || !!item.errorReason;
+
+  return (
+    <li
+      data-testid="pending-change-row"
+      data-kind={item.kind}
+      data-failed={failed ? "true" : "false"}
+      data-expanded={expanded ? "true" : "false"}
+      className={`am-pending-row-mobile ${failed ? "am-pending-row-failed" : ""}`}
+      style={{ listStyle: "none" }}
+    >
+      <summary
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button")) return;
+          if (hasBody) setExpanded((v) => !v);
+        }}
+      >
+        <span
+          aria-label={BADGE_LABELS[item.kind]}
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            padding: "2px 6px",
+            borderRadius: 6,
+            background: `color-mix(in srgb, ${tone.fg} ${tone.mix}%, transparent)`,
+            color: tone.fg,
+            letterSpacing: 0.4,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {BADGE_LABELS[item.kind]}
+        </span>
+        <span style={{ minWidth: 0, overflow: "hidden" }}>
+          <span
+            style={{
+              display: "block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontSize: 12,
+              color: "var(--am-text)",
+            }}
+          >
+            {item.text}
+            {item.dependsOn && (
+              <span
+                className="am-pending-row-dependson"
+                data-testid="pending-change-dependson"
+                title={`Depends on ${item.dependsOn}`}
+              >
+                ↳ depends on {item.dependsOn}
+              </span>
+            )}
+          </span>
+        </span>
+        {onRevertItem && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRevertItem(item.id);
+            }}
+            aria-label={`Revert ${item.text}`}
+            disabled={saving}
+            style={{
+              fontSize: 11,
+              padding: "2px 8px",
+              borderRadius: 6,
+              border: "1px solid transparent",
+              background: "transparent",
+              color: "var(--am-text-muted)",
+              cursor: saving ? "not-allowed" : "pointer",
+              opacity: saving ? 0.5 : 1,
+              minHeight: 22,
+            }}
+          >
+            Undo
+          </button>
+        )}
+      </summary>
+      {hasBody && (
+        <div
+          className="am-pending-row-body"
+          style={{ display: expanded ? "block" : undefined }}
+          data-mobile-hidden={!expanded ? "true" : "false"}
+        >
+          {item.secondary && (
+            <span className="am-pending-row-meta" data-testid="pending-change-secondary">
+              {item.secondary}
+            </span>
+          )}
+          {item.errorReason && (
+            <span
+              role="alert"
+              className="am-pending-row-error"
+              data-testid="pending-change-error"
+            >
+              {item.errorReason}
+            </span>
+          )}
+        </div>
+      )}
+    </li>
   );
 }
