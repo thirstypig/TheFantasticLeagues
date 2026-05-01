@@ -266,3 +266,75 @@ export interface GhostIlSummary {
 export async function getGhostIlSummary(leagueId: number): Promise<GhostIlSummary> {
   return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/ghost-il`);
 }
+
+// ── Bulk operations: League IL audit + Roster cleanup ────────────────
+
+export interface IlAuditRow {
+  teamId: number;
+  teamName: string;
+  teamCode: string | null;
+  playerId: number;
+  playerName: string;
+  mlbId: number | null;
+  mlbStatus: string;
+  assignedPosition: string | null;
+}
+
+export interface IlAuditResponse {
+  rows: IlAuditRow[];
+  totalRows: number;
+  totalTeams: number;
+  fetchedAt: string;
+}
+
+export async function getIlAudit(leagueId: number): Promise<IlAuditResponse> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/il-audit`);
+}
+
+export interface BulkIlStashEntry {
+  teamId: number;
+  playerId: number;
+}
+
+export interface BulkIlStashSucceeded {
+  teamId: number;
+  playerId: number;
+  outcome: "stashed" | "noop";
+}
+
+export interface BulkIlStashFailed {
+  teamId: number;
+  playerId: number;
+  reason: string;
+  code?: string;
+}
+
+export interface BulkIlStashResponse {
+  succeeded: BulkIlStashSucceeded[];
+  failed: BulkIlStashFailed[];
+}
+
+export async function postBulkIlStash(
+  leagueId: number,
+  entries: BulkIlStashEntry[],
+): Promise<BulkIlStashResponse> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/bulk-il-stash`, {
+    method: "POST",
+    body: JSON.stringify({ entries }),
+  });
+}
+
+export interface CleanupDroppedResponse {
+  deletedCount: number;
+  cutoff: string;
+}
+
+export async function postCleanupDropped(
+  leagueId: number,
+  olderThanDays: number,
+): Promise<CleanupDroppedResponse> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/cleanup-dropped`, {
+    method: "POST",
+    body: JSON.stringify({ olderThanDays }),
+  });
+}

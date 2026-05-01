@@ -63,6 +63,9 @@ vi.mock("../../../contexts/LeagueContext", () => ({
 vi.mock("../components/CommissionerRosterTool", () => ({
   default: () => <div data-testid="roster-tool" />,
 }));
+vi.mock("../components/BulkOpsPanel", () => ({
+  default: () => <div data-testid="bulk-ops-panel" />,
+}));
 vi.mock("../components/CommissionerControls", () => ({
   default: () => <div data-testid="controls" />,
 }));
