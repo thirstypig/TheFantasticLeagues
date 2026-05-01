@@ -88,6 +88,28 @@ const effectiveDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
   .optional();
 
+/**
+ * Tightened mlbId wire schema (#187 DoS hardening).
+ *
+ * Previously accepted any string or number, which let a caller submit a
+ * 100MB string body or a `Number.MAX_SAFE_INTEGER`-shaped value and watch
+ * the Prisma findFirst on `mlbId` blow through the planner. Now constrained
+ * to:
+ *   - integer in (0, 9_999_999]  (real MLB IDs top out at ~6 digits today;
+ *     the 7-digit ceiling leaves headroom for derived Ohtani-style IDs but
+ *     rejects anything wildly out of range)
+ *   - or a digits-only string of the same magnitude, coerced to number
+ *
+ * Used by /transactions/claim (`mlbId`) and /transactions/il-stash
+ * (`addMlbId`). The canonical home for this schema may move to
+ * `shared/api/rosterMoves.ts` in a follow-up commit when the request
+ * envelopes lift to shared.
+ */
+const mlbIdSchema = z.union([
+  z.number().int().positive().max(9_999_999),
+  z.string().regex(/^\d{1,7}$/).transform(Number),
+]);
+
 const dropSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
@@ -99,7 +121,7 @@ const claimSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
   playerId: z.number().int().positive().optional(),
-  mlbId: z.union([z.number(), z.string()]).optional(),
+  mlbId: mlbIdSchema.optional(),
   dropPlayerId: z.number().int().positive().optional(),
   effectiveDate: effectiveDateSchema,
 }).refine((d) => d.playerId || d.mlbId, { message: "playerId or mlbId required" });
@@ -534,7 +556,7 @@ const ilStashSchema = z.object({
    *  not an active-roster departure (the player remains rostered, just
    *  in the IL slot). */
   addPlayerId: z.number().int().positive().optional(),
-  addMlbId: z.union([z.number(), z.string()]).optional(),
+  addMlbId: mlbIdSchema.optional(),
   effectiveDate: effectiveDateSchema,
   reason: z.string().max(500).optional(),
 });
