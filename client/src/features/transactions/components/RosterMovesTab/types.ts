@@ -1,22 +1,12 @@
-// Shared shape for the player rows consumed by the RosterMovesTab panels.
-// Inherits from the loose PlayerSeasonStat-ish shape that ActivityPage
-// already passes around — we don't re-narrow here because the source data
-// mixes season-stat rows, roster rows, and free-agent pool rows.
-export interface RosterMovesPlayer {
-  player_name?: string;
-  name?: string;
-  mlb_id?: string | number;
-  mlbId?: string | number;
-  _dbPlayerId?: number;
-  _dbTeamId?: number;
-  assignedPosition?: string;
-  posPrimary?: string;
-  positions?: string;
-  mlbStatus?: string;
-  ogba_team_code?: string;
-  team?: string;
-  is_pitcher?: boolean | number;
-}
+// Re-export the shared `RosterMovesPlayer` type so panel imports continue
+// to work without touching the call sites. The single source of truth
+// (schema + type) lives in `shared/api/rosterMoves.ts` — see todo #116
+// and `MEMORY.md` `feedback_partial_browser_verification.md` for the bug
+// class this consolidation closes. The runtime `RosterMovesPlayerSchema`
+// export is intentionally NOT re-exported here: keeping this file
+// type-only preserves the tree-shake invariant that lets test bundles
+// skip the cross-side `shared/` directory entirely.
+export type { RosterMovesPlayer } from "@shared/api/rosterMoves";
 
 export type RosterMovesMode = "add-drop" | "place-il" | "activate-il";
 

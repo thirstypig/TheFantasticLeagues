@@ -53,6 +53,7 @@ import AddDropPanel from "../../transactions/components/RosterMovesTab/AddDropPa
 import PlaceOnIlPanel from "../../transactions/components/RosterMovesTab/PlaceOnIlPanel";
 import ActivateFromIlPanel from "../../transactions/components/RosterMovesTab/ActivateFromIlPanel";
 import type { RosterMovesPlayer } from "../../transactions/components/RosterMovesTab/types";
+import { loadRosterMovePlayers } from "../../transactions/lib/loadRosterMovePlayers";
 
 interface PeriodOption {
   id: number;
@@ -142,9 +143,11 @@ export default function Team() {
     ownerName?: string | null;
   } | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
-  // Full league player pool — fed to the transactions panels as `players`.
-  // Same data the existing RosterMovesTab consumes from ActivityPage.
-  const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
+  // Full league player pool — fed to the transactions panels as `players`,
+  // enriched by `loadRosterMovePlayers` so own-team rows carry the
+  // `_dbPlayerId` / `_dbTeamId` / `assignedPosition` the panel filters
+  // require. See todo #116 for why this can't be the raw stats payload.
+  const [players, setPlayers] = useState<RosterMovesPlayer[]>([]);
   const [aiInsights, setAiInsights] = useState<TeamInsightsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -204,19 +207,26 @@ export default function Team() {
         // getPlayerSeasonStats which carries the league pool with
         // assignedPosition + per-stat numbers. Match by mlb_id where
         // possible, fallback to playerId joined against (id) field.
-        const [detailsRes, aiRes, statsRes] = await Promise.allSettled([
+        const [detailsRes, aiRes, statsRes, panelPlayersRes] = await Promise.allSettled([
           getTeamDetails(team.id),
           getTeamAiInsights(leagueId, team.id),
           getPlayerSeasonStats(leagueId),
+          // Shared loader produces the enriched RosterMovesPlayer shape
+          // (_dbPlayerId / _dbTeamId / assignedPosition populated for the
+          // active team) that the transactions panels need. Replaces the
+          // legacy `setPlayers(stats)` cast that left every drop dropdown
+          // empty in production (todo #116).
+          loadRosterMovePlayers(leagueId, team.id),
         ]);
         if (canceled) return;
 
         if (detailsRes.status === "fulfilled") {
           const raw = detailsRes.value.currentRoster ?? [];
           const stats = statsRes.status === "fulfilled" ? statsRes.value : ([] as PlayerSeasonStat[]);
-          // Cache the full league pool for the transactions panels — same
-          // shape ActivityPage hands to RosterMovesTab.
-          setPlayers(stats);
+          // Cache the enriched player pool for the transactions panels.
+          setPlayers(
+            panelPlayersRes.status === "fulfilled" ? panelPlayersRes.value : [],
+          );
           // Index stats by Prisma player id (the integer foreign key on
           // the Roster row) — the only stable identifier available on
           // both sides without going through mlb_id casting. `id` is on
@@ -883,21 +893,21 @@ export default function Team() {
                   <AddDropPanel
                     leagueId={leagueId}
                     teamId={teamMeta.id}
-                    players={players as unknown as RosterMovesPlayer[]}
+                    players={players}
                     onComplete={onPanelComplete}
                   />
                 ) : manageMode === "il-stash" ? (
                   <PlaceOnIlPanel
                     leagueId={leagueId}
                     teamId={teamMeta.id}
-                    players={players as unknown as RosterMovesPlayer[]}
+                    players={players}
                     onComplete={onPanelComplete}
                   />
                 ) : (
                   <ActivateFromIlPanel
                     leagueId={leagueId}
                     teamId={teamMeta.id}
-                    players={players as unknown as RosterMovesPlayer[]}
+                    players={players}
                     onComplete={onPanelComplete}
                   />
                 )}

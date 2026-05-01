@@ -66,12 +66,12 @@ const MOCK_PROCESS_DATE_ABSOLUTE = "2026-05-06 03:00 UTC";
  * by another team — they're FA-shape rows but locked behind a waiver
  * period until the next clear date.
  */
-interface WaiverPlayer extends PreviewPlayer {
+type WaiverPlayer = PreviewPlayer & {
   /** Mock claims-pending count (others bidding too). */
   claimsPending: number;
   /** Where this team currently slots if we entered a $1 bid right now. */
   yourPriorityIfBid1: number;
-}
+};
 
 /** Pull 8 players from the FA pool and lock them behind a waiver period. */
 const WAIVER_POOL: WaiverPlayer[] = [
@@ -223,7 +223,7 @@ export function DesignScenarioWaiver() {
     const q = search.trim().toLowerCase();
     return TRUE_FA_POOL.filter((fa) => {
       if (state.addedPlayerIds.has(fa.playerId)) return false;
-      if (q && !fa.name.toLowerCase().includes(q) && !fa.mlbTeam.toLowerCase().includes(q)) return false;
+      if (q && !fa.name.toLowerCase().includes(q) && !(fa.mlbTeam ?? "").toLowerCase().includes(q)) return false;
       if (posFilter !== "all") {
         const eligible = slotsFor(fa.posList);
         if (!eligible.has(posFilter as SlotCode)) return false;
@@ -236,7 +236,7 @@ export function DesignScenarioWaiver() {
     const q = search.trim().toLowerCase();
     return WAIVER_POOL.filter((w) => {
       if (state.addedPlayerIds.has(w.playerId)) return false;
-      if (q && !w.name.toLowerCase().includes(q) && !w.mlbTeam.toLowerCase().includes(q)) return false;
+      if (q && !w.name.toLowerCase().includes(q) && !(w.mlbTeam ?? "").toLowerCase().includes(q)) return false;
       if (posFilter !== "all") {
         const eligible = slotsFor(w.posList);
         if (!eligible.has(posFilter as SlotCode)) return false;
