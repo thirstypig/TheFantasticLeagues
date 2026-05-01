@@ -13,11 +13,16 @@
 // Touch target ≥ 44×44 enforced via CSS (see `rosterHub.css`).
 
 import type { CSSProperties } from "react";
-import type { SlotCode } from "../../../../lib/positionEligibility";
+import type { SlotCode } from "@shared/api/rosterMoves";
 
 interface PositionPillProps {
-  /** Slot label rendered inside the pill (typically the row's `assignedSlot`). */
-  slot: SlotCode | "IL";
+  /**
+   * Slot label rendered inside the pill (typically the row's
+   * `assignedSlot`). Accepts any wire SlotCode — `BN`/`IL` for
+   * structural slots, `SP`/`RP` for pitcher sub-codes, or any of the
+   * 10 eligibility codes.
+   */
+  slot: SlotCode;
   /** Click handler — selects this player (or commits a move on eligible rows). */
   onClick?: () => void;
   /** True when this pill represents the currently-selected player. */

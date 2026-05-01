@@ -8,7 +8,8 @@
 // restructuring. The static design preview at `/design/roster-hub`
 // feeds these same components mock state.
 
-import type { SlotCode } from "../../../../lib/positionEligibility";
+import type { SlotCode as EligibilitySlotCode } from "../../../../lib/positionEligibility";
+import type { SlotCode } from "@shared/api/rosterMoves";
 
 /**
  * Snapshot of a roster row used by the table. `assignedSlot` may be a
@@ -22,8 +23,16 @@ export interface RosterHubPlayer {
   /** Comma-separated eligible positions per `Player.posList` (e.g. "OF,2B"). */
   posList: string;
   posPrimary: string;
-  /** Current lineup assignment — SlotCode for active rows, "IL" for IL pool. */
-  assignedSlot: SlotCode | "IL";
+  /**
+   * Current lineup assignment. Uses the wire `SlotCode` from the shared
+   * Zod schema (`shared/api/rosterMoves`) — the full vocabulary that
+   * matches what the server emits, including structural slots (BN/IL)
+   * and pitcher sub-codes (SP/RP). The mapper narrows unknown strings to
+   * "BN" via `SlotCodeSchema.safeParse` so the union holds at runtime
+   * (per todo #132 — replaces a cast that would have laundered any
+   * string into this union).
+   */
+  assignedSlot: SlotCode;
   /** Optional duplicate-instance index for multi-capacity slots (OF1/OF2/OF3). */
   slotInstance?: number;
   mlbTeam?: string;
@@ -52,11 +61,15 @@ export interface RosterHubPlayer {
    * Drives the merged Position+Eligibility column (PositionEligibilityCell).
    * Omitted positions render without a count (e.g. MI, DH, structural slots).
    *
-   * PR2 plumbs this from `Player.posGames` (a `Record<SlotCode, number>`
+   * Keyed on the eligibility-slot subset only (the 10 codes that
+   * `positionToSlots()` can produce) — structural slots (BN, IL) and the
+   * pitcher sub-codes (SP, RP) never carry GP counts.
+   *
+   * PR2 plumbs this from `Player.posGames` (a `Record<EligibilitySlotCode, number>`
    * JSON column populated by the existing `syncPositionEligibility` cron
    * which already computes per-position GP for Rule 1/2 logic).
    */
-  gamesPlayedByPosition?: Partial<Record<SlotCode, number>>;
+  gamesPlayedByPosition?: Partial<Record<EligibilitySlotCode, number>>;
 }
 
 /** OGBA hitter stat columns (mirrors Team.tsx's existing hitters table). */
