@@ -92,6 +92,11 @@ interface RosterPlayer {
   isKeeper?: boolean;
   /** Per-position GP — synthetic today, real when Player.posGames lands. */
   gamesByPos?: Record<string, number>;
+  /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …).
+   *  Verbatim per direction-lock IL #1 — drives the ghost-IL warning chip. */
+  mlbStatus?: string | null;
+  /** Days since `mlbStatus` was observed — drives ghost-IL chip body. */
+  mlbStatusDaysAgo?: number;
   // Hitter stats (when available)
   AVG?: number | string;
   HR?: number;
@@ -270,6 +275,10 @@ export default function Team() {
               mlbTeam: row.mlbTeam || stat?.mlb_team || stat?.mlbTeam || undefined,
               isKeeper: row.isKeeper ?? stat?.isKeeper,
               gamesByPos: row.gamesByPos,
+              // mlbStatus is null on the wire when no status known
+              // (free agent, synthetic row); pass through unchanged so the
+              // ghost-IL chip stays dormant for those rows.
+              mlbStatus: row.mlbStatus ?? undefined,
               // Rate stats are `number | null | undefined` per the schema
               // (PR #197 / todo #144). Pass `null` through as `undefined`
               // so the row type's `number | string | undefined` shape
@@ -948,11 +957,11 @@ export default function Team() {
       setResyncing(playerId);
       try {
         await syncIlStatus({ leagueId, teamId: teamMeta.id, playerId });
-        // Refresh to reflect the updated status. The server endpoint is
-        // read-only; the data Team.tsx loads doesn't yet plumb mlbStatus
-        // through the team-detail payload, so the chip will simply
-        // disappear once the daily sync auto-stashes the player. For now
-        // we just toast success.
+        // Refresh page state so the chip reflects the latest mlbStatus.
+        // The team-detail payload now plumbs Player.mlbStatus end-to-end;
+        // bumping reloadKey re-fetches the roster so the chip wakes up
+        // (or disappears) without a hard refresh.
+        setReloadKey((k) => k + 1);
         showToast(`MLB status refreshed for ${ghostIlSuspects.find((g) => g.playerId === playerId)?.name ?? "player"}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Resync failed";
