@@ -169,6 +169,54 @@ describe("GET /transactions", () => {
     expect(res.body.skip).toBe(10);
     expect(res.body.take).toBe(25);
   });
+
+  it("clamps take to 200 when caller requests larger page (DoS guard, #187)", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1&take=999999");
+    expect(res.status).toBe(200);
+    expect(res.body.take).toBe(200);
+    expect(mockPrisma.transactionEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 200 }),
+    );
+  });
+
+  it("clamps take to minimum 1 when caller passes zero or negative", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1&take=0");
+    expect(res.status).toBe(200);
+    expect(res.body.take).toBe(50); // Number(0) || 50 → 50
+
+    const negRes = await supertest(app).get("/transactions?leagueId=1&take=-5");
+    expect(negRes.status).toBe(200);
+    expect(negRes.body.take).toBe(1);
+  });
+
+  it("clamps skip to 100_000 maximum and 0 minimum", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const huge = await supertest(app).get("/transactions?leagueId=1&skip=999999999");
+    expect(huge.status).toBe(200);
+    expect(huge.body.skip).toBe(100_000);
+
+    const neg = await supertest(app).get("/transactions?leagueId=1&skip=-50");
+    expect(neg.status).toBe(200);
+    expect(neg.body.skip).toBe(0);
+  });
+
+  it("falls back to defaults on non-numeric take/skip", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1&take=abc&skip=xyz");
+    expect(res.status).toBe(200);
+    expect(res.body.take).toBe(50);
+    expect(res.body.skip).toBe(0);
+  });
 });
 
 // ── POST /transactions/claim ─────────────────────────────────────

@@ -113,8 +113,12 @@ const router = Router();
 router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
-  const skip = req.query.skip ? Number(req.query.skip) : 0;
-  const take = req.query.take ? Number(req.query.take) : 50;
+  // Bound take in [1, 200] and skip in [0, 100_000]. Without these clamps a
+  // caller can pass `take=999999` and force Prisma to materialize the full
+  // TransactionEvent table for a league — same DoS shape as #187. Default
+  // page size stays 50 to preserve existing client behavior.
+  const skip = Math.min(Math.max(Number(req.query.skip) || 0, 0), 100_000);
+  const take = Math.min(Math.max(Number(req.query.take) || 50, 1), 200);
 
   const where: Prisma.TransactionEventWhereInput = { leagueId };
   if (teamId) where.teamId = teamId;
