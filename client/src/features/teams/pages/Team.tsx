@@ -93,12 +93,18 @@ interface RosterPlayer {
   /** Per-position GP — synthetic today, real when Player.posGames lands. */
   gamesByPos?: Record<string, number>;
   // Hitter stats (when available)
+  AB?: number;
+  H?: number;
   AVG?: number | string;
   HR?: number;
   R?: number;
   RBI?: number;
   SB?: number;
   // Pitcher stats
+  IP?: number | string;
+  /** Hits + walks allowed combined (matches WHIP numerator). */
+  BB_H?: number;
+  ER?: number;
   W?: number;
   SV?: number;
   K?: number;
@@ -274,11 +280,23 @@ export default function Team() {
               // (PR #197 / todo #144). Pass `null` through as `undefined`
               // so the row type's `number | string | undefined` shape
               // holds — the row component renders both as "—".
+              // Hitter stats — AB and H added in session 89 so users can
+              // verify AVG = H/AB at a glance (Yahoo-style).
+              AB: stat?.AB,
+              H: stat?.H,
               AVG: stat?.AVG ?? undefined,
               HR: stat?.HR,
               R: stat?.R,
               RBI: stat?.RBI,
               SB: stat?.SB,
+              // Pitcher stats — IP, BB_H (BB+H combined wire-format),
+              // ER added in session 89 so users can verify
+              // ERA = (ER × 9) / IP and WHIP = (BB+H) / IP.
+              IP: stat?.IP ?? undefined,
+              BB_H: stat?.BB_H ?? undefined,
+              ER: stat?.ER ?? undefined,
+              // (Schema allows IP/ER/BB_H as `null` — coerce to undefined
+              //  so the row's `number | string | undefined` shape holds.)
               W: stat?.W,
               SV: stat?.SV,
               K: stat?.K,
@@ -360,11 +378,18 @@ export default function Team() {
         isPitcher,
         price: r.price,
         mlbTeam: r.mlbTeam ?? undefined,
+        // Hitter cols (session 89: AB/H added for AVG verification).
+        AB: ab,
+        H: h,
         AVG: avg,
         HR: Number(ps.HR) || 0,
         R: Number(ps.R) || 0,
         RBI: Number(ps.RBI) || 0,
         SB: Number(ps.SB) || 0,
+        // Pitcher cols (session 89: IP/BB_H/ER added for ERA/WHIP verification).
+        IP: ip,
+        BB_H: bbH,
+        ER: er,
         W: Number(ps.W) || 0,
         SV: Number(ps.SV) || 0,
         K: Number(ps.K) || 0,
@@ -1048,6 +1073,77 @@ export default function Team() {
 
   const isMyTeam = teamMeta?.id === myTeamId;
 
+  // IL slot count from league rules. Mirrors the server-side
+  // `loadLeagueIlSlotCount` fallback in `ilSlotGuard.ts` — both default
+  // to 2 when the rule isn't seeded. OGBA's seed (server/src/lib/sports/
+  // baseball.ts) now ships with `il.slot_count = 2`. Plumbed into
+  // RosterHubV3.ilTotalSlots so the IL section renders the correct
+  // number of empty drop targets and section header count.
+  const ilSlotCount = useMemo(() => {
+    const raw = leagueRules?.il?.slot_count;
+    const n = raw == null ? NaN : Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 2;
+  }, [leagueRules]);
+
+  // Lineup Intelligence card — rendered between active roster and IL
+  // section via RosterHubV3's `intelSlot` prop. Was a right-rail sidebar
+  // (span 4) before session 89's polish pass; moved into page flow so
+  // the roster table can claim full horizontal real estate for the wider
+  // stat column set (AB/H for hitters, BB+H/ER for pitchers).
+  const lineupIntelligenceCard = (
+    <Glass strong>
+      <SectionLabel>✦ Lineup intelligence</SectionLabel>
+      {aiInsights?.insights?.length ? (
+        <>
+          {aiInsights.overallGrade && (
+            <div style={{ marginTop: 4, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>Overall grade</span>
+              <IridText size={20}>{aiInsights.overallGrade}</IridText>
+            </div>
+          )}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 8,
+            }}
+          >
+            {aiInsights.insights.slice(0, 4).map((r, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: 10,
+                  borderRadius: 12,
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
+                }}
+              >
+                <div style={{ fontSize: 10, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600, marginBottom: 2 }}>
+                  {r.category}
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--am-text)" }}>{r.title}</div>
+                {r.detail && (
+                  <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2, lineHeight: 1.45 }}>
+                    {r.detail}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{ marginTop: 4, fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+          AI insights for this team haven't been generated this week. Check the AI Hub for league-wide recommendations.
+        </div>
+      )}
+      <div style={{ marginTop: 14 }}>
+        <Link to="/ai" style={{ textDecoration: "none" }}>
+          <Chip strong>Open AI Hub →</Chip>
+        </Link>
+      </div>
+    </Glass>
+  );
+
   return (
     <div className="aurora-theme">
       <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", color: "var(--am-text)" }}>
@@ -1193,9 +1289,11 @@ export default function Team() {
           )}
 
           {/* ROSTER — v3 hub with merged hitter/pitcher table OR sub-route
-              container when a manage flow is active. Span 8 keeps the
-              AI sidebar at span 4 alongside (matches the legacy layout). */}
-          <div style={{ gridColumn: "span 8" }}>
+              container when a manage flow is active. Spans full width so
+              the wider stat column set (AB/H for hitters, BB+H/ER for
+              pitchers) has room to breathe; Lineup Intelligence moves
+              below, also full-width, instead of sitting in a right rail. */}
+          <div style={{ gridColumn: "span 12" }}>
             {manageMode ? (
               <SubrouteContainer
                 title={
@@ -1301,6 +1399,8 @@ export default function Team() {
                   dropPoolSlot={
                     <DropPool rows={dropPoolRows} onRestore={pending.revertChange} />
                   }
+                  intelSlot={lineupIntelligenceCard}
+                  ilTotalSlots={ilSlotCount}
                   dndEnabled={canManage}
                   shakeRowId={drag.shakeRowId}
                   ilStashEligible={drag.ilStashEligible}
@@ -1477,54 +1577,13 @@ export default function Team() {
             )}
           </div>
 
-          {/* AI SIDEBAR */}
-          <div style={{ gridColumn: "span 4" }}>
-            <Glass strong>
-              <SectionLabel>✦ Lineup intelligence</SectionLabel>
-              {aiInsights?.insights?.length ? (
-                <>
-                  {aiInsights.overallGrade && (
-                    <div style={{ marginTop: 4, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>Overall grade</span>
-                      <IridText size={20}>{aiInsights.overallGrade}</IridText>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {aiInsights.insights.slice(0, 4).map((r, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          padding: 10,
-                          borderRadius: 12,
-                          background: "var(--am-surface-faint)",
-                          border: "1px solid var(--am-border)",
-                        }}
-                      >
-                        <div style={{ fontSize: 10, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600, marginBottom: 2 }}>
-                          {r.category}
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--am-text)" }}>{r.title}</div>
-                        {r.detail && (
-                          <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2, lineHeight: 1.45 }}>
-                            {r.detail}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div style={{ marginTop: 4, fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
-                  AI insights for this team haven't been generated this week. Check the AI Hub for league-wide recommendations.
-                </div>
-              )}
-              <div style={{ marginTop: 14 }}>
-                <Link to="/ai" style={{ textDecoration: "none" }}>
-                  <Chip strong>Open AI Hub →</Chip>
-                </Link>
-              </div>
-            </Glass>
-          </div>
+          {/* Lineup Intelligence is now rendered INSIDE RosterHubV3 via
+              the `intelSlot` render-prop (between active roster and IL
+              section). Defined as `lineupIntelligenceCard` further up so
+              both manage-mode and the regular hub render the same
+              card. Session-89 polish moved it out of a right-rail
+              sidebar (was span 4 alongside a span 8 roster) so the
+              roster table can claim full horizontal real estate. */}
 
           {/* Pitchers section is now inside RosterHubV3 (consolidated table)
               per plan §0.5 refinement #1. The separate Glass block was
