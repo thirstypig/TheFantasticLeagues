@@ -96,7 +96,12 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
       const roster = rosterMap.get(p.id);
       const isPitcher = (p.posPrimary ?? "").toUpperCase() === "P";
       return {
-        _dbId: p.id,
+        // Leading-underscore enrichment — see CLAUDE.md "Player row enrichment
+        // (deprecated)". Field renamed from `_dbId` to `_dbPlayerId` for
+        // consistency with TeamLegacy's `_dbPlayerId`/`_dbTeamId`/`_rosterId`
+        // family. To be removed when todo #140 lands the server-side hub
+        // roster endpoint that obviates the convention.
+        _dbPlayerId: p.id,
         mlb_id: String(p.mlbId ?? p.id),
         player_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",

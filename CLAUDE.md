@@ -238,6 +238,23 @@ When adding cross-feature imports, document them here to maintain visibility.
 - **Required env vars** (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `IP_HASH_SECRET`) validated at startup — server exits if missing. `IP_HASH_SECRET` must be ≥32 chars (generate with `openssl rand -hex 32`); rotate yearly per session-tracking plan R8
 - **Dev-only endpoints** gated behind explicit env vars (e.g., `ENABLE_DEV_LOGIN=true`), never `NODE_ENV` checks
 
+### Player row enrichment (deprecated)
+
+Several wire-format responses ferry the Prisma `Player.id` through to the client under leading-underscore field names (`_dbPlayerId`, `_dbTeamId`, `_rosterId`, `_posList`). The convention exists because the original `/api/players` endpoint returned an "MLB-shape" payload (`mlb_id`, `player_name`, etc.) that mirrored the legacy CSV import, leaving no obvious slot for the database row's primary key. Rather than reshape the payload, the join key was smuggled in as a leading-underscore "private" field.
+
+Live consumers:
+- `server/src/features/players/routes.ts` emits `_dbPlayerId` on `/api/players` rows (renamed from `_dbId` in PR #196 / todo #141 for consistency).
+- `client/src/features/teams/pages/TeamLegacy.tsx` synthesizes `_dbPlayerId`/`_dbTeamId`/`_rosterId`/`_posList` for the legacy roster panel join.
+- `client/src/features/transactions/components/RosterMovesTab/{AddDropPanel,PlaceOnIlPanel,ActivateFromIlPanel}.tsx` read those fields via `as any` casts.
+- `client/src/features/watchlist/components/WatchlistPanel.tsx` reads `_dbPlayerId` (with a `_dbId` fallback for cached client bundles).
+- `client/src/features/transactions/pages/ActivityPage.tsx` has a `_dbTeamId` fallback.
+
+**Status: deprecated — scheduled for removal when v3 ships everywhere.** The removal vehicles:
+- Todo #140 — server-side hub roster endpoint (`GET /api/teams/:code/hub-roster`) returns a clean payload that obviates the underscore fields; once consumers migrate, the legacy MLB-shape responses can drop the enrichment.
+- Todo #116 — panel data-shape cleanup audits the consumer side and removes the `as any` casts.
+
+Until then: every new server emission of a Prisma row id MUST use `_dbPlayerId` (or the appropriate `_dbXxx` form), never invent a new variant. Document any new consumer in this section.
+
 ## Database
 - Schema at `prisma/schema.prisma`
 - Never run migrations without explicit confirmation
