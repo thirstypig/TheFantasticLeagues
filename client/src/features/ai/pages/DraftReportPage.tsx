@@ -363,8 +363,8 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
                         <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.W ?? "—"}</ThemedTd>
                         <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.SV ?? "—"}</ThemedTd>
                         <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.K ?? "—"}</ThemedTd>
-                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.ERA ? Number(s.ERA).toFixed(2) : "—"}</ThemedTd>
-                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.WHIP ? Number(s.WHIP).toFixed(2) : "—"}</ThemedTd>
+                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.ERA != null ? s.ERA.toFixed(2) : "—"}</ThemedTd>
+                        <ThemedTd align="center" className="text-xs text-[var(--lg-text-secondary)] px-1">{s?.WHIP != null ? s.WHIP.toFixed(2) : "—"}</ThemedTd>
                       </>
                     )}
                     <ThemedTd align="right" className="tabular-nums px-1">${r.price}</ThemedTd>

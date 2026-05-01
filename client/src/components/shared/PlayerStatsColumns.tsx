@@ -52,6 +52,15 @@ export function PitcherStatHeaders({ sortKey, sortDesc, onSort }: SortProps) {
 
 // ─── Cells ────────────────────────────────────────────────────
 
+/**
+ * Structural row shape consumed by the shared hitter/pitcher cells.
+ *
+ * Per todo #144 the rate-stat fields on `PlayerSeasonStat` were narrowed
+ * from `z.union([z.number(), z.string()])` to `z.number().nullable().optional()`,
+ * so we accept `null` here for compatibility. Counting stats can still be
+ * supplied as strings by legacy/period-stats consumers (the period roster
+ * route still emits some fields as strings); the cells coerce defensively.
+ */
 interface StatRow {
   G?: number | string;
   AB?: number | string;
@@ -59,13 +68,13 @@ interface StatRow {
   HR?: number | string;
   RBI?: number | string;
   SB?: number | string;
-  AVG?: number | string;
+  AVG?: number | string | null;
   W?: number | string;
   SV?: number | string;
   K?: number | string;
-  IP?: number | string;
-  ERA?: number | string;
-  WHIP?: number | string;
+  IP?: number | string | null;
+  ERA?: number | string | null;
+  WHIP?: number | string | null;
   SHO?: number | string;
 }
 
@@ -84,7 +93,7 @@ export function HitterStatCells({ row }: { row: StatRow }) {
 }
 
 /** Format IP for display — show one decimal for fractional innings */
-function fmtIP(val: number | string | undefined): string {
+function fmtIP(val: number | string | undefined | null): string {
   if (val == null) return "0";
   const n = typeof val === "string" ? parseFloat(val) : val;
   if (!n) return "0";
