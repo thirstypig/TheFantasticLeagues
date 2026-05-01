@@ -65,7 +65,12 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
       try {
         const res = await fetchJsonApi<any>(`${API_BASE}/players?leagueId=${leagueId}`);
         const mapped = (res.players ?? []).map((p: any) => ({
-          id: Number(p._dbId ?? p.id ?? 0),
+          // `_dbPlayerId` is the canonical leading-underscore enrichment field
+          // (see CLAUDE.md "Player row enrichment (deprecated)"). The server
+          // briefly emitted `_dbId` between todo #137 and #141 — the fallback
+          // exists for cached client bundles still running against the old
+          // field name; removable once #140 lands the server-side hub roster.
+          id: Number(p._dbPlayerId ?? p._dbId ?? p.id ?? 0),
           name: p.player_name ?? p.name ?? "",
           posPrimary: (p.positions ?? p.posPrimary ?? "UT").toString().split(/[/,]/)[0] || "UT",
           mlbTeam: p.mlb_team ?? p.mlbTeam ?? null,
