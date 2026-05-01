@@ -377,8 +377,8 @@ export function DragRowGrid({
         : undefined,
   };
 
-  const hStats = player.hitterStats;
-  const pStats = player.pitcherStats;
+  const hStats = !player.isPitcher ? player.hitterStats : undefined;
+  const pStats = player.isPitcher ? player.pitcherStats : undefined;
 
   return (
     <div ref={setRefs} style={baseStyle} role="row" aria-label={`${player.name} — ${player.assignedSlot}`}>
