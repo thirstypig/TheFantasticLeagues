@@ -28,7 +28,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 27 feature modules mirrored client/server
+- 28 feature modules mirrored client/server
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -71,7 +71,7 @@ fbst/
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-### Current Feature Modules (27)
+### Current Feature Modules (28)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -93,6 +93,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `archive` | routes, 3 archive services | 1 page, api | Historical data import/export |
 | `periods` | routes | 1 page (Season) | Season/period standings with toggle |
 | `mlb-feed` | routes, digestService | — | Live MLB scores, transactions, my-players-today, weekly league digest, depth charts, news feeds (MLB.com, ESPN, Yahoo, Reddit, Trade Rumors) |
+| `awards` | routes, awardsService | — | Fantasy MVP / Cy Young rankings via z-score composite (`GET /api/leagues/:leagueId/awards`); persisted snapshots round-trip from league digest |
 | `ai` | — | 3 pages | AI Insights hub, Draft Report (`/draft-report`), league digest on Home page |
 | `watchlist` | routes | 1 component, api | Private per-team player watchlist (notes, tags) |
 | `trading-block` | routes | 1 page, 1 component, api | Public league-wide trading block ("asking for" field) |
@@ -149,6 +150,7 @@ Some features import from other features' services or components.
 - `commissioner/services/CommissionerService` creates/links `Franchise` rows on league creation
 - `mlb-feed/services/digestService` imports `standings/services/standingsService` (dynamic, for digest context)
 - `mlb-feed/services/digestService` imports `lib/sportConfig` (dynamic, `isKeeperRoster`)
+- `mlb-feed/services/digestService` imports `awards/services/awardsService` (static, for Fantasy MVP / Cy Young rankings embedded in the digest payload)
 - `mlb-feed/routes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
 - `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)

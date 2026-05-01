@@ -6,6 +6,11 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { getWeekKey } from "../../../lib/utils.js";
 import { mlbGetJson, fetchMlbTeamsMap } from "../../../lib/mlbApi.js";
+import {
+  computeAwardsRankings,
+  formatMvpForPrompt,
+  formatCyYoungForPrompt,
+} from "../../awards/services/awardsService.js";
 
 // ─── Types ───
 
@@ -56,7 +61,7 @@ export interface DigestContext {
    * z-score composite data — agents/UIs read this directly rather than
    * re-parsing the AI's prose.
    */
-  awardsRankings?: import("./awardsService.js").AwardsRankings;
+  awardsRankings?: import("../../awards/services/awardsService.js").AwardsRankings;
 }
 
 /** Vote results for a digest. */
@@ -371,10 +376,9 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
   }
 
   // Compute Fantasy MVP and Cy Young candidates via z-score composite scoring.
-  // Logic lives in awardsService (todo #115) so the structured rankings can
-  // be queried independently via GET /api/leagues/:leagueId/awards.
-  const { computeAwardsRankings, formatMvpForPrompt, formatCyYoungForPrompt } =
-    await import("./awardsService.js");
+  // Logic lives in awards/services/awardsService (todo #133 relocated from
+  // mlb-feed; originally extracted in todo #115) so the structured rankings
+  // can be queried independently via GET /api/leagues/:leagueId/awards.
   const awardsRankings = await computeAwardsRankings(leagueId, weekKey);
   const mvpCandidates = formatMvpForPrompt(awardsRankings);
   const cyYoungCandidates = formatCyYoungForPrompt(awardsRankings);
