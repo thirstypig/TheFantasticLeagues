@@ -65,6 +65,11 @@ interface RosterHubV3Props {
   onRevertAll: () => void;
   onSave: () => void;
 
+  /** Optional save state surface for the PendingChangeBar. */
+  saving?: boolean;
+  saveError?: string | null;
+  onDismissError?: () => void;
+
   forceMobile?: boolean;
 }
 
@@ -163,6 +168,9 @@ export function RosterHubV3({
   onRevert,
   onRevertAll,
   onSave,
+  saving,
+  saveError,
+  onDismissError,
   forceMobile,
 }: RosterHubV3Props) {
   const isMobile = useIsMobile(forceMobile);
@@ -190,7 +198,15 @@ export function RosterHubV3({
         </div>
 
         <div style={{ padding: "8px 16px 12px" }}>
-          <PendingChangeBar count={pendingCount} onRevertAll={onRevertAll} onSave={onSave} />
+          <PendingChangeBar
+            count={pendingCount}
+            onRevertAll={onRevertAll}
+            onSave={onSave}
+            saving={saving}
+            saveError={saveError ?? null}
+            onRetry={onSave}
+            onDismissError={onDismissError}
+          />
           {showSelectionBanner && selectedPlayerName && (
             <div
               role="status"
