@@ -38,6 +38,20 @@
 import { useState } from "react";
 import "./rosterHub.css";
 
+/**
+ * Default the date picker to today's local date, formatted as YYYY-MM-DD
+ * (the wire format HTML5 `<input type="date">` expects). Used as the
+ * fallback `value` when no commissioner-mode backdate is set yet —
+ * matches the user's mental model of "today" rather than UTC midnight.
+ */
+function defaultIsoToday(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export type PendingChangeBarItemKind = "swap" | "fa_add" | "il_stash" | "il_activate";
 
 export interface PendingChangeBarItem {
@@ -96,6 +110,19 @@ interface PendingChangeBarProps {
   items?: ReadonlyArray<PendingChangeBarItem>;
   /** Per-item revert handler. Required when `items` is non-empty. */
   onRevertItem?: (id: string) => void;
+  /**
+   * Commissioner-mode backdate (YYYY-MM-DD or null/undefined). When
+   * `onEffectiveDateChange` is also provided, an "Apply moves on:" date
+   * picker renders between the count row and the items list. Owner mode
+   * hubs leave both undefined — moves are always "now" — so the picker
+   * stays out of the everyday flow.
+   *
+   * Persistence + downstream wiring (forwarding the chosen date to each
+   * mutation API call) lives in `usePendingChanges` + the saveFn; the
+   * bar's only job is to render the input.
+   */
+  effectiveDate?: string | null;
+  onEffectiveDateChange?: (effectiveDate: string | null) => void;
 }
 
 export function PendingChangeBar({
@@ -108,9 +135,12 @@ export function PendingChangeBar({
   onDismissError,
   items,
   onRevertItem,
+  effectiveDate,
+  onEffectiveDateChange,
 }: PendingChangeBarProps) {
   if (count <= 0 && !saveError) return null;
   const noun = count === 1 ? "change" : "changes";
+  const showDatePicker = typeof onEffectiveDateChange === "function";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
@@ -191,6 +221,54 @@ export function PendingChangeBar({
               {saving ? "Saving…" : "Save"}
             </button>
           </div>
+        </div>
+      )}
+
+      {showDatePicker && count > 0 && (
+        <div
+          data-testid="pending-change-date-picker"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 14px",
+            background: "color-mix(in srgb, #f59e0b 8%, transparent)",
+            border: "1px solid color-mix(in srgb, #f59e0b 32%, transparent)",
+            borderRadius: 12,
+            fontSize: 12.5,
+            color: "var(--am-text)",
+          }}
+        >
+          <label
+            htmlFor="pending-effective-date"
+            style={{ fontWeight: 600, whiteSpace: "nowrap" }}
+          >
+            Apply moves on:
+          </label>
+          <input
+            id="pending-effective-date"
+            type="date"
+            value={effectiveDate ?? defaultIsoToday()}
+            onChange={(e) => {
+              const next = e.target.value || null;
+              onEffectiveDateChange?.(next);
+            }}
+            disabled={saving}
+            style={{
+              fontSize: 12.5,
+              padding: "4px 8px",
+              borderRadius: 8,
+              border: "1px solid var(--am-border-strong)",
+              background: "var(--am-card)",
+              color: "var(--am-text)",
+              cursor: saving ? "not-allowed" : "pointer",
+              opacity: saving ? 0.5 : 1,
+              minHeight: 28,
+            }}
+          />
+          <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+            (commissioner backdate — server logs the date for audit)
+          </span>
         </div>
       )}
 

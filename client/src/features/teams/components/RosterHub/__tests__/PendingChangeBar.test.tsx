@@ -267,4 +267,75 @@ describe("PendingChangeBar", () => {
     expect(onRevertItem).toHaveBeenCalledWith("il1");
     expect(row).toHaveAttribute("data-expanded", "false");
   });
+
+  describe("commissioner-mode effectiveDate picker", () => {
+    it("does not render the picker when onEffectiveDateChange is undefined", () => {
+      render(
+        <PendingChangeBar
+          count={1}
+          onRevertAll={() => {}}
+          onSave={() => {}}
+        />,
+      );
+      expect(screen.queryByTestId("pending-change-date-picker")).toBeNull();
+    });
+
+    it("renders the picker when onEffectiveDateChange is provided", () => {
+      render(
+        <PendingChangeBar
+          count={1}
+          onRevertAll={() => {}}
+          onSave={() => {}}
+          effectiveDate={null}
+          onEffectiveDateChange={() => {}}
+        />,
+      );
+      expect(screen.getByTestId("pending-change-date-picker")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Apply moves on:/)).toBeInTheDocument();
+    });
+
+    it("hides the picker when count is zero (only an error is showing)", () => {
+      render(
+        <PendingChangeBar
+          count={0}
+          saveError="boom"
+          onRevertAll={() => {}}
+          onSave={() => {}}
+          onEffectiveDateChange={() => {}}
+        />,
+      );
+      expect(screen.queryByTestId("pending-change-date-picker")).toBeNull();
+    });
+
+    it("forwards the chosen value through onEffectiveDateChange", () => {
+      const onEffectiveDateChange = vi.fn();
+      render(
+        <PendingChangeBar
+          count={1}
+          onRevertAll={() => {}}
+          onSave={() => {}}
+          effectiveDate={null}
+          onEffectiveDateChange={onEffectiveDateChange}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText(/Apply moves on:/), {
+        target: { value: "2026-04-15" },
+      });
+      expect(onEffectiveDateChange).toHaveBeenCalledWith("2026-04-15");
+    });
+
+    it("disables the input while saving", () => {
+      render(
+        <PendingChangeBar
+          count={1}
+          onRevertAll={() => {}}
+          onSave={() => {}}
+          saving={true}
+          effectiveDate="2026-04-30"
+          onEffectiveDateChange={() => {}}
+        />,
+      );
+      expect(screen.getByLabelText(/Apply moves on:/)).toBeDisabled();
+    });
+  });
 });
