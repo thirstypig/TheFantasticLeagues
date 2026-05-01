@@ -22,6 +22,8 @@ import {
   assertNoGhostIl,
   type MlbStatusCheck,
 } from "../../lib/ilSlotGuard.js";
+import { getMlbPlayerStatus } from "../../lib/mlbApi.js";
+import { SyncIlStatusBodySchema } from "../../../../shared/api/rosterMoves.js";
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import {
@@ -1033,6 +1035,76 @@ router.post(
 
     invalidateLeagueCaches(leagueId);
     return res.json({ success: true, activatePlayerId, dropPlayerId, appliedReassignments: activateAppliedReassignments });
+  }),
+);
+
+/**
+ * POST /api/transactions/sync-il-status
+ *
+ * Out-of-band MLB status refetch for a single roster player. Powers the
+ * v3 hub's ghost-IL "Resync" affordance (IL scenario direction-lock #3).
+ *
+ * Read-only — does NOT mutate any roster row or transaction event. Calls
+ * the existing `getMlbPlayerStatus` helper (cached 6h, MLB statsapi 40-man
+ * feed) and echoes the raw status string back per IL #1 (verbatim, no
+ * normalization). When the player isn't on their MLB team's 40-man (e.g.
+ * minor league assignment) the response carries `mlbStatus: null` so the
+ * client can dismiss the chip.
+ *
+ * Permission gate mirrors the IL stash/activate routes — owner or
+ * commissioner; everyone else gets a 403 from `requireTeamOwnerOrCommissioner`.
+ */
+router.post(
+  "/transactions/sync-il-status",
+  requireAuth,
+  validateBody(SyncIlStatusBodySchema),
+  requireTeamOwnerOrCommissioner(),
+  asyncHandler(async (req, res) => {
+    const { playerId } = req.body as { playerId: number; teamId: number };
+
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      select: { id: true, name: true, mlbId: true, mlbTeam: true },
+    });
+    if (!player) {
+      return res.status(404).json({ error: `Player #${playerId} not found.` });
+    }
+    if (!player.mlbId || !player.mlbTeam) {
+      return res.status(200).json({
+        playerId: player.id,
+        mlbId: player.mlbId ?? null,
+        mlbStatus: null,
+        fetchedAt: new Date().toISOString(),
+      });
+    }
+
+    let mlbStatus: string | null = null;
+    let fetchedAt = new Date();
+    try {
+      const result = await getMlbPlayerStatus(player.mlbId, player.mlbTeam);
+      if (result) {
+        mlbStatus = result.status;
+        fetchedAt = new Date(result.fetchedAt);
+      }
+    } catch (err) {
+      // Read-only — fail OPEN here. The chip stays visible; the user can
+      // retry later. Log for ops visibility.
+      logger.error(
+        { error: String(err), playerId, mlbId: player.mlbId, mlbTeam: player.mlbTeam },
+        "sync-il-status: MLB feed fetch failed",
+      );
+      return res.status(503).json({
+        error: "MLB status feed is unavailable right now. Try again in a few minutes.",
+        code: "MLB_FEED_UNAVAILABLE",
+      });
+    }
+
+    return res.json({
+      playerId: player.id,
+      mlbId: player.mlbId,
+      mlbStatus,
+      fetchedAt: fetchedAt.toISOString(),
+    });
   }),
 );
 

@@ -48,6 +48,20 @@ vi.mock("../../../lib/ilSlotGuard.js", () => ({
   assertNoGhostIl: (...args: any[]) => mockAssertNoGhostIl(...args),
 }));
 
+// Mock getMlbPlayerStatus for the sync-il-status endpoint (IL scenario).
+// Default returns Active so non-overriding tests don't accidentally trip
+// IL flow. Per-test overrides via mockGetMlbPlayerStatus.mockResolvedValue.
+const mockGetMlbPlayerStatus = vi.fn();
+vi.mock("../../../lib/mlbApi.js", async () => {
+  // Real module wraps a network call to MLB statsapi; replace just the
+  // single export we use. Other exports (fetchMlbTeamsMap etc.) aren't
+  // touched in these route tests but importing the real module would
+  // pull in network code. Use full replacement.
+  return {
+    getMlbPlayerStatus: (...args: any[]) => mockGetMlbPlayerStatus(...args),
+  };
+});
+
 // Control enforcement at test-time via env. Phase 1 guards only fire when
 // this is true — default false so existing tests see legacy behavior.
 const originalEnv = process.env;
@@ -960,5 +974,90 @@ describe("transaction handlers — invalidate league caches", () => {
 
     expect(res.status).toBe(200);
     expect(_playersCacheSize()).toBe(0);
+  });
+});
+
+// ── POST /transactions/sync-il-status (IL scenario) ──────────────
+//
+// Read-only refetch. Powers the v3 hub's "Resync" affordance on the
+// ghost-IL warning chip per direction-lock IL #3. Returns the raw MLB
+// status string verbatim (IL #1) — never normalized.
+
+describe("POST /transactions/sync-il-status", () => {
+  beforeEach(() => {
+    mockGetMlbPlayerStatus.mockReset();
+  });
+
+  it("returns the freshly fetched MLB status string (verbatim per IL #1)", async () => {
+    mockPrisma.player.findUnique.mockResolvedValueOnce({
+      id: 100, name: "Trea Turner", mlbId: 607208, mlbTeam: "PHI",
+    });
+    mockGetMlbPlayerStatus.mockResolvedValueOnce({
+      status: "Injured 10-Day",
+      position: "SS",
+      fetchedAt: 1700000000000,
+    });
+
+    const res = await supertest(app)
+      .post("/transactions/sync-il-status")
+      .send({ teamId: 10, playerId: 100 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.playerId).toBe(100);
+    expect(res.body.mlbId).toBe(607208);
+    expect(res.body.mlbStatus).toBe("Injured 10-Day");
+    expect(res.body.fetchedAt).toBeTruthy();
+  });
+
+  it("returns null mlbStatus when player not on 40-man (e.g. minors)", async () => {
+    mockPrisma.player.findUnique.mockResolvedValueOnce({
+      id: 100, name: "Some Player", mlbId: 999, mlbTeam: "BOS",
+    });
+    mockGetMlbPlayerStatus.mockResolvedValueOnce(null);
+
+    const res = await supertest(app)
+      .post("/transactions/sync-il-status")
+      .send({ teamId: 10, playerId: 100 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mlbStatus).toBeNull();
+  });
+
+  it("returns 404 when the player doesn't exist", async () => {
+    mockPrisma.player.findUnique.mockResolvedValueOnce(null);
+
+    const res = await supertest(app)
+      .post("/transactions/sync-il-status")
+      .send({ teamId: 10, playerId: 9999 });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns null mlbStatus when player has no mlbId/mlbTeam (no feed call)", async () => {
+    mockPrisma.player.findUnique.mockResolvedValueOnce({
+      id: 100, name: "Synthetic", mlbId: null, mlbTeam: null,
+    });
+
+    const res = await supertest(app)
+      .post("/transactions/sync-il-status")
+      .send({ teamId: 10, playerId: 100 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mlbStatus).toBeNull();
+    expect(mockGetMlbPlayerStatus).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 with MLB_FEED_UNAVAILABLE when statsapi throws", async () => {
+    mockPrisma.player.findUnique.mockResolvedValueOnce({
+      id: 100, name: "Trea Turner", mlbId: 607208, mlbTeam: "PHI",
+    });
+    mockGetMlbPlayerStatus.mockRejectedValueOnce(new Error("network down"));
+
+    const res = await supertest(app)
+      .post("/transactions/sync-il-status")
+      .send({ teamId: 10, playerId: 100 });
+
+    expect(res.status).toBe(503);
+    expect(res.body.code).toBe("MLB_FEED_UNAVAILABLE");
   });
 });
