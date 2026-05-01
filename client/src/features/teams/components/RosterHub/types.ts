@@ -12,11 +12,10 @@ import type { SlotCode as EligibilitySlotCode } from "../../../../lib/positionEl
 import type { SlotCode } from "@shared/api/rosterMoves";
 
 /**
- * Snapshot of a roster row used by the table. `assignedSlot` may be a
- * structural slot (`IL`) when the player sits in an IL section. The
- * preview models active rows with a SlotCode and IL rows with `"IL"`.
+ * Fields shared by every roster row regardless of role. The role-keyed
+ * stats live on the `RosterHubPlayer` discriminated union below.
  */
-export interface RosterHubPlayer {
+interface RosterHubPlayerBase {
   rosterId: number;
   playerId: number;
   name: string;
@@ -41,21 +40,6 @@ export interface RosterHubPlayer {
   /** Keeper visual flag (gold ring + ★ glyph). */
   isKeeper?: boolean;
 
-  /* ── v3 additions (consolidated table) ──
-   *
-   * Per §0.5 refinement #1 the roster hub becomes THE Team page roster
-   * section, replacing the separate hitter/pitcher stats tables. These
-   * fields carry the role-aware stats consumed by `RosterRowV3`. PR2
-   * will populate from the existing `/api/players/:id/season-stats`
-   * shape mapped onto `RosterHubPlayer`.
-   */
-  /** True iff this row should render in the pitchers section. */
-  isPitcher?: boolean;
-  /** Hitter stats — undefined for pitchers. */
-  hitterStats?: HitterStats;
-  /** Pitcher stats — undefined for hitters. */
-  pitcherStats?: PitcherStats;
-
   /**
    * Per §0.5 refinement #3: games played at each eligible position.
    * Drives the merged Position+Eligibility column (PositionEligibilityCell).
@@ -71,6 +55,35 @@ export interface RosterHubPlayer {
    */
   gamesPlayedByPosition?: Partial<Record<EligibilitySlotCode, number>>;
 }
+
+/**
+ * Snapshot of a roster row used by the table.
+ *
+ * Per §0.5 refinement #1 the roster hub becomes THE Team page roster
+ * section, replacing the separate hitter/pitcher stats tables. The
+ * type is a discriminated union on `isPitcher` (todo #153) — the
+ * runtime invariant that exactly one of `hitterStats` / `pitcherStats`
+ * is defined is now encoded in the type system. Consumers should use
+ * `if (p.isPitcher)` to narrow to the pitcher branch rather than
+ * defensive optional-chaining `p.pitcherStats?.W` on the wide union.
+ *
+ * `assignedSlot` may be a structural slot (`BN` / `IL`) when the player
+ * sits on the bench or in an IL section. The preview models active
+ * rows with a SlotCode and IL rows with `"IL"`.
+ */
+export type RosterHubPlayer = RosterHubPlayerBase &
+  (
+    | {
+        /** Hitter row — `hitterStats` carries optional R/HR/RBI/SB/AVG. */
+        isPitcher: false;
+        hitterStats?: HitterStats;
+      }
+    | {
+        /** Pitcher row — `pitcherStats` carries optional IP/W/SV/K/ERA/WHIP. */
+        isPitcher: true;
+        pitcherStats?: PitcherStats;
+      }
+  );
 
 /** OGBA hitter stat columns (mirrors Team.tsx's existing hitters table). */
 export interface HitterStats {

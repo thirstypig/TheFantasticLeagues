@@ -22,8 +22,11 @@ interface MobileRowV3Props {
   actions: RowAction[];
 }
 
-function statSummaryFor(player: RosterHubPlayer, role: "hitter" | "pitcher"): string {
-  if (role === "hitter") {
+function statSummaryFor(player: RosterHubPlayer): string {
+  // Per todo #153 — the `isPitcher` discriminant narrows the union so
+  // the role-keyed stat object is statically known. No more dual-branch
+  // optional-chaining on a wide type.
+  if (!player.isPitcher) {
     const s = player.hitterStats ?? {};
     const parts: string[] = [];
     if (s.R != null) parts.push(`${s.R} R`);
@@ -61,6 +64,10 @@ function MobileRowV3Impl({
   onRevert,
   actions,
 }: MobileRowV3Props) {
+  // `role` is still used by the React.memo comparator (so swapping a
+  // hitter row for a pitcher row remounts cleanly) but stat rendering
+  // narrows on `player.isPitcher` directly per todo #153.
+  void role;
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -107,7 +114,7 @@ function MobileRowV3Impl({
           {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
         </span>
         <span style={{ fontSize: 11.5, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
-          {statSummaryFor(player, role) || "—"}
+          {statSummaryFor(player) || "—"}
         </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "flex-end" }}>

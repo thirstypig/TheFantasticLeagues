@@ -42,47 +42,47 @@ import "../../features/teams/components/RosterHub/rosterHub.css";
  */
 const MOCK_ACTIVE: RosterHubPlayer[] = [
   // Catchers (2 slots)
-  { rosterId: 1, playerId: 101, name: "Will Smith", posList: "C", posPrimary: "C", assignedSlot: "C", slotInstance: 0, mlbTeam: "LAD", statSnapshot: "12 HR · .258" },
-  { rosterId: 2, playerId: 102, name: "Adley Rutschman", posList: "C", posPrimary: "C", assignedSlot: "C", slotInstance: 1, mlbTeam: "BAL", statSnapshot: "9 HR · .272" },
+  { rosterId: 1, playerId: 101, name: "Will Smith", posList: "C", posPrimary: "C", assignedSlot: "C", slotInstance: 0, mlbTeam: "LAD", statSnapshot: "12 HR · .258", isPitcher: false },
+  { rosterId: 2, playerId: 102, name: "Adley Rutschman", posList: "C", posPrimary: "C", assignedSlot: "C", slotInstance: 1, mlbTeam: "BAL", statSnapshot: "9 HR · .272", isPitcher: false },
 
   // Infield (1B/2B/3B/SS — single slot each)
-  { rosterId: 3, playerId: 103, name: "Vladimir Guerrero Jr.", posList: "1B", posPrimary: "1B", assignedSlot: "1B", mlbTeam: "TOR", statSnapshot: "18 HR · .291" },
-  { rosterId: 4, playerId: 104, name: "Trea Turner", posList: "2B,SS", posPrimary: "SS", assignedSlot: "2B", mlbTeam: "PHI", statSnapshot: "8 HR · 14 SB", isKeeper: true },
-  { rosterId: 5, playerId: 105, name: "Alec Bohm", posList: "3B,1B", posPrimary: "3B", assignedSlot: "3B", mlbTeam: "PHI", statSnapshot: "11 HR · .280" },
-  { rosterId: 6, playerId: 106, name: "Bobby Witt Jr.", posList: "SS", posPrimary: "SS", assignedSlot: "SS", mlbTeam: "KC", statSnapshot: "16 HR · 18 SB" },
+  { rosterId: 3, playerId: 103, name: "Vladimir Guerrero Jr.", posList: "1B", posPrimary: "1B", assignedSlot: "1B", mlbTeam: "TOR", statSnapshot: "18 HR · .291", isPitcher: false },
+  { rosterId: 4, playerId: 104, name: "Trea Turner", posList: "2B,SS", posPrimary: "SS", assignedSlot: "2B", mlbTeam: "PHI", statSnapshot: "8 HR · 14 SB", isKeeper: true, isPitcher: false },
+  { rosterId: 5, playerId: 105, name: "Alec Bohm", posList: "3B,1B", posPrimary: "3B", assignedSlot: "3B", mlbTeam: "PHI", statSnapshot: "11 HR · .280", isPitcher: false },
+  { rosterId: 6, playerId: 106, name: "Bobby Witt Jr.", posList: "SS", posPrimary: "SS", assignedSlot: "SS", mlbTeam: "KC", statSnapshot: "16 HR · 18 SB", isPitcher: false },
 
   // MI (middle infield flex)
-  { rosterId: 7, playerId: 107, name: "Marcus Semien", posList: "2B", posPrimary: "2B", assignedSlot: "MI", mlbTeam: "TEX", statSnapshot: "13 HR · 9 SB" },
+  { rosterId: 7, playerId: 107, name: "Marcus Semien", posList: "2B", posPrimary: "2B", assignedSlot: "MI", mlbTeam: "TEX", statSnapshot: "13 HR · 9 SB", isPitcher: false },
 
   // CM (corner-man flex)
-  { rosterId: 8, playerId: 108, name: "Pete Alonso", posList: "1B", posPrimary: "1B", assignedSlot: "CM", mlbTeam: "NYM", statSnapshot: "20 HR · .247" },
+  { rosterId: 8, playerId: 108, name: "Pete Alonso", posList: "1B", posPrimary: "1B", assignedSlot: "CM", mlbTeam: "NYM", statSnapshot: "20 HR · .247", isPitcher: false },
 
   // Outfield (5 slots — note multi-position eligibility on Mookie)
-  { rosterId: 9, playerId: 109, name: "Mookie Betts", posList: "OF,2B", posPrimary: "OF", assignedSlot: "OF", slotInstance: 0, mlbTeam: "LAD", statSnapshot: "17 HR · .302", isKeeper: true },
-  { rosterId: 10, playerId: 110, name: "Aaron Judge", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 1, mlbTeam: "NYY", statSnapshot: "26 HR · .284" },
-  { rosterId: 11, playerId: 111, name: "Juan Soto", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 2, mlbTeam: "NYM", statSnapshot: "21 HR · .311" },
-  { rosterId: 12, playerId: 112, name: "Kyle Tucker", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 3, mlbTeam: "CHC", statSnapshot: "19 HR · .288" },
-  { rosterId: 13, playerId: 113, name: "Corbin Carroll", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 4, mlbTeam: "ARI", statSnapshot: "10 HR · 22 SB" },
+  { rosterId: 9, playerId: 109, name: "Mookie Betts", posList: "OF,2B", posPrimary: "OF", assignedSlot: "OF", slotInstance: 0, mlbTeam: "LAD", statSnapshot: "17 HR · .302", isKeeper: true, isPitcher: false },
+  { rosterId: 10, playerId: 110, name: "Aaron Judge", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 1, mlbTeam: "NYY", statSnapshot: "26 HR · .284", isPitcher: false },
+  { rosterId: 11, playerId: 111, name: "Juan Soto", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 2, mlbTeam: "NYM", statSnapshot: "21 HR · .311", isPitcher: false },
+  { rosterId: 12, playerId: 112, name: "Kyle Tucker", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 3, mlbTeam: "CHC", statSnapshot: "19 HR · .288", isPitcher: false },
+  { rosterId: 13, playerId: 113, name: "Corbin Carroll", posList: "OF", posPrimary: "OF", assignedSlot: "OF", slotInstance: 4, mlbTeam: "ARI", statSnapshot: "10 HR · 22 SB", isPitcher: false },
 
   // DH
-  { rosterId: 14, playerId: 114, name: "Shohei Ohtani", posList: "DH", posPrimary: "DH", assignedSlot: "DH", mlbTeam: "LAD", statSnapshot: "29 HR · .299", isKeeper: true },
+  { rosterId: 14, playerId: 114, name: "Shohei Ohtani", posList: "DH", posPrimary: "DH", assignedSlot: "DH", mlbTeam: "LAD", statSnapshot: "29 HR · .299", isKeeper: true, isPitcher: false },
 
   // Pitchers (9 slots)
-  { rosterId: 15, playerId: 115, name: "Tarik Skubal", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 0, mlbTeam: "DET", statSnapshot: "10 W · 2.41 ERA" },
-  { rosterId: 16, playerId: 116, name: "Paul Skenes", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 1, mlbTeam: "PIT", statSnapshot: "9 W · 2.05 ERA" },
-  { rosterId: 17, playerId: 117, name: "Logan Gilbert", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 2, mlbTeam: "SEA", statSnapshot: "8 W · 3.02 ERA" },
-  { rosterId: 18, playerId: 118, name: "Zack Wheeler", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 3, mlbTeam: "PHI", statSnapshot: "11 W · 2.68 ERA" },
-  { rosterId: 19, playerId: 119, name: "Corbin Burnes", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 4, mlbTeam: "ARI", statSnapshot: "7 W · 3.21 ERA" },
-  { rosterId: 20, playerId: 120, name: "Spencer Strider", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 5, mlbTeam: "ATL", statSnapshot: "9 W · 2.86 ERA" },
-  { rosterId: 21, playerId: 121, name: "Edwin Díaz", posList: "RP", posPrimary: "RP", assignedSlot: "P", slotInstance: 6, mlbTeam: "NYM", statSnapshot: "18 SV · 2.10 ERA" },
-  { rosterId: 22, playerId: 122, name: "Emmanuel Clase", posList: "RP", posPrimary: "RP", assignedSlot: "P", slotInstance: 7, mlbTeam: "CLE", statSnapshot: "21 SV · 1.78 ERA" },
-  { rosterId: 23, playerId: 123, name: "Mason Miller", posList: "RP", posPrimary: "RP", assignedSlot: "P", slotInstance: 8, mlbTeam: "ATH", statSnapshot: "16 SV · 2.04 ERA" },
+  { rosterId: 15, playerId: 115, name: "Tarik Skubal", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 0, mlbTeam: "DET", statSnapshot: "10 W · 2.41 ERA", isPitcher: true },
+  { rosterId: 16, playerId: 116, name: "Paul Skenes", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 1, mlbTeam: "PIT", statSnapshot: "9 W · 2.05 ERA", isPitcher: true },
+  { rosterId: 17, playerId: 117, name: "Logan Gilbert", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 2, mlbTeam: "SEA", statSnapshot: "8 W · 3.02 ERA", isPitcher: true },
+  { rosterId: 18, playerId: 118, name: "Zack Wheeler", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 3, mlbTeam: "PHI", statSnapshot: "11 W · 2.68 ERA", isPitcher: true },
+  { rosterId: 19, playerId: 119, name: "Corbin Burnes", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 4, mlbTeam: "ARI", statSnapshot: "7 W · 3.21 ERA", isPitcher: true },
+  { rosterId: 20, playerId: 120, name: "Spencer Strider", posList: "SP", posPrimary: "SP", assignedSlot: "P", slotInstance: 5, mlbTeam: "ATL", statSnapshot: "9 W · 2.86 ERA", isPitcher: true },
+  { rosterId: 21, playerId: 121, name: "Edwin Díaz", posList: "RP", posPrimary: "RP", assignedSlot: "P", slotInstance: 6, mlbTeam: "NYM", statSnapshot: "18 SV · 2.10 ERA", isPitcher: true },
+  { rosterId: 22, playerId: 122, name: "Emmanuel Clase", posList: "RP", posPrimary: "RP", assignedSlot: "P", slotInstance: 7, mlbTeam: "CLE", statSnapshot: "21 SV · 1.78 ERA", isPitcher: true },
+  { rosterId: 23, playerId: 123, name: "Mason Miller", posList: "RP", posPrimary: "RP", assignedSlot: "P", slotInstance: 8, mlbTeam: "ATH", statSnapshot: "16 SV · 2.04 ERA", isPitcher: true },
 ];
 
 const MOCK_IL: RosterHubPlayer[] = [
-  { rosterId: 24, playerId: 124, name: "Mike Trout", posList: "OF", posPrimary: "OF", assignedSlot: "IL", mlbTeam: "LAA", statSnapshot: "Knee · 60-day" },
-  { rosterId: 25, playerId: 125, name: "Ronald Acuña Jr.", posList: "OF", posPrimary: "OF", assignedSlot: "IL", mlbTeam: "ATL", statSnapshot: "Knee · 10-day", isKeeper: true },
-  { rosterId: 26, playerId: 126, name: "Jacob deGrom", posList: "SP", posPrimary: "SP", assignedSlot: "IL", mlbTeam: "TEX", statSnapshot: "Elbow · 60-day" },
+  { rosterId: 24, playerId: 124, name: "Mike Trout", posList: "OF", posPrimary: "OF", assignedSlot: "IL", mlbTeam: "LAA", statSnapshot: "Knee · 60-day", isPitcher: false },
+  { rosterId: 25, playerId: 125, name: "Ronald Acuña Jr.", posList: "OF", posPrimary: "OF", assignedSlot: "IL", mlbTeam: "ATL", statSnapshot: "Knee · 10-day", isKeeper: true, isPitcher: false },
+  { rosterId: 26, playerId: 126, name: "Jacob deGrom", posList: "SP", posPrimary: "SP", assignedSlot: "IL", mlbTeam: "TEX", statSnapshot: "Elbow · 60-day", isPitcher: true },
 ];
 
 /* ─── Visual-state derivation ─────────────────────────────────────── */

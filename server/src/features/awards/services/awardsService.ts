@@ -115,6 +115,67 @@ export const MIN_IP_FOR_CY_YOUNG = 20;
 /** Minimum GS to be considered a "starter" for Cy Young role classification. */
 export const MIN_GS_FOR_STARTER = 3;
 
+/** Multiplier applied to the reliever composite to keep starters dominant. */
+export const RELIEVER_DISCOUNT = 0.7;
+
+/**
+ * Per-stat MVP weights, keyed by the same labels used in `MvpCandidate.zScores`.
+ * The composite score is `Σ weight[k] * zScore[k]`. Negative weight = stat
+ * where higher is worse (only `SO` here — strikeouts at the plate).
+ *
+ * Lifting these out of the call site (todo #146) makes the formula auditable
+ * without scrolling through the aggregation code, and sets up an obvious next
+ * step for tuning per-league: drive `MVP_WEIGHTS` from `LeagueRule` once we
+ * support custom scoring categories.
+ */
+export const MVP_WEIGHTS: Readonly<Record<keyof MvpCandidate["zScores"], number>> = Object.freeze({
+  OPS: 3.0,
+  HR: 2.5,
+  OBP: 2.0,
+  RBI: 1.5,
+  R: 1.5,
+  SB: 1.5,
+  TB: 1.0,
+  BB: 0.5,
+  SO: -0.3, // strikeouts at the plate are bad
+});
+
+/**
+ * Per-stat starter weights for Cy Young. Note that `ERA`, `WHIP`, and `BB9`
+ * z-scores are already sign-flipped at compute time (lower-is-better → higher
+ * z is "better"), so the weight here is the post-flip multiplier.
+ */
+export const CY_YOUNG_STARTER_WEIGHTS: Readonly<Record<keyof CyYoungCandidate["zScores"], number>> = Object.freeze({
+  ERA: 3.5,
+  WHIP: 2.5,
+  K: 2.0,
+  K9: 1.5,
+  IP: 1.5,
+  W: 1.0,
+  L: -0.5, // more losses = worse
+  HR_A: -0.5,
+  BB9: 0.5,
+  SV: 0.0, // saves don't drive the starter score
+});
+
+/**
+ * Per-stat reliever weights for Cy Young. Same sign-flip convention as the
+ * starter weights. Relievers don't get credit for IP / W and get a flat
+ * `RELIEVER_DISCOUNT` multiplier on the final composite.
+ */
+export const CY_YOUNG_RELIEVER_WEIGHTS: Readonly<Record<keyof CyYoungCandidate["zScores"], number>> = Object.freeze({
+  SV: 3.0,
+  ERA: 3.0,
+  WHIP: 2.0,
+  K9: 1.5,
+  K: 1.0,
+  BB9: 0.5,
+  HR_A: -0.5,
+  IP: 0.0,
+  W: 0.0,
+  L: 0.0,
+});
+
 // ─── Helpers ───
 
 /** Z-score: (value - mean) / stddev. SD floor at 1 to avoid divide-by-zero. */
@@ -128,17 +189,36 @@ function zScores(vals: number[]): number[] {
 // ─── Main computation ───
 
 /**
+ * Throw `signal.reason` (or a fresh AbortError) if the signal has been
+ * aborted. Mirrors the standard `signal.throwIfAborted()` for runtimes that
+ * don't yet expose it; calling it between aggregation stages lets us bail out
+ * promptly when the caller cancels (todo #138).
+ */
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException("Aborted", "AbortError");
+  }
+}
+
+/**
  * Compute MVP / Cy Young rankings for a league, summing stats across all
  * active+completed periods at the time of the call.
  *
  * `weekKey` is included in the output for caching/snapshotting; it does NOT
  * filter the period set (which is always "season-to-date").
+ *
+ * Pass `signal` to allow the caller to cancel the compute mid-flight (e.g.
+ * when an HTTP client disconnects). The signal is checked between aggregation
+ * stages so we don't keep burning DB time after a cancellation.
  */
 export async function computeAwardsRankings(
   leagueId: number,
   weekKey: string,
+  signal?: AbortSignal,
 ): Promise<AwardsRankings> {
   const computedAt = new Date().toISOString();
+
+  throwIfAborted(signal);
 
   // Gather active/completed periods + rostered players for this league
   const [activePeriods, teams] = await Promise.all([
@@ -172,24 +252,25 @@ export async function computeAwardsRankings(
     teams.flatMap(t => t.rosters.map(r => [r.player.id, { name: r.player.name, team: t.name }])),
   );
 
-  // Aggregate stats across all periods (sum)
-  const [playerStats, ipSums] = await Promise.all([
-    prisma.playerStatsPeriod.groupBy({
-      by: ["playerId"],
-      where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
-      _sum: {
-        AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
-        BB: true, TB: true, SO: true,
-        W: true, SV: true, K: true, ER: true, L: true, GS: true, HR_A: true,
-      },
-    }),
-    prisma.playerStatsPeriod.groupBy({
-      by: ["playerId"],
-      where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
-      _sum: { IP: true, BB_H: true },
-    }),
-  ]);
-  const ipMap = new Map(ipSums.map(r => [r.playerId, { IP: r._sum.IP ?? 0, BB_H: r._sum.BB_H ?? 0 }]));
+  throwIfAborted(signal);
+
+  // Aggregate stats across all periods in a single groupBy. Previously this
+  // issued two parallel groupBys with identical where clauses (one for the
+  // counting-stat sums, one for IP / BB_H) and merged the IP map post-hoc;
+  // under `connection_limit=1` the two queries serialized on the wire, which
+  // doubled the DB cost of every uncached awards request (todo #138).
+  const playerStats = await prisma.playerStatsPeriod.groupBy({
+    by: ["playerId"],
+    where: { playerId: { in: rosteredPlayerIds }, periodId: { in: periodIds } },
+    _sum: {
+      AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
+      BB: true, TB: true, SO: true,
+      W: true, SV: true, K: true, ER: true, L: true, GS: true, HR_A: true,
+      IP: true, BB_H: true,
+    },
+  });
+
+  throwIfAborted(signal);
 
   // ── MVP: hitters with AB >= MIN_AB_FOR_MVP ──
   const hitterRows = playerStats
@@ -213,24 +294,26 @@ export async function computeAwardsRankings(
 
   let mvp: MvpCandidate[] = [];
   if (hitterRows.length >= 3) {
-    const zOPS = zScores(hitterRows.map(h => h.ops));
-    const zHR = zScores(hitterRows.map(h => h.hr));
-    const zOBP = zScores(hitterRows.map(h => h.obp));
-    const zRBI = zScores(hitterRows.map(h => h.rbi));
-    const zR = zScores(hitterRows.map(h => h.r));
-    const zSB = zScores(hitterRows.map(h => h.sb));
-    const zTB = zScores(hitterRows.map(h => h.tb));
-    const zBB = zScores(hitterRows.map(h => h.bb));
-    const zSO = zScores(hitterRows.map(h => h.so));
+    // Per-stat z-score arrays, keyed by the same labels as `MvpCandidate.zScores`.
+    const mvpZ: Record<keyof MvpCandidate["zScores"], number[]> = {
+      OPS: zScores(hitterRows.map(h => h.ops)),
+      HR: zScores(hitterRows.map(h => h.hr)),
+      OBP: zScores(hitterRows.map(h => h.obp)),
+      RBI: zScores(hitterRows.map(h => h.rbi)),
+      R: zScores(hitterRows.map(h => h.r)),
+      SB: zScores(hitterRows.map(h => h.sb)),
+      TB: zScores(hitterRows.map(h => h.tb)),
+      BB: zScores(hitterRows.map(h => h.bb)),
+      SO: zScores(hitterRows.map(h => h.so)),
+    };
+    const mvpStatKeys = Object.keys(MVP_WEIGHTS) as (keyof MvpCandidate["zScores"])[];
 
     mvp = hitterRows
       .map((h, i) => ({
         h,
         i,
-        mvpScore:
-          zOPS[i] * 3.0 + zHR[i] * 2.5 + zOBP[i] * 2.0 +
-          zRBI[i] * 1.5 + zR[i] * 1.5 + zSB[i] * 1.5 +
-          zTB[i] * 1.0 + zBB[i] * 0.5 - zSO[i] * 0.3,
+        // Composite = Σ weight[k] * zScore[k] over MVP_WEIGHTS.
+        mvpScore: mvpStatKeys.reduce((acc, k) => acc + MVP_WEIGHTS[k] * mvpZ[k][i], 0),
       }))
       .sort((a, b) => b.mvpScore - a.mvpScore)
       .slice(0, 3)
@@ -246,22 +329,23 @@ export async function computeAwardsRankings(
           AVG: row.h.avg, OBP: row.h.obp, SLG: row.h.slg, OPS: row.h.ops,
         },
         zScores: {
-          OPS: zOPS[row.i], HR: zHR[row.i], OBP: zOBP[row.i],
-          RBI: zRBI[row.i], R: zR[row.i], SB: zSB[row.i],
-          TB: zTB[row.i], BB: zBB[row.i], SO: zSO[row.i],
+          OPS: mvpZ.OPS[row.i], HR: mvpZ.HR[row.i], OBP: mvpZ.OBP[row.i],
+          RBI: mvpZ.RBI[row.i], R: mvpZ.R[row.i], SB: mvpZ.SB[row.i],
+          TB: mvpZ.TB[row.i], BB: mvpZ.BB[row.i], SO: mvpZ.SO[row.i],
         },
       }));
   }
 
+  throwIfAborted(signal);
+
   // ── Cy Young: pitchers with IP >= MIN_IP and GS >= MIN_GS ──
   const starterRows = playerStats
     .filter(p => {
-      const ip = ipMap.get(p.playerId)?.IP ?? 0;
+      const ip = p._sum.IP ?? 0;
       return ip >= MIN_IP_FOR_CY_YOUNG && (p._sum.GS ?? 0) >= MIN_GS_FOR_STARTER;
     })
     .map(p => {
-      const ipData = ipMap.get(p.playerId) ?? { IP: 0, BB_H: 0 };
-      const ip = ipData.IP, bbh = ipData.BB_H;
+      const ip = p._sum.IP ?? 0, bbh = p._sum.BB_H ?? 0;
       const w = p._sum.W ?? 0, l = p._sum.L ?? 0, k = p._sum.K ?? 0;
       const er = p._sum.ER ?? 0, sv = p._sum.SV ?? 0, hra = p._sum.HR_A ?? 0;
       const era = ip > 0 ? (er * 9) / ip : 99;
@@ -280,30 +364,37 @@ export async function computeAwardsRankings(
 
   let cyYoung: CyYoungCandidate[] = [];
   if (starterRows.length >= 3) {
-    // Invert ERA, WHIP, BB9, and L (lower = better → negate the z-score so higher is "better")
-    const zERA = zScores(starterRows.map(p => p.era)).map(v => -v);
-    const zWHIP = zScores(starterRows.map(p => p.whip)).map(v => -v);
-    const zK = zScores(starterRows.map(p => p.k));
-    const zK9 = zScores(starterRows.map(p => p.k9));
-    const zIP = zScores(starterRows.map(p => p.ip));
-    const zW = zScores(starterRows.map(p => p.w));
-    const zL = zScores(starterRows.map(p => p.l));
-    const zHRA = zScores(starterRows.map(p => p.hra));
-    const zBB9 = zScores(starterRows.map(p => p.bb9)).map(v => -v);
-    const zSV = zScores(starterRows.map(p => p.sv));
+    // Per-stat z-score arrays, keyed by the same labels as
+    // `CyYoungCandidate.zScores`. ERA / WHIP / BB9 are sign-flipped here
+    // (lower is better → negate so higher is "better"); the weight table
+    // assumes that flip has already been applied.
+    const cyZ: Record<keyof CyYoungCandidate["zScores"], number[]> = {
+      ERA: zScores(starterRows.map(p => p.era)).map(v => -v),
+      WHIP: zScores(starterRows.map(p => p.whip)).map(v => -v),
+      BB9: zScores(starterRows.map(p => p.bb9)).map(v => -v),
+      K: zScores(starterRows.map(p => p.k)),
+      K9: zScores(starterRows.map(p => p.k9)),
+      IP: zScores(starterRows.map(p => p.ip)),
+      W: zScores(starterRows.map(p => p.w)),
+      L: zScores(starterRows.map(p => p.l)),
+      HR_A: zScores(starterRows.map(p => p.hra)),
+      SV: zScores(starterRows.map(p => p.sv)),
+    };
+    const cyStatKeys = Object.keys(CY_YOUNG_STARTER_WEIGHTS) as (keyof CyYoungCandidate["zScores"])[];
 
     cyYoung = starterRows
       .map((p, i) => {
-        // Starters: ERA/WHIP/K dominate, W matters less
-        const starterScore =
-          zERA[i] * 3.5 + zWHIP[i] * 2.5 + zK[i] * 2.0 + zK9[i] * 1.5 +
-          zIP[i] * 1.5 + zW[i] * 1.0 - zL[i] * 0.5 - zHRA[i] * 0.5 + zBB9[i] * 0.5;
-        // Relievers: saves + rate stats, no IP/W
-        const relieverScore =
-          zSV[i] * 3.0 + zERA[i] * 3.0 + zWHIP[i] * 2.0 + zK9[i] * 1.5 +
-          zK[i] * 1.0 + zBB9[i] * 0.5 - zHRA[i] * 0.5;
+        // Composite = Σ weight[k] * zScore[k]; pick weight set by role.
+        const starterScore = cyStatKeys.reduce(
+          (acc, k) => acc + CY_YOUNG_STARTER_WEIGHTS[k] * cyZ[k][i],
+          0,
+        );
+        const relieverScore = cyStatKeys.reduce(
+          (acc, k) => acc + CY_YOUNG_RELIEVER_WEIGHTS[k] * cyZ[k][i],
+          0,
+        );
         const isRelief = p.sv > 0 && !p.isStarter;
-        const cyScore = isRelief ? relieverScore * 0.7 : starterScore; // 0.7x discount for relievers
+        const cyScore = isRelief ? relieverScore * RELIEVER_DISCOUNT : starterScore;
         return { p, i, cyScore, role: (isRelief ? "RP" : "SP") as "SP" | "RP" };
       })
       .sort((a, b) => b.cyScore - a.cyScore)
@@ -321,9 +412,9 @@ export async function computeAwardsRankings(
           K9: row.p.k9, BB9: row.p.bb9, HR_A: row.p.hra,
         },
         zScores: {
-          ERA: zERA[row.i], WHIP: zWHIP[row.i], K: zK[row.i], K9: zK9[row.i],
-          IP: zIP[row.i], W: zW[row.i], L: zL[row.i],
-          HR_A: zHRA[row.i], BB9: zBB9[row.i], SV: zSV[row.i],
+          ERA: cyZ.ERA[row.i], WHIP: cyZ.WHIP[row.i], K: cyZ.K[row.i], K9: cyZ.K9[row.i],
+          IP: cyZ.IP[row.i], W: cyZ.W[row.i], L: cyZ.L[row.i],
+          HR_A: cyZ.HR_A[row.i], BB9: cyZ.BB9[row.i], SV: cyZ.SV[row.i],
         },
       }));
   }

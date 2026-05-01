@@ -212,11 +212,12 @@ export default function Team() {
           setPlayers(stats);
           // Index stats by Prisma player id (the integer foreign key on
           // the Roster row) — the only stable identifier available on
-          // both sides without going through mlb_id casting.
+          // both sides without going through mlb_id casting. `id` is on
+          // the shared schema (`shared/api/playerSeasonStats.ts:28`) so
+          // typed access is sufficient; no cast needed (todo #131).
           const statsByPid = new Map<number, PlayerSeasonStat>();
           for (const s of stats) {
-            const pid = (s as unknown as { id?: number }).id;
-            if (pid) statsByPid.set(pid, s);
+            if (s.id) statsByPid.set(s.id, s);
           }
 
           const players: RosterPlayer[] = raw.map((row) => {
@@ -224,7 +225,7 @@ export default function Team() {
             // assignedPosition is only present on stat rows enriched
             // by the league pool's roster join; fall back to posPrimary
             // when missing (free-agent or stat sync hasn't run yet).
-            const assigned = (stat as any)?.assignedPosition || row.posPrimary;
+            const assigned = stat?.assignedPosition || row.posPrimary;
             return {
               rosterId: row.id,
               playerId: row.playerId,
@@ -239,19 +240,23 @@ export default function Team() {
               assignedPosition: assigned,
               isPitcher: PITCHER_POS.has(assigned || row.posPrimary || ""),
               price: row.price,
-              mlbTeam: row.mlbTeam || (stat as any)?.mlb_team || (stat as any)?.mlbTeam || undefined,
-              isKeeper: row.isKeeper ?? (stat as any)?.isKeeper,
+              mlbTeam: row.mlbTeam || stat?.mlb_team || stat?.mlbTeam || undefined,
+              isKeeper: row.isKeeper ?? stat?.isKeeper,
               gamesByPos: row.gamesByPos,
-              AVG: (stat as any)?.AVG,
-              HR: (stat as any)?.HR,
-              R: (stat as any)?.R,
-              RBI: (stat as any)?.RBI,
-              SB: (stat as any)?.SB,
-              W: (stat as any)?.W,
-              SV: (stat as any)?.SV,
-              K: (stat as any)?.K,
-              ERA: (stat as any)?.ERA,
-              WHIP: (stat as any)?.WHIP,
+              // Rate stats are `number | null | undefined` per the schema
+              // (PR #197 / todo #144). Pass `null` through as `undefined`
+              // so the row type's `number | string | undefined` shape
+              // holds — the row component renders both as "—".
+              AVG: stat?.AVG ?? undefined,
+              HR: stat?.HR,
+              R: stat?.R,
+              RBI: stat?.RBI,
+              SB: stat?.SB,
+              W: stat?.W,
+              SV: stat?.SV,
+              K: stat?.K,
+              ERA: stat?.ERA ?? undefined,
+              WHIP: stat?.WHIP ?? undefined,
             };
           });
           setRoster(players);
