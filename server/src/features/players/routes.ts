@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
+import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { prisma } from "../../db/prisma.js";
 import type { PlayerSeasonStatsResponse } from "../../../../shared/api/playerSeasonStats.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
@@ -280,7 +281,7 @@ router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
  *
  * Plan: docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md §0
  */
-router.get("/:mlbId/eligible-slots", requireAuth, asyncHandler(async (req, res) => {
+router.get("/:mlbId/eligible-slots", requireAuth, rateLimitPerUser({ capacity: 60, windowMs: 60_000, bucketName: "eligible-slots" }), asyncHandler(async (req, res) => {
   const rawMlbId = Number(req.params.mlbId);
   if (!Number.isFinite(rawMlbId) || rawMlbId <= 0) {
     return res.status(400).json({ error: "Invalid MLB ID" });

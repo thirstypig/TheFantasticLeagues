@@ -15,6 +15,7 @@
 import { Router, type Request } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
+import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { prisma } from "../../db/prisma.js";
 import { getWeekKey } from "../../lib/utils.js";
 import { computeAwardsRankings } from "./services/awardsService.js";
@@ -50,6 +51,7 @@ function abortSignalForRequest(req: Request): AbortSignal {
 router.get(
   "/:leagueId/awards",
   requireAuth,
+  rateLimitPerUser({ capacity: 30, windowMs: 60_000, bucketName: "awards" }),
   requireLeagueMember("leagueId"),
   asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);

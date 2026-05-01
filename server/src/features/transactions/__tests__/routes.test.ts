@@ -169,6 +169,54 @@ describe("GET /transactions", () => {
     expect(res.body.skip).toBe(10);
     expect(res.body.take).toBe(25);
   });
+
+  it("clamps take to 200 when caller requests larger page (DoS guard, #187)", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1&take=999999");
+    expect(res.status).toBe(200);
+    expect(res.body.take).toBe(200);
+    expect(mockPrisma.transactionEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 200 }),
+    );
+  });
+
+  it("clamps take to minimum 1 when caller passes zero or negative", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1&take=0");
+    expect(res.status).toBe(200);
+    expect(res.body.take).toBe(50); // Number(0) || 50 → 50
+
+    const negRes = await supertest(app).get("/transactions?leagueId=1&take=-5");
+    expect(negRes.status).toBe(200);
+    expect(negRes.body.take).toBe(1);
+  });
+
+  it("clamps skip to 100_000 maximum and 0 minimum", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const huge = await supertest(app).get("/transactions?leagueId=1&skip=999999999");
+    expect(huge.status).toBe(200);
+    expect(huge.body.skip).toBe(100_000);
+
+    const neg = await supertest(app).get("/transactions?leagueId=1&skip=-50");
+    expect(neg.status).toBe(200);
+    expect(neg.body.skip).toBe(0);
+  });
+
+  it("falls back to defaults on non-numeric take/skip", async () => {
+    mockPrisma.transactionEvent.count.mockResolvedValue(0);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/transactions?leagueId=1&take=abc&skip=xyz");
+    expect(res.status).toBe(200);
+    expect(res.body.take).toBe(50);
+    expect(res.body.skip).toBe(0);
+  });
 });
 
 // ── POST /transactions/claim ─────────────────────────────────────
@@ -947,6 +995,81 @@ describe("POST /transactions/il-activate", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe("DROP_REQUIRED");
+  });
+});
+
+// ── Response envelope: mlbId/name echo (#194) ───────────────────
+//
+// The shared roster-move response schemas include the affected players'
+// `mlbId` + `name` so the client can render toasts without a follow-up
+// player-detail fetch. Tests below assert the echo lands in each
+// success envelope.
+
+describe("response envelope echoes mlbId + name (#194)", () => {
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "false";
+  });
+
+  it("POST /transactions/claim echoes mlbId + name on success", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockPrisma.player.findUnique.mockResolvedValue({ mlbId: 545361, name: "Mike Trout" });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mlbId).toBe(545361);
+    expect(res.body.name).toBe("Mike Trout");
+  });
+
+  it("POST /transactions/il-stash echoes stashMlbId + stashName (stash-only mode)", async () => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockCheckMlbIlEligibility.mockResolvedValue({
+      status: "Injured 10-Day",
+      cacheFetchedAt: new Date("2026-04-21T10:00:00Z"),
+    });
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
+    });
+    mockPrisma.player.findUnique.mockResolvedValueOnce({ mlbId: 660271, name: "Shohei Ohtani" });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.stashMlbId).toBe(660271);
+    expect(res.body.stashName).toBe("Shohei Ohtani");
+    expect(res.body.addMlbId).toBeNull();
+    expect(res.body.addName).toBeNull();
+  });
+
+  it("POST /transactions/il-activate echoes both activate + drop identities", async () => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" }) // ilRoster
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") }); // dropRoster
+    mockPrisma.player.findUnique
+      .mockResolvedValueOnce({ id: 42, name: "Returning Star", posList: "OF,1B", mlbId: 111111 }) // activatePlayer
+      .mockResolvedValueOnce({ mlbId: 222222, name: "Departing Friend" }); // dropPlayerInfo
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.activateMlbId).toBe(111111);
+    expect(res.body.activateName).toBe("Returning Star");
+    expect(res.body.dropMlbId).toBe(222222);
+    expect(res.body.dropName).toBe("Departing Friend");
   });
 });
 
