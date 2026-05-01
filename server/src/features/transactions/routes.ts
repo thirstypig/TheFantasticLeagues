@@ -23,7 +23,15 @@ import {
   type MlbStatusCheck,
 } from "../../lib/ilSlotGuard.js";
 import { getMlbPlayerStatus } from "../../lib/mlbApi.js";
-import { SyncIlStatusBodySchema } from "../../../../shared/api/rosterMoves.js";
+import {
+  SyncIlStatusBodySchema,
+  ClaimRequestSchema,
+  IlStashRequestSchema,
+  IlActivateRequestSchema,
+  type ClaimResponse,
+  type IlStashResponse,
+  type IlActivateResponse,
+} from "../../../../shared/api/rosterMoves.js";
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import {
@@ -88,28 +96,6 @@ const effectiveDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
   .optional();
 
-/**
- * Tightened mlbId wire schema (#187 DoS hardening).
- *
- * Previously accepted any string or number, which let a caller submit a
- * 100MB string body or a `Number.MAX_SAFE_INTEGER`-shaped value and watch
- * the Prisma findFirst on `mlbId` blow through the planner. Now constrained
- * to:
- *   - integer in (0, 9_999_999]  (real MLB IDs top out at ~6 digits today;
- *     the 7-digit ceiling leaves headroom for derived Ohtani-style IDs but
- *     rejects anything wildly out of range)
- *   - or a digits-only string of the same magnitude, coerced to number
- *
- * Used by /transactions/claim (`mlbId`) and /transactions/il-stash
- * (`addMlbId`). The canonical home for this schema may move to
- * `shared/api/rosterMoves.ts` in a follow-up commit when the request
- * envelopes lift to shared.
- */
-const mlbIdSchema = z.union([
-  z.number().int().positive().max(9_999_999),
-  z.string().regex(/^\d{1,7}$/).transform(Number),
-]);
-
 const dropSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
@@ -117,14 +103,11 @@ const dropSchema = z.object({
   effectiveDate: effectiveDateSchema,
 });
 
-const claimSchema = z.object({
-  leagueId: z.number().int().positive(),
-  teamId: z.number().int().positive(),
-  playerId: z.number().int().positive().optional(),
-  mlbId: mlbIdSchema.optional(),
-  dropPlayerId: z.number().int().positive().optional(),
-  effectiveDate: effectiveDateSchema,
-}).refine((d) => d.playerId || d.mlbId, { message: "playerId or mlbId required" });
+// Claim envelope is now sourced from `shared/api/rosterMoves.ts` (#194).
+// The route uses the shared schema directly so client and server can never
+// drift. The tightened `mlbId` regex/bounds (#187) live in MlbIdSchema
+// inside the shared file.
+const claimSchema = ClaimRequestSchema;
 
 const router = Router();
 
@@ -263,6 +246,15 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   // 5. Look up league season for transaction records
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
   const season = league?.season ?? new Date().getFullYear();
+
+  // Pre-tx read of the claimed player's identity so the response envelope
+  // can echo `mlbId` + `name` (#194). The tx body re-reads inside the
+  // transaction for the position-inheritance branch; this read is read-
+  // only and only feeds the response shape.
+  const claimedPlayerInfo = await prisma.player.findUnique({
+    where: { id: playerId },
+    select: { mlbId: true, name: true },
+  });
 
   // 4. Perform Transaction (Atomic) — lock team row to prevent concurrent roster limit bypass
   let appliedReassignments: AppliedReassignment[] = [];
@@ -458,7 +450,14 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   });
 
   invalidateLeagueCaches(leagueId);
-  return res.json({ success: true, playerId, appliedReassignments });
+  const claimResp: ClaimResponse = {
+    success: true,
+    playerId,
+    mlbId: claimedPlayerInfo?.mlbId ?? null,
+    name: claimedPlayerInfo?.name ?? undefined,
+    appliedReassignments,
+  };
+  return res.json(claimResp);
 }));
 
 /**
@@ -542,24 +541,10 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
 // Atomic "stash + add" and "activate + drop" flows per plan Q10=a and Q11=b.
 // No standalone IL moves. Both endpoints are commissioner/admin-only.
 
-const ilStashSchema = z.object({
-  leagueId: z.number().int().positive(),
-  teamId: z.number().int().positive(),
-  stashPlayerId: z.number().int().positive(),
-  /** Optional pairing player. When omitted, the v3 hub's stash-only mode
-   *  applies — the freed slot becomes empty and the server's bipartite
-   *  matcher (still runs in-tx) re-shuffles the rest of the active roster
-   *  to fill it from BN if possible. The IL slot transition still fires;
-   *  the active-roster shape just changes by -1 active player.
-   *  Phase 2's "add required" invariant only applies to /transactions/claim
-   *  and /transactions/drop — IL stash is structurally a slot transition,
-   *  not an active-roster departure (the player remains rostered, just
-   *  in the IL slot). */
-  addPlayerId: z.number().int().positive().optional(),
-  addMlbId: mlbIdSchema.optional(),
-  effectiveDate: effectiveDateSchema,
-  reason: z.string().max(500).optional(),
-});
+// IL stash envelope sourced from `shared/api/rosterMoves.ts` (#194).
+// Stash-only mode (omit both addPlayerId and addMlbId) is documented in
+// the shared schema's JSDoc.
+const ilStashSchema = IlStashRequestSchema;
 
 /**
  * POST /api/transactions/il-stash
@@ -637,6 +622,14 @@ router.post(
       });
     }
     const stashSlot = stashRoster.assignedPosition ?? "UT";
+
+    // Pre-tx read of stash player identity so the response envelope can
+    // echo `stashMlbId` + `stashName` (#194). Read-only — only feeds the
+    // response shape.
+    const stashPlayerInfo = await prisma.player.findUnique({
+      where: { id: stashPlayerId },
+      select: { mlbId: true, name: true },
+    });
 
     // Pre-transaction: MLB IL eligibility check. Fails CLOSED on feed
     // unavailability so malicious timing attacks can't stash non-IL players
@@ -863,24 +856,23 @@ router.post(
     }
 
     invalidateLeagueCaches(leagueId);
-    return res.json({
+    const stashResp: IlStashResponse = {
       success: true,
       stashPlayerId,
       addPlayerId: addPlayerId ?? null,
       stashOnly,
+      stashMlbId: stashPlayerInfo?.mlbId ?? null,
+      stashName: stashPlayerInfo?.name ?? undefined,
+      addMlbId: addPlayer?.mlbId ?? null,
+      addName: addPlayer?.name ?? null,
       appliedReassignments: stashAppliedReassignments,
-    });
+    };
+    return res.json(stashResp);
   }),
 );
 
-const ilActivateSchema = z.object({
-  leagueId: z.number().int().positive(),
-  teamId: z.number().int().positive(),
-  activatePlayerId: z.number().int().positive(),
-  dropPlayerId: z.number().int().positive(),
-  effectiveDate: effectiveDateSchema,
-  reason: z.string().max(500).optional(),
-});
+// IL activate envelope sourced from `shared/api/rosterMoves.ts` (#194).
+const ilActivateSchema = IlActivateRequestSchema;
 
 /**
  * POST /api/transactions/il-activate
@@ -948,11 +940,18 @@ router.post(
 
     const activatePlayer = await prisma.player.findUnique({
       where: { id: activatePlayerId },
-      select: { id: true, name: true, posList: true },
+      select: { id: true, name: true, posList: true, mlbId: true },
     });
     if (!activatePlayer) {
       return res.status(404).json({ error: `Activate player #${activatePlayerId} not found.` });
     }
+
+    // Pre-tx read of drop player identity so the response can echo
+    // `dropMlbId` + `dropName` (#194).
+    const dropPlayerInfo = await prisma.player.findUnique({
+      where: { id: dropPlayerId },
+      select: { mlbId: true, name: true },
+    });
 
     // Yahoo-style auto-resolve: position-fit is deferred to the bipartite
     // matcher (runs in-tx). The strict pre-flight pairwise check was removed
@@ -1093,7 +1092,17 @@ router.post(
     }
 
     invalidateLeagueCaches(leagueId);
-    return res.json({ success: true, activatePlayerId, dropPlayerId, appliedReassignments: activateAppliedReassignments });
+    const activateResp: IlActivateResponse = {
+      success: true,
+      activatePlayerId,
+      dropPlayerId,
+      activateMlbId: activatePlayer.mlbId ?? null,
+      activateName: activatePlayer.name,
+      dropMlbId: dropPlayerInfo?.mlbId ?? null,
+      dropName: dropPlayerInfo?.name ?? undefined,
+      appliedReassignments: activateAppliedReassignments,
+    };
+    return res.json(activateResp);
   }),
 );
 

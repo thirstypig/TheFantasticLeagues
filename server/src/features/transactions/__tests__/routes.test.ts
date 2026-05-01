@@ -998,6 +998,81 @@ describe("POST /transactions/il-activate", () => {
   });
 });
 
+// ── Response envelope: mlbId/name echo (#194) ───────────────────
+//
+// The shared roster-move response schemas include the affected players'
+// `mlbId` + `name` so the client can render toasts without a follow-up
+// player-detail fetch. Tests below assert the echo lands in each
+// success envelope.
+
+describe("response envelope echoes mlbId + name (#194)", () => {
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "false";
+  });
+
+  it("POST /transactions/claim echoes mlbId + name on success", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockPrisma.player.findUnique.mockResolvedValue({ mlbId: 545361, name: "Mike Trout" });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mlbId).toBe(545361);
+    expect(res.body.name).toBe("Mike Trout");
+  });
+
+  it("POST /transactions/il-stash echoes stashMlbId + stashName (stash-only mode)", async () => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockCheckMlbIlEligibility.mockResolvedValue({
+      status: "Injured 10-Day",
+      cacheFetchedAt: new Date("2026-04-21T10:00:00Z"),
+    });
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
+    });
+    mockPrisma.player.findUnique.mockResolvedValueOnce({ mlbId: 660271, name: "Shohei Ohtani" });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/il-stash").send({
+      leagueId: 1, teamId: 10, stashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.stashMlbId).toBe(660271);
+    expect(res.body.stashName).toBe("Shohei Ohtani");
+    expect(res.body.addMlbId).toBeNull();
+    expect(res.body.addName).toBeNull();
+  });
+
+  it("POST /transactions/il-activate echoes both activate + drop identities", async () => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" }) // ilRoster
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z") }); // dropRoster
+    mockPrisma.player.findUnique
+      .mockResolvedValueOnce({ id: 42, name: "Returning Star", posList: "OF,1B", mlbId: 111111 }) // activatePlayer
+      .mockResolvedValueOnce({ mlbId: 222222, name: "Departing Friend" }); // dropPlayerInfo
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
+
+    const res = await supertest(app).post("/transactions/il-activate").send({
+      leagueId: 1, teamId: 10,
+      activatePlayerId: 42, dropPlayerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.activateMlbId).toBe(111111);
+    expect(res.body.activateName).toBe("Returning Star");
+    expect(res.body.dropMlbId).toBe(222222);
+    expect(res.body.dropName).toBe("Departing Friend");
+  });
+});
+
 // ── Cache invalidation hook (todo #137 + #143) ──────────────────
 //
 // After a successful roster mutation the handler must purge the in-memory

@@ -179,6 +179,151 @@ export const SyncIlStatusResponseSchema = z.object({
 });
 export type SyncIlStatusResponse = z.infer<typeof SyncIlStatusResponseSchema>;
 
+// ── Roster-move request schemas (lifted from server/transactions/routes.ts, #194) ──
+//
+// Single source of truth for the wire format of the three v3 hub mutation
+// endpoints. Both client and server import from here so a schema change
+// produces a compile-time mismatch on either side. Keep the shape aligned
+// with the route handlers in `server/src/features/transactions/routes.ts`.
+
+/**
+ * Tightened mlbId wire schema (#187 DoS hardening).
+ *
+ * Constrained to integer in (0, 9_999_999] or digits-only string of the
+ * same magnitude. Real MLB IDs top out at ~6 digits today; the 7-digit
+ * ceiling leaves headroom for derived Ohtani-style IDs.
+ */
+export const MlbIdSchema = z.union([
+  z.number().int().positive().max(9_999_999),
+  z.string().regex(/^\d{1,7}$/).transform(Number),
+]);
+export type MlbId = z.infer<typeof MlbIdSchema>;
+
+/**
+ * Body: POST /api/transactions/claim
+ *
+ * Either `playerId` (Prisma Player.id) or `mlbId` must be set —
+ * the server prefers `playerId` when both are present.
+ */
+export const ClaimRequestSchema = z
+  .object({
+    leagueId: z.number().int().positive(),
+    teamId: z.number().int().positive(),
+    playerId: z.number().int().positive().optional(),
+    mlbId: MlbIdSchema.optional(),
+    dropPlayerId: z.number().int().positive().optional(),
+    effectiveDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+      .optional(),
+  })
+  .refine((d: { playerId?: number; mlbId?: number }) => d.playerId || d.mlbId, {
+    message: "playerId or mlbId required",
+  });
+export type ClaimRequest = z.infer<typeof ClaimRequestSchema>;
+
+/**
+ * Body: POST /api/transactions/il-stash
+ *
+ * Stash-only mode: omit both `addPlayerId` and `addMlbId`. The freed slot
+ * stays empty and the server's bipartite matcher reshuffles the active
+ * roster from BN.
+ */
+export const IlStashRequestSchema = z.object({
+  leagueId: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  stashPlayerId: z.number().int().positive(),
+  addPlayerId: z.number().int().positive().optional(),
+  addMlbId: MlbIdSchema.optional(),
+  effectiveDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+    .optional(),
+  reason: z.string().max(500).optional(),
+});
+export type IlStashRequest = z.infer<typeof IlStashRequestSchema>;
+
+/**
+ * Body: POST /api/transactions/il-activate
+ *
+ * Atomic activate + drop. Both player ids are required; both must be on
+ * the team's roster (one on IL, one on active).
+ */
+export const IlActivateRequestSchema = z.object({
+  leagueId: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  activatePlayerId: z.number().int().positive(),
+  dropPlayerId: z.number().int().positive(),
+  effectiveDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+    .optional(),
+  reason: z.string().max(500).optional(),
+});
+export type IlActivateRequest = z.infer<typeof IlActivateRequestSchema>;
+
+/**
+ * Auto-resolve reassignment echoed by the server when the bipartite matcher
+ * shuffles other roster rows to fit the new player legally. The client uses
+ * this to render a toast like "Also moved: Trea Turner 2B → SS".
+ */
+export const AppliedReassignmentSchema = z.object({
+  rosterId: z.number().int().positive(),
+  playerId: z.number().int().positive(),
+  playerName: z.string(),
+  oldSlot: z.string(),
+  newSlot: z.string(),
+});
+export type AppliedReassignment = z.infer<typeof AppliedReassignmentSchema>;
+
+/**
+ * Response: POST /api/transactions/claim
+ */
+export const ClaimResponseSchema = z.object({
+  success: z.literal(true),
+  playerId: z.number().int().positive(),
+  /** mlbId of the claimed player when known; null for synthetic rows. */
+  mlbId: z.number().nullable().optional(),
+  /** Display name of the claimed player — used for client toasts without
+   *  forcing a follow-up player-detail fetch. */
+  name: z.string().optional(),
+  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
+});
+export type ClaimResponse = z.infer<typeof ClaimResponseSchema>;
+
+/**
+ * Response: POST /api/transactions/il-stash
+ */
+export const IlStashResponseSchema = z.object({
+  success: z.literal(true),
+  stashPlayerId: z.number().int().positive(),
+  addPlayerId: z.number().int().positive().nullable(),
+  stashOnly: z.boolean(),
+  /** Identifying fields of the stashed player (always present). */
+  stashMlbId: z.number().nullable().optional(),
+  stashName: z.string().optional(),
+  /** Identifying fields of the added player (null in stash-only mode). */
+  addMlbId: z.number().nullable().optional(),
+  addName: z.string().nullable().optional(),
+  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
+});
+export type IlStashResponse = z.infer<typeof IlStashResponseSchema>;
+
+/**
+ * Response: POST /api/transactions/il-activate
+ */
+export const IlActivateResponseSchema = z.object({
+  success: z.literal(true),
+  activatePlayerId: z.number().int().positive(),
+  dropPlayerId: z.number().int().positive(),
+  activateMlbId: z.number().nullable().optional(),
+  activateName: z.string().optional(),
+  dropMlbId: z.number().nullable().optional(),
+  dropName: z.string().optional(),
+  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
+});
+export type IlActivateResponse = z.infer<typeof IlActivateResponseSchema>;
+
 export const RosterMovesPlayerSchema = z.object({
   // Identification — at least one of (mlb_id, _dbPlayerId) must be set.
   mlb_id: z.union([z.string(), z.number()]).optional(),

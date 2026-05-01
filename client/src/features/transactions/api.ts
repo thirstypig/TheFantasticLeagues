@@ -1,5 +1,27 @@
 
 import { fetchJsonApi, API_BASE } from '../../api/base';
+import type {
+    ClaimRequest as SharedClaimRequest,
+    ClaimResponse,
+    IlStashRequest as SharedIlStashRequest,
+    IlStashResponse,
+    IlActivateRequest as SharedIlActivateRequest,
+    IlActivateResponse,
+    AppliedReassignment as SharedAppliedReassignment,
+} from '@shared/api/rosterMoves';
+
+// Re-export the shared envelope types for callers who want the source-of-truth
+// shapes. The `*Params` interfaces below remain for backwards compatibility
+// with existing imports — they're now structurally identical to the shared
+// request types.
+export type {
+    SharedClaimRequest as ClaimRequest,
+    ClaimResponse,
+    SharedIlStashRequest as IlStashRequest,
+    IlStashResponse,
+    SharedIlActivateRequest as IlActivateRequest,
+    IlActivateResponse,
+};
 
 export interface TransactionEvent {
   id: number;
@@ -34,18 +56,15 @@ export async function getTransactions(params?: { leagueId?: number; teamId?: num
 }
 
 /**
- * Yahoo-style auto-resolve reassignment. The server runs a bipartite matcher
- * on every claim / IL stash / IL activate and may move other roster rows to
- * fit the new player legally. Each move is echoed here so the client can
- * surface a toast like "Also moved: Trea Turner 2B → SS".
+ * Yahoo-style auto-resolve reassignment. Re-exported from
+ * `@shared/api/rosterMoves` so client and server share one definition.
+ *
+ * The server runs a bipartite matcher on every claim / IL stash / IL
+ * activate and may move other roster rows to fit the new player legally.
+ * Each move is echoed here so the client can surface a toast like
+ * "Also moved: Trea Turner 2B → SS".
  */
-export interface AppliedReassignment {
-    rosterId: number;
-    playerId: number;
-    playerName: string;
-    oldSlot: string;
-    newSlot: string;
-}
+export type AppliedReassignment = SharedAppliedReassignment;
 
 export interface IlStashParams {
     leagueId: number;
