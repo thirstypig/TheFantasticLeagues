@@ -633,16 +633,35 @@ export default function Team() {
   }, [pending.state.changes]);
 
   // PendingChangeBar items list — one row per change with kind-specific
-  // badge (FA scenario: extends the bar from count-only to itemized).
+  // badge. FA scenario extended the bar from count-only to itemized;
+  // IL scenario adds two more badges (IL STASH amber, IL ACTIVATE cyan)
+  // and an optional `secondary` line for ≥3-player auto-resolve cascades
+  // per direction-lock IL #5.
   const pendingItems = useMemo(() => {
     return pending.state.changes.map((c) => {
       if (c.kind === "swap") {
         return { id: c.id, kind: "swap" as const, text: `${c.from.slot} ↔ ${c.to.slot}` };
       }
+      if (c.kind === "fa_add") {
+        return {
+          id: c.id,
+          kind: "fa_add" as const,
+          text: `Add ${c.faName} · drop ${c.displaced.name}`,
+        };
+      }
+      if (c.kind === "il_stash") {
+        return {
+          id: c.id,
+          kind: "il_stash" as const,
+          text: `Stash ${c.name} · freed ${c.freed}`,
+        };
+      }
+      // c.kind === "il_activate"
+      const dispText = c.displaced ? ` · drop ${c.displaced.name}` : "";
       return {
         id: c.id,
-        kind: "fa_add" as const,
-        text: `Add ${c.faName} · drop ${c.displaced.name}`,
+        kind: "il_activate" as const,
+        text: `Activate ${c.name} → ${c.targetSlot}${dispText}`,
       };
     });
   }, [pending.state.changes]);
