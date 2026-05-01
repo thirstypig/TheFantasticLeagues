@@ -21,8 +21,9 @@
 // which already register `useDroppable` slots; the parent useRosterHubDrag
 // extension reads the active id prefix to branch FA-add vs swap.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   freeAgentComparator,
   matchesFreeAgentPositions,
@@ -117,6 +118,22 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
       .filter((fa) => matchesFreeAgentPositions(fa, activeChips))
       .sort(cmp);
   }, [data, query, activeChips, sort]);
+
+  // Virtualization: with 2,000+ FAs, rendering every row tanked scroll
+  // perf (PR #210 DOM audit measured 2,283 nodes). The virtualizer
+  // owns a fixed-height scroll viewport and only mounts the rows
+  // currently in (or just outside) the viewport. Row height was eyeballed
+  // from the rendered output (8px+10px padding + name + sub-line ≈ 56px)
+  // — measureElement could refine it post-mount but the constant is fine
+  // for a homogeneous list. Overscan of 6 keeps drag handoffs smooth at
+  // the viewport edge so dnd-kit doesn't unmount a row mid-grab.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 56,
+    overscan: 6,
+  });
 
   if (!isOpen) return null;
 
@@ -232,18 +249,23 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
         </label>
       </div>
 
-      {/* Body */}
+      {/* Body — virtualized scroll viewport. The role="list" semantics
+          live on the scroll container; virtual children are absolutely
+          positioned inside an oversize spacer so the scrollbar reflects
+          the full FA pool size. */}
       <div
+        ref={scrollRef}
         role="list"
         aria-label="Free agent list"
+        data-fa-scroll
         style={{
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
           paddingRight: 4,
+          // contain layout so the absolutely-positioned children don't
+          // leak into ancestor layout calcs (small perf nicety).
+          contain: "strict",
         }}
       >
         {loading && (
@@ -257,9 +279,31 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
             No free agents match those filters.
           </div>
         )}
-        {filtered.map((fa) => (
-          <FreeAgentRow key={fa.rowKey} fa={fa} />
-        ))}
+        {!loading && !error && filtered.length > 0 && (
+          <div
+            style={{
+              height: rowVirtualizer.getTotalSize(),
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const fa = filtered[virtualRow.index];
+              if (!fa) return null;
+              return (
+                <FreeAgentRow
+                  key={fa.rowKey}
+                  fa={fa}
+                  // Top inset places the row at its virtualized offset;
+                  // a 6px gap is baked in by trimming row visual padding
+                  // so the un-virtualized look is preserved.
+                  top={virtualRow.start}
+                  height={virtualRow.size}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -269,12 +313,19 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
 
 interface FreeAgentRowProps {
   fa: FreeAgent;
+  /** Virtualizer offset (px from top of scroll viewport). When set, the
+   *  row absolutely positions itself; when undefined the row flows
+   *  inline (legacy/tests that bypass virtualization). */
+  top?: number;
+  /** Virtualizer-reported size in px (estimateSize default). */
+  height?: number;
 }
 
-function FreeAgentRow({ fa }: FreeAgentRowProps) {
+function FreeAgentRow({ fa, top, height }: FreeAgentRowProps) {
   const dndId = encodeFaDndId(fa.mlbId);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: dndId });
 
+  const isVirtualized = typeof top === "number";
   const style: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: "1fr auto",
@@ -287,6 +338,21 @@ function FreeAgentRow({ fa }: FreeAgentRowProps) {
     cursor: "grab",
     opacity: isDragging ? 0.5 : 1,
     touchAction: "none",
+    ...(isVirtualized
+      ? {
+          position: "absolute" as const,
+          top: 0,
+          left: 0,
+          right: 4, // matches paddingRight on scroll viewport
+          // Translate the row to its virtualizer offset. Using transform
+          // (vs `top`) keeps the GPU layer cheap during scroll.
+          transform: `translateY(${top}px)`,
+          // Reserve the virtualizer-reported height minus a 6px gap so
+          // adjacent rows match the un-virtualized 6px-gap look.
+          height: (height ?? 56) - 6,
+          boxSizing: "border-box" as const,
+        }
+      : {}),
   };
 
   // dnd-kit's `attributes` injects role="button" — spread first then
