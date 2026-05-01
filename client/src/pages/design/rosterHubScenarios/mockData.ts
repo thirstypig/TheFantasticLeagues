@@ -12,13 +12,19 @@
 
 import type { RosterHubPlayer } from "../../../features/teams/components/RosterHub";
 
-/** Augmented player carrying optional preview-only fields. */
-export interface PreviewPlayer extends RosterHubPlayer {
+/** Augmented player carrying optional preview-only fields.
+ *
+ * NOTE: uses `type` + intersection rather than `interface extends` because
+ * `RosterHubPlayer` is a discriminated union — `interface extends`
+ * collapses the union into the base only, dropping the per-variant
+ * property access. Type intersection preserves the union narrowing.
+ */
+export type PreviewPlayer = RosterHubPlayer & {
   /** Real MLB API status string, e.g. "Injured 10-Day". Drives IL badge. */
   mlbStatus?: string;
   /** Mock projected dollar value (used by FA pool). */
   projectedValue?: number;
-}
+};
 
 /** Active hitters — 14 slots; #4 (Trea) and #11 (Soto) are IL-eligible. */
 export const INITIAL_HITTERS: PreviewPlayer[] = [

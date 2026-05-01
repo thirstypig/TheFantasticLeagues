@@ -24,7 +24,7 @@
 // from Hub: all-or-nothing).
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import type { SlotCode } from "../../../lib/positionEligibility";
+import type { SlotCode } from "@shared/api/rosterMoves";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
