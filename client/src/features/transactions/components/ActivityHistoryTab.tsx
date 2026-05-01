@@ -239,7 +239,15 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
                     ? `Submitted ${submittedAgo} · effective ${effectiveAgo}`
                     : "Effective date precedes submission";
                 return (
-                  <ThemedTr key={`tx-${tx.id}`} className="group hover:bg-[var(--lg-tint)]" data-testid={txBackdated ? "history-row-backdated" : undefined}>
+                  <ThemedTr
+                    key={`tx-${tx.id}`}
+                    className="group hover:bg-[var(--lg-tint)]"
+                    extraProps={
+                      txBackdated
+                        ? ({ "data-testid": "history-row-backdated" } as React.HTMLAttributes<HTMLTableRowElement>)
+                        : undefined
+                    }
+                  >
                     <ThemedTd className="pl-8">
                       <div className="flex flex-col gap-1">
                         <span>
