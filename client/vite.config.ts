@@ -17,6 +17,11 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@shared": fileURLToPath(new URL("../shared", import.meta.url)),
       "posthog-js": "posthog-js/dist/module.slim.no-external.js",
+      // Pin `zod` to the client's installed copy so files in `shared/api`
+      // (which has no node_modules of its own) resolve cleanly at runtime.
+      // Without this Vite/Rollup walks up from `shared/` and fails because
+      // there's no `node_modules` at the worktree root.
+      zod: fileURLToPath(new URL("./node_modules/zod/index.js", import.meta.url)),
     },
   },
   define: {

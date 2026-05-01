@@ -39,6 +39,40 @@ export const SlotCodeSchema = z.enum([
 export type SlotCode = z.infer<typeof SlotCodeSchema>;
 
 /**
+ * Full wire vocabulary derived from `SlotCodeSchema`. Single source of truth
+ * for any consumer that needs to enumerate every legal slot code (including
+ * structural slots BN/IL and the pitcher sub-codes SP/RP). Replaces ad-hoc
+ * `as const` arrays scattered across the codebase — see todo #132.
+ *
+ * Note: `lib/sports/baseball.ts` re-exports `ELIGIBILITY_SLOT_CODES` (below)
+ * as its `SLOT_CODES` because the eligibility helper `positionToSlots` only
+ * produces the output-slot subset.
+ */
+export const SLOT_CODES = SlotCodeSchema.options;
+
+/**
+ * Eligibility-slot subset — output codes that `positionToSlots()` can produce.
+ * Excludes structural slots (BN, IL — never produced by eligibility math) and
+ * input-only pitcher sub-codes (SP, RP — collapse to "P" in OGBA rosters).
+ *
+ * Used by the client `slotsFor`/`isSlotCode` helpers and by the v3 hub when
+ * narrowing arbitrary string keys onto the SlotCode literal union.
+ */
+export const ELIGIBILITY_SLOT_CODES = [
+  "C",
+  "1B",
+  "2B",
+  "3B",
+  "SS",
+  "MI",
+  "CM",
+  "OF",
+  "DH",
+  "P",
+] as const satisfies readonly SlotCode[];
+export type EligibilitySlotCode = typeof ELIGIBILITY_SLOT_CODES[number];
+
+/**
  * Per-position eligibility breakdown — what slots each declared position can
  * fill. Matches `positionToSlots()` in `server/src/lib/sports/baseball.ts`.
  */

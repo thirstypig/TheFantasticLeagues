@@ -6,6 +6,8 @@
 // type (it includes view-only stat fields the mapper needs); this module
 // just defines a structural input that captures what the mapping reads.
 
+import { SlotCodeSchema, type SlotCode as WireSlotCode } from "@shared/api/rosterMoves";
+import { isSlotCode, type SlotCode } from "../../../lib/positionEligibility";
 import type { RosterHubPlayer } from "../components/RosterHub";
 
 /**
@@ -65,6 +67,42 @@ export interface RosterPlayerInput {
  *     helper doesn't know the SlotCode union — runtime values come from
  *     the server's TeamService.buildGamesByPos which uses string keys.
  */
+/**
+ * Narrow an arbitrary string to the `RosterHubPlayer.assignedSlot` union via
+ * the shared Zod schema. Returns "BN" when the input doesn't match the
+ * canonical wire vocabulary — the safe fallback because BN is always
+ * available on every roster, and the caller (RosterHubV3) treats unknowns
+ * as bench rows. Per todo #132 — replaces an `as any` cast that would have
+ * laundered any string into the SlotCode union.
+ *
+ * The wire SlotCode includes structural slots (BN, IL) and the pitcher
+ * sub-codes (SP, RP) in addition to the 10 eligibility slots; the
+ * RosterHubPlayer.assignedSlot field accepts that full vocabulary so we
+ * pass parsed wire codes through directly.
+ */
+function narrowSlot(raw: string): WireSlotCode {
+  const result = SlotCodeSchema.safeParse(raw);
+  return result.success ? result.data : "BN";
+}
+
+/**
+ * Filter a synthetic per-position GP record to eligibility-slot keys only.
+ * The server may emit aggregate keys (e.g. "LF") that aren't in the
+ * SlotCode vocabulary; rather than casting them through, drop them so the
+ * downstream `Partial<Record<SlotCode, number>>` type holds at runtime.
+ * Per todo #132 — replaces an `as any` cast.
+ */
+function narrowGamesByPos(
+  raw: Record<string, number> | undefined,
+): Partial<Record<SlotCode, number>> | undefined {
+  if (!raw) return undefined;
+  const out: Partial<Record<SlotCode, number>> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (isSlotCode(key)) out[key] = value;
+  }
+  return out;
+}
+
 export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
   const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
   return {
@@ -73,11 +111,11 @@ export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
     name: p.playerName,
     posList: p.posList || p.posPrimary || "",
     posPrimary: p.posPrimary || "",
-    assignedSlot: (slot === "IL" ? "IL" : slot) as RosterHubPlayer["assignedSlot"],
+    assignedSlot: narrowSlot(slot),
     mlbTeam: p.mlbTeam,
     isKeeper: p.isKeeper,
     isPitcher: !!p.isPitcher,
-    gamesPlayedByPosition: p.gamesByPos as RosterHubPlayer["gamesPlayedByPosition"],
+    gamesPlayedByPosition: narrowGamesByPos(p.gamesByPos),
     hitterStats: p.isPitcher
       ? undefined
       : { R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, AVG: p.AVG },

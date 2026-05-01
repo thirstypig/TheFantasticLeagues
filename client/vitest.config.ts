@@ -7,6 +7,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@shared": fileURLToPath(new URL("../shared", import.meta.url)),
+      // Mirrors vite.config.ts — pin zod to client's copy so files in
+      // shared/api resolve cleanly when imported from client code.
+      zod: fileURLToPath(new URL("./node_modules/zod/index.js", import.meta.url)),
     },
   },
   test: {

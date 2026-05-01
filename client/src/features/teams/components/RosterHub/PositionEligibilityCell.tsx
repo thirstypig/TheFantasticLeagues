@@ -26,12 +26,17 @@
 import React, { useMemo } from "react";
 import { PositionPill } from "./PositionPill";
 import { slotsFor, type SlotCode } from "../../../../lib/positionEligibility";
+import type { SlotCode as WireSlotCode } from "@shared/api/rosterMoves";
 
 interface PositionEligibilityCellProps {
   /** Comma-separated `Player.posList` (e.g. "OF,2B"). */
   posList: string;
-  /** Currently-assigned slot — rendered as the primary, interactive pill. */
-  assignedSlot: SlotCode | "IL";
+  /**
+   * Currently-assigned slot — rendered as the primary, interactive pill.
+   * Accepts any wire SlotCode (BN, IL, SP, RP, plus the 10 eligibility
+   * codes) since the row's assignment can be any of those.
+   */
+  assignedSlot: WireSlotCode;
   /** GP-by-position map. Omitted positions render without a count. */
   gamesPlayedByPosition?: Partial<Record<SlotCode, number>>;
 
@@ -48,8 +53,11 @@ interface PositionEligibilityCellProps {
  * structural rather than positional (MI = middle-infield flex, CM =
  * corner-man flex). DH similarly has no defensive GP threshold — Rule
  * eligibility comes from being a hitter, not from games played at DH.
+ * Typed as `ReadonlySet<string>` so it accepts both eligibility-only
+ * SlotCodes (used by `slotsFor`) and the broader wire SlotCode used by
+ * `assignedSlot`.
  */
-const NO_GP_SLOTS = new Set<SlotCode>(["MI", "CM", "DH"]);
+const NO_GP_SLOTS: ReadonlySet<string> = new Set(["MI", "CM", "DH"]);
 
 function PositionEligibilityCellImpl({
   posList,
@@ -147,12 +155,14 @@ function PositionEligibilityCellImpl({
  * slot. `IL` and structural slots render without parens.
  */
 function formatPrimaryLabel(
-  slot: SlotCode | "IL",
+  slot: WireSlotCode,
   gp?: Partial<Record<SlotCode, number>>,
 ): string {
   if (slot === "IL") return "IL";
   if (NO_GP_SLOTS.has(slot)) return slot;
-  const n = gp?.[slot];
+  // Only eligibility-slot keys can have a GP count (the gp map is keyed on
+  // them). Structural / pitcher sub-codes fall through with no count.
+  const n = gp?.[slot as SlotCode];
   if (n == null) return slot;
   return `${slot} (${n})`;
 }

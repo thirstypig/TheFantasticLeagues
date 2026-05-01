@@ -4,6 +4,10 @@
  */
 
 import type { SportConfig, PositionConfig, CategoryConfig } from "./types";
+import {
+  ELIGIBILITY_SLOT_CODES,
+  type EligibilitySlotCode,
+} from "@shared/api/rosterMoves";
 
 // ─── Position Configuration ───
 
@@ -20,12 +24,19 @@ export const PITCHER_CODES = ["P", "SP", "RP", "CL", "TWP"] as const;
 // ─── Position-to-Slot Mapping ───
 
 /**
- * Roster-slot vocabulary — what a player can be ASSIGNED to in a lineup.
- * Distinct from the raw MLB input positions this function accepts (LF/CF/RF/
- * SP/RP/CL/TWP all collapse into an output slot from this set).
+ * Roster-slot vocabulary — what a player can be ASSIGNED to in a lineup via
+ * eligibility math. Distinct from the raw MLB input positions this function
+ * accepts (LF/CF/RF/SP/RP/CL/TWP all collapse into an output slot from this
+ * set).
+ *
+ * Single source of truth lives in `shared/api/rosterMoves.ts` as
+ * `ELIGIBILITY_SLOT_CODES` (derived from `SlotCodeSchema`). Re-exported here
+ * to preserve the historical import path used by positionEligibility helpers.
+ * Per todo #132 — eliminates the dual-source drift risk where someone could
+ * add "UTIL" to one definition and not the other.
  */
-export const SLOT_CODES = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
-export type SlotCode = typeof SLOT_CODES[number];
+export const SLOT_CODES = ELIGIBILITY_SLOT_CODES;
+export type SlotCode = EligibilitySlotCode;
 
 export function positionToSlots(pos: string): readonly SlotCode[] {
   const p = pos.trim().toUpperCase();

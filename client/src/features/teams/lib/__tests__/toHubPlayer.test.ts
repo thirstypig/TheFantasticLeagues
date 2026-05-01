@@ -161,6 +161,57 @@ describe("toHubPlayer — synthetic GP suffix data passthrough", () => {
     const result = toHubPlayer(makeInput({ gamesByPos: undefined }));
     expect(result.gamesPlayedByPosition).toBeUndefined();
   });
+
+  it("drops unknown slot keys from gamesByPos", () => {
+    // Per todo #132 — narrowGamesByPos uses isSlotCode to filter rather
+    // than casting the whole record through. Ensures the runtime shape
+    // matches the declared `Partial<Record<SlotCode, number>>` type.
+    const result = toHubPlayer(
+      makeInput({
+        gamesByPos: {
+          OF: 12,
+          UTIL: 5, // unknown slot — should be dropped
+          XYZ: 7,  // unknown slot — should be dropped
+          "2B": 8,
+        },
+      }),
+    );
+    expect(result.gamesPlayedByPosition).toEqual({ OF: 12, "2B": 8 });
+  });
+});
+
+describe("toHubPlayer — unknown slot input fallback (todo #132)", () => {
+  it("falls back to BN when assignedPosition is an unknown string", () => {
+    // Per todo #132 — replaces an `as any` cast that would have laundered
+    // arbitrary strings into the SlotCode union. SlotCodeSchema.safeParse
+    // narrows the input; misses fall back to "BN" (always available).
+    const result = toHubPlayer(
+      makeInput({ assignedPosition: "UTIL", posPrimary: undefined }),
+    );
+    expect(result.assignedSlot).toBe("BN");
+  });
+
+  it("falls back to BN when posPrimary is unknown and assignedPosition missing", () => {
+    const result = toHubPlayer(
+      makeInput({ assignedPosition: undefined, posPrimary: "UTIL" }),
+    );
+    expect(result.assignedSlot).toBe("BN");
+  });
+
+  it("preserves all wire SlotCodes — BN, SP, RP pass through", () => {
+    // The wire SlotCode union includes pitcher sub-codes; the mapper must
+    // not coerce them to "P" (display layer handles that if needed).
+    expect(toHubPlayer(makeInput({ assignedPosition: "BN" })).assignedSlot).toBe("BN");
+    expect(toHubPlayer(makeInput({ assignedPosition: "SP" })).assignedSlot).toBe("SP");
+    expect(toHubPlayer(makeInput({ assignedPosition: "RP" })).assignedSlot).toBe("RP");
+  });
+
+  it("an empty-string assignedPosition + posPrimary still defaults to BN", () => {
+    const result = toHubPlayer(
+      makeInput({ assignedPosition: "", posPrimary: "" }),
+    );
+    expect(result.assignedSlot).toBe("BN");
+  });
 });
 
 describe("toHubPlayer — passthrough metadata", () => {
