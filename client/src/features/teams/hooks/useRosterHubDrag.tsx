@@ -25,12 +25,12 @@ import {
 } from "@dnd-kit/core";
 import { slotsFor, type SlotCode } from "../../../lib/positionEligibility";
 import type { RosterHubPlayer } from "../components/RosterHub/types";
-import type { PendingChange } from "./usePendingChanges";
+import type { PendingChangeInput } from "./usePendingChanges";
 
 export interface UseRosterHubDragOptions {
   players: RosterHubPlayer[];
   /** Append a swap to the pending queue. */
-  onSwap: (change: Omit<PendingChange, "id">) => void;
+  onSwap: (change: Extract<PendingChangeInput, { kind: "swap" }>) => void;
   /** Optional toast hook — fires on illegal drops. */
   onToast?: (message: string) => void;
 }
