@@ -429,6 +429,13 @@ model Player {
   posList    String // comma-separated for now
   mlbTeam    String? // e.g. "LAD", "NYY"
 
+  /// Raw MLB statsapi roster status string ("Active", "Injured 10-Day",
+  /// "Injured 60-Day", "Restricted", …). Verbatim per direction-lock IL #1
+  /// — never normalized. Powers the v3 hub ghost-IL warning chip and the
+  /// `isMlbIlStatusUi` eligibility gate. Populated by the daily
+  /// `syncAllPlayers` cron from each team's 40-man roster `status.description`.
+  mlbStatus  String?
+
   createdAt DateTime @default(now())
 
   rosters               Roster[]

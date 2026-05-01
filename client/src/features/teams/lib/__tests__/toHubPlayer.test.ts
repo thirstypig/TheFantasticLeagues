@@ -241,6 +241,55 @@ describe("toHubPlayer — discriminated union narrowing (todo #153)", () => {
   });
 });
 
+describe("toHubPlayer — mlbStatus passthrough (ghost-IL chip wake-up)", () => {
+  // The whole point of feat/player-mlbstatus-plumbing — Cluster K wired
+  // the chip against `RosterHubPlayer.mlbStatus` but the mapper input
+  // was always `mlbStatus: undefined` because the server didn't ship it.
+  // With the wire field plumbed, the mapper must pass it through verbatim.
+
+  it("passes Injured-Day status verbatim — drives ghost-IL chip", () => {
+    const result = toHubPlayer(makeInput({ mlbStatus: "Injured 10-Day" }));
+    expect(result.mlbStatus).toBe("Injured 10-Day");
+  });
+
+  it("passes Active status through (no chip should render for these)", () => {
+    const result = toHubPlayer(makeInput({ mlbStatus: "Active" }));
+    expect(result.mlbStatus).toBe("Active");
+  });
+
+  it("normalizes null mlbStatus to undefined", () => {
+    // Server emits `null` on the wire when no status is known (free agent,
+    // synthetic row). Team.tsx pre-coalesces to undefined; this guard is a
+    // defense-in-depth: if a future caller forwards null directly the
+    // mapper still hides it from the chip-detection logic.
+    const result = toHubPlayer(makeInput({ mlbStatus: null }));
+    expect(result.mlbStatus).toBeUndefined();
+  });
+
+  it("passes mlbStatusDaysAgo through for the chip body", () => {
+    // The chip renders "X days ago" when this is a number — drives the
+    // freshness signal next to the verbatim status.
+    const result = toHubPlayer(
+      makeInput({ mlbStatus: "Injured 10-Day", mlbStatusDaysAgo: 3 }),
+    );
+    expect(result.mlbStatusDaysAgo).toBe(3);
+  });
+
+  it("ghost-IL gap: active-roster row carrying mlbStatus indicating IL", () => {
+    // The exact scenario the chip wakes up on — assignedPosition is NOT
+    // "IL" but mlbStatus says Injured. Team.tsx's ghostIlSuspects filter
+    // pulls these rows out for the warning chip.
+    const result = toHubPlayer(
+      makeInput({
+        assignedPosition: "OF",
+        mlbStatus: "Injured 10-Day",
+      }),
+    );
+    expect(result.assignedSlot).toBe("OF");
+    expect(result.mlbStatus).toBe("Injured 10-Day");
+  });
+});
+
 describe("toHubPlayer — passthrough metadata", () => {
   it("passes mlbTeam and isKeeper through", () => {
     const result = toHubPlayer(

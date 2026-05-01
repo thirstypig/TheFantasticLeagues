@@ -19,6 +19,11 @@ interface MlbRosterPerson {
   person: { id: number; fullName: string };
   position: { abbreviation: string; type: string };
   jerseyNumber?: string;
+  /** 40-man roster status. The `description` field is what feeds Player.mlbStatus
+   *  ("Active", "Injured 10-Day", "Injured 60-Day", "Restricted", …) — verbatim
+   *  per direction-lock IL #1. Optional because some rosterType=fullRoster
+   *  responses (AAA) may omit it; missing → preserve existing Player.mlbStatus. */
+  status?: { code?: string; description?: string };
 }
 
 /**
@@ -72,14 +77,14 @@ async function fetchTeamRoster(
  * Pre-load all existing players into a lookup map by mlbId.
  * Eliminates N+1 queries during roster sync.
  */
-async function buildPlayerLookup(): Promise<Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null }>> {
+async function buildPlayerLookup(): Promise<Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null; mlbStatus: string | null }>> {
   const players = await prisma.player.findMany({
     where: { mlbId: { not: null } },
-    select: { id: true, mlbId: true, mlbTeam: true, posPrimary: true, posList: true },
+    select: { id: true, mlbId: true, mlbTeam: true, posPrimary: true, posList: true, mlbStatus: true },
   });
-  const map = new Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null }>();
+  const map = new Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null; mlbStatus: string | null }>();
   for (const p of players) {
-    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam, posPrimary: p.posPrimary, posList: p.posList });
+    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam, posPrimary: p.posPrimary, posList: p.posList, mlbStatus: p.mlbStatus });
   }
   return map;
 }
@@ -157,6 +162,10 @@ export async function syncAllPlayers(season: number): Promise<{
       const rawPos = entry.position.abbreviation || "UT";
       const posAbbr = resolvePosition(mlbId, rawPos);
       const posList = buildPosList(mlbId, posAbbr);
+      // Per direction-lock IL #1: pass the API string verbatim, no normalization.
+      // When the API omits status (transient or rosterType variation), leave
+      // the existing value untouched — same preservation pattern as posList.
+      const mlbStatus: string | undefined = entry.status?.description || undefined;
 
       const existing = playerLookup.get(mlbId);
 
@@ -175,18 +184,27 @@ export async function syncAllPlayers(season: number): Promise<{
           );
         }
 
-        // Preserve enriched posList from syncPositionEligibility
+        // Preserve enriched posList from syncPositionEligibility.
+        // mlbStatus: only write when API returned one — never blow away a
+        // known status because of a transient missing field.
         await prisma.player.update({
           where: { id: existing.id },
-          data: { name, mlbTeam: abbr, posPrimary: posAbbr, ...(shouldOverwritePosList(existing, posAbbr) ? { posList } : {}) },
+          data: {
+            name,
+            mlbTeam: abbr,
+            posPrimary: posAbbr,
+            ...(shouldOverwritePosList(existing, posAbbr) ? { posList } : {}),
+            ...(mlbStatus ? { mlbStatus } : {}),
+          },
         });
         existing.mlbTeam = abbr; // Update lookup for subsequent teams
+        if (mlbStatus) existing.mlbStatus = mlbStatus;
         updated++;
       } else {
         const created_ = await prisma.player.create({
-          data: { mlbId, name, mlbTeam: abbr, posPrimary: posAbbr, posList },
+          data: { mlbId, name, mlbTeam: abbr, posPrimary: posAbbr, posList, ...(mlbStatus ? { mlbStatus } : {}) },
         });
-        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr, posPrimary: posAbbr, posList });
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: abbr, posPrimary: posAbbr, posList, mlbStatus: mlbStatus ?? null });
         created++;
       }
     }
@@ -575,7 +593,10 @@ export async function syncAAARosters(season: number): Promise<{
         const created_ = await prisma.player.create({
           data: { mlbId, name, mlbTeam: parentAbbr, posPrimary: posAbbr, posList: posAbbr },
         });
-        playerLookup.set(mlbId, { id: created_.id, mlbTeam: parentAbbr, posPrimary: posAbbr, posList: posAbbr });
+        // AAA endpoint doesn't supply 40-man roster status — leave mlbStatus null;
+        // the daily 40-man sync (syncAllPlayers) populates it when the player
+        // is called up.
+        playerLookup.set(mlbId, { id: created_.id, mlbTeam: parentAbbr, posPrimary: posAbbr, posList: posAbbr, mlbStatus: null });
         created++;
       }
     }

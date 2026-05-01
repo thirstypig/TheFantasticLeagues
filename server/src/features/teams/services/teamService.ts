@@ -180,6 +180,11 @@ export class TeamService {
       posPrimary: r.player.posPrimary,
       posList: r.player.posList,
       mlbTeam: r.player.mlbTeam,
+      // Raw MLB statsapi status string ("Injured 10-Day", "Active", …),
+      // populated by syncAllPlayers from 40-man roster status.description.
+      // Drives the v3 hub's ghost-IL warning chip via toHubPlayer →
+      // RosterHubPlayer.mlbStatus. Verbatim per direction-lock IL #1.
+      mlbStatus: r.player.mlbStatus,
       acquiredAt: r.acquiredAt,
       price: r.price,
       assignedPosition: r.assignedPosition,

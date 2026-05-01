@@ -81,6 +81,16 @@ export type TeamDetailResponse = {
      */
     posList?: string | null;
     mlbTeam?: string | null;
+    /**
+     * Raw MLB statsapi roster status string ("Active", "Injured 10-Day",
+     * "Injured 60-Day", "Restricted", …). Verbatim per direction-lock IL #1
+     * — never normalized. Powers the v3 hub's ghost-IL warning chip on
+     * active-roster rows whose status indicates IL but the daily auto-stash
+     * cron hasn't moved them yet. Populated by `syncAllPlayers` from each
+     * 40-man roster entry's `status.description`. `null`/omitted when the
+     * player isn't on a 40-man roster (free agent, AAA-only, synthetic row).
+     */
+    mlbStatus?: string | null;
     /** ISO timestamp (string at the wire). */
     acquiredAt?: string;
     price: number;
