@@ -1,26 +1,31 @@
 // client/src/features/teams/components/RosterHub/RosterHubV3.tsx
 //
 // v3 hub container — replaces the separate hitter/pitcher stats tables
-// on Team.tsx (per §0.5 refinement #1). Renders a single ThemedTable
-// with two sectioned bodies (Hitters / Pitchers), then the IL section
-// below.
+// on Team.tsx (per §0.5 refinement #1). Renders TWO sectioned `<table>`
+// elements (Hitters / Pitchers), then the IL section below.
 //
-// Layout decision (Option B from the spec):
+// Layout decision (post-PR-#216 polish, 2026-04-30):
 //   <Glass>
-//     <table>
+//     <table aria-label="Hitter roster">
+//       <colgroup> ... </colgroup>
 //       <thead> Hitter columns </thead>
 //       <tbody> hitter rows </tbody>
+//     </table>
+//     <table aria-label="Pitcher roster">
+//       <colgroup> ... </colgroup>
 //       <thead> Pitcher columns </thead>
 //       <tbody> pitcher rows </tbody>
 //     </table>
 //   </Glass>
 //   <IlSection />
 //
-// One <table> element with two thead+tbody pairs. Yahoo does this and
-// it's well-supported HTML. Browsers render the second `<thead>` as a
-// row group with the same alignment as the first. We render `<thead>`
-// using the `ThemedThead` styling primitive but raw `<tr>`/`<th>` so a
-// nested table is well-formed.
+// HISTORY: We previously rendered ONE <table> with `tableLayout: "fixed"`
+// containing TWO thead+tbody pairs. The browser can't reconcile two
+// different column counts (8 hitter cols vs 9 pitcher cols) under
+// `table-layout: fixed` and falls back to equal-width distribution,
+// ignoring `<th width>` props. Splitting into two tables lets each
+// have its own `<colgroup>` so the position+eligibility column can
+// breathe (180px) and the actions column gets explicit space (64px).
 //
 // All state is hoisted to the parent (preview page or PR2's Team owner
 // view). This component is layout-only.
@@ -116,42 +121,43 @@ function useIsMobile(forceMobile?: boolean): boolean {
   return forceMobile ?? mqMatch;
 }
 
+// Column widths: Pos·Eligibility carries multi-chip cells like
+// `1B (12)·CM·DH·OF` so it needs the most room. Actions only carries the
+// kebab `…` so 64px is plenty (the drag handle has moved to the left of
+// the player name — see Player cell). Sums fit within the 880px min-width
+// minus a slack column to absorb padding.
 const HITTER_COLS = [
-  { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 220 },
-  { key: "name", label: "Player", align: "left" as const, width: 220 },
+  { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 180 },
+  { key: "name", label: "Player", align: "left" as const, width: 200 },
   { key: "R", label: "R", align: "right" as const, width: 56 },
   { key: "HR", label: "HR", align: "right" as const, width: 56 },
   { key: "RBI", label: "RBI", align: "right" as const, width: 64 },
   { key: "SB", label: "SB", align: "right" as const, width: 56 },
   { key: "AVG", label: "AVG", align: "right" as const, width: 64 },
-  { key: "act", label: "Actions", align: "right" as const, width: 80 },
+  { key: "act", label: "Actions", align: "right" as const, width: 64 },
 ];
 
 const PITCHER_COLS = [
-  { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 220 },
-  { key: "name", label: "Player", align: "left" as const, width: 220 },
-  { key: "IP", label: "IP", align: "right" as const, width: 60 },
+  { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 180 },
+  { key: "name", label: "Player", align: "left" as const, width: 200 },
+  { key: "IP", label: "IP", align: "right" as const, width: 56 },
   { key: "W", label: "W", align: "right" as const, width: 48 },
   { key: "SV", label: "SV", align: "right" as const, width: 56 },
   { key: "K", label: "K", align: "right" as const, width: 48 },
   { key: "ERA", label: "ERA", align: "right" as const, width: 64 },
   { key: "WHIP", label: "WHIP", align: "right" as const, width: 64 },
-  { key: "act", label: "Actions", align: "right" as const, width: 80 },
+  { key: "act", label: "Actions", align: "right" as const, width: 64 },
 ];
 
 interface SectionTheadProps {
   cols: typeof HITTER_COLS;
-  label: string;
 }
 
-function SectionThead({ cols, label }: SectionTheadProps) {
+/** Renders just the column header row (no section label — that's hoisted
+ *  out of the table so it spans both tables uniformly). */
+function SectionThead({ cols }: SectionTheadProps) {
   return (
     <thead className="am-roster-section-thead">
-      <tr>
-        <td colSpan={cols.length} className="am-roster-section-label">
-          {label}
-        </td>
-      </tr>
       <tr>
         {cols.map((c) => (
           <th
@@ -167,7 +173,6 @@ function SectionThead({ cols, label }: SectionTheadProps) {
               fontWeight: 600,
               borderBottom: "1px solid var(--am-border)",
               background: "var(--am-surface-faint)",
-              width: c.width,
               whiteSpace: "nowrap",
             }}
           >
@@ -176,6 +181,39 @@ function SectionThead({ cols, label }: SectionTheadProps) {
         ))}
       </tr>
     </thead>
+  );
+}
+
+/** `<colgroup>` is the canonical way to drive `table-layout: fixed`
+ *  column widths — `<th width>` is the legacy fallback and is ignored
+ *  when multiple thead+tbody pairs share a single table. */
+function SectionColgroup({ cols }: { cols: typeof HITTER_COLS }) {
+  return (
+    <colgroup>
+      {cols.map((c) => (
+        <col key={c.key} style={{ width: c.width }} />
+      ))}
+    </colgroup>
+  );
+}
+
+/** Section label rendered ABOVE the table (not as a `<td colSpan>` row).
+ *  Keeps both tables visually unified — same typography, consistent
+ *  spacing rhythm, and the label aligns with the table's left edge. */
+function SectionLabelRow({ label, count }: { label: string; count: number }) {
+  return (
+    <div
+      style={{
+        padding: "12px 12px 6px",
+        fontSize: 10.5,
+        letterSpacing: 1.6,
+        textTransform: "uppercase",
+        color: "var(--am-text-muted)",
+        fontWeight: 600,
+      }}
+    >
+      {label} · {count}
+    </div>
   );
 }
 
@@ -226,9 +264,10 @@ export function RosterHubV3({
         <div style={{ padding: 16, paddingBottom: 6 }}>
           <SectionLabel>✦ Active roster · 23 slots</SectionLabel>
           <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
-            Tap a position pill to select; eligible destinations glow. The "..." menu
-            navigates to focused sub-routes for free agent / IL flows — no modals, the
-            stats table stays visible until you commit.
+            Tap a position pill to select; eligible destinations glow. Drag the ⋮⋮ icon
+            to swap roster positions. The "..." menu navigates to focused sub-routes for
+            free agent / IL flows — no modals, the stats table stays visible until you
+            commit.
           </p>
         </div>
 
@@ -320,76 +359,107 @@ export function RosterHubV3({
               </MobileSection>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table
-                className="am-roster-v3-table"
-                aria-label="Active roster"
-                style={{
-                  width: "100%",
-                  borderCollapse: "separate",
-                  borderSpacing: 0,
-                  tableLayout: "fixed",
-                  minWidth: 880,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {/* HITTERS */}
-                <SectionThead cols={HITTER_COLS} label={`Hitters · ${hitters.length}`} />
-                <tbody
+            <div
+              style={{
+                overflowX: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              {/* HITTERS — own table with explicit colgroup widths. */}
+              <div>
+                <SectionLabelRow label="Hitters" count={hitters.length} />
+                <table
+                  className="am-roster-v3-table"
+                  aria-label="Hitter roster"
                   style={{
-                    opacity: dimSection === "hitters" ? 0.42 : 1,
-                    transition: "opacity 160ms ease",
+                    width: "100%",
+                    borderCollapse: "separate",
+                    borderSpacing: 0,
+                    tableLayout: "fixed",
+                    minWidth: 700,
+                    fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {hitters.map((p) => (
-                    <DraggableDesktopRowAdapter
-                      key={p.rosterId}
-                      player={p}
-                      role="hitter"
-                      dndEnabled={!!dndEnabled}
-                      dropEligibleIds={dropIds}
-                      isSelected={selectedRosterId === p.rosterId}
-                      isEligible={eligibleRosterIds.has(p.rosterId)}
-                      isDimmed={dimmedFor(p.rosterId, "hitter")}
-                      isPending={pendingRosterIds.has(p.rosterId)}
-                      isDragSource={dragSim?.rosterId === p.rosterId}
-                      isDropTarget={dropIds.has(p.rosterId)}
-                      onPillClick={() => onPillClick(p.rosterId)}
-                      onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
-                      actions={buildActions(p)}
-                      isShakeRejecting={shakeRowId === p.rosterId}
-                    />
-                  ))}
-                </tbody>
-                {/* PITCHERS */}
-                <SectionThead cols={PITCHER_COLS} label={`Pitchers · ${pitchers.length}`} />
-                <tbody
+                  <SectionColgroup cols={HITTER_COLS} />
+                  <SectionThead cols={HITTER_COLS} />
+                  <tbody
+                    style={{
+                      opacity: dimSection === "hitters" ? 0.42 : 1,
+                      transition: "opacity 160ms ease",
+                    }}
+                  >
+                    {hitters.map((p) => (
+                      <DraggableDesktopRowAdapter
+                        key={p.rosterId}
+                        player={p}
+                        role="hitter"
+                        dndEnabled={!!dndEnabled}
+                        dropEligibleIds={dropIds}
+                        isSelected={selectedRosterId === p.rosterId}
+                        isEligible={eligibleRosterIds.has(p.rosterId)}
+                        isDimmed={dimmedFor(p.rosterId, "hitter")}
+                        isPending={pendingRosterIds.has(p.rosterId)}
+                        isDragSource={dragSim?.rosterId === p.rosterId}
+                        isDropTarget={dropIds.has(p.rosterId)}
+                        onPillClick={() => onPillClick(p.rosterId)}
+                        onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
+                        actions={buildActions(p)}
+                        isShakeRejecting={shakeRowId === p.rosterId}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PITCHERS — separate table so its 9-column layout doesn't
+                  collide with hitters' 8-column layout under
+                  table-layout:fixed. */}
+              <div>
+                <SectionLabelRow label="Pitchers" count={pitchers.length} />
+                <table
+                  className="am-roster-v3-table"
+                  aria-label="Pitcher roster"
                   style={{
-                    opacity: dimSection === "pitchers" ? 0.42 : 1,
-                    transition: "opacity 160ms ease",
+                    width: "100%",
+                    borderCollapse: "separate",
+                    borderSpacing: 0,
+                    tableLayout: "fixed",
+                    minWidth: 740,
+                    fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {pitchers.map((p) => (
-                    <DraggableDesktopRowAdapter
-                      key={p.rosterId}
-                      player={p}
-                      role="pitcher"
-                      dndEnabled={!!dndEnabled}
-                      dropEligibleIds={dropIds}
-                      isSelected={selectedRosterId === p.rosterId}
-                      isEligible={eligibleRosterIds.has(p.rosterId)}
-                      isDimmed={dimmedFor(p.rosterId, "pitcher")}
-                      isPending={pendingRosterIds.has(p.rosterId)}
-                      isDragSource={dragSim?.rosterId === p.rosterId}
-                      isDropTarget={dropIds.has(p.rosterId)}
-                      onPillClick={() => onPillClick(p.rosterId)}
-                      onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
-                      actions={buildActions(p)}
-                      isShakeRejecting={shakeRowId === p.rosterId}
-                    />
-                  ))}
-                </tbody>
-              </table>
+                  <SectionColgroup cols={PITCHER_COLS} />
+                  <SectionThead cols={PITCHER_COLS} />
+                  <tbody
+                    style={{
+                      opacity: dimSection === "pitchers" ? 0.42 : 1,
+                      transition: "opacity 160ms ease",
+                    }}
+                  >
+                    {pitchers.map((p) => (
+                      <DraggableDesktopRowAdapter
+                        key={p.rosterId}
+                        player={p}
+                        role="pitcher"
+                        dndEnabled={!!dndEnabled}
+                        dropEligibleIds={dropIds}
+                        isSelected={selectedRosterId === p.rosterId}
+                        isEligible={eligibleRosterIds.has(p.rosterId)}
+                        isDimmed={dimmedFor(p.rosterId, "pitcher")}
+                        isPending={pendingRosterIds.has(p.rosterId)}
+                        isDragSource={dragSim?.rosterId === p.rosterId}
+                        isDropTarget={dropIds.has(p.rosterId)}
+                        onPillClick={() => onPillClick(p.rosterId)}
+                        onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
+                        actions={buildActions(p)}
+                        isShakeRejecting={shakeRowId === p.rosterId}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
