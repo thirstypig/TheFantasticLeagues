@@ -185,19 +185,27 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
   ]);
   const totalSignups = totalUsers;
 
-  // Retention: active user counts (groupBy not supported in $transaction)
-  const [active30dRows, active7dRows] = await Promise.all([
-    prisma.userSession.groupBy({
-      by: ["userId"],
-      where: { startedAt: { gte: new Date(Date.now() - 30 * 86400000) } },
-    }),
-    prisma.userSession.groupBy({
-      by: ["userId"],
-      where: { startedAt: { gte: new Date(Date.now() - 7 * 86400000) } },
-    }),
+  // Retention: active user counts. Raw `COUNT(DISTINCT)` ships a single
+  // integer per query — the prior `groupBy({ by: ["userId"] })` shipped
+  // one row per active user just to read `.length`, which scales linearly
+  // with MAU and saturates the single Supabase pooler connection.
+  const nowMs = now.getTime();
+  const cutoff30d = new Date(nowMs - 30 * 86400000);
+  const cutoff7d = new Date(nowMs - 7 * 86400000);
+  const [active30dResult, active7dResult] = await Promise.all([
+    prisma.$queryRaw<Array<{ n: bigint }>>`
+      SELECT COUNT(DISTINCT "userId")::bigint AS n
+      FROM "UserSession"
+      WHERE "startedAt" >= ${cutoff30d}::timestamptz
+    `,
+    prisma.$queryRaw<Array<{ n: bigint }>>`
+      SELECT COUNT(DISTINCT "userId")::bigint AS n
+      FROM "UserSession"
+      WHERE "startedAt" >= ${cutoff7d}::timestamptz
+    `,
   ]);
-  const usersActive30d = active30dRows.length;
-  const usersActive7d = active7dRows.length;
+  const usersActive30d = Number(active30dResult[0]?.n ?? 0n);
+  const usersActive7d = Number(active7dResult[0]?.n ?? 0n);
 
   // Sparklines + hero in parallel — each weeklySparkline still fires N
   // queries internally (one per week) but the 7 model series no longer run
@@ -221,15 +229,17 @@ async function computeDashboard(days: number): Promise<DashboardResponse> {
     weeklySparkline("aiInsight", "createdAt", days, from),
     weeklySparkline("transactionEvent", "createdAt", days, from),
     weeklyActiveUsersSparkline(days, from),
-    prisma.userSession.groupBy({
-      by: ["userId"],
-      where: { startedAt: { gte: priorFrom, lt: from } },
-    }),
+    prisma.$queryRaw<Array<{ n: bigint }>>`
+      SELECT COUNT(DISTINCT "userId")::bigint AS n
+      FROM "UserSession"
+      WHERE "startedAt" >= ${priorFrom}::timestamptz
+        AND "startedAt" < ${from}::timestamptz
+    `,
   ]);
 
   // ─── Build Hero ───
   const activeUsers = usersActive30d;
-  const priorActiveUsers = priorActiveUserRows.length;
+  const priorActiveUsers = Number(priorActiveUserRows[0]?.n ?? 0n);
 
   const hero: HeroMetric = {
     label: "Active Users",
