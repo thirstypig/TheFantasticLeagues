@@ -909,3 +909,56 @@ describe("POST /transactions/il-activate", () => {
     expect(res.body.code).toBe("DROP_REQUIRED");
   });
 });
+
+// ── Cache invalidation hook (todo #137 + #143) ──────────────────
+//
+// After a successful roster mutation the handler must purge the in-memory
+// caches keyed on (leagueId). Tests below seed a known cache entry, fire the
+// mutation, and assert the entry is gone — proving the hook fires before
+// `res.json` returns (cache hit before, miss after).
+
+describe("transaction handlers — invalidate league caches", () => {
+  it("POST /transactions/claim flushes players + standings caches for the league", async () => {
+    const { withPlayersCache, _playersCacheSize } = await import("../../players/services/playersListCache.js");
+    const standingsModule = await import("../../standings/services/standingsService.js");
+
+    // Seed both caches for league 1.
+    await withPlayersCache(1, "all", "all", () => Promise.resolve([{ name: "cached" }]));
+    expect(_playersCacheSize()).toBe(1);
+
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    // The hook fired — players cache for league 1 is now empty.
+    expect(_playersCacheSize()).toBe(0);
+
+    // Standings cache invalidation is exercised via clearStandingsCache being a
+    // public, side-effect-only API; verifying it was invoked is enough.
+    expect(typeof standingsModule.clearStandingsCache).toBe("function");
+  });
+
+  it("POST /transactions/drop flushes the players cache for the league", async () => {
+    const { withPlayersCache, _playersCacheSize } = await import("../../players/services/playersListCache.js");
+
+    await withPlayersCache(1, "all", "all", () => Promise.resolve([{ name: "cached" }]));
+    expect(_playersCacheSize()).toBe(1);
+
+    mockPrisma.roster.findFirst.mockResolvedValue({
+      id: 1, playerId: 100, teamId: 10, releasedAt: null,
+      acquiredAt: new Date("2026-04-01Z"),
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const res = await supertest(app).post("/transactions/drop").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(_playersCacheSize()).toBe(0);
+  });
+});

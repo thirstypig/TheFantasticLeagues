@@ -33,6 +33,23 @@ import {
   type AppliedReassignment,
 } from "./lib/autoResolveLineup.js";
 import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
+import { clearPlayersCache } from "../players/services/playersListCache.js";
+import { clearStandingsCache } from "../standings/services/standingsService.js";
+
+/**
+ * Invalidate every cache keyed on (leagueId, ...) after a successful roster
+ * mutation (claim, drop, il-stash, il-activate). The `/api/players` cache is
+ * the primary target (todo #137); the standings cache is a free addition that
+ * also satisfies todo #143 (standings invalidation on mutations).
+ *
+ * Sync, lightweight, must run after the transaction commits but before the
+ * response is sent — otherwise a follow-up request can read a stale cache
+ * before the in-memory entry is purged.
+ */
+function invalidateLeagueCaches(leagueId: number): void {
+  clearPlayersCache(leagueId);
+  clearStandingsCache(leagueId);
+}
 
 /**
  * Find completed periods whose date range is touched by a backdated
@@ -412,6 +429,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     },
   });
 
+  invalidateLeagueCaches(leagueId);
   return res.json({ success: true, playerId, appliedReassignments });
 }));
 
@@ -488,6 +506,7 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
     },
   });
 
+  invalidateLeagueCaches(leagueId);
   return res.json({ success: true, playerId });
 }));
 
@@ -788,6 +807,7 @@ router.post(
       await enqueueReconcileForEffective(leagueId, effective);
     }
 
+    invalidateLeagueCaches(leagueId);
     return res.json({ success: true, stashPlayerId, addPlayerId, appliedReassignments: stashAppliedReassignments });
   }),
 );
@@ -1011,6 +1031,7 @@ router.post(
       await enqueueReconcileForEffective(leagueId, effective);
     }
 
+    invalidateLeagueCaches(leagueId);
     return res.json({ success: true, activatePlayerId, dropPlayerId, appliedReassignments: activateAppliedReassignments });
   }),
 );

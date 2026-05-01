@@ -150,6 +150,45 @@ function loadCsvFallback(): Map<string, SeasonStatEntry> {
 const HISTORICAL_TTL = 30 * 24 * 3600;
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
+/**
+ * Number of MLB batch fetches to run in parallel during cold-start (todo #137).
+ *
+ * Pre-fix: sequential `for (const batch of batches) await mlbGetJson(...)` with
+ * a 100ms `setTimeout` between batches. ~1,200 players ÷ 50 = 24 batches × 250ms
+ * ≈ 6s warm-up on a cold container.
+ *
+ * Post-fix: 4-way bounded concurrency cuts that to ~1.5s while staying well
+ * within the MCP rate limiter (10 req/s burst 20). The 100ms inter-batch sleep
+ * is dropped — the SQLite cache already absorbs warm hits and statsapi.mlb.com
+ * doesn't rate-limit aggressively at this volume.
+ *
+ * Exported only as a tunable; not part of the public API.
+ */
+const MLB_BATCH_CONCURRENCY = 4;
+
+/**
+ * Bounded concurrency runner — process `items` with at most `limit` workers
+ * running in parallel. Kept inline (no `p-limit` dependency) since this is
+ * the only call site.
+ *
+ * Exported for testing — see `__tests__/statsServiceConcurrency.test.ts`.
+ */
+export async function runWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const idx = cursor++;
+      await worker(items[idx]);
+    }
+  });
+  await Promise.all(runners);
+}
+
 /** Fetch 2025 season stats from MLB API for all players in DB. Uses 30-day SQLite cache. */
 async function fetchLastSeasonFromApi(): Promise<Map<string, SeasonStatEntry>> {
   const allPlayers = await prisma.player.findMany({
@@ -163,14 +202,13 @@ async function fetchLastSeasonFromApi(): Promise<Map<string, SeasonStatEntry>> {
   const batches = chunk(mlbIds, 50);
   const cache = new Map<string, SeasonStatEntry>();
 
-  for (const batch of batches) {
+  await runWithConcurrency(batches, MLB_BATCH_CONCURRENCY, async (batch) => {
     const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=stats(group=[hitting,pitching],type=[season],season=${LAST_SEASON})`;
     const data = await mlbGetJson(url, HISTORICAL_TTL);
     for (const person of (data.people || [])) {
       cache.set(String(person.id), parseSeasonStats(person));
     }
-    await new Promise((r) => setTimeout(r, 100));
-  }
+  });
 
   logger.info({ fetched: cache.size, season: LAST_SEASON }, "Last-season stats loaded from MLB API");
   return cache;
@@ -222,14 +260,13 @@ async function fetchCurrentSeasonFromApi(): Promise<Map<string, SeasonStatEntry>
   const batches = chunk(mlbIds, 50);
   const cache = new Map<string, SeasonStatEntry>();
 
-  for (const batch of batches) {
+  await runWithConcurrency(batches, MLB_BATCH_CONCURRENCY, async (batch) => {
     const url = `${MLB_BASE}/people?personIds=${batch.join(",")}&hydrate=stats(group=[hitting,pitching],type=[season],season=${CURRENT_SEASON})`;
     const data = await mlbGetJson(url, CURRENT_SEASON_TTL);
     for (const person of (data.people || [])) {
       cache.set(String(person.id), parseSeasonStats(person));
     }
-    await new Promise((r) => setTimeout(r, 100));
-  }
+  });
 
   logger.info({ fetched: cache.size, season: CURRENT_SEASON }, "Current-season stats loaded from MLB API");
   return cache;

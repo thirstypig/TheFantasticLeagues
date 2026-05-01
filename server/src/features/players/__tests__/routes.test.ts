@@ -46,6 +46,7 @@ vi.mock("fs", () => ({
 
 import { prisma } from "../../../db/prisma.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
+import { clearPlayersCache } from "../services/playersListCache.js";
 
 const mockPrisma = prisma as any;
 
@@ -69,6 +70,8 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Flush the in-memory players list cache so each test sees a fresh load.
+  clearPlayersCache();
 });
 
 // ── GET /players ─────────────────────────────────────────────────
@@ -88,18 +91,35 @@ describe("GET /players", () => {
   });
 
   it("filters by availability=available (no team assignment)", async () => {
-    mockPrisma.player.findMany.mockResolvedValue([
+    // Filter pushdown (todo #137): availability=available is now translated
+    // to `where.id = { notIn: rosteredPlayerIds }`. Mock honors that filter so
+    // we exercise the route's pushdown contract, not just the in-memory filter.
+    const allPlayers = [
       { id: 1, mlbId: 1, name: "Free Agent", posPrimary: "SS", posList: "SS", mlbTeam: "NYM" },
       { id: 2, mlbId: 2, name: "Owned Guy", posPrimary: "1B", posList: "1B", mlbTeam: "ATL" },
-    ]);
+    ];
+    mockPrisma.player.findMany.mockImplementation(async (args: any) => {
+      const notIn = args?.where?.id?.notIn;
+      if (Array.isArray(notIn)) {
+        return allPlayers.filter((p) => !notIn.includes(p.id));
+      }
+      return allPlayers;
+    });
     mockPrisma.roster.findMany.mockResolvedValue([
       { playerId: 2, team: { code: "ABC", leagueId: 1, name: "Aces" } },
     ]);
 
     const res = await supertest(app).get("/players?availability=available&leagueId=1");
     expect(res.status).toBe(200);
+    // Pushdown filtered owned player at the DB level.
     expect(res.body.players).toHaveLength(1);
     expect(res.body.players[0].player_name).toBe("Free Agent");
+
+    // Assert the route built the right `where` clause — regression for the
+    // pushdown specifically. The owned player must appear in `id.notIn`.
+    expect(mockPrisma.player.findMany).toHaveBeenCalled();
+    const call = mockPrisma.player.findMany.mock.calls[0][0];
+    expect(call.where.id.notIn).toEqual([2]);
   });
 
   it("filters pitchers only", async () => {

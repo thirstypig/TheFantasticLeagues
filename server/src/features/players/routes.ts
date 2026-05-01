@@ -26,6 +26,7 @@ import {
   type SeasonStatEntry,
   type PlayerValueEntry,
 } from "./services/statsService.js";
+import { withPlayersCache } from "./services/playersListCache.js";
 
 const router = Router();
 
@@ -47,22 +48,31 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
     | "pitchers";
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
 
-  // Get real players from DB (exclude filler/test players at query level)
-  const allPlayers = await prisma.player.findMany({
-    where: {
-      OR: [
-        { mlbId: null },
-        { mlbId: { lt: 900000 } },
-      ],
-      NOT: { name: { startsWith: "Filler Hitter" } },
-    },
-    select: {
-      id: true, mlbId: true, name: true,
-      posPrimary: true, posList: true, mlbTeam: true,
-    },
-  });
+  const players = await withPlayersCache(leagueId, availability, type, () =>
+    loadPlayersList(leagueId, availability, type),
+  );
 
-  // Get active rosters for the league (for availability + team assignment)
+  res.json({ players });
+}));
+
+/**
+ * Loader for the cached players list response. Filter pushdown (todo #137):
+ *   - `availability=available` → `roster: { none: {...} }`
+ *   - `availability=owned`     → `roster: { some: {...} }`
+ *   - `allowedTeams`           → `mlbTeam IN allowedTeams ∪ NULL/'FA' ∪ rostered IDs`
+ *
+ * The `expandTwoWayPlayers` step can introduce a row whose `is_pitcher` flips
+ * from the row Prisma returned (Ohtani gets a hitter + a pitcher row), so the
+ * `type` filter still runs in JS post-expansion.
+ */
+async function loadPlayersList(
+  leagueId: number | null,
+  availability: "all" | "available" | "owned",
+  type: "all" | "hitters" | "pitchers",
+) {
+  // Active rosters drive availability + display fields. Fetched first so we
+  // can use the rostered ID set inside the player `where` clause for the
+  // allowedTeams carve-out.
   const rosters = leagueId
     ? await prisma.roster.findMany({
         where: { team: { leagueId }, releasedAt: null },
@@ -80,18 +90,71 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
     });
   }
 
-  // Filter by league stats_source (NL/AL/MLB)
   const allowedTeams = leagueId
     ? getTeamsForSource(await getLeagueStatsSource(leagueId))
     : null;
 
+  // Build the Prisma `where` with all filters pushed down.
+  const where: Record<string, unknown> = {
+    // Exclude filler/test players at query level (was: in-memory filter).
+    OR: [{ mlbId: null }, { mlbId: { lt: 900000 } }],
+    NOT: { name: { startsWith: "Filler Hitter" } },
+  };
+
+  // allowedTeams pushdown: mlbTeam ∈ allowedTeams OR mlbTeam is null/FA OR
+  // player is rostered in this league (carve-out preserved from the JS filter).
+  if (allowedTeams) {
+    where.AND = [
+      {
+        OR: [
+          { mlbTeam: { in: Array.from(allowedTeams) } },
+          { mlbTeam: null },
+          { mlbTeam: "" },
+          { mlbTeam: "FA" },
+          rosteredPlayerIds.size > 0
+            ? { id: { in: Array.from(rosteredPlayerIds) } }
+            : { id: -1 }, // empty match if no rosters
+        ],
+      },
+    ];
+  }
+
+  // availability pushdown. We can't use Prisma's relation filter for `roster`
+  // here because the rosters query is league-scoped via `team.leagueId`; the
+  // rostered set is materialized above. So encode as id IN / NOT IN.
+  if (availability === "available" && leagueId) {
+    where.id =
+      rosteredPlayerIds.size > 0
+        ? { notIn: Array.from(rosteredPlayerIds) }
+        : undefined;
+  } else if (availability === "owned" && leagueId) {
+    where.id =
+      rosteredPlayerIds.size > 0
+        ? { in: Array.from(rosteredPlayerIds) }
+        : -1; // empty match
+  }
+
+  // type pushdown for the obvious case (pitchers/hitters by primary position).
+  // The two-way expansion below may flip is_pitcher on a duplicate row, so the
+  // final type filter still runs post-expansion to stay correct for Ohtani.
+  // We skip pushdown for `type=pitchers` because expansion may add a pitcher
+  // row from a non-pitcher Ohtani record.
+  if (type === "hitters") {
+    where.posPrimary = { not: "P" };
+  }
+
+  const allPlayers = await prisma.player.findMany({
+    where,
+    select: {
+      id: true, mlbId: true, name: true,
+      posPrimary: true, posList: true, mlbTeam: true,
+    },
+  });
+
   let players = allPlayers
-    .filter((p) => {
-      if (isFillerPlayer(p)) return false;
-      if (!allowedTeams) return true;
-      const team = p.mlbTeam ?? "";
-      return !team || team === "FA" || allowedTeams.has(team) || rosterMap.has(p.id);
-    })
+    // isFillerPlayer is now redundant with the pushdown but kept defensively
+    // for the mlbId === null + name === "Filler Hitter X" intersection.
+    .filter((p) => !isFillerPlayer(p))
     .map((p) => {
       const roster = rosterMap.get(p.id);
       const isPitcher = (p.posPrimary ?? "").toUpperCase() === "P";
@@ -117,22 +180,15 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
   // Expand two-way players (e.g. Ohtani → DH hitter row + P pitcher row)
   players = expandTwoWayPlayers(players);
 
-  // availability filter
-  if (availability === "available") {
-    players = players.filter((p) => !p.ogba_team_code);
-  } else if (availability === "owned") {
-    players = players.filter((p) => !!p.ogba_team_code);
-  }
-
-  // hitter/pitcher filter
+  // hitter/pitcher post-expansion filter (catches expanded Ohtani pitcher row).
   if (type === "hitters") {
     players = players.filter((p) => !p.is_pitcher);
   } else if (type === "pitchers") {
     players = players.filter((p) => p.is_pitcher);
   }
 
-  res.json({ players });
-}));
+  return players;
+}
 
 /**
  * GET /players/news/transactions
