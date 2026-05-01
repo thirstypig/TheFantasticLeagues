@@ -247,6 +247,13 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `WaiverClaim.aiAnalysis` — JSON, auto-generated post-waiver analysis (fire-and-forget on processing)
 - `AuctionSession.state.draftReport` — JSON, persisted Draft Report (generated once, survives restarts)
 
+### Migrations
+- **Unique timestamps required.** Prisma applies migrations in lexicographic directory-name order. Two migrations sharing the same timestamp prefix (e.g. `20260430000000_a` and `20260430000000_b`) work today via name disambiguation but will become non-deterministic if a third with the same timestamp lands. Use `20260430000000` then `20260430000001` for same-day migrations.
+- **`CREATE INDEX CONCURRENTLY` for hot tables.** Plain `CREATE INDEX` takes a `ShareLock` blocking writes for the duration of the build. Acceptable on low-write tables (AiInsight); required (`CONCURRENTLY`) on high-write tables (Roster, PlayerStatsPeriod, TransactionEvent).
+- **`IF EXISTS` / `IF NOT EXISTS` guards** on destructive ops (`DROP COLUMN`, `DROP INDEX`) so the migration is idempotent.
+- **Destructive migrations need a rollback runbook** at `docs/runbooks/<migration_name>_rollback.md` documenting the recovery SQL. See `docs/runbooks/auto_resolve_slots_rollback.md` for the canonical template.
+- **`ENFORCE_ROSTER_RULES=true` triggers unconditional auto-resolve** as of 2026-04-30 (PR #180). The per-league `LeagueRule(transactions.auto_resolve_slots)` was retired — auto-resolve is no longer toggleable per league.
+
 ### Daily Cron Jobs (server/src/index.ts)
 - **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 3)` which applies OGBA's three-layer position eligibility:
   1. **Rule 1** — current season ≥3 GP at a position → eligible.
