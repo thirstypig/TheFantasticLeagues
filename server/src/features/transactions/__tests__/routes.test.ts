@@ -831,13 +831,39 @@ describe("POST /transactions/il-stash", () => {
     expect(res.body.code).toBe("NOT_ON_IL");
   });
 
-  it("requires addPlayerId or addMlbId", async () => {
+  it("stash-only mode (no addPlayerId): IL slot transition fires, no add Roster row created", async () => {
+    // v3 hub IL scenario direction-lock: queues stash without a paired
+    // add. Server moves the player to IL and the matcher reshuffles the
+    // active roster from BN. No new Roster row, no ADD TransactionEvent.
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 50, assignedPosition: "OF", acquiredAt: new Date("2026-04-01Z"),
+    });
+    // No second findFirst call (existingRoster) since stashOnly skips it.
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
     const res = await supertest(app).post("/transactions/il-stash").send({
       leagueId: 1, teamId: 10, stashPlayerId: 42,
+      // No addPlayerId / addMlbId — stash-only mode
     });
-    // Zod validator is mocked as passthrough in these tests; the handler's
-    // own check catches this case.
-    expect(res.status).toBe(400);
+
+    expect(res.status).toBe(200);
+    expect(res.body.stashOnly).toBe(true);
+    expect(res.body.addPlayerId).toBeNull();
+
+    // Stash player's Roster row updated to IL
+    expect(mockTx.roster.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 50 },
+        data: expect.objectContaining({ assignedPosition: "IL" }),
+      }),
+    );
+    // No new Roster row created (the stash-only branch skips it)
+    expect(mockTx.roster.create).not.toHaveBeenCalled();
+    // Only IL_STASH TransactionEvent — no ADD pairing
+    const types = (mockTx.transactionEvent.create as any).mock.calls
+      .map((c: any[]) => c[0].data.transactionType);
+    expect(types).toContain("IL_STASH");
+    expect(types).not.toContain("ADD");
   });
 });
 
