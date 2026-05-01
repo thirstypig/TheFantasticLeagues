@@ -397,3 +397,116 @@
     animation: am-roster-row-pulse 2.4s ease-in-out infinite;
   }
 }
+
+/* ─── PendingChangeBar mobile condensed view (Complex-#7) ─────────
+ *
+ * At <768px, pending-change rows render with badge + name only;
+ * the secondary line, dependency badge, and error reason hide
+ * unless the row's `<details>` element is open (CSS-only — no JS
+ * resize listener, SSR-friendly). The `summary` is the always-
+ * visible portion; the rest sits inside the `<details>` body.
+ *
+ * Above 768px the entire row is shown inline (no expand toggle).
+ */
+
+.am-pending-row {
+  /* Default: full layout (desktop). */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  font-size: 12px;
+  color: var(--am-text);
+}
+
+.am-pending-row[data-failed="true"] {
+  border-left: 2px solid #c41a85;
+  padding-left: 8px;
+  background: color-mix(in srgb, #c41a85 6%, transparent);
+  border-radius: 6px;
+}
+
+.am-pending-row-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--am-text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.am-pending-row-error {
+  display: block;
+  font-size: 11px;
+  color: #fca5a5;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.am-pending-row-dependson {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--am-text-muted);
+  background: var(--am-chip);
+  border: 1px solid var(--am-border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@media (max-width: 767px) {
+  /* Mobile: collapse the row into summary + body, force tap-to-expand. */
+  .am-pending-row-mobile {
+    display: block;
+    padding: 0;
+  }
+  .am-pending-row-mobile > summary {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 6px;
+    cursor: pointer;
+    list-style: none;
+    /* Hide the default ▶ marker. */
+  }
+  .am-pending-row-mobile > summary::-webkit-details-marker {
+    display: none;
+  }
+  .am-pending-row-mobile > summary::marker {
+    display: none;
+  }
+  .am-pending-row-mobile > .am-pending-row-body {
+    padding: 4px 6px 10px 32px;
+    border-bottom: 1px solid var(--am-border);
+  }
+  .am-pending-row-mobile[open] > summary {
+    border-bottom: none;
+  }
+}
+
+@media (min-width: 768px) {
+  /* Desktop: details/summary acts like a normal row, body is always visible. */
+  .am-pending-row-mobile {
+    display: block;
+  }
+  .am-pending-row-mobile > summary {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 4px;
+    list-style: none;
+    cursor: default;
+  }
+  .am-pending-row-mobile > summary::-webkit-details-marker,
+  .am-pending-row-mobile > summary::marker {
+    display: none;
+  }
+  /* Always-shown body on desktop — bypass the `[open]` gating. */
+  .am-pending-row-mobile > .am-pending-row-body {
+    display: block;
+    padding: 0 4px 4px 32px;
+  }
+}

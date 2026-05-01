@@ -12,6 +12,8 @@ export { EligibilityChips } from "./EligibilityChips";
 export { RowActionMenu } from "./RowActionMenu";
 export { PendingChangeBar } from "./PendingChangeBar";
 export type { PendingChangeBarItem } from "./PendingChangeBar";
+export { SaveDiffPreviewModal } from "./SaveDiffPreviewModal";
+export type { DiffRow } from "./SaveDiffPreviewModal";
 export { FreeAgentPanel, encodeFaDndId, decodeFaDndId, FA_DND_ID_PREFIX } from "./FreeAgentPanel";
 export { DropPool } from "./DropPool";
 export { IlSection } from "./IlSection";
