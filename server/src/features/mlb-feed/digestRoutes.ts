@@ -12,6 +12,7 @@ import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
 import { getWeekKey, weekKeyLabel, mlbGameDayDate } from "../../lib/utils.js";
 import { buildDigestContext, extractVoteResults, isDigestReady, type DigestData } from "./services/digestService.js";
+import { AwardsRankingsSchema } from "../../../../shared/api/awards.js";
 
 const router = Router();
 
@@ -97,6 +98,16 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
 
   // Persist digest. Include the structured awards rankings (todo #115) so
   // agents/UIs can read raw z-score composite data without re-parsing AI prose.
+  //
+  // Dev-only schema validation (todo #118): in non-production builds, parse
+  // the awards payload through `AwardsRankingsSchema` so any drift between
+  // the compute output and the wire contract surfaces here at write time
+  // instead of as a malformed read in `awardsRoutes`. Skipped in prod
+  // because it's a hot path and the payload is internal — the
+  // `awardsRoutes` reader still validates defensively.
+  if (process.env.NODE_ENV !== "production" && digestCtx.awardsRankings) {
+    AwardsRankingsSchema.parse(digestCtx.awardsRankings);
+  }
   const firstTeamId = (await prisma.team.findFirst({ where: { leagueId }, select: { id: true } }))?.id ?? 0;
   const persistedPayload = {
     ...(result.result as Record<string, unknown>),

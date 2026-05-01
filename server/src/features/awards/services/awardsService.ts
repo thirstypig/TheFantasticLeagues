@@ -14,97 +14,19 @@
  * returns this shape verbatim.
  */
 import { prisma } from "../../../db/prisma.js";
+// Wire-format types live in the shared Zod schema (todo #118). Both client
+// and server import from there so a drift between server response and
+// consumer expectation is a TypeScript compile error, not a runtime bug.
+// The persisted blob in `AiInsight.data.awards` conforms to the same shape.
+import type {
+  AwardsRankings,
+  CyYoungCandidate,
+  MvpCandidate,
+} from "../../../../../shared/api/awards.js";
 
-// ─── Types ───
-
-/** One MVP candidate with raw + composite stats. */
-export interface MvpCandidate {
-  rank: number;
-  playerId: number;
-  name: string;
-  team: string;
-  /** Composite z-score weighted by stat → award correlation. */
-  mvpScore: number;
-  /** Raw counting / rate stats over the period set. */
-  stats: {
-    AB: number;
-    H: number;
-    HR: number;
-    RBI: number;
-    R: number;
-    SB: number;
-    BB: number;
-    TB: number;
-    SO: number;
-    AVG: number;
-    OBP: number;
-    SLG: number;
-    OPS: number;
-  };
-  /** Per-component z-scores (signed: positive = above mean). */
-  zScores: {
-    OPS: number;
-    HR: number;
-    OBP: number;
-    RBI: number;
-    R: number;
-    SB: number;
-    TB: number;
-    BB: number;
-    SO: number;
-  };
-}
-
-/** One Cy Young candidate with raw + composite stats. */
-export interface CyYoungCandidate {
-  rank: number;
-  playerId: number;
-  name: string;
-  team: string;
-  /** "SP" if predominantly a starter (GS >= 3), "RP" otherwise. */
-  role: "SP" | "RP";
-  /** Composite z-score weighted by stat → award correlation. */
-  cyScore: number;
-  stats: {
-    W: number;
-    L: number;
-    K: number;
-    SV: number;
-    IP: number;
-    ERA: number;
-    WHIP: number;
-    K9: number;
-    BB9: number;
-    HR_A: number;
-  };
-  zScores: {
-    ERA: number;
-    WHIP: number;
-    K: number;
-    K9: number;
-    IP: number;
-    W: number;
-    L: number;
-    HR_A: number;
-    BB9: number;
-    SV: number;
-  };
-}
-
-/** Full awards rankings for a league at a given week. */
-export interface AwardsRankings {
-  leagueId: number;
-  weekKey: string;
-  /** ISO timestamp of when this snapshot was computed. */
-  computedAt: string;
-  /** Total players considered (post-eligibility filter). */
-  hitterPool: number;
-  starterPool: number;
-  /** Top 3 MVP candidates sorted by composite score (desc). Empty if pool < 3. */
-  mvp: MvpCandidate[];
-  /** Top 3 Cy Young candidates sorted by composite score (desc). Empty if pool < 3. */
-  cyYoung: CyYoungCandidate[];
-}
+// Re-export inferred types for back-compat with consumers that still import
+// these from the service module (digestService, route handlers, tests).
+export type { AwardsRankings, CyYoungCandidate, MvpCandidate };
 
 // ─── Constants ───
 

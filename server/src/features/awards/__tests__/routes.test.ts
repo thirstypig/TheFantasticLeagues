@@ -115,6 +115,33 @@ describe("GET /api/leagues/:leagueId/awards", () => {
     expect(res.body.source).toBe("computed");
   });
 
+  it("falls back to on-demand compute when persisted awards blob fails schema validation (todo #118)", async () => {
+    // Simulate a digest written before a server-side shape change — the blob
+    // is present but doesn't match `AwardsRankingsSchema` (e.g. missing
+    // `computedAt` and `cyYoung`). Pre-#118 the route's blind cast would
+    // ship this garbage to the client; now it must fall through to compute.
+    mockPrisma.aiInsight.findFirst.mockResolvedValue({
+      data: {
+        weekInOneSentence: "drifted digest",
+        awards: {
+          // Missing required fields — schema parse should fail.
+          leagueId: 1,
+          weekKey: "2026-W13",
+          mvp: [{ /* malformed candidate */ rank: 1 }],
+        },
+      },
+      createdAt: new Date(),
+    });
+    mockPrisma.period.findMany.mockResolvedValue([]);
+    mockPrisma.team.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/api/leagues/1/awards?weekKey=2026-W13");
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe("computed");
+    // No persisted-only field bleeds through
+    expect(res.body.digestGeneratedAt).toBeUndefined();
+  });
+
   it("uses current week when weekKey query param is missing/invalid", async () => {
     mockPrisma.aiInsight.findFirst.mockResolvedValue(null);
     mockPrisma.period.findMany.mockResolvedValue([]);
