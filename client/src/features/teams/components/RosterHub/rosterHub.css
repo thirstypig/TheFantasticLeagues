@@ -209,6 +209,7 @@
   cursor: grab;
   border-radius: 6px;
   padding: 0;
+  flex: none;
   /* Disable native drag — dnd-kit owns the gesture. */
   touch-action: none;
 }
@@ -220,6 +221,24 @@
 }
 .am-roster-drag-handle:active {
   cursor: grabbing;
+}
+
+/* Left-side drag handle (Yahoo convention). Sits inside the Player
+ * cell, before the name+team stack. Slightly more discoverable than
+ * the right-side variant — bumps color on row hover so it doesn't
+ * disappear on dense tables. */
+.am-roster-drag-handle-left {
+  color: var(--am-text-muted);
+}
+
+/* Row-level hover affordance for desktop drag — when the row is
+ * hovered, signal that it's draggable. dnd-kit owns the actual
+ * grab/grabbing transition during a drag (it sets cursor on the
+ * dragged node), but this CSS keeps the affordance visible on idle
+ * rows so users discover the feature. */
+.am-roster-v3-table tbody tr:hover .am-roster-drag-handle-left {
+  color: var(--am-text);
+  background: var(--am-chip);
 }
 
 .am-roster-ghost {

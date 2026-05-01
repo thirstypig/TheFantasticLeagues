@@ -133,21 +133,39 @@ function RosterRowV3Impl({
         />
       </ThemedTd>
 
-      {/* Player name + team. Pending dot + keeper star inline. */}
+      {/* Player name + team. Pending dot + keeper star inline. The drag
+          handle (⋮⋮) lives at the LEFT of the player name, matching
+          Yahoo Fantasy convention. dnd-kit's `setNodeRef` is on the
+          row (`<tr>`), so the handle's exact DOM position doesn't
+          affect drag binding — only `dragHandleAttrs` (listeners +
+          attributes) need to be on a focusable element. */}
       <ThemedTd>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
-            {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
-            {player.isKeeper && (
-              <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
-                ★
-              </span>
-            )}
-            {player.name}
-          </span>
-          <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
-            {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {dnd?.dragHandleAttrs && (
+            <button
+              type="button"
+              {...dnd.dragHandleAttrs}
+              className="am-roster-drag-handle am-roster-drag-handle-left"
+              aria-label={`Drag ${player.name} to reassign slot`}
+              title="Drag to reassign slot"
+            >
+              ⋮⋮
+            </button>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
+              {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
+              {player.isKeeper && (
+                <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
+                  ★
+                </span>
+              )}
+              {player.name}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+              {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
+            </span>
+          </div>
         </div>
       </ThemedTd>
 
@@ -175,20 +193,11 @@ function RosterRowV3Impl({
         </>
       )}
 
-      {/* Actions cell */}
+      {/* Actions cell — drag handle has moved to the LEFT of the player
+          name (Yahoo convention). Only the kebab `…` menu and the
+          inline ↩ revert affordance live here now. */}
       <ThemedTd align="right">
         <div style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
-          {dnd?.dragHandleAttrs && (
-            <button
-              type="button"
-              {...dnd.dragHandleAttrs}
-              className="am-roster-drag-handle"
-              aria-label={`Drag ${player.name} to reassign slot`}
-              title="Drag to swap"
-            >
-              ⋮⋮
-            </button>
-          )}
           {isPending && onRevert && (
             <button
               type="button"
