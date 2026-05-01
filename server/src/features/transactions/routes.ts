@@ -69,6 +69,19 @@ const effectiveDateSchema = z
   .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
   .optional();
 
+// MLB IDs are 6–7 digits today. Bound at 9_999_999 (8 digits) so future ID
+// growth still validates while rejecting obvious garbage (`1.5e10`,
+// `Infinity`, `NaN`, `"123abc"`). Numeric strings transform to numbers so
+// downstream `Number(mlbId)` reads succeed.
+//
+// Lifted to shared/api in todo #136 as `MlbIdSchema`.
+const mlbIdSchema = z
+  .union([
+    z.number().int().positive().max(9_999_999),
+    z.string().regex(/^\d+$/).transform(Number),
+  ])
+  .optional();
+
 const dropSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
@@ -80,7 +93,7 @@ const claimSchema = z.object({
   leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
   playerId: z.number().int().positive().optional(),
-  mlbId: z.union([z.number(), z.string()]).optional(),
+  mlbId: mlbIdSchema,
   dropPlayerId: z.number().int().positive().optional(),
   effectiveDate: effectiveDateSchema,
 }).refine((d) => d.playerId || d.mlbId, { message: "playerId or mlbId required" });
@@ -94,8 +107,11 @@ const router = Router();
 router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   const teamId = req.query.teamId ? Number(req.query.teamId) : undefined;
-  const skip = req.query.skip ? Number(req.query.skip) : 0;
-  const take = req.query.take ? Number(req.query.take) : 50;
+  // DoS hardening (todo #135): bound pagination to keep the worst-case query
+  // shape predictable. Mirror admin/audit-log precedent (Math.min/max).
+  // skip floor 0, ceiling 100_000 (already-paged history); take in [1, 200].
+  const skip = Math.min(Math.max(Number(req.query.skip) || 0, 0), 100_000);
+  const take = Math.min(Math.max(Number(req.query.take) || 50, 1), 200);
 
   const where: Prisma.TransactionEventWhereInput = { leagueId };
   if (teamId) where.teamId = teamId;
@@ -500,7 +516,7 @@ const ilStashSchema = z.object({
   teamId: z.number().int().positive(),
   stashPlayerId: z.number().int().positive(),
   addPlayerId: z.number().int().positive().optional(),
-  addMlbId: z.union([z.number(), z.string()]).optional(),
+  addMlbId: mlbIdSchema,
   effectiveDate: effectiveDateSchema,
   reason: z.string().max(500).optional(),
 }).refine(d => d.addPlayerId || d.addMlbId, {

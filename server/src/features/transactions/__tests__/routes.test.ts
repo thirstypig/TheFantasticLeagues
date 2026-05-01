@@ -155,6 +155,48 @@ describe("GET /transactions", () => {
     expect(res.body.skip).toBe(10);
     expect(res.body.take).toBe(25);
   });
+
+  // ── DoS hardening (todo #135): bound take/skip ─────────────────
+  // Mirrors admin/dashboard precedent (`Math.min(Math.max(...))`).
+  describe("take/skip bounds (DoS hardening)", () => {
+    beforeEach(() => {
+      mockPrisma.transactionEvent.count.mockResolvedValue(0);
+      mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+    });
+
+    it("clamps take above 200 → 200", async () => {
+      const res = await supertest(app).get("/transactions?leagueId=1&take=99999");
+      expect(res.status).toBe(200);
+      expect(res.body.take).toBe(200);
+      expect(mockPrisma.transactionEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 200 }),
+      );
+    });
+
+    it("clamps take=0 or negative → 1 (minimum)", async () => {
+      const res1 = await supertest(app).get("/transactions?leagueId=1&take=0");
+      // 0 is falsy → defaults to 50 first, then clamped to [1,200] = 50
+      expect(res1.body.take).toBe(50);
+
+      const res2 = await supertest(app).get("/transactions?leagueId=1&take=-10");
+      expect(res2.body.take).toBe(1);
+    });
+
+    it("clamps non-numeric take → default 50", async () => {
+      const res = await supertest(app).get("/transactions?leagueId=1&take=abc");
+      expect(res.body.take).toBe(50);
+    });
+
+    it("clamps negative skip → 0", async () => {
+      const res = await supertest(app).get("/transactions?leagueId=1&skip=-100");
+      expect(res.body.skip).toBe(0);
+    });
+
+    it("rejects extreme skip via cap (100_000)", async () => {
+      const res = await supertest(app).get("/transactions?leagueId=1&skip=99999999");
+      expect(res.body.skip).toBe(100_000);
+    });
+  });
 });
 
 // ── POST /transactions/claim ─────────────────────────────────────
@@ -907,5 +949,62 @@ describe("POST /transactions/il-activate", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe("DROP_REQUIRED");
+  });
+});
+
+// ── DoS hardening (todo #135): mlbId Zod schema rejection ─────────
+// The actual validateBody middleware is mocked as passthrough above for the
+// HTTP-level tests, so we re-implement the schema here and assert it
+// directly. This guards the regex+max contract: huge floats, Infinity, NaN,
+// "123abc" must all fail; valid strings should transform to numbers.
+//
+// Mirrors the inline `mlbIdSchema` in routes.ts. Slated to move to
+// shared/api/rosterMoves.ts in todo #136 (PR2).
+describe("mlbId schema (DoS hardening)", () => {
+  // Re-import zod fresh (the test's vi.mock setup doesn't touch it).
+  const { z } = require("zod") as typeof import("zod");
+  const schema = z.union([
+    z.number().int().positive().max(9_999_999),
+    z.string().regex(/^\d+$/).transform(Number),
+  ]);
+
+  it("accepts a normal numeric MLB ID", () => {
+    expect(schema.parse(545361)).toBe(545361);
+  });
+
+  it("accepts a numeric string and transforms to number", () => {
+    expect(schema.parse("545361")).toBe(545361);
+  });
+
+  it("accepts boundary value 9_999_999", () => {
+    expect(schema.parse(9_999_999)).toBe(9_999_999);
+  });
+
+  it("rejects 1.5e10 (exceeds max + non-int)", () => {
+    expect(() => schema.parse(1.5e10)).toThrow();
+  });
+
+  it("rejects Infinity", () => {
+    expect(() => schema.parse(Infinity)).toThrow();
+  });
+
+  it("rejects NaN", () => {
+    expect(() => schema.parse(NaN)).toThrow();
+  });
+
+  it("rejects '123abc' (non-digit string)", () => {
+    expect(() => schema.parse("123abc")).toThrow();
+  });
+
+  it("rejects negative numbers", () => {
+    expect(() => schema.parse(-5)).toThrow();
+  });
+
+  it("rejects zero (positive only)", () => {
+    expect(() => schema.parse(0)).toThrow();
+  });
+
+  it("rejects non-integer floats", () => {
+    expect(() => schema.parse(123.45)).toThrow();
   });
 });

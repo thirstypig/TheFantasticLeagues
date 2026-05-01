@@ -15,6 +15,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
+import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { prisma } from "../../db/prisma.js";
 import { getWeekKey } from "../../lib/utils.js";
 import { computeAwardsRankings, type AwardsRankings } from "./services/awardsService.js";
@@ -26,6 +27,7 @@ const WEEK_KEY_REGEX = /^\d{4}-W\d{2}$/;
 router.get(
   "/:leagueId/awards",
   requireAuth,
+  rateLimitPerUser({ capacity: 30, windowMs: 60_000, bucketName: "leagues-awards" }),
   requireLeagueMember("leagueId"),
   asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
