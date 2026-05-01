@@ -51,13 +51,16 @@ export interface IlStashParams {
     leagueId: number;
     teamId: number;
     stashPlayerId: number;
+    /** Pairing add — optional in v3 hub stash-only mode. When omitted, the
+     *  freed active slot stays empty and the server's matcher reshuffles the
+     *  rest of the active roster from BN. */
     addPlayerId?: number;
     addMlbId?: number;
     effectiveDate?: string;
     reason?: string;
 }
 
-export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
+export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number | null; stashOnly?: boolean; appliedReassignments?: AppliedReassignment[] }> {
     return fetchJsonApi(`${API_BASE}/transactions/il-stash`, {
         method: 'POST',
         body: JSON.stringify(params),

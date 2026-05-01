@@ -240,13 +240,16 @@ export function useRosterHubDrag(opts: UseRosterHubDragOptions): UseRosterHubDra
   }, [activeDragPlayer, activeFaDrag, activeIlDragPlayer, players]);
 
   // IL stash eligibility: true when the active drag is a Hub-source row
-  // whose mlbStatus is an "Injured …-Day" designation. Drives the empty-IL
-  // slot highlight per the design preview (visual cue that a stash is
-  // available). Server is authoritative — this is a UI gate only.
+  // and EITHER (a) its mlbStatus is an "Injured …-Day" designation, OR
+  // (b) the mlbStatus is unknown (page-load payload may not include it
+  // until the daily sync populates Player.mlbStatusSnapshot). Drives the
+  // empty-IL slot affordance — server is authoritative on save.
   const ilStashEligible = useMemo<boolean>(() => {
     if (!activeDragPlayer) return false;
     if (activeDragPlayer.assignedSlot === "IL") return false;
-    return isMlbIlStatusUi(activeDragPlayer.mlbStatus ?? null);
+    const status = activeDragPlayer.mlbStatus;
+    if (!status) return true; // unknown — let user try; server gates the save
+    return isMlbIlStatusUi(status);
   }, [activeDragPlayer]);
 
   const dimSection: "hitters" | "pitchers" | null = useMemo(() => {
@@ -405,8 +408,13 @@ export function useRosterHubDrag(opts: UseRosterHubDragOptions): UseRosterHubDra
 
       // IL stash: hub row → empty IL slot.
       if (isIlEmptyDndId(e.over.id)) {
-        if (!isMlbIlStatusUi(sourcePlayer.mlbStatus ?? null)) {
-          // Shake the source row instead (no concrete IL row to shake).
+        // Client gate is best-effort — when we KNOW the mlbStatus and it's
+        // NOT an Injured-Day designation, reject early. When mlbStatus is
+        // unknown (server hasn't populated it on the page-load payload yet),
+        // optimistically queue the change; the server will reject with
+        // NOT_MLB_IL on save if the player isn't actually on real IL.
+        const knownStatus = sourcePlayer.mlbStatus;
+        if (knownStatus && !isMlbIlStatusUi(knownStatus)) {
           triggerShake(sourceId);
           onToast?.(
             `${sourcePlayer.name} isn't on the MLB IL — only "Injured …-Day" players can be stashed`,
