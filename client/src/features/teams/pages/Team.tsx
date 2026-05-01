@@ -130,7 +130,7 @@ export default function Team() {
   const navigate = useNavigate();
   const { me } = useAuth();
   const authUser = me?.user;
-  const { leagueId, currentLeagueName, myTeamId, leagueRules } = useLeague();
+  const { leagueId, currentLeagueName, myTeamId, myTeamCode, leagueRules } = useLeague();
 
   // Sub-route detection for the manage flows. Each match flips the table
   // surface to a SubrouteContainer wrapping the existing transactions panel.
@@ -420,17 +420,39 @@ export default function Team() {
 
   // Permission gating mirrors ActivityPage — owner OR commissioner OR admin
   // can mutate; everyone else gets a view-only hub (no action menus).
-  const isCommissioner = !!(authUser?.isAdmin ||
+  //
+  // Rule-gate matrix (rolled up under `canManage`):
+  //   admin                  → always ✓
+  //   league commissioner    → always ✓
+  //   team owner viewing OWN → ✓ when `transactions.owner_self_serve === "true"`
+  //   anyone else            → ✗ (view-only)
+  //
+  // Drives:
+  //   - "+ Add free agent" button visibility
+  //   - RosterHubV3.dndEnabled (drag handles inert when false)
+  //   - PendingChangeBar Save button (defensive — should never appear if
+  //     pending was empty, but a no-op if commissioner mode lands without
+  //     permission and somehow queued a change)
+  const isAdmin = !!authUser?.isAdmin;
+  const isCommissioner = !!(isAdmin ||
     authUser?.memberships?.some(
       (m: { leagueId: string | number; role: string }) =>
         Number(m.leagueId) === leagueId && m.role === "COMMISSIONER",
     ));
   const isOwnerSelfServe =
     leagueRules?.transactions?.owner_self_serve === "true";
+  const isOwnTeam = teamMeta?.id != null && teamMeta.id === myTeamId;
   const canManage =
-    !!authUser?.isAdmin ||
+    isAdmin ||
     isCommissioner ||
-    (isOwnerSelfServe && teamMeta?.id === myTeamId);
+    (isOwnerSelfServe && isOwnTeam);
+
+  // Commissioner mode = "I can manage this team but it isn't mine". The
+  // banner + effectiveDate picker are the two affordances tied to this
+  // flag. An admin/commissioner viewing their OWN team is treated as a
+  // regular owner — no banner, no date picker — so the everyday flow
+  // doesn't gain extra chrome.
+  const isCommissionerMode = canManage && !isOwnTeam && !!teamMeta?.id;
 
   // Build the row action menu. Empty array = no "..." trigger renders
   // (RosterRowV3/MobileRowV3 hide it when actions.length === 0). Drop is
@@ -477,10 +499,19 @@ export default function Team() {
   // retry. We don't rollback successful mutations — the server-side
   // matcher handles that on the next save attempt by reading current
   // assignedPosition values.
-  const saveFn = useCallback(async (changes: PendingChange[]) => {
+  const saveFn = useCallback(async (
+    changes: PendingChange[],
+    ctx: { effectiveDate: string | null },
+  ) => {
     if (!teamMeta?.id) throw new Error("Team not loaded");
     if (!leagueId) throw new Error("League not loaded");
     const tid = teamMeta.id;
+    // Commissioner-mode backdate (null in owner mode). Forwarded as
+    // `effectiveDate` on every per-change mutation so the server-side
+    // audit trail reflects the chosen date. Per the PR description the
+    // swap mutation accepts the date as advisory only (no period
+    // recompute) — claim/il-stash/il-activate use it for real.
+    const effectiveDate = ctx.effectiveDate ?? undefined;
     // Atomic-on-failure (FA-#4 inherits from Hub-#4): each entry runs
     // sequentially; first failure throws and aborts the rest. Earlier
     // successful mutations are NOT rolled back — server matcher reads
@@ -488,8 +519,8 @@ export default function Team() {
     for (const change of changes) {
       if (change.kind === "swap") {
         try {
-          await updateRosterPosition(tid, change.from.rosterId, change.to.slot);
-          await updateRosterPosition(tid, change.to.rosterId, change.from.slot);
+          await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate);
+          await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
@@ -510,6 +541,7 @@ export default function Team() {
               mlbId: String(change.mlbId),
               ...(change.playerId ? { playerId: change.playerId } : {}),
               dropPlayerId: change.displaced.playerId,
+              ...(effectiveDate ? { effectiveDate } : {}),
             }),
           });
         } catch (err) {
@@ -531,6 +563,7 @@ export default function Team() {
             teamId: tid,
             stashPlayerId: change.playerId,
             // stashOnly mode — addPlayerId omitted intentionally.
+            ...(effectiveDate ? { effectiveDate } : {}),
           });
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
@@ -555,6 +588,7 @@ export default function Team() {
             teamId: tid,
             activatePlayerId: change.playerId,
             dropPlayerId: change.displaced.playerId,
+            ...(effectiveDate ? { effectiveDate } : {}),
           });
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
@@ -570,6 +604,11 @@ export default function Team() {
 
   const pending = usePendingChanges({
     teamId: teamMeta?.id ?? null,
+    // Per-(user, team) localStorage scoping so a commissioner bouncing
+    // between teams doesn't see one team's pending batch on another
+    // team's hub. Falls back to legacy team-only key when authUser is
+    // null (auth-resolve flicker on first paint).
+    userId: authUser?.id ?? null,
     saveFn,
   });
 
@@ -1250,6 +1289,53 @@ export default function Team() {
                 onDragEnd={drag.handleDragEnd}
                 onDragCancel={drag.handleDragCancel}
               >
+                {/* Commissioner-mode banner — surfaces when an admin or
+                    commissioner is operating on a team that isn't theirs.
+                    Amber palette matches the IL section so the user reads
+                    "elevated, careful" cues at a glance. The "Switch to my
+                    team →" link lets them bail back to their own hub. */}
+                {isCommissionerMode && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    data-testid="commissioner-mode-banner"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "10px 14px",
+                      marginBottom: 10,
+                      borderRadius: 12,
+                      background: "color-mix(in srgb, #f59e0b 10%, transparent)",
+                      border: "1px solid color-mix(in srgb, #f59e0b 38%, transparent)",
+                      fontSize: 12.5,
+                      color: "var(--am-text)",
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <span aria-hidden style={{ fontSize: 14 }}>🛡️</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                        Commissioner mode — managing for{" "}
+                        <strong>{teamMeta?.name ?? code}</strong>
+                      </span>
+                    </span>
+                    {myTeamCode && myTeamCode !== code && (
+                      <Link
+                        to={`/teams/${myTeamCode}`}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#f59e0b",
+                          textDecoration: "none",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        (Switch to my team →)
+                      </Link>
+                    )}
+                  </div>
+                )}
                 {/* FA scenario "+ Add free agent" affordance. Disabled
                     while a save is in flight; same hub action surface,
                     so the FA panel slides in alongside the roster
@@ -1300,6 +1386,10 @@ export default function Team() {
                   onRevertItem={pending.revertChange}
                   dropPoolSlot={
                     <DropPool rows={dropPoolRows} onRestore={pending.revertChange} />
+                  }
+                  effectiveDate={isCommissionerMode ? pending.state.effectiveDate : undefined}
+                  onEffectiveDateChange={
+                    isCommissionerMode ? pending.setEffectiveDate : undefined
                   }
                   dndEnabled={canManage}
                   shakeRowId={drag.shakeRowId}
