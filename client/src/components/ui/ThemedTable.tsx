@@ -140,13 +140,33 @@ interface ThemedTrProps {
   className?: string;
   isOdd?: boolean;
   onClick?: () => void;
+  /**
+   * Optional ref forwarded to the underlying `<tr>`. Used by dnd-kit
+   * (useDraggable / useDroppable need a stable DOM node). Kept narrow
+   * and opt-in so existing callers don't pay a render-prop cost.
+   */
+  innerRef?: React.Ref<HTMLTableRowElement>;
+  /** Additional HTML attrs (data-*, aria-*, role) merged onto the <tr>. */
+  extraProps?: React.HTMLAttributes<HTMLTableRowElement>;
+  /** Inline style — used for drag transforms / drop highlights. */
+  style?: React.CSSProperties;
 }
 
-export function ThemedTr({ children, className = '', onClick }: ThemedTrProps) {
+export function ThemedTr({
+  children,
+  className = '',
+  onClick,
+  innerRef,
+  extraProps,
+  style,
+}: ThemedTrProps) {
   return (
     <TableRow
+      ref={innerRef}
       onClick={onClick}
       className={cn(onClick && 'cursor-pointer', className)}
+      style={style}
+      {...extraProps}
     >
       {children}
     </TableRow>

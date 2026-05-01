@@ -25,14 +25,16 @@
 // All state is hoisted to the parent (preview page or PR2's Team owner
 // view). This component is layout-only.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
 import { PendingChangeBar } from "./PendingChangeBar";
-import { RosterRowV3 } from "./RosterRowV3";
-import { MobileRowV3 } from "./MobileRowV3";
+import { RosterRowV3, type RosterRowDnd } from "./RosterRowV3";
+import { MobileRowV3, type MobileRowDnd } from "./MobileRowV3";
 import { IlSectionV3 } from "./IlSectionV3";
 import type { RowAction } from "./RowActionMenu";
 import type { DragSimState, RosterHubPlayer } from "./types";
+import { encodeDndId } from "../../hooks/useRosterHubDrag";
 
 interface RosterHubV3Props {
   /** Hitter rows (Yahoo-style sectioning). */
@@ -69,6 +71,17 @@ interface RosterHubV3Props {
   saving?: boolean;
   saveError?: string | null;
   onDismissError?: () => void;
+
+  /**
+   * When true, each rendered row is wrapped in a per-row adapter that
+   * calls `useDraggable` + `useDroppable` and passes the result through
+   * to the row's `dnd` prop. The caller MUST render this hub inside a
+   * `<DndContext>` and supply `useRosterHubDrag` handlers to it. When
+   * false (default), rows render without drag affordance — view-only.
+   */
+  dndEnabled?: boolean;
+  /** rosterId currently in shake-reject state, or null. */
+  shakeRowId?: number | null;
 
   forceMobile?: boolean;
 }
@@ -171,6 +184,8 @@ export function RosterHubV3({
   saving,
   saveError,
   onDismissError,
+  dndEnabled,
+  shakeRowId,
   forceMobile,
 }: RosterHubV3Props) {
   const isMobile = useIsMobile(forceMobile);
@@ -241,10 +256,12 @@ export function RosterHubV3({
                 dimmed={dimSection === "hitters"}
               >
                 {hitters.map((p) => (
-                  <MobileRowV3
+                  <DraggableMobileRowAdapter
                     key={p.rosterId}
                     player={p}
                     role="hitter"
+                    dndEnabled={!!dndEnabled}
+                    dropEligibleIds={dropIds}
                     isSelected={selectedRosterId === p.rosterId}
                     isEligible={eligibleRosterIds.has(p.rosterId)}
                     isDimmed={dimmedFor(p.rosterId, "hitter")}
@@ -252,6 +269,7 @@ export function RosterHubV3({
                     onPillClick={() => onPillClick(p.rosterId)}
                     onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                     actions={buildActions(p)}
+                    isShakeRejecting={shakeRowId === p.rosterId}
                   />
                 ))}
               </MobileSection>
@@ -261,10 +279,12 @@ export function RosterHubV3({
                 dimmed={dimSection === "pitchers"}
               >
                 {pitchers.map((p) => (
-                  <MobileRowV3
+                  <DraggableMobileRowAdapter
                     key={p.rosterId}
                     player={p}
                     role="pitcher"
+                    dndEnabled={!!dndEnabled}
+                    dropEligibleIds={dropIds}
                     isSelected={selectedRosterId === p.rosterId}
                     isEligible={eligibleRosterIds.has(p.rosterId)}
                     isDimmed={dimmedFor(p.rosterId, "pitcher")}
@@ -272,6 +292,7 @@ export function RosterHubV3({
                     onPillClick={() => onPillClick(p.rosterId)}
                     onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                     actions={buildActions(p)}
+                    isShakeRejecting={shakeRowId === p.rosterId}
                   />
                 ))}
               </MobileSection>
@@ -299,10 +320,12 @@ export function RosterHubV3({
                   }}
                 >
                   {hitters.map((p) => (
-                    <RosterRowV3
+                    <DraggableDesktopRowAdapter
                       key={p.rosterId}
                       player={p}
                       role="hitter"
+                      dndEnabled={!!dndEnabled}
+                      dropEligibleIds={dropIds}
                       isSelected={selectedRosterId === p.rosterId}
                       isEligible={eligibleRosterIds.has(p.rosterId)}
                       isDimmed={dimmedFor(p.rosterId, "hitter")}
@@ -312,6 +335,7 @@ export function RosterHubV3({
                       onPillClick={() => onPillClick(p.rosterId)}
                       onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                       actions={buildActions(p)}
+                      isShakeRejecting={shakeRowId === p.rosterId}
                     />
                   ))}
                 </tbody>
@@ -324,10 +348,12 @@ export function RosterHubV3({
                   }}
                 >
                   {pitchers.map((p) => (
-                    <RosterRowV3
+                    <DraggableDesktopRowAdapter
                       key={p.rosterId}
                       player={p}
                       role="pitcher"
+                      dndEnabled={!!dndEnabled}
+                      dropEligibleIds={dropIds}
                       isSelected={selectedRosterId === p.rosterId}
                       isEligible={eligibleRosterIds.has(p.rosterId)}
                       isDimmed={dimmedFor(p.rosterId, "pitcher")}
@@ -337,6 +363,7 @@ export function RosterHubV3({
                       onPillClick={() => onPillClick(p.rosterId)}
                       onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                       actions={buildActions(p)}
+                      isShakeRejecting={shakeRowId === p.rosterId}
                     />
                   ))}
                 </tbody>
@@ -374,6 +401,120 @@ export function RosterHubV3({
       )}
     </div>
   );
+}
+
+/* ─── Draggable row adapters ─────────────────────────────────────────
+ *
+ * Each adapter calls `useDraggable` + `useDroppable` for its row, then
+ * forwards the dnd-kit results into the row component's `dnd` prop.
+ * Hooks are called UNCONDITIONALLY so React's rules-of-hooks aren't
+ * violated when `dndEnabled` toggles. When `dndEnabled` is false, the
+ * adapter still calls the hooks (cheap; both are no-ops without a
+ * surrounding DndContext) but suppresses the `dnd` prop on the row, so
+ * the grab handle / drop highlights aren't rendered.
+ *
+ * NOTE: When `dndEnabled` is false, the adapter is rendered OUTSIDE a
+ * DndContext on the legacy view-only callsite. dnd-kit's hooks are
+ * lenient about that — they fall back to no-op behavior when the
+ * provider isn't present, which is what we want.
+ */
+
+interface DraggableDesktopRowAdapterProps {
+  player: RosterHubPlayer;
+  role: "hitter" | "pitcher";
+  dndEnabled: boolean;
+  dropEligibleIds: ReadonlySet<number>;
+  isSelected: boolean;
+  isEligible: boolean;
+  isDimmed: boolean;
+  isPending: boolean;
+  isDragSource: boolean;
+  isDropTarget: boolean;
+  isShakeRejecting: boolean;
+  onPillClick: () => void;
+  onRevert?: () => void;
+  actions: RowAction[];
+}
+
+function DraggableDesktopRowAdapter(props: DraggableDesktopRowAdapterProps) {
+  const { player, dndEnabled, dropEligibleIds, ...rest } = props;
+  const dnd = useRowDnd<HTMLTableRowElement>(player.rosterId, dndEnabled, dropEligibleIds);
+  return <RosterRowV3 player={player} {...rest} dnd={dndEnabled ? dnd : undefined} />;
+}
+
+interface DraggableMobileRowAdapterProps {
+  player: RosterHubPlayer;
+  role: "hitter" | "pitcher";
+  dndEnabled: boolean;
+  dropEligibleIds: ReadonlySet<number>;
+  isSelected: boolean;
+  isEligible: boolean;
+  isDimmed: boolean;
+  isPending: boolean;
+  isShakeRejecting: boolean;
+  onPillClick: () => void;
+  onRevert?: () => void;
+  actions: RowAction[];
+}
+
+function DraggableMobileRowAdapter(props: DraggableMobileRowAdapterProps) {
+  const { player, dndEnabled, dropEligibleIds, ...rest } = props;
+  const dnd = useRowDnd<HTMLDivElement>(player.rosterId, dndEnabled, dropEligibleIds);
+  return <MobileRowV3 player={player} {...rest} dnd={dndEnabled ? dnd : undefined} />;
+}
+
+/**
+ * Shared dnd-kit row hook that wires both `useDraggable` (for the grab
+ * handle) and `useDroppable` (for the row body). Returns a single dnd
+ * object the row component can spread.
+ */
+function useRowDnd<T extends HTMLElement>(
+  rosterId: number,
+  enabled: boolean,
+  dropEligibleIds: ReadonlySet<number>,
+): RosterRowDnd & MobileRowDnd {
+  const id = encodeDndId(rosterId);
+  // Important: `disabled` toggles can race against the active drag. We
+  // intentionally always register both hooks; the parent's drag handler
+  // is the source of truth for what's a legal drop.
+  const draggable = useDraggable({ id, disabled: !enabled });
+  const droppable = useDroppable({ id, disabled: !enabled });
+
+  return useMemo(() => {
+    const setRefs = (el: T | null) => {
+      draggable.setNodeRef(el as unknown as HTMLElement);
+      droppable.setNodeRef(el as unknown as HTMLElement);
+    };
+    const transformStyle: React.CSSProperties | undefined = draggable.transform
+      ? {
+          transform: `translate3d(${draggable.transform.x}px, ${draggable.transform.y}px, 0)`,
+          // dnd-kit recommends transition:none during active drag.
+          transition: "none",
+          zIndex: 50,
+        }
+      : undefined;
+    return {
+      rowRef: setRefs as React.Ref<T>,
+      dragHandleAttrs: {
+        ...draggable.attributes,
+        ...draggable.listeners,
+      },
+      isDragging: draggable.isDragging,
+      isOverEligible: droppable.isOver && dropEligibleIds.has(rosterId),
+      rowStyle: transformStyle,
+    } as RosterRowDnd & MobileRowDnd;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    rosterId,
+    draggable.isDragging,
+    draggable.transform,
+    draggable.attributes,
+    draggable.listeners,
+    draggable.setNodeRef,
+    droppable.isOver,
+    droppable.setNodeRef,
+    dropEligibleIds,
+  ]);
 }
 
 /** Mobile-only section header used between hitter and pitcher rows. */
