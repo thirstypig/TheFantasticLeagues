@@ -55,13 +55,18 @@ import type { RosterStatsPlayer, RosterStatsResponse } from "../home/types";
 // yesterday's date — owners want last night's box scores when they
 // wake up. After 10am, we flip to today's date. This date is what we
 // pass to any date-keyed query and what we render in the eyebrow.
+// Hoisted to module scope (todo #167.2): `Intl.DateTimeFormat` constructor
+// is non-trivial; this widget rerenders frequently and the formatter is
+// stateless, so building one per render burns CPU for no reason.
+const PACIFIC_HOUR_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  hour: "numeric",
+  hourCycle: "h23",
+});
+
 function computeCutoffDate(): Date {
   const cutoffDate = new Date();
-  const pacificHour = Number(new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles",
-    hour: "numeric",
-    hourCycle: "h23",
-  }).format(cutoffDate));
+  const pacificHour = Number(PACIFIC_HOUR_FORMATTER.format(cutoffDate));
   if (pacificHour < 10) {
     cutoffDate.setDate(cutoffDate.getDate() - 1);
   }

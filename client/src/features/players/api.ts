@@ -201,6 +201,32 @@ function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return p;
 }
 
+// ─── Career-stats client cache (todo #163) ──────────────────────────────
+// Career stats don't change within a page lifetime — once we've fetched
+// (mlbId, group), reuse the same Promise/value for as long as the SPA is
+// alive. Concurrent callers share the in-flight Promise. On rejection
+// the entry is evicted so a subsequent retry can refetch.
+const _careerStatsCache = new Map<string, Promise<CareerStatsResponse>>();
+function careerStatsCached(
+  key: string,
+  fn: () => Promise<CareerStatsResponse>,
+): Promise<CareerStatsResponse> {
+  const hit = _careerStatsCache.get(key);
+  if (hit) return hit;
+  const p = fn().catch((err) => {
+    // Evict failures so retries aren't poisoned by a cached rejection.
+    if (_careerStatsCache.get(key) === p) _careerStatsCache.delete(key);
+    throw err;
+  });
+  _careerStatsCache.set(key, p);
+  return p;
+}
+
+/** @internal — test-only reset hook. */
+export function _resetCareerStatsCache(): void {
+  _careerStatsCache.clear();
+}
+
 export async function getPlayerProfile(mlbId: string): Promise<PlayerProfile> {
   const id = resolveRealMlbId(String(mlbId ?? "").trim());
   if (!id) throw new Error("Missing mlbId");
@@ -235,7 +261,7 @@ export async function getPlayerProfile(mlbId: string): Promise<PlayerProfile> {
 export async function getPlayerCareerStats(mlbId: string, group: HOrP): Promise<CareerStatsResponse> {
     const id = resolveRealMlbId(String(mlbId ?? "").trim());
     if (!id) throw new Error("Missing mlbId");
-    return cached(`career:${group}:${id}`, async () => {
+    return careerStatsCached(`career:${group}:${id}`, async () => {
         const url = `${MLB_API_BASE}/people/${id}/stats?stats=yearByYear&group=${group}`;
         const data = await fetchJsonPublic<any>(url);
         // MLB Stats API response shape is deeply nested and untyped

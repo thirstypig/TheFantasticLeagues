@@ -75,7 +75,10 @@ export default function Home() {
     Promise.allSettled([
       getSeasonStandings(leagueId),
       getTransactions({ leagueId, take: 6 }),
-      getTrades(leagueId, "all"),
+      // Home only renders the first 3 PROPOSED trades — push the filter
+      // to the server so we don't drag the league's full trade history
+      // across the wire (todo #167.1).
+      getTrades(leagueId, { status: "PROPOSED", limit: 10 }),
       getBoardCards({ leagueId, limit: 3 }),
       fetchJsonApi<{ players: RosterAlertPlayer[] }>(
         `${API_BASE}/mlb/roster-status?leagueId=${leagueId}`,
@@ -112,6 +115,8 @@ export default function Home() {
       }
 
       if (tradesRes.status === "fulfilled") {
+        // Server already filters to PROPOSED — keep the defensive filter
+        // in case an older server returns mixed statuses.
         setActiveTrades((tradesRes.value.trades ?? []).filter(t => t.status === "PROPOSED"));
       }
 

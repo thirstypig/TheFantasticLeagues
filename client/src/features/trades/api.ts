@@ -36,8 +36,26 @@ export interface TradeProposal {
   acceptingTeam?: { id: number; name: string; code: string; ownerUserId?: number; ownerships?: { userId: number }[] };
 }
 
-export async function getTrades(leagueId: number, _view?: "all" | "my"): Promise<{ trades: TradeProposal[] }> {
-    const raw = await fetchJsonApi<{ trades: any[] }>(`${API_BASE}/trades?leagueId=${leagueId}`);
+export interface GetTradesOptions {
+  /** Server-side filter on `Trade.status` (todo #167.1). When omitted, returns all statuses. */
+  status?: TradeProposal["status"];
+  /** Server-side cap on result set, ordered by `createdAt DESC`. Server clamps to 100. */
+  limit?: number;
+}
+
+export async function getTrades(
+  leagueId: number,
+  _viewOrOptions?: "all" | "my" | GetTradesOptions,
+): Promise<{ trades: TradeProposal[] }> {
+    const opts: GetTradesOptions =
+      typeof _viewOrOptions === "object" && _viewOrOptions !== null ? _viewOrOptions : {};
+    const params = new URLSearchParams();
+    params.set("leagueId", String(leagueId));
+    if (opts.status) params.set("status", opts.status);
+    if (opts.limit && Number.isFinite(opts.limit) && opts.limit > 0) {
+      params.set("limit", String(Math.floor(opts.limit)));
+    }
+    const raw = await fetchJsonApi<{ trades: any[] }>(`${API_BASE}/trades?${params.toString()}`);
     const trades: TradeProposal[] = (raw.trades || []).map((t: any) => {
       // Derive accepting team from items: find the first item where recipientId !== proposerId
       const acceptingItem = t.items?.find((i: any) => i.recipientId !== t.proposerId);

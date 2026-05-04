@@ -238,17 +238,47 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
 }));
 
 // GET /api/trades - List trades for a league
+//
+// Optional query params (todo #167.1 — server-side filtering to keep
+// Home's pending-trades card from over-fetching the league's full trade
+// history):
+//   ?status=PROPOSED|ACCEPTED|REJECTED|PROCESSED|CANCELLED|VETOED|REVERSED
+//     Single-value filter on `Trade.status`.
+//   ?limit=<1..100>
+//     Caps the result set after ordering by `createdAt DESC`. When
+//     omitted, all matching trades are returned (legacy semantics — used
+//     by TradesPage and Activity).
+const TRADE_STATUSES = [
+  "PROPOSED", "ACCEPTED", "REJECTED", "PROCESSED",
+  "CANCELLED", "VETOED", "REVERSED",
+] as const;
+type TradeStatusFilter = typeof TRADE_STATUSES[number];
+const TRADE_STATUS_SET = new Set<string>(TRADE_STATUSES);
 router.get("/", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
+  const statusRaw = typeof req.query.status === "string" ? req.query.status.toUpperCase() : undefined;
+  const status: TradeStatusFilter | undefined =
+    statusRaw && TRADE_STATUS_SET.has(statusRaw) ? (statusRaw as TradeStatusFilter) : undefined;
+
+  const limitRaw = req.query.limit;
+  let take: number | undefined = undefined;
+  if (typeof limitRaw === "string" && limitRaw.length > 0) {
+    const n = Number(limitRaw);
+    if (Number.isFinite(n) && n > 0) {
+      take = Math.min(Math.floor(n), 100);
+    }
+  }
+
   const trades = await prisma.trade.findMany({
-    where: { leagueId },
+    where: { leagueId, ...(status ? { status } : {}) },
     include: {
       items: { include: { player: true, sender: true, recipient: true } },
       proposer: true,
     },
     orderBy: { createdAt: "desc" },
+    ...(take ? { take } : {}),
   });
   res.json({ trades });
 }));
