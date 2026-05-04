@@ -123,6 +123,7 @@ function MobileRowV3Impl({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
+          showEligibility={false}
           ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
             isSelected ? "deselect" : "select"
           }`}
@@ -189,20 +190,4 @@ function MobileRowV3Impl({
   );
 }
 
-export const MobileRowV3 = React.memo(MobileRowV3Impl, (prev, next) => {
-  return (
-    prev.player.rosterId === next.player.rosterId &&
-    prev.player.assignedSlot === next.player.assignedSlot &&
-    prev.role === next.role &&
-    prev.isSelected === next.isSelected &&
-    prev.isEligible === next.isEligible &&
-    prev.isDimmed === next.isDimmed &&
-    prev.isPending === next.isPending &&
-    prev.isShakeRejecting === next.isShakeRejecting &&
-    prev.dnd?.isDragging === next.dnd?.isDragging &&
-    prev.dnd?.isOverEligible === next.dnd?.isOverEligible &&
-    prev.dnd?.rowStyle === next.dnd?.rowStyle &&
-    prev.dnd?.rowRef === next.dnd?.rowRef &&
-    prev.dnd?.dragHandleAttrs === next.dnd?.dragHandleAttrs
-  );
-});
+export const MobileRowV3 = React.memo(MobileRowV3Impl);

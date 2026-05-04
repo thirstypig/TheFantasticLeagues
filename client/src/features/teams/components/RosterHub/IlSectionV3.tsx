@@ -114,7 +114,7 @@ export function IlSectionV3({
               <thead>
                 <tr>
                   {[
-                    { key: "pos", label: "Pos · Eligibility", w: 220 },
+                    { key: "pos", label: "Slot", w: 72 },
                     { key: "name", label: "Player", w: 220 },
                     { key: "status", label: "Status", w: 220 },
                     { key: "act", label: "Actions", w: 80 },
@@ -255,6 +255,7 @@ function IlDesktopRow({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
+          showEligibility={false}
         />
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)" }}>
@@ -394,6 +395,7 @@ function IlMobileRow({
         eligible={isEligible && !isSelected}
         dimmed={isDimmed}
         onPillClick={onPillClick}
+        showEligibility={false}
       />
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>

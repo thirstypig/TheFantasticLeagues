@@ -11,13 +11,13 @@ import {
 
 // ─── Position Configuration ───
 
-export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "SP", "RP", "P", "DH"];
+export const POS_ORDER: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "P", "DH"];
 
 export const POS_SCORE: Record<string, number> = Object.fromEntries(
   POS_ORDER.map((pos, index) => [pos, index])
 );
 
-export const POSITIONS: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "BN", "IL"];
+export const POSITIONS: string[] = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "BN", "IL"];
 
 export const PITCHER_CODES = ["P", "SP", "RP", "CL", "TWP"] as const;
 
@@ -194,8 +194,6 @@ const baseballPositions: PositionConfig[] = [
   { code: "CM", name: "Corner", group: "H" },
   { code: "OF", name: "Outfield", group: "H" },
   { code: "DH", name: "Designated Hitter", group: "H" },
-  { code: "SP", name: "Starting Pitcher", group: "P" },
-  { code: "RP", name: "Relief Pitcher", group: "P" },
   { code: "P", name: "Pitcher", group: "P" },
 ];
 

@@ -18,6 +18,7 @@ import type { SlotCode } from "@shared/api/rosterMoves";
 interface RosterHubPlayerBase {
   rosterId: number;
   playerId: number;
+  mlbId?: number | string | null;
   name: string;
   /** Comma-separated eligible positions per `Player.posList` (e.g. "OF,2B"). */
   posList: string;
@@ -172,20 +173,6 @@ export interface PendingChange {
   /** Where the moving player landed. */
   toSlot: SlotCode;
 }
-
-/**
- * The 8 visual states demonstrated by the preview's floating toggler.
- * Each maps to an annotated snapshot of mock state below.
- */
-export type RosterHubPreviewState =
-  | "idle"
-  | "playerSelected"
-  | "pendingSingle"
-  | "pendingMultiple"
-  | "dragging"
-  | "rowMenuOpen"
-  | "mobile"
-  | "freeAgentPanel";
 
 /**
  * Free-floating drag state used by the preview only. PR2's drag

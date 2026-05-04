@@ -79,6 +79,15 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
     return Array.from(merged.values()).sort((a, b) => b.games - a.games);
   }, [fieldingStats, outfieldMode]);
 
+  const formatExpandedStat = (key: string, value: unknown): string => {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(value);
+    if (key === 'AVG') return n.toFixed(3).replace(/^0/, '');
+    if (key === 'ERA' || key === 'WHIP') return n.toFixed(2);
+    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  };
+
   return (
     <tr className="bg-[var(--lg-bg-secondary)]/20 cursor-default" onClick={e => e.stopPropagation()}>
         <ThemedTd colSpan={colSpan} className="px-3 py-3">
@@ -100,20 +109,20 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                     )}
                 </div>
 
-                {/* Career Stats Table */}
+                {/* Current + Career Stats Table */}
                 <div className="overflow-x-auto rounded border border-[var(--lg-table-border)]">
-                    <ThemedTable bare>
+                    <ThemedTable bare minWidth={isPitcher ? 680 : 720}>
                         <ThemedThead>
                             <ThemedTr>
                                 <ThemedTh>Year</ThemedTh>
                                 <ThemedTh align="center">Team</ThemedTh>
                                 {isPitcher ? (
                                     <>
-                                        <ThemedTh align="center">W</ThemedTh><ThemedTh align="center">L</ThemedTh><ThemedTh align="center">SV</ThemedTh><ThemedTh align="center">K</ThemedTh><ThemedTh align="center">ERA</ThemedTh><ThemedTh align="center">WHIP</ThemedTh><ThemedTh align="center">SO</ThemedTh>
+                                        <ThemedTh align="center">IP</ThemedTh><ThemedTh align="center">W</ThemedTh><ThemedTh align="center">SV</ThemedTh><ThemedTh align="center">K</ThemedTh><ThemedTh align="center">ERA</ThemedTh><ThemedTh align="center">WHIP</ThemedTh>
                                     </>
                                 ) : (
                                     <>
-                                        <ThemedTh align="center">AB</ThemedTh><ThemedTh align="center">R</ThemedTh><ThemedTh align="center">HR</ThemedTh><ThemedTh align="center">RBI</ThemedTh><ThemedTh align="center">SB</ThemedTh><ThemedTh align="center">AVG</ThemedTh><ThemedTh align="center">GS</ThemedTh>
+                                        <ThemedTh align="center">AB</ThemedTh><ThemedTh align="center">H</ThemedTh><ThemedTh align="center">R</ThemedTh><ThemedTh align="center">HR</ThemedTh><ThemedTh align="center">RBI</ThemedTh><ThemedTh align="center">SB</ThemedTh><ThemedTh align="center">AVG</ThemedTh>
                                     </>
                                 )}
                             </ThemedTr>
@@ -127,27 +136,52 @@ export default function PlayerExpandedRow({ player, isTaken, ownerName, onNomina
                                     <ThemedTd align="center">{r.tm}</ThemedTd>
                                     {isPitcher ? (
                                         <>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).W}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).L}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).SV}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).SO}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).ERA}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).WHIP}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerPitchingRow).SHO}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('IP', (r as any).IP)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('W', (r as CareerPitchingRow).W)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('SV', (r as CareerPitchingRow).SV)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('K', (r as CareerPitchingRow).SO)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('ERA', (r as CareerPitchingRow).ERA)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('WHIP', (r as CareerPitchingRow).WHIP)}</ThemedTd>
                                         </>
                                     ) : (
                                         <>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).AB}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).R}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).HR}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).RBI}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).SB}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).AVG}</ThemedTd>
-                                            <ThemedTd align="center">{(r as CareerHittingRow).GS}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('AB', (r as CareerHittingRow).AB)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('H', (r as CareerHittingRow).H)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('R', (r as CareerHittingRow).R)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('HR', (r as CareerHittingRow).HR)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('RBI', (r as CareerHittingRow).RBI)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('SB', (r as CareerHittingRow).SB)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('AVG', (r as CareerHittingRow).AVG)}</ThemedTd>
                                         </>
                                     )}
                                 </ThemedTr>
                             ))}
+                            {!loading && !error && (
+                                <ThemedTr className="font-semibold bg-[var(--lg-bg-secondary)]/70">
+                                    <ThemedTd>YTD</ThemedTd>
+                                    <ThemedTd align="center">{player.mlb_team || player.mlbTeam || '—'}</ThemedTd>
+                                    {isPitcher ? (
+                                        <>
+                                            <ThemedTd align="center">{formatExpandedStat('IP', (player as any).IP)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('W', (player as any).W)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('SV', (player as any).SV)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('K', (player as any).K ?? (player as any).SO)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('ERA', (player as any).ERA)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('WHIP', (player as any).WHIP)}</ThemedTd>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ThemedTd align="center">{formatExpandedStat('AB', (player as any).AB)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('H', (player as any).H)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('R', (player as any).R)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('HR', (player as any).HR)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('RBI', (player as any).RBI)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('SB', (player as any).SB)}</ThemedTd>
+                                            <ThemedTd align="center">{formatExpandedStat('AVG', (player as any).AVG)}</ThemedTd>
+                                        </>
+                                    )}
+                                </ThemedTr>
+                            )}
                         </tbody>
                     </ThemedTable>
                 </div>

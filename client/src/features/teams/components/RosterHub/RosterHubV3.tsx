@@ -30,9 +30,11 @@
 // All state is hoisted to the parent (preview page or PR2's Team owner
 // view). This component is layout-only.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
+import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
+import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
 import { PendingChangeBar } from "./PendingChangeBar";
 import { RosterRowV3, type RosterRowDnd } from "./RosterRowV3";
 import { MobileRowV3, type MobileRowDnd } from "./MobileRowV3";
@@ -40,6 +42,7 @@ import { IlSectionV3 } from "./IlSectionV3";
 import type { RowAction } from "./RowActionMenu";
 import type { DragSimState, RosterHubPlayer } from "./types";
 import { encodeDndId } from "../../hooks/useRosterHubDrag";
+import { slotsFor } from "../../../../lib/positionEligibility";
 
 interface RosterHubV3Props {
   /** Hitter rows (Yahoo-style sectioning). */
@@ -147,8 +150,7 @@ function useIsMobile(forceMobile?: boolean): boolean {
   return forceMobile ?? mqMatch;
 }
 
-// Column widths: Pos·Eligibility carries multi-chip cells like
-// `1B (12)·CM·DH·OF` so it needs the most room. Actions only carries the
+// Column widths: Slot carries the fixed roster assignment. Actions only carries the
 // kebab `…` so 64px is plenty (the drag handle has moved to the left of
 // the player name — see Player cell). Sums fit within the 1100px min-
 // width minus a slack column to absorb padding.
@@ -161,7 +163,7 @@ function useIsMobile(forceMobile?: boolean): boolean {
 //     destructive Prisma migration. The combined column is labeled
 //     `BB+H` so the relationship to WHIP = (BB+H)/IP is explicit.
 const HITTER_COLS = [
-  { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 180 },
+  { key: "pos", label: "Slot", align: "left" as const, width: 72 },
   { key: "name", label: "Player", align: "left" as const, width: 200 },
   { key: "AB", label: "AB", align: "right" as const, width: 56 },
   { key: "H", label: "H", align: "right" as const, width: 48 },
@@ -174,7 +176,7 @@ const HITTER_COLS = [
 ];
 
 const PITCHER_COLS = [
-  { key: "pos", label: "Pos · Eligibility", align: "left" as const, width: 180 },
+  { key: "pos", label: "Slot", align: "left" as const, width: 72 },
   { key: "name", label: "Player", align: "left" as const, width: 200 },
   { key: "IP", label: "IP", align: "right" as const, width: 56 },
   { key: "BB_H", label: "BB+H", align: "right" as const, width: 64 },
@@ -186,6 +188,107 @@ const PITCHER_COLS = [
   { key: "WHIP", label: "WHIP", align: "right" as const, width: 64 },
   { key: "act", label: "Actions", align: "right" as const, width: 64 },
 ];
+
+function n(v: number | string | undefined): number {
+  if (v == null || v === "") return 0;
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+
+function fmtTotal(v: number, digits = 0): string {
+  if (!Number.isFinite(v)) return "—";
+  return digits > 0 ? v.toFixed(digits) : String(Math.round(v));
+}
+
+function fmtAvgTotal(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const s = v.toFixed(3);
+  return s.startsWith("0") ? s.slice(1) : s;
+}
+
+function HitterTotalsRow({ players }: { players: RosterHubPlayer[] }) {
+  const totals = useMemo(() => {
+    let AB = 0, H = 0, R = 0, HR = 0, RBI = 0, SB = 0;
+    for (const p of players) {
+      if (p.isPitcher) continue;
+      AB += n(p.hitterStats?.AB);
+      H += n(p.hitterStats?.H);
+      R += n(p.hitterStats?.R);
+      HR += n(p.hitterStats?.HR);
+      RBI += n(p.hitterStats?.RBI);
+      SB += n(p.hitterStats?.SB);
+    }
+    return { AB, H, R, HR, RBI, SB, AVG: AB > 0 ? H / AB : 0 };
+  }, [players]);
+
+  return (
+    <tr>
+      <td style={totalCellStyle}>TOT</td>
+      <td style={{ ...totalCellStyle, textAlign: "left" }}>Hitter Totals</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.AB)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.H)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.R)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.HR)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.RBI)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.SB)}</td>
+      <td style={totalCellStyle}>{fmtAvgTotal(totals.AVG)}</td>
+      <td style={totalCellStyle} />
+    </tr>
+  );
+}
+
+function PitcherTotalsRow({ players }: { players: RosterHubPlayer[] }) {
+  const totals = useMemo(() => {
+    let IP = 0, BB_H = 0, K = 0, W = 0, SV = 0, ER = 0;
+    for (const p of players) {
+      if (!p.isPitcher) continue;
+      IP += n(p.pitcherStats?.IP);
+      BB_H += n(p.pitcherStats?.BB_H);
+      K += n(p.pitcherStats?.K);
+      W += n(p.pitcherStats?.W);
+      SV += n(p.pitcherStats?.SV);
+      ER += n(p.pitcherStats?.ER);
+    }
+    return {
+      IP,
+      BB_H,
+      K,
+      W,
+      SV,
+      ER,
+      ERA: IP > 0 ? (ER / IP) * 9 : 0,
+      WHIP: IP > 0 ? BB_H / IP : 0,
+    };
+  }, [players]);
+
+  return (
+    <tr>
+      <td style={totalCellStyle}>TOT</td>
+      <td style={{ ...totalCellStyle, textAlign: "left" }}>Pitcher Totals</td>
+      <td style={totalCellStyle}>{totals.IP > 0 ? fmtTotal(totals.IP, 1) : "—"}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.BB_H)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.K)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.W)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.SV)}</td>
+      <td style={totalCellStyle}>{fmtTotal(totals.ER)}</td>
+      <td style={totalCellStyle}>{totals.IP > 0 ? fmtTotal(totals.ERA, 2) : "—"}</td>
+      <td style={totalCellStyle}>{totals.IP > 0 ? fmtTotal(totals.WHIP, 2) : "—"}</td>
+      <td style={totalCellStyle} />
+    </tr>
+  );
+}
+
+const totalCellStyle: CSSProperties = {
+  padding: "9px 12px",
+  borderTop: "1px solid var(--am-border-strong)",
+  borderBottom: "1px solid var(--am-border)",
+  background: "var(--am-chip)",
+  color: "var(--am-text)",
+  fontSize: 12,
+  fontWeight: 750,
+  textAlign: "right",
+  fontVariantNumeric: "tabular-nums",
+};
 
 interface SectionTheadProps {
   cols: typeof HITTER_COLS;
@@ -290,6 +393,7 @@ export function RosterHubV3({
 }: RosterHubV3Props) {
   const isMobile = useIsMobile(forceMobile);
   const dropIds = dropTargetIds ?? new Set<number>();
+  const [expandedRosterId, setExpandedRosterId] = useState<number | null>(null);
 
   const dimmedFor = (rosterId: number, role: "hitter" | "pitcher"): boolean => {
     if (dimSection === "hitters" && role === "hitter") return true;
@@ -306,7 +410,7 @@ export function RosterHubV3({
         <div style={{ padding: 16, paddingBottom: 6 }}>
           <SectionLabel>✦ Active roster · 23 slots</SectionLabel>
           <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
-            Tap a position pill to select; eligible destinations glow. Drag the ⋮⋮ icon
+            Tap a slot pill to select; eligible destinations glow. Drag the ⋮⋮ icon
             to swap roster positions. The "..." menu navigates to focused sub-routes for
             free agent / IL flows — no modals, the stats table stays visible until you
             commit.
@@ -435,24 +539,31 @@ export function RosterHubV3({
                     }}
                   >
                     {hitters.map((p) => (
-                      <DraggableDesktopRowAdapter
-                        key={p.rosterId}
-                        player={p}
-                        role="hitter"
-                        dndEnabled={!!dndEnabled}
-                        dropEligibleIds={dropIds}
-                        isSelected={selectedRosterId === p.rosterId}
-                        isEligible={eligibleRosterIds.has(p.rosterId)}
-                        isDimmed={dimmedFor(p.rosterId, "hitter")}
-                        isPending={pendingRosterIds.has(p.rosterId)}
-                        isDragSource={dragSim?.rosterId === p.rosterId}
-                        isDropTarget={dropIds.has(p.rosterId)}
-                        onPillClick={() => onPillClick(p.rosterId)}
-                        onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
-                        actions={buildActions(p)}
-                        isShakeRejecting={shakeRowId === p.rosterId}
-                      />
+                      <Fragment key={p.rosterId}>
+                        <DraggableDesktopRowAdapter
+                          player={p}
+                          role="hitter"
+                          dndEnabled={!!dndEnabled}
+                          dropEligibleIds={dropIds}
+                          isSelected={selectedRosterId === p.rosterId}
+                          isEligible={eligibleRosterIds.has(p.rosterId)}
+                          isDimmed={dimmedFor(p.rosterId, "hitter")}
+                          isPending={pendingRosterIds.has(p.rosterId)}
+                          isExpanded={expandedRosterId === p.rosterId}
+                          isDragSource={dragSim?.rosterId === p.rosterId}
+                          isDropTarget={dropIds.has(p.rosterId)}
+                          onPillClick={() => onPillClick(p.rosterId)}
+                          onToggleExpand={() => setExpandedRosterId((cur) => (cur === p.rosterId ? null : p.rosterId))}
+                          onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
+                          actions={buildActions(p)}
+                          isShakeRejecting={shakeRowId === p.rosterId}
+                        />
+                        {expandedRosterId === p.rosterId && (
+                          <CareerStatsAccordionRow player={p} colSpan={HITTER_COLS.length} />
+                        )}
+                      </Fragment>
                     ))}
+                    {hitters.length > 0 && <HitterTotalsRow players={hitters} />}
                   </tbody>
                 </table>
               </div>
@@ -483,24 +594,31 @@ export function RosterHubV3({
                     }}
                   >
                     {pitchers.map((p) => (
-                      <DraggableDesktopRowAdapter
-                        key={p.rosterId}
-                        player={p}
-                        role="pitcher"
-                        dndEnabled={!!dndEnabled}
-                        dropEligibleIds={dropIds}
-                        isSelected={selectedRosterId === p.rosterId}
-                        isEligible={eligibleRosterIds.has(p.rosterId)}
-                        isDimmed={dimmedFor(p.rosterId, "pitcher")}
-                        isPending={pendingRosterIds.has(p.rosterId)}
-                        isDragSource={dragSim?.rosterId === p.rosterId}
-                        isDropTarget={dropIds.has(p.rosterId)}
-                        onPillClick={() => onPillClick(p.rosterId)}
-                        onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
-                        actions={buildActions(p)}
-                        isShakeRejecting={shakeRowId === p.rosterId}
-                      />
+                      <Fragment key={p.rosterId}>
+                        <DraggableDesktopRowAdapter
+                          player={p}
+                          role="pitcher"
+                          dndEnabled={!!dndEnabled}
+                          dropEligibleIds={dropIds}
+                          isSelected={selectedRosterId === p.rosterId}
+                          isEligible={eligibleRosterIds.has(p.rosterId)}
+                          isDimmed={dimmedFor(p.rosterId, "pitcher")}
+                          isPending={pendingRosterIds.has(p.rosterId)}
+                          isExpanded={expandedRosterId === p.rosterId}
+                          isDragSource={dragSim?.rosterId === p.rosterId}
+                          isDropTarget={dropIds.has(p.rosterId)}
+                          onPillClick={() => onPillClick(p.rosterId)}
+                          onToggleExpand={() => setExpandedRosterId((cur) => (cur === p.rosterId ? null : p.rosterId))}
+                          onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
+                          actions={buildActions(p)}
+                          isShakeRejecting={shakeRowId === p.rosterId}
+                        />
+                        {expandedRosterId === p.rosterId && (
+                          <CareerStatsAccordionRow player={p} colSpan={PITCHER_COLS.length} />
+                        )}
+                      </Fragment>
                     ))}
+                    {pitchers.length > 0 && <PitcherTotalsRow players={pitchers} />}
                   </tbody>
                 </table>
               </div>
@@ -552,6 +670,173 @@ export function RosterHubV3({
   );
 }
 
+function CareerStatsAccordionRow({
+  player,
+  colSpan,
+}: {
+  player: RosterHubPlayer;
+  colSpan: number;
+}) {
+  const [rows, setRows] = useState<Array<CareerHittingRow | CareerPitchingRow>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mode: HOrP = player.isPitcher ? "pitching" : "hitting";
+  const mlbId = String(player.mlbId ?? "").trim();
+
+  useEffect(() => {
+    if (!mlbId) {
+      setRows([]);
+      setError("No MLB id is available for this player.");
+      return;
+    }
+    let canceled = false;
+    setLoading(true);
+    setError(null);
+    getPlayerCareerStats(mlbId, mode)
+      .then((res) => {
+        if (!canceled) setRows(res.rows ?? []);
+      })
+      .catch((err) => {
+        if (!canceled) setError(err instanceof Error ? err.message : "Unable to load career stats.");
+      })
+      .finally(() => {
+        if (!canceled) setLoading(false);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [mlbId, mode]);
+
+  return (
+    <tr>
+      <td colSpan={colSpan} style={{ padding: 0, borderBottom: "1px solid var(--am-border)" }}>
+        <div
+          style={{
+            padding: "14px 16px 16px",
+            background: "var(--am-surface-faint)",
+            borderTop: "1px solid var(--am-border)",
+          }}
+        >
+          <div style={{ display: "grid", gap: 12, marginBottom: 14 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(180px, 1fr) minmax(220px, 2fr)",
+                gap: 12,
+                alignItems: "start",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                    color: "var(--am-text-faint)",
+                    marginBottom: 5,
+                  }}
+                >
+                  Player
+                </div>
+                <div style={{ color: "var(--am-text)", fontWeight: 750, fontSize: 13 }}>
+                  {player.name}
+                </div>
+                <div style={{ color: "var(--am-text-muted)", fontSize: 12, marginTop: 2 }}>
+                  {player.mlbTeam || "MLB team unknown"} · assigned to {formatSlotInstance(player)}
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                    color: "var(--am-text-faint)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Eligibility detail
+                </div>
+                <EligibilityChips player={player} />
+              </div>
+            </div>
+
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                color: "var(--am-text-faint)",
+              }}
+            >
+              Career stats
+            </div>
+          </div>
+          {loading ? (
+            <div style={{ padding: 18, fontSize: 12, color: "var(--am-text-muted)" }}>
+              Loading career stats…
+            </div>
+          ) : error ? (
+            <div style={{ padding: 18, fontSize: 12, color: "var(--am-negative)" }}>
+              {error}
+            </div>
+          ) : rows.length ? (
+            <CareerTable rows={rows} mode={mode} />
+          ) : (
+            <div style={{ padding: 18, fontSize: 12, color: "var(--am-text-muted)" }}>
+              No career stats available.
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function formatSlotInstance(player: RosterHubPlayer): string {
+  if (!player.slotInstance || player.assignedSlot === "IL" || player.assignedSlot === "BN") {
+    return player.assignedSlot;
+  }
+  return `${player.assignedSlot}${player.slotInstance}`;
+}
+
+function EligibilityChips({ player }: { player: RosterHubPlayer }) {
+  const slots = Array.from(slotsFor(player.posList));
+  const displaySlots: string[] = slots.length > 0 ? slots : [player.assignedSlot];
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {displaySlots.map((slot) => {
+        const gp = player.gamesPlayedByPosition?.[slot as keyof typeof player.gamesPlayedByPosition];
+        return (
+          <span
+            key={slot}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "4px 9px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 700,
+              color: slot === player.assignedSlot ? "white" : "var(--am-text-muted)",
+              background: slot === player.assignedSlot ? "var(--am-accent)" : "var(--am-chip)",
+              border: "1px solid var(--am-border)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            <span>{slot}</span>
+            {gp != null && <span style={{ opacity: 0.78 }}>({gp})</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── Draggable row adapters ─────────────────────────────────────────
  *
  * Each adapter calls `useDraggable` + `useDroppable` for its row, then
@@ -577,10 +862,12 @@ interface DraggableDesktopRowAdapterProps {
   isEligible: boolean;
   isDimmed: boolean;
   isPending: boolean;
+  isExpanded?: boolean;
   isDragSource: boolean;
   isDropTarget: boolean;
   isShakeRejecting: boolean;
   onPillClick: () => void;
+  onToggleExpand?: () => void;
   onRevert?: () => void;
   actions: RowAction[];
 }

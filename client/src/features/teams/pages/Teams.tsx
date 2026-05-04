@@ -121,7 +121,6 @@ export default function Teams() {
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh align="left">TEAM</ThemedTh>
-                <ThemedTh align="left">CODE</ThemedTh>
                 <ThemedTh align="center">HITTERS</ThemedTh>
                 <ThemedTh align="center">PITCHERS</ThemedTh>
                 <ThemedTh align="center">TOTAL</ThemedTh>
@@ -133,7 +132,6 @@ export default function Teams() {
               {teams.map((t) => (
                 <ThemedTr key={t.code} className="hover:bg-[var(--lg-tint)]">
                   <ThemedTd className="font-medium">{t.name}</ThemedTd>
-                  <ThemedTd className="text-xs text-[var(--lg-text-muted)]">{t.code}</ThemedTd>
                   <ThemedTd align="center">{t.hitters}</ThemedTd>
                   <ThemedTd align="center">{t.pitchers}</ThemedTd>
                   <ThemedTd align="center">{t.total}</ThemedTd>

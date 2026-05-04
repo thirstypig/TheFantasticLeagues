@@ -20,6 +20,7 @@ export interface RosterPlayerInput {
   rosterId: number;
   /** Prisma Player.id — stable across roster mutations. */
   playerId: number;
+  mlbId?: number | string | null;
   playerName: string;
   posPrimary?: string;
   /** Comma-separated full eligibility list ("OF,2B"). Drives multi-chip render. */
@@ -119,6 +120,7 @@ export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
   const base = {
     rosterId: p.rosterId,
     playerId: p.playerId,
+    mlbId: p.mlbId,
     name: p.playerName,
     posList: p.posList || p.posPrimary || "",
     posPrimary: p.posPrimary || "",

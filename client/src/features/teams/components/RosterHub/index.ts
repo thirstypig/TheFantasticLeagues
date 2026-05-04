@@ -1,12 +1,7 @@
 // client/src/features/teams/components/RosterHub/index.ts
 //
-// Barrel exports for the RosterHub component family. Co-located so
-// PR2 can `import { RosterHub } from "../components/RosterHub"` and
-// pick up the whole tree.
+// Barrel exports for the maintained v3 RosterHub component family.
 
-export { RosterHub } from "./RosterHub";
-export { RosterRow } from "./RosterRow";
-export { MobileRow } from "./MobileRow";
 export { PositionPill } from "./PositionPill";
 export { EligibilityChips } from "./EligibilityChips";
 export { RowActionMenu } from "./RowActionMenu";
@@ -16,7 +11,6 @@ export { SaveDiffPreviewModal } from "./SaveDiffPreviewModal";
 export type { DiffRow } from "./SaveDiffPreviewModal";
 export { FreeAgentPanel, encodeFaDndId, decodeFaDndId, FA_DND_ID_PREFIX } from "./FreeAgentPanel";
 export { DropPool } from "./DropPool";
-export { IlSection } from "./IlSection";
 
 // v3 (consolidated table + GP numbers + sub-routes — see types for spec ref)
 export { RosterHubV3 } from "./RosterHubV3";
@@ -35,7 +29,6 @@ export {
 export type {
   RosterHubPlayer,
   PendingChange,
-  RosterHubPreviewState,
   RosterHubV3PreviewState,
   DragSimState,
   HitterStats,

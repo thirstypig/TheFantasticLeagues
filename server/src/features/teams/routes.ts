@@ -9,6 +9,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
+import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 
 // Swap-only mutation. `effectiveDate` is advisory metadata for the
 // commissioner-mode backdate flow — the swap itself doesn't write a
@@ -345,6 +346,46 @@ router.get("/ai-insights/history", requireAuth, requireLeagueMember("leagueId"),
   res.json({ weeks });
 }));
 
+async function verifyTeamLeagueAccess(teamId: number, user: { id: number; isAdmin?: boolean }) {
+  if (user.isAdmin) return null;
+
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { leagueId: true },
+  });
+  if (!team) return { status: 404, body: { error: "Team not found" } };
+
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: team.leagueId, userId: user.id } },
+  });
+  if (!membership) return { status: 403, body: { error: "Not a member of this league" } };
+
+  return null;
+}
+
+// GET /api/teams/:id/roster-hub
+// Server-shaped roster-hub response: hub rows split into hitter/pitcher/IL
+// sections so the Team page can migrate away from client-side joins.
+router.get("/:id/roster-hub", requireAuth, asyncHandler(async (req, res) => {
+  const teamId = Number(req.params.id);
+  if (Number.isNaN(teamId)) {
+    return res.status(400).json({ error: "Invalid team id" });
+  }
+
+  const accessError = await verifyTeamLeagueAccess(teamId, req.user!);
+  if (accessError) return res.status(accessError.status).json(accessError.body);
+
+  try {
+    const hub = await teamService.getTeamRosterHub(teamId);
+    res.json(hub);
+  } catch (e) {
+    if ((e as Error).message === "Team not found") {
+      return res.status(404).json({ error: "Team not found" });
+    }
+    throw e;
+  }
+}));
+
 // GET /api/teams/:id/summary
 router.get("/:id/summary", requireAuth, asyncHandler(async (req, res) => {
   const teamId = Number(req.params.id);
@@ -352,19 +393,8 @@ router.get("/:id/summary", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid team id" });
   }
 
-  // Verify user is a member of the team's league (admins bypass)
-  if (!req.user!.isAdmin) {
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      select: { leagueId: true },
-    });
-    if (!team) return res.status(404).json({ error: "Team not found" });
-
-    const membership = await prisma.leagueMembership.findUnique({
-      where: { leagueId_userId: { leagueId: team.leagueId, userId: req.user!.id } },
-    });
-    if (!membership) return res.status(403).json({ error: "Not a member of this league" });
-  }
+  const accessError = await verifyTeamLeagueAccess(teamId, req.user!);
+  if (accessError) return res.status(accessError.status).json(accessError.body);
 
   try {
     const summary = await teamService.getTeamSummary(teamId);
@@ -486,7 +516,10 @@ router.patch(
     // Verify Roster belongs to Team
     const rosterItem = await prisma.roster.findUnique({
       where: { id: rosterId },
-      include: { team: true },
+      include: {
+        team: true,
+        player: { select: { name: true, posList: true } },
+      },
     });
 
     if (!rosterItem || rosterItem.teamId !== teamId) {
@@ -497,6 +530,16 @@ router.patch(
       assignedPosition: string | null;
       effectiveDate?: string;
     };
+
+    if (
+      assignedPosition &&
+      assignedPosition !== "IL" &&
+      !isEligibleForSlot(rosterItem.player.posList ?? "", assignedPosition)
+    ) {
+      return res.status(400).json({
+        error: `${rosterItem.player.name} (${rosterItem.player.posList ?? "no positions"}) is not eligible for the ${assignedPosition} slot.`,
+      });
+    }
 
     // effectiveDate is advisory metadata for the commissioner-mode
     // backdate flow. Today the swap doesn't update Roster.acquiredAt

@@ -46,6 +46,7 @@ interface PositionEligibilityCellProps {
   dimmed: boolean;
   onPillClick: () => void;
   ariaLabel?: string;
+  showEligibility?: boolean;
 }
 
 /**
@@ -68,6 +69,7 @@ function PositionEligibilityCellImpl({
   dimmed,
   onPillClick,
   ariaLabel,
+  showEligibility = true,
 }: PositionEligibilityCellProps) {
   // The full set of slots this player is eligible for. The primary pill
   // is always the assigned slot; secondary chips are the rest.
@@ -100,12 +102,12 @@ function PositionEligibilityCellImpl({
         eligible={eligible && !selected}
         dimmed={dimmed}
         onClick={onPillClick}
-        label={formatPrimaryLabel(assignedSlot, gamesPlayedByPosition)}
+        label={showEligibility ? formatPrimaryLabel(assignedSlot, gamesPlayedByPosition) : assignedSlot}
         ariaLabel={ariaLabel}
       />
 
       {/* Inter-pill separator dot, only when there are secondaries. */}
-      {secondarySlots.length > 0 && (
+      {showEligibility && secondarySlots.length > 0 && (
         <span
           aria-hidden
           style={{ color: "var(--am-text-faint)", fontSize: 11, lineHeight: 1 }}
@@ -115,7 +117,7 @@ function PositionEligibilityCellImpl({
       )}
 
       {/* Secondary eligibility chips — small, non-interactive. */}
-      {secondarySlots.map((slot, idx) => (
+      {showEligibility && secondarySlots.map((slot, idx) => (
         <React.Fragment key={slot}>
           <span
             style={{
