@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PlaceOnIlPanel from "../PlaceOnIlPanel";
-import { ilStash } from "../../../../transactions/api";
+import { ilStash, previewIlStash } from "../../../../transactions/api";
 import type { RosterMovesPlayer } from "../types";
 
 // Mock the API wrapper at the module boundary — we're asserting the panel
@@ -10,6 +10,7 @@ import type { RosterMovesPlayer } from "../types";
 // wrapper (that belongs to ../__tests__/api.test.ts).
 vi.mock("../../../../transactions/api", () => ({
   ilStash: vi.fn().mockResolvedValue({ success: true }),
+  previewIlStash: vi.fn().mockResolvedValue({ ok: true, message: "Roster rules satisfied." }),
   formatReassignmentsToast: vi.fn().mockReturnValue(null),
 }));
 
@@ -48,6 +49,12 @@ const freeAgentReplacement = {
   positions: "OF,1B",
 } as RosterMovesPlayer;
 
+const pitcherOnlyReplacement = {
+  mlb_id: "999001",
+  player_name: "Pitcher Only",
+  positions: "P",
+} as RosterMovesPlayer;
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -73,8 +80,9 @@ async function setUpAndSubmit(effectiveDate?: string) {
   // Pick the free-agent replacement button.
   await user.click(screen.getByText("Jake Bauers"));
 
-  // Submit.
-  await user.click(screen.getByRole("button", { name: /Stash \+ Add/i }));
+  const confirm = screen.getByRole("button", { name: /Confirm Stash \+ Add/i });
+  await waitFor(() => expect(confirm).not.toBeDisabled());
+  await user.click(confirm);
 }
 
 describe("PlaceOnIlPanel initialStashPlayerId preselection", () => {
@@ -128,11 +136,55 @@ describe("PlaceOnIlPanel initialStashPlayerId preselection", () => {
   });
 });
 
+describe("PlaceOnIlPanel roster-rule confirmation gate", () => {
+  it("allows confirm when the server matcher accepts a non-pairwise replacement", async () => {
+    const user = userEvent.setup();
+    render(
+      <PlaceOnIlPanel
+        leagueId={20}
+        teamId={147}
+        players={[ilStashCandidate, pitcherOnlyReplacement]}
+        onComplete={vi.fn()}
+      />
+    );
+
+    await user.selectOptions(screen.getByRole("combobox"), String(ilStashCandidate._dbPlayerId));
+    await user.click(screen.getByText("Pitcher Only"));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Confirm Stash \+ Add/i })).not.toBeDisabled());
+    expect(screen.getByText(/Roster rules satisfied/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Pick a different replacement/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps confirm disabled when the stash player is not MLB-IL eligible", async () => {
+    const user = userEvent.setup();
+    const activePlayer = {
+      ...ilStashCandidate,
+      mlbStatus: "Active",
+    } as RosterMovesPlayer;
+    render(
+      <PlaceOnIlPanel
+        leagueId={20}
+        teamId={147}
+        players={[activePlayer, freeAgentReplacement]}
+        onComplete={vi.fn()}
+      />
+    );
+
+    await user.selectOptions(screen.getByRole("combobox"), String(activePlayer._dbPlayerId));
+    await user.click(screen.getByText("Jake Bauers"));
+
+    expect(screen.getByRole("button", { name: /Confirm Stash \+ Add/i })).toBeDisabled();
+    expect(screen.getByText(/must have an active Injured-List designation/i)).toBeInTheDocument();
+  });
+});
+
 describe("PlaceOnIlPanel effectiveDate forwarding", () => {
   it("forwards effectiveDate to ilStash when the prop is set", async () => {
     await setUpAndSubmit("2026-04-20");
 
     expect(ilStash).toHaveBeenCalledTimes(1);
+    expect(previewIlStash).toHaveBeenCalledTimes(1);
     const payload = vi.mocked(ilStash).mock.calls[0][0];
     expect(payload).toMatchObject({
       leagueId: 20,

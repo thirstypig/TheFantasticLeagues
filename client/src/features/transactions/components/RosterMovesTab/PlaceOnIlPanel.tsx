@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ilStash, formatReassignmentsToast } from "../../../transactions/api";
+import { ilStash, previewIlStash, formatReassignmentsToast } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
@@ -47,6 +47,8 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
   const [query, setQuery] = useState("");
   const [addMlbId, setAddMlbId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [preview, setPreview] = useState<{ ok: boolean; message?: string; error?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Re-apply preselection whenever the parent passes a new non-null id —
@@ -78,13 +80,15 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
     : true;
 
   // Free-agent pool for the replacement pick.
-  const freeAgents = useMemo(() => {
+  const allFreeAgents = useMemo(() => {
     const q = query.trim().toLowerCase();
     return players
-      .filter((p) => !(p.ogba_team_code || p.team))
-      .filter((p) => !q || (p.player_name || p.name || "").toLowerCase().includes(q))
-      .slice(0, 30);
+      .filter((p) => !(p.ogba_team_code || p.team || p._dbTeamId))
+      .filter((p) => !q || (p.player_name || p.name || "").toLowerCase().includes(q));
   }, [players, query]);
+  const freeAgents = useMemo(() => {
+    return allFreeAgents.slice(0, 30);
+  }, [allFreeAgents]);
 
   const selectedAdd = useMemo(
     () => freeAgents.find((p) => Number(p.mlb_id ?? p.mlbId) === addMlbId) ?? null,
@@ -95,7 +99,51 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
     return slotsFor(selectedAdd.positions || selectedAdd.posPrimary || "").has(stashSlot as any);
   }, [selectedAdd, stashSlot]);
 
-  const canSubmit = stashPlayerId !== null && addMlbId !== null && !submitting;
+  const selectedFieldsComplete = stashPlayerId !== null && addMlbId !== null;
+  const needsServerPreview = selectedFieldsComplete && mlbStatusOk;
+  const rosterRulesSatisfied =
+    selectedFieldsComplete &&
+    mlbStatusOk &&
+    (needsServerPreview ? preview?.ok === true : (!selectedAdd || !stashPlayer || addEligibleForStashSlot));
+  const canSubmit = rosterRulesSatisfied && !previewing && !submitting;
+
+  useEffect(() => {
+    setAddMlbId(null);
+  }, [stashPlayerId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPreview(null);
+    setPreviewing(false);
+    if (!needsServerPreview || stashPlayerId === null || addMlbId === null) return;
+
+    setPreviewing(true);
+    previewIlStash({
+      leagueId,
+      teamId,
+      stashPlayerId,
+      addMlbId,
+      ...(effectiveDate ? { effectiveDate } : {}),
+    })
+      .then((result) => {
+        if (!cancelled) setPreview({ ok: result.ok, message: result.message });
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setPreview({
+            ok: false,
+            error: err?.serverMessage || err?.message || "Roster rules are not satisfied.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addMlbId, effectiveDate, leagueId, needsServerPreview, stashPlayerId, teamId]);
 
   async function handleSubmit() {
     if (!canSubmit || addMlbId === null || stashPlayerId === null) return;
@@ -132,8 +180,8 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-[var(--lg-text-muted)]">
-        Move an injured player to an IL slot and add a replacement for their active slot.
-        Both happen atomically.
+        Move an injured player into an IL slot, then choose a replacement for the vacated active slot.
+        Confirm unlocks only after the full roster can resolve legally.
       </p>
 
       {/* Stash player picker */}
@@ -156,9 +204,23 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
         </select>
       </div>
 
+      <div
+        className={`rounded border p-2 text-[11px] ${
+          rosterRulesSatisfied
+            ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+            : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 text-[var(--lg-text-muted)]"
+        }`}
+      >
+        {previewing
+          ? "Checking roster rules..."
+          : rosterRulesSatisfied
+          ? preview?.message || "Roster rules satisfied. Confirm to place this player on IL and add the replacement."
+          : preview?.error || "Confirm unlocks after the IL move satisfies roster rules."}
+      </div>
+
       {stashPlayer && !mlbStatusOk && (
         <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
-          MLB status is "{stashPlayer.mlbStatus}". The server requires an active Injured-List designation and will reject this stash.
+          MLB status is "{stashPlayer.mlbStatus}". The player must have an active Injured-List designation.
         </div>
       )}
 
@@ -168,7 +230,7 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
           Replacement (free agents)
           {stashPlayer && (
             <span className="text-[var(--lg-text-muted)]">
-              {" "}— fills the vacated{" "}
+              {" "}— eligible to fill the vacated{" "}
               <span className="text-[var(--lg-accent)] font-mono">{stashSlot}</span> slot
             </span>
           )}
@@ -182,12 +244,14 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
         />
         <div className="max-h-60 overflow-y-auto rounded border border-[var(--lg-border-faint)]">
           {freeAgents.length === 0 ? (
-            <div className="p-3 text-[11px] text-[var(--lg-text-muted)]">No matching free agents.</div>
+            <div className="p-3 text-[11px] text-[var(--lg-text-muted)]">
+              No matching free agents.
+            </div>
           ) : (
             freeAgents.map((p) => {
               const mid = Number(p.mlb_id ?? p.mlbId ?? 0);
               const isSelected = mid === addMlbId;
-              const fits = stashPlayer
+              const direct = stashPlayer
                 ? slotsFor(p.positions || p.posPrimary || "").has(stashSlot as any)
                 : true;
               return (
@@ -202,7 +266,11 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
                   <span>{p.player_name || p.name}</span>
                   <span className="flex items-center gap-2 text-[10px] text-[var(--lg-text-muted)]">
                     <span>{p.positions || p.posPrimary || "—"}</span>
-                    {stashPlayer && !fits && <span className="text-amber-400">not eligible for {stashSlot}</span>}
+                    {stashPlayer && (
+                      <span className={direct ? "text-emerald-400" : "text-amber-300"}>
+                        {direct ? `fits ${stashSlot}` : "needs reshuffle"}
+                      </span>
+                    )}
                   </span>
                 </button>
               );
@@ -211,9 +279,9 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
         </div>
       </div>
 
-      {selectedAdd && stashPlayer && !addEligibleForStashSlot && (
+      {selectedAdd && stashPlayer && !addEligibleForStashSlot && !needsServerPreview && (
         <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
-          {selectedAdd.player_name || selectedAdd.name} is not eligible for the {stashSlot} slot. The server will reject this stash.
+          {selectedAdd.player_name || selectedAdd.name} is not eligible for the {stashSlot} slot. Pick a different replacement.
         </div>
       )}
       {error && (
@@ -224,7 +292,7 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
 
       <div className="flex justify-end">
         <Button size="sm" onClick={handleSubmit} disabled={!canSubmit}>
-          {submitting ? "Stashing…" : "Stash + Add"}
+          {submitting ? "Stashing…" : "Confirm Stash + Add"}
         </Button>
       </div>
     </div>

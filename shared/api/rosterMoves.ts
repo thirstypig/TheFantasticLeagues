@@ -361,10 +361,32 @@ export const RosterMovesPlayerSchema = z.object({
   // Position metadata — drives slot-eligibility checks.
   posPrimary: z.string().optional(),
   positions: z.string().optional(),
+  mlbTeam: z.string().optional(),
+  mlb_team: z.string().optional(),
+  mlb_team_abbr: z.string().optional(),
+  mlbTeamAbbr: z.string().optional(),
 
   // Status flags.
   mlbStatus: z.string().optional(),
   is_pitcher: z.union([z.boolean(), z.number()]).optional(),
+
+  // Period/YTD stat snapshot carried through from player-season stats so
+  // add/drop decisions can compare players before executing a move.
+  AB: z.number().nullable().optional(),
+  H: z.number().nullable().optional(),
+  R: z.number().nullable().optional(),
+  HR: z.number().nullable().optional(),
+  RBI: z.number().nullable().optional(),
+  SB: z.number().nullable().optional(),
+  AVG: z.union([z.number(), z.string()]).nullable().optional(),
+  IP: z.number().nullable().optional(),
+  BB_H: z.number().nullable().optional(),
+  K: z.number().nullable().optional(),
+  W: z.number().nullable().optional(),
+  SV: z.number().nullable().optional(),
+  ER: z.number().nullable().optional(),
+  ERA: z.union([z.number(), z.string()]).nullable().optional(),
+  WHIP: z.union([z.number(), z.string()]).nullable().optional(),
 
   // Team-pool metadata used as a fallback by ActivityPage (`teams.find(t
   // => t.name === p.ogba_team_name)?.id`). Kept on the schema so the

@@ -55,6 +55,25 @@ export async function getTransactions(params?: { leagueId?: number; teamId?: num
     return fetchJsonApi(`${API_BASE}/transactions?${q.toString()}`);
 }
 
+export interface RosterMovePreviewResult {
+    ok: boolean;
+    message?: string;
+    error?: string;
+    code?: string;
+    appliedReassignments?: Array<{
+        rosterId: number;
+        oldSlot: string | null;
+        newSlot: string;
+    }>;
+}
+
+export async function previewClaim(params: SharedClaimRequest): Promise<RosterMovePreviewResult> {
+    return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/claim/preview`, {
+        method: 'POST',
+        body: JSON.stringify(params),
+    });
+}
+
 /**
  * Yahoo-style auto-resolve reassignment. Re-exported from
  * `@shared/api/rosterMoves` so client and server share one definition.
@@ -86,6 +105,13 @@ export async function ilStash(params: IlStashParams): Promise<{ success: boolean
     });
 }
 
+export async function previewIlStash(params: IlStashParams): Promise<RosterMovePreviewResult> {
+    return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/il-stash/preview`, {
+        method: 'POST',
+        body: JSON.stringify(params),
+    });
+}
+
 export interface IlActivateParams {
     leagueId: number;
     teamId: number;
@@ -97,6 +123,13 @@ export interface IlActivateParams {
 
 export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
     return fetchJsonApi(`${API_BASE}/transactions/il-activate`, {
+        method: 'POST',
+        body: JSON.stringify(params),
+    });
+}
+
+export async function previewIlActivate(params: IlActivateParams): Promise<RosterMovePreviewResult> {
+    return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/il-activate/preview`, {
         method: 'POST',
         body: JSON.stringify(params),
     });
