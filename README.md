@@ -86,7 +86,7 @@ npm run test:server   # Server unit + integration
 npm run test:client   # Client component + hook tests
 ```
 
-Current baseline: **571 server / 201 client / 50 MCP = 822 tests**.
+Current tracked baseline is documented in [`docs/TESTING.md`](./docs/TESTING.md). Recent focused roster/dashboard work added Home and Add/Drop regression tests and passed the relevant 50-test client slice plus client typecheck.
 
 ## Conventions
 
@@ -137,7 +137,8 @@ Notable surfaces:
 
 - [`CLAUDE.md`](./CLAUDE.md) — architecture reference, conventions, testing strategy, feature module guide
 - [`FEEDBACK.md`](./FEEDBACK.md) — session-over-session development log
-- [`TODO.md`](./TODO.md) — historical tech-debt register (largely superseded by `/admin/todo`)
+- [`docs/CURRENT_STATUS.md`](./docs/CURRENT_STATUS.md) — active product status, planning source-of-truth, current focus, and deferred work
+- `server/data/planning.json` — unified micro todo + macro roadmap source rendered by the in-app planning views
 - [`docs/plans/`](./docs/plans/) — feature and refactor plans
 - [`docs/solutions/`](./docs/solutions/) — postmortems and learnings
 - [`mcp-servers/mlb-data/README.md`](./mcp-servers/mlb-data/README.md) — MCP proxy architecture

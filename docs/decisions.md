@@ -130,10 +130,22 @@ Documents the "why" behind key architectural choices. For reference docs, see `C
 
 **Context**: OGBA league format uses fixed position slots (C:2, 1B:1, 2B:1, 3B:1, SS:1, MI:1, CI:1, OF:5, DH:1 for hitters; SP/RP slots for pitchers). No bench or reserve slots.
 
-**Decision**: Roster management enforces slot-based positions without bench/reserves. Total roster: 14 hitters + 9 pitchers = 23 players per team.
+**Decision**: Roster management enforces slot-based positions without bench/reserves. Total roster: 14 hitters + 9 pitchers = 23 players per team. OGBA uses `CM` for corner-man and a single `P` pitcher pool; the frontend must not display fantasy-team codes or split OGBA roster slots into `SP`/`RP` or `LF`/`CF`/`RF`.
 
 **Consequences**:
 - Simpler roster validation — just check slot counts
-- MI (Middle Infield) eligible = 2B or SS; CI (Corner Infield) eligible = 1B or 3B
-- Position eligibility based on games played (10+ games at position) — deferred for future implementation
-- `isCIEligible()` and `isMIEligible()` helpers in `baseballUtils.ts`
+- MI (Middle Infield) eligible = 2B or SS; CM (Corner-man) eligible = 1B or 3B
+- Position eligibility is derived from current-year, prior-year, and rookie-primary rules; the full roster matcher is the final authority for add/drop, IL stash, and IL activation legality
+- Player tables may show MLB team abbreviations, but league/team UI must show full fantasy team names
+
+## ADR-011: Unified Planning Data
+
+**Context**: Separate roadmap, TODO, and task docs drifted apart. The user-facing product needs micro todos and macro roadmap items to agree.
+
+**Decision**: `server/data/planning.json` is the active source of truth for both planning levels. `categories[].tasks` holds micro todos. `roadmap[]` holds macro product themes. A micro task that supports a macro roadmap item should include `roadmapLink`.
+
+**Consequences**:
+- Do not recreate `TODO.md`, `server/data/todo-tasks.json`, or `docs/ROADMAP.md`
+- Keep docs/plans as rationale/proposals, not as the active todo list
+- Keep docs/solutions as postmortems/learnings, not as current task status
+- In-app Admin/Roadmap views should render from the unified planning data

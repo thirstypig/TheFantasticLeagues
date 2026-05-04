@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-04-19 (Session 69)
+Last updated: 2026-05-03
 
 ## What this document is
 
@@ -40,7 +40,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
-**Current reality (2026-04-19):** we don't have a formal E2E suite in CI. Every session I (Claude Code) verify user-facing changes with Playwright MCP interactive flows — that's good evidence but it's not automated. Next step is to promote the most common flows into `@playwright/test` so they run in CI.
+**Current reality (2026-05-03):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent dashboard and roster-move work was verified with unit tests, client typecheck, and desktop/mobile browser smoke on `http://localhost:3010`.
 
 ## Current coverage (Session 81 baseline, 2026-04-27/28)
 
@@ -66,7 +66,7 @@ Major covered areas (selected):
 - `features/franchises/routes.test.ts` — 6
 - `__tests__/integration/` — auction-roster (9), auction-simulation (29), trade-roster (10), waiver-roster (11), transaction-claims (25)
 
-### Client — 355 passing, 31 files
+### Client — tracked baseline plus recent focused additions
 
 - `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
@@ -79,7 +79,7 @@ Major covered areas (selected):
 - `features/teams/Teams.test.tsx` + `Team.test.tsx` — 17
 - `features/teams/Team.IL.test.tsx` — 4 (Your IL Slots subsection, Ghost-IL badge, stashed-dedup in MLB IL Candidates)
 - `features/transactions/components/RosterMovesTab/RosterMovesTab.test.tsx` — 11 (mode default / URL sync / IL count pill / shortcut banner / panel switching; PR #123 re-homing of PlaceOnIlModal + ActivateFromIlModal + standalone add/drop into a single tab)
-- `features/transactions/components/RosterMovesTab/AddDropPanel.test.tsx` — 10 (DROP_REQUIRED in-season + preseason inverse + FA key-uniqueness regression + submit-body contract: mlbId for free agents with no _dbPlayerId, dropPlayerId for in-season paired submits)
+- `features/transactions/components/RosterMovesTab/AddDropPanel.test.tsx` — includes DROP_REQUIRED in-season + preseason inverse + FA key-uniqueness regression + submit-body contract + default-no-selection regression for free agents without `_dbPlayerId`
 - `features/transactions/lib/permissions.test.ts` — 9 (canManageRoster matrix: admin / commissioner / owner with self-serve toggle / cross-team IDOR / no-league-rules loading state)
 - `lib/positionEligibility.test.ts` — 27 (slotsFor consolidation from the triplicated Phase 4 helpers)
 - `features/waivers/WaiverClaimForm.test.tsx` — 6 (in-season drop-required label, position eligibility)
@@ -89,6 +89,7 @@ Major covered areas (selected):
 - `features/periods/Season.test.tsx` — 8
 - `features/commissioner/Commissioner.test.tsx` — 11 (Phase 4 adds ghost-IL banner + lazy-load assertions)
 - `features/transactions/ActivityPage.test.tsx` — 6
+- `pages/__tests__/Home.test.tsx` — covers the dashboard sections added in the roster/home workstream: compact Around the League, League Board, quick links, fantasy-team names in League Activity, and pending trade proposal withdrawal affordance
 - `features/transactions/api.test.ts` — 6 (ilStash + ilActivate wrappers: URL/method/body shape, optional params, error propagation)
 - `features/commissioner/api.test.ts` — 4 (getGhostIlSummary: URL interpolation, error propagation, GET semantics)
 - `features/admin/Admin.test.tsx` — 6
@@ -108,7 +109,7 @@ Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 1. **Watchlist flows** — no unit or E2E tests. A regression here (Session 68's star-not-rendering bug) would ship silently. Proposed: `features/watchlist/__tests__/useMyWatchlist.test.ts` + E2E flow "owner stars a player on Players page, sees it on Add/Drop, survives reload."
 2. **Position eligibility filter** — the CM/MI/specific-position filter bug fixed this session had no test guarding it. Proposed: `features/players/__tests__/positionFilter.test.ts` with table-driven cases.
 3. **Commissioner roster tool** — no tests of the new Add/Drop Search in CommissionerRosterTool.
-4. **Home dashboard** — no tests. The new team link is visually verified but not unit-tested.
+4. **Home dashboard** — basic component tests now exist, but My Team Today live-stat freshness and historical weekly-insight tabs still need deeper tests.
 5. **E2E baseline** — ✅ scaffolded (Session 69). One golden-path test passing. Next expansions: auction draft, trade processing, waiver FAAB ordering, roster lock/unlock.
 6. **Deploy smoke** — we have ad-hoc Playwright checks against Railway, not a runnable smoke script.
 
@@ -124,6 +125,15 @@ Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 - **Green areas = tested** — a regression will be caught before deploy.
 - **Red/"not covered" areas = not tested** — rely on manual browser verification.
 - If you're about to make a change in a red area, ask for a test to be added first.
+
+## Latest Focused Verification
+
+Recent roster/dashboard documentation session baseline:
+
+- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx` — 21 passing
+- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/__tests__/ActivityPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx src/features/trades/__tests__/TradesPage.test.tsx` — 50 passing
+- `cd client && npx tsc --noEmit` — passing
+- Browser smoke on Home at desktop and mobile: no horizontal overflow, expected right-column order, League Activity fantasy-team names, Board quick link present
 
 ## Workflow — slash commands
 

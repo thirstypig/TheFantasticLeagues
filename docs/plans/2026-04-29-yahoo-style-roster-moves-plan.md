@@ -1,14 +1,16 @@
 # Yahoo-Style Roster Moves — Implementation Plan
 
 **Date:** 2026-04-29
-**Status:** ⚠️ **PIVOT PROPOSED** — PR1 SHIPPED (#167); PR2 redesign pending review
+**Status:** **ACTIVE DIRECTION** — Yahoo-style Roster Hub is the approved OGBA roster-management model
 **Author:** Plan agent (synthesis from codebase audit + Yahoo/ESPN/Sleeper UX prior art) + 10-agent deepening pass
 
-> **Implementation status as of 2026-04-29:**
+> **Implementation status as of 2026-05-03:**
 > - ✅ **PR1 merged as commit `658822b`** — server-side auto-resolve, bipartite matcher, three endpoint integrations, `Roster.displayOrder` schema field, `LeagueRule(transactions.auto_resolve_slots)` flag, toast wiring on all 3 RosterMoves panels. +37 server tests / +5 client tests.
 > - ✅ **Visual preview merged as commit `a8616c5`** (PR #169) — admin-only at `/design/swap-mode`. Click-through of all 7 visual states with mock data.
-> - ⚠️ **User feedback after preview review (2026-04-29)**: "I don't see the free agent swap nor the IL stash or activate either. Also, why aren't we using tables? The Swap Mode UI… not sure how it is supposed to work." Triggered a 10-agent deepening pass — see §0 below.
-> - 🚧 **PR2 redesign proposed** — see §0 (Deepening synthesis) for the new direction.
+> - ✅ **Pivot approved after review**: the standalone Swap Mode direction was replaced by a table-based Team/Roster Hub mental model.
+> - ✅ **Current product rule**: add/drop, IL stash, and IL activate require explicit confirmation and the confirmation stays locked until a server-backed preview validates the full roster state.
+> - ✅ **Current UX rule**: player-choice surfaces use sortable tables with selected-row highlighting, player expansion, MLB team, position eligibility, and role-appropriate stats.
+> - 🚧 **Still active**: polish the Roster Hub tables, commissioner acting-as flow, My Team roster-slot presentation, and mobile ergonomics.
 
 ## §0 — Deepening synthesis (2026-04-29) — MAJOR PIVOT PROPOSED
 

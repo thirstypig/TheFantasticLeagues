@@ -5,6 +5,8 @@
 **Browser-verified:** all 4 scenarios at `/design/roster-hub-deferred`, screenshots saved to `verify-200-drop-dropdown-fixed.png`, `design-1-hub-scenario.png`, `design-2-fa-scenario.png`, `design-3-il-scenario.png`, `design-4-complex-scenario.png`
 **Status:** **Sign-off given by Jimmy Chang on 2026-04-30** — production wiring may proceed using these answers as the contract.
 
+**Update 2026-05-03:** Roster Hub is no longer just a deferred design preview. It is the active product direction for OGBA roster management. Add/drop, IL stash, and IL activate should keep using focused flows with server-backed previews and confirmation gates. The active planning source is `server/data/planning.json`; this doc is rationale and product contract, not the todo list.
+
 ---
 
 ## Hub mutations (7 questions)
