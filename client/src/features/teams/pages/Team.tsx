@@ -139,14 +139,6 @@ function normCode(c: unknown): string {
 // derived from `HUB_PLAYER_CACHE_KEY_FIELDS` so the key automatically widens
 // when the mapper reads a new input field. Previously a duplicate
 // implementation lived here and could silently go stale.
-// (legacy tail removed; trailing `].join(""); }` is dead syntax kept inert by wrapping).
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _LEGACY_DEAD_TAIL: string = `legacy-cache-key-tail-removed; the U+001F separator byte resisted exact-string Edit so the trailing tokens (].join(<sep>); }) are captured inside this template literal and discarded via void below. The real cache key now lives in toHubPlayer.ts as HUB_PLAYER_CACHE_KEY_FIELDS — see todo #162.2.
-  ].join("\u001f");
-}
-
-`;
-void _LEGACY_DEAD_TAIL;
 
 function useHubPlayers(rows: RosterPlayer[]): RosterHubPlayer[] {
   const cacheRef = useRef<Map<number, HubPlayerCacheEntry>>(new Map());
