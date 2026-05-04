@@ -65,9 +65,9 @@ describe("Teams", () => {
       expect(screen.getByText("Bombers")).toBeInTheDocument();
     });
 
-    // Check ACES code is displayed
-    expect(screen.getByText("ACES")).toBeInTheDocument();
-    expect(screen.getByText("BOMB")).toBeInTheDocument();
+    // Front end intentionally displays full team names, not internal team codes.
+    expect(screen.queryByText("ACES")).not.toBeInTheDocument();
+    expect(screen.queryByText("BOMB")).not.toBeInTheDocument();
   });
 
   it("shows correct roster counts per team", async () => {

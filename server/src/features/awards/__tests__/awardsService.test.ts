@@ -132,7 +132,7 @@ describe("computeAwardsRankings — MVP", () => {
     expect(result.hitterPool).toBe(3); // Below Threshold filtered
     expect(result.mvp).toHaveLength(3);
 
-    const slugger = result.mvp.find(c => c.name === "Slugger");
+    const slugger = result.mvp.find((c: any) => c.name === "Slugger");
     expect(slugger).toBeDefined();
     expect(slugger!.rank).toBe(1); // expect Slugger to top the rankings
     expect(slugger!.team).toBe("Bombers");
@@ -146,7 +146,7 @@ describe("computeAwardsRankings — MVP", () => {
     expect(slugger!.zScores.HR).toBeGreaterThan(0); // above-mean
 
     // ranks should be 1, 2, 3
-    expect(result.mvp.map(c => c.rank)).toEqual([1, 2, 3]);
+    expect(result.mvp.map((c: any) => c.rank)).toEqual([1, 2, 3]);
     // composite scores should be monotonically decreasing
     expect(result.mvp[0].mvpScore).toBeGreaterThan(result.mvp[1].mvpScore);
     expect(result.mvp[1].mvpScore).toBeGreaterThan(result.mvp[2].mvpScore);
@@ -214,7 +214,7 @@ describe("computeAwardsRankings — Cy Young", () => {
     expect(result.starterPool).toBe(3); // 4th was filtered
     expect(result.cyYoung).toHaveLength(3);
 
-    const ace = result.cyYoung.find(c => c.name === "Ace");
+    const ace = result.cyYoung.find((c: any) => c.name === "Ace");
     expect(ace).toBeDefined();
     expect(ace!.rank).toBe(1);
     expect(ace!.stats.W).toBe(10);
@@ -229,7 +229,7 @@ describe("computeAwardsRankings — Cy Young", () => {
     expect(ace!.zScores.ERA).toBeGreaterThan(0);
     expect(ace!.zScores.WHIP).toBeGreaterThan(0);
 
-    expect(result.cyYoung.map(c => c.rank)).toEqual([1, 2, 3]);
+    expect(result.cyYoung.map((c: any) => c.rank)).toEqual([1, 2, 3]);
     expect(result.cyYoung[0].cyScore).toBeGreaterThan(result.cyYoung[2].cyScore);
   });
 });
