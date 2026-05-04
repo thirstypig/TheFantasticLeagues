@@ -1,6 +1,7 @@
 
 import { prisma } from "../../../db/prisma.js";
 import { POINTS_CANDIDATES } from "../../../constants/stats.js";
+import type { RosterHubResponse } from "@shared/api/teams.js";
 
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
@@ -222,7 +223,7 @@ export class TeamService {
     };
   }
 
-  async getTeamRosterHub(teamId: number) {
+  async getTeamRosterHub(teamId: number): Promise<RosterHubResponse> {
     const summary = await this.getTeamSummary(teamId);
 
     const rows = summary.currentRoster.map((row) => {

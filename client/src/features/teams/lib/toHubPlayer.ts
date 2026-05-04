@@ -115,6 +115,67 @@ function narrowGamesByPos(
   return out;
 }
 
+/**
+ * Enumerates EVERY field on `RosterPlayerInput` that `toHubPlayer` reads.
+ * The cache key in `Team.tsx` (and any future memoizer) is derived from this
+ * list — co-located with the mapper so adding a new input field forces a
+ * sync edit here. Per todo #162.2 (option A): deriving the key from the
+ * function's input contract eliminates the silent-stale-cache class of bug.
+ *
+ * Ordering matters only for stability of the resulting key string — keep
+ * it alphabetical-ish for diff readability. The serializer below handles
+ * undefined / null / Record<string, number> uniformly.
+ */
+export const HUB_PLAYER_CACHE_KEY_FIELDS = [
+  "rosterId",
+  "playerId",
+  "mlbId",
+  "playerName",
+  "posPrimary",
+  "posList",
+  "assignedPosition",
+  "isPitcher",
+  "mlbTeam",
+  "isKeeper",
+  "gamesByPos",
+  "mlbStatus",
+  "mlbStatusDaysAgo",
+  "AB", "H", "AVG", "HR", "R", "RBI", "SB",
+  "IP", "BB_H", "ER", "W", "SV", "K", "ERA", "WHIP",
+] as const satisfies readonly (keyof RosterPlayerInput)[];
+
+/** Field unit separator —  (information separator one), avoids any plausible value. */
+const FIELD_SEP = "";
+
+/**
+ * Stable cache key for `toHubPlayer(p)` results. Two inputs produce the same
+ * key iff every enumerated field is identical (referentially or by JSON
+ * shape, in the case of `gamesByPos`). Per todo #162.2 — derived from
+ * `HUB_PLAYER_CACHE_KEY_FIELDS` so the key automatically widens when a new
+ * input field is added (no chance of a silent stale cache).
+ */
+export function hubPlayerCacheKey(p: RosterPlayerInput): string {
+  const parts: string[] = [];
+  for (const field of HUB_PLAYER_CACHE_KEY_FIELDS) {
+    const value = p[field];
+    if (value === undefined || value === null) {
+      parts.push("");
+    } else if (field === "gamesByPos" && typeof value === "object") {
+      // Stable serialization: sort keys so insertion order doesn't break
+      // referential equality of two semantically-identical records.
+      const entries = Object.entries(value as Record<string, number>).sort(
+        ([a], [b]) => a.localeCompare(b),
+      );
+      parts.push(entries.map(([k, v]) => `${k}:${v}`).join("|"));
+    } else if (typeof value === "boolean") {
+      parts.push(value ? "1" : "0");
+    } else {
+      parts.push(String(value));
+    }
+  }
+  return parts.join(FIELD_SEP);
+}
+
 export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
   const slot = (p.assignedPosition || p.posPrimary || "BN").toUpperCase();
   const base = {
