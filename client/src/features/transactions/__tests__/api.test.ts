@@ -3,16 +3,29 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock at the fetchJsonApi boundary — we're testing URL/method/body
 // construction in the wrappers, not the Supabase-auth / error-handling logic
 // inside fetchJsonApi itself (that belongs in base.test.ts or integration tests).
-vi.mock("../../../api/base", () => ({
-  fetchJsonApi: vi.fn(),
-  API_BASE: "/api",
-}));
+vi.mock("../../../api/base", async () => {
+  const actual = await vi.importActual<typeof import("../../../api/base")>(
+    "../../../api/base",
+  );
+  return {
+    ...actual,
+    fetchJsonApi: vi.fn(),
+    // `getPlayerCareerStats` (todo #163 cache test) calls
+    // `fetchJsonPublic` (direct MLB Stats API), not `fetchJsonApi`. Mock
+    // both so the cache test below can intercept network calls without
+    // escaping vitest's jsdom fetch sandbox.
+    fetchJsonPublic: vi.fn(),
+    API_BASE: "/api",
+  };
+});
 
-import { fetchJsonApi } from "../../../api/base";
+import { fetchJsonApi, fetchJsonPublic } from "../../../api/base";
 import { ilStash, ilActivate, formatReassignmentsToast } from "../api";
+import { getPlayerCareerStats, _resetCareerStatsCache } from "../../players/api";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  _resetCareerStatsCache();
 });
 
 describe("ilStash", () => {
@@ -227,5 +240,63 @@ describe("formatReassignmentsToast", () => {
       "Claimed.",
     );
     expect(result).toContain("X CM → DH");
+  });
+});
+
+// ─── getPlayerCareerStats — module-level Promise cache (todo #163) ──────
+describe("getPlayerCareerStats — client-side cache", () => {
+  it("dedupes concurrent calls for the same (mlbId, group) into a single fetch", async () => {
+    // Two concurrent callers for the same player should share one
+    // in-flight Promise. The MLB Stats API call is fired exactly once.
+    // The yearByYear fetch is what we measure — the career-total fetch
+    // is a follow-up await chained inside the same cached Promise.
+    let resolveYbY!: (value: unknown) => void;
+    const yearByYearPromise = new Promise((resolve) => {
+      resolveYbY = resolve;
+    });
+    vi.mocked(fetchJsonPublic).mockImplementation((url: string) => {
+      if (url.includes("stats=yearByYear")) return yearByYearPromise as Promise<any>;
+      // Career-total follow-up — never reached if yearByYear is pending.
+      return Promise.resolve({ stats: [{ splits: [] }] }) as Promise<any>;
+    });
+
+    const p1 = getPlayerCareerStats("123", "hitting");
+    const p2 = getPlayerCareerStats("123", "hitting");
+
+    // Resolve with an empty splits payload; both callers complete.
+    resolveYbY({ stats: [{ splits: [] }] });
+    const [r1, r2] = await Promise.all([p1, p2]);
+
+    // Cache shares one underlying fetch — only the yearByYear endpoint
+    // is hit once across both concurrent callers.
+    const ybyCalls = vi.mocked(fetchJsonPublic).mock.calls.filter(([url]) =>
+      String(url).includes("stats=yearByYear"),
+    );
+    expect(ybyCalls).toHaveLength(1);
+    // Both callers receive the same resolved value object — the cache
+    // memoizes the Promise resolution, not just the network round-trip.
+    expect(r1).toBe(r2);
+  });
+
+  it("caches resolved values for the page lifetime — second call hits cache", async () => {
+    vi.mocked(fetchJsonPublic).mockResolvedValue({ stats: [{ splits: [] }] } as any);
+
+    await getPlayerCareerStats("456", "pitching");
+    const callsAfterFirst = vi.mocked(fetchJsonPublic).mock.calls.length;
+
+    await getPlayerCareerStats("456", "pitching");
+    const callsAfterSecond = vi.mocked(fetchJsonPublic).mock.calls.length;
+
+    // Cache hit — no additional network calls.
+    expect(callsAfterSecond).toBe(callsAfterFirst);
+  });
+
+  it("evicts on rejection so subsequent retries can refetch", async () => {
+    vi.mocked(fetchJsonPublic).mockRejectedValueOnce(new Error("MLB API 503"));
+    await expect(getPlayerCareerStats("789", "hitting")).rejects.toThrow("MLB API 503");
+
+    // Retry should hit the network again, not surface the cached failure.
+    vi.mocked(fetchJsonPublic).mockResolvedValue({ stats: [{ splits: [] }] } as any);
+    await expect(getPlayerCareerStats("789", "hitting")).resolves.toBeDefined();
   });
 });
