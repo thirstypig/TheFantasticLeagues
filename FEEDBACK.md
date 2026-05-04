@@ -4,6 +4,51 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-04 — /ce:review on PRs #226–#230 + 7 follow-up PRs in parallel via worktrees
+
+Closed two stale PRs (#8, #9 from February — Aurora rolled out the opposite direction from #9's shadcn-default normalization; #8's tests already exist in the modules that have been refactored multiple times since). Then ran the multi-agent /ce:review against the 5 unpulled commits on `origin/main` (PRs #226–#230: planning JSON migration, roster move preview gates, home dashboard AI history, roster hub V3 consolidation, server typecheck restore — ~4000 LOC across 62 files). Synthesized 7 reviewer outputs into 17 todo files (`todos/154` through `170`), then dispatched 5 worktree agents + 1 audit in parallel to land the P2/P3 fixes.
+
+### Completed — review batch
+
+- **PR [#231](https://github.com/thirstypig/TheFantasticLeagues/pull/231)** — One-line P1 fix: AddDropPanel preview-effect dep narrowed to `selectedAdd?._dbPlayerId` so it stops re-firing on every keystroke / sort click. Browser-verified post-merge: 0 spurious POSTs from sort/type, 1 POST per drop selection.
+- **PR [#232](https://github.com/thirstypig/TheFantasticLeagues/pull/232)** — Security: fixed broken `/transactions/sync-il-status` (added `leagueId` to schema, closed latent IDOR with roster-membership check); replaced raw `err.message` returns on `/transactions/claim` and `/drop` with generic envelopes + server-side logger. Endpoint had a live UI consumer at `Team.tsx:1108` (v3 hub ghost-IL Resync chip) so was fixed not deleted.
+- **PR [#233](https://github.com/thirstypig/TheFantasticLeagues/pull/233)** — AI hardening: composite `(leagueId, createdAt DESC)` indexes added via `prisma/migrations/20260504000000_ai_history_indexes/` (CONCURRENTLY); per-side `take` reduced to `Math.ceil(limit/2)+5`; new `shared/api/aiInsights.ts` discriminated union (3 enum types, `data` left as `unknown` — full per-variant typing deferred); route logic extracted to `aiInsightService.getInsightHistory()`. Migration not auto-applied — run `prisma migrate deploy` when ready.
+- **PR [#234](https://github.com/thirstypig/TheFantasticLeagues/pull/234)** — P3 sweep: 6 cleanups shipped (handleSort dedup, formatStat unification via `fmtRate()`, `currentPeriodIndex` reduce, inline `<style>` → `aurora.css`, `React.memo` removal on RosterRowV3/MobileRowV3 since parent recreates `dnd` each render, PATCH error message strip player name).
+- **PR [#235](https://github.com/thirstypig/TheFantasticLeagues/pull/235)** — Perf: career-stats client cache (Map-based dedup of in-flight Promises); `/trades?status=PROPOSED&limit=10` server filter so Home stops downloading full league trade history; `Intl.DateTimeFormat` hoisted out of MyTeamTodayPanel render path.
+- **PR [#236](https://github.com/thirstypig/TheFantasticLeagues/pull/236)** — RosterMoves types + naming: 13 `as any` removed across the 3 panels (zero remain); 3 `mlb_team*` aliases dropped from `RosterMovesPlayerSchema` (`mlbTeam` is now canonical at the roster-moves boundary); new `client/src/lib/extractServerError.ts` helper. Other features (auction, Players page) still read `mlb_team` from `/api/players` — broader canonicalization is a clean follow-up.
+- **PR [#237](https://github.com/thirstypig/TheFantasticLeagues/pull/237)** — Team page: shared `RosterHubResponseSchema` in `shared/api/teams.ts`; server annotates `getTeamRosterHub` return type so drift surfaces at compile time. `seededEffectiveDateRef` effect-dep correctness fix. **Cache-key correctness** — chose Option A: co-located `hubPlayerCacheKey` + `HUB_PLAYER_CACHE_KEY_FIELDS` in `toHubPlayer.ts` so the key tracks the function's input contract automatically. Follow-up commit removed a `_LEGACY_DEAD_TAIL` syntax-survival hack the agent left behind (U+001F separator byte resisted exact-string Edit during the original pass).
+
+### Verification
+
+- `npm run test`: **961 server + 583 client = 1544 tests green** (7 skipped, 1 todo)
+- `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean
+- 6-step browser smoke at `http://localhost:3011/` (port 3010 held by an orphan dev server PID 23960): Home dashboard, Team V3 hub (LDY: 14 hitters / 9 pitchers / 1 IL), AddDrop preview-gating regression, Place-on-IL, Activate-from-IL — 0 surprising console errors
+- Audit (todo #168): both known patterns PASS — no fabricated `_dbPlayerId` in FA test fixtures; all 3 preview handlers (claim, il-stash, il-activate) call `buildCandidatesForTeam` + `resolveLineup` (not pairwise `assertAddEligibleForDropSlot`, which is fully retired)
+
+### Pending / Next steps
+
+- **Merge cascade**: 7 PRs open; recommended order is #231 → #232 → #235 → #237 → #233 → #236 → #234 (small/independent first, panels-touching last). Per `feedback_stacked_pr_squash_merge.md`, do NOT batch-merge in a `for pr in ...; gh pr merge` loop — session 88 lost 6 children that way. Rebase each before merging the next.
+- **Deferred /ce:review todos** (need solo follow-ups, not in-flight):
+  - Todo #156 — consolidate the 3 near-identical preview endpoints + clients + effects (~250 LOC dup). Touches all 3 panels — would conflict with the in-flight #236 if shipped now.
+  - Todo #165 — split `AddDropPanel.tsx` (789 LOC) into a folder; consider extracting services from `transactions/routes.ts` (1542 LOC). Same panel-conflict reason.
+  - Todo #169 — explicit defer: no agent-triggerable AI generation endpoints. P3, no concrete agent use case yet.
+- Untyped per-variant `data: any` in `AiInsightDataSchema` discriminated union (#233 caveat) — tighten to strict per-variant objects when the prompt schemas in `aiAnalysisService` are easier to enumerate.
+
+### Concerns / tech debt
+
+- **`mlb_team` field naming inconsistency persists** outside roster-moves. PR #236 canonicalized `mlbTeam` only at the roster-moves boundary; auction stage, Players page, MyNominationQueue still read `mlb_team` from `/api/players` and `/api/player-season-stats`. Follow-up should sweep the broader endpoints.
+- **Worktree agents can't see uncommitted todos.** The 17 `todos/154-170-*.md` I created sit uncommitted in the main checkout, so worktree agents (which branch off the last commit on `main`) reported "todo file doesn't exist" and worked from the brief in their prompt. Fine for one-shot dispatch but a workflow smell — commit the todos before parallel dispatch in future.
+- **Port 3010 occupant**: orphaned dev server (PID 23960) still holds 3010. Not destructive but it forced the new Vite onto 3011 and confused the user during browser login. Free it next session unless it's known good.
+- Server typecheck is clean today (was flagged as dirty in the previous session's CURRENT_STATUS.md — that drift has been corrected).
+
+### Test results
+
+- Server: 961 passing, 7 skipped, 1 todo (69 files)
+- Client: 583 passing (48 files)
+- Combined typechecks: clean
+
+---
+
 ## Session 2026-05-03 — Documentation refresh and planning source-of-truth alignment
 
 Updated the project docs after the Home, Roster Hub, add/drop, trade proposal, AI history, and planning cleanup work. The important documentation decision: `server/data/planning.json` is the single active source for both micro todos and macro roadmap items. Legacy planning files (`TODO.md`, `server/data/todo-tasks.json`, `docs/ROADMAP.md`) should stay retired instead of being recreated.

@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 ## What this document is
 
@@ -35,12 +35,12 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (772 server + 330 client = 1102 tests, ~7s total) | Required green baseline. |
+| Before every push / PR | `npm run test` (961 server + 583 client = 1544 tests, ~25s total) | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
-**Current reality (2026-05-03):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent dashboard and roster-move work was verified with unit tests, client typecheck, and desktop/mobile browser smoke on `http://localhost:3010`.
+**Current reality (2026-05-04):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent /ce:review work on PRs #226–#230 was verified with full unit suite (1544 green), both typechecks clean, and a 6-step browser smoke (Home → Team V3 hub → AddDrop preview-gating regression → Place-on-IL → Activate-from-IL) at `http://localhost:3011/`.
 
 ## Current coverage (Session 81 baseline, 2026-04-27/28)
 
