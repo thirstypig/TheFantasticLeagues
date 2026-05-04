@@ -68,7 +68,6 @@ const Pricing = React.lazy(() => import("./pages/Pricing"));
 const Concepts = React.lazy(() => import("./pages/Concepts"));
 const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
-const RosterHubPreview = React.lazy(() => import("./pages/design/RosterHubPreview"));
 const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Preview"));
 const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRosterHubDeferred"));
 // Chat removed — Board replaces it
@@ -266,12 +265,10 @@ export default function App() {
                         docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md
                         §5B + §8. Ships components that PR2 will reuse. */}
                     <Route path="/design/swap-mode" element={<SwapModePreview />} />
-                    {/* v2 design preview — hub-and-spokes Team page redesign,
-                        per the §0 deepening synthesis in
-                        docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md.
-                        Renders the same `RosterHub` component family that PR2
-                        will mount on the real /teams/:code owner view. */}
-                    <Route path="/design/roster-hub" element={<RosterHubPreview />} />
+                    {/* Legacy v2 roster-hub preview retired after v3 shipped
+                        to the live Team page. Keep the URL as a bookmark-safe
+                        redirect to the maintained v3 preview. */}
+                    <Route path="/design/roster-hub" element={<Navigate to="/design/roster-hub-v3" replace />} />
                     {/* v3 design preview — adds the 5 user refinements
                         captured in §0.5 of the plan: consolidated stats
                         table, GP numbers in the merged Position+Eligibility

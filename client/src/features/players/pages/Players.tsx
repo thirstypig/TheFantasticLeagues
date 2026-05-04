@@ -29,7 +29,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Star, Loader2 } from "lucide-react";
 import {
-  AmbientBg, Glass, IridText, SectionLabel,
+  AmbientBg, Glass, SectionLabel,
 } from '../../../components/aurora/atoms';
 import '../../../components/aurora/aurora.css';
 import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type PeriodStatRow } from '../../../api';
@@ -307,8 +307,6 @@ export default function Players() {
 
   if (loading) return <PageSkeleton />;
 
-  const resultCount = filteredPlayers.length;
-
   return (
     <div className="aurora-theme" style={{ position: 'relative', minHeight: '100svh' }}>
       <AmbientBg />
@@ -323,10 +321,6 @@ export default function Players() {
             <div style={{ marginTop: 6, fontSize: 13, color: 'var(--am-text-muted)' }}>
               Filter, sort, and explore the full MLB pool — and add anyone to your watchlist.
             </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <SectionLabel style={{ marginBottom: 2 }}>Results</SectionLabel>
-            <IridText size={28} weight={300}>{resultCount.toLocaleString()}</IridText>
           </div>
         </div>
 

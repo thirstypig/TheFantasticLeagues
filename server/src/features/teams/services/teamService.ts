@@ -2,6 +2,15 @@
 import { prisma } from "../../../db/prisma.js";
 import { POINTS_CANDIDATES } from "../../../constants/stats.js";
 
+const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
+const PITCHER_POS = new Set(["P", "SP", "RP"]);
+
+function posScore(pos?: string | null): number {
+  if (!pos) return 99;
+  const idx = POS_ORDER.indexOf(pos);
+  return idx < 0 ? 50 : idx;
+}
+
 export class TeamService {
   /**
    * Helper to pull a numeric "points" value out of any stats object
@@ -180,11 +189,7 @@ export class TeamService {
       posPrimary: r.player.posPrimary,
       posList: r.player.posList,
       mlbTeam: r.player.mlbTeam,
-      // Raw MLB statsapi status string ("Injured 10-Day", "Active", …),
-      // populated by syncAllPlayers from 40-man roster status.description.
-      // Drives the v3 hub's ghost-IL warning chip via toHubPlayer →
-      // RosterHubPlayer.mlbStatus. Verbatim per direction-lock IL #1.
-      mlbStatus: r.player.mlbStatus,
+      mlbStatus: (r.player as { mlbStatus?: string | null }).mlbStatus ?? null,
       acquiredAt: r.acquiredAt,
       price: r.price,
       assignedPosition: r.assignedPosition,
@@ -214,6 +219,78 @@ export class TeamService {
       droppedPlayers,
       periodSummaries,
       seasonTotal,
+    };
+  }
+
+  async getTeamRosterHub(teamId: number) {
+    const summary = await this.getTeamSummary(teamId);
+
+    const rows = summary.currentRoster.map((row) => {
+      const assignedPosition = row.assignedPosition ?? row.posPrimary;
+      const isPitcher = PITCHER_POS.has((assignedPosition || row.posPrimary || "").toUpperCase());
+      const stats = row.periodStats;
+      const AB = stats?.AB;
+      const H = stats?.H;
+      const IP = stats?.IP;
+      const ER = stats?.ER;
+      const BB_H = stats?.BB_H;
+
+      return {
+        rosterId: row.id,
+        playerId: row.playerId,
+        playerName: row.name,
+        posPrimary: row.posPrimary,
+        posList: row.posList ?? row.posPrimary,
+        position: row.posPrimary,
+        assignedPosition,
+        isPitcher,
+        price: row.price,
+        mlbTeam: row.mlbTeam ?? undefined,
+        isKeeper: row.isKeeper,
+        gamesByPos: row.gamesByPos,
+        mlbStatus: row.mlbStatus,
+        AB,
+        H,
+        AVG: AB && AB > 0 && H != null ? H / AB : undefined,
+        HR: stats?.HR,
+        R: stats?.R,
+        RBI: stats?.RBI,
+        SB: stats?.SB,
+        IP,
+        BB_H,
+        ER,
+        W: stats?.W,
+        SV: stats?.SV,
+        K: stats?.K,
+        ERA: IP && IP > 0 && ER != null ? (ER / IP) * 9 : undefined,
+        WHIP: IP && IP > 0 && BB_H != null ? BB_H / IP : undefined,
+      };
+    });
+
+    const activeRows = rows.filter((row) => row.assignedPosition !== "IL");
+    const hitters = activeRows
+      .filter((row) => !row.isPitcher)
+      .sort((a, b) => {
+        const posDelta = posScore(a.assignedPosition || a.posPrimary) - posScore(b.assignedPosition || b.posPrimary);
+        if (posDelta !== 0) return posDelta;
+        return (b.price ?? 0) - (a.price ?? 0);
+      });
+    const pitchers = activeRows
+      .filter((row) => row.isPitcher)
+      .sort((a, b) => {
+        const aPos = a.assignedPosition || a.posPrimary || "";
+        const bPos = b.assignedPosition || b.posPrimary || "";
+        if (aPos !== bPos) return aPos.localeCompare(bPos);
+        return (b.price ?? 0) - (a.price ?? 0);
+      });
+
+    return {
+      team: summary.team,
+      period: summary.period,
+      hitters,
+      pitchers,
+      ilPlayers: rows.filter((row) => row.assignedPosition === "IL"),
+      droppedPlayers: summary.droppedPlayers,
     };
   }
 }

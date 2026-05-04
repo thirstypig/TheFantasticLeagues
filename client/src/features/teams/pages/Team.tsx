@@ -19,7 +19,7 @@
  * Port the deferred features into Aurora when the pilot expands.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useMatch, useNavigate, useParams } from "react-router-dom";
+import { Link, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DndContext } from "@dnd-kit/core";
 import { useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
@@ -80,6 +80,7 @@ interface RosterPlayer {
    * the same playerId). Used as the key for /api/players/:id/* calls.
    */
   playerId: number;
+  mlbId?: number | null;
   playerName: string;
   posPrimary?: string;
   /** Comma-separated full eligibility list ("OF,2B"). Drives multi-chip render. */
@@ -117,6 +118,11 @@ interface RosterPlayer {
   WHIP?: number | string;
 }
 
+type HubPlayerCacheEntry = {
+  key: string;
+  player: RosterHubPlayer;
+};
+
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
 
@@ -135,10 +141,75 @@ function normCode(c: unknown): string {
   return String(c ?? "").trim().toUpperCase();
 }
 
+function gamesByPosKey(gamesByPos: RosterPlayer["gamesByPos"]): string {
+  if (!gamesByPos) return "";
+  return Object.entries(gamesByPos)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([slot, games]) => `${slot}:${games}`)
+    .join("|");
+}
+
+function hubPlayerCacheKey(p: RosterPlayer): string {
+  return [
+    p.playerId,
+    p.mlbId ?? "",
+    p.playerName,
+    p.posPrimary ?? "",
+    p.posList ?? "",
+    p.assignedPosition ?? "",
+    p.isPitcher ? "P" : "H",
+    p.mlbTeam ?? "",
+    p.isKeeper ? "K" : "",
+    gamesByPosKey(p.gamesByPos),
+    p.mlbStatus ?? "",
+    p.mlbStatusDaysAgo ?? "",
+    p.AB ?? "",
+    p.H ?? "",
+    p.AVG ?? "",
+    p.HR ?? "",
+    p.R ?? "",
+    p.RBI ?? "",
+    p.SB ?? "",
+    p.IP ?? "",
+    p.BB_H ?? "",
+    p.ER ?? "",
+    p.W ?? "",
+    p.SV ?? "",
+    p.K ?? "",
+    p.ERA ?? "",
+    p.WHIP ?? "",
+  ].join("\u001f");
+}
+
+function useHubPlayers(rows: RosterPlayer[]): RosterHubPlayer[] {
+  const cacheRef = useRef<Map<number, HubPlayerCacheEntry>>(new Map());
+
+  return useMemo(() => {
+    const seen = new Set<number>();
+    const next = rows.map((row) => {
+      seen.add(row.rosterId);
+      const key = hubPlayerCacheKey(row);
+      const cached = cacheRef.current.get(row.rosterId);
+      if (cached?.key === key) return cached.player;
+
+      const player = toHubPlayer(row);
+      cacheRef.current.set(row.rosterId, { key, player });
+      return player;
+    });
+
+    for (const rosterId of cacheRef.current.keys()) {
+      if (!seen.has(rosterId)) cacheRef.current.delete(rosterId);
+    }
+
+    return next;
+  }, [rows]);
+}
+
 export default function Team() {
   const { teamCode } = useParams();
   const code = normCode(teamCode);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { me } = useAuth();
   const authUser = me?.user;
   const { leagueId, currentLeagueName, myTeamId, myTeamCode, leagueRules } = useLeague();
@@ -155,6 +226,10 @@ export default function Team() {
     : ilActivateMatch
     ? "il-activate"
     : null;
+  const queryEffectiveDate = searchParams.get("effectiveDate");
+  const queryPlayerIdRaw = searchParams.get("playerId");
+  const queryPlayerId = queryPlayerIdRaw ? Number(queryPlayerIdRaw) : null;
+  const initialManagePlayerId = Number.isFinite(queryPlayerId) && queryPlayerId! > 0 ? queryPlayerId : null;
 
   const [teamMeta, setTeamMeta] = useState<{
     id: number;
@@ -263,10 +338,11 @@ export default function Team() {
             // assignedPosition is only present on stat rows enriched
             // by the league pool's roster join; fall back to posPrimary
             // when missing (free-agent or stat sync hasn't run yet).
-            const assigned = stat?.assignedPosition || row.posPrimary;
+            const assigned = row.assignedPosition || stat?.assignedPosition || row.posPrimary;
             return {
               rosterId: row.id,
               playerId: row.playerId,
+              mlbId: row.mlbId,
               playerName: row.name,
               posPrimary: row.posPrimary,
               // posList is the full eligibility list (e.g. "OF,2B"). Server
@@ -380,6 +456,7 @@ export default function Team() {
       return {
         rosterId: r.id,
         playerId: r.playerId,
+        mlbId: r.mlbId,
         playerName: r.name,
         posPrimary: r.posPrimary,
         position: r.posPrimary,
@@ -448,9 +525,9 @@ export default function Team() {
   // so the mapping is unit-testable in isolation. See its docblock for
   // the contracts it pins down (playerId stability, posList fallback,
   // assignedSlot canonicalization, role-aware stats).
-  const baselineHubHitters = useMemo(() => hitters.map(toHubPlayer), [hitters]);
-  const baselineHubPitchers = useMemo(() => pitchers.map(toHubPlayer), [pitchers]);
-  const hubIl = useMemo(() => ilPlayers.map(toHubPlayer), [ilPlayers]);
+  const baselineHubHitters = useHubPlayers(hitters);
+  const baselineHubPitchers = useHubPlayers(pitchers);
+  const hubIl = useHubPlayers(ilPlayers);
 
   // Permission gating mirrors ActivityPage — owner OR commissioner OR admin
   // can mutate; everyone else gets a view-only hub (no action menus).
@@ -645,6 +722,14 @@ export default function Team() {
     userId: authUser?.id ?? null,
     saveFn,
   });
+  const seededEffectiveDateRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isCommissionerMode || !queryEffectiveDate || !/^\d{4}-\d{2}-\d{2}($|T)/.test(queryEffectiveDate)) return;
+    const key = `${teamMeta?.id ?? ""}:${queryEffectiveDate}`;
+    if (seededEffectiveDateRef.current === key) return;
+    seededEffectiveDateRef.current = key;
+    pending.setEffectiveDate(queryEffectiveDate);
+  }, [isCommissionerMode, pending.setEffectiveDate, queryEffectiveDate, teamMeta?.id]);
 
   // Apply pending swaps to the displayed hub roster optimistically.
   // Optimistic preview is best-effort — only swap is fully reflected;
@@ -1213,7 +1298,7 @@ export default function Team() {
           {/* HERO */}
           <div style={{ gridColumn: "span 12" }}>
             <Glass strong style={{ borderRadius: 25, padding: 22 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr auto auto", alignItems: "center", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto auto", alignItems: "center", gap: 14 }}>
                 {/* Team navigator: prev chevron */}
                 <button
                   type="button"
@@ -1231,19 +1316,6 @@ export default function Team() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <div
-                  style={{
-                    width: 76, height: 76, borderRadius: 18,
-                    background: "var(--am-irid)",
-                    display: "grid", placeItems: "center",
-                    fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 600, color: "#fff",
-                    boxShadow: "0 12px 30px rgba(0,0,0,0.25)",
-                  }}
-                >
-                  {teamMeta?.name
-                    ? teamMeta.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase()
-                    : "—"}
-                </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                     <SectionLabel style={{ marginBottom: 0 }}>
@@ -1367,26 +1439,31 @@ export default function Team() {
                 ) : !leagueId || !teamMeta ? (
                   <div style={{ padding: 16, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>
                 ) : manageMode === "claim" ? (
-                  <AddDropPanel
-                    leagueId={leagueId}
-                    teamId={teamMeta.id}
-                    players={players}
-                    onComplete={onPanelComplete}
-                  />
-                ) : manageMode === "il-stash" ? (
-                  <PlaceOnIlPanel
-                    leagueId={leagueId}
-                    teamId={teamMeta.id}
-                    players={players}
-                    onComplete={onPanelComplete}
-                  />
-                ) : (
-                  <ActivateFromIlPanel
-                    leagueId={leagueId}
-                    teamId={teamMeta.id}
-                    players={players}
-                    onComplete={onPanelComplete}
-                  />
+	                  <AddDropPanel
+	                    leagueId={leagueId}
+	                    teamId={teamMeta.id}
+	                    players={players}
+	                    onComplete={onPanelComplete}
+	                    effectiveDate={pending.state.effectiveDate ?? undefined}
+	                  />
+	                ) : manageMode === "il-stash" ? (
+	                  <PlaceOnIlPanel
+	                    leagueId={leagueId}
+	                    teamId={teamMeta.id}
+	                    players={players}
+	                    onComplete={onPanelComplete}
+	                    effectiveDate={pending.state.effectiveDate ?? undefined}
+	                    initialStashPlayerId={initialManagePlayerId}
+	                  />
+	                ) : (
+	                  <ActivateFromIlPanel
+	                    leagueId={leagueId}
+	                    teamId={teamMeta.id}
+	                    players={players}
+	                    onComplete={onPanelComplete}
+	                    effectiveDate={pending.state.effectiveDate ?? undefined}
+	                    initialActivatePlayerId={initialManagePlayerId}
+	                  />
                 )}
               </SubrouteContainer>
             ) : (

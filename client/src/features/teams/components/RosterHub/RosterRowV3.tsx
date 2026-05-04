@@ -10,8 +10,9 @@
 //   - Number of `<td>`s is determined by the parent's column layout —
 //     this component renders the cells, the parent owns the headers.
 //
-// Memoized via `React.memo` keyed on (rosterId, slot, isSelected,
-// isEligible, isDimmed, isPending, isDragSource, isDropTarget).
+// Memoized with React's default shallow compare so rendered player fields
+// (stats, eligibility, GP suffixes, keeper marker, MLB team) cannot go stale
+// when the parent receives fresh roster data.
 
 import React, { useRef, useState } from "react";
 import { ThemedTr, ThemedTd } from "../../../../components/ui/ThemedTable";
@@ -49,9 +50,11 @@ interface RosterRowV3Props {
   isEligible: boolean;
   isDimmed: boolean;
   isPending: boolean;
+  isExpanded?: boolean;
   isDragSource: boolean;
   isDropTarget: boolean;
   onPillClick: () => void;
+  onToggleExpand?: () => void;
   onRevert?: () => void;
   actions: RowAction[];
   /** When provided, renders a ⋮⋮ grab handle and wires the row as a drop target. */
@@ -83,9 +86,11 @@ function RosterRowV3Impl({
   isEligible,
   isDimmed,
   isPending,
+  isExpanded,
   isDragSource,
   isDropTarget,
   onPillClick,
+  onToggleExpand,
   onRevert,
   actions,
   dnd,
@@ -127,6 +132,7 @@ function RosterRowV3Impl({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
+          showEligibility={false}
           ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
             isSelected ? "deselect" : "select"
           }`}
@@ -153,7 +159,21 @@ function RosterRowV3Impl({
             </button>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              aria-expanded={isExpanded}
+              style={{
+                padding: 0,
+                border: 0,
+                background: "transparent",
+                color: "var(--am-text)",
+                fontSize: 13,
+                fontWeight: 600,
+                textAlign: "left",
+                cursor: onToggleExpand ? "pointer" : "default",
+              }}
+            >
               {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
               {player.isKeeper && (
                 <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
@@ -161,7 +181,7 @@ function RosterRowV3Impl({
                 </span>
               )}
               {player.name}
-            </span>
+            </button>
             <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
               {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
             </span>
@@ -250,25 +270,4 @@ function StatTd({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const RosterRowV3 = React.memo(RosterRowV3Impl, (prev, next) => {
-  return (
-    prev.player.rosterId === next.player.rosterId &&
-    prev.player.assignedSlot === next.player.assignedSlot &&
-    prev.role === next.role &&
-    prev.isSelected === next.isSelected &&
-    prev.isEligible === next.isEligible &&
-    prev.isDimmed === next.isDimmed &&
-    prev.isPending === next.isPending &&
-    prev.isDragSource === next.isDragSource &&
-    prev.isDropTarget === next.isDropTarget &&
-    prev.isShakeRejecting === next.isShakeRejecting &&
-    // dnd is a shallow object; compare its scalar fields. The two refs/
-    // attrs change identity on every dnd-kit render, so we deliberately
-    // re-render when they change.
-    prev.dnd?.isDragging === next.dnd?.isDragging &&
-    prev.dnd?.isOverEligible === next.dnd?.isOverEligible &&
-    prev.dnd?.rowStyle === next.dnd?.rowStyle &&
-    prev.dnd?.rowRef === next.dnd?.rowRef &&
-    prev.dnd?.dragHandleAttrs === next.dnd?.dragHandleAttrs
-  );
-});
+export const RosterRowV3 = React.memo(RosterRowV3Impl);

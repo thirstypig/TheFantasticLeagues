@@ -143,3 +143,133 @@ describe("TeamService.getTeamSummary — mlbStatus pass-through", () => {
     expect(row.assignedPosition).toBeNull();
   });
 });
+
+describe("TeamService.getTeamRosterHub", () => {
+  it("returns hub-ready hitters, pitchers, and IL rows with active-period stats", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({
+      id: 10,
+      leagueId: 1,
+      name: "Test Team",
+      owner: "Tester",
+      budget: 260,
+    });
+    mockPrisma.period.findFirst.mockResolvedValue({
+      id: 7,
+      leagueId: 1,
+      name: "Period 7",
+      status: "active",
+      startDate: new Date("2026-05-01"),
+      endDate: new Date("2026-05-14"),
+    });
+    mockPrisma.playerStatsPeriod.findMany.mockResolvedValue([
+      { playerId: 1, AB: 20, H: 6, R: 4, HR: 2, RBI: 5, SB: 1, IP: 0, ER: 0, BB_H: 0, W: 0, SV: 0, K: 0 },
+      { playerId: 2, AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, IP: 12, ER: 3, BB_H: 10, W: 1, SV: 0, K: 14 },
+      { playerId: 3, AB: 8, H: 2, R: 1, HR: 0, RBI: 1, SB: 0, IP: 0, ER: 0, BB_H: 0, W: 0, SV: 0, K: 0 },
+    ]);
+    mockPrisma.roster.findMany.mockImplementation((args: any) => {
+      if (args?.where?.releasedAt === null) {
+        return Promise.resolve([
+          {
+            id: 101,
+            playerId: 1,
+            teamId: 10,
+            assignedPosition: "OF",
+            isKeeper: true,
+            price: 25,
+            acquiredAt: new Date("2026-04-01"),
+            releasedAt: null,
+            source: "auction",
+            player: {
+              id: 1,
+              mlbId: 600001,
+              name: "Hitter One",
+              posPrimary: "OF",
+              posList: "OF,2B",
+              mlbTeam: "LAD",
+              mlbStatus: "Active",
+            },
+          },
+          {
+            id: 102,
+            playerId: 2,
+            teamId: 10,
+            assignedPosition: "SP",
+            isKeeper: false,
+            price: 18,
+            acquiredAt: new Date("2026-04-01"),
+            releasedAt: null,
+            source: "auction",
+            player: {
+              id: 2,
+              mlbId: 600002,
+              name: "Pitcher One",
+              posPrimary: "P",
+              posList: "P",
+              mlbTeam: "SFG",
+              mlbStatus: "Active",
+            },
+          },
+          {
+            id: 103,
+            playerId: 3,
+            teamId: 10,
+            assignedPosition: "IL",
+            isKeeper: false,
+            price: 3,
+            acquiredAt: new Date("2026-04-01"),
+            releasedAt: null,
+            source: "auction",
+            player: {
+              id: 3,
+              mlbId: 600003,
+              name: "IL One",
+              posPrimary: "OF",
+              posList: "OF",
+              mlbTeam: "NYM",
+              mlbStatus: "Injured 10-Day",
+            },
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const service = new TeamService();
+    const result = await service.getTeamRosterHub(10);
+
+    expect(result.team.id).toBe(10);
+    expect(result.period?.id).toBe(7);
+    expect(result.hitters).toHaveLength(1);
+    expect(result.hitters[0]).toMatchObject({
+      rosterId: 101,
+      playerId: 1,
+      playerName: "Hitter One",
+      assignedPosition: "OF",
+      isPitcher: false,
+      isKeeper: true,
+      AB: 20,
+      H: 6,
+      AVG: 0.3,
+      HR: 2,
+    });
+    expect(result.pitchers).toHaveLength(1);
+    expect(result.pitchers[0]).toMatchObject({
+      rosterId: 102,
+      playerName: "Pitcher One",
+      assignedPosition: "SP",
+      isPitcher: true,
+      IP: 12,
+      ER: 3,
+      BB_H: 10,
+      ERA: 2.25,
+      WHIP: 10 / 12,
+    });
+    expect(result.ilPlayers).toHaveLength(1);
+    expect(result.ilPlayers[0]).toMatchObject({
+      rosterId: 103,
+      playerName: "IL One",
+      assignedPosition: "IL",
+      mlbStatus: "Injured 10-Day",
+    });
+  });
+});

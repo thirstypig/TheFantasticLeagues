@@ -362,7 +362,7 @@ export default function SwapModePreview() {
           "valid slots light up" north star.
         </p>
         <p style={{ marginTop: 8, fontSize: 12, color: "var(--am-text-faint)" }}>
-          This is the v1 (cards-based) approach. <Link to="/design/roster-hub" style={{ color: "var(--am-text-muted)" }}>v2 preview at /design/roster-hub →</Link>
+          This is the v1 (cards-based) approach. <Link to="/design/roster-hub-v3" style={{ color: "var(--am-text-muted)" }}>v3 preview at /design/roster-hub-v3 →</Link>
         </p>
       </Glass>
 

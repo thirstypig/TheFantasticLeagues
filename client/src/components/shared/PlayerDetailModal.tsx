@@ -680,6 +680,8 @@ function CareerTable({
           <ThemedTr>
             <ThemedTh align="center">YR</ThemedTh>
             <ThemedTh>TM</ThemedTh>
+            <ThemedTh align="center">AB</ThemedTh>
+            <ThemedTh align="center">H</ThemedTh>
             <ThemedTh align="center">R</ThemedTh>
             <ThemedTh align="center">HR</ThemedTh>
             <ThemedTh align="center">RBI</ThemedTh>
@@ -692,6 +694,8 @@ function CareerTable({
             <ThemedTr key={`${x.year}-${x.tm}`}>
               <ThemedTd align="center">{x.year}</ThemedTd>
               <ThemedTd>{x.tm || "—"}</ThemedTd>
+              <ThemedTd align="center">{toNum(x.AB)}</ThemedTd>
+              <ThemedTd align="center">{toNum(x.H)}</ThemedTd>
               <ThemedTd align="center">{toNum(x.R)}</ThemedTd>
               <ThemedTd align="center">{toNum(x.HR)}</ThemedTd>
               <ThemedTd align="center">{toNum(x.RBI)}</ThemedTd>
@@ -713,6 +717,7 @@ function CareerTable({
         <ThemedTr>
           <ThemedTh align="center">YR</ThemedTh>
           <ThemedTh>TM</ThemedTh>
+          <ThemedTh align="center">IP</ThemedTh>
           <ThemedTh align="center">W</ThemedTh>
           <ThemedTh align="center">SV</ThemedTh>
           <ThemedTh align="center">K</ThemedTh>
@@ -729,6 +734,7 @@ function CareerTable({
             <ThemedTr key={`${x.year}-${x.tm}`}>
               <ThemedTd align="center">{x.year}</ThemedTd>
               <ThemedTd>{x.tm || "—"}</ThemedTd>
+              <ThemedTd align="center">{toNum(x.IP)}</ThemedTd>
               <ThemedTd align="center">{toNum(x.W)}</ThemedTd>
               <ThemedTd align="center">{toNum(x.SV)}</ThemedTd>
               <ThemedTd align="center">{toNum((x as any).SO)}</ThemedTd>

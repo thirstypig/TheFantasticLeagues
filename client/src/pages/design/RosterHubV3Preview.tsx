@@ -537,10 +537,6 @@ export default function RosterHubV3Preview() {
           <Link to="/design/swap-mode" style={{ color: "var(--am-text-muted)" }}>
             v1 (cards) at /design/swap-mode
           </Link>{" "}
-          ·{" "}
-          <Link to="/design/roster-hub" style={{ color: "var(--am-text-muted)" }}>
-            v2 (tables) at /design/roster-hub
-          </Link>
         </p>
       </Glass>
 
