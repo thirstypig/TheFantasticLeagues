@@ -553,13 +553,20 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     if (isRosterRuleError(err)) {
       return res.status(400).json({ error: err.message, code: err.code });
     }
-    const msg = err instanceof Error ? err.message : "Claim failed";
-    // Legacy substring matches — kept as a safety net until all guard code
-    // paths throw RosterRuleError.
-    if (msg.includes("Roster limit") || msg.includes("already on") || msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate")) {
-      return res.status(400).json({ error: msg });
-    }
-    throw err; // Re-throw unexpected errors for asyncHandler
+    // Do NOT echo err.message — it can leak Prisma constraint names, SQL
+    // fragments, or internal invariant text. Log server-side and return a
+    // generic envelope (todo #158).
+    logger.error(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        leagueId,
+        teamId,
+        playerId,
+        userId: req.user?.id,
+      },
+      "transactions/claim: unhandled error",
+    );
+    return res.status(500).json({ error: "Transaction failed", code: "INTERNAL" });
   }
 
   writeAuditLog({
@@ -618,7 +625,17 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
   try {
     effective = resolveEffectiveDate(effDateRaw);
   } catch (err) {
-    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid effectiveDate" });
+    logger.warn(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        leagueId,
+        teamId,
+        playerId,
+        userId: req.user?.id,
+      },
+      "transactions/drop: invalid effectiveDate",
+    );
+    return res.status(400).json({ error: "Invalid effectiveDate" });
   }
   // Guard: backdated releasedAt must be at or after acquiredAt.
   if (effective <= rosterEntry.acquiredAt) {
@@ -1087,11 +1104,21 @@ router.post(
       if (isRosterRuleError(err)) {
         return res.status(400).json({ error: err.message, code: err.code });
       }
-      const msg = err instanceof Error ? err.message : "IL stash failed";
-      if (msg.includes("already on") || msg.includes("Ownership conflict")) {
-        return res.status(400).json({ error: msg });
-      }
-      throw err;
+      // Do NOT echo err.message — it can leak Prisma constraint names, SQL
+      // fragments, or internal invariant text. Log server-side and return a
+      // generic envelope (todo #158).
+      logger.error(
+        {
+          err: err instanceof Error ? err.message : String(err),
+          leagueId,
+          teamId,
+          stashPlayerId,
+          addPlayerId: addPlayerId ?? null,
+          userId: req.user?.id,
+        },
+        "transactions/il-stash: unhandled error",
+      );
+      return res.status(500).json({ error: "Transaction failed", code: "INTERNAL" });
     }
 
     writeAuditLog({
@@ -1490,14 +1517,31 @@ router.post(
   validateBody(SyncIlStatusBodySchema),
   requireTeamOwnerOrCommissioner(),
   asyncHandler(async (req, res) => {
-    const { playerId } = req.body as { playerId: number; teamId: number };
+    const { teamId, playerId } = req.body as {
+      leagueId: number;
+      teamId: number;
+      playerId: number;
+    };
+
+    // IDOR guard: confirm the player is actually on this team's active
+    // roster before exposing MLB status. Without this, any authenticated
+    // owner could query MLB status for arbitrary playerIds by pairing them
+    // with their own teamId (which passes requireTeamOwnerOrCommissioner).
+    // Generic 404 to avoid leaking whether the player exists at all.
+    const rosterEntry = await prisma.roster.findFirst({
+      where: { teamId, playerId, releasedAt: null },
+      select: { id: true },
+    });
+    if (!rosterEntry) {
+      return res.status(404).json({ error: "Player not found on roster." });
+    }
 
     const player = await prisma.player.findUnique({
       where: { id: playerId },
       select: { id: true, name: true, mlbId: true, mlbTeam: true },
     });
     if (!player) {
-      return res.status(404).json({ error: `Player #${playerId} not found.` });
+      return res.status(404).json({ error: "Player not found on roster." });
     }
     if (!player.mlbId || !player.mlbTeam) {
       return res.status(200).json({
