@@ -86,7 +86,7 @@ export type RosterHubTeam = z.infer<typeof RosterHubTeamSchema>;
 export const RosterHubPeriodSchema = z
   .object({
     id: z.number(),
-    leagueId: z.number(),
+    leagueId: z.number().nullable(),
     name: z.string().nullable().optional(),
     status: z.string().nullable().optional(),
     startDate: z.coerce.date().nullable().optional(),
