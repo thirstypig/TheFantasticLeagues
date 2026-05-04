@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { fetchJsonApi, API_BASE } from "../api/base";
 import AdminCrossNav from "../features/admin/components/AdminCrossNav";
 import RelatedTodos from "../features/admin/components/RelatedTodos";
 import { Glass, SectionLabel } from "../components/aurora/atoms";
@@ -44,10 +45,10 @@ const LAST_UPDATED = "April 28, 2026 (Session 85 — Aurora rollout complete)";
 interface RoadmapItem {
   title: string;
   description: string;
-  icon: React.ElementType;
+  icon?: React.ElementType | string;
   effort: "Small" | "Medium" | "Large";
   status: "planned" | "in-progress" | "done";
-  tags: string[];
+  tags?: string[];
 }
 
 interface RoadmapPhase {
@@ -55,11 +56,27 @@ interface RoadmapPhase {
   id: string;
   label: string;
   timeframe: string;
-  color: string;
-  borderColor: string;
-  bgColor: string;
-  icon: React.ElementType;
+  color?: string;
+  borderColor?: string;
+  bgColor?: string;
+  icon?: React.ElementType | string;
   items: RoadmapItem[];
+}
+
+interface PlanningCategory {
+  id: string;
+  title: string;
+  tasks: Array<{
+    id: string;
+    status: "not_started" | "in_progress" | "done";
+    roadmapLink?: string;
+  }>;
+}
+
+interface PlanningData {
+  roadmap?: RoadmapPhase[];
+  categories?: PlanningCategory[];
+  updatedAt?: string;
 }
 
 const productRoadmap: RoadmapPhase[] = [
@@ -392,7 +409,7 @@ const completedFeatures: CompletedGroup[] = [
       { title: "Todo Progress Bars", description: "Horizontal progress bar + {done}/{total} + percentage on every Todo category header.", session: "63" },
       { title: "/admin/users Scaffold", description: "Admin users page with real GET /api/admin/users endpoint (filters, sort, pagination). Default sort lastLoginAt DESC per plan R14. Awaits DB migration to show real data.", session: "63" },
       { title: "Session-Tracking Plan Deepened", description: "4-agent /deepen-plan review (security, performance, data-integrity, best-practices) folded 19 material revisions into docs/plans/2026-04-13-admin-users-session-tracking-plan.md. Migration SQL written; UserSession/UserMetrics/UserDeletionLog models ready to deploy.", session: "63" },
-      { title: "Task-System Consolidation Plan", description: "Proposal at docs/plans/2026-04-13-task-system-consolidation-plan.md to merge admin-tasks.json + todo-tasks.json into 3-level milestone→category→task hierarchy. Awaiting decision.", session: "63" },
+      { title: "Task-System Consolidation Plan", description: "Original consolidation proposal superseded by unified planning.json: macro roadmap phases and micro todos now live in one planning source.", session: "63" },
     ],
   },
   {
@@ -626,9 +643,61 @@ function effortBadge(effort: string) {
   );
 }
 
+const ICONS: Record<string, React.ElementType> = {
+  Activity,
+  BarChart3,
+  Bell,
+  Bot,
+  Circle,
+  Database,
+  DollarSign,
+  Globe,
+  Layers,
+  Rocket,
+  Search,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+  Zap,
+};
+
+const PHASE_COLORS: Record<string, { color: string; borderColor: string; bgColor: string }> = {
+  emerald: { color: "text-emerald-400", borderColor: "border-emerald-500/30", bgColor: "bg-emerald-500/5" },
+  amber: { color: "text-amber-400", borderColor: "border-amber-500/30", bgColor: "bg-amber-500/5" },
+  cyan: { color: "text-cyan-400", borderColor: "border-cyan-500/30", bgColor: "bg-cyan-500/5" },
+  pink: { color: "text-pink-400", borderColor: "border-pink-500/30", bgColor: "bg-pink-500/5" },
+  purple: { color: "text-purple-400", borderColor: "border-purple-500/30", bgColor: "bg-purple-500/5" },
+};
+
+function iconFor(icon: RoadmapItem["icon"] | RoadmapPhase["icon"], fallback: React.ElementType): React.ElementType {
+  if (!icon) return fallback;
+  if (typeof icon !== "string") return icon;
+  return ICONS[icon] ?? fallback;
+}
+
+function colorsFor(phase: RoadmapPhase) {
+  if (phase.color && phase.borderColor && phase.bgColor) {
+    return { color: phase.color, borderColor: phase.borderColor, bgColor: phase.bgColor };
+  }
+  return PHASE_COLORS[phase.color ?? ""] ?? PHASE_COLORS.cyan;
+}
+
+function microStatsForPhase(phaseId: string, categories: PlanningCategory[]) {
+  const linked = categories.flatMap((cat) =>
+    cat.tasks.filter((task) => task.roadmapLink?.split("#")[1] === phaseId),
+  );
+  return {
+    total: linked.length,
+    done: linked.filter((task) => task.status === "done").length,
+    inProgress: linked.filter((task) => task.status === "in_progress").length,
+  };
+}
+
 /* ── Sub-Components ──────────────────────────────────────────────── */
 
-function ProductRoadmapSection() {
+function ProductRoadmapSection({ roadmap, categories }: { roadmap: RoadmapPhase[]; categories: PlanningCategory[] }) {
   const [expandedPhase, setExpandedPhase] = useState<number | null>(0);
   const { hash } = useLocation();
 
@@ -636,12 +705,12 @@ function ProductRoadmapSection() {
   useEffect(() => {
     if (!hash) return;
     const target = hash.replace(/^#/, "");
-    const idx = productRoadmap.findIndex((p) => p.id === target);
+    const idx = roadmap.findIndex((p) => p.id === target);
     if (idx >= 0) setExpandedPhase(idx);
     // defer scroll until the panel has expanded
     const el = document.getElementById(target);
     if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [hash]);
+  }, [hash, roadmap]);
 
   return (
     <div className="space-y-4">
@@ -656,26 +725,28 @@ function ProductRoadmapSection() {
       </p>
 
       <div className="space-y-3">
-        {productRoadmap.map((phase, phaseIdx) => {
+        {roadmap.map((phase, phaseIdx) => {
           const isOpen = expandedPhase === phaseIdx;
-          const PhaseIcon = phase.icon;
+          const PhaseIcon = iconFor(phase.icon, Rocket);
+          const phaseColors = colorsFor(phase);
           const totalCount = phase.items.length;
           const inProgressCount = phase.items.filter(i => i.status === "in-progress").length;
+          const microStats = microStatsForPhase(phase.id, categories);
 
           return (
             <div
               key={phase.label}
               id={phase.id}
-              className={`rounded-lg border ${phase.borderColor} ${phase.bgColor} overflow-hidden scroll-mt-24`}
+              className={`rounded-lg border ${phaseColors.borderColor} ${phaseColors.bgColor} overflow-hidden scroll-mt-24`}
             >
               <button
                 onClick={() => setExpandedPhase(isOpen ? null : phaseIdx)}
                 className="w-full px-5 py-4 flex items-center gap-3 text-left hover:opacity-90 transition-opacity"
               >
-                <PhaseIcon className={`w-5 h-5 ${phase.color} shrink-0`} />
+                <PhaseIcon className={`w-5 h-5 ${phaseColors.color} shrink-0`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <h3 className={`text-sm font-semibold ${phase.color}`}>
+                    <h3 className={`text-sm font-semibold ${phaseColors.color}`}>
                       {phase.label}
                     </h3>
                     <span className="text-xs text-[var(--lg-text-muted)]">
@@ -686,6 +757,11 @@ function ProductRoadmapSection() {
                     <span className="text-xs text-[var(--lg-text-muted)] tabular-nums">
                       {totalCount} items
                     </span>
+                    {microStats.total > 0 && (
+                      <span className="text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">
+                        {microStats.done}/{microStats.total} micro
+                      </span>
+                    )}
                     {inProgressCount > 0 && (
                       <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
                         {inProgressCount} active
@@ -704,7 +780,7 @@ function ProductRoadmapSection() {
                 <div className="px-4 pb-4 space-y-2">
                   <RelatedTodos kind="roadmap" anchor={phase.id} />
                   {phase.items.map((item) => {
-                    const ItemIcon = item.icon;
+                    const ItemIcon = iconFor(item.icon, Circle);
                     return (
                       <div
                         key={item.title}
@@ -736,7 +812,7 @@ function ProductRoadmapSection() {
                               {item.description}
                             </p>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              {item.tags.map((tag) => (
+                              {(item.tags ?? []).map((tag) => (
                                 <span
                                   key={tag}
                                   className="text-[10px] text-[var(--lg-text-muted)] bg-[var(--lg-tint)] px-1.5 py-0.5 rounded"
@@ -833,10 +909,38 @@ function CompletedFeaturesSection() {
 /* ── Main Page ───────────────────────────────────────────────────── */
 
 export default function Roadmap() {
-  const plannedCount = productRoadmap.reduce(
+  const [planning, setPlanning] = useState<PlanningData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchJsonApi<PlanningData>(`${API_BASE}/planning`)
+      .then((res) => {
+        if (!cancelled) setPlanning(res);
+      })
+      .catch(() => {
+        if (!cancelled) setPlanning(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const roadmap = planning?.roadmap?.length ? planning.roadmap : productRoadmap;
+  const categories = planning?.categories ?? [];
+  const updatedAt = planning?.updatedAt
+    ? new Date(planning.updatedAt).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : LAST_UPDATED;
+
+  const plannedCount = roadmap.reduce(
     (sum, phase) => sum + phase.items.filter(i => i.status !== "done").length,
     0
   );
+  const microTasks = categories.flatMap((cat) => cat.tasks);
+  const microOpenCount = microTasks.filter((task) => task.status !== "done").length;
   const completedCount = completedFeatures.reduce((s, g) => s + g.items.length, 0);
 
   return (
@@ -846,8 +950,8 @@ export default function Roadmap() {
           <div>
             <SectionLabel>✦ Roadmap</SectionLabel>
             <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Roadmap</h1>
-            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>What we're building next — and what we've already shipped.</div>
-            <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>Last updated: {LAST_UPDATED}</div>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Macro roadmap and micro todos from one planning file.</div>
+            <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>Last updated: {updatedAt}</div>
           </div>
           <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
             Under the Hood <ArrowRight className="w-3 h-3" />
@@ -857,13 +961,21 @@ export default function Roadmap() {
       </Glass>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-4 text-center">
           <div className="text-2xl font-semibold text-[var(--lg-accent)] tabular-nums">
             {plannedCount}
           </div>
           <div className="text-xs text-[var(--lg-text-muted)] font-medium uppercase mt-1">
             Planned
+          </div>
+        </div>
+        <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-4 text-center">
+          <div className="text-2xl font-semibold text-sky-400 tabular-nums">
+            {microOpenCount}
+          </div>
+          <div className="text-xs text-[var(--lg-text-muted)] font-medium uppercase mt-1">
+            Micro Open
           </div>
         </div>
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
@@ -877,7 +989,7 @@ export default function Roadmap() {
       </div>
 
       {/* Product Roadmap */}
-      <ProductRoadmapSection />
+      <ProductRoadmapSection roadmap={roadmap} categories={categories} />
 
       {/* Completed Features */}
       <CompletedFeaturesSection />

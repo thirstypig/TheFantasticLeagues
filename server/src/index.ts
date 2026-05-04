@@ -71,7 +71,7 @@ for (const key of REQUIRED_ENV) {
   }
 }
 
-// Validate todo-tasks.json schema at boot (same fail-fast posture as env vars)
+// Validate planning.json schema at boot (same fail-fast posture as env vars)
 validateTodoFileAtBoot();
 
 const PORT = Number(process.env.PORT || 4010);
