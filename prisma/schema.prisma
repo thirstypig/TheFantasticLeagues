@@ -856,6 +856,12 @@ model Trade {
   @@index([proposerId])
   @@index([status])
   @@index([leagueId, status])
+  // Backs the AI history merge query (server/src/features/ai/services/
+  // aiInsightService.ts) which orders trades by createdAt DESC scoped to a
+  // single league. Filtered to rows with non-null aiAnalysis at runtime;
+  // Prisma does not support partial-index syntax so we index the full
+  // (leagueId, createdAt) range and rely on the WHERE clause to prune.
+  @@index([leagueId, createdAt(sort: Desc)])
 }
 
 model TradeItem {
@@ -1116,6 +1122,9 @@ model AiInsight {
   @@index([teamId])
   @@index([leagueId])
   @@index([leagueId, type])
+  // Backs the AI history merge query (server/src/features/ai/services/
+  // aiInsightService.ts) which scans the most recent insights per league.
+  @@index([leagueId, createdAt(sort: Desc)])
   // Matches the (type, leagueId, weekKey) filter used by 3 query sites
   // (digest dedup + reportBuilder lookups). The 4-col unique above can
   // serve type+leagueId but must scan for weekKey. See Issue #086.

@@ -6,6 +6,10 @@ import { useSeasonGating } from "../../../hooks/useSeasonGating";
 
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
+import type {
+  AiInsightHistoryItem,
+  AiInsightHistoryResponse,
+} from "@shared/api/aiInsights";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -25,14 +29,7 @@ interface AIFeature {
   dataUsed: string[];
 }
 
-interface AiHistoryRow {
-  id: string;
-  type: string;
-  weekKey?: string | null;
-  generatedAt: string;
-  teamName?: string | null;
-  data: any;
-}
+type AiHistoryRow = AiInsightHistoryItem;
 
 
 /* ── Main Page ───────────────────────────────────────────────────── */
@@ -236,7 +233,7 @@ export default function AIHub() {
   useEffect(() => {
     if (!leagueId) return;
     setHistoryLoading(true);
-    fetchJsonApi<{ insights: AiHistoryRow[] }>(`${API_BASE}/ai/insights/history?leagueId=${leagueId}&limit=24`)
+    fetchJsonApi<AiInsightHistoryResponse>(`${API_BASE}/ai/insights/history?leagueId=${leagueId}&limit=24`)
       .then((res) => setHistory(res.insights ?? []))
       .catch(() => setHistory([]))
       .finally(() => setHistoryLoading(false));
@@ -432,12 +429,15 @@ function formatInsightType(type: string): string {
 }
 
 function summarizeInsight(row: AiHistoryRow): string {
-  const data = row.data ?? {};
-  const result = data.result ?? data;
+  // data is `unknown` per the shared schema (todo #159 took a discriminant-only
+  // stance until per-variant prompt schemas land). Narrow defensively.
+  const data = (row.data ?? {}) as Record<string, unknown>;
+  const result = ((data.result as Record<string, unknown> | undefined) ?? data) as Record<string, unknown>;
   if (typeof result.analysis === "string") return result.analysis;
-  if (typeof data.weekInOneSentence === "string") return data.weekInOneSentence;
-  if (typeof data.overview === "string") return data.overview;
-  if (Array.isArray(data.insights) && data.insights[0]?.detail) return data.insights[0].detail;
-  if (Array.isArray(data.insights) && data.insights[0]?.title) return data.insights[0].title;
+  if (typeof data.weekInOneSentence === "string") return data.weekInOneSentence as string;
+  if (typeof data.overview === "string") return data.overview as string;
+  const insights = data.insights as Array<{ detail?: string; title?: string }> | undefined;
+  if (Array.isArray(insights) && insights[0]?.detail) return insights[0].detail;
+  if (Array.isArray(insights) && insights[0]?.title) return insights[0].title;
   return "Stored AI insight.";
 }
