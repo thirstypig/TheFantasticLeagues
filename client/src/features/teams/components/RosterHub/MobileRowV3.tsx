@@ -71,7 +71,7 @@ function statSummaryFor(player: RosterHubPlayer): string {
   return parts.join(" · ");
 }
 
-function MobileRowV3Impl({
+export function MobileRowV3({
   player,
   role,
   isSelected,
@@ -84,9 +84,10 @@ function MobileRowV3Impl({
   dnd,
   isShakeRejecting,
 }: MobileRowV3Props) {
-  // `role` is still used by the React.memo comparator (so swapping a
-  // hitter row for a pitcher row remounts cleanly) but stat rendering
-  // narrows on `player.isPitcher` directly per todo #153.
+  // `role` is no longer load-bearing for memo (todo #170 removed React.memo
+  // because the parent recreates `dnd` each render, defeating reference
+  // equality); stat rendering narrows on `player.isPitcher` directly per
+  // todo #153. Keep the prop on the interface for future memo strategies.
   void role;
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -190,4 +191,3 @@ function MobileRowV3Impl({
   );
 }
 
-export const MobileRowV3 = React.memo(MobileRowV3Impl);

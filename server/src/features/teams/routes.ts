@@ -536,8 +536,11 @@ router.patch(
       assignedPosition !== "IL" &&
       !isEligibleForSlot(rosterItem.player.posList ?? "", assignedPosition)
     ) {
+      // Strip player name from the user-facing error (todo #170): the caller
+      // already has the player context; the message just needs to convey the
+      // eligibility mismatch + the slot they tried.
       return res.status(400).json({
-        error: `${rosterItem.player.name} (${rosterItem.player.posList ?? "no positions"}) is not eligible for the ${assignedPosition} slot.`,
+        error: `Player (${rosterItem.player.posList ?? "no positions"}) is not eligible for the ${assignedPosition} slot.`,
       });
     }
 

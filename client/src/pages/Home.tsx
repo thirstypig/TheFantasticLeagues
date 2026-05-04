@@ -143,7 +143,7 @@ export default function Home() {
     return idx >= 0 ? { row: standings[idx], rank: idx + 1 } : null;
   }, [standings, myTeamId]);
   const currentPeriodIndex = useMemo(() => {
-    const maxLen = Math.max(0, ...standings.map((s) => s.periodPoints.length));
+    const maxLen = standings.reduce((acc, s) => Math.max(acc, s.periodPoints.length), 0);
     return Math.max(0, maxLen - 1);
   }, [standings]);
   const visibleStandings = useMemo(() => {
@@ -518,34 +518,7 @@ export default function Home() {
       <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", color: "var(--am-text)" }}>
         <AmbientBg />
 
-        <style>{`
-          .home-bento {
-            position: relative;
-            z-index: 10;
-            padding: 28px 24px 72px;
-            display: grid;
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-            grid-auto-rows: minmax(0, auto);
-            gap: 14px;
-            max-width: 1400px;
-            margin: 0 auto;
-          }
-          .home-span-12 { grid-column: span 12; }
-          .home-span-7 { grid-column: span 7; }
-          .home-span-5 { grid-column: span 5; }
-          .home-column { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-          .home-quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
-          @media (max-width: 980px) {
-            .home-bento { padding: 18px 14px 56px; grid-template-columns: minmax(0, 1fr) !important; gap: 12px; }
-            .home-span-12, .home-span-7, .home-span-5 { grid-column: 1 / -1 !important; }
-            .home-column { gap: 12px; }
-            .home-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          }
-          @media (max-width: 560px) {
-            .home-quick-grid { grid-template-columns: 1fr; }
-          }
-        `}</style>
-
+        {/* Bento layout styles live in client/src/components/aurora/aurora.css */}
         <div className="home-bento">
           <div className="home-column home-span-7">
             {leagueId && (
