@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-05-03
+Last updated: 2026-05-04
 
 ## Source Of Truth
 
@@ -66,9 +66,7 @@ Stripe and growth work remain roadmap items, but they should not displace active
 
 Recent verification for this workstream:
 
-- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx`
-- broader client suite around Home, Activity, Add/Drop, and Trades: 50 tests passing
-- `cd client && npx tsc --noEmit`
-- browser smoke at `http://localhost:3010/` for desktop and mobile overflow
-
-Server typecheck currently has unrelated pre-existing failures in other modules; do not treat that as a blocker for documenting frontend/dashboard changes, but do not ignore it before deployment.
+- `npm run test`: 961 server + 583 client = **1544 tests green** (7 skipped, 1 todo)
+- `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean
+- Browser smoke at `http://localhost:3011/` (port 3010 currently held by an orphan dev server) — Home dashboard, Team page V3 hub, AddDrop / Place-on-IL / Activate-from-IL panels all rendering without console errors
+- AddDrop preview-effect regression check: 0 spurious `claim/preview` POSTs from sort/type interactions; exactly 1 POST per drop selection (per `fix/adddrop-preview-deps`, todo #154)
