@@ -54,7 +54,7 @@ import {
 } from "../components/RosterHub";
 import { useFreeAgents } from "../hooks/useFreeAgents";
 import type { RowAction } from "../components/RosterHub/RowActionMenu";
-import { toHubPlayer } from "../lib/toHubPlayer";
+import { toHubPlayer, hubPlayerCacheKey } from "../lib/toHubPlayer";
 // Cross-feature import: roster mutations live in the transactions feature.
 // Per CLAUDE.md "Cross-Feature Dependencies", this is documented in the
 // project root. The v3 hub remounts these existing panels as inline sub-routes
@@ -64,6 +64,7 @@ import PlaceOnIlPanel from "../../transactions/components/RosterMovesTab/PlaceOn
 import ActivateFromIlPanel from "../../transactions/components/RosterMovesTab/ActivateFromIlPanel";
 import type { RosterMovesPlayer } from "../../transactions/components/RosterMovesTab/types";
 import { loadRosterMovePlayers } from "../../transactions/lib/loadRosterMovePlayers";
+import type { RosterHubRow } from "@shared/api/teams";
 
 interface PeriodOption {
   id: number;
@@ -72,51 +73,44 @@ interface PeriodOption {
 
 type PeriodMode = "season" | number; // "season" = cumulative; number = periodId
 
-interface RosterPlayer {
-  rosterId: number;
-  /**
-   * Prisma Player.id — stable DB identifier across roster mutations
-   * (acquiring + dropping the same player produces a new rosterId but
-   * the same playerId). Used as the key for /api/players/:id/* calls.
-   */
-  playerId: number;
+/**
+ * The Team page composes its row shape from `getTeamDetails` +
+ * `getPlayerSeasonStats` joined client-side, but the resulting object is the
+ * same shape that `TeamService.getTeamRosterHub` emits server-side. Per
+ * todo #160 the row type lives in `shared/api/teams.ts` so any drift between
+ * the page's local composer and the server endpoint becomes a compile error
+ * (rather than an under-declared local interface that masks missing fields).
+ *
+ * We extend the shared row with display-only fields that exist only on the
+ * page side: `mlbId` for player-detail-modal lookups, `mlbStatusDaysAgo` for
+ * the ghost-IL chip body (computed page-side from the freshness signal), and
+ * the loose `string | undefined` shape for rate stats so legacy formatters
+ * that emit pre-formatted strings still typecheck.
+ */
+type RosterPlayer = Omit<
+  RosterHubRow,
+  "posPrimary" | "posList" | "position" | "assignedPosition" | "mlbStatus" | "isKeeper" | "isPitcher"
+  | "AVG" | "ERA" | "WHIP" | "IP"
+> & {
+  /** Stable MLB API id when present; null for filler/synthetic players. */
   mlbId?: number | null;
-  playerName: string;
   posPrimary?: string;
-  /** Comma-separated full eligibility list ("OF,2B"). Drives multi-chip render. */
   posList?: string;
   position?: string;
   assignedPosition?: string;
+  /** Optional on the page side — getTeamDetails may not pre-classify. */
   isPitcher?: boolean;
-  price?: number;
-  mlbTeam?: string;
   isKeeper?: boolean;
-  /** Per-position GP — synthetic today, real when Player.posGames lands. */
-  gamesByPos?: Record<string, number>;
-  /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …).
-   *  Verbatim per direction-lock IL #1 — drives the ghost-IL warning chip. */
+  /** Raw MLB statsapi status; verbatim per direction-lock IL #1. */
   mlbStatus?: string | null;
   /** Days since `mlbStatus` was observed — drives ghost-IL chip body. */
   mlbStatusDaysAgo?: number;
-  // Hitter stats (when available)
-  AB?: number;
-  H?: number;
+  /** Rate stats may already be pre-formatted strings from legacy paths. */
   AVG?: number | string;
-  HR?: number;
-  R?: number;
-  RBI?: number;
-  SB?: number;
-  // Pitcher stats
   IP?: number | string;
-  /** Hits + walks allowed combined (matches WHIP numerator). */
-  BB_H?: number;
-  ER?: number;
-  W?: number;
-  SV?: number;
-  K?: number;
   ERA?: number | string;
   WHIP?: number | string;
-}
+};
 
 type HubPlayerCacheEntry = {
   key: string;
@@ -141,45 +135,18 @@ function normCode(c: unknown): string {
   return String(c ?? "").trim().toUpperCase();
 }
 
-function gamesByPosKey(gamesByPos: RosterPlayer["gamesByPos"]): string {
-  if (!gamesByPos) return "";
-  return Object.entries(gamesByPos)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([slot, games]) => `${slot}:${games}`)
-    .join("|");
-}
-
-function hubPlayerCacheKey(p: RosterPlayer): string {
-  return [
-    p.playerId,
-    p.mlbId ?? "",
-    p.playerName,
-    p.posPrimary ?? "",
-    p.posList ?? "",
-    p.assignedPosition ?? "",
-    p.isPitcher ? "P" : "H",
-    p.mlbTeam ?? "",
-    p.isKeeper ? "K" : "",
-    gamesByPosKey(p.gamesByPos),
-    p.mlbStatus ?? "",
-    p.mlbStatusDaysAgo ?? "",
-    p.AB ?? "",
-    p.H ?? "",
-    p.AVG ?? "",
-    p.HR ?? "",
-    p.R ?? "",
-    p.RBI ?? "",
-    p.SB ?? "",
-    p.IP ?? "",
-    p.BB_H ?? "",
-    p.ER ?? "",
-    p.W ?? "",
-    p.SV ?? "",
-    p.K ?? "",
-    p.ERA ?? "",
-    p.WHIP ?? "",
+// Per todo #162.2 — `hubPlayerCacheKey` now lives in `../lib/toHubPlayer.ts`,
+// derived from `HUB_PLAYER_CACHE_KEY_FIELDS` so the key automatically widens
+// when the mapper reads a new input field. Previously a duplicate
+// implementation lived here and could silently go stale.
+// (legacy tail removed; trailing `].join(""); }` is dead syntax kept inert by wrapping).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _LEGACY_DEAD_TAIL: string = `legacy-cache-key-tail-removed; the U+001F separator byte resisted exact-string Edit so the trailing tokens (].join(<sep>); }) are captured inside this template literal and discarded via void below. The real cache key now lives in toHubPlayer.ts as HUB_PLAYER_CACHE_KEY_FIELDS — see todo #162.2.
   ].join("\u001f");
 }
+
+`;
+void _LEGACY_DEAD_TAIL;
 
 function useHubPlayers(rows: RosterPlayer[]): RosterHubPlayer[] {
   const cacheRef = useRef<Map<number, HubPlayerCacheEntry>>(new Map());
@@ -722,14 +689,28 @@ export default function Team() {
     userId: authUser?.id ?? null,
     saveFn,
   });
+  // Per todo #162.1 — `pending.setEffectiveDate` is the setter from
+  // `usePendingChanges`; setters are not guaranteed identity-stable across
+  // renders, and re-firing this effect on a setter swap would re-seed past
+  // a user's manual clear. We deliberately omit it from the dep array (the
+  // ref-guard ensures a single seed per (teamId, queryEffectiveDate) pair).
+  // When the user clears the `?effectiveDate` querystring (queryEffectiveDate
+  // becomes null), we reset the ref so re-applying the SAME date later still
+  // re-seeds — closing the bug where a second apply was silently dropped.
   const seededEffectiveDateRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!isCommissionerMode || !queryEffectiveDate || !/^\d{4}-\d{2}-\d{2}($|T)/.test(queryEffectiveDate)) return;
+    if (!isCommissionerMode || !queryEffectiveDate || !/^\d{4}-\d{2}-\d{2}($|T)/.test(queryEffectiveDate)) {
+      // User cleared the querystring (or it never matched) — drop the
+      // seed marker so re-applying re-seeds.
+      seededEffectiveDateRef.current = null;
+      return;
+    }
     const key = `${teamMeta?.id ?? ""}:${queryEffectiveDate}`;
     if (seededEffectiveDateRef.current === key) return;
     seededEffectiveDateRef.current = key;
     pending.setEffectiveDate(queryEffectiveDate);
-  }, [isCommissionerMode, pending.setEffectiveDate, queryEffectiveDate, teamMeta?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pending.setEffectiveDate intentionally omitted; see comment above.
+  }, [isCommissionerMode, queryEffectiveDate, teamMeta?.id]);
 
   // Apply pending swaps to the displayed hub roster optimistically.
   // Optimistic preview is best-effort — only swap is fully reflected;

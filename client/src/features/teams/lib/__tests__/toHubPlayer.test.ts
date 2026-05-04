@@ -17,7 +17,12 @@
 // extracted from the component).
 
 import { describe, it, expect } from "vitest";
-import { toHubPlayer, type RosterPlayerInput } from "../toHubPlayer";
+import {
+  toHubPlayer,
+  hubPlayerCacheKey,
+  HUB_PLAYER_CACHE_KEY_FIELDS,
+  type RosterPlayerInput,
+} from "../toHubPlayer";
 
 /** Convenience builder so each test only specifies the fields it cares about. */
 function makeInput(overrides: Partial<RosterPlayerInput> = {}): RosterPlayerInput {
@@ -317,5 +322,105 @@ describe("toHubPlayer — passthrough metadata", () => {
     );
     expect(result.isPitcher).toBe(true);
     expect(typeof result.isPitcher).toBe("boolean");
+  });
+});
+
+describe("hubPlayerCacheKey — cache key correctness (todo #162.2)", () => {
+  // The Team page memoizes `toHubPlayer(p)` results keyed on
+  // `hubPlayerCacheKey(p)`. The cache returns stale data if the key omits a
+  // field that the mapper reads — silent UI staleness. Co-locating the key
+  // derivation with the mapper (and pinning the field list with a test)
+  // forecloses that class of bug.
+
+  it("produces identical keys for identical inputs", () => {
+    const a = makeInput({ playerId: 7, mlbStatus: "Active" });
+    const b = makeInput({ playerId: 7, mlbStatus: "Active" });
+    expect(hubPlayerCacheKey(a)).toBe(hubPlayerCacheKey(b));
+  });
+
+  it("produces different keys when ANY enumerated field changes", () => {
+    // The key MUST widen when any field in HUB_PLAYER_CACHE_KEY_FIELDS
+    // takes a different value — otherwise a cached `toHubPlayer` result
+    // shadows a newer input. Loop over every field and verify a flip
+    // changes the key.
+    const base = makeInput();
+    const baseKey = hubPlayerCacheKey(base);
+    const variants: Partial<Record<keyof RosterPlayerInput, unknown>> = {
+      rosterId: 999,
+      playerId: 999,
+      mlbId: 999,
+      playerName: "Different",
+      posPrimary: "1B",
+      posList: "1B,3B",
+      assignedPosition: "1B",
+      isPitcher: true,
+      mlbTeam: "BOS",
+      isKeeper: true,
+      gamesByPos: { OF: 1 },
+      mlbStatus: "Injured 10-Day",
+      mlbStatusDaysAgo: 5,
+      AB: 100, H: 30, AVG: 0.3, HR: 10, R: 50, RBI: 50, SB: 5,
+      IP: 50.0, BB_H: 60, ER: 15, W: 5, SV: 1, K: 60, ERA: 2.7, WHIP: 1.2,
+    };
+    for (const field of HUB_PLAYER_CACHE_KEY_FIELDS) {
+      const next = makeInput({ ...base, [field]: variants[field] } as RosterPlayerInput);
+      const nextKey = hubPlayerCacheKey(next);
+      expect(nextKey, `field ${String(field)} should change the cache key`).not.toBe(baseKey);
+    }
+  });
+
+  it("HUB_PLAYER_CACHE_KEY_FIELDS enumerates every field toHubPlayer reads", () => {
+    // Trip-wire test: if `toHubPlayer` ever starts reading a new input
+    // field, the safest guard is to reflect it in HUB_PLAYER_CACHE_KEY_FIELDS
+    // immediately so the cache key auto-widens. This test pins the current
+    // field set so a future addition to `RosterPlayerInput` (or to
+    // toHubPlayer's read set) forces a sync edit here too.
+    expect(new Set(HUB_PLAYER_CACHE_KEY_FIELDS)).toEqual(new Set([
+      "rosterId",
+      "playerId",
+      "mlbId",
+      "playerName",
+      "posPrimary",
+      "posList",
+      "assignedPosition",
+      "isPitcher",
+      "mlbTeam",
+      "isKeeper",
+      "gamesByPos",
+      "mlbStatus",
+      "mlbStatusDaysAgo",
+      "AB", "H", "AVG", "HR", "R", "RBI", "SB",
+      "IP", "BB_H", "ER", "W", "SV", "K", "ERA", "WHIP",
+    ]));
+  });
+
+  it("treats undefined and null identically (both → empty segment)", () => {
+    // Server emits `mlbStatus: null` for synthetic rows; Team.tsx
+    // pre-coalesces to `undefined`. The cache key must treat those as the
+    // same so the same row doesn't churn between two cached entries.
+    const a = makeInput({ mlbStatus: null });
+    const b = makeInput({ mlbStatus: undefined });
+    expect(hubPlayerCacheKey(a)).toBe(hubPlayerCacheKey(b));
+  });
+
+  it("gamesByPos key is order-insensitive (sorts entries before serializing)", () => {
+    // Object literal property order isn't guaranteed across server
+    // payloads — two semantically-identical records with different
+    // insertion orders must produce the same cache key.
+    const a = makeInput({ gamesByPos: { OF: 12, "2B": 8 } });
+    const b = makeInput({ gamesByPos: { "2B": 8, OF: 12 } });
+    expect(hubPlayerCacheKey(a)).toBe(hubPlayerCacheKey(b));
+  });
+
+  it("changes when gamesByPos values change", () => {
+    const a = makeInput({ gamesByPos: { OF: 12 } });
+    const b = makeInput({ gamesByPos: { OF: 13 } });
+    expect(hubPlayerCacheKey(a)).not.toBe(hubPlayerCacheKey(b));
+  });
+
+  it("distinguishes isPitcher true vs false", () => {
+    const h = makeInput({ isPitcher: false });
+    const p = makeInput({ isPitcher: true });
+    expect(hubPlayerCacheKey(h)).not.toBe(hubPlayerCacheKey(p));
   });
 });

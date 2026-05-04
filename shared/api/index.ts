@@ -6,3 +6,4 @@ export * from "./playerSeasonStats.js";
 export * from "./rosterMoves.js";
 export * from "./awards.js";
 export * from "./commissioner.js";
+export * from "./teams.js";
