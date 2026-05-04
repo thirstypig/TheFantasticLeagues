@@ -31,7 +31,13 @@ interface Category {
 }
 
 interface TodoData {
+  roadmap?: Array<{
+    id: string;
+    label: string;
+    timeframe: string;
+  }>;
   categories: Category[];
+  updatedAt?: string;
 }
 
 type Filter = "all" | "active" | "done";
@@ -139,12 +145,12 @@ export default function TodoPage() {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
-        <SectionLabel>✦ Admin · Todo</SectionLabel>
+        <SectionLabel>✦ Admin · Planning</SectionLabel>
         <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
-          Day-to-day tasks.
+          Micro todos.
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
-          Grouped by category. Click a row to expand steps.
+          Concrete work items linked to the macro roadmap. Click a row to expand steps.
         </div>
         <div style={{ marginTop: 12 }}>
           <AdminCrossNav />
@@ -169,6 +175,42 @@ export default function TodoPage() {
             </div>
           </div>
         </Glass>
+        {data.roadmap && data.roadmap.length > 0 && (
+          <>
+            <div style={{ height: 16 }} />
+            <Glass>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--lg-text-muted)]">
+                    Macro roadmap
+                  </div>
+                  <div className="text-xs text-[var(--lg-text-muted)] mt-1">
+                    These phases power /roadmap; the rows below are the micro tasks that execute them.
+                  </div>
+                </div>
+                <Link to="/roadmap" className="text-xs font-bold text-[var(--lg-accent)] hover:underline">
+                  View roadmap
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {data.roadmap.map((phase) => {
+                  const linked = allTodos.filter((todo) => todo.roadmapLink?.split("#")[1] === phase.id);
+                  const done = linked.filter((todo) => todo.status === "done").length;
+                  return (
+                    <Link
+                      key={phase.id}
+                      to={`/roadmap#${phase.id}`}
+                      className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20"
+                      title={phase.timeframe}
+                    >
+                      {phase.label} · {done}/{linked.length}
+                    </Link>
+                  );
+                })}
+              </div>
+            </Glass>
+          </>
+        )}
         <div style={{ height: 16 }} />
 
         {/* Filter buttons */}
