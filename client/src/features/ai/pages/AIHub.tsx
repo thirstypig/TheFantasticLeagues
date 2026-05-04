@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Lock, ExternalLink, Trophy, TrendingUp, ArrowLeftRight, Users, Gavel, BookOpen, Rewind, Brain, ChevronDown, ChevronUp, Eye, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { fetchJsonApi, API_BASE } from "../../../api/base";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -24,6 +25,15 @@ interface AIFeature {
   dataUsed: string[];
 }
 
+interface AiHistoryRow {
+  id: string;
+  type: string;
+  weekKey?: string | null;
+  generatedAt: string;
+  teamName?: string | null;
+  data: any;
+}
+
 
 /* ── Main Page ───────────────────────────────────────────────────── */
 
@@ -32,6 +42,8 @@ export default function AIHub() {
   const gating = useSeasonGating();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [history, setHistory] = useState<AiHistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const hasAuctionCompleted = gating.canViewAuctionResults || gating.seasonStatus === "COMPLETED";
   const isInSeason = gating.seasonStatus === "IN_SEASON";
@@ -221,6 +233,17 @@ export default function AIHub() {
     player: { label: "Per Player", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
   };
 
+  useEffect(() => {
+    if (!leagueId) return;
+    setHistoryLoading(true);
+    fetchJsonApi<{ insights: AiHistoryRow[] }>(`${API_BASE}/ai/insights/history?leagueId=${leagueId}&limit=24`)
+      .then((res) => setHistory(res.insights ?? []))
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
+  }, [leagueId]);
+
+  const recentHistory = useMemo(() => history.slice(0, 10), [history]);
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
@@ -236,6 +259,38 @@ export default function AIHub() {
           <span style={{ fontWeight: 500, color: "var(--am-text-muted)" }}>AI Available</span>
           <span>·</span>
           <span>Powered by Google Gemini & Anthropic Claude</span>
+        </div>
+      </Glass>
+
+      <Glass>
+        <SectionLabel>✦ AI history</SectionLabel>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
+          Past AI outputs are kept here so trade analysis, weekly team insights, and league digests remain reviewable after they leave the page where they were generated.
+        </div>
+        <div className="mt-4 grid gap-2">
+          {historyLoading && (
+            <div className="text-xs text-[var(--lg-text-muted)]">Loading AI history...</div>
+          )}
+          {!historyLoading && recentHistory.length === 0 && (
+            <div className="text-xs text-[var(--lg-text-muted)]">No stored AI insights yet.</div>
+          )}
+          {!historyLoading && recentHistory.map((row) => (
+            <div key={row.id} className="rounded-xl border border-[var(--lg-border-faint)] bg-[var(--lg-tint)] p-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-xs font-bold uppercase text-[var(--lg-text-primary)]">
+                  {formatInsightType(row.type)}
+                  {row.teamName ? ` · ${row.teamName}` : ""}
+                </div>
+                <div className="text-[10px] text-[var(--lg-text-muted)]">
+                  {new Date(row.generatedAt).toLocaleString()}
+                  {row.weekKey ? ` · ${row.weekKey}` : ""}
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-[var(--lg-text-secondary)] leading-relaxed">
+                {summarizeInsight(row)}
+              </div>
+            </div>
+          ))}
         </div>
       </Glass>
 
@@ -370,4 +425,19 @@ export default function AIHub() {
       })}
     </div>
   );
+}
+
+function formatInsightType(type: string): string {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function summarizeInsight(row: AiHistoryRow): string {
+  const data = row.data ?? {};
+  const result = data.result ?? data;
+  if (typeof result.analysis === "string") return result.analysis;
+  if (typeof data.weekInOneSentence === "string") return data.weekInOneSentence;
+  if (typeof data.overview === "string") return data.overview;
+  if (Array.isArray(data.insights) && data.insights[0]?.detail) return data.insights[0].detail;
+  if (Array.isArray(data.insights) && data.insights[0]?.title) return data.insights[0].title;
+  return "Stored AI insight.";
 }

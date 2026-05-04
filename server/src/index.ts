@@ -48,6 +48,7 @@ import { notificationsRouter } from "./features/notifications/index.js";
 import { profilesRouter } from "./features/profiles/index.js";
 import { sessionsRouter } from "./features/sessions/index.js";
 import { reportsRouter } from "./features/reports/index.js";
+import { aiRouter } from "./features/ai/index.js";
 
 import rateLimit from "express-rate-limit";
 import { attachUser } from "./middleware/auth.js";
@@ -235,6 +236,7 @@ async function main() {
   // todo #115: GET /api/leagues/:leagueId/awards?weekKey=...
   app.use("/api/leagues", awardsRouter);
   app.use("/api", reportsRouter);
+  app.use("/api/ai", aiRouter);
   app.use("/api/watchlist", watchlistRouter);
   app.use("/api/trading-block", tradingBlockRouter);
   app.use("/api/board", boardRouter);

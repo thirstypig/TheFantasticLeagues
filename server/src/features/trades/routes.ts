@@ -10,6 +10,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { logger } from "../../lib/logger.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
+import { getWeekKey } from "../../lib/utils.js";
 
 const processSchema = z.object({
   effectiveDate: z
@@ -647,6 +648,20 @@ router.post("/analyze", requireAuth, validateBody(tradeAnalyzeSchema), requireLe
     if (oldest) tradeAnalysisCache.delete(oldest);
   }
   tradeAnalysisCache.set(cacheKey, result.result!);
+  await prisma.aiInsight.create({
+    data: {
+      type: "trade_analysis",
+      leagueId,
+      teamId: involvedTeamIds[0],
+      weekKey: `${getWeekKey()}-${Date.now()}`,
+      data: {
+        result: result.result,
+        items,
+        teamIds: involvedTeamIds,
+        generatedBy: "trade_analyzer",
+      } as any,
+    },
+  }).catch((err) => logger.warn({ err, leagueId }, "Failed to persist trade analyzer insight"));
   res.json(result.result);
 }));
 

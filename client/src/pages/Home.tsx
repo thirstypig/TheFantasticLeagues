@@ -2,8 +2,8 @@
  * Home — Aurora pilot (PR #135).
  *
  * Single-screen pilot of the Aurora System design handoff. Bento grid
- * over the Aurora atoms (Glass, IridescentRing, AIStrip, IridText,
- * Sparkline) inside an `.aurora-theme` wrapper so tokens are scoped
+ * over the Aurora atoms (Glass, IridescentRing, IridText) inside an
+ * `.aurora-theme` wrapper so tokens are scoped
  * locally — the rest of the app continues to render with the existing
  * Liquid Glass tokens.
  *
@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  AmbientBg, Glass, IridescentRing, IridText, Sparkline, AIStrip,
+  AmbientBg, Glass, IridescentRing, IridText,
   Chip, SectionLabel, Dot,
 } from "../components/aurora/atoms";
 import "../components/aurora/aurora.css";
@@ -29,8 +29,10 @@ import { useAuth } from "../auth/AuthProvider";
 import { useLeague } from "../contexts/LeagueContext";
 import { getSeasonStandings } from "../api";
 import { getTransactions, type TransactionEvent } from "../features/transactions/api";
+import { cancelTrade, getTrades, type TradeProposal } from "../features/trades/api";
+import { getBoardCards, type BoardCard } from "../features/board/api";
 import { fetchJsonApi, API_BASE } from "../api/base";
-import type { DigestResponse, RosterAlertPlayer } from "./home/types";
+import type { RosterAlertPlayer } from "./home/types";
 import HistoricalInsightsTab from "./components/HistoricalInsightsTab";
 import NewsFeedsPanel from "./components/NewsFeedsPanel";
 import MyTeamTodayPanel from "./components/MyTeamTodayPanel";
@@ -59,26 +61,26 @@ export default function Home() {
 
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [activity, setActivity] = useState<TransactionEvent[]>([]);
-  const [digest, setDigest] = useState<DigestResponse | null>(null);
+  const [activeTrades, setActiveTrades] = useState<TradeProposal[]>([]);
   const [rosterAlerts, setRosterAlerts] = useState<RosterAlertPlayer[]>([]);
+  const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [standingsMode, setStandingsMode] = useState<"current" | "full">("current");
 
   useEffect(() => {
     if (!leagueId) return;
     let canceled = false;
     setLoading(true);
-    // Four parallel fetches — standings + activity from PR #135, plus the
-    // ported legacy data sources for parity (PR #137):
-    //   - league digest (AI weekly summary, power rankings)
-    //   - roster status (injured + minors players from /mlb/roster-status)
+    // Standings + activity from PR #135, plus roster status for IL alerts.
     Promise.allSettled([
       getSeasonStandings(leagueId),
       getTransactions({ leagueId, take: 6 }),
-      fetchJsonApi<DigestResponse>(`${API_BASE}/mlb/league-digest?leagueId=${leagueId}`),
+      getTrades(leagueId, "all"),
+      getBoardCards({ leagueId, limit: 3 }),
       fetchJsonApi<{ players: RosterAlertPlayer[] }>(
         `${API_BASE}/mlb/roster-status?leagueId=${leagueId}`,
       ),
-    ]).then(([standingsRes, activityRes, digestRes, rosterRes]) => {
+    ]).then(([standingsRes, activityRes, tradesRes, boardRes, rosterRes]) => {
       if (canceled) return;
 
       if (standingsRes.status === "fulfilled") {
@@ -109,8 +111,12 @@ export default function Home() {
         setActivity(activityRes.value.transactions ?? []);
       }
 
-      if (digestRes.status === "fulfilled") {
-        setDigest(digestRes.value);
+      if (tradesRes.status === "fulfilled") {
+        setActiveTrades((tradesRes.value.trades ?? []).filter(t => t.status === "PROPOSED"));
+      }
+
+      if (boardRes.status === "fulfilled") {
+        setBoardCards(boardRes.value.items ?? []);
       }
 
       if (rosterRes.status === "fulfilled") {
@@ -125,12 +131,26 @@ export default function Home() {
     return () => { canceled = true; };
   }, [leagueId]);
 
-  // Derived: my team's standings row (rank, points, sparkline trend).
+  // Derived: my team's standings row (rank, points).
   const myStanding = useMemo(() => {
     if (!myTeamId) return null;
     const idx = standings.findIndex(s => s.teamId === myTeamId);
     return idx >= 0 ? { row: standings[idx], rank: idx + 1 } : null;
   }, [standings, myTeamId]);
+  const currentPeriodIndex = useMemo(() => {
+    const maxLen = Math.max(0, ...standings.map((s) => s.periodPoints.length));
+    return Math.max(0, maxLen - 1);
+  }, [standings]);
+  const visibleStandings = useMemo(() => {
+    const rows = standings.map((row) => ({
+      ...row,
+      displayPoints: standingsMode === "current"
+        ? toNum(row.periodPoints[currentPeriodIndex])
+        : row.totalPoints,
+    }));
+    rows.sort((a, b) => b.displayPoints - a.displayPoints || a.teamName.localeCompare(b.teamName));
+    return rows;
+  }, [currentPeriodIndex, standings, standingsMode]);
 
   // Time formatter for activity rows ("3h ago" style).
   const timeAgo = (iso?: string) => {
@@ -144,414 +164,413 @@ export default function Home() {
     return `${Math.floor(hr / 24)}d`;
   };
 
+  const heroCard = (
+    <IridescentRing>
+      <Glass strong style={{ borderRadius: 25, padding: 22 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <SectionLabel>
+              Your team{myStanding ? ` · ${ordinal(myStanding.rank)} of ${standings.length}` : ""}
+            </SectionLabel>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ fontFamily: "var(--am-display)", fontSize: 32, lineHeight: 1.05 }}>
+                {myStanding?.row.teamName ?? me?.user?.name ?? "Welcome"}
+              </div>
+              {myStanding && (
+                <IridText size={28}>{myStanding.row.totalPoints.toFixed(1)}</IridText>
+              )}
+            </div>
+            <div style={{ marginTop: 6, color: "var(--am-text-muted)", fontSize: 13 }}>
+              {currentLeagueName}{currentSeason ? ` · ${currentSeason}` : ""}
+              {myStanding?.row.owner ? ` · ${myStanding.row.owner}` : ""}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+              <Chip>Roto</Chip>
+              <Chip>Auction keeper</Chip>
+              {myTeamCode && (
+                <Link to={`/teams/${myTeamCode}`} style={{ textDecoration: "none" }}>
+                  <Chip strong style={{ cursor: "pointer" }}>View roster →</Chip>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </Glass>
+    </IridescentRing>
+  );
+
+  const standingsCard = (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <SectionLabel>{standingsMode === "current" ? `Current period standings · P${currentPeriodIndex + 1}` : "Full standings · all periods"}</SectionLabel>
+        <Link to="/season" style={{ textDecoration: "none" }}>
+          <Chip>View full standings →</Chip>
+        </Link>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+        {(["current", "full"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setStandingsMode(mode)}
+            style={{
+              borderRadius: 99,
+              border: `1px solid ${standingsMode === mode ? "var(--am-border-strong)" : "var(--am-border)"}`,
+              background: standingsMode === mode ? "var(--am-chip-strong)" : "var(--am-chip)",
+              color: standingsMode === mode ? "var(--am-text)" : "var(--am-text-muted)",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 700,
+              padding: "5px 10px",
+            }}
+          >
+            {mode === "current" ? "Current period" : "Full season"}
+          </button>
+        ))}
+      </div>
+      {loading && <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>}
+      {!loading && standings.length === 0 && (
+        <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>
+          No standings yet.
+        </div>
+      )}
+      <div style={{ marginTop: 6 }}>
+        {visibleStandings.map((t, i) => {
+          const rank = i + 1;
+          const isMine = t.teamId === myTeamId;
+          return (
+            <Link
+              key={t.teamId}
+              to={t.teamCode ? `/teams/${t.teamCode}` : "/season"}
+              style={{
+                textDecoration: "none",
+                color: "inherit",
+                display: "grid",
+                gridTemplateColumns: "24px 1fr auto",
+                alignItems: "center",
+                gap: 12,
+                padding: "9px 4px",
+                borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--am-text-faint)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {String(rank).padStart(2, "0")}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {t.teamName}
+                    {isMine && <Chip strong style={{ fontSize: 9, padding: "1px 6px" }}>You</Chip>}
+                  </div>
+                  {t.owner && (
+                    <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>{t.owner}</div>
+                  )}
+                </div>
+              </div>
+              <div
+                style={{
+                  fontVariantNumeric: "tabular-nums",
+                  fontSize: 14,
+                  fontWeight: 500,
+                }}
+              >
+                {t.displayPoints.toFixed(1)}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </Glass>
+  );
+
+  const activityCard = (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <SectionLabel>League activity</SectionLabel>
+        <Link to="/activity" style={{ textDecoration: "none" }}>
+          <Chip>All →</Chip>
+        </Link>
+      </div>
+      {loading && <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>}
+      {!loading && activity.length === 0 && (
+        <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>
+          No recent activity.
+        </div>
+      )}
+      <div style={{ marginTop: 6 }}>
+        {activity.map((a, i) => {
+          const extras = a as TransactionEvent & {
+            effectiveDate?: string;
+            createdAt?: string;
+            transactionType?: string;
+          };
+          const ago = timeAgo(extras.effectiveDate ?? extras.createdAt);
+          const type = String(extras.transactionType ?? a.type ?? "Move");
+          const text =
+            a.playerAliasRaw ??
+            a.transactionRaw ??
+            [type, a.ogbaTeamName].filter(Boolean).join(" · ");
+          const fantasyTeamName = a.ogbaTeamName ?? a.team?.name;
+          return (
+            <div
+              key={a.id ?? i}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "44px 70px 1fr",
+                alignItems: "center",
+                gap: 12,
+                padding: "8px 4px",
+                borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
+              }}
+            >
+              <div style={{ fontSize: 11, color: "var(--am-text-faint)", fontVariantNumeric: "tabular-nums" }}>
+                {ago}
+              </div>
+              <Chip strong>{type}</Chip>
+              <div style={{ fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.4, minWidth: 0 }}>
+                {fantasyTeamName && (
+                  <span style={{ display: "block", fontSize: 10.5, color: "var(--am-text-faint)", fontWeight: 700 }}>
+                    {fantasyTeamName}
+                  </span>
+                )}
+                <span>{String(text).slice(0, 100)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Glass>
+  );
+
+  const tradeProposalCard = activeTrades.length > 0 ? (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <SectionLabel>Pending trade proposals · {activeTrades.length}</SectionLabel>
+        <Link to="/activity?tab=trades" style={{ textDecoration: "none" }}>
+          <Chip>Open trades →</Chip>
+        </Link>
+      </div>
+      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+        {activeTrades.slice(0, 3).map((trade) => {
+          const isProposer = trade.proposingTeamId === myTeamId || trade.proposerId === myTeamId;
+          return (
+            <div
+              key={trade.id}
+              style={{
+                borderTop: "1px solid var(--am-border)",
+                paddingTop: 8,
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <div style={{ fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.35 }}>
+                <strong>{trade.proposingTeam?.name ?? "Proposer"}</strong>
+                {" proposed a trade with "}
+                <strong>{trade.acceptingTeam?.name ?? "Counterparty"}</strong>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
+                  {new Date(trade.createdAt).toLocaleDateString()}
+                </span>
+                {isProposer && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm("Withdraw this trade proposal?")) return;
+                      await cancelTrade(trade.id);
+                      setActiveTrades((current) => current.filter((t) => t.id !== trade.id));
+                    }}
+                    style={{
+                      borderRadius: 99,
+                      border: "1px solid var(--am-border)",
+                      background: "var(--am-chip)",
+                      color: "var(--am-text-muted)",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "5px 10px",
+                    }}
+                  >
+                    Withdraw
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Glass>
+  ) : null;
+
+  const boardCard = (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <SectionLabel>League board</SectionLabel>
+        <Link to="/board" style={{ textDecoration: "none" }}>
+          <Chip>Open board →</Chip>
+        </Link>
+      </div>
+      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+        {boardCards.length === 0 ? (
+          <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: "10px 0" }}>
+            No recent board posts.
+          </div>
+        ) : boardCards.slice(0, 3).map((card) => (
+          <Link
+            key={card.id}
+            to="/board"
+            style={{
+              textDecoration: "none",
+              color: "inherit",
+              display: "block",
+              paddingTop: 8,
+              borderTop: "1px solid var(--am-border)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 750, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {card.title}
+              </div>
+              {card.replyCount > 0 && <Chip style={{ fontSize: 9, padding: "1px 6px" }}>{card.replyCount} replies</Chip>}
+            </div>
+            {card.body && (
+              <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--am-text-muted)", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                {card.body}
+              </div>
+            )}
+            <div style={{ marginTop: 4, fontSize: 10.5, color: "var(--am-text-faint)" }}>
+              {card.user?.name ?? card.metadata?.teamName ?? "League"} · {new Date(card.createdAt).toLocaleDateString()}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Glass>
+  );
+
+  const injuredListCard = rosterAlerts.length > 0 ? (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <SectionLabel>Injured list · {rosterAlerts.length}</SectionLabel>
+        <Chip>League-wide</Chip>
+      </div>
+      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+        {rosterAlerts.slice(0, 8).map(p => (
+          <div
+            key={`${p.mlbId}-${p.playerName}`}
+            style={{
+              padding: 12,
+              borderRadius: 14,
+              background: "var(--am-surface-faint)",
+              border: "1px solid var(--am-border)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Dot color="var(--am-negative)" />
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {p.playerName}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+              {p.mlbStatus} · {p.position} · {p.mlbTeam}
+            </div>
+            {p.ilInjury && (
+              <div style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>{p.ilInjury}</div>
+            )}
+          </div>
+        ))}
+      </div>
+      {rosterAlerts.length > 8 && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "var(--am-text-faint)", textAlign: "center" }}>
+          + {rosterAlerts.length - 8} more
+        </div>
+      )}
+    </Glass>
+  ) : null;
+
   return (
     <div className="aurora-theme">
       <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", color: "var(--am-text)" }}>
         <AmbientBg />
 
-        <div
-          style={{
-            position: "relative",
-            zIndex: 10,
-            padding: "32px 28px 80px",
-            display: "grid",
-            gridTemplateColumns: "repeat(12, 1fr)",
-            gridAutoRows: "minmax(0, auto)",
-            gap: 14,
-            maxWidth: 1400,
-            margin: "0 auto",
-          }}
-        >
-          {/* HERO — your team focus card */}
-          <div style={{ gridColumn: "span 8" }}>
-            <IridescentRing>
-              <Glass strong style={{ borderRadius: 25, padding: 22 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <SectionLabel>
-                      Your team{myStanding ? ` · ${ordinal(myStanding.rank)} of ${standings.length}` : ""}
-                    </SectionLabel>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-                      <div style={{ fontFamily: "var(--am-display)", fontSize: 44, lineHeight: 1, letterSpacing: -0.5 }}>
-                        {myStanding?.row.teamName ?? me?.user?.name ?? "Welcome"}
-                      </div>
-                      {myStanding && (
-                        <IridText size={36}>{myStanding.row.totalPoints.toFixed(1)}</IridText>
-                      )}
-                    </div>
-                    <div style={{ marginTop: 6, color: "var(--am-text-muted)", fontSize: 13 }}>
-                      {currentLeagueName}{currentSeason ? ` · ${currentSeason}` : ""}
-                      {myStanding?.row.owner ? ` · ${myStanding.row.owner}` : ""}
-                    </div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                      <Chip>Roto</Chip>
-                      <Chip>Auction keeper</Chip>
-                      {myTeamCode && (
-                        <Link to={`/teams/${myTeamCode}`} style={{ textDecoration: "none" }}>
-                          <Chip strong style={{ cursor: "pointer" }}>View roster →</Chip>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                  {myStanding && myStanding.row.periodPoints.length > 1 && (
-                    <div style={{ textAlign: "right" }}>
-                      <SectionLabel>Trend · {myStanding.row.periodPoints.length} periods</SectionLabel>
-                      <div style={{ marginTop: 4 }}>
-                        <Sparkline data={myStanding.row.periodPoints} w={200} h={56} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div style={{ marginTop: 14 }}>
-                  {/* Historical Weekly Insights with prior-week tabs (W18, W17,
-                      W16…) so users can navigate past digests. Restored from
-                      pre-Aurora pattern; feeds the same digest endpoint with
-                      a weekKey query param. */}
-                  {leagueId && <HistoricalInsightsTab leagueId={leagueId} />}
-                </div>
-              </Glass>
-            </IridescentRing>
-          </div>
+        <style>{`
+          .home-bento {
+            position: relative;
+            z-index: 10;
+            padding: 28px 24px 72px;
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            grid-auto-rows: minmax(0, auto);
+            gap: 14px;
+            max-width: 1400px;
+            margin: 0 auto;
+          }
+          .home-span-12 { grid-column: span 12; }
+          .home-span-7 { grid-column: span 7; }
+          .home-span-5 { grid-column: span 5; }
+          .home-column { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+          .home-quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+          @media (max-width: 980px) {
+            .home-bento { padding: 18px 14px 56px; grid-template-columns: minmax(0, 1fr) !important; gap: 12px; }
+            .home-span-12, .home-span-7, .home-span-5 { grid-column: 1 / -1 !important; }
+            .home-column { gap: 12px; }
+            .home-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          }
+          @media (max-width: 560px) {
+            .home-quick-grid { grid-template-columns: 1fr; }
+          }
+        `}</style>
 
-          {/* QUICK STATS — pinned next to hero */}
-          <div style={{ gridColumn: "span 4" }}>
-            <Glass strong style={{ height: "100%" }}>
-              <SectionLabel>League snapshot</SectionLabel>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
-                {[
-                  { k: "Teams", v: String(standings.length || "—") },
-                  { k: "Periods", v: String(myStanding?.row.periodPoints.length ?? "—") },
-                  { k: "Your rank", v: myStanding ? ordinal(myStanding.rank) : "—" },
-                  { k: "Your points", v: myStanding ? myStanding.row.totalPoints.toFixed(1) : "—" },
-                ].map(s => (
-                  <div
-                    key={s.k}
-                    style={{
-                      padding: "12px 12px",
-                      background: "var(--am-surface-faint)",
-                      border: "1px solid var(--am-border)",
-                      borderRadius: 14,
-                    }}
-                  >
-                    <div style={{ fontSize: 10, color: "var(--am-text-faint)", letterSpacing: 1, fontWeight: 600 }}>
-                      {s.k.toUpperCase()}
-                    </div>
-                    <div style={{ marginTop: 4 }}>
-                      <IridText size={22}>{s.v}</IridText>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Glass>
-          </div>
-
-          {/* STANDINGS — top of the table */}
-          <div style={{ gridColumn: "span 7" }}>
-            <Glass>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <SectionLabel>Standings · roto points</SectionLabel>
-                <Link to="/season" style={{ textDecoration: "none" }}>
-                  <Chip>View full standings →</Chip>
-                </Link>
-              </div>
-              {loading && <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>}
-              {!loading && standings.length === 0 && (
-                <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>
-                  No standings yet.
-                </div>
-              )}
-              <div style={{ marginTop: 6 }}>
-                {standings.slice(0, 7).map((t, i) => {
-                  const rank = i + 1;
-                  const isMine = t.teamId === myTeamId;
-                  return (
-                    <Link
-                      key={t.teamId}
-                      to={t.teamCode ? `/teams/${t.teamCode}` : "/season"}
-                      style={{
-                        textDecoration: "none",
-                        color: "inherit",
-                        display: "grid",
-                        gridTemplateColumns: "24px 1fr auto",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: "9px 4px",
-                        borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: "var(--am-text-faint)",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {String(rank).padStart(2, "0")}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: 8,
-                            flexShrink: 0,
-                            background: rank === 1 ? "var(--am-irid)" : "var(--am-chip-strong)",
-                            display: "grid",
-                            placeItems: "center",
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: rank === 1 ? "#fff" : "var(--am-text)",
-                            border: "1px solid var(--am-border)",
-                          }}
-                        >
-                          {(t.teamCode || t.teamName).slice(0, 3).toUpperCase()}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 500,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                            }}
-                          >
-                            {t.teamName}
-                            {isMine && <Chip strong style={{ fontSize: 9, padding: "1px 6px" }}>You</Chip>}
-                          </div>
-                          {t.owner && (
-                            <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>{t.owner}</div>
-                          )}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          fontVariantNumeric: "tabular-nums",
-                          fontSize: 14,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {t.totalPoints.toFixed(1)}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </Glass>
-          </div>
-
-          {/* ACTIVITY — recent transactions */}
-          <div style={{ gridColumn: "span 5" }}>
-            <Glass>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <SectionLabel>League activity</SectionLabel>
-                <Link to="/activity" style={{ textDecoration: "none" }}>
-                  <Chip>All →</Chip>
-                </Link>
-              </div>
-              {loading && <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>}
-              {!loading && activity.length === 0 && (
-                <div style={{ padding: 24, color: "var(--am-text-faint)", fontSize: 12 }}>
-                  No recent activity.
-                </div>
-              )}
-              <div style={{ marginTop: 6 }}>
-                {activity.map((a, i) => {
-                  // The server augments TransactionEvent with optional legacy
-                  // fields (effDate, effDateRaw, transactionRaw, etc.) plus a
-                  // few that aren't on the public type yet — read those via a
-                  // narrow once-cast here rather than littering the body.
-                  const extras = a as TransactionEvent & {
-                    effectiveDate?: string;
-                    createdAt?: string;
-                    transactionType?: string;
-                  };
-                  const ago = timeAgo(extras.effectiveDate ?? extras.createdAt);
-                  const type = String(extras.transactionType ?? a.type ?? "Move");
-                  const text =
-                    a.playerAliasRaw ??
-                    a.transactionRaw ??
-                    [type, a.ogbaTeamName].filter(Boolean).join(" · ");
-                  return (
-                    <div
-                      key={a.id ?? i}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "44px 70px 1fr",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: "8px 4px",
-                        borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
-                      }}
-                    >
-                      <div style={{ fontSize: 11, color: "var(--am-text-faint)", fontVariantNumeric: "tabular-nums" }}>
-                        {ago}
-                      </div>
-                      <Chip strong>{type}</Chip>
-                      <div style={{ fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.4 }}>
-                        {String(text).slice(0, 100)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Glass>
-          </div>
-
-          {/* WEEKLY DIGEST — AI-generated league summary, ported from
-              HomeLegacy. Shows when the digest endpoint has data; gracefully
-              hidden when not yet generated for this week. */}
-          {digest?.powerRankings && digest.powerRankings.length > 0 && (
-            <div style={{ gridColumn: "span 12" }}>
-              <Glass>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
-                  <div>
-                    <SectionLabel>✦ Weekly digest{digest.weekKey ? ` · ${digest.weekKey}` : ""}</SectionLabel>
-                    {digest.weekInOneSentence && (
-                      <div style={{ fontSize: 16, color: "var(--am-text)", fontFamily: "var(--am-display)", lineHeight: 1.35, maxWidth: 880 }}>
-                        {digest.weekInOneSentence}
-                      </div>
-                    )}
-                  </div>
-                  {digest.statOfTheWeek && (
-                    <Chip strong>STAT · {digest.statOfTheWeek.slice(0, 50)}</Chip>
-                  )}
-                </div>
-
-                <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
-                  {/* Power rankings */}
-                  <div>
-                    <SectionLabel>Power rankings</SectionLabel>
-                    <div>
-                      {digest.powerRankings.slice(0, 8).map(pr => (
-                        <div
-                          key={pr.rank}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "26px 110px 1fr",
-                            gap: 10,
-                            padding: "7px 0",
-                            borderTop: pr.rank > 1 ? "1px solid var(--am-border)" : "none",
-                            alignItems: "baseline",
-                          }}
-                        >
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-faint)", fontVariantNumeric: "tabular-nums" }}>
-                            {String(pr.rank).padStart(2, "0")}
-                          </div>
-                          <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--am-text)" }}>{pr.teamName}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--am-text-muted)", lineHeight: 1.45 }}>
-                            {pr.commentary}
-                            {pr.movement && pr.movement !== "→" && (
-                              <span style={{ marginLeft: 6, fontWeight: 600, color: "var(--am-text-faint)" }}>
-                                {pr.movement}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Hot/cold + bold prediction */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {digest.hotTeam && (
-                      <div style={{ padding: 12, borderRadius: 14, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)" }}>
-                        <div style={{ fontSize: 10, color: "var(--am-positive)", fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>HOT TEAM</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "var(--am-display)" }}>{digest.hotTeam.name}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.45 }}>{digest.hotTeam.reason}</div>
-                      </div>
-                    )}
-                    {digest.coldTeam && (
-                      <div style={{ padding: 12, borderRadius: 14, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)" }}>
-                        <div style={{ fontSize: 10, color: "var(--am-negative)", fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>COLD TEAM</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "var(--am-display)" }}>{digest.coldTeam.name}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.45 }}>{digest.coldTeam.reason}</div>
-                      </div>
-                    )}
-                    {digest.boldPrediction && (
-                      <div style={{ padding: 12, borderRadius: 14, background: "var(--am-ai-strip)", border: "1px solid var(--am-border)" }}>
-                        <div style={{ fontSize: 10, color: "var(--am-text-faint)", fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>BOLD PREDICTION</div>
-                        <div style={{ fontSize: 12, color: "var(--am-text)", lineHeight: 1.5 }}>{digest.boldPrediction}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Glass>
-            </div>
-          )}
-
-          {/* INJURED LIST — slim 4-up of IL'd roster players, ported from
-              HomeLegacy. Hidden when nobody on the league is on IL. */}
-          {rosterAlerts.length > 0 && (
-            <div style={{ gridColumn: "span 12" }}>
-              <Glass>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <SectionLabel>Injured list · {rosterAlerts.length}</SectionLabel>
-                  <Chip>League-wide</Chip>
-                </div>
-                <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
-                  {rosterAlerts.slice(0, 8).map(p => (
-                    <div
-                      key={`${p.mlbId}-${p.playerName}`}
-                      style={{
-                        padding: 12,
-                        borderRadius: 14,
-                        background: "var(--am-surface-faint)",
-                        border: "1px solid var(--am-border)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 4,
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <Dot color="var(--am-negative)" />
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {p.playerName}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
-                        {p.mlbStatus} · {p.position} · {p.mlbTeam}
-                      </div>
-                      {p.ilInjury && (
-                        <div style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>{p.ilInjury}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {rosterAlerts.length > 8 && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: "var(--am-text-faint)", textAlign: "center" }}>
-                    + {rosterAlerts.length - 8} more
-                  </div>
-                )}
-              </Glass>
-            </div>
-          )}
-
-          {/* MY TEAM TODAY — daily player activity widget with 10am rollover */}
-          {leagueId && (
-            <div style={{ gridColumn: "span 6" }}>
+        <div className="home-bento">
+          <div className="home-column home-span-7">
+            {leagueId && (
               <MyTeamTodayPanel leagueId={leagueId} />
-            </div>
-          )}
+            )}
+            {leagueId && <HistoricalInsightsTab leagueId={leagueId} />}
+          </div>
 
-          {/* NEWS FEEDS — Reddit / YouTube / Yahoo / ESPN */}
-          <div style={{ gridColumn: "span 6" }}>
-            <NewsFeedsPanel />
+          <div className="home-column home-span-5">
+            {heroCard}
+            {standingsCard}
+            {activityCard}
+            {tradeProposalCard}
+            <NewsFeedsPanel compact limit={5} />
+            {boardCard}
+            {injuredListCard}
           </div>
 
           {/* CTAs — bottom row of quick links */}
-          <div style={{ gridColumn: "span 12" }}>
+          <div className="home-span-12">
             <Glass>
               <SectionLabel>Quick links</SectionLabel>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginTop: 6 }}>
+              <div className="home-quick-grid">
                 {[
                   { to: "/players", label: "Browse players", body: "Search the full pool" },
+                  { to: "/board", label: "League Board", body: "Posts and trade block" },
                   { to: "/teams", label: "Teams", body: "All league teams" },
                   { to: "/activity", label: "Activity", body: "Trades, adds, drops" },
+                  { to: "/draft-report", label: "Draft Report", body: "Auction grades" },
+                  { to: "/rules", label: "Rules", body: "League settings" },
                   { to: "/ai", label: "AI Hub", body: "Insights & advice" },
                 ].map(l => (
                   <Link
@@ -580,7 +599,7 @@ export default function Home() {
           </div>
 
           {/* Legacy escape hatch */}
-          <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>
+          <div className="home-span-12" style={{ textAlign: "center", marginTop: 4 }}>
             <Link
               to="/home-classic"
               style={{

@@ -13,14 +13,10 @@
  *   Returns: { players: Array<{ playerName, mlbId, mlbTeam, gameTime,
  *                                 opponent, homeAway }> }
  *
- * The current server endpoint returns roster + schedule (which players
- * have games today + opponent + game time), but does NOT yet expose
- * actual box-score stat lines (H/AB/R/HR/RBI for hitters; IP/K/BB/ER/W
- * for pitchers). When the server-side stat surface lands it should add
- * an optional `line` field per player and (ideally) a `gameStatus` enum
- * (`"PRE" | "LIVE" | "FINAL"`). The component renders the game-status
- * shell today and will show the line when present — see TODO below for
- * the expected wire shape.
+ * The server returns role-specific box-score stat lines when a player
+ * appears in that day's game log. Hitters render hitting only; pitchers
+ * render pitching only. The date uses a 10am Pacific cutoff so yesterday's
+ * completed games remain visible until the next morning.
  *
  * Styling: Aurora Glass card with the ✦ SectionLabel eyebrow. Uses
  * Chip / Dot atoms for compact status indicators.
@@ -29,7 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Glass, Chip, SectionLabel, Dot } from "../../components/aurora/atoms";
 import { fetchJsonApi, API_BASE } from "../../api/base";
 import { useLeague } from "../../contexts/LeagueContext";
-import { isPitcher } from "../../lib/sportConfig";
+import type { RosterStatsPlayer, RosterStatsResponse } from "../home/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 //
@@ -37,8 +33,7 @@ import { isPitcher } from "../../lib/sportConfig";
 // optional `line` / `gameStatus` / `posPrimary` fields are forward-
 // compatible: the server may add them without breaking this client.
 //
-// TODO(server): when /my-players-today gains real stat lines, the
-// expected response per player is:
+// Expected response per player:
 //   {
 //     playerName: string,
 //     mlbId: number,
@@ -54,45 +49,6 @@ import { isPitcher } from "../../lib/sportConfig";
 //       pitching?: { IP:string; K:number; BB:number; ER:number; H?:number; decision?: "W"|"L"|"S"|"H"|"BS"|null };
 //     }
 //   }
-interface HittingLine {
-  AB: number;
-  H: number;
-  R: number;
-  HR: number;
-  RBI: number;
-  SB?: number;
-  BB?: number;
-}
-interface PitchingLine {
-  IP: string | number;
-  K: number;
-  BB: number;
-  ER: number;
-  H?: number;
-  decision?: "W" | "L" | "S" | "H" | "BS" | null;
-}
-interface ApiPlayerToday {
-  playerName: string;
-  mlbId: number;
-  mlbTeam: string;
-  posPrimary?: string;
-  gameTime: string;
-  opponent: string;
-  homeAway: "home" | "away";
-  gameStatus?: "PRE" | "LIVE" | "FINAL";
-  gameStateDesc?: string;
-  line?: {
-    hitting?: HittingLine;
-    pitching?: PitchingLine;
-  };
-}
-
-interface MyPlayersTodayResponse {
-  players: ApiPlayerToday[];
-  // forward-compat: server may stamp the date it computed against
-  date?: string;
-}
-
 // ─── 10am-rollover cutoff ───────────────────────────────────────────────
 //
 // Per spec: between midnight and 10:00 local time, "today" still shows
@@ -101,7 +57,12 @@ interface MyPlayersTodayResponse {
 // pass to any date-keyed query and what we render in the eyebrow.
 function computeCutoffDate(): Date {
   const cutoffDate = new Date();
-  if (cutoffDate.getHours() < 10) {
+  const pacificHour = Number(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).format(cutoffDate));
+  if (pacificHour < 10) {
     cutoffDate.setDate(cutoffDate.getDate() - 1);
   }
   return cutoffDate;
@@ -127,36 +88,39 @@ function formatGameTimeShort(iso: string): string {
 
 // Render a hitter line like "2-4, 1 HR, 3 RBI" — drops zero-value
 // counting stats so a 0-0 day reads cleanly.
-function formatHittingLine(l: HittingLine): string {
+function formatHittingLine(l: NonNullable<RosterStatsPlayer["hitting"]>): string {
   const parts: string[] = [`${l.H}-${l.AB}`];
   if (l.HR) parts.push(`${l.HR} HR`);
   if (l.RBI) parts.push(`${l.RBI} RBI`);
   if (l.R) parts.push(`${l.R} R`);
   if (l.SB) parts.push(`${l.SB} SB`);
+  if (l.BB) parts.push(`${l.BB} BB`);
   return parts.join(", ");
 }
 
 // Render a pitcher line like "6 IP, 8 K, 2 ER, W". Decision tacked on
 // when present; otherwise just the line.
-function formatPitchingLine(l: PitchingLine): string {
+function formatPitchingLine(l: NonNullable<RosterStatsPlayer["pitching"]>): string {
   const parts: string[] = [`${l.IP} IP`];
   parts.push(`${l.K} K`);
   if (l.BB) parts.push(`${l.BB} BB`);
   parts.push(`${l.ER} ER`);
-  if (l.decision) parts.push(l.decision);
+  if (l.W) parts.push("W");
+  if (l.L) parts.push("L");
+  if (l.SV) parts.push("SV");
   return parts.join(", ");
 }
 
 // Did this hitter have a notable game? (3+ hits or 2+ HR.) Used to
 // gate the subtle ✦ flame chip.
-function isHotHitter(l?: HittingLine): boolean {
+function isHotHitter(l?: RosterStatsPlayer["hitting"]): boolean {
   if (!l) return false;
   return l.H >= 3 || l.HR >= 2;
 }
 
 // Did this pitcher have a notable game? (10+ K or shutout-style ER=0
 // over 6+ IP.)
-function isHotPitcher(l?: PitchingLine): boolean {
+function isHotPitcher(l?: RosterStatsPlayer["pitching"]): boolean {
   if (!l) return false;
   const ipNum = typeof l.IP === "number" ? l.IP : parseFloat(String(l.IP));
   if (l.K >= 10) return true;
@@ -172,7 +136,7 @@ interface Props {
 
 export default function MyTeamTodayPanel({ leagueId }: Props) {
   const { myTeamId } = useLeague();
-  const [data, setData] = useState<MyPlayersTodayResponse | null>(null);
+  const [data, setData] = useState<RosterStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,12 +151,10 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
     let canceled = false;
     setLoading(true);
     setError(null);
-    // The server's /my-players-today endpoint computes its own "today"
-    // via mlbGameDayDate(); we forward our local cutoff as `date` so a
-    // future server upgrade can honor the 10am-rollover for box-score
-    // queries. Today the server ignores the param — that's fine.
-    fetchJsonApi<MyPlayersTodayResponse>(
-      `${API_BASE}/mlb/my-players-today?leagueId=${leagueId}&date=${cutoffDateStr}`,
+    // The server honors this date for both schedule and game-log lookups,
+    // keeping yesterday's completed stat lines visible until 10am Pacific.
+    fetchJsonApi<RosterStatsResponse>(
+      `${API_BASE}/mlb/roster-stats-today?leagueId=${leagueId}&date=${cutoffDateStr}`,
     )
       .then((res) => {
         if (canceled) return;
@@ -215,15 +177,11 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
     };
   }, [leagueId, cutoffDateStr]);
 
-  // Split into hitters / pitchers. The server may or may not include
-  // posPrimary; when missing, `isPitcher(undefined)` returns false so
-  // unknown-position players default to the hitters list (a reasonable
-  // fallback — most rosters skew hitter-heavy).
   const { hitters, pitchers } = useMemo(() => {
-    const h: ApiPlayerToday[] = [];
-    const p: ApiPlayerToday[] = [];
+    const h: RosterStatsPlayer[] = [];
+    const p: RosterStatsPlayer[] = [];
     for (const pl of data?.players ?? []) {
-      if (isPitcher(pl.posPrimary ?? "")) p.push(pl);
+      if (pl.isPitcher) p.push(pl);
       else h.push(pl);
     }
     return { hitters: h, pitchers: p };
@@ -243,7 +201,7 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
         }}
       >
         <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
-          {formatPrettyDate(cutoffDate)}
+          {formatPrettyDate(cutoffDate)} · stats hold until 10am PT
         </div>
         {myTeamId == null && (
           <Chip>No team in this league</Chip>
@@ -260,12 +218,12 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
 
       {!loading && !error && !hasAnyGames && (
         <div style={{ fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
-          Today's player activity will appear here once games begin.
+          No rostered players have MLB games for this date.
         </div>
       )}
 
       {!loading && !error && hasAnyGames && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {hitters.length > 0 && (
             <PlayerGroup
               title="Hitters"
@@ -294,7 +252,7 @@ function PlayerGroup({
   kind,
 }: {
   title: string;
-  players: ApiPlayerToday[];
+  players: RosterStatsPlayer[];
   kind: "hitter" | "pitcher";
 }) {
   return (
@@ -312,27 +270,117 @@ function PlayerGroup({
         {title}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {players.map((pl) => (
-          <PlayerRow key={`${pl.mlbId}-${pl.mlbTeam}`} player={pl} kind={kind} />
-        ))}
+        <TodayStatsTable players={players} kind={kind} />
       </div>
     </div>
   );
 }
 
-function PlayerRow({ player, kind }: { player: ApiPlayerToday; kind: "hitter" | "pitcher" }) {
-  const opp = `${player.homeAway === "home" ? "vs" : "@"} ${player.opponent || "—"}`;
+function TodayStatsTable({
+  players,
+  kind,
+}: {
+  players: RosterStatsPlayer[];
+  kind: "hitter" | "pitcher";
+}) {
+  return (
+    <div style={{ overflowX: "auto", border: "1px solid var(--am-border)", borderRadius: 10 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: kind === "hitter" ? 560 : 620 }}>
+        <thead>
+          <tr style={{ background: "var(--am-surface-faint)" }}>
+            <TodayTh align="left">Player</TodayTh>
+            <TodayTh>Pos</TodayTh>
+            <TodayTh>MLB</TodayTh>
+            <TodayTh>Opp</TodayTh>
+            {kind === "hitter" ? (
+              <>
+                <TodayTh>AB</TodayTh>
+                <TodayTh>H</TodayTh>
+                <TodayTh>R</TodayTh>
+                <TodayTh>HR</TodayTh>
+                <TodayTh>RBI</TodayTh>
+                <TodayTh>SB</TodayTh>
+              </>
+            ) : (
+              <>
+                <TodayTh>IP</TodayTh>
+                <TodayTh>K</TodayTh>
+                <TodayTh>BB</TodayTh>
+                <TodayTh>ER</TodayTh>
+                <TodayTh>W</TodayTh>
+                <TodayTh>SV</TodayTh>
+              </>
+            )}
+            <TodayTh align="left">Status</TodayTh>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((pl) => (
+            <PlayerRow key={`${pl.mlbId}-${pl.mlbTeam}`} player={pl} kind={kind} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-  // Decide what to render in the line-slot based on what the server
-  // gave us. Order of preference:
-  //   1. real stat line (hitting or pitching)
-  //   2. game-status chip (LIVE / FINAL / PRE)
-  //   3. fallback to game time string
+function TodayTh({
+  children,
+  align = "right",
+}: {
+  children: React.ReactNode;
+  align?: "left" | "right" | "center";
+}) {
+  return (
+    <th
+      style={{
+        padding: "7px 8px",
+        textAlign: align,
+        fontSize: 10,
+        fontWeight: 750,
+        letterSpacing: 0.9,
+        textTransform: "uppercase",
+        color: "var(--am-text-faint)",
+        borderBottom: "1px solid var(--am-border)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </th>
+  );
+}
+
+function TodayTd({
+  children,
+  align = "right",
+}: {
+  children: React.ReactNode;
+  align?: "left" | "right" | "center";
+}) {
+  return (
+    <td
+      style={{
+        padding: "7px 8px",
+        textAlign: align,
+        fontSize: 12,
+        color: "var(--am-text)",
+        borderTop: "1px solid var(--am-border)",
+        fontVariantNumeric: "tabular-nums",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </td>
+  );
+}
+
+function PlayerRow({ player, kind }: { player: RosterStatsPlayer; kind: "hitter" | "pitcher" }) {
+  const opp = `${player.homeAway === "home" ? "vs" : "@"} ${player.opponent || "—"}`;
   let lineNode: React.ReactNode;
   let hot = false;
 
   if (kind === "hitter") {
-    const l = player.line?.hitting;
+    const l = player.hitting;
     if (l) {
       lineNode = (
         <span style={{ fontSize: 12, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
@@ -340,13 +388,13 @@ function PlayerRow({ player, kind }: { player: ApiPlayerToday; kind: "hitter" | 
         </span>
       );
       hot = isHotHitter(l);
-    } else if (player.gameStatus === "FINAL") {
+    } else if (/final/i.test(player.gameStatus)) {
       lineNode = <Chip>DNP</Chip>;
-    } else if (player.gameStatus === "LIVE") {
+    } else if (/live|progress|inning|delay/i.test(player.gameStatus)) {
       lineNode = (
         <Chip strong>
           <Dot color="var(--am-accent)" />
-          {player.gameStateDesc || "LIVE"}
+          {player.gameStatus || "LIVE"}
         </Chip>
       );
     } else {
@@ -359,8 +407,7 @@ function PlayerRow({ player, kind }: { player: ApiPlayerToday; kind: "hitter" | 
       );
     }
   } else {
-    // pitcher
-    const l = player.line?.pitching;
+    const l = player.pitching;
     if (l) {
       lineNode = (
         <span style={{ fontSize: 12, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
@@ -368,13 +415,13 @@ function PlayerRow({ player, kind }: { player: ApiPlayerToday; kind: "hitter" | 
         </span>
       );
       hot = isHotPitcher(l);
-    } else if (player.gameStatus === "FINAL") {
+    } else if (/final/i.test(player.gameStatus)) {
       lineNode = <Chip>Did not pitch</Chip>;
-    } else if (player.gameStatus === "LIVE") {
+    } else if (/live|progress|inning|delay/i.test(player.gameStatus)) {
       lineNode = (
         <Chip strong>
           <Dot color="var(--am-accent)" />
-          {player.gameStateDesc || "LIVE"}
+          {player.gameStatus || "LIVE"}
         </Chip>
       );
     } else {
@@ -388,47 +435,34 @@ function PlayerRow({ player, kind }: { player: ApiPlayerToday; kind: "hitter" | 
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 10,
-        padding: "6px 8px",
-        borderRadius: 10,
-        background: "var(--am-surface-faint)",
-        border: "1px solid var(--am-border)",
-      }}
-    >
-      <div style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            fontSize: 13,
-            color: "var(--am-text)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: 180,
-          }}
-          title={player.playerName}
-        >
-          {player.playerName}
-        </span>
-        {player.posPrimary && (
-          <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
-            {player.posPrimary}
-          </span>
-        )}
-        <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
-          {opp}
-        </span>
-        {hot && (
-          <Chip strong style={{ padding: "2px 6px", fontSize: 10 }}>
-            ✦ Hot
-          </Chip>
-        )}
-      </div>
-      <div style={{ flexShrink: 0 }}>{lineNode}</div>
-    </div>
+    <tr style={{ background: hot ? "color-mix(in srgb, var(--am-accent) 8%, transparent)" : "transparent" }}>
+      <TodayTd align="left">
+        <span style={{ fontWeight: 650 }}>{player.playerName}</span>
+        {hot && <span style={{ marginLeft: 6 }}><Chip strong style={{ padding: "2px 6px", fontSize: 10 }}>Hot</Chip></span>}
+      </TodayTd>
+      <TodayTd align="center">{player.position || "—"}</TodayTd>
+      <TodayTd align="center">{player.mlbTeam || "—"}</TodayTd>
+      <TodayTd align="center">{opp}</TodayTd>
+      {kind === "hitter" ? (
+        <>
+          <TodayTd>{player.hitting?.AB ?? "—"}</TodayTd>
+          <TodayTd>{player.hitting?.H ?? "—"}</TodayTd>
+          <TodayTd>{player.hitting?.R ?? "—"}</TodayTd>
+          <TodayTd>{player.hitting?.HR ?? "—"}</TodayTd>
+          <TodayTd>{player.hitting?.RBI ?? "—"}</TodayTd>
+          <TodayTd>{player.hitting?.SB ?? "—"}</TodayTd>
+        </>
+      ) : (
+        <>
+          <TodayTd>{player.pitching?.IP ?? "—"}</TodayTd>
+          <TodayTd>{player.pitching?.K ?? "—"}</TodayTd>
+          <TodayTd>{player.pitching?.BB ?? "—"}</TodayTd>
+          <TodayTd>{player.pitching?.ER ?? "—"}</TodayTd>
+          <TodayTd>{player.pitching?.W ?? "—"}</TodayTd>
+          <TodayTd>{player.pitching?.SV ?? "—"}</TodayTd>
+        </>
+      )}
+      <TodayTd align="left">{lineNode}</TodayTd>
+    </tr>
   );
 }

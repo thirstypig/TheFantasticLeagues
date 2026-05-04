@@ -2,8 +2,8 @@
  * HistoricalInsightsTab — Aurora restoration of the pre-Aurora Home page's
  * Weekly AI Insights tab strip.
  *
- * Pre-Aurora, HomeLegacy.tsx rendered a horizontal pill-tab strip of past
- * weekly digests (W18, W17, W16, …) so users could browse historical
+ * Pre-Aurora, HomeLegacy.tsx rendered a horizontal tab strip of past
+ * weekly digests so users could browse historical
  * league digests. The feature was removed when Home was Aurora-ported in
  * PR #135 / #137. This component restores it as a NEW Aurora-styled
  * widget that wraps the existing `/api/mlb/league-digest` and
@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Glass, SectionLabel, IridText } from "../../components/aurora/atoms";
 import { fetchJsonApi, API_BASE } from "../../api/base";
-import type { DigestResponse } from "../home/types";
+import type { CategoryMover, DigestResponse, PowerRanking } from "../home/types";
 
 interface DigestWeek {
   weekKey: string;
@@ -35,14 +35,28 @@ interface Props {
   leagueId: number;
 }
 
-/**
- * Convert "2026-W18" → "W18" for the pill label. Falls back to the
- * server-supplied label if parsing fails.
- */
 function shortLabel(week: DigestWeek): string {
-  const m = /W(\d+)/i.exec(week.weekKey);
-  if (m) return `W${m[1]}`;
+  const start = weekStartDate(week.weekKey);
+  if (start) return start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   return week.label || week.weekKey;
+}
+
+function weekStartDate(weekKey: string): Date | null {
+  const m = /^(\d{4})-W(\d{1,2})$/i.exec(weekKey);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const day = jan4.getUTCDay() || 7;
+  jan4.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7);
+  return new Date(jan4.getUTCFullYear(), jan4.getUTCMonth(), jan4.getUTCDate());
+}
+
+function isOlderThanHours(iso: string | null | undefined, hours: number): boolean {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) && Date.now() - t > hours * 60 * 60 * 1000;
 }
 
 export default function HistoricalInsightsTab({ leagueId }: Props) {
@@ -70,11 +84,13 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
       .then(([weeksRes, digestRes]) => {
         if (canceled) return;
 
+        const digestWeekKey = digestRes.status === "fulfilled" ? digestRes.value.weekKey : null;
+
         if (weeksRes.status === "fulfilled") {
           const list = weeksRes.value.weeks ?? [];
           setWeeks(list);
           setCurrentWeekKey(weeksRes.value.currentWeekKey ?? null);
-          setSelectedWeekKey(weeksRes.value.currentWeekKey ?? null);
+          setSelectedWeekKey(digestWeekKey ?? weeksRes.value.currentWeekKey ?? null);
         } else {
           // Fallback: no weeks list — derive a single-entry list from
           // the current digest if we got one. Tab strip degrades to a
@@ -248,10 +264,25 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
                   digest.overview ||
                   "Digest not yet generated."}
               </div>
-              {digest.weekKey && (
-                <IridText size={14}>{digest.weekKey}</IridText>
+              {selectedWeekKey && (
+                <IridText size={14}>
+                  {shortLabel({
+                    weekKey: selectedWeekKey,
+                    generatedAt: digest.generatedAt ?? null,
+                    label: selectedWeekKey,
+                  })}
+                </IridText>
               )}
             </div>
+
+            {digest.generatedAt && (
+              <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
+                Generated {new Date(digest.generatedAt).toLocaleString()}
+                {isOlderThanHours(digest.generatedAt, 6)
+                  ? " · AI copy may lag standings changes since generation"
+                  : ""}
+              </div>
+            )}
 
             {digest.boldPrediction && (
               <div
@@ -274,6 +305,38 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
                 </span>
                 {digest.boldPrediction}
               </div>
+            )}
+
+            {(digest.powerRankings?.length ?? 0) > 0 && (
+              <DigestPowerRankings rows={digest.powerRankings ?? []} />
+            )}
+
+            {(digest.hotTeam || digest.coldTeam) && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
+                {digest.hotTeam && (
+                  <DigestCallout tone="positive" label="Hot team" title={digest.hotTeam.name} body={digest.hotTeam.reason} />
+                )}
+                {digest.coldTeam && (
+                  <DigestCallout tone="negative" label="Cold team" title={digest.coldTeam.name} body={digest.coldTeam.reason} />
+                )}
+              </div>
+            )}
+
+            {digest.statOfTheWeek && (
+              <DigestCallout tone="neutral" label="Stat of the week" body={digest.statOfTheWeek} />
+            )}
+
+            {(digest.categoryMovers?.length ?? 0) > 0 && (
+              <DigestCategoryMovers rows={digest.categoryMovers ?? []} />
+            )}
+
+            {digest.proposedTrade && (
+              <DigestCallout
+                tone="neutral"
+                label={`Trade idea · ${digest.proposedTrade.style}`}
+                title={digest.proposedTrade.title}
+                body={`${digest.proposedTrade.teamA} gives ${digest.proposedTrade.teamAGives}; ${digest.proposedTrade.teamB} gives ${digest.proposedTrade.teamBGives}. ${digest.proposedTrade.reasoning}`}
+              />
             )}
 
             <div style={{ marginTop: 4 }}>
@@ -300,5 +363,124 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
         )}
       </div>
     </Glass>
+  );
+}
+
+function DigestPowerRankings({ rows }: { rows: PowerRanking[] }) {
+  return (
+    <div>
+      <DigestSectionLabel>Power rankings</DigestSectionLabel>
+      <div style={{ display: "grid", gap: 4 }}>
+        {rows.map((pr, index) => (
+          <div
+            key={`${pr.rank}-${pr.teamName}`}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "34px 42px minmax(0, 1fr)",
+              gap: 10,
+              alignItems: "start",
+              padding: "8px 10px",
+              borderRadius: 10,
+              background: "var(--am-surface-faint)",
+              border: "1px solid var(--am-border)",
+            }}
+          >
+            <div style={{ textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+              {index === 0 ? <IridText size={17}>{pr.rank}</IridText> : <span style={{ color: "var(--am-text-muted)", fontWeight: 750 }}>{pr.rank}</span>}
+            </div>
+            <Movement value={pr.movement} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 750, color: "var(--am-text)" }}>{pr.teamName}</div>
+              <div style={{ marginTop: 2, fontSize: 11.5, lineHeight: 1.45, color: "var(--am-text-muted)" }}>{pr.commentary}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Movement({ value }: { value: string }) {
+  const v = String(value || "").toLowerCase();
+  const up = v === "up" || v.includes("▲") || v.includes("↑");
+  const down = v === "down" || v.includes("▼") || v.includes("↓");
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 750,
+        color: up ? "var(--am-positive)" : down ? "var(--am-negative)" : "var(--am-text-faint)",
+      }}
+    >
+      {up ? "Up" : down ? "Down" : "Even"}
+    </span>
+  );
+}
+
+function DigestCategoryMovers({ rows }: { rows: CategoryMover[] }) {
+  return (
+    <div>
+      <DigestSectionLabel>Category movers</DigestSectionLabel>
+      <div style={{ display: "grid", gap: 4 }}>
+        {rows.map((row, index) => (
+          <div key={`${row.team}-${row.category}-${index}`} style={{ fontSize: 11.5, color: "var(--am-text-muted)", lineHeight: 1.45 }}>
+            <strong style={{ color: row.direction === "up" ? "var(--am-positive)" : "var(--am-negative)" }}>
+              {row.direction === "up" ? "Up" : "Down"} {row.category}
+            </strong>
+            {" · "}
+            <span style={{ color: "var(--am-text)" }}>{row.team}</span>
+            {" · "}
+            {row.detail}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DigestCallout({
+  tone,
+  label,
+  title,
+  body,
+}: {
+  tone: "positive" | "negative" | "neutral";
+  label: string;
+  title?: string;
+  body: string;
+}) {
+  const color = tone === "positive" ? "var(--am-positive)" : tone === "negative" ? "var(--am-negative)" : "var(--am-accent)";
+  return (
+    <div
+      style={{
+        padding: "9px 10px",
+        borderRadius: 10,
+        border: "1px solid var(--am-border)",
+        background: "var(--am-surface-faint)",
+      }}
+    >
+      <div style={{ fontSize: 10, fontWeight: 750, letterSpacing: 0.9, textTransform: "uppercase", color }}>
+        {label}
+      </div>
+      {title && <div style={{ marginTop: 3, fontSize: 12.5, fontWeight: 750, color: "var(--am-text)" }}>{title}</div>}
+      <div style={{ marginTop: title ? 3 : 0, fontSize: 11.5, lineHeight: 1.45, color: "var(--am-text-muted)" }}>{body}</div>
+    </div>
+  );
+}
+
+function DigestSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        marginBottom: 6,
+        fontSize: 10,
+        fontWeight: 750,
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        color: "var(--am-text-faint)",
+      }}
+    >
+      {children}
+    </div>
   );
 }
