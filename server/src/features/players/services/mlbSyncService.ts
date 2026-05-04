@@ -80,11 +80,11 @@ async function fetchTeamRoster(
 async function buildPlayerLookup(): Promise<Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null; mlbStatus: string | null }>> {
   const players = await prisma.player.findMany({
     where: { mlbId: { not: null } },
-    select: { id: true, mlbId: true, mlbTeam: true, posPrimary: true, posList: true, mlbStatus: true },
+    select: { id: true, mlbId: true, mlbTeam: true, posPrimary: true, posList: true },
   });
   const map = new Map<number, { id: number; mlbTeam: string | null; posPrimary: string | null; posList: string | null; mlbStatus: string | null }>();
   for (const p of players) {
-    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam, posPrimary: p.posPrimary, posList: p.posList, mlbStatus: p.mlbStatus });
+    if (p.mlbId) map.set(p.mlbId, { id: p.id, mlbTeam: p.mlbTeam, posPrimary: p.posPrimary, posList: p.posList, mlbStatus: null });
   }
   return map;
 }

@@ -99,7 +99,7 @@ describe("auditLeagueIlPlayers", () => {
     const res = await auditLeagueIlPlayers(99);
     expect(res.totalRows).toBe(2);
     expect(res.totalTeams).toBe(1);
-    const names = res.rows.map(r => r.playerName).sort();
+    const names = res.rows.map((r: any) => r.playerName).sort();
     expect(names).toEqual(["Mike Trout", "Shohei Ohtani"]);
   });
 
@@ -155,8 +155,8 @@ describe("performBulkIlStash", () => {
       { teamId: 10, playerId: 100 },
       { teamId: 20, playerId: 200 },
     ], 1);
-    expect(res.failed.find(f => f.teamId === 20)).toBeTruthy();
-    expect(res.failed.find(f => f.teamId === 20)?.code).toBe("TEAM_NOT_IN_LEAGUE");
+    expect(res.failed.find((f: any) => f.teamId === 20)).toBeTruthy();
+    expect(res.failed.find((f: any) => f.teamId === 20)?.code).toBe("TEAM_NOT_IN_LEAGUE");
   });
 
   it("treats already-on-IL as a noop success (idempotency)", async () => {

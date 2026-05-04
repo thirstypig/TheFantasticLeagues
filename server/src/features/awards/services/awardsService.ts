@@ -61,6 +61,17 @@ export const MVP_WEIGHTS: Readonly<Record<keyof MvpCandidate["zScores"], number>
   BB: 0.5,
   SO: -0.3, // strikeouts at the plate are bad
 });
+const MVP_STAT_KEYS = [
+  "OPS",
+  "HR",
+  "OBP",
+  "RBI",
+  "R",
+  "SB",
+  "TB",
+  "BB",
+  "SO",
+] as const satisfies readonly (keyof MvpCandidate["zScores"])[];
 
 /**
  * Per-stat starter weights for Cy Young. Note that `ERA`, `WHIP`, and `BB9`
@@ -97,6 +108,18 @@ export const CY_YOUNG_RELIEVER_WEIGHTS: Readonly<Record<keyof CyYoungCandidate["
   W: 0.0,
   L: 0.0,
 });
+const CY_YOUNG_STAT_KEYS = [
+  "ERA",
+  "WHIP",
+  "K",
+  "K9",
+  "IP",
+  "W",
+  "L",
+  "HR_A",
+  "BB9",
+  "SV",
+] as const satisfies readonly (keyof CyYoungCandidate["zScores"])[];
 
 // ─── Helpers ───
 
@@ -228,7 +251,7 @@ export async function computeAwardsRankings(
       BB: zScores(hitterRows.map(h => h.bb)),
       SO: zScores(hitterRows.map(h => h.so)),
     };
-    const mvpStatKeys = Object.keys(MVP_WEIGHTS) as (keyof MvpCandidate["zScores"])[];
+    const mvpStatKeys = MVP_STAT_KEYS;
 
     mvp = hitterRows
       .map((h, i) => ({
@@ -302,7 +325,7 @@ export async function computeAwardsRankings(
       HR_A: zScores(starterRows.map(p => p.hra)),
       SV: zScores(starterRows.map(p => p.sv)),
     };
-    const cyStatKeys = Object.keys(CY_YOUNG_STARTER_WEIGHTS) as (keyof CyYoungCandidate["zScores"])[];
+    const cyStatKeys = CY_YOUNG_STAT_KEYS;
 
     cyYoung = starterRows
       .map((p, i) => {
@@ -358,7 +381,7 @@ export async function computeAwardsRankings(
 export function formatMvpForPrompt(rankings: AwardsRankings): string {
   if (!rankings.mvp.length) return "";
   return rankings.mvp
-    .map(c =>
+    .map((c: MvpCandidate) =>
       `${c.rank}. ${c.name} (${c.team}) — Score: ${c.mvpScore.toFixed(1)} | ` +
       `.${Math.round(c.stats.AVG * 1000)} AVG, .${Math.round(c.stats.OPS * 1000)} OPS, ` +
       `${c.stats.HR} HR, ${c.stats.RBI} RBI, ${c.stats.R} R, ${c.stats.SB} SB (${c.stats.AB} AB)`,
@@ -370,7 +393,7 @@ export function formatMvpForPrompt(rankings: AwardsRankings): string {
 export function formatCyYoungForPrompt(rankings: AwardsRankings): string {
   if (!rankings.cyYoung.length) return "";
   return rankings.cyYoung
-    .map(c =>
+    .map((c: CyYoungCandidate) =>
       `${c.rank}. ${c.name} (${c.team}, ${c.role}) — Score: ${c.cyScore.toFixed(1)} | ` +
       `${c.stats.ERA.toFixed(2)} ERA, ${c.stats.WHIP.toFixed(2)} WHIP, ${c.stats.K} K, ` +
       `${c.stats.W}-${c.stats.L} W-L, ${c.stats.K9.toFixed(1)} K/9, ${c.stats.SV} SV (${c.stats.IP.toFixed(1)} IP)`,
