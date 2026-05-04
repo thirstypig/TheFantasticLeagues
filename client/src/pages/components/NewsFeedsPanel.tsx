@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchJsonApi, API_BASE } from "../../api/base";
 import { useLeague } from "../../contexts/LeagueContext";
 import { Glass, Chip, SectionLabel } from "../../components/aurora/atoms";
+import { getTeamDetails } from "../../features/teams/api";
 
 // ─── Source metadata ───
 type Source = "Reddit" | "YouTube" | "Yahoo" | "ESPN";
@@ -51,6 +52,7 @@ interface Headline {
   ts: number;
   thumbnail?: string | null;
   meta?: string | null;
+  matchedPlayers?: string[];
 }
 
 // ─── API response shapes (only the fields we need) ───
@@ -95,15 +97,42 @@ function ago(ts: number): string {
 
 export default function NewsFeedsPanel({
   limit = 12,
+  compact = false,
 }: {
   /** Default count of headlines to display in the mixed timeline. */
   limit?: number;
+  compact?: boolean;
 }) {
   const { leagueId } = useLeague();
+  const { myTeamId } = useLeague();
   const [headlines, setHeadlines] = useState<Headline[]>([]);
+  const [myPlayerNames, setMyPlayerNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"All" | Source>("All");
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!myTeamId) {
+      setMyPlayerNames([]);
+      return;
+    }
+    let alive = true;
+    getTeamDetails(myTeamId)
+      .then((details) => {
+        if (!alive) return;
+        const names = (details.currentRoster ?? [])
+          .map((row: any) => String(row.playerName ?? row.name ?? "").trim())
+          .filter(Boolean);
+        setMyPlayerNames(names);
+      })
+      .catch(() => {
+        if (alive) setMyPlayerNames([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [myTeamId]);
 
   useEffect(() => {
     let alive = true;
@@ -173,23 +202,52 @@ export default function NewsFeedsPanel({
   }, [leagueId]);
 
   const visible = useMemo(() => {
-    const filtered = filter === "All" ? headlines : headlines.filter(h => h.source === filter);
+    const q = query.trim().toLowerCase();
+    const withTags = headlines.map((h) => ({
+      ...h,
+      matchedPlayers: myPlayerNames.filter((name) => titleMatchesPlayer(h.title, name)).slice(0, 4),
+    }));
+    const filtered = withTags
+      .filter(h => filter === "All" || h.source === filter)
+      .filter(h => !q || h.title.toLowerCase().includes(q) || h.matchedPlayers?.some((name) => name.toLowerCase().includes(q)));
     return filtered.slice(0, limit);
-  }, [headlines, filter, limit]);
+  }, [headlines, filter, limit, myPlayerNames, query]);
 
   return (
-    <Glass>
+    <Glass style={compact ? { maxHeight: 430, overflow: "hidden" } : undefined}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
         <div>
           <SectionLabel>✦ Around the League</SectionLabel>
-          <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>
-            Reddit, YouTube, Yahoo &amp; ESPN — refreshed every 5 minutes
-          </div>
+          {!compact && (
+            <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>
+              Reddit, YouTube, Yahoo &amp; ESPN — refreshed every 5 minutes
+            </div>
+          )}
         </div>
       </div>
 
+      {!compact && (
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search headlines or your players"
+          style={{
+            width: "100%",
+            marginBottom: 10,
+            borderRadius: 10,
+            border: "1px solid var(--am-border)",
+            background: "var(--am-surface-faint)",
+            color: "var(--am-text)",
+            padding: "8px 10px",
+            fontSize: 13,
+            outline: "none",
+          }}
+        />
+      )}
+
       {/* Source filter chips — Aurora chip-pill row */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: compact ? 8 : 12 }}>
         {(["All", ...SOURCES] as const).map(key => {
           const active = filter === key;
           const tint = key !== "All" ? SOURCE_TINT[key as Source] : null;
@@ -221,7 +279,7 @@ export default function NewsFeedsPanel({
       {/* Body */}
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {[0, 1, 2, 3].map(i => (
+          {Array.from({ length: compact ? 2 : 4 }).map((_, i) => (
             <div
               key={i}
               style={{
@@ -239,7 +297,7 @@ export default function NewsFeedsPanel({
           {error ?? "News loading…"}
         </div>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: compact ? 6 : 8 }}>
           {visible.map((h, i) => (
             <HeadlineRow key={`${h.source}-${i}`} h={h} />
           ))}
@@ -326,8 +384,26 @@ function HeadlineRow({ h }: { h: Headline }) {
               <span style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>· {ago(h.ts)}</span>
             )}
           </div>
+          {h.matchedPlayers && h.matchedPlayers.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+              {h.matchedPlayers.map((name) => (
+                <Chip key={name} strong style={{ fontSize: 10, padding: "2px 7px" }}>
+                  {name}
+                </Chip>
+              ))}
+            </div>
+          )}
         </div>
       </a>
     </li>
   );
+}
+
+function titleMatchesPlayer(title: string, playerName: string): boolean {
+  const parts = playerName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return false;
+  const escaped = parts.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const fullName = escaped.join("\\s+");
+  const last = escaped[escaped.length - 1];
+  return new RegExp(`\\b${fullName}\\b`, "i").test(title) || new RegExp(`\\b${last}\\b`, "i").test(title);
 }

@@ -241,6 +241,27 @@ describe("GET /my-players-today — boxscore stat lines (Gap 1)", () => {
     expect(p.line.pitching).toBeUndefined();
   });
 
+  it("honors the date query for schedule and game-log matching", async () => {
+    const requestedDate = "2026-04-19";
+    setupTeamAndRoster([
+      { id: 10, name: "Date Query Hitter", mlbId: 800010, mlbTeam: "LAD", posPrimary: "OF" },
+    ]);
+
+    mockMlbGetJson
+      .mockResolvedValueOnce(scheduleFixture([{ away: "LAD", home: "SF", abstractGameState: "Final" }]))
+      .mockResolvedValueOnce(
+        hittingGameLog(requestedDate, { atBats: 4, hits: 1, runs: 1, homeRuns: 0, rbi: 2, stolenBases: 0, baseOnBalls: 1, strikeOuts: 1 }),
+      );
+
+    const res = await supertest(app).get(`/my-players-today?leagueId=1&date=${requestedDate}`);
+    expect(res.status).toBe(200);
+    expect(res.body.date).toBe(requestedDate);
+    expect(mockMlbGetJson.mock.calls[0][0]).toContain(`date=${requestedDate}`);
+    expect(res.body.players[0].line).toEqual({
+      hitting: { AB: 4, H: 1, R: 1, HR: 0, RBI: 2, SB: 0, BB: 1, SO: 1 },
+    });
+  });
+
   it("returns full pitching line for a pitcher whose game is FINAL", async () => {
     setupTeamAndRoster([
       { id: 2, name: "Walker Buehler", mlbId: 621111, mlbTeam: "LAD", posPrimary: "SP" },

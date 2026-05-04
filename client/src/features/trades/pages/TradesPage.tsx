@@ -434,6 +434,8 @@ export function LeagueTradeCard({
     || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId)
     || trade.acceptingTeam?.ownerUserId === currentUserId
     || (trade.acceptingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
+  const isProposer = trade.proposingTeam?.ownerUserId === currentUserId
+    || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
 
   // Commissioner effective-date override for process / reverse (YYYY-MM-DD).
   // Empty string = server default (nextDayEffective).
@@ -514,6 +516,22 @@ export function LeagueTradeCard({
           </div>
           <p className="text-[11px] text-[var(--lg-text-secondary)] leading-relaxed">{trade.aiAnalysis.analysis}</p>
           <div className="text-[9px] text-[var(--lg-text-muted)] opacity-40 mt-1.5">Powered by <strong>Google Gemini</strong> & <strong>Anthropic Claude</strong></div>
+        </div>
+      )}
+
+      {/* Commissioner Controls — accept/reject PROPOSED trades */}
+      {trade.status === "PROPOSED" && isProposer && (
+        <div className="flex justify-end space-x-2 border-t border-[var(--lg-border-subtle)] pt-3 mt-3">
+          <button
+            onClick={async () => {
+              if (!confirm("Withdraw this trade proposal?")) return;
+              await cancelTrade(trade.id);
+              onRefresh();
+            }}
+            className="px-3 py-1 bg-[var(--lg-tint)] hover:bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)] rounded text-sm transition-colors"
+          >
+            Withdraw Proposal
+          </button>
         </div>
       )}
 

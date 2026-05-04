@@ -829,7 +829,8 @@ router.get("/roster-stats-today", requireAuth, requireLeagueMember("leagueId"), 
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
   const userId = req.user!.id;
-  const today = mlbGameDayDate();
+  const requestedDate = typeof req.query.date === "string" ? req.query.date : "";
+  const today = DATE_REGEX.test(requestedDate) ? requestedDate : mlbGameDayDate();
 
   // Find user's team
   const team = await prisma.team.findFirst({
@@ -1047,7 +1048,8 @@ router.get(
 
     // Get today's schedule (reuses cached data from scores endpoint).
     // We hydrate the linescore so we can build "TOP 5" / "BOT 9" descriptors.
-    const today = mlbGameDayDate();
+    const requestedDate = typeof req.query.date === "string" ? req.query.date : "";
+    const today = DATE_REGEX.test(requestedDate) ? requestedDate : mlbGameDayDate();
     const season = Number(today.slice(0, 4));
     const scheduleUrl = `https://statsapi.mlb.com/api/v1/schedule?date=${today}&sportId=1&hydrate=linescore`;
     const scheduleData = await mlbGetJson(scheduleUrl, 60);
