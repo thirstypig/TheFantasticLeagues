@@ -26,6 +26,7 @@ import readmeMd from "../../../README.md?raw";
 import feedbackMd from "../../../FEEDBACK.md?raw";
 
 // docs/ directory
+import currentStatus from "../../../docs/CURRENT_STATUS.md?raw";
 import howto from "../../../docs/howto.md?raw";
 import decisions from "../../../docs/decisions.md?raw";
 import security from "../../../docs/SECURITY.md?raw";
@@ -40,7 +41,6 @@ import projectSwitching from "../../../docs/Project_Switching_Guide.md?raw";
 import audit from "../../../docs/AUDIT-2026-03-19.md?raw";
 import prismaV2 from "../../../docs/prisma_v2_draft.md?raw";
 import planAuth from "../../../docs/PLAN-AUTH-MEMBERS.md?raw";
-import roadmapDoc from "../../../docs/ROADMAP.md?raw";
 import auroraDesignSystem from "../../../docs/aurora-design-system.md?raw";
 
 // docs/plans/ — active proposals awaiting review
@@ -63,6 +63,7 @@ const docs: DocEntry[] = [
   { name: "README.md", filename: "README.md", content: readmeMd, category: "root", icon: BookOpen, description: "Project overview and getting started" },
   { name: "FEEDBACK.md", filename: "FEEDBACK.md", content: feedbackMd, category: "root", icon: History, description: "Session-by-session development log" },
   // docs/ directory
+  { name: "Current Product Status", filename: "docs/CURRENT_STATUS.md", content: currentStatus, category: "docs", icon: ClipboardList, description: "Active planning source, roster focus, dashboard direction, and deferred work" },
   { name: "Aurora Design System", filename: "docs/aurora-design-system.md", content: auroraDesignSystem, category: "docs", icon: Palette, description: "Style sheet — colors, typography, atoms, tables, spacing, motion" },
   { name: "How-To Guides", filename: "docs/howto.md", content: howto, category: "docs", icon: BookOpen, description: "Step-by-step guides for common tasks" },
   { name: "Architecture Decisions", filename: "docs/decisions.md", content: decisions, category: "docs", icon: Layers, description: "Why behind key architectural choices" },
@@ -78,7 +79,6 @@ const docs: DocEntry[] = [
   { name: "Codebase Audit (Mar 2026)", filename: "docs/AUDIT-2026-03-19.md", content: audit, category: "docs", icon: Layers, description: "Full-stack codebase audit from Session 26" },
   { name: "Prisma v2 Draft", filename: "docs/prisma_v2_draft.md", content: prismaV2, category: "docs", icon: Database, description: "Future schema redesign draft" },
   { name: "Auth + Members Plan", filename: "docs/PLAN-AUTH-MEMBERS.md", content: planAuth, category: "docs", icon: Shield, description: "Auth fixes and commissioner member management" },
-  { name: "Legacy Roadmap", filename: "docs/ROADMAP.md", content: roadmapDoc, category: "docs", icon: Settings, description: "Historical security & quality roadmap" },
   // docs/plans/ — active proposals awaiting review
   { name: "Yahoo-Style Roster Moves", filename: "docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md", content: planYahooRosterMoves, category: "proposal", icon: ClipboardList, description: "⚠️ v3 design ready at /design/roster-hub-v3 — consolidated table, GP numbers, no modals" },
 ];

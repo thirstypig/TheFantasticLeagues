@@ -4,6 +4,26 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-03 — Documentation refresh and planning source-of-truth alignment
+
+Updated the project docs after the Home, Roster Hub, add/drop, trade proposal, AI history, and planning cleanup work. The important documentation decision: `server/data/planning.json` is the single active source for both micro todos and macro roadmap items. Legacy planning files (`TODO.md`, `server/data/todo-tasks.json`, `docs/ROADMAP.md`) should stay retired instead of being recreated.
+
+### Completed
+
+- Added `docs/CURRENT_STATUS.md` as the short active-status doc covering current product focus, Roster Hub rules, Home dashboard direction, AI insight retention, deferred SEO/blog work, and recent verification.
+- Updated `CLAUDE.md` `/now-tldr` to reflect the current OGBA in-season focus rather than the older PR-stack status.
+- Updated `README.md`, `docs/DEV_NOTES.md`, `docs/decisions.md`, and `docs/display-rules.md` to point at unified planning data and the no-fantasy-team-codes frontend rule.
+- Updated roster docs to lock in current OGBA roster labels: `P`, `OF`, `CM`, `MI`, `DH`; no frontend `SP`/`RP`, `LF`/`CF`/`RF`, or fantasy team codes.
+- Updated `docs/TESTING.md` with the recent Home/AddDrop focused verification and the remaining test gaps.
+- Surfaced `docs/CURRENT_STATUS.md` in the in-app `/docs` page and removed the deleted legacy roadmap doc from that registry.
+- Updated `server/data/planning.json` with active roster/home tasks, a macro Roster Hub roadmap item, and a deferred note for SEO/blog work while keeping schema-compatible statuses.
+
+### Verification
+
+- `server/data/planning.json` parses as valid JSON.
+- `validatePlanningDataAtBoot()` passes through `npx tsx`.
+- `cd client && npx tsc --noEmit` passes.
+
 ## Session 2026-04-30 (Session 86) — 9 PRs in one session: 4 review-cleanup PRs (parallel-agent worktrees), 6 PR roster-hub-v3 stack wired into the live Team page, posList drift solution doc, all open awaiting review
 
 Nine PRs opened in one session, all currently in flight on `origin` awaiting review. Two arcs: **(a) a parallel-agent review-cleanup pass** that closed 13 of 15 pending P1/P2/P3 todos via 4 isolated git worktrees in ~15 minutes wall-clock; **(b) a 6-PR roster-hub-v3 stack** that took the v3 design-preview components built in PRs #169/#172/#174 and wired them into the live `/teams/:code` page with 3 inline sub-routes for the mutation flows. Net: client tests 355 → 372 (+17 unit tests pinning down `toHubPlayer` contracts), CLAUDE.md `/now-tldr` refreshed, one solution doc for a class of bug (under-declared TS response type masking server fields), feature module isolation maintained and explicitly documented.

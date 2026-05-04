@@ -1,0 +1,1604 @@
+{
+  "categories": [
+    {
+      "id": "deployment",
+      "title": "Deployment & Infrastructure",
+      "description": "Railway migration, marketing site, CI/CD, monitoring",
+      "tasks": [
+        {
+          "id": "apply-session-tracking-migration",
+          "title": "Apply session-tracking DB migration (UserSession, UserMetrics, UserDeletionLog)",
+          "status": "in_progress",
+          "priority": "p1",
+          "owner": "jimmy",
+          "milestone": "mvp",
+          "instructions": [
+            "Open Supabase SQL Editor: https://supabase.com/dashboard/project/oaogpsshewmcazhehryl/sql/new",
+            "Open the migration file in your editor: prisma/migrations/20260413200000_add_user_session_tracking/migration.sql",
+            "Copy the ENTIRE contents (all 95 lines)",
+            "Paste into the Supabase SQL editor text area",
+            "Click the green 'Run' button in the top-right (or Cmd+Enter / Ctrl+Enter)",
+            "Expect 'Success. No rows returned' in green at the bottom — this is correct for CREATE TABLE",
+            "Verify: paste `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('UserSession', 'UserMetrics', 'UserDeletionLog');` and Run — should see 3 rows",
+            "Rollback if anything goes wrong: DROP TABLE \"UserSession\", \"UserMetrics\", \"UserDeletionLog\" CASCADE;",
+            "Once verified, mark this task done and tell Claude 'migration applied'"
+          ],
+          "roadmapLink": "/roadmap#engagement",
+          "conceptLink": "/concepts#commissioner-ai",
+          "targetDate": "2026-04-13",
+          "notes": "One-time step. Creates 3 new tables — touches nothing existing. Safe; fully reversible via DROP TABLE CASCADE."
+        },
+        {
+          "id": "set-ip-hash-secret-railway",
+          "title": "Set IP_HASH_SECRET env var in Railway",
+          "status": "done",
+          "priority": "p1",
+          "owner": "jimmy",
+          "milestone": "mvp",
+          "instructions": [
+            "Generate a fresh secret locally: openssl rand -hex 32",
+            "Open Railway dashboard: https://railway.app/dashboard",
+            "Click your FBST API service",
+            "Click the 'Variables' tab",
+            "Add or update IP_HASH_SECRET with the generated value — NEVER paste a real secret into this file",
+            "Click Save — Railway will trigger a redeploy automatically (~2 min)",
+            "Verify deploy succeeded in the 'Deployments' tab"
+          ],
+          "notes": "32-byte hex secret used by lib/ipHash.ts to HMAC user IPs + emails (UserDeletionLog.hashedEmail). Fail-fast at server boot if missing. Rotate yearly per plan R8. Rotated 2026-04-16 during Session 65 commit; file redacted in same commit.",
+          "targetDate": "2026-04-13",
+          "updatedAt": "2026-04-16T00:00:00.000Z"
+        },
+        {
+          "id": "deploy-marketing-site",
+          "title": "Deploy marketing site to GitHub Pages",
+          "status": "in_progress",
+          "priority": "p1",
+          "owner": "jimmy",
+          "milestone": "mvp",
+          "instructions": [
+            "Push final marketing site build to thefantasticleagues-www repo",
+            "Configure GitHub Pages in repo settings (Settings → Pages → Source: GitHub Actions)",
+            "Add deploy workflow at .github/workflows/deploy.yml (Astro → gh-pages)",
+            "Point custom domain thefantasticleagues.com at GitHub Pages (CNAME file)",
+            "Verify HTTPS certificate provisioning and redirect from apex"
+          ],
+          "roadmapLink": "/roadmap#monetization",
+          "targetDate": "2026-04-15",
+          "updatedAt": "2026-04-12T22:19:46.596Z"
+        },
+        {
+          "id": "blog-monday-cron",
+          "title": "GitHub Action for Monday blog auto-deploys",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "content-seo",
+          "instructions": [
+            "Create .github/workflows/monday-deploy.yml with cron schedule '0 13 * * 1' (6am PT Monday)",
+            "Trigger: workflow rebuilds the marketing site so date-gated blog posts appear",
+            "Verify in dry run with manual workflow_dispatch trigger"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        }
+      ]
+    },
+    {
+      "id": "monetization",
+      "title": "Monetization & Payments",
+      "description": "Stripe, pricing, subscriptions, feature gating",
+      "tasks": [
+        {
+          "id": "stripe-setup",
+          "title": "Stripe account + product setup",
+          "status": "not_started",
+          "priority": "p1",
+          "owner": "jimmy",
+          "milestone": "mvp",
+          "instructions": [
+            "Create Stripe account at https://dashboard.stripe.com/register (sole proprietor is fine)",
+            "Verify business details in Stripe",
+            "Developers → API Keys: copy Publishable Key and Secret Key",
+            "Create products: Pro ($29/season), Commissioner ($49/season)",
+            "Store STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY in Railway env vars",
+            "Add webhook endpoint signing secret STRIPE_WEBHOOK_SECRET (webhook target: /api/stripe/webhook)"
+          ],
+          "roadmapLink": "/roadmap#monetization",
+          "conceptLink": "/concepts#pricing"
+        },
+        {
+          "id": "stripe-checkout-flow",
+          "title": "Stripe Checkout flow for Pro/Commissioner",
+          "status": "not_started",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Install @stripe/stripe-js and stripe (server) packages",
+            "Create server/src/features/billing/routes.ts with POST /api/billing/checkout (creates Stripe Checkout Session)",
+            "Add POST /api/stripe/webhook to process checkout.session.completed + subscription lifecycle events",
+            "Update UserProfile schema with plan (free/pro/commissioner) and stripeCustomerId",
+            "Wire 'Upgrade' button on /pricing to Checkout",
+            "Add success/cancel return URLs (/pricing?success=1)"
+          ],
+          "roadmapLink": "/roadmap#monetization",
+          "notes": "Blocked as of 2026-05-01T23:53:22.535Z: dev implementation depends on Stripe account/products/env vars from stripe-setup. The repo currently has no stripe server package, no @stripe/stripe-js client package, and UserProfile has no billing fields yet. Do not build against guessed price IDs.",
+          "updatedAt": "2026-05-01T23:53:22.535Z"
+        },
+        {
+          "id": "stripe-subscriptions",
+          "title": "Stripe subscription lifecycle management",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "monetization",
+          "instructions": [
+            "Handle subscription lifecycle: create, renew, cancel, pause",
+            "Webhook handlers for invoice.paid, invoice.payment_failed, customer.subscription.deleted",
+            "Grace period for failed payments (7 days before feature lockout)",
+            "Store subscription status on User model"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        },
+        {
+          "id": "feature-gating",
+          "title": "Feature gating based on plan (free/pro/commissioner)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "monetization",
+          "instructions": [
+            "Create requirePlan(plan) middleware checking req.user.plan",
+            "Gate AI features (Weekly Insights, Draft Report, trade/waiver analysis) behind 'pro'",
+            "Gate Commissioner tools (auction admin, force-assign) behind 'commissioner'",
+            "Show upgrade prompt on gated features in UI",
+            "Keep all other features free (drafts, standings, trades, waivers)"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        },
+        {
+          "id": "commissioner-tier",
+          "title": "Commissioner tier features",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "monetization",
+          "instructions": [
+            "League health dashboard (commissioner-only)",
+            "Custom scoring rule builder",
+            "Archive import (currently free — move to Commissioner tier)",
+            "Priority support badge"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        },
+        {
+          "id": "billing-portal",
+          "title": "Billing portal + invoices",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "monetization",
+          "instructions": [
+            "Stripe Customer Portal link for managing subscription",
+            "Invoice history page",
+            "Update payment method flow",
+            "Cancel/downgrade flow with feedback survey"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        },
+        {
+          "id": "founding-member-deal",
+          "title": "Founding member lifetime deal ($99)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "monetization",
+          "instructions": [
+            "Create one-time payment product in Stripe ($99)",
+            "Limited to first 100 users",
+            "Grants permanent Pro access (no recurring charges)",
+            "Show counter: 'X of 100 remaining'",
+            "Announce via email list and blog post"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        },
+        {
+          "id": "email-subscribe-backend",
+          "title": "Email subscribe backend (POST /api/auth/subscribe)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Add EmailSubscription Prisma model: email, source, createdAt, unsubscribedAt (or use Resend audience)",
+            "POST /api/auth/subscribe route validates email + upserts by email",
+            "Rate limit: 5 req/min per IP",
+            "Send welcome email via Resend",
+            "Wire marketing site 'Notify Me' form to this endpoint",
+            "Add admin endpoint GET /api/admin/subscribers to export list"
+          ],
+          "roadmapLink": "/roadmap#monetization"
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": "Content & SEO",
+      "description": "Blog posts, SEO pages, marketing collateral. Deferred while OGBA roster management, standings, daily stats, and dashboard UX stabilize.",
+      "tasks": [
+        {
+          "id": "blog-post-1",
+          "title": "Blog: Why We Built a Modern Fantasy Baseball Platform",
+          "status": "done",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "instructions": [
+            "Written and formatted",
+            "Date: Apr 14 (Monday)",
+            "Tags: fantasy baseball, product",
+            "Hero image: baseball batter (Unsplash)",
+            "~950 words, TL;DR at top"
+          ]
+        },
+        {
+          "id": "blog-post-2",
+          "title": "Blog: What Fantasy Baseball Commissioners Actually Need",
+          "status": "done",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "instructions": [
+            "Written, needs formatting pass (short paragraphs, TL;DR, bold key phrases)",
+            "Date: Apr 14 (Monday)",
+            "Tags: commissioners, product",
+            "~1,100 words"
+          ]
+        },
+        {
+          "id": "blog-post-3",
+          "title": "Blog: AI Meets Fantasy Baseball",
+          "status": "done",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "instructions": [
+            "Written, needs formatting pass",
+            "Date: Apr 21 (Monday)",
+            "Tags: AI, product",
+            "~1,200 words"
+          ]
+        },
+        {
+          "id": "blog-post-4",
+          "title": "Blog: Auction Drafts Deserve Better Tools",
+          "status": "done",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "instructions": [
+            "Written, needs formatting pass",
+            "Date: Apr 28 (Monday)",
+            "Tags: drafts, product",
+            "~1,150 words"
+          ]
+        },
+        {
+          "id": "blog-post-5",
+          "title": "Blog: The 2026 Season Preview — What We're Watching",
+          "status": "done",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "instructions": [
+            "Written, needs formatting pass",
+            "Date: May 5 (Monday)",
+            "Tags: baseball, strategy",
+            "~1,000 words"
+          ]
+        },
+        {
+          "id": "blog-formatting-posts-2-5",
+          "title": "Apply blog formatting to posts 2-5 (TL;DR, short paragraphs, hero images)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "instructions": [
+            "Deferred by product direction on 2026-05-03: hold SEO/blog work until roster management and dashboard correctness are stable",
+            "Apply same treatment as post 1: short paragraphs (1-3 sentences), TL;DR blockquote at top",
+            "Strategic bold (1-2 key phrases per section), single-sentence punchline paragraphs",
+            "Add hero images (Unsplash baseball photos) to each post",
+            "Internal links to /features, /pricing, /discover where relevant",
+            "Verify each post builds correctly with date gating",
+            "Files: src/content/blog/*.md in thefantasticleagues-www repo"
+          ],
+          "conceptLink": "/concepts#seo-pages",
+          "notes": "Deferred by product direction on 2026-05-03. Keep this as not_started for planning schema compatibility, but do not prioritize until roster management and dashboard correctness are stable.",
+          "updatedAt": "2026-05-03T00:00:00.000Z"
+        },
+        {
+          "id": "blog-topic-6",
+          "title": "Blog: Top 10 Undervalued NL Pitchers for 2026",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-05-12",
+          "instructions": [
+            "List format — great for SEO (people search 'best NL pitchers 2026')",
+            "Use real stats from the platform",
+            "Include Dodgers pitchers in the mix"
+          ]
+        },
+        {
+          "id": "blog-topic-7",
+          "title": "Blog: The Fantasy Baseball Manager's Weekly Checklist",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-05-19",
+          "instructions": [
+            "Evergreen content — what to do every week (check waivers, review matchups, set lineups)",
+            "Link to TFL features that automate each step",
+            "Good internal linking opportunity"
+          ]
+        },
+        {
+          "id": "blog-topic-8",
+          "title": "Blog: Shohei Ohtani — Managing the Two-Way Fantasy Asset",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-05-26",
+          "instructions": [
+            "Player-specific content — high search volume for 'Ohtani fantasy value'",
+            "Explain the DH + P split on TFL vs other platforms",
+            "Include Dodgers context (NL-only league impact)"
+          ]
+        },
+        {
+          "id": "blog-topic-9",
+          "title": "Blog: Midseason Trade Strategy — When to Buy and When to Sell",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-06-02",
+          "instructions": [
+            "Timely content for June/July trade deadline season",
+            "Use real examples from OGBA league (anonymized)",
+            "Link to TFL trade analysis AI feature"
+          ]
+        },
+        {
+          "id": "blog-topic-10",
+          "title": "Blog: 5 Rookie Call-Ups That Could Win Your League",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-06-09",
+          "instructions": [
+            "List format — search-friendly, shareable",
+            "Konnor Griffin (PIT) should be one of them",
+            "Include prospect data from our MLB API sync"
+          ]
+        },
+        {
+          "id": "blog-topic-11",
+          "title": "Blog: Fantasy Football Preview — What TFL is Building Next",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-06-16",
+          "instructions": [
+            "Cross-sport teaser — signals the football pivot planned for Aug 2026",
+            "Light on details, heavy on vision",
+            "Build email list excitement for football beta"
+          ]
+        },
+        {
+          "id": "blog-topic-12",
+          "title": "Blog: The Best Fantasy Baseball Stats Nobody Tracks",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-06-23",
+          "instructions": [
+            "Analytics-focused — talk about BB+H, category movers, spending pace",
+            "Shows domain expertise",
+            "Great for SEO: 'fantasy baseball advanced stats'"
+          ]
+        },
+        {
+          "id": "blog-topic-13",
+          "title": "Blog: Top 5 Catchers for the Second Half",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-06-30",
+          "instructions": [
+            "Position-specific list — catchers are always undervalued",
+            "Will Smith (LAD) as a featured player",
+            "Include stats comparison table"
+          ]
+        },
+        {
+          "id": "blog-topic-14",
+          "title": "Blog: How We Went from Spreadsheets to AI — The Vibe Coding Story",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-07-07",
+          "instructions": [
+            "Technical/founder angle — resonates with product/tech audience",
+            "More detail on the vibe coding journey",
+            "Mention Claude Code, specific features built"
+          ]
+        },
+        {
+          "id": "blog-topic-15",
+          "title": "Blog: All-Star Break Power Rankings — Every NL Team's Fantasy Value",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "content-seo",
+          "targetDate": "2026-07-14",
+          "instructions": [
+            "Timely content for mid-July",
+            "Rank all NL teams by fantasy value of their roster",
+            "Dodgers will likely be #1 — lean into it",
+            "Include data from TFL standings"
+          ]
+        },
+        {
+          "id": "seo-sitemap",
+          "title": "Install @astrojs/sitemap integration",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "npm install @astrojs/sitemap",
+            "Add sitemap() to astro.config.mjs integrations array",
+            "Builds sitemap-index.xml automatically",
+            "5 min effort"
+          ],
+          "conceptLink": "/concepts#seo-pages"
+        },
+        {
+          "id": "seo-robots",
+          "title": "Create robots.txt for marketing site + app",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "Create public/robots.txt on marketing site: Allow: / + Sitemap reference",
+            "Add robots.txt to Express app: Disallow /api/, /auction/, /teams/. Allow /login, /signup, /discover",
+            "5-10 min effort"
+          ]
+        },
+        {
+          "id": "seo-og-tags",
+          "title": "Install astro-seo — OG tags, Twitter cards, canonical URLs",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "npm install astro-seo",
+            "Replace manual meta tags in Base.astro with <SEO> component",
+            "Pass og:image from blog post heroImage",
+            "Add twitter:card=summary_large_image",
+            "Create default OG image at public/og-default.png (1200x630)",
+            "30 min effort"
+          ]
+        },
+        {
+          "id": "seo-jsonld",
+          "title": "Add JSON-LD structured data to all pages",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "Create src/components/JsonLd.astro helper",
+            "Landing: Organization + SoftwareApplication schemas",
+            "Blog listing: CollectionPage schema",
+            "Blog posts: BlogPosting with author, date, image",
+            "Status page: add noindex (skip schema)",
+            "45 min effort"
+          ]
+        },
+        {
+          "id": "seo-fonts",
+          "title": "Self-host Inter font with font-display: swap",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "Download Inter woff2 from Google Fonts (400, 500, 600, 700, 800)",
+            "Place in public/fonts/",
+            "Add @font-face rules to global.css",
+            "Preload regular weight in Base.astro <head>",
+            "20 min effort"
+          ]
+        },
+        {
+          "id": "seo-gsc",
+          "title": "Set up Google Search Console + submit sitemap",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "seo-technical",
+          "instructions": [
+            "Go to search.google.com/search-console",
+            "Add domain property: thefantasticleagues.com",
+            "Verify via DNS TXT record (add in Cloudflare DNS)",
+            "Submit sitemap-index.xml after sitemap integration is deployed",
+            "15 min effort"
+          ]
+        },
+        {
+          "id": "seo-ga4",
+          "title": "Add GA4 to marketing site + set up conversion events",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "jimmy",
+          "milestone": "seo-technical",
+          "instructions": [
+            "Create GA4 property: 'TFL Marketing'",
+            "Add gtag.js snippet to Base.astro <head>",
+            "Set up 4 custom events: signup_click, blog_read, pricing_view, cta_click",
+            "Link Search Console to GA4 in Admin > Product Links",
+            "DO NOT add GA4 to the React app — PostHog handles that",
+            "30 min effort"
+          ]
+        },
+        {
+          "id": "seo-ahrefs",
+          "title": "Set up Ahrefs Webmaster Tools (free) + Ubersuggest",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "seo-technical",
+          "instructions": [
+            "ahrefs.com/webmaster-tools — free, 100 keywords",
+            "Track 25 initial keywords (see SEO plan for list)",
+            "Ubersuggest free: 1 project, 25 keywords, 3 searches/day",
+            "Monthly: export positions, compare month-over-month"
+          ]
+        },
+        {
+          "id": "seo-directories",
+          "title": "List on AlternativeTo + indie directories",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "seo-technical",
+          "instructions": [
+            "AlternativeTo: list as alternative to Yahoo Fantasy, Fantrax, ESPN, Sleeper",
+            "Also list on: Firsto, SideProjectors, LaunchingNext, StartupStash, SaaSPage",
+            "Write clear description: AI-powered, auction draft, commissioner tools",
+            "Total: ~1.5 hours for all directories"
+          ]
+        },
+        {
+          "id": "seo-landing-pages",
+          "title": "Build SEO landing pages (features + comparisons)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "/features/auction-draft — target: fantasy baseball auction draft platform",
+            "/features/ai-insights — target: AI fantasy baseball analysis tools",
+            "/features/commissioner-tools — target: fantasy baseball commissioner tools",
+            "/compare/yahoo — target: Yahoo fantasy baseball alternative",
+            "/compare/fantrax — target: Fantrax alternative",
+            "/learn/fantasy-baseball-glossary — 60-100 terms",
+            "Each page: hero, problem, demo screenshot, 3-4 benefits, FAQ, CTA"
+          ]
+        },
+        {
+          "id": "seo-newsletter",
+          "title": "Set up beehiiv newsletter",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "milestone": "seo-technical",
+          "instructions": [
+            "beehiiv.com — free tier up to 2,500 subscribers",
+            "Weekly during season, monthly offseason",
+            "Content: 1 insight + 1 data point + 1 product update",
+            "Use Recommendations feature to cross-promote with baseball newsletters"
+          ]
+        },
+        {
+          "id": "seo-lead-magnet",
+          "title": "Build Auction Value Calculator lead magnet",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "seo-technical",
+          "instructions": [
+            "Free web tool: input league settings (NL/AL/Mixed, budget, roster size)",
+            "Output custom dollar values per player",
+            "Ungated for use, email-gated for saving/exporting results",
+            "This directly showcases the product's strength",
+            "4-6 hours effort"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "title": "Feature Development",
+      "description": "Trade assets, league management, gameplay",
+      "tasks": [
+        {
+          "id": "commissioner-roster-import",
+          "title": "Commissioner self-serve roster import (CSV upload UI)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Add CSV upload UI to Commissioner page (file input + column mapping preview)",
+            "Accept Yahoo/ESPN/Fantrax CSV formats (auto-detect by column headers)",
+            "Show preview table before confirming import",
+            "Reuse existing auctionImport service on the backend",
+            "Add 'Download Template' button with example CSV"
+          ],
+          "roadmapLink": "/roadmap#features"
+        },
+        {
+          "id": "onboarding-wizard",
+          "title": "New league onboarding wizard (3-step)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Step 1: Create league (name, format, draft type) — already exists at /create-league",
+            "Step 2: Invite members (show invite code + email invite form)",
+            "Step 3: Import rosters OR start draft",
+            "Add progress indicator (1 of 3, 2 of 3, etc.)",
+            "Show 'Setup Checklist' on commissioner page until all steps complete"
+          ]
+        },
+        {
+          "id": "trade-pick-processing",
+          "title": "Trade PICK asset processing (schema exists, silently ignored)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "TradeItem.assetType PICK exists in schema but processing is a no-op",
+            "Add DraftPick model or use TradeItem metadata for round/season",
+            "On trade process: transfer pick ownership in DraftPick table",
+            "UI: render PICK assets in TradePage with 'Round X / 2027' format",
+            "Add to trade reversal logic"
+          ],
+          "roadmapLink": "/roadmap#features"
+        },
+        {
+          "id": "future-draft-dollars-asset",
+          "title": "Future draft dollars as trade asset",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Add assetType FUTURE_BUDGET to TradeItem union",
+            "New field: seasonYear (e.g., 2027)",
+            "On trade process: create pending budget adjustment linked to a future Season",
+            "At season start: apply pending adjustments to team.budget",
+            "UI: 'Give/Get $X toward 2027 budget' in TradeAssetSelector"
+          ],
+          "roadmapLink": "/roadmap#features"
+        },
+        {
+          "id": "waiver-picks-tradeable",
+          "title": "Waiver priority positions as trade asset",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "WAIVER_PRIORITY swap already supported (single-toggle in TradeAssetSelector)",
+            "Extend: allow trading specific priority positions forward (Period N priority)",
+            "Add priorityPeriodId to TradeItem",
+            "Process: store override in Team.waiverPriorityOverride scoped to period"
+          ],
+          "roadmapLink": "/roadmap#features"
+        }
+      ]
+    },
+    {
+      "id": "mid-season",
+      "title": "Mid-Season League Import",
+      "description": "Accept leagues already in progress — import existing rosters, backfill stats, skip SETUP/DRAFT phases",
+      "tasks": [
+        {
+          "id": "mid-season-import",
+          "title": "Mid-season roster import workflow",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mid-season",
+          "instructions": [
+            "Allow commissioner to upload current rosters (CSV with player, team, salary)",
+            "Auto-match players to MLB IDs via fuzzy name matching",
+            "Set acquiredAt to season start date for all imported rosters",
+            "Create Period records for completed scoring periods",
+            "Mark imported rosters with source='IMPORT' for tracking"
+          ]
+        },
+        {
+          "id": "stats-backfill",
+          "title": "Historical stats backfill for current period",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mid-season",
+          "instructions": [
+            "After roster import, trigger stats sync for all rostered players",
+            "Backfill PlayerStatsPeriod from season start to current date",
+            "Compute TeamStatsPeriod from player stats",
+            "Verify standings match FanGraphs/source platform"
+          ]
+        },
+        {
+          "id": "season-phase-override",
+          "title": "Skip SETUP → straight to IN_SEASON",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mid-season",
+          "instructions": [
+            "Add 'Import Existing League' option that skips SETUP and DRAFT phases",
+            "Set season status directly to IN_SEASON after roster import",
+            "Ensure all IN_SEASON features activate (trades, waivers, stats sync)"
+          ]
+        },
+        {
+          "id": "csv-auto-detect",
+          "title": "Yahoo/ESPN/Fantrax CSV format auto-detection",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mid-season",
+          "instructions": [
+            "Detect platform by CSV column headers (Yahoo: 'Player', ESPN: 'PLAYER', Fantrax: 'Player Name')",
+            "Map columns automatically to our format",
+            "Show preview with auto-detected mappings, allow manual override",
+            "Support keeper designation column if present"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "growth",
+      "title": "Growth — Scale Beyond OGBA",
+      "description": "Features needed to support multiple leagues and grow the user base",
+      "tasks": [
+        {
+          "id": "multi-league-dashboard",
+          "title": "Multi-league dashboard (league switcher)",
+          "status": "done",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "growth",
+          "instructions": [
+            "League switcher dropdown in sidebar — DONE",
+            "Shows all leagues user is a member of — DONE"
+          ]
+        },
+        {
+          "id": "public-league-directory",
+          "title": "Public league directory with detail pages",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "growth",
+          "instructions": [
+            "Rebuild /discover/:slug detail page (was removed as premature)",
+            "Add server-side slug lookup endpoint",
+            "Show league details, team list, join CTA",
+            "Gate join behind authentication"
+          ]
+        },
+        {
+          "id": "referral-tracking",
+          "title": "Referral / invite tracking",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "growth",
+          "instructions": [
+            "Track which invite code or referral link brought each user",
+            "Dashboard showing conversion funnel: invite sent → signed up → joined league",
+            "Commissioner can see who hasn't accepted their invite yet"
+          ]
+        },
+        {
+          "id": "commissioner-analytics",
+          "title": "Commissioner analytics dashboard",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "growth",
+          "instructions": [
+            "League engagement metrics: logins per week, roster moves, trades proposed",
+            "Inactive manager alerts (no login in 7+ days)",
+            "Season health score (are all managers active?)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "code-quality",
+      "title": "Code Quality & Tests",
+      "description": "Type safety, test coverage, refactors",
+      "tasks": [
+        {
+          "id": "fix-pre-existing-test-failures",
+          "title": "Fix pre-existing test failures (standings, mlbSync, archive, etc.)",
+          "status": "done",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Run npm run test:server to list failures",
+            "Fix standings/__tests__/routes.test.ts: GET /season test cases (2 failures)",
+            "Fix players/__tests__/mlbSyncService.test.ts: syncPositionEligibility (5 failures)",
+            "Fix archive, periods, roster, waivers route tests",
+            "Goal: 0 failing tests in npm run test"
+          ],
+          "notes": "Shipped cf92977 (Session 62 cont.) — 'test: fix 27 pre-existing test failures — 0 failing suite'. Session 63 verified green: server 531 passed / 7 skipped / 0 failed; client 201 passed / 0 failed.",
+          "updatedAt": "2026-04-13T20:30:00.000Z"
+        },
+        {
+          "id": "reduce-as-any-casts",
+          "title": "Reduce `as any` casts (~140 server + ~130 client)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Grep: 'as any' in server/src and client/src",
+            "Prioritize hottest files (auction/routes, Team.tsx)",
+            "Add proper interfaces/types where needed"
+          ]
+        },
+        {
+          "id": "auction-routes-extraction",
+          "title": "Extract auction/routes.ts (~870 LOC) — TD-Q03 deferred",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Real-time stateful system with in-memory state + timers; 72+ tests pass",
+            "Split into: auction/routes.ts (HTTP), auction/services/stateManager.ts (in-memory), auction/services/timers.ts",
+            "Ensure tests still pass after refactor"
+          ]
+        },
+        {
+          "id": "task-system-consolidation",
+          "title": "Task-system consolidation (planning data merge)",
+          "status": "done",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "Session 65: merging admin-tasks.json (orphan — AdminTasks.tsx never routed) content into planning.json",
+            "Added 3 new categories: mid-season, growth, code-quality-review",
+            "Added optional `milestone` field on each task (mvp | mid-season | growth | monetization | content-seo | seo-technical)",
+            "Remaining: delete admin-tasks.json + orphan routes + AdminTasks.tsx, run tests, update CLAUDE.md"
+          ],
+          "notes": "Plan doc: docs/plans/2026-04-13-task-system-consolidation-plan.md (simplified — no work.json rebuild needed since admin-tasks.json has no live UI consumer)\n\nCompleted 2026-05-01T23:48:56.614Z: P1 code fix implemented and targeted tests passed.",
+          "updatedAt": "2026-05-01T23:48:56.614Z"
+        }
+      ]
+    },
+    {
+      "id": "code-quality-review",
+      "title": "Session 63 /ce:review Backlog",
+      "description": "P1/P2 findings from the 7-agent code review synthesized after Session 63. See docs/plans/2026-04-13-admin-dashboard-api-contract.md and FEEDBACK.md Session 64 entry for context.",
+      "tasks": [
+        {
+          "id": "heartbeat-single-statement",
+          "title": "Rewrite heartbeat as single conditional UPDATE (drop SELECT+UPDATE race)",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/sessions/routes.ts",
+            "Current: SELECT to check session existence, then UPDATE lastSeenAt",
+            "Target: single UPDATE ... WHERE id = ? AND userId = ? (use affected-row count to infer existence)",
+            "Cuts DB round-trips in half and closes a subtle dedupe race where two heartbeats could both pass the SELECT and double-write",
+            "Verify with existing sessions tests; add one regression test for the race window"
+          ],
+          "notes": "Flagged by performance-oracle + data-integrity-guardian in Session 63 /ce:review. Not yet landed.\n\nCompleted 2026-05-01T23:48:56.614Z: P1 code fix implemented and targeted tests passed.",
+          "updatedAt": "2026-05-01T23:48:56.614Z"
+        },
+        {
+          "id": "admin-stats-active30d-index",
+          "title": "Replace /admin/stats active30d raw SQL with UserMetrics.lastLoginAt query",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/admin/routes.ts (computeAdminStats / active30d)",
+            "Current: raw SQL against AuditLog scanning for LOGIN events in last 30d — caused MaxClientsInSessionMode pooler exhaustion today",
+            "Target: `prisma.userMetrics.count({ where: { lastLoginAt: { gte: thirtyDaysAgo } } })` — index-backed",
+            "Verify UserMetrics is written on every login (see plan R11 upsert — check post-session-tracking rollout)",
+            "Benchmark before/after on prod dataset"
+          ],
+          "notes": "Urgent. Supabase pooler saw connection pressure in Session 64 dev. This query is the suspected culprit.\n\nCompleted 2026-05-01T23:48:56.614Z: P1 code fix implemented and targeted tests passed.",
+          "updatedAt": "2026-05-01T23:48:56.614Z"
+        },
+        {
+          "id": "admin-stats-singleflight",
+          "title": "/admin/stats single-flight dedup (N dashboards on cache expiry = N full query sets)",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/admin/routes.ts (statsCache logic around line 692)",
+            "Current: TTL cache only — on expiry, N concurrent requests each run the full query set",
+            "Target: single-flight pattern — first request on cache miss computes, others await the same promise",
+            "Simple impl: track an `inflightPromise` alongside `statsCache`; null it on completion",
+            "Add concurrency test (fire 10 parallel requests, assert only one DB call)"
+          ],
+          "updatedAt": "2026-05-01T23:48:56.614Z",
+          "notes": "Completed 2026-05-01T23:48:56.614Z: P1 code fix implemented and targeted tests passed."
+        },
+        {
+          "id": "admin-metric-bugs",
+          "title": "Fix /admin/stats metric bugs (leaguesOwned returns team count; avgSessionSec biased low)",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/admin/routes.ts",
+            "Bug 1: `leaguesOwned` currently returns `_count.ownedTeams` — that's TEAMS owned, not LEAGUES. Fix: count distinct leagues from team ownership OR use LeagueMembership with role=COMMISSIONER",
+            "Bug 2: `avgSessionSec` biased low — only counts sessions ended via endSession(), not idle-swept sessions. Fix: include sessions with status='expired' OR compute from (endedAt || lastSeenAt) - startedAt",
+            "Add unit tests for both metrics with known fixture data"
+          ],
+          "updatedAt": "2026-05-01T23:48:56.614Z",
+          "notes": "Completed 2026-05-01T23:48:56.614Z: P1 code fix implemented and targeted tests passed."
+        },
+        {
+          "id": "profile-endpoint-requireauth",
+          "title": "Add requireAuth to profile endpoint (anonymous membership enumeration)",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/profiles/routes.ts",
+            "Current: GET /api/profiles/:userId returns membership data without auth check",
+            "Target: require auth; consider whether non-friends should see membership at all",
+            "Security-sentinel flagged this in Session 63 review as enabling user enumeration + league fingerprinting",
+            "Add test: unauthenticated request returns 401"
+          ],
+          "notes": "Security issue. Low effort, high value. Do this with the heartbeat fix.\n\nCompleted 2026-05-01T23:48:56.614Z: P1 code fix implemented and targeted tests passed.",
+          "updatedAt": "2026-05-01T23:48:56.614Z"
+        },
+        {
+          "id": "usermetrics-dead-columns",
+          "title": "Decide fate of unwritten UserMetrics columns (leaguesOwnedCount, leaguesCommissionedCount, lastActivityAt)",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "File: prisma/schema.prisma (UserMetrics model)",
+            "3 denormalized columns defined but never written anywhere: `leaguesOwnedCount`, `leaguesCommissionedCount`, `lastActivityAt`",
+            "Options: (a) wire them up in the rollup path (plan R10 promised this), (b) drop them from schema",
+            "Recommendation: drop `lastActivityAt` (redundant with lastSeenAt), wire the two league counts if cheaper than joining at read time",
+            "Schema-drift-detector flagged this as plan-fidelity gap in Session 63 review"
+          ]
+        },
+        {
+          "id": "admin-routes-split",
+          "title": "Split admin/routes.ts (1031+ lines) into sub-routers",
+          "status": "not_started",
+          "priority": "p2",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/admin/routes.ts (currently 1031 lines after Session 63 additions)",
+            "Proposed split: leagueAdmin (CRUD), syncAdmin (sync-mlb, sync-stats), tasksAdmin (todos/tasks — or just todos after consolidation), usersAdmin (users list, stats), errorsAdmin (error buffer)",
+            "Keep a thin admin/routes.ts that mounts the sub-routers under their shared middleware (requireAuth + requireAdmin)",
+            "Architecture-strategist flagged this as Session 63 review finding"
+          ]
+        },
+        {
+          "id": "r13-impersonation-decision",
+          "title": "R13 impersonation — officially defer or implement behind flag",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "jimmy",
+          "instructions": [
+            "Plan at docs/plans/2026-04-13-admin-users-session-tracking-plan.md promised R13 (admin impersonation with dual-identity JWT)",
+            "Session 63 shipped without it. Review flagged as plan-fidelity gap.",
+            "Decide: (a) officially cut it with a note in the plan, (b) implement behind a feature flag",
+            "My rec: cut it. Impersonation is high-risk auditability work we don't need for MVP launch."
+          ]
+        },
+        {
+          "id": "prisma-any-casts-profiles",
+          "title": "Remove Prisma `any` casts in profiles route (root cast dissolves several downstream findings)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "File: server/src/features/profiles/routes.ts",
+            "kieran-typescript-reviewer: 'root cast — removing dissolves several downstream findings'",
+            "Work: find the parent cast, replace with generated Prisma types (use `generateTypes` if needed)",
+            "Follow-up: the downstream findings should auto-resolve after the root cast goes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "Operations & Audits",
+      "description": "Cron jobs, data audits, monitoring",
+      "tasks": [
+        {
+          "id": "fangraphs-audit-automation",
+          "title": "Automate FanGraphs weekly audit (currently manual)",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Write script fetching FBST team stats + FanGraphs NL team stats",
+            "Compare all 10 categories, flag diffs > 5% or stat > 10 units",
+            "Run weekly via cron, email/post to admin",
+            "Store audit results in AuditLog for history"
+          ]
+        },
+        {
+          "id": "public-slug-endpoint-verify",
+          "title": "Verify no other references to removed public slug endpoint",
+          "status": "done",
+          "priority": "p3",
+          "owner": "dev",
+          "instructions": [
+            "Already removed in Session 62",
+            "Grep client and server for /public/leagues/:slug — no refs found",
+            "Route removed from public.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roster-management",
+      "title": "Roster Management & Roster Hub",
+      "description": "Live team roster hub, roster moves panels, IL flows, and roster-management cleanup",
+      "tasks": [
+        {
+          "id": "roster-move-table-selection-and-expansion",
+          "title": "Standardize roster-move player tables with selection highlight and expansion",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Default to no selected players on add/drop load",
+            "Highlight the selected free agent and selected drop player",
+            "Use sortable table rows with player name, position, MLB team, and role-appropriate stats",
+            "Allow expansion for career stats and position eligibility details",
+            "Keep transaction review tables readable in light and dark mode"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Updated 2026-05-03: default selection regression is covered in AddDropPanel tests; table/expansion parity remains the product pattern for every player-picking surface.",
+          "updatedAt": "2026-05-03T00:00:00.000Z"
+        },
+        {
+          "id": "home-dashboard-roster-activity-refresh",
+          "title": "Refresh Home dashboard around My Team Today, activity, board, and AI history",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Use date-based weekly insight tabs instead of W-number labels",
+            "Show current-day hitter and pitcher lines in My Team Today",
+            "Show fantasy team names in League Activity",
+            "Add Pending Trade Proposals with withdraw affordance for proposer",
+            "Add compact Around the League, League Board, and quick links",
+            "Store past AI outputs in AI Hub history"
+          ],
+          "roadmapLink": "/roadmap#engagement",
+          "notes": "Updated 2026-05-03: Home tests cover the new dashboard sections and focused browser smoke passed on desktop/mobile. My Team Today live-stat freshness remains a critical regression target.",
+          "updatedAt": "2026-05-03T00:00:00.000Z"
+        },
+        {
+          "id": "rosterhub-row-memo-stale-render",
+          "title": "Fix RosterHub row memo comparator skipping stat/eligibility refreshes",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Remove custom React.memo comparators from RosterRowV3 and MobileRowV3",
+            "Let default shallow comparison notice new player objects when stats, posList, gamesPlayedByPosition, or eligibility changes",
+            "Run targeted RosterHub mapper/drag tests and client typecheck"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Completed 2026-05-01T23:53:22.535Z: RosterRowV3 and MobileRowV3 now use default React.memo shallow comparison so refreshed player data re-renders. Targeted RosterHub tests and client typecheck passed.",
+          "updatedAt": "2026-05-01T23:53:22.535Z"
+        },
+        {
+          "id": "roster-move-confirm-rule-gate",
+          "title": "Gate roster move confirmation on roster-rule satisfaction",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Add explicit confirm buttons for add/drop, IL stash, and IL activate panels",
+            "Keep confirm disabled until required selections and roster-rule checks pass",
+            "Show clear status/warning text explaining why confirm is locked",
+            "Use server-backed previews so confirm follows the same full-roster matcher as submit",
+            "Leave server roster-rule matcher as final authority on submit"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Completed 2026-05-02T03:23:16.000Z: Add/drop, IL stash, and IL activate panels now expose Confirm actions backed by server roster-rule previews. Add/drop uses POST /api/transactions/claim/preview, IL stash uses POST /api/transactions/il-stash/preview, and IL activate uses POST /api/transactions/il-activate/preview, so Confirm unlocks only after the backend full-roster matcher accepts the move. Free-agent filters also exclude enriched roster rows via _dbTeamId. Targeted panel tests, backend preview route tests, and client typecheck passed.",
+          "updatedAt": "2026-05-02T03:23:16.000Z"
+        },
+        {
+          "id": "roster-moves-panel-v3-data-shape",
+          "title": "Roster moves panels use enriched v3 player data shape",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Use loadRosterMovePlayers as the single producer for RosterMovesPlayer rows",
+            "Populate _dbPlayerId, _dbTeamId, assignedPosition, stats, and eligibility by joining team-detail roster rows to stats",
+            "Reuse the loader from Team and Activity surfaces"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Verified 2026-05-01T23:53:22.535Z: loadRosterMovePlayers exists, is consumed by ActivityPage, and targeted tests pass. This was still listed in legacy todo docs but is complete in code.",
+          "updatedAt": "2026-05-01T23:53:22.535Z"
+        },
+        {
+          "id": "rosterhub-slotcode-single-source",
+          "title": "Keep roster slot codes single-sourced and runtime-validated",
+          "status": "done",
+          "priority": "p1",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Export SlotCodeSchema and SLOT_CODES from shared/api/rosterMoves",
+            "Use SlotCodeSchema.safeParse in toHubPlayer instead of cast-laundering arbitrary strings",
+            "Filter games-played position keys through the shared slot-code guard"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Verified 2026-05-01T23:53:22.535Z: shared SlotCodeSchema/SLOT_CODES are in use and toHubPlayer tests pass. This was still listed in legacy todo docs but is complete in code.",
+          "updatedAt": "2026-05-01T23:53:22.535Z"
+        },
+        {
+          "id": "rosterhub-player-discriminated-union",
+          "title": "RosterHubPlayer type is discriminated by pitcher vs hitter stats",
+          "status": "done",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Represent hitter and pitcher roster rows as a discriminated union on isPitcher",
+            "Keep toHubPlayer as the runtime producer enforcing exactly one stat shape"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Verified 2026-05-01T23:53:22.535Z: RosterHubPlayer is already a discriminated union in RosterHub/types.ts.",
+          "updatedAt": "2026-05-01T23:53:22.535Z"
+        },
+        {
+          "id": "team-roster-hub-server-endpoint",
+          "title": "Create server-side Team Roster Hub endpoint",
+          "status": "done",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Move Team.tsx roster-hub shaping work behind a dedicated server endpoint",
+            "Return hub-ready hitters, pitchers, IL players, free agents, eligibility, and roster constraints in one response",
+            "Keep existing Team page behavior while reducing client-side joins and sorting"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Completed 2026-05-02T00:23:08.019Z: added GET /api/teams/:id/roster-hub backed by TeamService.getTeamRosterHub. The response returns hub-ready hitters, pitchers, and IL rows with active-period stat fields, while sharing the same league membership check as /summary.",
+          "updatedAt": "2026-05-02T00:23:08.019Z"
+        },
+        {
+          "id": "rosterhub-player-allocation-memo",
+          "title": "Reduce toHubPlayer allocation churn on Team page rerenders",
+          "status": "done",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Memoize or server-precompute stable RosterHubPlayer objects so small UI changes do not remap the entire roster",
+            "Pair with the server-side Team Roster Hub endpoint if that endpoint lands first",
+            "Verify mobile position-pill interaction stays responsive"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Completed 2026-05-02T00:20:52.433Z: Team.tsx now maps roster rows through a keyed RosterHubPlayer cache so unchanged rows preserve object identity across unrelated rerenders while changed stats, slots, eligibility, keeper, or MLB status fields still remap.",
+          "updatedAt": "2026-05-02T00:20:52.433Z"
+        },
+        {
+          "id": "rosterhub-legacy-v2-cleanup",
+          "title": "Retire legacy RosterHub v2 preview/code after v3 confidence pass",
+          "status": "done",
+          "priority": "p2",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Confirm no live route depends on RosterHub v2 components",
+            "Keep any useful design scenarios or migrate them to v3 previews",
+            "Delete dead exports/styles only after targeted tests and visual smoke pass"
+          ],
+          "roadmapLink": "/roadmap#features",
+          "notes": "Completed 2026-05-02T00:37:12.865Z: removed the unused v2 RosterHub preview and component tree. /design/roster-hub now redirects to the maintained v3 preview, and design links point at /design/roster-hub-v3.",
+          "updatedAt": "2026-05-02T00:37:12.865Z"
+        },
+        {
+          "id": "rosterhub-row-mobile-collapse",
+          "title": "Collapse RosterRowV3 and MobileRowV3 duplication",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Extract shared row behavior into one component or shared subcomponents",
+            "Preserve desktop table ergonomics and mobile card layout",
+            "Use the discriminated RosterHubPlayer type to simplify stat rendering"
+          ],
+          "roadmapLink": "/roadmap#features"
+        },
+        {
+          "id": "team-router-outlet-cleanup",
+          "title": "Move Team roster-management subroutes to declarative nested routes",
+          "status": "not_started",
+          "priority": "p3",
+          "owner": "dev",
+          "milestone": "mvp",
+          "instructions": [
+            "Replace Team.tsx inline manageMode branching with nested routes and Outlet",
+            "Keep /teams/:teamCode/manage/claim, /manage/il-stash, and /manage/il-activate behavior unchanged",
+            "Add a smoke test for the legacy Team route while touching routing"
+          ],
+          "roadmapLink": "/roadmap#features"
+        }
+      ]
+    }
+  ],
+  "roadmap": [
+    {
+      "id": "engagement",
+      "label": "In-Season 2026 - Engagement & Remote UX",
+      "timeframe": "April - September 2026",
+      "color": "emerald",
+      "icon": "Rocket",
+      "items": [
+        {
+          "title": "In-App League Chat",
+          "description": "Real-time league chat with polls, reactions, GIF support, and commissioner pinned messages. The product goal is sustained mid-season engagement, not just draft-day usage.",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "engagement",
+            "ux"
+          ],
+          "icon": "Users"
+        },
+        {
+          "title": "Push Notifications (Web + Mobile)",
+          "description": "Web Push API for trade proposals, waiver results, lineup lock reminders, injury alerts, and commissioner announcements.",
+          "effort": "Medium",
+          "status": "done",
+          "tags": [
+            "notifications",
+            "mobile"
+          ],
+          "icon": "Bell"
+        },
+        {
+          "title": "Local Timezone Display",
+          "description": "All times in the user's local timezone with relative countdowns for deadlines and locks.",
+          "effort": "Small",
+          "status": "done",
+          "tags": [
+            "ux",
+            "remote"
+          ],
+          "icon": "Globe"
+        },
+        {
+          "title": "League Health Dashboard",
+          "description": "Commissioner view for manager activity, lineup behavior, waivers, trades, and at-risk teams.",
+          "effort": "Small",
+          "status": "done",
+          "tags": [
+            "commissioner",
+            "engagement"
+          ],
+          "icon": "Activity"
+        },
+        {
+          "title": "Period Awards & Engagement Hooks",
+          "description": "Auto-generated manager, pickup, and category awards that give leagues recurring reasons to check in.",
+          "effort": "Small",
+          "status": "done",
+          "tags": [
+            "engagement",
+            "ai"
+          ],
+          "icon": "Sparkles"
+        },
+        {
+          "title": "Smart Deadline Warnings",
+          "description": "Contextual deadline warnings on dashboards and notification surfaces for trades, waivers, and roster locks.",
+          "effort": "Small",
+          "status": "done",
+          "tags": [
+            "ux",
+            "remote"
+          ],
+          "icon": "Bell"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "label": "Paid APIs & Data Integrations",
+      "timeframe": "Summer 2026",
+      "color": "amber",
+      "icon": "Database",
+      "items": [
+        {
+          "title": "FanGraphs Projection Import",
+          "description": "Import Steamer, ZiPS, ATC, or related projection CSVs and surface projections on player pages, AI trade analysis, and waiver advice.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "data",
+            "projections"
+          ],
+          "icon": "TrendingUp"
+        },
+        {
+          "title": "Statcast Analytics Integration",
+          "description": "Add Baseball Savant metrics such as exit velocity, barrel rate, xBA, xSLG, and sprint speed to player profiles and insights.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "data",
+            "analytics"
+          ],
+          "icon": "Zap"
+        },
+        {
+          "title": "Insider News Feed",
+          "description": "Bring high-signal baseball news into player and league surfaces with strict source controls and cost discipline.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "data",
+            "news"
+          ],
+          "icon": "Globe"
+        },
+        {
+          "title": "Yahoo Fantasy API Import",
+          "description": "Import league settings, rosters, and standings from Yahoo to lower switching cost for existing leagues.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "data",
+            "growth"
+          ],
+          "icon": "Users"
+        }
+      ]
+    },
+    {
+      "id": "features",
+      "label": "Scoring & Format Expansion",
+      "timeframe": "Late 2026",
+      "color": "cyan",
+      "icon": "Target",
+      "items": [
+        {
+          "title": "Head-to-Head Category Scoring",
+          "description": "Weekly H2H matchups with category wins for leagues that do not use season-long roto.",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "scoring",
+            "feature"
+          ],
+          "icon": "Target"
+        },
+        {
+          "title": "Points-Based Scoring",
+          "description": "Configurable point values per stat event for full scoring flexibility.",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "scoring",
+            "feature"
+          ],
+          "icon": "BarChart3"
+        },
+        {
+          "title": "Snake Draft Mode",
+          "description": "Snake draft support with draft order, pick trading, a live draft board, and timer behavior.",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "draft"
+          ],
+          "icon": "Target"
+        },
+        {
+          "title": "Pre-Trade AI Advisor",
+          "description": "Trade evaluation before submission with projected category impact, surplus value, and keeper context.",
+          "effort": "Medium",
+          "status": "done",
+          "tags": [
+            "ai",
+            "trades"
+          ],
+          "icon": "Bot"
+        },
+        {
+          "title": "Yahoo-Style Roster Hub",
+          "description": "Table-first roster management for add/drop, IL stash, IL activate, roster-slot legality, selected-player comparison, and commissioner acting-as flows.",
+          "effort": "Large",
+          "status": "in-progress",
+          "tags": [
+            "roster",
+            "ux",
+            "commissioner"
+          ],
+          "icon": "Layers"
+        },
+        {
+          "title": "Conditional Waiver Claims",
+          "description": "Claim chains such as claim X only if Y is unavailable, or pick up X only with a specific drop.",
+          "effort": "Medium",
+          "status": "done",
+          "tags": [
+            "waivers",
+            "feature"
+          ],
+          "icon": "Layers"
+        }
+      ]
+    },
+    {
+      "id": "monetization",
+      "label": "Monetization & Growth",
+      "timeframe": "2026 Launch Work",
+      "color": "pink",
+      "icon": "DollarSign",
+      "items": [
+        {
+          "title": "Seasonal Pricing Model",
+          "description": "Free league hosting with paid Pro and Commissioner tiers for AI, projections, advanced commissioner tooling, and higher-touch features.",
+          "effort": "Medium",
+          "status": "done",
+          "tags": [
+            "business",
+            "saas"
+          ],
+          "icon": "DollarSign"
+        },
+        {
+          "title": "Stripe Payment Integration",
+          "description": "Stripe Checkout, subscription lifecycle handling, billing portal, invoices, and plan-based feature gates.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "business",
+            "payments"
+          ],
+          "icon": "DollarSign"
+        },
+        {
+          "title": "SEO & Marketing",
+          "description": "Marketing site, blog cadence, technical SEO, analytics, landing pages, and lead magnets that support launch.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "growth",
+            "marketing"
+          ],
+          "icon": "Search"
+        },
+        {
+          "title": "Yahoo League Import",
+          "description": "One-click import of Yahoo league settings, rosters, and history as a primary acquisition lever.",
+          "effort": "Medium",
+          "status": "planned",
+          "tags": [
+            "growth",
+            "migration"
+          ],
+          "icon": "Users"
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "label": "Platform Evolution",
+      "timeframe": "2027+",
+      "color": "purple",
+      "icon": "Trophy",
+      "items": [
+        {
+          "title": "Sport-Agnostic Engine",
+          "description": "Continue the SportConfig foundation so baseball, football, basketball, hockey, and casual contests can share platform primitives.",
+          "effort": "Large",
+          "status": "in-progress",
+          "tags": [
+            "architecture",
+            "saas"
+          ],
+          "icon": "Layers"
+        },
+        {
+          "title": "Multi-League Dashboard",
+          "description": "Franchise-level view for managing multiple leagues, rosters, and transaction histories.",
+          "effort": "Large",
+          "status": "planned",
+          "tags": [
+            "franchise",
+            "saas"
+          ],
+          "icon": "Layers"
+        },
+        {
+          "title": "Historical Analytics & Trophy Case",
+          "description": "Multi-year owner analytics, season records, awards, and performance tracking using archived league data.",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "archive",
+            "ai"
+          ],
+          "icon": "TrendingUp"
+        },
+        {
+          "title": "AI Commissioner Assistant",
+          "description": "AI recommendations for league health, trade fairness, waiver decisions, announcements, and rule enforcement.",
+          "effort": "Large",
+          "status": "planned",
+          "tags": [
+            "ai",
+            "commissioner"
+          ],
+          "icon": "Sparkles"
+        },
+        {
+          "title": "Fantasy Football and Casual Games",
+          "description": "Expand into football, pick'em, brackets, and lightweight contests after the baseball core is stable.",
+          "effort": "Large",
+          "status": "planned",
+          "tags": [
+            "multi-sport",
+            "casual"
+          ],
+          "icon": "Trophy"
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2026-05-02T02:07:51.991Z"
+}

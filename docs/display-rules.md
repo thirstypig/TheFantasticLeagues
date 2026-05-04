@@ -1,27 +1,33 @@
-# FBST Display Rules (Teams & Players)
+# Display Rules
 
-Last updated: 2026-01-03
+## Fantasy Team Names
 
-## Team naming
+Fantasy team codes are backend identifiers only. They may be used in routes,
+imports, joins, API payloads, audits, and admin/debug tooling, but they must
+not be used as user-facing labels in the frontend.
 
-- **Fantasy (OGBA) teams**
-  - In tables: 3-letter team code (DDG, DLC, DMK, …) when available
-  - In headings/modals: full team name (Dodger Dawgs, Demolition Lumber Co., …)
+User-facing league views must show the full fantasy team name. This includes
+Home, Standings, Teams, Team pages, Activity, Commissioner views, reports,
+digests, and any roster or transaction confirmation UI.
 
-- **MLB teams**
-  - In tables: MLB abbreviation (LAD, SD, SF, …)
-  - In headings/modals: full MLB team name when needed
+MLB team abbreviations are allowed in player tables because they identify the
+real MLB club for a player, not the fantasy team.
 
-Implementation:
+## Planning Labels
 
-- Central helpers:
-  - `client/src/lib/playerDisplay.ts`
-    - `getOgbaTeamName(code)`
-    - `getMlbTeamAbbr(player)`
-    - `getMlbTeamName(player)`
+Use `todo` for the micro/actionable task list and `roadmap` for the macro
+product direction. Do not introduce a separate user-facing `todo-task` label.
+The two planning levels must stay connected through the shared planning data.
 
-## Transactions (internal for now)
+## OGBA Position Labels
 
-- Transaction import uses `TransactionEvent` in the DB.
-- Do not show `Player.mlbId` in the UI; it’s an internal join key.
-- UI display should use player name + MLB team abbreviation + OGBA team name/code.
+OGBA roster slots use league slot labels, not raw MLB defensive-role labels.
+
+- Pitchers display as `P`; do not split OGBA roster slots into `SP` and `RP`.
+- Outfielders display as `OF`; do not split OGBA roster slots into `LF`, `CF`,
+  and `RF`.
+- Corner-man displays as `CM`, not `CI`.
+- Middle infield displays as `MI`.
+- Designated hitter displays as `DH`.
+
+MLB team abbreviations remain valid in player tables.
