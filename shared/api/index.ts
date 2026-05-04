@@ -7,3 +7,4 @@ export * from "./rosterMoves.js";
 export * from "./awards.js";
 export * from "./commissioner.js";
 export * from "./teams.js";
+export * from "./aiInsights.js";
