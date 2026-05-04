@@ -362,10 +362,14 @@ export const RosterMovesPlayerSchema = z.object({
   // Position metadata — drives slot-eligibility checks.
   posPrimary: z.string().optional(),
   positions: z.string().optional(),
+  // Canonical MLB team abbreviation. Per todo #164 this is the SOLE
+  // wire-format alias accepted on the roster-moves shape — the loader
+  // (`client/src/features/transactions/lib/loadRosterMovePlayers.ts`)
+  // normalizes the upstream `PlayerSeasonStat` row to this single field
+  // before handing rows to the panels. The legacy `mlb_team`,
+  // `mlb_team_abbr`, and `mlbTeamAbbr` aliases were dropped from this
+  // schema to remove the four-way fallback chain in the panels.
   mlbTeam: z.string().optional(),
-  mlb_team: z.string().optional(),
-  mlb_team_abbr: z.string().optional(),
-  mlbTeamAbbr: z.string().optional(),
 
   // Status flags.
   mlbStatus: z.string().optional(),

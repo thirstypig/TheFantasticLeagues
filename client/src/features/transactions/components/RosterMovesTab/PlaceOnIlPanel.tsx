@@ -3,7 +3,8 @@ import { ilStash, previewIlStash, formatReassignmentsToast } from "../../../tran
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
-import { slotsFor } from "../../../../lib/positionEligibility";
+import { extractServerError } from "../../../../lib/extractServerError";
+import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
 import { isMlbIlStatus } from "../../../../lib/mlbStatus";
 import type { RosterMovesPlayer } from "./types";
 
@@ -96,7 +97,8 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
   );
   const addEligibleForStashSlot = useMemo(() => {
     if (!selectedAdd) return true;
-    return slotsFor(selectedAdd.positions || selectedAdd.posPrimary || "").has(stashSlot as any);
+    if (!isSlotCode(stashSlot)) return false;
+    return slotsFor(selectedAdd.positions || selectedAdd.posPrimary || "").has(stashSlot);
   }, [selectedAdd, stashSlot]);
 
   const selectedFieldsComplete = stashPlayerId !== null && addMlbId !== null;
@@ -128,11 +130,11 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
       .then((result) => {
         if (!cancelled) setPreview({ ok: result.ok, message: result.message });
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setPreview({
             ok: false,
-            error: err?.serverMessage || err?.message || "Roster rules are not satisfied.",
+            error: extractServerError(err, "Roster rules are not satisfied."),
           });
         }
       })
@@ -168,9 +170,8 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
       setAddMlbId(null);
       setQuery("");
       onComplete();
-    } catch (err: any) {
-      const msg = err?.serverMessage || err?.message || "IL stash failed";
-      setError(msg);
+    } catch (err: unknown) {
+      setError(extractServerError(err, "IL stash failed"));
       reportError(err, { source: "roster-moves-place-il" });
     } finally {
       setSubmitting(false);
@@ -252,7 +253,7 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
               const mid = Number(p.mlb_id ?? p.mlbId ?? 0);
               const isSelected = mid === addMlbId;
               const direct = stashPlayer
-                ? slotsFor(p.positions || p.posPrimary || "").has(stashSlot as any)
+                ? isSlotCode(stashSlot) && slotsFor(p.positions || p.posPrimary || "").has(stashSlot)
                 : true;
               return (
                 <button
