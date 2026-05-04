@@ -34,8 +34,8 @@ const mockTx: any = {
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     transactionEvent: { count: vi.fn(), findMany: vi.fn() },
-    roster: { findFirst: vi.fn() },
-    player: { findFirst: vi.fn(), findUnique: vi.fn() },
+    roster: { findFirst: vi.fn(), findMany: vi.fn() },
+    player: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     league: { findUnique: vi.fn() },
     leagueRule: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -140,6 +140,8 @@ beforeEach(() => {
     id: 100, name: "Mookie Betts", posPrimary: "OF",
     posList: "OF,2B", mlbId: 605141, mlbTeam: "LAD",
   });
+  mockPrisma.roster.findMany.mockResolvedValue([]);
+  mockPrisma.player.findMany.mockResolvedValue([]);
   mockTx.roster.create.mockResolvedValue({ id: 999 });
   setRosterSnapshot([]); // default: empty matcher candidates
   mockTx.transactionEvent.create.mockResolvedValue({});
@@ -149,6 +151,120 @@ beforeEach(() => {
   mockCheckMlbIlEligibility.mockResolvedValue({
     status: "Injured 10-Day",
     cacheFetchedAt: new Date("2026-04-29T10:00:00Z"),
+  });
+});
+
+describe("POST /transactions/claim/preview — roster-rule confirm gate", () => {
+  it("uses the full roster matcher and returns ok without mutating the roster", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "SS" });
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 100,
+      name: "Mookie Betts",
+      posList: "OF,2B",
+    });
+    mockPrisma.roster.findMany.mockResolvedValue([
+      {
+        id: 50,
+        playerId: 200,
+        assignedPosition: "SS",
+        player: { name: "Trea Turner", posList: "SS" },
+      },
+    ]);
+
+    const res = await supertest(app).post("/transactions/claim/preview").send({
+      leagueId: 20,
+      teamId: 10,
+      playerId: 100,
+      dropPlayerId: 200,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.message).toBe("Roster rules satisfied.");
+    expect(mockTx.roster.create).not.toHaveBeenCalled();
+    expect(mockTx.transactionEvent.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("IL preview endpoints — roster-rule confirm gates", () => {
+  it("previews IL stash with the full roster matcher without mutating the roster", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
+    mockPrisma.player.findFirst.mockResolvedValue({ id: 100 });
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce(null);
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 100,
+      name: "Mookie Betts",
+      posList: "OF,2B",
+    });
+    mockPrisma.roster.findMany.mockResolvedValue([
+      {
+        id: 50,
+        playerId: 200,
+        assignedPosition: "OF",
+        player: { name: "Byron Buxton", posList: "OF" },
+      },
+    ]);
+
+    const res = await supertest(app).post("/transactions/il-stash/preview").send({
+      leagueId: 20,
+      teamId: 10,
+      stashPlayerId: 200,
+      addMlbId: 605141,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.message).toBe("Roster rules satisfied.");
+    expect(mockTx.roster.create).not.toHaveBeenCalled();
+    expect(mockTx.transactionEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("previews IL activation with the full roster matcher without mutating the roster", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue(RULES_DEFAULT);
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce({ id: 70, assignedPosition: "IL" })
+      .mockResolvedValueOnce({
+        id: 50,
+        assignedPosition: "OF",
+        acquiredAt: new Date("2026-04-01T00:00:00Z"),
+      });
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 100,
+      name: "Byron Buxton",
+      posList: "OF",
+    });
+    mockPrisma.roster.findMany.mockResolvedValue([
+      {
+        id: 70,
+        playerId: 100,
+        assignedPosition: "IL",
+        player: { name: "Byron Buxton", posList: "OF" },
+      },
+      {
+        id: 50,
+        playerId: 200,
+        assignedPosition: "OF",
+        player: { name: "Dropped OF", posList: "OF" },
+      },
+    ]);
+
+    const res = await supertest(app).post("/transactions/il-activate/preview").send({
+      leagueId: 20,
+      teamId: 10,
+      activatePlayerId: 100,
+      dropPlayerId: 200,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.message).toBe("Roster rules satisfied.");
+    expect(mockTx.roster.update).not.toHaveBeenCalled();
+    expect(mockTx.transactionEvent.create).not.toHaveBeenCalled();
   });
 });
 

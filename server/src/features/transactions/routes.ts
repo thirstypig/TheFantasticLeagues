@@ -111,6 +111,133 @@ const claimSchema = ClaimRequestSchema;
 
 const router = Router();
 
+router.post(
+  "/transactions/claim/preview",
+  requireAuth,
+  validateBody(claimSchema),
+  requireSeasonStatus(["IN_SEASON"]),
+  requireTeamOwnerOrCommissioner(),
+  asyncHandler(async (req, res) => {
+    const { leagueId, teamId, dropPlayerId } = req.body;
+    const enforce = enforceRosterRules();
+
+    if (enforce && !dropPlayerId) {
+      return res.status(400).json({
+        ok: false,
+        error: "In-season claims require a dropPlayerId — every add must pair with a drop.",
+        code: "DROP_REQUIRED",
+      });
+    }
+
+    let { playerId } = req.body;
+    const { mlbId } = req.body;
+    if (!playerId && mlbId) {
+      const player = await prisma.player.findFirst({ where: { mlbId: Number(mlbId) } });
+      if (!player) {
+        return res.status(404).json({
+          ok: false,
+          error: `Player with MLB ID ${mlbId} not found in database.`,
+          code: "IL_UNKNOWN_PLAYER",
+        });
+      }
+      playerId = player.id;
+    }
+    if (!playerId) {
+      return res.status(400).json({ ok: false, error: "Missing playerId or mlbId" });
+    }
+
+    const existingRoster = await prisma.roster.findFirst({
+      where: { playerId, team: { leagueId }, releasedAt: null },
+      include: { team: true },
+    });
+    if (existingRoster && existingRoster.teamId !== teamId) {
+      return res.status(400).json({
+        ok: false,
+        error: `Player is already on team: ${existingRoster.team.name}`,
+        code: "OWNERSHIP_CONFLICT",
+      });
+    }
+    if (existingRoster && existingRoster.teamId === teamId) {
+      return res.status(400).json({
+        ok: false,
+        error: "Player is already on this team's active roster",
+        code: "OWNERSHIP_CONFLICT",
+      });
+    }
+
+    if (enforce) {
+      try {
+        await assertNoGhostIl(prisma, teamId);
+      } catch (err) {
+        if (isRosterRuleError(err)) {
+          return res.status(400).json({ ok: false, error: err.message, code: err.code });
+        }
+        throw err;
+      }
+    }
+
+    let dropRosterPreview: { id: number; assignedPosition: string | null } | null = null;
+    if (dropPlayerId) {
+      dropRosterPreview = await prisma.roster.findFirst({
+        where: { teamId, playerId: dropPlayerId, releasedAt: null },
+        select: { id: true, assignedPosition: true },
+      });
+      if (!dropRosterPreview) {
+        return res.status(400).json({
+          ok: false,
+          error: `Drop player (id ${dropPlayerId}) is not on this team's active roster.`,
+          code: "IL_UNKNOWN_PLAYER",
+        });
+      }
+      if (dropRosterPreview.assignedPosition === "IL") {
+        return res.status(400).json({
+          ok: false,
+          error: "Drop player is on IL — choose an active roster player.",
+          code: "IL_UNKNOWN_PLAYER",
+        });
+      }
+    }
+
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      select: { id: true, name: true, posList: true },
+    });
+    if (!player) {
+      return res.status(404).json({
+        ok: false,
+        error: `Player #${playerId} not found.`,
+        code: "IL_UNKNOWN_PLAYER",
+      });
+    }
+
+    const slotCapacities = await loadSlotCapacities(prisma as any, leagueId);
+    const { candidates } = await buildCandidatesForTeam(prisma as any, teamId, {
+      excludeRosterIds: dropRosterPreview ? [dropRosterPreview.id] : [],
+      includeNewPlayer: { playerId: player.id, posList: player.posList ?? "" },
+    });
+    let result = resolveLineup(candidates, slotCapacities);
+    if (result.ok === false) {
+      const refreshed = await verifyEligibilityUnchanged(prisma as any, candidates);
+      if (refreshed) result = resolveLineup(refreshed, slotCapacities);
+    }
+    if (result.ok === false) {
+      return res.status(400).json({
+        ok: false,
+        error: result.reason,
+        code: result.code,
+        unfilledSlots: result.unfilledSlots,
+        unassignedPlayers: result.unassignedPlayers,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Roster rules satisfied.",
+      appliedReassignments: result.assignments.filter((a) => a.rosterId !== 0),
+    });
+  }),
+);
+
 /**
  * GET /api/transactions
  * Requires leagueId query param + membership check
@@ -546,6 +673,143 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
 // the shared schema's JSDoc.
 const ilStashSchema = IlStashRequestSchema;
 
+router.post(
+  "/transactions/il-stash/preview",
+  requireAuth,
+  validateBody(ilStashSchema),
+  requireSeasonStatus(["IN_SEASON"]),
+  requireTeamOwnerOrCommissioner(),
+  asyncHandler(async (req, res) => {
+    const { leagueId, teamId, stashPlayerId, addPlayerId: addPlayerIdInput, addMlbId, effectiveDate: effDateRaw } = req.body;
+
+    let effective: Date;
+    try {
+      effective = resolveEffectiveDate(effDateRaw);
+    } catch (err) {
+      return res.status(400).json({
+        ok: false,
+        error: err instanceof Error ? err.message : "Invalid effectiveDate",
+        code: "INVALID_EFFECTIVE_DATE",
+      });
+    }
+    const isBackdated = effDateRaw != null;
+
+    let addPlayerId = addPlayerIdInput as number | undefined;
+    if (!addPlayerId && addMlbId != null) {
+      const mlbIdNum = Number(addMlbId);
+      const p = await prisma.player.findFirst({ where: { mlbId: mlbIdNum } });
+      if (!p) {
+        return res.status(404).json({
+          ok: false,
+          error: `Player with MLB ID ${addMlbId} not found in database.`,
+          code: "IL_UNKNOWN_PLAYER",
+        });
+      }
+      addPlayerId = p.id;
+    }
+    const stashOnly = addPlayerId == null;
+
+    const stashRoster = await prisma.roster.findFirst({
+      where: { teamId, playerId: stashPlayerId, releasedAt: null },
+      select: { id: true, assignedPosition: true },
+    });
+    if (!stashRoster) {
+      return res.status(400).json({
+        ok: false,
+        error: "Stash player is not on this team's active roster.",
+        code: "IL_UNKNOWN_PLAYER",
+      });
+    }
+    if (stashRoster.assignedPosition === "IL") {
+      return res.status(400).json({
+        ok: false,
+        error: "Stash player is already on IL.",
+        code: "NOT_ON_IL",
+      });
+    }
+
+    try {
+      await checkMlbIlEligibility(stashPlayerId);
+    } catch (err) {
+      if (isRosterRuleError(err)) {
+        return res.status(400).json({ ok: false, error: err.message, code: err.code });
+      }
+      throw err;
+    }
+
+    const addPlayer = stashOnly
+      ? null
+      : await prisma.player.findUnique({
+          where: { id: addPlayerId! },
+          select: { id: true, name: true, posList: true },
+        });
+    if (!stashOnly && !addPlayer) {
+      return res.status(404).json({
+        ok: false,
+        error: `Add player #${addPlayerId} not found.`,
+        code: "IL_UNKNOWN_PLAYER",
+      });
+    }
+
+    const existingRoster = stashOnly
+      ? null
+      : await prisma.roster.findFirst({
+          where: { playerId: addPlayerId!, team: { leagueId }, releasedAt: null },
+          include: { team: true },
+        });
+    if (existingRoster && !isBackdated && existingRoster.teamId !== teamId) {
+      return res.status(400).json({
+        ok: false,
+        error: `Add player is already on team: ${existingRoster.team.name}`,
+        code: "OWNERSHIP_CONFLICT",
+      });
+    }
+    if (existingRoster && existingRoster.teamId === teamId) {
+      return res.status(400).json({
+        ok: false,
+        error: "Add player is already on this team's active roster",
+        code: "OWNERSHIP_CONFLICT",
+      });
+    }
+
+    try {
+      await assertIlSlotAvailable(prisma as any, teamId, leagueId);
+      await assertNoGhostIl(prisma, teamId);
+    } catch (err) {
+      if (isRosterRuleError(err)) {
+        return res.status(400).json({ ok: false, error: err.message, code: err.code });
+      }
+      throw err;
+    }
+
+    const slotCapacities = await loadSlotCapacities(prisma as any, leagueId);
+    const { candidates } = await buildCandidatesForTeam(prisma as any, teamId, {
+      excludeRosterIds: [stashRoster.id],
+      includeNewPlayer: addPlayer ? { playerId: addPlayer.id, posList: addPlayer.posList ?? "" } : undefined,
+    });
+    let result = resolveLineup(candidates, slotCapacities);
+    if (result.ok === false) {
+      const refreshed = await verifyEligibilityUnchanged(prisma as any, candidates);
+      if (refreshed) result = resolveLineup(refreshed, slotCapacities);
+    }
+    if (result.ok === false) {
+      return res.status(400).json({
+        ok: false,
+        error: result.reason,
+        code: result.code,
+        unfilledSlots: result.unfilledSlots,
+        unassignedPlayers: result.unassignedPlayers,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Roster rules satisfied.",
+      appliedReassignments: result.assignments.filter((a) => a.rosterId !== 0),
+    });
+  }),
+);
+
 /**
  * POST /api/transactions/il-stash
  *
@@ -873,6 +1137,104 @@ router.post(
 
 // IL activate envelope sourced from `shared/api/rosterMoves.ts` (#194).
 const ilActivateSchema = IlActivateRequestSchema;
+
+router.post(
+  "/transactions/il-activate/preview",
+  requireAuth,
+  validateBody(ilActivateSchema),
+  requireSeasonStatus(["IN_SEASON"]),
+  requireTeamOwnerOrCommissioner(),
+  asyncHandler(async (req, res) => {
+    const { leagueId, teamId, activatePlayerId, dropPlayerId, effectiveDate: effDateRaw } = req.body;
+
+    let effective: Date;
+    try {
+      effective = resolveEffectiveDate(effDateRaw);
+    } catch (err) {
+      return res.status(400).json({
+        ok: false,
+        error: err instanceof Error ? err.message : "Invalid effectiveDate",
+        code: "INVALID_EFFECTIVE_DATE",
+      });
+    }
+
+    const ilRoster = await prisma.roster.findFirst({
+      where: { teamId, playerId: activatePlayerId, releasedAt: null },
+      select: { id: true, assignedPosition: true },
+    });
+    if (!ilRoster || ilRoster.assignedPosition !== "IL") {
+      return res.status(400).json({
+        ok: false,
+        error: "Activate player is not on this team's IL slot.",
+        code: "NOT_ON_IL",
+      });
+    }
+
+    const dropRoster = await prisma.roster.findFirst({
+      where: { teamId, playerId: dropPlayerId, releasedAt: null },
+      select: { id: true, assignedPosition: true, acquiredAt: true },
+    });
+    if (!dropRoster) {
+      return res.status(400).json({
+        ok: false,
+        error: "Drop player is not on this team's roster.",
+        code: "IL_UNKNOWN_PLAYER",
+      });
+    }
+    if (dropRoster.assignedPosition === "IL") {
+      return res.status(400).json({
+        ok: false,
+        error: "Drop player is on IL — cannot drop an IL player via /il-activate. Use /transactions/drop to release them.",
+        code: "DROP_REQUIRED",
+      });
+    }
+    if (effective <= dropRoster.acquiredAt) {
+      return res.status(400).json({
+        ok: false,
+        error: `effectiveDate (${effective.toISOString().slice(0, 10)}) must be after the drop player was acquired (${dropRoster.acquiredAt.toISOString().slice(0, 10)})`,
+        code: "INVALID_EFFECTIVE_DATE",
+      });
+    }
+
+    const activatePlayer = await prisma.player.findUnique({
+      where: { id: activatePlayerId },
+      select: { id: true, name: true, posList: true },
+    });
+    if (!activatePlayer) {
+      return res.status(404).json({
+        ok: false,
+        error: `Activate player #${activatePlayerId} not found.`,
+        code: "IL_UNKNOWN_PLAYER",
+      });
+    }
+
+    const slotCapacities = await loadSlotCapacities(prisma as any, leagueId);
+    const { candidates } = await buildCandidatesForTeam(prisma as any, teamId, {
+      excludeRosterIds: [ilRoster.id, dropRoster.id],
+      includeNewPlayer: { playerId: activatePlayer.id, posList: activatePlayer.posList ?? "" },
+    });
+    let result = resolveLineup(candidates, slotCapacities);
+    if (result.ok === false) {
+      const refreshed = await verifyEligibilityUnchanged(prisma as any, candidates);
+      if (refreshed) result = resolveLineup(refreshed, slotCapacities);
+    }
+    if (result.ok === false) {
+      return res.status(400).json({
+        ok: false,
+        error: result.reason,
+        code: result.code,
+        unfilledSlots: result.unfilledSlots,
+        unassignedPlayers: result.unassignedPlayers,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Roster rules satisfied.",
+      appliedReassignments: result.assignments.filter((a) => a.rosterId !== 0),
+    });
+  }),
+);
 
 /**
  * POST /api/transactions/il-activate

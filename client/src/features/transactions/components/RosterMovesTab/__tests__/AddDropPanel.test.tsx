@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AddDropPanel from "../AddDropPanel";
 import { fetchJsonApi } from "../../../../../api/base";
@@ -15,7 +15,9 @@ vi.mock("../../../../../contexts/LeagueContext", () => ({
 }));
 
 vi.mock("../../../../../api/base", () => ({
-  fetchJsonApi: vi.fn().mockResolvedValue({ success: true }),
+  fetchJsonApi: vi.fn((url: string) =>
+    Promise.resolve(url.includes("/preview") ? { ok: true, message: "Roster rules satisfied." } : { success: true }),
+  ),
   API_BASE: "/api",
 }));
 
@@ -59,9 +61,24 @@ const ownRosterPlayer = {
   positions: "1B",
 } as RosterMovesPlayer;
 
+const pitcherOnlyFreeAgent = {
+  mlb_id: "999001",
+  player_name: "Pitcher Only",
+  positions: "P",
+} as RosterMovesPlayer;
+
 beforeEach(() => {
   mockSeasonStatus.value = "IN_SEASON";
 });
+
+async function selectDrop(user: ReturnType<typeof userEvent.setup>, name = "Michael Busch") {
+  await user.click(screen.getByRole("row", { name: new RegExp(name) }));
+}
+
+async function executeAndConfirm(user: ReturnType<typeof userEvent.setup>, executeName: RegExp, confirmName: RegExp) {
+  await user.click(screen.getByRole("button", { name: executeName }));
+  await user.click(screen.getByRole("button", { name: confirmName }));
+}
 
 describe("AddDropPanel — DROP_REQUIRED in-season", () => {
   it("in-season, the drop label reads 'required in-season'", () => {
@@ -79,7 +96,7 @@ describe("AddDropPanel — DROP_REQUIRED in-season", () => {
     // Select the free-agent add.
     await user.click(screen.getByText("Jake Bauers"));
 
-    const submit = screen.getByRole("button", { name: /^Add$/ });
+    const submit = screen.getByRole("button", { name: /^Execute Add/ });
     expect(submit).toBeDisabled();
   });
 
@@ -102,10 +119,20 @@ describe("AddDropPanel — DROP_REQUIRED in-season", () => {
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
+    await selectDrop(user);
 
-    const submit = screen.getByRole("button", { name: /Add \+ Drop/ });
-    expect(submit).not.toBeDisabled();
+    const submit = screen.getByRole("button", { name: /Execute Add \+ Drop/ });
+    await waitFor(() => expect(submit).not.toBeDisabled());
+  });
+
+  it("keeps confirm disabled when selected add cannot satisfy the drop slot", async () => {
+    mockSeasonStatus.value = "IN_SEASON";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[pitcherOnlyFreeAgent, ownRosterPlayer]} />);
+
+    await user.click(screen.getByText("Pitcher Only"));
+    expect(screen.getByText(/No rostered players qualify/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Execute Add/ })).toBeDisabled();
   });
 });
 
@@ -114,6 +141,23 @@ describe("AddDropPanel — free-agent key uniqueness (regression)", () => {
   // the panel fell back to `_dbPlayerId ?? 0` — which is undefined for FAs.
   // Clicking one FA flipped `isSelected` true for every row. Fixture here
   // mirrors real data: multiple FAs with distinct mlb_id and no _dbPlayerId.
+  it("defaults to no selected free-agent rows when FAs are missing _dbPlayerId", () => {
+    mockSeasonStatus.value = "SETUP";
+    const fas: RosterMovesPlayer[] = [
+      { mlb_id: "1001", player_name: "Alpha One", positions: "1B" },
+      { mlb_id: "1002", player_name: "Bravo Two", positions: "OF" },
+      { mlb_id: "1003", player_name: "Charlie Three", positions: "P" },
+    ];
+    render(<AddDropPanel {...BASE_PROPS} players={[...fas, ownRosterPlayer]} />);
+
+    const allFaRows = screen.getAllByRole("row").filter((row) =>
+      fas.some((f) => row.textContent?.includes(f.player_name ?? ""))
+    );
+    expect(allFaRows).toHaveLength(3);
+    expect(allFaRows.every((row) => row.getAttribute("aria-selected") === "false")).toBe(true);
+    expect(screen.queryByText("Selected")).not.toBeInTheDocument();
+  });
+
   it("clicking one free agent selects only that one, not every FA with missing _dbPlayerId", async () => {
     mockSeasonStatus.value = "SETUP";
     const user = userEvent.setup();
@@ -126,13 +170,50 @@ describe("AddDropPanel — free-agent key uniqueness (regression)", () => {
 
     await user.click(screen.getByText("Bravo Two"));
 
-    // Only the clicked FA gets the selected background class.
-    const allFaButtons = screen.getAllByRole("button").filter((b) =>
-      fas.some((f) => b.textContent?.includes(f.player_name ?? ""))
+    // Only the clicked FA gets the selected row state.
+    const allFaRows = screen.getAllByRole("row").filter((row) =>
+      fas.some((f) => row.textContent?.includes(f.player_name ?? ""))
     );
-    const selected = allFaButtons.filter((b) => b.className.includes("bg-[var(--lg-accent)]/15"));
+    const selected = allFaRows.filter((row) => row.getAttribute("aria-selected") === "true");
     expect(selected).toHaveLength(1);
     expect(selected[0].textContent).toContain("Bravo Two");
+  });
+});
+
+describe("AddDropPanel — free-agent stats, filters, and sorting", () => {
+  it("shows stats in the free-agent table and filters by outfield position", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    const fas: RosterMovesPlayer[] = [
+      { mlb_id: "2001", player_name: "Outfield Bat", positions: "OF", is_pitcher: false, R: 8, HR: 3, RBI: 11, SB: 2, AVG: 0.286 },
+      { mlb_id: "2002", player_name: "Corner Bat", positions: "1B", is_pitcher: false, R: 4, HR: 1, RBI: 5, SB: 0, AVG: 0.244 },
+    ];
+    render(<AddDropPanel {...BASE_PROPS} players={[...fas, ownRosterPlayer]} />);
+
+    expect(screen.getByText("Outfield Bat")).toBeInTheDocument();
+    expect(screen.getByText(".286")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "OF" }));
+
+    expect(screen.getByText("Outfield Bat")).toBeInTheDocument();
+    expect(screen.queryByText("Corner Bat")).not.toBeInTheDocument();
+  });
+
+  it("sorts free agents by selected stat", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    const fas: RosterMovesPlayer[] = [
+      { mlb_id: "3001", player_name: "Low Power", positions: "OF", is_pitcher: false, HR: 1 },
+      { mlb_id: "3002", player_name: "High Power", positions: "OF", is_pitcher: false, HR: 9 },
+    ];
+    render(<AddDropPanel {...BASE_PROPS} players={[...fas, ownRosterPlayer]} />);
+
+    await user.click(screen.getAllByRole("button", { name: "HR" })[0]);
+
+    const faRows = screen.getAllByRole("row").filter((row) =>
+      row.textContent?.includes("Power")
+    );
+    expect(faRows[0].textContent).toContain("High Power");
   });
 });
 
@@ -152,7 +233,7 @@ describe("AddDropPanel — submit body contract", () => {
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+    await executeAndConfirm(user, /^Execute Add/, /^Confirm Add/);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
@@ -179,11 +260,12 @@ describe("AddDropPanel — submit body contract", () => {
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
-    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+    await selectDrop(user);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
+    await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [, init] = mockFetch.mock.calls[0];
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const [, init] = mockFetch.mock.calls[1];
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body).toMatchObject({
       leagueId: 20,
@@ -213,7 +295,7 @@ describe("AddDropPanel — preseason / SETUP", () => {
 
     await user.click(screen.getByText("Jake Bauers"));
 
-    const submit = screen.getByRole("button", { name: /^Add$/ });
+    const submit = screen.getByRole("button", { name: /^Execute Add/ });
     expect(submit).not.toBeDisabled();
   });
 
@@ -247,7 +329,7 @@ describe("AddDropPanel — effectiveDate forwarding (commissioner backdate)", ()
     );
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+    await executeAndConfirm(user, /^Execute Add/, /^Confirm Add/);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [, init] = mockFetch.mock.calls[0];
@@ -263,7 +345,7 @@ describe("AddDropPanel — effectiveDate forwarding (commissioner backdate)", ()
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+    await executeAndConfirm(user, /^Execute Add/, /^Confirm Add/);
 
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
@@ -287,7 +369,7 @@ describe("AddDropPanel — effectiveDate forwarding (commissioner backdate)", ()
     );
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.click(screen.getByRole("button", { name: /^Add$/ }));
+    await executeAndConfirm(user, /^Execute Add/, /^Confirm Add/);
 
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse((init as RequestInit).body as string);
@@ -307,6 +389,7 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
   it("renders a toast with reassignments when server returns appliedReassignments", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } as any);
     mockFetch.mockResolvedValueOnce({
       success: true,
       playerId: 100,
@@ -331,8 +414,9 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
-    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+    await selectDrop(user);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
+    await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
     expect(mockToast).toHaveBeenCalledTimes(1);
     const [msg, variant] = mockToast.mock.calls[0];
@@ -345,6 +429,7 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
   it("does NOT render a toast when appliedReassignments is empty (clean add+drop)", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } as any);
     mockFetch.mockResolvedValueOnce({
       success: true,
       playerId: 100,
@@ -354,8 +439,9 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
-    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+    await selectDrop(user);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
+    await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
     expect(mockToast).not.toHaveBeenCalled();
   });
@@ -365,13 +451,15 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     // `appliedReassignments` field at all. Panel must tolerate this.
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } as any);
     mockFetch.mockResolvedValueOnce({ success: true, playerId: 100 } as any);
     const user = userEvent.setup();
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
     await user.click(screen.getByText("Jake Bauers"));
-    await user.selectOptions(screen.getByRole("combobox"), String(ownRosterPlayer._dbPlayerId));
-    await user.click(screen.getByRole("button", { name: /Add \+ Drop/ }));
+    await selectDrop(user);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
+    await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
     expect(mockToast).not.toHaveBeenCalled();
   });
