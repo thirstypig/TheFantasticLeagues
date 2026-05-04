@@ -543,7 +543,10 @@ export default function AddDropPanel({
     return () => {
       cancelled = true;
     };
-  }, [addMlbId, dropPlayerId, effectiveDate, leagueId, needsServerPreview, selectedAdd, teamId]);
+    // Depend on the player's stable id, not the memoized object — `selectedAdd`
+    // is recomputed on every keystroke / sort toggle, which would re-fire previewClaim
+    // dozens of times during typing.
+  }, [addMlbId, dropPlayerId, effectiveDate, leagueId, needsServerPreview, selectedAdd?._dbPlayerId, teamId]);
 
   function handleSort(table: "fa" | "drop", key: SortKey) {
     if (table === "fa") {
