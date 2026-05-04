@@ -1159,6 +1159,10 @@ describe("transaction handlers — invalidate league caches", () => {
 describe("POST /transactions/sync-il-status", () => {
   beforeEach(() => {
     mockGetMlbPlayerStatus.mockReset();
+    // IDOR guard (#157): sync-il-status now requires the player to be on
+    // the requesting team's roster. Default each test to a positive lookup
+    // so legacy assertions stay focused on the MLB feed behavior.
+    mockPrisma.roster.findFirst.mockResolvedValue({ id: 999 });
   });
 
   it("returns the freshly fetched MLB status string (verbatim per IL #1)", async () => {
@@ -1232,5 +1236,52 @@ describe("POST /transactions/sync-il-status", () => {
 
     expect(res.status).toBe(503);
     expect(res.body.code).toBe("MLB_FEED_UNAVAILABLE");
+  });
+
+  // ── #157 IDOR guard ─────────────────────────────────────────────
+  it("returns 404 when the player is NOT on the requesting team's roster (#157 IDOR)", async () => {
+    // Roster lookup misses — handler must short-circuit BEFORE calling
+    // the MLB feed. Generic message so we don't disclose existence.
+    mockPrisma.roster.findFirst.mockResolvedValueOnce(null);
+
+    const res = await supertest(app)
+      .post("/transactions/sync-il-status")
+      .send({ leagueId: 1, teamId: 10, playerId: 100 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("Player not found on roster.");
+    // Critically: the MLB feed must not be reached for foreign players.
+    expect(mockGetMlbPlayerStatus).not.toHaveBeenCalled();
+  });
+});
+
+// ── #158 raw error leakage on /transactions/claim ────────────────
+//
+// The catch-all branch used to echo `err.message` verbatim, leaking
+// Prisma constraint names / SQL fragments to the client. Now the
+// handler logs server-side and returns a generic INTERNAL envelope.
+
+describe("POST /transactions/claim — error leakage (#158)", () => {
+  it("does NOT include raw err.message in the response body on unexpected failures", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue(null);
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    const SECRET = "Foreign key constraint violated on _RosterToPlayer__db_internal__";
+    // Force the inner Prisma transaction to throw an Error whose message
+    // would have been echoed under the old substring catch-all.
+    mockPrisma.$transaction.mockImplementationOnce(async () => {
+      throw new Error(SECRET);
+    });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: "Transaction failed", code: "INTERNAL" });
+    // The whole serialized body must not contain any fragment of the raw
+    // Prisma message — guards against partial leakage via nested fields.
+    expect(JSON.stringify(res.body)).not.toContain("Foreign key");
+    expect(JSON.stringify(res.body)).not.toContain("_RosterToPlayer");
   });
 });

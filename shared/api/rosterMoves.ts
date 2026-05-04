@@ -164,6 +164,7 @@ export type EligibleSlotsResponse = z.infer<typeof EligibleSlotsResponseSchema>;
  * "no MLB status; chip can be dismissed".
  */
 export const SyncIlStatusBodySchema = z.object({
+  leagueId: z.number().int().positive(),
   teamId: z.number().int().positive(),
   playerId: z.number().int().positive(),
 });
