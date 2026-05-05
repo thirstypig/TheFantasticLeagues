@@ -28,7 +28,6 @@ export interface MobileRowDnd {
 
 interface MobileRowV3Props {
   player: RosterHubPlayer;
-  role: "hitter" | "pitcher";
   isSelected: boolean;
   isEligible: boolean;
   isDimmed: boolean;
@@ -73,7 +72,6 @@ function statSummaryFor(player: RosterHubPlayer): string {
 
 export function MobileRowV3({
   player,
-  role,
   isSelected,
   isEligible,
   isDimmed,
@@ -84,11 +82,6 @@ export function MobileRowV3({
   dnd,
   isShakeRejecting,
 }: MobileRowV3Props) {
-  // `role` is no longer load-bearing for memo (todo #170 removed React.memo
-  // because the parent recreates `dnd` each render, defeating reference
-  // equality); stat rendering narrows on `player.isPitcher` directly per
-  // todo #153. Keep the prop on the interface for future memo strategies.
-  void role;
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);

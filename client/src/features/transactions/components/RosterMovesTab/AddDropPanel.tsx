@@ -573,11 +573,13 @@ export default function AddDropPanel({
   function handleSort(table: "fa" | "drop", key: SortKey) {
     const setKey = table === "fa" ? setFaSortKey : setDropSortKey;
     const setDir = table === "fa" ? setFaSortDir : setDropSortDir;
-    setKey((current) => {
-      if (current === key) setDir((dir) => (dir === "asc" ? "desc" : "asc"));
-      else setDir(defaultSortDir(key));
-      return key;
-    });
+    const currentKey = table === "fa" ? faSortKey : dropSortKey;
+    setKey(key);
+    if (currentKey === key) {
+      setDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setDir(defaultSortDir(key));
+    }
   }
 
   function toggleAddExpansion(p: RosterMovesPlayer) {
