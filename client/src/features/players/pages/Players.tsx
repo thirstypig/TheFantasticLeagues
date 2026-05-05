@@ -99,7 +99,6 @@ export default function Players() {
   const [filterTeam, setFilterTeam] = useState<string>('ALL_NL');
   const [filterFantasyTeam, setFilterFantasyTeam] = useState<string>('ALL');
   const [filterPos, setFilterPos] = useState<string>('ALL');
-  const [filterLeague, setFilterLeague] = useState<'ALL' | 'AL' | 'NL'>('NL');
 
   const handleSort = (key: string) => {
     setSearchParams(prev => {
@@ -189,13 +188,6 @@ export default function Players() {
           if (!normalized.includes(filterPos.toUpperCase())) return false;
         }
       }
-      if (filterLeague !== 'ALL') {
-        const team = (p.mlb_team || p.mlbTeam || '').toString().trim();
-        if (team && !p.ogba_team_code && !p.team) {
-          const leagueSet = filterLeague === 'NL' ? NL_TEAMS : AL_TEAMS;
-          if (!leagueSet.has(team)) return false;
-        }
-      }
       return true;
     });
 
@@ -246,7 +238,7 @@ export default function Players() {
         return sortDesc ? (valB as number) - (valA as number) : (valA as number) - (valB as number);
       }
     });
-  }, [players, periodStats, periods, statsMode, viewGroup, viewMode, searchQuery, filterTeam, filterFantasyTeam, filterPos, filterLeague, sortKey, sortDesc, outfieldMode]);
+  }, [players, periodStats, periods, statsMode, viewGroup, viewMode, searchQuery, filterTeam, filterFantasyTeam, filterPos, sortKey, sortDesc, outfieldMode]);
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => (prev === id ? null : id));
@@ -331,8 +323,6 @@ export default function Players() {
               card={false}
               viewGroup={viewGroup}
               onViewGroupChange={setViewGroup}
-              filterLeague={filterLeague}
-              onFilterLeagueChange={setFilterLeague}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               viewMode={viewMode}
