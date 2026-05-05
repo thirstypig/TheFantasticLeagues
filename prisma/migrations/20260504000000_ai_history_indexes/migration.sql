@@ -12,18 +12,25 @@
 -- of trade rows accumulate aiAnalysis post-processing, so the index is
 -- still highly selective for the merge query's hot path.
 --
--- Both Trade and AiInsight are hot tables (writes from trade processing,
--- digest cron, and weekly insight generation), so we use CONCURRENTLY per
--- the migration hardening guidance in CLAUDE.md.
+-- Originally written with CREATE INDEX CONCURRENTLY, but Prisma's
+-- migrate-deploy wraps every migration in a transaction and
+-- CONCURRENTLY cannot run inside one (Postgres error 25001). The
+-- prior version blocked every Railway deploy until rolled back.
+--
+-- AiInsight and Trade are NOT in CLAUDE.md's "high-write" list
+-- (Roster, PlayerStatsPeriod, TransactionEvent — those genuinely
+-- need CONCURRENTLY). AiInsight is explicitly low-write; OGBA's
+-- Trade volume is a few rows per week. The brief ShareLock during
+-- a non-concurrent CREATE INDEX is acceptable here.
 --
 -- Idempotent: IF NOT EXISTS guards on both CREATE INDEX statements.
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "AiInsight_leagueId_createdAt_idx"
+CREATE INDEX IF NOT EXISTS "AiInsight_leagueId_createdAt_idx"
   ON "AiInsight" ("leagueId", "createdAt" DESC);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS "Trade_leagueId_createdAt_idx"
+CREATE INDEX IF NOT EXISTS "Trade_leagueId_createdAt_idx"
   ON "Trade" ("leagueId", "createdAt" DESC);
 
 -- Rollback:
---   DROP INDEX CONCURRENTLY IF EXISTS "AiInsight_leagueId_createdAt_idx";
---   DROP INDEX CONCURRENTLY IF EXISTS "Trade_leagueId_createdAt_idx";
+--   DROP INDEX IF EXISTS "AiInsight_leagueId_createdAt_idx";
+--   DROP INDEX IF EXISTS "Trade_leagueId_createdAt_idx";
