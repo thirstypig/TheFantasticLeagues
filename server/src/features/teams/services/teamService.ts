@@ -190,7 +190,7 @@ export class TeamService {
       posPrimary: r.player.posPrimary,
       posList: r.player.posList,
       mlbTeam: r.player.mlbTeam,
-      mlbStatus: (r.player as { mlbStatus?: string | null }).mlbStatus ?? null,
+      mlbStatus: r.player.mlbStatus ?? null,
       acquiredAt: r.acquiredAt,
       price: r.price,
       assignedPosition: r.assignedPosition,
