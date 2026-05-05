@@ -468,7 +468,6 @@ export function RosterHubV3({
                   <DraggableMobileRowAdapter
                     key={p.rosterId}
                     player={p}
-                    role="hitter"
                     dndEnabled={!!dndEnabled}
                     dropEligibleIds={dropIds}
                     isSelected={selectedRosterId === p.rosterId}
@@ -491,7 +490,6 @@ export function RosterHubV3({
                   <DraggableMobileRowAdapter
                     key={p.rosterId}
                     player={p}
-                    role="pitcher"
                     dndEnabled={!!dndEnabled}
                     dropEligibleIds={dropIds}
                     isSelected={selectedRosterId === p.rosterId}
@@ -880,7 +878,6 @@ function DraggableDesktopRowAdapter(props: DraggableDesktopRowAdapterProps) {
 
 interface DraggableMobileRowAdapterProps {
   player: RosterHubPlayer;
-  role: "hitter" | "pitcher";
   dndEnabled: boolean;
   dropEligibleIds: ReadonlySet<number>;
   isSelected: boolean;

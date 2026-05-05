@@ -79,7 +79,7 @@ function fmtAvg(v: number | string | undefined): string {
   return s.startsWith("0") ? s.slice(1) : s;
 }
 
-function RosterRowV3Impl({
+export function RosterRowV3({
   player,
   role,
   isSelected,
@@ -270,4 +270,3 @@ function StatTd({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const RosterRowV3 = React.memo(RosterRowV3Impl);

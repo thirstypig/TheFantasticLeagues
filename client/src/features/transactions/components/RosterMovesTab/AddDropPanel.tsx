@@ -6,7 +6,7 @@ import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
 import { extractServerError } from "../../../../lib/extractServerError";
 import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
-import { isPitcher } from "../../../../lib/sports/baseball";
+import { isPitcher, fmtRate } from "../../../../lib/sports/baseball";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
 import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
 import { formatReassignmentsToast, previewClaim, type AppliedReassignment } from "../../api";
@@ -118,7 +118,7 @@ function asNumber(value: unknown): number | null {
 function formatStat(key: string, value: unknown): string {
   const n = asNumber(value);
   if (n == null) return "-";
-  if (key === "AVG") return n < 1 ? n.toFixed(3).replace(/^0/, "") : n.toFixed(3);
+  if (key === "AVG") return fmtRate(n);
   if (key === "ERA" || key === "WHIP") return n.toFixed(2);
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
@@ -564,20 +564,22 @@ export default function AddDropPanel({
     // dozens of times during typing.
   }, [addMlbId, dropPlayerId, effectiveDate, leagueId, needsServerPreview, selectedAdd?._dbPlayerId, teamId]);
 
+  function defaultSortDir(key: SortKey): "asc" | "desc" {
+    if (key === "ERA" || key === "WHIP") return "asc";
+    if (key === "name" || key === "pos") return "asc";
+    return "desc";
+  }
+
   function handleSort(table: "fa" | "drop", key: SortKey) {
-    if (table === "fa") {
-      setFaSortKey((current) => {
-        if (current === key) setFaSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
-        else setFaSortDir(key === "ERA" || key === "WHIP" ? "asc" : key === "name" || key === "pos" ? "asc" : "desc");
-        return key;
-      });
-      return;
+    const setKey = table === "fa" ? setFaSortKey : setDropSortKey;
+    const setDir = table === "fa" ? setFaSortDir : setDropSortDir;
+    const currentKey = table === "fa" ? faSortKey : dropSortKey;
+    setKey(key);
+    if (currentKey === key) {
+      setDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setDir(defaultSortDir(key));
     }
-    setDropSortKey((current) => {
-      if (current === key) setDropSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
-      else setDropSortDir(key === "ERA" || key === "WHIP" ? "asc" : key === "name" || key === "pos" ? "asc" : "desc");
-      return key;
-    });
   }
 
   function toggleAddExpansion(p: RosterMovesPlayer) {

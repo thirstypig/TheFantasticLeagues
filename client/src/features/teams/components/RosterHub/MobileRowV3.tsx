@@ -28,7 +28,6 @@ export interface MobileRowDnd {
 
 interface MobileRowV3Props {
   player: RosterHubPlayer;
-  role: "hitter" | "pitcher";
   isSelected: boolean;
   isEligible: boolean;
   isDimmed: boolean;
@@ -71,9 +70,8 @@ function statSummaryFor(player: RosterHubPlayer): string {
   return parts.join(" · ");
 }
 
-function MobileRowV3Impl({
+export function MobileRowV3({
   player,
-  role,
   isSelected,
   isEligible,
   isDimmed,
@@ -84,10 +82,6 @@ function MobileRowV3Impl({
   dnd,
   isShakeRejecting,
 }: MobileRowV3Props) {
-  // `role` is still used by the React.memo comparator (so swapping a
-  // hitter row for a pitcher row remounts cleanly) but stat rendering
-  // narrows on `player.isPitcher` directly per todo #153.
-  void role;
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -190,4 +184,3 @@ function MobileRowV3Impl({
   );
 }
 
-export const MobileRowV3 = React.memo(MobileRowV3Impl);
