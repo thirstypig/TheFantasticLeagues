@@ -457,6 +457,13 @@ async function computeWithDailyStats(
   const teamAccum = new Map<number, { R: number; HR: number; RBI: number; SB: number; H: number; AB: number; W: number; S: number; K: number; ER: number; IP: number; BB_H: number }>();
 
   for (const roster of rosters) {
+    // Skip IL-slotted players: their stats while in the IL slot don't credit
+    // the team. See todo #155. Caveat: assignedPosition is current-state
+    // only — a player who was IL'd mid-period and later activated will
+    // have their entire window skipped here. Full historical accuracy
+    // requires stint replay from TransactionEvent (Option 2 in the todo).
+    if ((roster.assignedPosition ?? "").toUpperCase() === "IL") continue;
+
     const from = roster.acquiredAt > period.startDate ? roster.acquiredAt : period.startDate;
     const to = roster.releasedAt && roster.releasedAt < period.endDate ? roster.releasedAt : period.endDate;
 
@@ -556,6 +563,10 @@ async function computeWithPeriodStats(
     for (const roster of teamRosters) {
       if (countedPlayers.has(roster.playerId)) continue;
       countedPlayers.add(roster.playerId);
+
+      // Skip IL-slotted players: see todo #155 / matching guard in
+      // computeWithDailyStats above.
+      if ((roster.assignedPosition ?? "").toUpperCase() === "IL") continue;
 
       // Skip players who were traded away — attribute their stats to their current team only
       const currentTeam = activePlayerTeam.get(roster.playerId);
