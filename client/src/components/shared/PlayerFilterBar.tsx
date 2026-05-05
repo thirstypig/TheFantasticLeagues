@@ -45,7 +45,9 @@ function ToggleGroup<T extends string>({
 }
 
 /* ── Compact select dropdown ──────────────────────────────────────── */
-const selectClass = "lg-input font-medium text-xs h-9 py-0";
+// `w-auto` overrides `.lg-input`'s default `width: 100%` so dropdowns
+// shrink to fit content and the bar stays on a single row.
+const selectClass = "lg-input w-auto font-medium text-xs h-9 py-0 pl-2.5 pr-7";
 
 /* ── Expandable search ─────────────────────────────────────────────
  * Collapsed: 36×36 icon button.
@@ -89,7 +91,7 @@ function ExpandableSearch({
     <div className="relative" style={{ width: 180 }}>
       <input
         ref={inputRef}
-        type="search"
+        type="text"
         autoFocus
         placeholder="Search…"
         value={value}
