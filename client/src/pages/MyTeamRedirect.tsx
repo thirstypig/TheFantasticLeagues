@@ -18,14 +18,16 @@ import { useLeague } from "../contexts/LeagueContext";
  *     the next render with resolved context will redirect
  */
 export default function MyTeamRedirect() {
-  const { myTeamCode, leagueId } = useLeague();
+  const { myTeamCode, leagueId, myTeamResolved } = useLeague();
 
-  // While the league detail fetch is in flight, leagueId is set but
-  // myTeamCode is still null (its initial value AND its no-team value).
-  // We can't distinguish those, so wait for at least one render with
-  // leagueId resolved before deciding. In practice the resolution is
-  // sub-100ms; a brief blank is preferable to a flash-of-redirect.
-  if (!leagueId) return null;
+  // Wait for both leagueId AND the league-detail fetch to settle.
+  // `myTeamResolved` flips true after `/leagues/:id` returns (success
+  // OR failure), at which point `myTeamCode === null` reliably means
+  // "no team owned" rather than "still loading." Without this guard,
+  // a fresh page load can race past the in-flight fetch and fall
+  // through to the home redirect, leaving the user stranded back on
+  // / instead of their team page.
+  if (!leagueId || !myTeamResolved) return null;
 
   if (myTeamCode) {
     return <Navigate to={`/teams/${myTeamCode}`} replace />;
