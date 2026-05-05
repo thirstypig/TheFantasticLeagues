@@ -116,6 +116,53 @@ function formatPitchingLine(l: NonNullable<RosterStatsPlayer["pitching"]>): stri
   return parts.join(", ");
 }
 
+// IP is stored as a baseball-convention decimal string ("5.1" = 5 ⅓
+// innings; "6.2" = 6 ⅔). To sum across pitchers we convert to thirds,
+// add, and convert back. NaN-safe.
+function parseInningsToThirds(ip: string | number | undefined): number {
+  if (ip == null) return 0;
+  const s = typeof ip === "number" ? ip.toFixed(1) : String(ip);
+  const [whole, frac] = s.split(".").map((x) => Number(x) || 0);
+  return whole * 3 + (frac || 0);
+}
+
+function formatThirdsToIp(thirds: number): string {
+  if (!Number.isFinite(thirds) || thirds <= 0) return "0.0";
+  const whole = Math.floor(thirds / 3);
+  const frac = thirds % 3;
+  return `${whole}.${frac}`;
+}
+
+interface HitterTotals {
+  AB: number; H: number; R: number; HR: number; RBI: number; SB: number;
+}
+interface PitcherTotals {
+  IPThirds: number; K: number; BB: number; ER: number; W: number; SV: number;
+}
+
+function sumHitting(players: RosterStatsPlayer[]): HitterTotals {
+  const t: HitterTotals = { AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0 };
+  for (const p of players) {
+    const l = p.hitting;
+    if (!l) continue;
+    t.AB += l.AB || 0; t.H += l.H || 0; t.R += l.R || 0;
+    t.HR += l.HR || 0; t.RBI += l.RBI || 0; t.SB += l.SB || 0;
+  }
+  return t;
+}
+
+function sumPitching(players: RosterStatsPlayer[]): PitcherTotals {
+  const t: PitcherTotals = { IPThirds: 0, K: 0, BB: 0, ER: 0, W: 0, SV: 0 };
+  for (const p of players) {
+    const l = p.pitching;
+    if (!l) continue;
+    t.IPThirds += parseInningsToThirds(l.IP);
+    t.K += l.K || 0; t.BB += l.BB || 0; t.ER += l.ER || 0;
+    t.W += l.W || 0; t.SV += l.SV || 0;
+  }
+  return t;
+}
+
 // Did this hitter have a notable game? (3+ hits or 2+ HR.) Used to
 // gate the subtle ✦ flame chip.
 function isHotHitter(l?: RosterStatsPlayer["hitting"]): boolean {
@@ -182,14 +229,19 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
     };
   }, [leagueId, cutoffDateStr]);
 
-  const { hitters, pitchers } = useMemo(() => {
+  const { hitters, pitchers, ilPlayers } = useMemo(() => {
     const h: RosterStatsPlayer[] = [];
     const p: RosterStatsPlayer[] = [];
+    const il: RosterStatsPlayer[] = [];
     for (const pl of data?.players ?? []) {
-      if (pl.isPitcher) p.push(pl);
+      // IL'd players occupy a fantasy IL slot — they can't generate stats
+      // for the team. Surface them in a dedicated section so the user
+      // sees their roster footprint without polluting the daily lineup.
+      if ((pl.position || "").toUpperCase() === "IL") il.push(pl);
+      else if (pl.isPitcher) p.push(pl);
       else h.push(pl);
     }
-    return { hitters: h, pitchers: p };
+    return { hitters: h, pitchers: p, ilPlayers: il };
   }, [data]);
 
   const hasAnyGames = (data?.players ?? []).length > 0;
@@ -242,6 +294,9 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
               players={pitchers}
               kind="pitcher"
             />
+          )}
+          {ilPlayers.length > 0 && (
+            <IlGroup players={ilPlayers} />
           )}
         </div>
       )}
@@ -323,8 +378,116 @@ function TodayStatsTable({
           {players.map((pl) => (
             <PlayerRow key={`${pl.mlbId}-${pl.mlbTeam}`} player={pl} kind={kind} />
           ))}
+          <TotalsRow players={players} kind={kind} />
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// Cumulative team totals for the day. AVG/ERA/WHIP intentionally
+// omitted — the "Today" view sums counting stats and the rate stats
+// reset daily with such small sample sizes that a single-day
+// AVG of 1-2 (perfect day) is misleading. Component cells are.
+function TotalsRow({
+  players,
+  kind,
+}: {
+  players: RosterStatsPlayer[];
+  kind: "hitter" | "pitcher";
+}) {
+  if (kind === "hitter") {
+    const t = sumHitting(players);
+    return (
+      <tr style={{ background: "var(--am-surface-faint)", fontWeight: 700 }}>
+        <TodayTd align="left">
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--am-text-muted)" }}>
+            Team total
+          </span>
+        </TodayTd>
+        <TodayTd align="center">—</TodayTd>
+        <TodayTd align="center">—</TodayTd>
+        <TodayTd align="center">—</TodayTd>
+        <TodayTd>{t.AB}</TodayTd>
+        <TodayTd>{t.H}</TodayTd>
+        <TodayTd>{t.R}</TodayTd>
+        <TodayTd>{t.HR}</TodayTd>
+        <TodayTd>{t.RBI}</TodayTd>
+        <TodayTd>{t.SB}</TodayTd>
+        <TodayTd align="left">—</TodayTd>
+      </tr>
+    );
+  }
+  const t = sumPitching(players);
+  return (
+    <tr style={{ background: "var(--am-surface-faint)", fontWeight: 700 }}>
+      <TodayTd align="left">
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--am-text-muted)" }}>
+          Team total
+        </span>
+      </TodayTd>
+      <TodayTd align="center">—</TodayTd>
+      <TodayTd align="center">—</TodayTd>
+      <TodayTd align="center">—</TodayTd>
+      <TodayTd>{formatThirdsToIp(t.IPThirds)}</TodayTd>
+      <TodayTd>{t.K}</TodayTd>
+      <TodayTd>{t.BB}</TodayTd>
+      <TodayTd>{t.ER}</TodayTd>
+      <TodayTd>{t.W}</TodayTd>
+      <TodayTd>{t.SV}</TodayTd>
+      <TodayTd align="left">—</TodayTd>
+    </tr>
+  );
+}
+
+// Compact section listing players currently in the fantasy IL slot.
+// They can't generate stats for the team — surfaced here so the user
+// sees their roster footprint without polluting the Hitters / Pitchers
+// lineup tables. Shows MLB IL status (if known) so the owner can tell
+// "still injured" from "should activate."
+function IlGroup({ players }: { players: RosterStatsPlayer[] }) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 11,
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+          color: "var(--am-text-faint)",
+          fontWeight: 600,
+          marginBottom: 8,
+        }}
+      >
+        On Fantasy IL
+      </div>
+      <div style={{ overflowX: "auto", border: "1px solid var(--am-border)", borderRadius: 10 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "var(--am-surface-faint)" }}>
+              <TodayTh align="left">Player</TodayTh>
+              <TodayTh align="center">Pos</TodayTh>
+              <TodayTh align="center">MLB</TodayTh>
+              <TodayTh align="left">Status</TodayTh>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((p) => (
+              <tr key={`il-${p.mlbId}-${p.mlbTeam}`}>
+                <TodayTd align="left">
+                  <span style={{ fontWeight: 650 }}>{p.playerName}</span>
+                </TodayTd>
+                <TodayTd align="center">IL</TodayTd>
+                <TodayTd align="center">{p.mlbTeam || "—"}</TodayTd>
+                <TodayTd align="left">
+                  <span style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+                    On fantasy IL — does not contribute to team totals
+                  </span>
+                </TodayTd>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
