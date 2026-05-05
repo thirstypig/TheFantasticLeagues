@@ -266,7 +266,7 @@ export default function Season() {
                                     border: "1px solid var(--am-border)",
                                   }}
                                 >
-                                  {(t.teamCode || t.teamName).slice(0, 3).toUpperCase()}
+                                  {t.teamName.slice(0, 3).toUpperCase()}
                                 </div>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                                   <span style={{ fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
