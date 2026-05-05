@@ -49,6 +49,14 @@ interface LeagueContextType {
    */
   myTeamCode: string | null;
   /**
+   * Flips to `true` after the league-detail fetch settles for the
+   * current `leagueId` (success or failure). Resets to `false` when
+   * `leagueId` changes. Consumers that need to distinguish "still
+   * loading" from "no team owned" use this to gate fallback logic —
+   * see `MyTeamRedirect`.
+   */
+  myTeamResolved: boolean;
+  /**
    * Null while rules are loading or unavailable. Empty object means
    * fetched-but-no-rules (e.g. a freshly-created league pre-seed). Consumers
    * must treat undefined keys as absent rather than assuming defaults.
@@ -68,6 +76,7 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const [scoringFormat, setScoringFormat] = useState("ROTO");
   const [myTeamId, setMyTeamId] = useState<number | null>(null);
   const [myTeamCode, setMyTeamCode] = useState<string | null>(null);
+  const [myTeamResolved, setMyTeamResolved] = useState<boolean>(false);
   const [leagueId, setLeagueIdState] = useState<number>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? Number(stored) : 1;
@@ -119,6 +128,7 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
     setScoringFormat("ROTO");
     setMyTeamId(null);
     setMyTeamCode(null);
+    setMyTeamResolved(false);
 
     fetchJsonApi<{ league: { outfieldMode?: string; scoringFormat?: string; teams?: LeagueTeam[] } }>(
       `${API_BASE}/leagues/${leagueId}`
@@ -129,11 +139,13 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
       const mine = findMyTeam(res?.league?.teams ?? [], Number(user.id));
       setMyTeamId(mine?.id ?? null);
       setMyTeamCode(mine?.code ?? null);
+      setMyTeamResolved(true);
     }).catch(() => {
       if (canceled) return;
       setOutfieldMode("OF");
       setMyTeamId(null);
       setMyTeamCode(null);
+      setMyTeamResolved(true);
     });
 
     return () => { canceled = true; };
@@ -206,11 +218,11 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const contextValue = useMemo(() => ({
     leagueId, setLeagueId, refreshLeagues, leagues, sport, outfieldMode, scoringFormat, draftMode,
     currentLeagueName, currentSeason, currentFranchiseId,
-    leagueSeasons, seasonStatus, myTeamId, myTeamCode,
+    leagueSeasons, seasonStatus, myTeamId, myTeamCode, myTeamResolved,
     leagueRules, refreshLeagueRules,
   }), [leagueId, setLeagueId, refreshLeagues, leagues, sport, outfieldMode, scoringFormat, draftMode,
        currentLeagueName, currentSeason, currentFranchiseId,
-       leagueSeasons, seasonStatus, myTeamId, myTeamCode,
+       leagueSeasons, seasonStatus, myTeamId, myTeamCode, myTeamResolved,
        leagueRules, refreshLeagueRules]);
 
   return (
