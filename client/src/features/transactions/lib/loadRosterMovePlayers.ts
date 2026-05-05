@@ -76,12 +76,27 @@ export async function loadRosterMovePlayers(
     });
   }
 
-  const enriched: RosterMovesPlayer[] = stats.map((s: any) => {
+  // Normalize the upstream PlayerSeasonStat shape onto the RosterMovesPlayer
+  // contract: collapse the legacy `mlb_team` / `mlb_team_abbr` / `mlbTeamAbbr`
+  // aliases onto the canonical `mlbTeam` field (todo #164). Stats rows from
+  // /api/player-season-stats currently emit both `mlb_team` and `mlbTeam`; we
+  // pick whichever is populated and write only `mlbTeam` downstream so panel
+  // code reads a single field.
+  const enriched: RosterMovesPlayer[] = stats.map((rawRow) => {
+    const s = rawRow as Record<string, unknown>;
     const mlbIdKey = String(s.mlb_id ?? s.mlbId ?? "");
     const match = mlbIdKey ? rosterByMlbId.get(mlbIdKey) : undefined;
-    if (!match) return s as RosterMovesPlayer;
+    const mlbTeam = String(
+      s.mlbTeam ?? s.mlb_team ?? s.mlb_team_abbr ?? s.mlbTeamAbbr ?? "",
+    ).trim();
+    const base: Record<string, unknown> = { ...s, mlbTeam: mlbTeam || undefined };
+    // Strip the legacy aliases so consumers can't accidentally read them.
+    delete base.mlb_team;
+    delete base.mlb_team_abbr;
+    delete base.mlbTeamAbbr;
+    if (!match) return base as RosterMovesPlayer;
     return {
-      ...s,
+      ...base,
       _dbPlayerId: match.playerId,
       _dbTeamId: teamId,
       assignedPosition: match.assignedPosition ?? undefined,

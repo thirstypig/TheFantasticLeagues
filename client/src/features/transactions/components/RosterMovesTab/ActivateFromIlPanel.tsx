@@ -3,7 +3,8 @@ import { ilActivate, previewIlActivate, formatReassignmentsToast } from "../../.
 import { Button } from "../../../../components/ui/button";
 import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
-import { slotsFor } from "../../../../lib/positionEligibility";
+import { extractServerError } from "../../../../lib/extractServerError";
+import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -96,7 +97,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
 
   const dropTargetSlot = selectedDrop?.assignedPosition || selectedDrop?.posPrimary || "UT";
   const slotCompatible = selectedDrop && activatePlayer
-    ? activateSlots.has(dropTargetSlot as any)
+    ? isSlotCode(dropTargetSlot) && activateSlots.has(dropTargetSlot)
     : true;
 
   const selectedFieldsComplete = activatePlayerId !== null && targetSlot !== null && dropPlayerId !== null;
@@ -135,11 +136,11 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
       .then((result) => {
         if (!cancelled) setPreview({ ok: result.ok, message: result.message });
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setPreview({
             ok: false,
-            error: err?.serverMessage || err?.message || "Roster rules are not satisfied.",
+            error: extractServerError(err, "Roster rules are not satisfied."),
           });
         }
       })
@@ -173,9 +174,8 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
       setActivatePlayerId(null);
       setDropPlayerId(null);
       onComplete();
-    } catch (err: any) {
-      const msg = err?.serverMessage || err?.message || "Activate failed";
-      setError(msg);
+    } catch (err: unknown) {
+      setError(extractServerError(err, "Activate failed"));
       reportError(err, { source: "roster-moves-activate-il" });
     } finally {
       setSubmitting(false);
@@ -281,7 +281,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
               {occupiedSlots.map((slot) => {
                 const count = dropCandidates.filter((p) => (p.assignedPosition || p.posPrimary || "UT") === slot).length;
                 const active = targetSlot === slot;
-                const direct = activateSlots.has(slot as any);
+                const direct = isSlotCode(slot) && activateSlots.has(slot);
                 return (
                   <button
                     key={slot}
@@ -320,7 +320,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
           {filteredDropCandidates.map((r) => {
             const targetSlot = r.assignedPosition || r.posPrimary || "UT";
             const fits = activatePlayer
-              ? activateSlots.has(targetSlot as any)
+              ? isSlotCode(targetSlot) && activateSlots.has(targetSlot)
               : true;
             return (
               <option key={r._dbPlayerId} value={r._dbPlayerId}>

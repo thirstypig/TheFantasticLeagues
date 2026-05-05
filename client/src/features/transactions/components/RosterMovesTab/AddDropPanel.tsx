@@ -4,11 +4,13 @@ import { useLeague } from "../../../../contexts/LeagueContext";
 import { useToast } from "../../../../contexts/ToastContext";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
-import { slotsFor } from "../../../../lib/positionEligibility";
+import { extractServerError } from "../../../../lib/extractServerError";
+import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
 import { isPitcher } from "../../../../lib/sports/baseball";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
 import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
 import { formatReassignmentsToast, previewClaim, type AppliedReassignment } from "../../api";
+import type { SlotCode } from "@shared/api/rosterMoves";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -30,9 +32,15 @@ interface Props {
 
 const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
 const POSITION_FILTERS = ["ALL", "C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
-const HITTER_COLUMNS = ["AB", "H", "R", "HR", "RBI", "SB", "AVG"] as const;
-const PITCHER_COLUMNS = ["IP", "K", "W", "SV", "ER", "ERA", "WHIP"] as const;
-type StatKey = (typeof HITTER_COLUMNS)[number] | (typeof PITCHER_COLUMNS)[number];
+const HITTER_COLUMNS = ["AB", "H", "R", "HR", "RBI", "SB", "AVG"] as const satisfies readonly StatKey[];
+const PITCHER_COLUMNS = ["IP", "K", "W", "SV", "ER", "ERA", "WHIP"] as const satisfies readonly StatKey[];
+// Per todo #161: keys narrow to a real `keyof RosterMovesPlayer` subset so
+// `p[column]` typechecks without any cast. Drift here is a compile error
+// rather than a silent runtime read.
+type StatKey = keyof Pick<
+  RosterMovesPlayer,
+  "AB" | "H" | "R" | "HR" | "RBI" | "SB" | "AVG" | "IP" | "K" | "W" | "SV" | "ER" | "ERA" | "WHIP"
+>;
 type SortKey = "name" | "pos" | "mlbTeam" | "slot" | StatKey;
 type StatMode = "hitting" | "pitching";
 
@@ -70,12 +78,15 @@ function matchesPositionFilter(p: RosterMovesPlayer, filter: string): boolean {
   if (filter === "ALL") return true;
   const tokens = normalizedPositionTokens(p);
   if (filter === "P") return tokens.some((token) => ["P", "SP", "RP", "CL", "TWP"].includes(token));
-  return tokens.includes(filter) || slotsFor(playerPositions(p)).has(filter as any);
+  if (tokens.includes(filter)) return true;
+  return isSlotCode(filter) && slotsFor(playerPositions(p)).has(filter);
 }
 
 function playerMlbTeam(p: RosterMovesPlayer | null | undefined): string {
-  const row = p as any;
-  return String(row?.mlbTeam ?? row?.mlb_team ?? row?.mlb_team_abbr ?? row?.mlbTeamAbbr ?? "").trim() || "-";
+  // Single canonical field per todo #164. The loader normalizes the
+  // legacy `mlb_team` / `mlb_team_abbr` / `mlbTeamAbbr` aliases onto
+  // `mlbTeam` before rows reach the panels.
+  return (p?.mlbTeam ?? "").trim() || "-";
 }
 
 function playerMlbId(p: RosterMovesPlayer | null | undefined): string {
@@ -84,7 +95,9 @@ function playerMlbId(p: RosterMovesPlayer | null | undefined): string {
 
 function statModeForPlayers(players: RosterMovesPlayer[], fallback?: RosterMovesPlayer | null): StatMode {
   const sample = players.find(Boolean) ?? fallback;
-  return sample && isPitcher(sample as any) ? "pitching" : "hitting";
+  // `isPitcher` accepts `Record<string, unknown>`. Widening through `unknown`
+  // keeps the call type-clean without an `any` cast.
+  return sample && isPitcher(sample as unknown as Record<string, unknown>) ? "pitching" : "hitting";
 }
 
 function columnsForMode(mode: StatMode): readonly StatKey[] {
@@ -119,7 +132,7 @@ function sortValue(p: RosterMovesPlayer, key: SortKey): string | number {
   if (key === "pos") return playerPositions(p).toLowerCase();
   if (key === "mlbTeam") return playerMlbTeam(p).toLowerCase();
   if (key === "slot") return assignedSlot(p).toLowerCase();
-  return asNumber((p as any)[key]) ?? sortNumberFallback(key);
+  return asNumber(p[key]) ?? sortNumberFallback(key);
 }
 
 function comparePlayers(a: RosterMovesPlayer, b: RosterMovesPlayer, key: SortKey, dir: "asc" | "desc"): number {
@@ -257,7 +270,7 @@ function PlayerStatsTable({
                     {includeSlot && <td className="px-2 py-2 text-left font-mono text-[var(--lg-text-muted)]">{assignedSlot(p)}</td>}
                     {columns.map((column) => (
                       <td key={column} className="px-2 py-2 text-right font-mono text-[var(--lg-text-primary)]">
-                        {formatStat(column, (p as any)[column])}
+                        {formatStat(column, p[column])}
                       </td>
                     ))}
                   </tr>
@@ -395,7 +408,7 @@ function ComparisonTable({ add, drop }: { add: RosterMovesPlayer; drop: RosterMo
               <td className="px-2 py-2 text-left font-mono text-[var(--lg-text-muted)]">{player ? assignedSlot(player) : "-"}</td>
               {columns.map((column) => (
                 <td key={column} className="px-2 py-2 text-right font-mono text-[var(--lg-text-primary)]">
-                  {player ? formatStat(column, (player as any)[column]) : "-"}
+                  {player ? formatStat(column, player[column]) : "-"}
                 </td>
               ))}
             </tr>
@@ -483,7 +496,10 @@ export default function AddDropPanel({
   const filteredDropCandidates = useMemo(() => {
     if (!selectedAdd) return [] as RosterMovesPlayer[];
     return dropCandidates
-      .filter((p) => addSlots.has(assignedSlot(p) as any))
+      .filter((p) => {
+        const slot = assignedSlot(p);
+        return isSlotCode(slot) && addSlots.has(slot);
+      })
       .sort((a, b) => comparePlayers(a, b, dropSortKey, dropSortDir))
       .slice(0, 10);
   }, [addSlots, dropCandidates, dropSortDir, dropSortKey, selectedAdd]);
@@ -491,7 +507,7 @@ export default function AddDropPanel({
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
   const dropTargetSlot = assignedSlot(selectedDrop);
   const slotCompatible = selectedDrop && addSlots.size > 0
-    ? addSlots.has(dropTargetSlot as any)
+    ? isSlotCode(dropTargetSlot) && addSlots.has(dropTargetSlot)
     : true;
 
   const dropRequired = inSeason;
@@ -528,11 +544,11 @@ export default function AddDropPanel({
       .then((result) => {
         if (!cancelled) setPreview({ ok: result.ok, message: result.message });
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         if (!cancelled) {
           setPreview({
             ok: false,
-            error: err?.serverMessage || err?.message || "Roster rules are not satisfied.",
+            error: extractServerError(err, "Roster rules are not satisfied."),
           });
         }
       })
@@ -605,9 +621,8 @@ export default function AddDropPanel({
       setQuery("");
       setReviewOpen(false);
       onComplete();
-    } catch (err: any) {
-      const msg = err?.serverMessage || err?.message || "Add/Drop failed";
-      setError(msg);
+    } catch (err: unknown) {
+      setError(extractServerError(err, "Add/Drop failed"));
       reportError(err, { source: "roster-moves-add-drop" });
     } finally {
       setSubmitting(false);
