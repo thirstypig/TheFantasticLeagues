@@ -118,29 +118,31 @@ function formatPitchingLine(l: NonNullable<RosterStatsPlayer["pitching"]>): stri
 
 // IP is stored as a baseball-convention decimal string ("5.1" = 5 ⅓
 // innings; "6.2" = 6 ⅔). To sum across pitchers we convert to thirds,
-// add, and convert back. NaN-safe.
-function parseInningsToThirds(ip: string | number | undefined): number {
+// add, and convert back. NaN-safe. Exported for unit tests because
+// the wraparound behavior (5.1 + 5.2 = 11.0, not 10.3) is the kind
+// of bug that would silently miscount team pitching totals.
+export function parseInningsToThirds(ip: string | number | undefined): number {
   if (ip == null) return 0;
   const s = typeof ip === "number" ? ip.toFixed(1) : String(ip);
   const [whole, frac] = s.split(".").map((x) => Number(x) || 0);
   return whole * 3 + (frac || 0);
 }
 
-function formatThirdsToIp(thirds: number): string {
+export function formatThirdsToIp(thirds: number): string {
   if (!Number.isFinite(thirds) || thirds <= 0) return "0.0";
   const whole = Math.floor(thirds / 3);
   const frac = thirds % 3;
   return `${whole}.${frac}`;
 }
 
-interface HitterTotals {
+export interface HitterTotals {
   AB: number; H: number; R: number; HR: number; RBI: number; SB: number;
 }
-interface PitcherTotals {
+export interface PitcherTotals {
   IPThirds: number; K: number; BB: number; ER: number; W: number; SV: number;
 }
 
-function sumHitting(players: RosterStatsPlayer[]): HitterTotals {
+export function sumHitting(players: RosterStatsPlayer[]): HitterTotals {
   const t: HitterTotals = { AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0 };
   for (const p of players) {
     const l = p.hitting;
@@ -151,7 +153,7 @@ function sumHitting(players: RosterStatsPlayer[]): HitterTotals {
   return t;
 }
 
-function sumPitching(players: RosterStatsPlayer[]): PitcherTotals {
+export function sumPitching(players: RosterStatsPlayer[]): PitcherTotals {
   const t: PitcherTotals = { IPThirds: 0, K: 0, BB: 0, ER: 0, W: 0, SV: 0 };
   for (const p of players) {
     const l = p.pitching;
