@@ -104,6 +104,10 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
   const [historyRange, setHistoryRange] = useState<string>("30");
   const [historyType, setHistoryType] = useState<string>("all");
   const [backdatedOnly, setBackdatedOnly] = useState<boolean>(false);
+  // Cancelled / vetoed / rejected trades are hidden by default — they're
+  // noise in the activity log because they didn't move any players. The
+  // count is surfaced as a toggle so the audit trail stays one click away.
+  const [showCancelled, setShowCancelled] = useState<boolean>(false);
 
   const mergedHistory = useMemo<HistoryItem[]>(() => {
     const tradeEvents: HistoryItem[] = completedTrades.map((t) => ({
@@ -118,6 +122,10 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
     }));
     return [...tradeEvents, ...txEvents].sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [completedTrades, transactions]);
+
+  // Trades that didn't move any players: cancelled, vetoed, rejected.
+  // Tracked separately so the toggle copy can show the count.
+  const NON_TRANSACTING_TRADE_STATUSES = new Set(["CANCELLED", "VETOED", "REJECTED"]);
 
   const filteredHistory = useMemo(() => {
     let items = mergedHistory;
@@ -140,8 +148,24 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
       );
     }
 
+    if (!showCancelled) {
+      items = items.filter(
+        (i) => i.type !== "trade" || !NON_TRANSACTING_TRADE_STATUSES.has(i.data.status ?? ""),
+      );
+    }
+
     return items;
-  }, [mergedHistory, historyRange, historyType, backdatedOnly]);
+  }, [mergedHistory, historyRange, historyType, backdatedOnly, showCancelled, NON_TRANSACTING_TRADE_STATUSES]);
+
+  // Count of trades currently hidden by the cancelled-collapse — used
+  // for the toggle label. Recomputed independently so the count is stable
+  // regardless of the other filters.
+  const hiddenCancelledCount = useMemo(() => {
+    if (showCancelled) return 0;
+    return mergedHistory.filter(
+      (i) => i.type === "trade" && NON_TRANSACTING_TRADE_STATUSES.has(i.data.status ?? ""),
+    ).length;
+  }, [mergedHistory, showCancelled, NON_TRANSACTING_TRADE_STATUSES]);
 
   return (
     <div className="space-y-4">
@@ -180,6 +204,28 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
           <span aria-hidden>📅</span>
           Backdated only
         </button>
+        {hiddenCancelledCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowCancelled(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--lg-border)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[var(--lg-text-muted)] transition-colors hover:bg-[var(--lg-tint)]"
+            title="Cancelled, vetoed, and rejected trades are hidden by default because they didn't move any players. Click to show them."
+          >
+            <span aria-hidden>⊘</span>
+            Show {hiddenCancelledCount} cancelled {hiddenCancelledCount === 1 ? "trade" : "trades"}
+          </button>
+        )}
+        {showCancelled && (
+          <button
+            type="button"
+            onClick={() => setShowCancelled(false)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-300 transition-colors"
+            title="Hide cancelled, vetoed, and rejected trades again."
+          >
+            <span aria-hidden>⊘</span>
+            Cancelled trades shown · hide
+          </button>
+        )}
         <span className="text-xs text-[var(--lg-text-muted)] font-medium ml-2">
           {filteredHistory.length} {filteredHistory.length === 1 ? "event" : "events"}
         </span>
