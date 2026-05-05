@@ -98,8 +98,6 @@ interface CategoryStandingsViewProps {
   leagueId: number;
   /** Highlight this team's row in the category-ranked table. */
   myTeamId?: number | null;
-  /** Top-N rows shown per per-category leaderboard card. Defaults to 5. */
-  topN?: number;
 }
 
 // ─── Component ───
@@ -107,7 +105,6 @@ interface CategoryStandingsViewProps {
 const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
   leagueId,
   myTeamId,
-  topN = 5,
 }) => {
   const [periodId, setPeriodId] = useState<number | null>(null);
   const [data, setData] = useState<ApiResponse | null>(null);
@@ -162,19 +159,28 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
   }, [data]);
 
   // Build category-ranked standings rows: one row per team, with each
-  // category column holding that team's rank-points in that category.
+  // category column holding that team's rank-points AND the underlying
+  // period-cumulative stat value in that category.
   const matrixRows = useMemo(() => {
     if (!data) return [] as Array<{
       teamId: number;
       teamName: string;
       teamCode: string;
       pointsByCat: Record<string, number>;
+      valueByCat: Record<string, number>;
       total: number;
     }>;
 
     const teamMap = new Map<
       number,
-      { teamId: number; teamName: string; teamCode: string; pointsByCat: Record<string, number>; total: number }
+      {
+        teamId: number;
+        teamName: string;
+        teamCode: string;
+        pointsByCat: Record<string, number>;
+        valueByCat: Record<string, number>;
+        total: number;
+      }
     >();
 
     for (const cat of data.categories) {
@@ -185,11 +191,13 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
             teamName: row.teamName,
             teamCode: row.teamCode,
             pointsByCat: {},
+            valueByCat: {},
             total: 0,
           });
         }
         const t = teamMap.get(row.teamId)!;
         t.pointsByCat[cat.key] = row.points;
+        t.valueByCat[cat.key] = row.value;
         t.total += row.points;
       }
     }
@@ -208,6 +216,20 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
     }
     return ordered;
   }, [data]);
+
+  // Split ordered keys into hitting / pitching for the two-column desktop
+  // leaderboard layout. Falls back to the existing display order when a
+  // category lacks a `group` annotation.
+  const { hittingKeys, pitchingKeys } = useMemo(() => {
+    const H: string[] = [];
+    const P: string[] = [];
+    for (const k of orderedCategoryKeys) {
+      const cat = catMap.get(k);
+      if (cat?.group === "P") P.push(k);
+      else H.push(k);
+    }
+    return { hittingKeys: H, pitchingKeys: P };
+  }, [orderedCategoryKeys, catMap]);
 
   if (loading) {
     return (
@@ -236,13 +258,13 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
       {/* ─── Section A: Category-Ranked Standings table ─── */}
       <div>
         <SectionLabel>✦ Category-ranked standings</SectionLabel>
-        <ThemedTable aria-label="Category-ranked Roto standings" minWidth={720}>
+        <ThemedTable aria-label="Category-ranked Roto standings" minWidth={840}>
           <ThemedThead>
             <ThemedTr>
               <ThemedTh align="center" className="w-12">#</ThemedTh>
               <ThemedTh frozen className="w-[180px]">Team</ThemedTh>
               {orderedCategoryKeys.map((k) => (
-                <ThemedTh key={k} align="center" className="w-[60px]">
+                <ThemedTh key={k} align="center" className="w-[68px]">
                   {k}
                 </ThemedTh>
               ))}
@@ -275,7 +297,14 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
                   </ThemedTd>
                   {orderedCategoryKeys.map((k) => (
                     <ThemedTd key={k} align="center" className="tabular-nums">
-                      {fmtPoints(row.pointsByCat[k] ?? 0)}
+                      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>
+                          {fmtPoints(row.pointsByCat[k] ?? 0)}
+                        </span>
+                        <span style={{ fontSize: 10, color: "var(--am-text-faint)", marginTop: 2 }}>
+                          {fmtVal(k, row.valueByCat[k] ?? NaN)}
+                        </span>
+                      </div>
                     </ThemedTd>
                   ))}
                   <ThemedTd align="center">
@@ -296,145 +325,210 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
         `}</style>
       </div>
 
-      {/* ─── Section B: Per-category leaderboard cards ─── */}
+      {/* ─── Section B: Per-category leaderboard cards ───
+          Two-column desktop layout: hitting cards in the left column,
+          pitching cards in the right column. Collapses to one column
+          on mobile (<768px) so cards stay full-width and readable. */}
       <div>
         <SectionLabel>✦ Category leaders</SectionLabel>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: 12,
-          }}
-        >
-          {orderedCategoryKeys.map((k) => {
-            const cat = catMap.get(k);
-            if (!cat) return null;
-            // Rows are returned by the server sorted by display order
-            // (best first). Take top-N for the leaderboard card.
-            const top = cat.rows.slice(0, topN);
-            return (
-              <Glass key={k} padded={false}>
-                <div style={{ padding: 14 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "baseline",
-                      justifyContent: "space-between",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <SectionLabel style={{ marginBottom: 0 }}>
-                      ✦ {k}
-                    </SectionLabel>
-                    {cat.label && cat.label !== k && (
-                      <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
-                        {cat.label}
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {top.map((r) => {
-                      // Day-over-day display: prefer the persisted daily
-                      // snapshot's `valueDeltaPct` (raw-value % change vs
-                      // yesterday) when present. Fall back to the legacy
-                      // `pointsDelta`-derived % proxy when the snapshot
-                      // table is empty (no run yet, or first day of the
-                      // period). Both gracefully degrade to no badge.
-                      const hasValuePct =
-                        typeof r.valueDeltaPct === "number" &&
-                        Number.isFinite(r.valueDeltaPct);
-                      const hasPointsDelta =
-                        typeof r.pointsDelta === "number" &&
-                        Number.isFinite(r.pointsDelta);
-                      const dPct = hasValuePct
-                        ? r.valueDeltaPct!
-                        : hasPointsDelta && r.points - (r.pointsDelta ?? 0) !== 0
-                        ? (r.pointsDelta! / (r.points - (r.pointsDelta ?? 0))) * 100
-                        : 0;
-                      const up = hasValuePct
-                        ? r.valueDeltaPct! > 0
-                        : hasPointsDelta && r.pointsDelta! > 0;
-                      const down = hasValuePct
-                        ? r.valueDeltaPct! < 0
-                        : hasPointsDelta && r.pointsDelta! < 0;
-                      const hasDelta = hasValuePct || hasPointsDelta;
-                      return (
-                        <div
-                          key={r.teamId}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "20px 1fr auto auto",
-                            alignItems: "center",
-                            gap: 8,
-                            fontSize: 12,
-                            padding: "4px 0",
-                            borderBottom: "1px solid var(--am-border)",
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: "var(--am-text-faint)",
-                              fontWeight: 600,
-                              fontVariantNumeric: "tabular-nums",
-                            }}
-                          >
-                            {r.rank}
-                          </span>
-                          <span
-                            style={{
-                              color: "var(--am-text)",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {r.teamName}
-                          </span>
-                          <span
-                            style={{
-                              fontVariantNumeric: "tabular-nums",
-                              color: "var(--am-text-muted)",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {fmtVal(k, r.value)}
-                          </span>
-                          {hasDelta ? (
-                            <span
-                              style={{
-                                fontVariantNumeric: "tabular-nums",
-                                fontSize: 10.5,
-                                fontWeight: 600,
-                                minWidth: 52,
-                                textAlign: "right",
-                                color: up
-                                  ? "var(--am-positive)"
-                                  : down
-                                    ? "var(--am-negative)"
-                                    : "var(--am-text-faint)",
-                              }}
-                            >
-                              {up ? "▲" : down ? "▼" : "—"}{" "}
-                              {dPct === 0
-                                ? "0%"
-                                : `${dPct > 0 ? "+" : ""}${dPct.toFixed(1)}%`}
-                            </span>
-                          ) : (
-                            <span style={{ minWidth: 52 }} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Glass>
-            );
-          })}
+        <div className="category-leaders-grid">
+          <div className="category-leaders-col">
+            {hittingKeys.map((k) => renderCategoryCard(k, catMap.get(k), myTeamId))}
+          </div>
+          <div className="category-leaders-col">
+            {pitchingKeys.map((k) => renderCategoryCard(k, catMap.get(k), myTeamId))}
+          </div>
         </div>
+        <style>{`
+          .category-leaders-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: start;
+          }
+          .category-leaders-col {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+          }
+          @media (max-width: 768px) {
+            .category-leaders-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
       </div>
     </div>
   );
 };
+
+// ─── Card render helper ───
+//
+// Renders one Glass card for a single category. All teams in the
+// league are listed (no top-N truncation) with rank, team name,
+// raw cumulative value, rank-points, and an optional day-over-day
+// delta indicator.
+function renderCategoryCard(
+  k: string,
+  cat: CategoryTable | undefined,
+  myTeamId: number | null | undefined,
+): React.ReactNode {
+  if (!cat) return null;
+  return (
+    <Glass key={k} padded={false}>
+      <div style={{ padding: 14 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+        >
+          <SectionLabel style={{ marginBottom: 0 }}>
+            ✦ {k}
+          </SectionLabel>
+          {cat.label && cat.label !== k && (
+            <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
+              {cat.label}
+            </span>
+          )}
+        </div>
+
+        {/* Column header for the leaderboard rows. */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "20px 1fr 44px 32px 52px",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 9.5,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            textTransform: "uppercase",
+            color: "var(--am-text-faint)",
+            padding: "0 0 4px",
+            borderBottom: "1px solid var(--am-border)",
+          }}
+        >
+          <span />
+          <span>Team</span>
+          <span style={{ textAlign: "right" }}>Stat</span>
+          <span style={{ textAlign: "right" }}>Pts</span>
+          <span style={{ textAlign: "right" }}>Δ</span>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {cat.rows.map((r) => {
+            // Day-over-day display: prefer the persisted daily snapshot's
+            // `valueDeltaPct` (raw-value % change vs yesterday). Fall back
+            // to the legacy `pointsDelta`-derived % proxy when the snapshot
+            // is empty (first day of period). Gracefully degrades to no badge.
+            const hasValuePct =
+              typeof r.valueDeltaPct === "number" &&
+              Number.isFinite(r.valueDeltaPct);
+            const hasPointsDelta =
+              typeof r.pointsDelta === "number" &&
+              Number.isFinite(r.pointsDelta);
+            const dPct = hasValuePct
+              ? r.valueDeltaPct!
+              : hasPointsDelta && r.points - (r.pointsDelta ?? 0) !== 0
+              ? (r.pointsDelta! / (r.points - (r.pointsDelta ?? 0))) * 100
+              : 0;
+            const up = hasValuePct
+              ? r.valueDeltaPct! > 0
+              : hasPointsDelta && r.pointsDelta! > 0;
+            const down = hasValuePct
+              ? r.valueDeltaPct! < 0
+              : hasPointsDelta && r.pointsDelta! < 0;
+            const hasDelta = hasValuePct || hasPointsDelta;
+            const isMine = myTeamId != null && r.teamId === myTeamId;
+            return (
+              <div
+                key={r.teamId}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "20px 1fr 44px 32px 52px",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 12,
+                  padding: "5px 0",
+                  borderBottom: "1px solid var(--am-border)",
+                  background: isMine
+                    ? "color-mix(in oklab, var(--am-accent) 7%, transparent)"
+                    : "transparent",
+                }}
+              >
+                <span
+                  style={{
+                    color: "var(--am-text-faint)",
+                    fontWeight: 600,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {r.rank}
+                </span>
+                <span
+                  style={{
+                    color: "var(--am-text)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    fontWeight: isMine ? 600 : 400,
+                  }}
+                >
+                  {r.teamName}
+                </span>
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--am-text-muted)",
+                    fontWeight: 600,
+                    textAlign: "right",
+                  }}
+                >
+                  {fmtVal(k, r.value)}
+                </span>
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--am-text)",
+                    fontWeight: 700,
+                    textAlign: "right",
+                  }}
+                >
+                  {fmtPoints(r.points)}
+                </span>
+                {hasDelta ? (
+                  <span
+                    style={{
+                      fontVariantNumeric: "tabular-nums",
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      textAlign: "right",
+                      color: up
+                        ? "var(--am-positive)"
+                        : down
+                          ? "var(--am-negative)"
+                          : "var(--am-text-faint)",
+                    }}
+                  >
+                    {up ? "▲" : down ? "▼" : "—"}{" "}
+                    {dPct === 0
+                      ? "0%"
+                      : `${dPct > 0 ? "+" : ""}${dPct.toFixed(1)}%`}
+                  </span>
+                ) : (
+                  <span />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Glass>
+  );
+}
 
 export default CategoryStandingsView;
