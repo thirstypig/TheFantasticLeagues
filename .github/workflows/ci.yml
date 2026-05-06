@@ -54,6 +54,21 @@ jobs:
       - name: Audit client
         run: cd client && npm audit --audit-level=critical
 
+      # Block CONCURRENTLY in Prisma migrations — Prisma wraps each migration
+      # in a transaction; CONCURRENTLY aborts with PG 25001 and leaves the
+      # migration failed-in-flight (P3009), freezing all future deploys.
+      # See docs/solutions/deployment/railway-prisma-concurrent-index-p3009-block.md
+      - name: Block CONCURRENTLY in Prisma migrations
+        run: |
+          violations=$(find prisma/migrations -name '*.sql' -print0 | xargs -0 awk '
+            { line = $0; sub(/--.*/, "", line); if (tolower(line) ~ /concurrently/) print FILENAME":"FNR": "$0 }
+          ')
+          if [ -n "$violations" ]; then
+            echo "$violations"
+            echo "::error::CONCURRENTLY found in Prisma migration SQL. Prisma wraps each migration in a transaction; CONCURRENTLY aborts (PG 25001) and leaves the migration failed-in-flight (P3009), freezing all future deploys. Use the two-step out-of-band pattern instead — see docs/solutions/deployment/railway-prisma-concurrent-index-p3009-block.md"
+            exit 1
+          fi
+
   # Deploys are handled by Railway's GitHub integration:
   # every push to main triggers a Railway build automatically.
   # No CI deploy step is needed (Railway has no inbound deploy
