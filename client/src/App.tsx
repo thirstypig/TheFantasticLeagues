@@ -70,6 +70,7 @@ const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
 const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Preview"));
 const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRosterHubDeferred"));
+const WaiverWirePreview = React.lazy(() => import("./pages/design/WaiverWirePreview"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -280,6 +281,10 @@ export default function App() {
                         (secondary). Local state only, no backend wiring.
                         Reference: roster_hub_v3_shipped.md memory note. */}
                     <Route path="/design/roster-hub-deferred" element={<DesignRosterHubDeferred />} />
+                    {/* /design/waivers — Waiver Wire List preview, two-list
+                        model. All mocked, no DB. Walks owner view, add picker,
+                        drop picker, soft warning, commissioner, results. */}
+                    <Route path="/design/waivers" element={<WaiverWirePreview />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
