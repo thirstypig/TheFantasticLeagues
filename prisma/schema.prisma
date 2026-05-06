@@ -61,6 +61,35 @@ enum ClaimStatus {
   CANCELLED
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Waiver Wire List enums (PR #256, two-list model)
+// ──────────────────────────────────────────────────────────────────
+
+enum WaiverDropMode {
+  RELEASE
+  IL_STASH
+}
+
+enum WaiverPeriodStatus {
+  PENDING
+  LOCKED
+  PROCESSED
+  CANCELLED
+}
+
+enum WaiverAddOutcome {
+  PENDING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum WaiverDropStatus {
+  PENDING
+  CONSUMED
+  UNUSED
+}
+
 enum SeasonStatus {
   SETUP
   DRAFT
@@ -295,6 +324,7 @@ model League {
   chatMessages           ChatMessage[]
   rosterSlotEvents       RosterSlotEvent[]
   teamStatsCategoryDaily TeamStatsCategoryDaily[]
+  waiverPeriods          WaiverPeriod[]
 
   @@unique([name, season])
 }
@@ -411,6 +441,10 @@ model Team {
   matchupsAsA Matchup[]   @relation("matchupTeamA")
   matchupsAsB Matchup[]   @relation("matchupTeamB")
 
+  // Waiver Wire List (PR #256, two-list model)
+  waiverAddEntries  WaiverAddEntry[]
+  waiverDropEntries WaiverDropEntry[]
+
   @@unique([leagueId, name])
   @@unique([leagueId, code])
   @@index([leagueId])
@@ -446,6 +480,8 @@ model Player {
   waiverClaimsAdd       WaiverClaim[]       @relation("ClaimAdd")
   waiverClaimsDrop      WaiverClaim[]       @relation("ClaimDrop")
   waiverClaimsCondition WaiverClaim[]       @relation("ClaimCondition")
+  waiverAddEntries      WaiverAddEntry[]    @relation("WaiverAddPlayer")
+  waiverDropEntries     WaiverDropEntry[]   @relation("WaiverDropPlayer")
   periodStats           PlayerStatsPeriod[]
   dailyStats            PlayerStatsDaily[]
   playerValues          PlayerValue[]
@@ -909,6 +945,76 @@ model WaiverClaim {
   dropPlayer      Player? @relation("ClaimDrop", fields: [dropPlayerId], references: [id])
   conditionPlayer Player? @relation("ClaimCondition", fields: [conditionPlayerId], references: [id])
 
+  @@index([teamId])
+  @@index([status])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Waiver Wire List — two-list model (PR #256, supersedes the
+// paired-row WaiverClaim approach for the new feature). The legacy
+// WaiverClaim model above stays untouched; it backs the existing
+// /api/waivers/process auto-engine.
+// ──────────────────────────────────────────────────────────────────
+
+model WaiverPeriod {
+  id          Int                @id @default(autoincrement())
+  leagueId    Int
+  deadlineAt  DateTime
+  lockedAt    DateTime?
+  processedAt DateTime?
+  status      WaiverPeriodStatus @default(PENDING)
+  createdAt   DateTime           @default(now())
+
+  league      League            @relation(fields: [leagueId], references: [id])
+  addEntries  WaiverAddEntry[]
+  dropEntries WaiverDropEntry[]
+
+  @@index([leagueId])
+  @@index([status])
+  @@index([leagueId, deadlineAt])
+}
+
+model WaiverAddEntry {
+  id                  Int              @id @default(autoincrement())
+  periodId            Int
+  teamId              Int
+  playerId            Int
+  priority            Int
+  outcome             WaiverAddOutcome @default(PENDING)
+  consumedDropEntryId Int?             @unique // 1:1 — each drop is consumed by at most one add
+  reason              String? // free-text failure reason recorded by commissioner
+  processedAt         DateTime?
+  createdAt           DateTime         @default(now())
+
+  period       WaiverPeriod     @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  team         Team             @relation(fields: [teamId], references: [id])
+  player       Player           @relation("WaiverAddPlayer", fields: [playerId], references: [id])
+  consumedDrop WaiverDropEntry? @relation("ConsumedDrop", fields: [consumedDropEntryId], references: [id])
+
+  @@unique([periodId, teamId, priority]) // one entry per priority slot per (period, team)
+  @@unique([periodId, teamId, playerId]) // can't queue same player twice in one period
+  @@index([teamId])
+  @@index([outcome])
+}
+
+model WaiverDropEntry {
+  id          Int              @id @default(autoincrement())
+  periodId    Int
+  teamId      Int
+  playerId    Int
+  priority    Int
+  dropMode    WaiverDropMode   @default(RELEASE)
+  status      WaiverDropStatus @default(PENDING)
+  processedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  period     WaiverPeriod    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  team       Team            @relation(fields: [teamId], references: [id])
+  player     Player          @relation("WaiverDropPlayer", fields: [playerId], references: [id])
+  consumedBy WaiverAddEntry? @relation("ConsumedDrop")
+
+  @@unique([periodId, teamId, priority])
+  @@unique([periodId, teamId, playerId])
   @@index([teamId])
   @@index([status])
 }
