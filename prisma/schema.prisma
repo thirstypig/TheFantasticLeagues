@@ -61,6 +61,18 @@ enum ClaimStatus {
   CANCELLED
 }
 
+enum WaiverDropMode {
+  RELEASE
+  IL_STASH
+}
+
+enum WaiverPeriodStatus {
+  PENDING // accepting new claims, owners may edit
+  LOCKED // deadline passed, no more edits, awaiting commissioner run
+  PROCESSED // commissioner has run; results recorded
+  CANCELLED // void; e.g. season ended mid-period
+}
+
 enum SeasonStatus {
   SETUP
   DRAFT
@@ -295,6 +307,7 @@ model League {
   chatMessages           ChatMessage[]
   rosterSlotEvents       RosterSlotEvent[]
   teamStatsCategoryDaily TeamStatsCategoryDaily[]
+  waiverPeriods          WaiverPeriod[]
 
   @@unique([name, season])
 }
@@ -904,13 +917,41 @@ model WaiverClaim {
   conditionPlayerId Int? // the player the condition references
   conditionNote     String? // human-readable condition description
 
-  team            Team    @relation(fields: [teamId], references: [id])
-  player          Player  @relation("ClaimAdd", fields: [playerId], references: [id])
-  dropPlayer      Player? @relation("ClaimDrop", fields: [dropPlayerId], references: [id])
-  conditionPlayer Player? @relation("ClaimCondition", fields: [conditionPlayerId], references: [id])
+  // Waiver Wire List fields (PR #254). Existing rows pre-Wire-List are
+  // periodId=null + dropMode=RELEASE which matches old behavior.
+  periodId Int?
+  dropMode WaiverDropMode @default(RELEASE)
+
+  team            Team           @relation(fields: [teamId], references: [id])
+  player          Player         @relation("ClaimAdd", fields: [playerId], references: [id])
+  dropPlayer      Player?        @relation("ClaimDrop", fields: [dropPlayerId], references: [id])
+  conditionPlayer Player?        @relation("ClaimCondition", fields: [conditionPlayerId], references: [id])
+  period          WaiverPeriod?  @relation(fields: [periodId], references: [id])
 
   @@index([teamId])
   @@index([status])
+  @@index([periodId])
+}
+
+// One row per league per waiver run. Owners build claims into a PENDING
+// period; the deadline transitions it to LOCKED; the commissioner's
+// processor transitions it to PROCESSED. See PR #254 / docs/plans for
+// the rationale on weekly cadence (independent of stat-periods).
+model WaiverPeriod {
+  id          Int                 @id @default(autoincrement())
+  leagueId    Int
+  deadlineAt  DateTime
+  lockedAt    DateTime?
+  processedAt DateTime?
+  status      WaiverPeriodStatus  @default(PENDING)
+  createdAt   DateTime            @default(now())
+
+  league League         @relation(fields: [leagueId], references: [id])
+  claims WaiverClaim[]
+
+  @@index([leagueId])
+  @@index([status])
+  @@index([leagueId, deadlineAt])
 }
 
 // ======================
