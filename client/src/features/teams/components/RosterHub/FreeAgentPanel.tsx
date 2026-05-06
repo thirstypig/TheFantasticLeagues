@@ -150,9 +150,6 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
         display: "flex",
         flexDirection: "column",
         gap: 12,
-        // Slide-in animation per spec — driven by inline style + class
-        // so consumers can override with a wrapping container style.
-        animation: "fa-slide-in 200ms ease-out",
       }}
     >
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>

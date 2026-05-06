@@ -529,3 +529,51 @@
     padding: 0 4px 4px 32px;
   }
 }
+
+/* ─── Free agent panel (FA-#7: side panel ≥768px, bottom sheet <768px) ──
+   Without these rules the .fa-panel <aside> renders inline below the
+   roster grid with `height: auto`, which collapses its `flex: 1`
+   scroll viewport to 0px and leaves the virtualizer with nothing to
+   paint (no rows visible → search appears broken). The panel docks via
+   position: fixed so Team.tsx doesn't need a wrapping flex container. */
+.fa-panel {
+  position: fixed;
+  z-index: 50;
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.55);
+}
+
+@media (min-width: 768px) {
+  .fa-panel {
+    /* Side-dock on desktop. Top offset clears the Aurora header (~72px)
+       plus a small breathing gap; max-height caps it on tall screens. */
+    top: 96px;
+    right: 16px;
+    bottom: 16px;
+    width: 380px;
+    max-height: calc(100dvh - 112px);
+    animation: fa-slide-in-side 200ms ease-out;
+  }
+}
+
+@media (max-width: 767px) {
+  .fa-panel {
+    /* Bottom sheet on mobile. 75dvh keeps a peek of the roster behind
+       so users see context (and where their drag will land). */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 75dvh;
+    border-radius: 18px 18px 0 0;
+    animation: fa-slide-in-bottom 200ms ease-out;
+  }
+}
+
+@keyframes fa-slide-in-side {
+  from { transform: translateX(110%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fa-slide-in-bottom {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
