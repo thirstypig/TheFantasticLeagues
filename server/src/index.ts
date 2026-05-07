@@ -354,6 +354,36 @@ async function main() {
   });
   logger.info({}, "Scheduled idle session sweeper every 15 minutes");
 
+  // Every 5 min: auto-lock waiver periods whose deadline has passed.
+  // Flips PENDING → LOCKED so owners can no longer mutate entries.
+  // Commissioner still finalizes manually (succeed/fail/skip per Add).
+  // Advisory-locked for multi-instance safety.
+  cron.schedule("*/5 * * * *", async () => {
+    try {
+      const lockKey = 0x57495245; // "WIRE"
+      const locked = await prisma.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${lockKey}) as locked`;
+      if (!locked[0]?.locked) return;
+      try {
+        const now = new Date();
+        const overdue = await prisma.waiverPeriod.findMany({
+          where: { status: "PENDING", deadlineAt: { lte: now } },
+          select: { id: true, leagueId: true },
+        });
+        if (overdue.length === 0) return;
+        const result = await prisma.waiverPeriod.updateMany({
+          where: { id: { in: overdue.map((p) => p.id) } },
+          data: { status: "LOCKED", lockedAt: now },
+        });
+        logger.info({ count: result.count, periodIds: overdue.map((p) => p.id) }, "Auto-locked waiver periods past deadline");
+      } finally {
+        await prisma.$queryRaw`SELECT pg_advisory_unlock(${lockKey})`;
+      }
+    } catch (err) {
+      logger.error({ error: String(err) }, "Wire-list auto-lock failed");
+    }
+  });
+  logger.info({}, "Scheduled wire-list auto-lock every 5 minutes");
+
   // Daily 04:15 UTC: data retention on UserSession (plan R8).
   //   • `ipRaw` (full IP) is only kept for a 7-day fraud window, then nulled.
   //   • Whole rows are deleted after 90 days — `ipTruncated` and `ipHash`
