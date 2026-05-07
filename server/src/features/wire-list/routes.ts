@@ -30,6 +30,19 @@ import {
 
 const router = Router();
 
+/**
+ * Sentinel thrown inside a $transaction when the period status check
+ * fails. Caught at the route level and translated to a 403. Used by
+ * POST/PATCH/DELETE handlers to fold the period-status guard into the
+ * same tx as the entry mutation (todo #158).
+ */
+class RaceLost extends Error {
+  constructor(public code: "PERIOD_NOT_PENDING") {
+    super(code);
+    this.name = "RaceLost";
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -274,9 +287,22 @@ router.post(
 
     const finalPriority = priority ?? (await nextAddPriority(periodId, teamId));
 
+    // todo #158: re-check period status INSIDE the same tx as the
+    // create. The cron flips PENDING→LOCKED on a 5-min schedule;
+    // without this guard a flip between loadPendingPeriod and the
+    // create could persist the entry on a LOCKED period.
     try {
-      const entry = await prisma.waiverAddEntry.create({
-        data: { periodId, teamId, playerId, priority: finalPriority, outcome: "PENDING" },
+      const entry = await prisma.$transaction(async (tx) => {
+        const fresh = await tx.waiverPeriod.findUnique({
+          where: { id: periodId },
+          select: { status: true },
+        });
+        if (!fresh || fresh.status !== "PENDING") {
+          throw new RaceLost("PERIOD_NOT_PENDING");
+        }
+        return tx.waiverAddEntry.create({
+          data: { periodId, teamId, playerId, priority: finalPriority, outcome: "PENDING" },
+        });
       });
       writeAuditLog({
         userId: req.user!.id,
@@ -287,6 +313,9 @@ router.post(
       });
       res.status(201).json(entry);
     } catch (err) {
+      if (err instanceof RaceLost) {
+        return res.status(403).json({ error: "Period locked — cannot create entries", code: err.code });
+      }
       const tx = translateUniqueViolation(err, "WaiverAddEntry");
       if (tx) return res.status(tx.status).json(tx.body);
       throw err;
@@ -319,8 +348,22 @@ router.patch(
       return res.status(409).json({ error: "Entry already processed", code: "ENTRY_ALREADY_PROCESSED" });
     }
 
+    // todo #158: status-CAS via updateMany. The relation filter
+    // `period: { status: "PENDING" }` runs in the same statement as
+    // the write, so the cron's PENDING→LOCKED flip can't slip in
+    // between a stale read and the update.
     try {
-      const updated = await prisma.waiverAddEntry.update({ where: { id }, data: { priority } });
+      const result = await prisma.waiverAddEntry.updateMany({
+        where: { id, period: { status: "PENDING" }, outcome: "PENDING" },
+        data: { priority },
+      });
+      if (result.count === 0) {
+        return res.status(403).json({
+          error: "Period locked or entry already processed — cannot reorder",
+          code: "PERIOD_NOT_PENDING",
+        });
+      }
+      const updated = await prisma.waiverAddEntry.findUnique({ where: { id } });
       writeAuditLog({
         userId: req.user!.id,
         action: "WIRE_LIST_ADD_UPDATE",
@@ -358,7 +401,17 @@ router.delete(
     if (entry.outcome !== "PENDING") {
       return res.status(409).json({ error: "Entry already processed", code: "ENTRY_ALREADY_PROCESSED" });
     }
-    await prisma.waiverAddEntry.delete({ where: { id } });
+    // todo #158: deleteMany with relation filter so the cron flip
+    // can't race the read-then-delete window.
+    const result = await prisma.waiverAddEntry.deleteMany({
+      where: { id, period: { status: "PENDING" }, outcome: "PENDING" },
+    });
+    if (result.count === 0) {
+      return res.status(403).json({
+        error: "Period locked or entry already processed — cannot delete",
+        code: "PERIOD_NOT_PENDING",
+      });
+    }
     writeAuditLog({
       userId: req.user!.id,
       action: "WIRE_LIST_ADD_DELETE",
@@ -432,15 +485,25 @@ router.post(
     const finalPriority = priority ?? (await nextDropPriority(periodId, teamId));
 
     try {
-      const entry = await prisma.waiverDropEntry.create({
-        data: {
-          periodId,
-          teamId,
-          playerId,
-          priority: finalPriority,
-          dropMode: dropMode ?? "RELEASE",
-          status: "PENDING",
-        },
+      // todo #158: re-check period status inside the same tx.
+      const entry = await prisma.$transaction(async (tx) => {
+        const fresh = await tx.waiverPeriod.findUnique({
+          where: { id: periodId },
+          select: { status: true },
+        });
+        if (!fresh || fresh.status !== "PENDING") {
+          throw new RaceLost("PERIOD_NOT_PENDING");
+        }
+        return tx.waiverDropEntry.create({
+          data: {
+            periodId,
+            teamId,
+            playerId,
+            priority: finalPriority,
+            dropMode: dropMode ?? "RELEASE",
+            status: "PENDING",
+          },
+        });
       });
       writeAuditLog({
         userId: req.user!.id,
@@ -451,6 +514,9 @@ router.post(
       });
       res.status(201).json(entry);
     } catch (err) {
+      if (err instanceof RaceLost) {
+        return res.status(403).json({ error: "Period locked — cannot create entries", code: err.code });
+      }
       const tx = translateUniqueViolation(err, "WaiverDropEntry");
       if (tx) return res.status(tx.status).json(tx.body);
       throw err;
@@ -483,14 +549,22 @@ router.patch(
       return res.status(409).json({ error: "Entry already processed", code: "ENTRY_ALREADY_PROCESSED" });
     }
 
+    // todo #158: status-CAS via updateMany.
     try {
-      const updated = await prisma.waiverDropEntry.update({
-        where: { id },
+      const result = await prisma.waiverDropEntry.updateMany({
+        where: { id, period: { status: "PENDING" }, status: "PENDING" },
         data: {
           ...(priority !== undefined ? { priority } : {}),
           ...(dropMode !== undefined ? { dropMode } : {}),
         },
       });
+      if (result.count === 0) {
+        return res.status(403).json({
+          error: "Period locked or entry already processed — cannot reorder",
+          code: "PERIOD_NOT_PENDING",
+        });
+      }
+      const updated = await prisma.waiverDropEntry.findUnique({ where: { id } });
       writeAuditLog({
         userId: req.user!.id,
         action: "WIRE_LIST_DROP_UPDATE",
@@ -528,7 +602,16 @@ router.delete(
     if (entry.status !== "PENDING") {
       return res.status(409).json({ error: "Entry already processed", code: "ENTRY_ALREADY_PROCESSED" });
     }
-    await prisma.waiverDropEntry.delete({ where: { id } });
+    // todo #158: deleteMany with relation filter.
+    const result = await prisma.waiverDropEntry.deleteMany({
+      where: { id, period: { status: "PENDING" }, status: "PENDING" },
+    });
+    if (result.count === 0) {
+      return res.status(403).json({
+        error: "Period locked or entry already processed — cannot delete",
+        code: "PERIOD_NOT_PENDING",
+      });
+    }
     writeAuditLog({
       userId: req.user!.id,
       action: "WIRE_LIST_DROP_DELETE",

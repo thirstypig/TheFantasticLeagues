@@ -173,5 +173,7 @@ export const WireListErrorCodeSchema = z.enum([
   "NO_DROP_AVAILABLE",
   "POSITION_INCOMPATIBLE",
   "FINALIZE_BLOCKED",
+  "DROP_RACE_LOST",
+  "FINALIZE_RACE_LOST",
 ]);
 export type WireListErrorCode = z.infer<typeof WireListErrorCodeSchema>;
