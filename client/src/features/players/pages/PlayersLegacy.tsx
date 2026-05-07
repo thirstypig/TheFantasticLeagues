@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Star, Loader2 } from "lucide-react";
-import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type PeriodStatRow, fmtRate } from '../../../api';
+import { getPlayerSeasonStatsMeta, getPlayerPeriodStatsMeta, type PlayerSeasonStat, type PeriodStatRow, fmtRate } from '../../../api';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
@@ -64,6 +64,7 @@ export default function PlayersLegacy() {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
 
   const [periodStats, setPeriodStats] = useState<PeriodStatRow[]>([]);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
   const [periods, setPeriods] = useState<number[]>([]);
   const [periodNameMap, setPeriodNameMap] = useState<Record<number, string>>({});
 
@@ -91,19 +92,20 @@ export default function PlayersLegacy() {
     setLoading(true);
     (async () => {
       try {
-        const [p, per] = await Promise.all([
-             getPlayerSeasonStats(leagueId),
-             getPlayerPeriodStats(leagueId)
+        const [pMeta, perMeta] = await Promise.all([
+             getPlayerSeasonStatsMeta(leagueId),
+             getPlayerPeriodStatsMeta(leagueId)
         ]);
-        setPlayers(p);
-        setPeriodStats(per);
+        setPlayers(pMeta.stats);
+        setPeriodStats(perMeta.stats);
+        setComputedAt(pMeta.computedAt ?? perMeta.computedAt ?? null);
 
-        const pSet = new Set(per.map(x => x.periodId).filter(n => typeof n === 'number'));
+        const pSet = new Set(perMeta.stats.map(x => x.periodId).filter(n => typeof n === 'number'));
         setPeriods(Array.from(pSet).sort((a,b) => a-b)); // ascending order
 
         // Build period name map from the period stats response
         const nameMap: Record<number, string> = {};
-        for (const stat of per) {
+        for (const stat of perMeta.stats) {
           if (stat.periodId && stat.periodName) nameMap[Number(stat.periodId)] = String(stat.periodName);
         }
         setPeriodNameMap(nameMap);
@@ -328,7 +330,7 @@ export default function PlayersLegacy() {
 
        {/* Results Table */}
        <div className="flex-1 overflow-auto max-w-6xl w-full mx-auto px-4 pb-8 md:px-6 md:pb-12 custom-scrollbar">
-           <StatsUpdated source="synced" className="text-right mb-1 px-1" />
+           <StatsUpdated source="synced" timestamp={computedAt} className="text-right mb-1 px-1" />
            <div className="lg-card p-0 bg-transparent animate-in fade-in slide-in-from-bottom-6 duration-700 overflow-x-auto">
                    <ThemedTable bare density="compact" zebra aria-label="Player statistics">
                        <ThemedThead sticky>

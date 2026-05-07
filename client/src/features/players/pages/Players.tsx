@@ -32,7 +32,7 @@ import {
   AmbientBg, Glass, SectionLabel,
 } from '../../../components/aurora/atoms';
 import '../../../components/aurora/aurora.css';
-import { getPlayerSeasonStats, getPlayerPeriodStats, type PlayerSeasonStat, type PeriodStatRow } from '../../../api';
+import { getPlayerSeasonStatsMeta, getPlayerPeriodStatsMeta, type PlayerSeasonStat, type PeriodStatRow } from '../../../api';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import PlayerExpandedRow from '../../auction/components/PlayerExpandedRow';
 import { PlayerFilterBar } from '../../../components/shared/PlayerFilterBar';
@@ -93,6 +93,7 @@ export default function Players() {
   }, [navigate]);
 
   const [periodStats, setPeriodStats] = useState<PeriodStatRow[]>([]);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
   const [periods, setPeriods] = useState<number[]>([]);
   const [periodNameMap, setPeriodNameMap] = useState<Record<number, string>>({});
 
@@ -117,16 +118,17 @@ export default function Players() {
     setLoading(true);
     (async () => {
       try {
-        const [p, per] = await Promise.all([
-          getPlayerSeasonStats(leagueId),
-          getPlayerPeriodStats(leagueId),
+        const [pMeta, perMeta] = await Promise.all([
+          getPlayerSeasonStatsMeta(leagueId),
+          getPlayerPeriodStatsMeta(leagueId),
         ]);
-        setPlayers(p);
-        setPeriodStats(per);
-        const pSet = new Set(per.map(x => x.periodId).filter(n => typeof n === 'number'));
+        setPlayers(pMeta.stats);
+        setPeriodStats(perMeta.stats);
+        setComputedAt(pMeta.computedAt ?? perMeta.computedAt ?? null);
+        const pSet = new Set(perMeta.stats.map(x => x.periodId).filter(n => typeof n === 'number'));
         setPeriods(Array.from(pSet).sort((a, b) => a - b));
         const nameMap: Record<number, string> = {};
-        for (const stat of per) {
+        for (const stat of perMeta.stats) {
           if (stat.periodId && stat.periodName) nameMap[Number(stat.periodId)] = String(stat.periodName);
         }
         setPeriodNameMap(nameMap);
@@ -345,7 +347,7 @@ export default function Players() {
         {/* Results table */}
         <Glass padded={false}>
           <div style={{ padding: '12px 16px 0', display: 'flex', justifyContent: 'flex-end' }}>
-            <StatsUpdated source="synced" className="text-xs" />
+            <StatsUpdated source="synced" timestamp={computedAt} className="text-xs" />
           </div>
           <div style={{ overflowX: 'auto', padding: '4px 4px 12px' }}>
             <ThemedTable bare density="compact" zebra aria-label="Player statistics">

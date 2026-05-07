@@ -28,8 +28,10 @@ export function playerKey(p: PlayerSeasonStat | null | undefined): string {
   return `${mlb}-${role}`;
 }
 
-const _seasonStatsCache = new Map<number, Promise<PlayerSeasonStat[]>>();
-const _periodStatsCache = new Map<number, Promise<PeriodStatRow[]>>();
+type SeasonStatsCached = { stats: PlayerSeasonStat[]; computedAt: string | null };
+type PeriodStatsCached = { stats: PeriodStatRow[]; computedAt: string | null };
+const _seasonStatsCache = new Map<number, Promise<SeasonStatsCached>>();
+const _periodStatsCache = new Map<number, Promise<PeriodStatsCached>>();
 let _auctionCache: Promise<PlayerSeasonStat[]> | null = null;
 const _seasonStandingsCache = new Map<number, Promise<SeasonStandingsApiResponse>>();
 const _periodCategoryCache = new Map<string, Promise<PeriodCategoryStandingsResponse>>();
@@ -128,31 +130,39 @@ export async function getAuctionValues(): Promise<PlayerSeasonStat[]> {
   return _auctionCache;
 }
 
-export async function getPlayerSeasonStats(leagueId?: number): Promise<PlayerSeasonStat[]> {
+export async function getPlayerSeasonStatsMeta(leagueId?: number): Promise<SeasonStatsCached> {
   const key = leagueId ?? 1;
   if (!_seasonStatsCache.has(key)) {
     _seasonStatsCache.set(key, (async () => {
       const url = `${API_BASE}/player-season-stats?leagueId=${key}`;
-      const resp = await fetchJsonApi<{ stats: Record<string, any>[] }>(url); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const resp = await fetchJsonApi<{ stats: Record<string, any>[]; computedAt?: string }>(url); // eslint-disable-line @typescript-eslint/no-explicit-any
       const raw = resp?.stats ?? [];
-      return dedupeByRowId(raw.map(normalizeTwoWayRow), "season");
+      return { stats: dedupeByRowId(raw.map(normalizeTwoWayRow), "season"), computedAt: resp?.computedAt ?? null };
     })());
   }
   return _seasonStatsCache.get(key)!;
 }
 
-export async function getPlayerPeriodStats(leagueId?: number): Promise<PeriodStatRow[]> {
+export async function getPlayerSeasonStats(leagueId?: number): Promise<PlayerSeasonStat[]> {
+  return (await getPlayerSeasonStatsMeta(leagueId)).stats;
+}
+
+export async function getPlayerPeriodStatsMeta(leagueId?: number): Promise<PeriodStatsCached> {
   const key = leagueId ?? 1;
   if (!_periodStatsCache.has(key)) {
     _periodStatsCache.set(key, (async () => {
       const url = leagueId && leagueId !== 1
         ? `${API_BASE}/player-period-stats?leagueId=${leagueId}`
         : `${API_BASE}/player-period-stats`;
-      const resp = await fetchJsonApi<{ stats: PeriodStatRow[] }>(url);
-      return resp?.stats ?? [];
+      const resp = await fetchJsonApi<{ stats: PeriodStatRow[]; computedAt?: string }>(url);
+      return { stats: resp?.stats ?? [], computedAt: resp?.computedAt ?? null };
     })());
   }
   return _periodStatsCache.get(key)!;
+}
+
+export async function getPlayerPeriodStats(leagueId?: number): Promise<PeriodStatRow[]> {
+  return (await getPlayerPeriodStatsMeta(leagueId)).stats;
 }
 
 export async function getSeasonStandings(leagueId?: number): Promise<SeasonStandingsApiResponse> {
