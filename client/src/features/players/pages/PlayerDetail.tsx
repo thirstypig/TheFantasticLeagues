@@ -36,7 +36,10 @@ import {
   getPlayerNews,
   getPlayerProfile,
   getPlayerRecentStats,
-  getPlayerSeasonStats,
+  getPlayerSeasonStatsMeta,
+} from "../../../api";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
+import {
   type CareerHittingRow,
   type CareerPitchingRow,
   type FieldingStatRow,
@@ -93,6 +96,7 @@ export default function PlayerDetail() {
   const [profileFailed, setProfileFailed] = useState(false);
   const [recentFailed, setRecentFailed] = useState(false);
   const [careerFailed, setCareerFailed] = useState(false);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   // If the row didn't come in via navigation state, fetch the league-wide
   // list and resolve by mlb_id. Cheap on cache hits.
@@ -101,10 +105,11 @@ export default function PlayerDetail() {
     let alive = true;
     (async () => {
       try {
-        const list = await getPlayerSeasonStats(leagueId);
+        const meta = await getPlayerSeasonStatsMeta(leagueId);
         if (!alive) return;
-        const found = list.find(p => norm(p.mlb_id) === norm(mlbIdParam)) ?? null;
+        const found = meta.stats.find(p => norm(p.mlb_id) === norm(mlbIdParam)) ?? null;
         setSeasonRow(found);
+        setComputedAt(meta.computedAt ?? null);
       } catch {
         // Not fatal — profile + stats can still load via mlbId param alone.
       } finally {
@@ -276,6 +281,11 @@ export default function PlayerDetail() {
           </Glass>
         ) : tab === "stats" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 16 }}>
+            {computedAt && (
+              <div style={{ gridColumn: "span 12", fontSize: 12, color: "var(--am-text-muted)" }}>
+                <DataFreshness computedAt={computedAt} className="text-xs" />
+              </div>
+            )}
             {/* Positions Played */}
             {mappedFieldingRows.length > 0 && (
               <div style={{ gridColumn: "span 12" }}>

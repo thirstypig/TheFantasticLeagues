@@ -266,6 +266,7 @@ router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
       mlb_team: player.mlbTeam ?? "",
       mlbTeam: player.mlbTeam ?? "",
     },
+    computedAt: new Date().toISOString(),
   });
 }));
 
@@ -374,7 +375,7 @@ router.get("/:mlbId/fielding", requireAuth, asyncHandler(async (req, res) => {
       .map(([position, games]) => ({ position, games }))
       .sort((a, b) => b.games - a.games);
 
-    res.json({ mlbId, season, positions });
+    res.json({ mlbId, season, positions, computedAt: new Date().toISOString() });
   } catch (err) {
     logger.error({ mlbId, season, error: String(err) }, "Failed to fetch fielding stats");
     res.status(502).json({ error: "Unable to fetch fielding stats" });

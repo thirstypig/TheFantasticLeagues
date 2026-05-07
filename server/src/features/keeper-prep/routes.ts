@@ -123,7 +123,7 @@ router.get(
       projectedValue: r.player?.id ? (valueMap.get(r.player.id) ?? null) : null,
     }));
 
-    return res.json({ team, roster: enrichedRoster, keeperLimit, isLocked });
+    return res.json({ team, roster: enrichedRoster, keeperLimit, isLocked, computedAt: new Date().toISOString() });
   })
 );
 

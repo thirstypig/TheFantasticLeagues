@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import {
   AmbientBg, Glass, IridText, Chip, SectionLabel,
 } from "../../../components/aurora/atoms";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
 import "../../../components/aurora/aurora.css";
 import { useLeague } from "../../../contexts/LeagueContext";
 import {
@@ -53,17 +54,19 @@ export default function Matchup() {
   const [standings, setStandings] = useState<StandingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabId>("matchup");
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!leagueId) return;
     setLoading(true);
     Promise.all([
-      getMyMatchup(leagueId, week).catch(() => ({ matchup: null, myTeamId: 0 })),
-      getH2HStandings(leagueId).catch(() => ({ standings: [] })),
+      getMyMatchup(leagueId, week).catch(() => ({ matchup: null, myTeamId: 0, computedAt: undefined as string | undefined })),
+      getH2HStandings(leagueId).catch(() => ({ standings: [], computedAt: undefined as string | undefined })),
     ]).then(([m, s]) => {
       setMatchup(m.matchup);
       if (m.myTeamId) setResolvedMyTeamId(m.myTeamId);
       setStandings(s.standings);
+      setComputedAt(m.computedAt ?? s.computedAt ?? null);
     }).finally(() => setLoading(false));
   }, [leagueId, week]);
 
@@ -100,6 +103,11 @@ export default function Matchup() {
             <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               {tab === "matchup" ? "This week's matchup." : "League standings."}
             </h1>
+            {computedAt && (
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
+                <DataFreshness computedAt={computedAt} className="text-xs" />
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button type="button" onClick={() => setTab("matchup")} style={tabBtnStyle(tab === "matchup")}>
