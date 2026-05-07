@@ -71,7 +71,7 @@ fbst/
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-### Current Feature Modules (28)
+### Current Feature Modules (31)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -82,7 +82,8 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `roster` | routes, rosterImport-routes | 5 components | Roster grid, controls, import |
 | `standings` | routes, standingsService | api only | Standings computation (pages removed; StatsTables promoted to shared components) |
 | `trades` | routes | 1 page, 1 component, api | Trade proposals, voting |
-| `waivers` | routes | (minimal) | Waiver claims workflow |
+| `waivers` | routes | (minimal) | Legacy paired-row waiver-claim auto-engine (FAAB-style) — kept running; new owners use `wire-list` |
+| `wire-list` | routes, processor | 2 pages, 2 picker components, api | Two-list waiver model: ranked Add list + ranked Drop list per period. Commissioner-driven consume/free reducer (succeed/fail/skip/revert), atomic finalize, auto-lock at deadline, push notifications on outcomes. Owner UI at `/teams/:code/wire-list`, commissioner UI at `/commissioner/:leagueId/wire-list`. See `docs/decisions.md` ADR-012 |
 | `transactions` | routes | 1 page, api | Transaction history |
 | `auction` | routes, auctionImport | 2 pages, 14 components, 5 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace, settings, timer, sold visual) |
 | `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
@@ -154,6 +155,8 @@ Some features import from other features' services or components.
 - `mlb-feed/routes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
 - `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
+- `wire-list/processor.ts` imports `transactions/lib/positionInherit` (`isEligibleForSlot` for position-eligibility re-check at succeed time, mirroring legacy waivers processor)
+- `wire-list/processor.ts` imports `lib/pushService` (per-team summary push at finalize)
 - `matchups/routes.ts` imports `standings/services/standingsService` (H2H scoring from category stats)
 - `draft/routes.ts` imports `seasons/services/seasonService` (auto-transition on draft completion)
 - `teams/routes.ts` imports `standings/services/standingsService` (AI insights standings computation)
@@ -260,7 +263,7 @@ Until then: every new server emission of a Prisma row id MUST use `_dbPlayerId` 
 ## Database
 - Schema at `prisma/schema.prisma`
 - Never run migrations without explicit confirmation
-- Key models: Franchise, FranchiseMembership, User, UserProfile, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat, ChatMessage, PushSubscription, NotificationPreference, Matchup
+- Key models: Franchise, FranchiseMembership, User, UserProfile, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, WaiverPeriod, WaiverAddEntry, WaiverDropEntry, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat, ChatMessage, PushSubscription, NotificationPreference, Matchup
 - `AiInsight` — persisted AI-generated analyses (type: "weekly" for team insights, "league_digest" for home page digest; deduped by weekKey)
 - `Trade.aiAnalysis` — JSON, auto-generated post-trade analysis (fire-and-forget on processing)
 - `WaiverClaim.aiAnalysis` — JSON, auto-generated post-waiver analysis (fire-and-forget on processing)
@@ -280,6 +283,7 @@ Until then: every new server emission of a Prisma row id MUST use `_dbPlayerId` 
   3. **Rule 3** — rookies / minors → primary position only (falls out of the empty-fielding skip).
   Global threshold; per-league future.
 - **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods
+- **Every 5 min**: Wire List auto-lock — flips PENDING `WaiverPeriod` rows past their `deadlineAt` to LOCKED so owners can no longer mutate Add/Drop entries. Advisory-locked (`pg_try_advisory_lock(0x57495245)`) for multi-instance safety. Commissioner still finalizes manually.
 
 **CRITICAL**: `syncAllPlayers()` updates `Player.posPrimary` and `Player.mlbTeam` but **preserves enriched `Player.posList`** — it only overwrites `posList` if the existing value is just the primary position (not enriched by current or prior-season fielding stats). This prevents the daily sync from wiping multi-position eligibility data produced by `syncPositionEligibility`.
 

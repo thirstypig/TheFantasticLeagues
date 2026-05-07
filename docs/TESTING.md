@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-05-04
+Last updated: 2026-05-06
 
 ## What this document is
 
@@ -54,6 +54,7 @@ Major covered areas (selected):
 - `features/auction/` — 23 routes + 8 persistence + 3 auto-finish + 11 retrospective
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)
 - `features/waivers/routes.test.ts` — 12 (submit, process, cancel)
+- `features/wire-list/routes.test.ts` + `processor.test.ts` — 24 (Zod schema validation: CreatePeriodBody / Add / Drop entry bodies, error-code enum, drop-mode enum, period-results response shape)
 - `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation)
 - `features/seasons/` — 14 service + 5 routes
 - `features/players/mlbSyncService.test.ts` — 28 (roster sync, position eligibility, Rule 2 prior-year 20-GP fallback)
@@ -83,6 +84,7 @@ Major covered areas (selected):
 - `features/transactions/lib/permissions.test.ts` — 9 (canManageRoster matrix: admin / commissioner / owner with self-serve toggle / cross-team IDOR / no-league-rules loading state)
 - `lib/positionEligibility.test.ts` — 27 (slotsFor consolidation from the triplicated Phase 4 helpers)
 - `features/waivers/WaiverClaimForm.test.tsx` — 6 (in-season drop-required label, position eligibility)
+- `features/wire-list/__tests__/api.test.ts` — 21 (URL/method/body shape per wrapper: period CRUD + add/drop CRUD + processor — guards against route refactor, verb change, body shape drift, and the load-bearing `createWirePeriod` rename in #264)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16
 - `features/keeper-prep/KeeperSelection.test.tsx` — 8

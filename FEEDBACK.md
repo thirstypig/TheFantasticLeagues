@@ -4,6 +4,53 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-06 (late) — Wire List v1 shipped end-to-end (9 PRs after the design+schema base)
+
+Picked up directly from the earlier 2026-05-06 session that had landed PR #251 (migration policy), #255 (design preview), #256 (schema). User said "lets continue with the wire list feature" — drove the full v1 to ship in one continuous session. Final state: 13 Wire List PRs merged, one (#267) open with CI green awaiting merge, full UI + processor + cron + push notifications + dashboard banner all live.
+
+### Shipped — 9 PRs (4 already merged, #267 open)
+
+| PR | Scope |
+|---|---|
+| #259 | Owner CRUD endpoints + commissioner period-create API. Validates direction-locks server-side (period must be PENDING; FA-eligibility; not-acquired-this-period; DB unique → friendly `code` strings) |
+| #260 | Commissioner processor: lock/finalize transitions; succeed/fail/skip/revert outcome endpoints; consume/free reducer; finalize re-validates SUCCEEDED outcomes against current state and fails loudly with `blockers` array |
+| #261 | Owner UI slice 1 — view, reorder via up/down arrows (3-step swap-through-temp-priority to dodge unique constraint), delete, drop-mode toggle |
+| #262 | Owner UI slice 2 — inline FA picker (filtered to non-rostered) + roster picker (drop list source). No modals, per Yahoo-copy memory |
+| #263 | Commissioner UI — multi-team consume/free reducer with ✓✗⊘ controls per Add row; Revert button per non-PENDING outcome; Finalize disabled until every Add has an outcome. Bug fix bundled: load logic was using `getActivePeriod` (PENDING-only) so the page emptied after lock — switched to caching periodId in state, then driving subsequent reloads via `getPeriodResults` (status-agnostic) |
+| #264 | Period creation UI + history switcher + `GET /leagues/:id/periods`. Bundled bug fix: `createPeriod()` collided with `seasons/createPeriod` in `client/src/api/index.ts` re-exports — renamed wire-list version to `createWirePeriod` |
+| #265 | Auto-lock cron — every 5 min, advisory-locked (`pg_try_advisory_lock(0x57495245)`), flips PENDING periods past `deadlineAt` to LOCKED |
+| #266 | Home dashboard banner (active period + Add/Drop counts + soft warning when adds > drops) + per-team summary push notification at finalize. Per direction: NO email, push only |
+| #267 (open) | Polish — mobile responsive layout (collapse 2-column to 1-column under 768px via shared `wireList.css`); finalize-blockers UI rendered as a checklist with inline Revert buttons; +21 client api wrapper contract tests |
+
+Total Wire List tests: 24 server (Zod schema) + 21 client (URL/method/body shape) = 45.
+
+### Decisions made mid-session
+
+- **Hold roster mutations until finalize, not at succeed time** — makes `/revert` trivial (just reset DB rows), keeps activity feed clean (no add+remove churn), gives finalize a coherent atomic-rollback story. Re-validation runs three times (owner submit → commissioner succeed → finalize); finalize bails loudly with `blockers` array rather than auto-flipping outcomes.
+- **Commissioner-driven, not auto-processor** — re-read the design preview's reducer + memory direction-locks; the spec is *manual* succeed/fail/skip clicks, not an automated batch. Reframed the entire processor PR around this and it became cleaner.
+- **Per-team push fan-out at finalize** — aggregates so one team owner sees one push, not N. Reuses existing `waiverResult` notification preference from legacy waivers. Email path remains in legacy code, not exercised here.
+- **No new test DB infrastructure for handler-level integration tests** — Prisma-mocked tests would be brittle; current prod-shared Supabase blocks isolated handler tests. Browser verification covers the happy path. Documented as an open follow-up.
+
+### Bugs caught during the session
+
+- **Lock-then-empty:** `getActivePeriod` filters to `status: PENDING` only, so the commissioner page emptied after locking. Caught only by clicking through the lifecycle in the browser; unit tests with mocked API would have missed it because both endpoints behaved per spec — bug was in *composition*. (Fixed in #263.)
+- **`createPeriod` collision:** the new wire-list wrapper shadowed `seasons/createPeriod` via `client/src/api/index.ts` re-exports. Caught by tsc on first attempt; renamed to `createWirePeriod`. (Fixed in #264.)
+- **Wrong-league test data:** `findFirst({ name: { contains: "OGBA" } })` matched the wrong row (id=1 vs LDY's leagueId=20). Reminder: don't fuzzy-match league names in test scripts; derive from the actual team being tested.
+
+### Verification
+
+- `npm run test`: 1006 server + 633 client = **1639 green** (7 skipped, 1 todo)
+- `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean
+- Browser-verified end-to-end on real OGBA data: period create → owner add Toglia → commissioner lock → succeed → consume Mookie Betts → revert → DB cleanup. Mobile (390×844) layouts collapse cleanly on both pages. Dashboard banner renders correctly with live data (banner shape verified in DOM via `browser_network_requests` after async fetches settled).
+
+### Concerns / debt
+
+- **No isolated test DB.** Wire List handler-level + processor state-machine tests are blocked on this. Schema validation + URL-shape contract is the floor for now; browser verification is the integration test.
+- **PR #252 (`.fa-panel` CSS fix) still open** — unrelated to wire-list, kept open from the earlier 2026-05-06 session.
+- **Auto-lock cron not yet observed in prod.** Smoke test on Railway recommended once #267 ships: create a period with deadline 2 minutes out and verify the next cron tick LOCKs it.
+
+---
+
 ## Session 2026-05-06 — Migration policy correction, FA panel CSS bug, Waiver Wire List spec + preview + schema
 
 Owed work from prior session: edit CLAUDE.md's stale CONCURRENTLY guidance (the foot-gun behind the 21h prod freeze on 2026-05-05 documented in compound doc #250) and add a CI guardrail. Then unrelated browser verification of save-flow turned up a real prod bug in the FA panel. Then the PM brought a new feature (Waiver Wire List) — built the design preview twice after a mid-session spec revision changed the data model from paired ADD+DROP claims to two independent ranked lists.
