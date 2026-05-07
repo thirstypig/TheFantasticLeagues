@@ -17,6 +17,7 @@
  */
 import { Router } from "express";
 import crypto from "crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
@@ -165,79 +166,114 @@ router.post(
       });
     }
 
-    const succeededAdds = await prisma.waiverAddEntry.findMany({
-      where: { periodId, outcome: "SUCCEEDED" },
-      include: {
-        consumedDrop: true,
-        player: { select: { id: true, name: true, posPrimary: true, posList: true } },
-      },
-      orderBy: [{ teamId: "asc" }, { priority: "asc" }],
-    });
-
-    // Re-validate every SUCCEEDED add against current state. If any is no longer
-    // valid (player now rostered, drop player traded away, etc.), bail loudly
-    // so commissioner can revert + re-decide. We'd rather fail finalize than
-    // silently downgrade outcomes.
-    const blockers: Array<{ addId: number; code: string; detail: string }> = [];
-    const allowed = getTeamsForSource(await getLeagueStatsSource(period.leagueId));
-    for (const add of succeededAdds) {
-      const stillFA = await prisma.roster.findFirst({
-        where: { playerId: add.playerId, releasedAt: null, team: { leagueId: period.leagueId } },
-        select: { id: true },
-      });
-      if (stillFA) {
-        blockers.push({ addId: add.id, code: "PLAYER_NOT_FA", detail: "Player is now on a roster" });
-        continue;
-      }
-      const team = (await prisma.player.findUnique({ where: { id: add.playerId }, select: { mlbTeam: true } }))?.mlbTeam ?? "";
-      if (allowed && team && team !== "FA" && !allowed.has(team)) {
-        blockers.push({ addId: add.id, code: "PLAYER_NOT_FA", detail: "Player's MLB team outside league source" });
-        continue;
-      }
-      if (!add.consumedDrop) {
-        blockers.push({ addId: add.id, code: "NO_DROP_AVAILABLE", detail: "Consumed drop record missing" });
-        continue;
-      }
-      const dropRoster = await prisma.roster.findFirst({
-        where: { teamId: add.teamId, playerId: add.consumedDrop.playerId, releasedAt: null },
-        select: { id: true },
-      });
-      if (!dropRoster) {
-        blockers.push({ addId: add.id, code: "PLAYER_NOT_ON_TEAM", detail: "Drop player no longer on team" });
-      }
-    }
-    if (blockers.length > 0) {
-      return res.status(409).json({
-        error: "One or more SUCCEEDED outcomes are no longer valid — revert and re-decide before finalizing",
-        code: "FINALIZE_BLOCKED",
-        blockers,
-      });
-    }
-
     const effective = nextDayEffective();
     const seasonYear = (await prisma.league.findUnique({ where: { id: period.leagueId }, select: { season: true } }))?.season ?? new Date().getFullYear();
     const PITCHER_POS = new Set(["P", "SP", "RP", "CL"]);
+    const allowed = getTeamsForSource(await getLeagueStatsSource(period.leagueId));
 
-    const summary = await prisma.$transaction(async (tx) => {
-      let dropsConsumed = 0;
-      for (const add of succeededAdds) {
-        if (!add.consumedDrop) continue; // already filtered by blocker check
-        const drop = add.consumedDrop;
+    // ────────────────────────────────────────────────────────────────
+    // Atomicity (todo #156): the period-status check, blocker
+    // re-validation, and roster mutations all happen inside ONE
+    // $transaction. The first write is a CAS on period.status — if a
+    // concurrent finalize already flipped it to PROCESSED, our update
+    // matches zero rows (count===0) and we throw a typed error that
+    // rolls everything back, returning 409 PERIOD_NOT_LOCKED. Every
+    // roster.updateMany for a drop also asserts count===1 — if the
+    // drop player slipped off the roster between commissioner-decision
+    // time and finalize, the transaction rolls back rather than
+    // silently producing a ghost-add row.
+    // ────────────────────────────────────────────────────────────────
+    type FinalizeError = { code: "PERIOD_NOT_LOCKED" } | { code: "FINALIZE_BLOCKED"; blockers: Array<{ addId: number; code: string; detail: string }> } | { code: "DROP_NOT_ON_ROSTER"; addId: number; playerId: number };
 
-        // Capture the dropped player's slot BEFORE releasing — needed for
-        // position-inherit on the added player.
-        const dropRoster = await tx.roster.findFirst({
-          where: { teamId: add.teamId, playerId: drop.playerId, releasedAt: null },
-          select: { id: true, assignedPosition: true },
+    type Summary = { period: Awaited<ReturnType<typeof prisma.waiverPeriod.update>>; dropsConsumed: number; dropsUnused: number; addsApplied: number };
+    let summary: Summary;
+    try {
+      summary = await prisma.$transaction(async (tx) => {
+        // CAS: status MUST still be LOCKED. We update the row atomically
+        // (no-op data) so a concurrent finalize that already moved the
+        // period to PROCESSED matches zero rows here.
+        const cas = await tx.waiverPeriod.updateMany({
+          where: { id: periodId, status: "LOCKED" },
+          data: { status: "LOCKED" },
         });
+        if (cas.count === 0) {
+          const err: FinalizeError = { code: "PERIOD_NOT_LOCKED" };
+          throw err;
+        }
 
-        await tx.roster.updateMany({
-          where: { teamId: add.teamId, playerId: drop.playerId, releasedAt: null },
-          data: {
-            releasedAt: effective,
-            source: drop.dropMode === "IL_STASH" ? "WIRE_LIST_IL_STASH" : "WIRE_LIST_DROP",
+        // Re-load succeeded adds INSIDE the tx (snapshot consistency).
+        const succeededAdds = await tx.waiverAddEntry.findMany({
+          where: { periodId, outcome: "SUCCEEDED" },
+          include: {
+            consumedDrop: true,
+            player: { select: { id: true, name: true, posPrimary: true, posList: true } },
           },
+          orderBy: [{ teamId: "asc" }, { priority: "asc" }],
         });
+
+        // Blocker re-validation pass — tx-scoped reads only. Trade or
+        // earlier roster mutation between commissioner-decision time
+        // and finalize will surface here as a clean 409.
+        const blockers: Array<{ addId: number; code: string; detail: string }> = [];
+        for (const add of succeededAdds) {
+          const stillFA = await tx.roster.findFirst({
+            where: { playerId: add.playerId, releasedAt: null, team: { leagueId: period.leagueId } },
+            select: { id: true },
+          });
+          if (stillFA) {
+            blockers.push({ addId: add.id, code: "PLAYER_NOT_FA", detail: "Player is now on a roster" });
+            continue;
+          }
+          const teamCode = (await tx.player.findUnique({ where: { id: add.playerId }, select: { mlbTeam: true } }))?.mlbTeam ?? "";
+          if (allowed && teamCode && teamCode !== "FA" && !allowed.has(teamCode)) {
+            blockers.push({ addId: add.id, code: "PLAYER_NOT_FA", detail: "Player's MLB team outside league source" });
+            continue;
+          }
+          if (!add.consumedDrop) {
+            blockers.push({ addId: add.id, code: "NO_DROP_AVAILABLE", detail: "Consumed drop record missing" });
+            continue;
+          }
+          const dropRoster = await tx.roster.findFirst({
+            where: { teamId: add.teamId, playerId: add.consumedDrop.playerId, releasedAt: null },
+            select: { id: true },
+          });
+          if (!dropRoster) {
+            blockers.push({ addId: add.id, code: "PLAYER_NOT_ON_TEAM", detail: "Drop player no longer on team" });
+          }
+        }
+        if (blockers.length > 0) {
+          const err: FinalizeError = { code: "FINALIZE_BLOCKED", blockers };
+          throw err;
+        }
+
+        let dropsConsumed = 0;
+        for (const add of succeededAdds) {
+          if (!add.consumedDrop) continue;
+          const drop = add.consumedDrop;
+
+          // Capture the dropped player's slot BEFORE releasing — needed for
+          // position-inherit on the added player.
+          const dropRoster = await tx.roster.findFirst({
+            where: { teamId: add.teamId, playerId: drop.playerId, releasedAt: null },
+            select: { id: true, assignedPosition: true },
+          });
+
+          // Atomic release with count assertion (todo #156): if the
+          // drop player was moved off this roster between blocker pass
+          // and now (impossible inside the same tx unless a parallel
+          // raw-SQL writer exists, but the assertion is cheap and
+          // guards against future regressions), throw and roll back.
+          const released = await tx.roster.updateMany({
+            where: { teamId: add.teamId, playerId: drop.playerId, releasedAt: null },
+            data: {
+              releasedAt: effective,
+              source: drop.dropMode === "IL_STASH" ? "WIRE_LIST_IL_STASH" : "WIRE_LIST_DROP",
+            },
+          });
+          if (released.count !== 1) {
+            const err: FinalizeError = { code: "DROP_NOT_ON_ROSTER", addId: add.id, playerId: drop.playerId };
+            throw err;
+          }
 
         // Position-inherit (matches legacy waivers/routes.ts convention):
         // under ENFORCE, take the drop's slot when it isn't IL; otherwise
@@ -304,20 +340,52 @@ router.post(
         data: { status: "UNUSED", processedAt: new Date() },
       });
 
-      const updatedPeriod = await tx.waiverPeriod.update({
-        where: { id: periodId },
-        data: { status: "PROCESSED", processedAt: new Date() },
-      });
+        const updatedPeriod = await tx.waiverPeriod.update({
+          where: { id: periodId },
+          data: { status: "PROCESSED", processedAt: new Date() },
+        });
 
-      return { period: updatedPeriod, dropsConsumed, dropsUnused: unusedDrops.count };
-    });
+        return {
+          period: updatedPeriod,
+          dropsConsumed,
+          dropsUnused: unusedDrops.count,
+          addsApplied: succeededAdds.length,
+        };
+      });
+    } catch (err) {
+      // Translate our typed in-tx errors back to HTTP responses.
+      if (err && typeof err === "object" && "code" in err) {
+        const e = err as FinalizeError;
+        if (e.code === "PERIOD_NOT_LOCKED") {
+          return res.status(409).json({
+            error: "Period status changed during finalize — already finalized or no longer LOCKED",
+            code: "PERIOD_NOT_LOCKED",
+          });
+        }
+        if (e.code === "FINALIZE_BLOCKED") {
+          return res.status(409).json({
+            error: "One or more SUCCEEDED outcomes are no longer valid — revert and re-decide before finalizing",
+            code: "FINALIZE_BLOCKED",
+            blockers: e.blockers,
+          });
+        }
+        if (e.code === "DROP_NOT_ON_ROSTER") {
+          return res.status(409).json({
+            error: "Drop player is no longer on this team's roster — revert the affected entry and re-decide",
+            code: "FINALIZE_BLOCKED",
+            blockers: [{ addId: e.addId, code: "PLAYER_NOT_ON_TEAM", detail: `Player #${e.playerId} not on roster at finalize time` }],
+          });
+        }
+      }
+      throw err;
+    }
 
     writeAuditLog({
       userId: req.user!.id,
       action: "WIRE_LIST_PERIOD_FINALIZE",
       resourceType: "WaiverPeriod",
       resourceId: periodId,
-      metadata: { addsApplied: succeededAdds.length, ...summary },
+      metadata: { addsApplied: summary.addsApplied, dropsConsumed: summary.dropsConsumed, dropsUnused: summary.dropsUnused },
     });
 
     // Fire-and-forget: push notifications to each team owner with their
@@ -369,7 +437,7 @@ router.post(
 
     res.json({
       period: summary.period,
-      addsApplied: succeededAdds.length,
+      addsApplied: summary.addsApplied,
       dropsConsumed: summary.dropsConsumed,
       dropsUnused: summary.dropsUnused,
     });
@@ -421,71 +489,134 @@ router.post(
       });
     }
 
-    // Find the next PENDING drop for this team in this period.
-    const nextDrop = await prisma.waiverDropEntry.findFirst({
-      where: { periodId: entry.periodId, teamId: entry.teamId, status: "PENDING" },
-      orderBy: { priority: "asc" },
-    });
-    if (!nextDrop) {
-      return res.status(409).json({
-        error: "No drop slot available — team has used all pending drops. Mark this Add as SKIPPED instead.",
-        code: "NO_DROP_AVAILABLE",
-      });
-    }
+    // ────────────────────────────────────────────────────────────────
+    // Atomicity (todo #157): everything from "find next drop" through
+    // "mark drop CONSUMED + add SUCCEEDED" runs in ONE transaction.
+    // The drop transition uses a status-CAS (`updateMany where status:
+    // PENDING`) so a sibling add that already won the same drop gives
+    // count===0, not P2002. We still also catch P2002 on the add side
+    // (consumedDropEntryId @unique) as a belt-and-suspenders guard
+    // and translate it to 409 DROP_RACE_LOST.
+    // ────────────────────────────────────────────────────────────────
+    type SucceedError =
+      | { kind: "NO_DROP_AVAILABLE" }
+      | { kind: "PLAYER_NOT_ON_TEAM" }
+      | { kind: "POSITION_INCOMPATIBLE"; slot: string }
+      | { kind: "DROP_RACE_LOST"; dropId: number };
 
-    // Re-confirm drop player is still on the team's active roster.
-    const dropRoster = await prisma.roster.findFirst({
-      where: { teamId: entry.teamId, playerId: nextDrop.playerId, releasedAt: null },
-      select: { id: true, assignedPosition: true },
-    });
-    if (!dropRoster) {
-      return res.status(409).json({
-        error: "Drop player is no longer on this team's roster — drop entry is stale",
-        code: "PLAYER_NOT_ON_TEAM",
-      });
-    }
+    let updated;
+    let consumedDropEntryId: number;
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        // Find the next PENDING drop for this team in this period.
+        const nextDrop = await tx.waiverDropEntry.findFirst({
+          where: { periodId: entry.periodId, teamId: entry.teamId, status: "PENDING" },
+          orderBy: { priority: "asc" },
+        });
+        if (!nextDrop) {
+          const err: SucceedError = { kind: "NO_DROP_AVAILABLE" };
+          throw err;
+        }
 
-    // Position-eligibility re-check (only meaningful when ENFORCE flag is on
-    // and the slot isn't IL — same gate as legacy waivers processor).
-    if (
-      enforceRosterRules() &&
-      nextDrop.dropMode !== "IL_STASH" &&
-      dropRoster.assignedPosition &&
-      dropRoster.assignedPosition !== "IL"
-    ) {
-      const addPlayer = await prisma.player.findUnique({
-        where: { id: entry.playerId },
-        select: { posList: true },
+        // Re-confirm drop player is still on the team's active roster.
+        const dropRoster = await tx.roster.findFirst({
+          where: { teamId: entry.teamId, playerId: nextDrop.playerId, releasedAt: null },
+          select: { id: true, assignedPosition: true },
+        });
+        if (!dropRoster) {
+          const err: SucceedError = { kind: "PLAYER_NOT_ON_TEAM" };
+          throw err;
+        }
+
+        // Position-eligibility re-check (matches legacy waivers gate).
+        if (
+          enforceRosterRules() &&
+          nextDrop.dropMode !== "IL_STASH" &&
+          dropRoster.assignedPosition &&
+          dropRoster.assignedPosition !== "IL"
+        ) {
+          const addPlayer = await tx.player.findUnique({
+            where: { id: entry.playerId },
+            select: { posList: true },
+          });
+          const compatible = addPlayer
+            ? isEligibleForSlot(addPlayer.posList, dropRoster.assignedPosition)
+            : false;
+          if (!compatible) {
+            const err: SucceedError = { kind: "POSITION_INCOMPATIBLE", slot: dropRoster.assignedPosition };
+            throw err;
+          }
+        }
+
+        // Status-CAS on the drop: only flip if still PENDING. A
+        // sibling add that already consumed this drop will see
+        // count===0 here.
+        const consume = await tx.waiverDropEntry.updateMany({
+          where: { id: nextDrop.id, status: "PENDING" },
+          data: { status: "CONSUMED" },
+        });
+        if (consume.count === 0) {
+          const err: SucceedError = { kind: "DROP_RACE_LOST", dropId: nextDrop.id };
+          throw err;
+        }
+
+        const u = await tx.waiverAddEntry.update({
+          where: { id: entry.id },
+          data: { outcome: "SUCCEEDED", consumedDropEntryId: nextDrop.id, reason: null },
+        });
+        return { updated: u, consumedDropEntryId: nextDrop.id };
       });
-      const compatible = addPlayer
-        ? isEligibleForSlot(addPlayer.posList, dropRoster.assignedPosition)
-        : false;
-      if (!compatible) {
-        return res.status(400).json({
-          error: `Add player is not eligible for the dropped player's ${dropRoster.assignedPosition} slot`,
-          code: "POSITION_INCOMPATIBLE",
+      updated = result.updated;
+      consumedDropEntryId = result.consumedDropEntryId;
+    } catch (err) {
+      if (err && typeof err === "object" && "kind" in err) {
+        const e = err as SucceedError;
+        if (e.kind === "NO_DROP_AVAILABLE") {
+          return res.status(409).json({
+            error: "No drop slot available — team has used all pending drops. Mark this Add as SKIPPED instead.",
+            code: "NO_DROP_AVAILABLE",
+          });
+        }
+        if (e.kind === "PLAYER_NOT_ON_TEAM") {
+          return res.status(409).json({
+            error: "Drop player is no longer on this team's roster — drop entry is stale",
+            code: "PLAYER_NOT_ON_TEAM",
+          });
+        }
+        if (e.kind === "POSITION_INCOMPATIBLE") {
+          return res.status(400).json({
+            error: `Add player is not eligible for the dropped player's ${e.slot} slot`,
+            code: "POSITION_INCOMPATIBLE",
+          });
+        }
+        if (e.kind === "DROP_RACE_LOST") {
+          return res.status(409).json({
+            error: "Another add for this team consumed the next drop slot first — refresh and retry",
+            code: "DROP_RACE_LOST",
+          });
+        }
+      }
+      // Translate Prisma's unique-constraint violation on
+      // consumedDropEntryId (sibling add wrote the same drop in the
+      // racing window) to the same DROP_RACE_LOST code instead of a 500.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        return res.status(409).json({
+          error: "Another add for this team consumed the next drop slot first — refresh and retry",
+          code: "DROP_RACE_LOST",
         });
       }
+      throw err;
     }
-
-    // Atomic consume: link the add to the drop, mark both.
-    const updated = await prisma.$transaction(async (tx) => {
-      await tx.waiverDropEntry.update({
-        where: { id: nextDrop.id },
-        data: { status: "CONSUMED" },
-      });
-      return tx.waiverAddEntry.update({
-        where: { id: entry.id },
-        data: { outcome: "SUCCEEDED", consumedDropEntryId: nextDrop.id, reason: null },
-      });
-    });
 
     writeAuditLog({
       userId: req.user!.id,
       action: "WIRE_LIST_ADD_SUCCEED",
       resourceType: "WaiverAddEntry",
       resourceId: id,
-      metadata: { consumedDropEntryId: nextDrop.id },
+      metadata: { consumedDropEntryId },
     });
 
     res.json(updated);
@@ -580,19 +711,45 @@ router.post(
       });
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      // If we consumed a drop, free it.
-      if (entry.consumedDropEntryId) {
-        await tx.waiverDropEntry.update({
-          where: { id: entry.consumedDropEntryId },
-          data: { status: "PENDING", processedAt: null },
+    // ────────────────────────────────────────────────────────────────
+    // Atomicity (todo #157): freeing the drop and clearing the
+    // consumedDropEntryId on the add must happen in one tx. We clear
+    // the FK on the add FIRST so the unique constraint on
+    // consumedDropEntryId is released before any sibling tries to
+    // claim the same drop. P2002 from a concurrent succeed is
+    // translated to 409 DROP_RACE_LOST.
+    // ────────────────────────────────────────────────────────────────
+    let updated;
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        const u = await tx.waiverAddEntry.update({
+          where: { id },
+          data: { outcome: "PENDING", consumedDropEntryId: null, reason: null },
+        });
+        if (entry.consumedDropEntryId) {
+          // Only flip back to PENDING if we still own the drop link
+          // (i.e. nobody else managed to slot in between). status-CAS
+          // here is defensive — under normal flow the drop is
+          // CONSUMED by *this* add so updateMany hits exactly 1.
+          await tx.waiverDropEntry.updateMany({
+            where: { id: entry.consumedDropEntryId, status: "CONSUMED" },
+            data: { status: "PENDING", processedAt: null },
+          });
+        }
+        return u;
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        return res.status(409).json({
+          error: "Concurrent succeed claimed the same drop — refresh and retry",
+          code: "DROP_RACE_LOST",
         });
       }
-      return tx.waiverAddEntry.update({
-        where: { id },
-        data: { outcome: "PENDING", consumedDropEntryId: null, reason: null },
-      });
-    });
+      throw err;
+    }
 
     writeAuditLog({
       userId: req.user!.id,

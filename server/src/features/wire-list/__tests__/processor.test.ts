@@ -96,5 +96,31 @@ describe("wire-list processor — schema validation", () => {
         expect(WireListErrorCodeSchema.safeParse(c).success).toBe(true);
       }
     });
+
+    // Race-recovery codes added by the wire-list atomicity fix
+    // (todos #156, #157, #158). Clients switch on these to know
+    // "the state changed under you — refresh and retry" vs a real
+    // validation failure.
+    it("includes the race-recovery codes (todos #156, #157)", () => {
+      expect(WireListErrorCodeSchema.safeParse("DROP_RACE_LOST").success).toBe(true);
+      expect(WireListErrorCodeSchema.safeParse("FINALIZE_RACE_LOST").success).toBe(true);
+    });
+
+    it("PERIOD_NOT_LOCKED is reused for the finalize CAS conflict (todo #156)", () => {
+      // The finalize handler returns PERIOD_NOT_LOCKED whether the
+      // period was never locked OR a sibling finalize already
+      // flipped it to PROCESSED — the code stays the same so
+      // existing client handling still works.
+      expect(WireListErrorCodeSchema.safeParse("PERIOD_NOT_LOCKED").success).toBe(true);
+    });
+
+    it("PERIOD_NOT_PENDING is reused for the cron-vs-mutation race (todo #158)", () => {
+      // Owner POST/PATCH/DELETE handlers use status-CAS via
+      // updateMany/deleteMany. When the auto-lock cron flips the
+      // period mid-request, count===0 and we return 403
+      // PERIOD_NOT_PENDING — same code as the pre-existing
+      // pre-check, so client handling is unchanged.
+      expect(WireListErrorCodeSchema.safeParse("PERIOD_NOT_PENDING").success).toBe(true);
+    });
   });
 });
