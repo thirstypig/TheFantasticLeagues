@@ -32,6 +32,9 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStatsMeta, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
+import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
+import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
+import { getTeamAiInsightsHistory, type WeeklyInsightEntry } from "../api";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
 import {
@@ -172,7 +175,7 @@ export default function Team() {
   const [searchParams] = useSearchParams();
   const { me } = useAuth();
   const authUser = me?.user;
-  const { leagueId, currentLeagueName, myTeamId, myTeamCode, leagueRules } = useLeague();
+  const { leagueId, currentLeagueName, myTeamId, myTeamCode, leagueRules, seasonStatus } = useLeague();
 
   // Sub-route detection for the manage flows. Each match flips the table
   // surface to a SubrouteContainer wrapping the existing transactions panel.
@@ -208,6 +211,8 @@ export default function Team() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [computedAt, setComputedAt] = useState<string | null>(null);
+  const [insightHistory, setInsightHistory] = useState<WeeklyInsightEntry[]>([]);
+  const [selectedWeekKey, setSelectedWeekKey] = useState<string | null>(null);
   // Selection state for the position-pill highlight. No-op for mutation in
   // this slice — the action menu drives the actual moves via sub-routes.
   const [selectedRosterId, setSelectedRosterId] = useState<number | null>(null);
@@ -382,6 +387,22 @@ export default function Team() {
       .catch(() => { /* non-fatal: period selector won't show */ });
     return () => { canceled = true; };
   }, [leagueId]);
+
+  // Load weekly-insights history when team identified — powers the
+  // "View past weeks" tabs that the legacy page exposed. One read
+  // per team mount; result is small (one row per past week).
+  useEffect(() => {
+    if (!leagueId || !teamMeta?.id) return;
+    let canceled = false;
+    getTeamAiInsightsHistory(leagueId, teamMeta.id)
+      .then(res => {
+        if (canceled) return;
+        setInsightHistory(res.weeks);
+        if (res.weeks.length > 0) setSelectedWeekKey(res.weeks[0].weekKey);
+      })
+      .catch(() => { /* history is optional */ });
+    return () => { canceled = true; };
+  }, [leagueId, teamMeta?.id]);
 
   // Fetch period-specific roster when a period is selected
   useEffect(() => {
@@ -1755,13 +1776,102 @@ export default function Team() {
             onRevertItem={pending.revertChange}
           />
 
-          {/* Legacy escape hatch */}
+          {/* Watchlist + Trading Block + Wire List — restored from legacy
+              Team page. Owner-only and only during DRAFT or IN_SEASON; the
+              same gate the legacy page used. Wire List is a link card so
+              owners can reach `/teams/:code/wire-list` without hunting in
+              navigation. */}
+          {teamMeta?.id && isOwnTeam && seasonStatus !== "SETUP" && seasonStatus !== "COMPLETED" && (
+            <div style={{ gridColumn: "span 12", display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 16, marginTop: 8 }}>
+              <div style={{ gridColumn: "span 4" }}>
+                <Glass>
+                  <SectionLabel>✦ Watchlist</SectionLabel>
+                  <WatchlistPanel teamId={teamMeta.id} />
+                </Glass>
+              </div>
+              <div style={{ gridColumn: "span 4" }}>
+                <Glass>
+                  <SectionLabel>✦ Trading Block</SectionLabel>
+                  <TradingBlockPanel
+                    teamId={teamMeta.id}
+                    rosterPlayers={roster
+                      .filter(p => Number(p.playerId) > 0)
+                      .map(p => ({
+                        id: Number(p.playerId),
+                        name: p.playerName,
+                        posPrimary: (p.posPrimary || "UT").split(/[/,]/)[0] || "UT",
+                        mlbTeam: p.mlbTeam ?? null,
+                      }))}
+                  />
+                </Glass>
+              </div>
+              <div style={{ gridColumn: "span 4" }}>
+                <Glass>
+                  <SectionLabel>✦ Waiver Wire List</SectionLabel>
+                  <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: "8px 0 14px", lineHeight: 1.5 }}>
+                    Rank your add and drop priorities for this period. Adds run top-down at the deadline; each successful add consumes the next pending drop.
+                  </p>
+                  <Link
+                    to={`/teams/${code}/wire-list`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "8px 14px", borderRadius: 99,
+                      background: "var(--am-irid)", color: "#fff",
+                      fontSize: 12, fontWeight: 600, textDecoration: "none",
+                    }}
+                  >
+                    Open wire list →
+                  </Link>
+                </Glass>
+              </div>
+            </div>
+          )}
+
+          {/* Weekly insights history — week selector when ≥2 weeks exist.
+              Mirrors the legacy week-tab UX. The active week's insight is
+              not yet wired into the Aurora Lineup Intelligence card; that
+              comes in the next slice. For now this surfaces that prior
+              weeks exist and lets the user pick one. */}
+          {insightHistory.length >= 2 && (
+            <div style={{ gridColumn: "span 12", marginTop: 4 }}>
+              <Glass>
+                <SectionLabel>✦ Weekly insights · {insightHistory.length} weeks</SectionLabel>
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginTop: 8 }}>
+                  {insightHistory.map((week) => {
+                    const isActive = week.weekKey === selectedWeekKey;
+                    return (
+                      <button
+                        key={week.weekKey}
+                        type="button"
+                        onClick={() => setSelectedWeekKey(week.weekKey)}
+                        style={{
+                          flexShrink: 0,
+                          padding: "6px 12px",
+                          borderRadius: 99,
+                          fontSize: 11, fontWeight: 600,
+                          border: "1px solid " + (isActive ? "transparent" : "var(--am-border)"),
+                          background: isActive ? "var(--am-irid)" : "var(--am-chip)",
+                          color: isActive ? "#fff" : "var(--am-text-muted)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {week.weekKey}
+                        {week.overallGrade ? ` · ${week.overallGrade}` : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Glass>
+            </div>
+          )}
+
+          {/* Legacy escape hatch — kept for parity items not yet ported */}
           <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>
             <Link
               to={`/teams/${code}/classic`}
               style={{ fontSize: 11, color: "var(--am-text-faint)", textDecoration: "none", letterSpacing: 0.5 }}
             >
-              Need watchlist, trade asset selector, or weekly insights history? View classic Team page →
+              View classic Team page →
             </Link>
           </div>
         </div>
