@@ -184,6 +184,21 @@ router.post(
   }),
 );
 
+// GET /api/wire-list/leagues/:leagueId/periods — list all periods for a league
+router.get(
+  "/leagues/:leagueId/periods",
+  requireAuth,
+  requireLeagueMember("leagueId"),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const periods = await prisma.waiverPeriod.findMany({
+      where: { leagueId },
+      orderBy: { deadlineAt: "desc" },
+    });
+    res.json({ periods });
+  }),
+);
+
 // GET /api/wire-list/periods/active?leagueId= — current PENDING period (if any)
 router.get(
   "/periods/active",

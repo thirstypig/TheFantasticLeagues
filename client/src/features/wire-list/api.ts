@@ -64,6 +64,22 @@ export async function getActivePeriod(leagueId: number): Promise<{ period: Waive
   );
 }
 
+export async function listPeriods(leagueId: number): Promise<{ periods: WaiverPeriod[] }> {
+  return fetchJsonApi<{ periods: WaiverPeriod[] }>(
+    `${API_BASE}/wire-list/leagues/${leagueId}/periods`,
+  );
+}
+
+// Named `createWirePeriod` not `createPeriod` to avoid colliding with the
+// stat-period creator in `features/seasons/api.ts` (both re-exported from
+// `client/src/api/index.ts`).
+export async function createWirePeriod(leagueId: number, deadlineAt: string): Promise<WaiverPeriod> {
+  return fetchJsonApi<WaiverPeriod>(
+    `${API_BASE}/wire-list/leagues/${leagueId}/periods`,
+    { method: "POST", body: JSON.stringify({ deadlineAt }) },
+  );
+}
+
 export async function getAddEntries(periodId: number, teamId: number): Promise<{ entries: AddEntry[] }> {
   return fetchJsonApi<{ entries: AddEntry[] }>(
     `${API_BASE}/wire-list/periods/${periodId}/adds?teamId=${teamId}`,
