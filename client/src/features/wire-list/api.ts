@@ -104,3 +104,23 @@ export async function deleteDropEntry(id: number): Promise<{ success: boolean }>
     method: "DELETE",
   });
 }
+
+export async function createAddEntry(
+  periodId: number,
+  body: { teamId: number; playerId: number; priority?: number },
+): Promise<AddEntry> {
+  return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/periods/${periodId}/adds`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function createDropEntry(
+  periodId: number,
+  body: { teamId: number; playerId: number; priority?: number; dropMode?: WaiverDropMode },
+): Promise<DropEntry> {
+  return fetchJsonApi<DropEntry>(`${API_BASE}/wire-list/periods/${periodId}/drops`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
