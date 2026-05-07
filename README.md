@@ -12,7 +12,7 @@ Public: [thefantasticleagues.com](https://thefantasticleagues.com) · Repo: [thi
 fbst/
 ├── client/                  # React + Vite + TypeScript frontend
 │   └── src/
-│       └── features/        # 27 domain feature modules (mirrored with server)
+│       └── features/        # 31 domain feature modules (mirrored with server)
 ├── server/                  # Express + TypeScript API (ESM, Prisma)
 │   └── src/
 │       └── features/        # Matching 27 feature modules
@@ -22,7 +22,7 @@ fbst/
 └── docs/                    # Plans, solutions, brainstorms, audits
 ```
 
-Feature modules include: auth, leagues, teams, players, roster, standings, trades, waivers, transactions, auction, draft, matchups, keeper-prep, commissioner, franchises, seasons, periods, admin, archive, mlb-feed, ai, watchlist, trading-block, board, notifications, profiles, **reports** (Weekly Report at `/report`).
+Feature modules include: auth, leagues, teams, players, roster, standings, trades, waivers, **wire-list** (two-list waiver model — ranked Add + Drop lists per period, commissioner consume/free reducer), transactions, auction, draft, matchups, keeper-prep, commissioner, franchises, seasons, periods, admin, archive, mlb-feed, ai, watchlist, trading-block, board, notifications, profiles, **reports** (Weekly Report at `/report`).
 
 See [`CLAUDE.md`](./CLAUDE.md) for the full module table + cross-feature dependency map.
 

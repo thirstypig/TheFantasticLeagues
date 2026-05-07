@@ -1,0 +1,52 @@
+/* Wire List shared styles — mobile-responsive layout for owner + commissioner pages. */
+
+.wl-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .wl-two-col { grid-template-columns: 1fr; gap: 12px; }
+}
+
+/* Picker panel cap — keep it scrollable on small screens. */
+.wl-picker-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+@media (max-width: 600px) {
+  .wl-picker-list { max-height: 220px; }
+}
+
+/* Commissioner row — let outcome controls wrap on narrow screens. */
+.wl-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--am-border-subtle);
+}
+
+/* Finalize blockers callout. */
+.wl-blockers {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #fbbf24 8%, transparent);
+  border: 1px solid color-mix(in srgb, #fbbf24 40%, transparent);
+}
+.wl-blockers-title { font-weight: 600; color: var(--am-text); margin-bottom: 6px; }
+.wl-blocker-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; font-size: 13px;
+  border-top: 1px solid var(--am-border-subtle);
+}
+.wl-blocker-row:first-of-type { border-top: none; }
+.wl-blocker-code {
+  font-family: var(--am-mono); font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--am-chip); color: var(--am-text-muted);
+}

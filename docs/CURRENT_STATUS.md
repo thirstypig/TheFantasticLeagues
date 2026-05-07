@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-05-04
+Last updated: 2026-05-06
 
 ## Source Of Truth
 
@@ -52,6 +52,17 @@ Home is the daily league cockpit:
 - past AI insights stay available through the AI Hub
 - stale AI copy should be labeled when it may lag current standings
 
+### Wire List (two-list waiver model)
+
+Wire List is the new in-season waiver workflow, shipped as v1 on 2026-05-06 (13 PRs, #255–#267). It replaces the legacy paired-row WaiverClaim auto-engine for new owners; the legacy engine is left running side-by-side until retirement.
+
+- Two independent ranked lists per owner per `WaiverPeriod`: Add list (FA-eligible acquisitions) + Drop list (each entry tagged RELEASE or IL_STASH).
+- Commissioner-driven consume/free reducer: each PENDING period transitions to LOCKED (auto at deadline via 5-min cron), then commissioner marks each Add as succeed / fail / skip. Each succeed consumes the next PENDING Drop top-down.
+- Atomic finalize: roster mutations + `TransactionEvent` writes happen in one Prisma transaction; remaining PENDING drops marked UNUSED. Per-team summary push notification fan-out to team owners (no email per direction).
+- Owner UI at `/teams/:code/wire-list`; commissioner UI at `/commissioner/:leagueId/wire-list`; home dashboard banner surfaces the active period to owners.
+- Direction-locks (PM-confirmed): independent of stat-periods, weekly cadence; `Roster.acquiredAt > WaiverPeriod.createdAt` is the "acquired this period" hard block; default drop mode = RELEASE; soft warning when `adds > drops`.
+- See `docs/decisions.md` ADR-012 and memory `waiver_wire_list_feature.md`.
+
 ### AI Insight Retention
 
 All generated AI outputs should have a durable home in the AI section. This includes weekly digests, trade analyzer output, player/team insights, and future commissioner-assistant summaries.
@@ -66,7 +77,7 @@ Stripe and growth work remain roadmap items, but they should not displace active
 
 Recent verification for this workstream:
 
-- `npm run test`: 961 server + 583 client = **1544 tests green** (7 skipped, 1 todo)
+- `npm run test`: 1006 server + 633 client = **1639 tests green** (7 skipped, 1 todo)
 - `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean
 - Browser smoke at `http://localhost:3011/` (port 3010 currently held by an orphan dev server) — Home dashboard, Team page V3 hub, AddDrop / Place-on-IL / Activate-from-IL panels all rendering without console errors
 - AddDrop preview-effect regression check: 0 spurious `claim/preview` POSTs from sort/type interactions; exactly 1 POST per drop selection (per `fix/adddrop-preview-deps`, todo #154)

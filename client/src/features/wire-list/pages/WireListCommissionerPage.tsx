@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
+import "../wireList.css";
 import { ApiError } from "../../../api/base";
 import { getTeams } from "../../../api";
 import {
@@ -52,6 +53,7 @@ export default function WireListCommissionerPage() {
   const [periodBusy, setPeriodBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newDeadline, setNewDeadline] = useState("");
+  const [blockers, setBlockers] = useState<Array<{ addId: number; code: string; detail: string }>>([]);
 
   const reload = useCallback(async () => {
     if (!Number.isFinite(leagueId)) return;
@@ -157,14 +159,20 @@ export default function WireListCommissionerPage() {
     if (!confirm("Finalize? Roster changes will be applied — this cannot be undone via this UI.")) return;
     setPeriodBusy(true);
     setError(null);
+    setBlockers([]);
     try {
       const result = await finalizePeriod(period.id);
       alert(`Finalized: ${result.addsApplied} adds applied, ${result.dropsConsumed} drops consumed, ${result.dropsUnused} drops unused.`);
       await reload();
     } catch (err) {
       if (err instanceof ApiError) {
-        const body = err.body as { error?: string; code?: string; blockers?: unknown } | null;
-        setError(`${body?.error ?? err.message}${body?.code ? ` (${body.code})` : ""}`);
+        const body = err.body as { error?: string; code?: string; blockers?: Array<{ addId: number; code: string; detail: string }> } | null;
+        if (Array.isArray(body?.blockers) && body.blockers.length > 0) {
+          setBlockers(body.blockers);
+          setError(null); // blockers UI is the surface; no need for raw error string too
+        } else {
+          setError(`${body?.error ?? err.message}${body?.code ? ` (${body.code})` : ""}`);
+        }
       } else {
         setError(String(err));
       }
@@ -272,6 +280,35 @@ export default function WireListCommissionerPage() {
             onSubmit={handleCreatePeriod}
             busy={periodBusy}
           />
+        )}
+
+        {blockers.length > 0 && (
+          <div className="wl-blockers">
+            <div className="wl-blockers-title">
+              Finalize blocked — {blockers.length} {blockers.length === 1 ? "outcome is" : "outcomes are"} no longer valid:
+            </div>
+            {blockers.map((b) => {
+              const add = byTeam.flatMap((t) => t.adds).find((a) => a.id === b.addId);
+              return (
+                <div key={b.addId} className="wl-blocker-row">
+                  <span className="wl-blocker-code">{b.code}</span>
+                  <span style={{ flex: 1 }}>
+                    <strong>{add?.player?.name ?? `Add #${b.addId}`}</strong> · {b.detail}
+                  </span>
+                  <button
+                    onClick={() => handleAddOutcome(b.addId, () => revertAdd(b.addId))}
+                    disabled={busyAddId === b.addId}
+                    style={btnSmall}
+                  >
+                    Revert
+                  </button>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--am-text-muted)" }}>
+              Revert each blocked Add and re-decide its outcome (FAIL or SKIP), then try Finalize again.
+            </div>
+          </div>
         )}
 
         {error && (
@@ -395,7 +432,7 @@ function TeamBlock({
           {team?.code && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--am-text-muted)" }}>{team.code}</span>}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="wl-two-col" style={{ marginTop: 0, gap: 12 }}>
         <div>
           <SectionLabel>Adds</SectionLabel>
           <div style={{ marginTop: 6 }}>
