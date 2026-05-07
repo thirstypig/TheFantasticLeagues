@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 // API module: mock everything Team.tsx pulls from it.
 vi.mock("../../../api", () => ({
-  getPlayerSeasonStats: vi.fn(),
+  getPlayerSeasonStats: vi.fn(), getPlayerSeasonStatsMeta: vi.fn(() => Promise.resolve({ stats: [], computedAt: null })),
   getTeamDetails: vi.fn(),
   getTeams: vi.fn(),
   getTeamAiInsights: vi.fn().mockResolvedValue(null),

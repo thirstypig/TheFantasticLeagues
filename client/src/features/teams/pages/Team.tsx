@@ -29,8 +29,9 @@ import {
 import "../../../components/aurora/aurora.css";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStats, getSeasonStandings } from "../../../api";
+import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStatsMeta, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
 import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
 import {
@@ -206,6 +207,7 @@ export default function Team() {
   const [aiInsights, setAiInsights] = useState<TeamInsightsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
   // Selection state for the position-pill highlight. No-op for mutation in
   // this slice — the action menu drives the actual moves via sub-routes.
   const [selectedRosterId, setSelectedRosterId] = useState<number | null>(null);
@@ -265,7 +267,7 @@ export default function Team() {
         const [detailsRes, aiRes, statsRes, panelPlayersRes] = await Promise.allSettled([
           getTeamDetails(team.id),
           getTeamAiInsights(leagueId, team.id),
-          getPlayerSeasonStats(leagueId),
+          getPlayerSeasonStatsMeta(leagueId).then(m => { setComputedAt(m.computedAt); return m.stats; }),
           // Shared loader produces the enriched RosterMovesPlayer shape
           // (_dbPlayerId / _dbTeamId / assignedPosition populated for the
           // active team) that the transactions panels need. Replaces the
@@ -1305,6 +1307,7 @@ export default function Team() {
                     {periodMode !== "season" && (
                       <> · <span style={{ color: "var(--am-accent)" }}>{periodOptions.find(p => p.id === periodMode)?.name ?? "Period"}</span></>
                     )}
+                    {computedAt && <> · <DataFreshness computedAt={computedAt} className="text-xs" /></>}
                   </div>
                 </div>
                 <Link

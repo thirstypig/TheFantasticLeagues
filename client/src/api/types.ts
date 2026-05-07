@@ -118,6 +118,8 @@ export type TeamDetailResponse = {
     periodPoints: number;
     seasonPoints: number;
   }>;
+  /** Server timestamp marking when the team summary was assembled (ISO 8601). */
+  computedAt?: string;
 };
 
 export interface TeamOwnership {
