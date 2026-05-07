@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
-import { getPlayerSeasonStats, type PlayerSeasonStat, getTeamDetails, getTeams, getTeamAiInsights, TeamInsightsResult } from "../../../api";
+import { getPlayerSeasonStatsMeta, type PlayerSeasonStat, getTeamDetails, getTeams, getTeamAiInsights, TeamInsightsResult } from "../../../api";
 import { getTeamAiInsightsHistory, getTeamPeriodRoster, type WeeklyInsightEntry, type PeriodRosterEntry } from "../api";
 import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
@@ -87,6 +87,7 @@ export default function Team() {
   const activeTab: "hitters" | "pitchers" = loc.hash === "#pitchers" ? "pitchers" : "hitters";
 
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dbTeamId, setDbTeamId] = useState<number | null>(null);
 
@@ -162,12 +163,14 @@ export default function Team() {
         setError(null);
 
         // 1. Load teams + CSV stats in parallel (independent calls)
-        const [allTeams, csvRows] = await Promise.all([
+        const [allTeams, statsMeta] = await Promise.all([
           getTeams(leagueId),
-          getPlayerSeasonStats(),
+          getPlayerSeasonStatsMeta(),
         ]);
+        const csvRows = statsMeta.stats;
         if (!ok) return;
         setFullPlayerPool(csvRows ?? []);
+        setComputedAt(statsMeta.computedAt ?? null);
 
         const ogbaName = getOgbaTeamName(code);
         const team = allTeams.find((t: any) => normCode(t.code) === code)
@@ -648,7 +651,7 @@ export default function Team() {
           </div>
         </div>
 
-        <StatsUpdated source="synced" className="text-right mb-1" />
+        <StatsUpdated source="synced" timestamp={computedAt} className="text-right mb-1" />
         {activeTab === "hitters" ? (
           <section id="hitters">
             <ThemedTable density="compact" aria-label="Hitter statistics">

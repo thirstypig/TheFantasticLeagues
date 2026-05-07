@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 // Mock API module
 vi.mock("../../../api", () => ({
-  getPlayerSeasonStats: vi.fn(),
+  getPlayerSeasonStats: vi.fn(), getPlayerSeasonStatsMeta: vi.fn(() => Promise.resolve({ stats: [], computedAt: null })),
   getTeamDetails: vi.fn(),
   getTeams: vi.fn(),
 }));

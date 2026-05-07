@@ -19,7 +19,7 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 vi.mock("../../../api", () => ({
-  getPlayerSeasonStats: vi.fn(),
+  getPlayerSeasonStats: vi.fn(), getPlayerSeasonStatsMeta: vi.fn(() => Promise.resolve({ stats: [], computedAt: null })),
   getTeamDetails: vi.fn(),
   getTeams: vi.fn(),
   getTeamAiInsights: vi.fn().mockResolvedValue(null),
