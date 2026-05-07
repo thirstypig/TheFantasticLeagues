@@ -28,12 +28,16 @@ export function DataFreshness({ computedAt, label = "Updated", className }: Data
   const date = new Date(computedAt);
   if (Number.isNaN(date.getTime())) return null;
 
+  // Absolute date+time (e.g. "May 7, 2:30 PM") — visible without hover so
+  // owners always know exactly when stats were last computed. Tooltip shows
+  // full local string + relative as a secondary signal.
+  const abs = date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   return (
     <span
       className={className ?? "text-xs text-slate-500"}
-      title={date.toLocaleString()}
+      title={`${date.toLocaleString()} (${formatTimeAgo(date)})`}
     >
-      {label} {formatTimeAgo(date)}
+      {label} {abs}
     </span>
   );
 }
