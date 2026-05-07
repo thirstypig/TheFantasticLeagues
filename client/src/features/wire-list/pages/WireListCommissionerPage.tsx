@@ -10,14 +10,15 @@
  * state stays in sync with the server (cheaper than reasoning about
  * which sibling rows changed; ~80 entries max per period).
  */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
 import { ApiError } from "../../../api/base";
 import { getTeams } from "../../../api";
 import {
   getPeriodResults,
-  getActivePeriod,
+  listPeriods,
+  createWirePeriod,
   lockPeriod,
   finalizePeriod,
   succeedAdd,
@@ -42,32 +43,39 @@ export default function WireListCommissionerPage() {
 
   const [period, setPeriod] = useState<WaiverPeriod | null>(null);
   const [periodId, setPeriodId] = useState<number | null>(null);
+  const [allPeriods, setAllPeriods] = useState<WaiverPeriod[]>([]);
   const [byTeam, setByTeam] = useState<Array<{ teamId: number; adds: AddEntry[]; drops: DropEntry[] }>>([]);
   const [teams, setTeams] = useState<Map<number, TeamMeta>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyAddId, setBusyAddId] = useState<number | null>(null);
   const [periodBusy, setPeriodBusy] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newDeadline, setNewDeadline] = useState("");
 
   const reload = useCallback(async () => {
     if (!Number.isFinite(leagueId)) return;
     setLoading(true);
     setError(null);
     try {
-      const teamsList = await getTeams(leagueId);
+      const [teamsList, { periods }] = await Promise.all([
+        getTeams(leagueId),
+        listPeriods(leagueId),
+      ]);
       const teamMap = new Map<number, TeamMeta>();
       for (const t of teamsList) teamMap.set(t.id, { id: t.id, name: t.name, code: t.code });
       setTeams(teamMap);
+      setAllPeriods(periods);
 
-      // Once we know a periodId, drive subsequent reloads through results
-      // (works for any status — getActivePeriod only finds PENDING). On
-      // first load with no known periodId, fall back to getActivePeriod to
-      // discover one.
+      // Pick the period to display:
+      //   1. Whatever the user explicitly switched to (periodId state)
+      //   2. The most recent PENDING (active) period
+      //   3. The most recent of any status (history viewer)
       let id = periodId;
-      if (!id) {
-        const { period: active } = await getActivePeriod(leagueId);
-        id = active?.id ?? null;
-        if (id) setPeriodId(id);
+      if (!id || !periods.find((p) => p.id === id)) {
+        const active = periods.find((p) => p.status === "PENDING");
+        id = active?.id ?? periods[0]?.id ?? null;
+        if (id !== periodId) setPeriodId(id);
       }
       if (!id) {
         setPeriod(null);
@@ -83,6 +91,28 @@ export default function WireListCommissionerPage() {
       setLoading(false);
     }
   }, [leagueId, periodId]);
+
+  const handleCreatePeriod = useCallback(async () => {
+    if (!newDeadline) return;
+    setPeriodBusy(true);
+    setError(null);
+    try {
+      const created = await createWirePeriod(leagueId, new Date(newDeadline).toISOString());
+      setPeriodId(created.id);
+      setShowCreate(false);
+      setNewDeadline("");
+      await reload();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const body = err.body as { error?: string; code?: string } | null;
+        setError(`${body?.error ?? err.message}${body?.code ? ` (${body.code})` : ""}`);
+      } else {
+        setError(String(err));
+      }
+    } finally {
+      setPeriodBusy(false);
+    }
+  }, [leagueId, newDeadline, reload]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -166,10 +196,14 @@ export default function WireListCommissionerPage() {
         <div style={{ padding: 24 }}>
           <SectionLabel>Wire List · Commissioner</SectionLabel>
           <div style={{ marginTop: 12, fontSize: 14, color: "var(--am-text-muted)" }}>
-            No active waiver period. Create one via{" "}
-            <code>POST /api/wire-list/leagues/{leagueId}/periods</code>{" "}
-            (commissioner-only) — UI for period creation ships in a follow-up.
+            No waiver periods yet. Create one to get started.
           </div>
+          <CreatePeriodForm
+            value={newDeadline}
+            onChange={setNewDeadline}
+            onSubmit={handleCreatePeriod}
+            busy={periodBusy}
+          />
           <Link to={`/commissioner/${leagueId}`} style={{ display: "inline-block", marginTop: 16, color: "var(--am-accent)" }}>
             ← Back to Commissioner
           </Link>
@@ -194,7 +228,21 @@ export default function WireListCommissionerPage() {
               Period #{period.id} · {new Date(period.deadlineAt).toLocaleString()}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {allPeriods.length > 1 && (
+              <select
+                value={period.id}
+                onChange={(e) => setPeriodId(Number(e.target.value))}
+                style={selectStyle}
+              >
+                {allPeriods.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    #{p.id} · {p.status} · {new Date(p.deadlineAt).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button onClick={() => setShowCreate((s) => !s)} style={btn}>+ New period</button>
             <StatusChip status={period.status} />
             {isPending && (
               <button onClick={handleLock} disabled={periodBusy} style={btnPrimary}>
@@ -216,6 +264,15 @@ export default function WireListCommissionerPage() {
             </Link>
           </div>
         </div>
+
+        {showCreate && (
+          <CreatePeriodForm
+            value={newDeadline}
+            onChange={setNewDeadline}
+            onSubmit={handleCreatePeriod}
+            busy={periodBusy}
+          />
+        )}
 
         {error && (
           <div style={{
@@ -265,6 +322,51 @@ export default function WireListCommissionerPage() {
 }
 
 // ─── Subcomponents ───────────────────────────────────────────────────
+
+function CreatePeriodForm({ value, onChange, onSubmit, busy }: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  busy: boolean;
+}) {
+  // Seed empty value with a 7-day-out default the first time we render.
+  // datetime-local has no placeholder support and uses local-tz strings,
+  // so the trick is `toISOString().slice(0, 16)` — but we want LOCAL time
+  // not UTC, so we strip the tz offset manually.
+  useEffect(() => {
+    if (!value) {
+      const d = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      d.setSeconds(0, 0);
+      onChange(d.toISOString().slice(0, 16));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div style={{
+      marginTop: 12, padding: 12, borderRadius: 10,
+      background: "var(--am-surface)", border: "1px solid var(--am-border)",
+      display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap",
+    }}>
+      <label style={{ fontSize: 12, color: "var(--am-text-muted)" }}>Deadline:</label>
+      <input
+        type="datetime-local"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          padding: "6px 10px", fontSize: 13,
+          background: "var(--am-bg)", color: "var(--am-text)",
+          border: "1px solid var(--am-border)", borderRadius: 6,
+          colorScheme: "dark",
+        }}
+      />
+      <button onClick={onSubmit} disabled={busy} style={busy ? btnDisabled : btnPrimary}>
+        Create period
+      </button>
+    </div>
+  );
+}
+
 
 function TeamBlock({
   team, teamId, adds, drops, isLocked, isProcessed, busyAddId,
@@ -440,4 +542,10 @@ const chipBase: React.CSSProperties = {
 
 const emptyStyle: React.CSSProperties = {
   padding: "8px 0", fontSize: 12, color: "var(--am-text-muted)",
+};
+
+const selectStyle: React.CSSProperties = {
+  padding: "4px 8px", fontSize: 12, fontFamily: "var(--am-mono)",
+  background: "var(--am-bg)", color: "var(--am-text)",
+  border: "1px solid var(--am-border)", borderRadius: 6,
 };
