@@ -4,6 +4,62 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-06 — Migration policy correction, FA panel CSS bug, Waiver Wire List spec + preview + schema
+
+Owed work from prior session: edit CLAUDE.md's stale CONCURRENTLY guidance (the foot-gun behind the 21h prod freeze on 2026-05-05 documented in compound doc #250) and add a CI guardrail. Then unrelated browser verification of save-flow turned up a real prod bug in the FA panel. Then the PM brought a new feature (Waiver Wire List) — built the design preview twice after a mid-session spec revision changed the data model from paired ADD+DROP claims to two independent ranked lists.
+
+### Shipped — 4 PRs in flight (none merged)
+
+- **PR [#251](https://github.com/thirstypig/TheFantasticLeagues/pull/251)** — `chore(migrations): correct CONCURRENTLY policy + CI grep guardrail`. Replaced CLAUDE.md's "use CONCURRENTLY for hot tables" recommendation with the corrected text drafted in `docs/solutions/deployment/railway-prisma-concurrent-index-p3009-block.md`. Added an `awk`-based grep guard in CI that strips SQL line comments before matching `CONCURRENTLY` in `prisma/migrations/**/*.sql`, so existing post-mortem comments (e.g. in `20260504000000_ai_history_indexes/migration.sql`) don't trip it but real `CREATE INDEX CONCURRENTLY` lines fail with a pointer to the recovery runbook.
+- **PR [#252](https://github.com/thirstypig/TheFantasticLeagues/pull/252)** — `fix(roster-hub): land missing .fa-panel CSS — side panel ≥768px, bottom sheet <768px`. Surfaced during save-flow verification on `/teams/LDY`: user reported "FA search isn't working." Diagnosed via Playwright-driven dev-login + DOM inspection: the `<aside className="fa-panel">` had no matching CSS rules anywhere, so the inline `flex: 1; minHeight: 0` scroll viewport collapsed to 0px. Virtualizer's spacer was 129,416px tall (correct) but `getVirtualItems()` returned empty because the viewport had zero height — search input and filter logic were both fine, the rows just weren't being painted. Added `.fa-panel` rules to `rosterHub.css`: desktop side-dock at `position: fixed; top: 96; right: 16; bottom: 16; width: 380`; mobile bottom sheet at `75dvh`; two distinct keyframes (`fa-slide-in-side` / `fa-slide-in-bottom`). Browser-verified at 1440×900 (17 rows render, search "Toglia" → 1 row) and iPhone-13 viewport 390×844 (14 rows, `bottom: 0`). All 16 FA panel tests still pass.
+- **PR [#255](https://github.com/thirstypig/TheFantasticLeagues/pull/255)** — `design(waivers): /design/waivers preview — TWO-LIST model`. Mocked design preview at `/design/waivers` covering all 6 surfaces of the proposed Waiver Wire List feature. Two independent ranked lists (Add + Drop), processed at run time so each successful Add consumes the next pending Drop top-down; failed Adds skip without consuming; excess successful Adds get SKIPPED — no drop slot available. Auction $ values are intentionally absent per PM directive. Includes interactive consume/free reducer in the commissioner view: ✓ Succeeded auto-consumes the next PENDING Drop; re-clicking frees it; if all 4 of DRS's Adds are SUCCEEDED but only 3 Drops exist, the 4th auto-bumps to ⊘ Skipped. **Supersedes the closed PR #253** (paired ADD+DROP row model).
+- **PR [#256](https://github.com/thirstypig/TheFantasticLeagues/pull/256)** — `feat(waivers): schema — WaiverPeriod + WaiverAddEntry + WaiverDropEntry (two-list model)`. Schema-only foundation. 4 new enums (`WaiverDropMode`, `WaiverPeriodStatus`, `WaiverAddOutcome`, `WaiverDropStatus`); 3 new tables. Key constraints: `WaiverAddEntry.consumedDropEntryId` is `@unique` (1:1 — each Drop consumed by ≤1 Add); both Add and Drop have `@unique(periodId, teamId, priority)` and `@unique(periodId, teamId, playerId)`. The legacy `WaiverClaim` model is **not touched** — it backs the existing `/api/waivers/process` engine. Plain `CREATE INDEX IF NOT EXISTS` per the corrected CLAUDE.md policy from #251. **Supersedes the closed PR #254** (paired-row schema).
+
+### Closed as superseded
+
+- **PR #253** — original paired-row design preview. Spec revision mid-session moved to two independent lists.
+- **PR #254** — original paired-row schema. The two-list model needs distinct tables.
+
+### Save-flow verification (in progress)
+
+Variant 1 of 4 verified before pivoting to PR #252's CSS fix:
+
+- ✅ **swap** — drag DH ↔ OF (Sheets ↔ O'Hearn) on `/teams/LDY`, [Save], confirmed via Prisma snapshot: 2 `Roster.assignedPosition` updates, 0 `TransactionEvent` rows (correct — slot moves don't emit events). Reverted cleanly back to baseline.
+- ⏸ **fa_add, il_stash, il_activate** — blocked on PR #252. Once it merges, the FA panel actually shows rows and these three are unblockable.
+
+### Direction-lock for Waiver Wire List (PM-confirmed)
+
+- **Periods independent of stat-periods** — weekly cadence (Tue/Wed for OGBA); `WaiverPeriod` stands alone.
+- **"Acquired this period" = `Roster.acquiredAt > WaiverPeriod.createdAt`** — no new column needed; trade-in eligibility falls out for free since trades update `Roster.acquiredAt`.
+- **Drop status stored explicitly** (denormalized vs reverse-join) — single-table query for "show unused drops."
+- **Default drop mode = RELEASE.**
+- **Commissioner override scope = remove only** (server-enforced when API ships).
+- **Mid-period trade of a Drop player = auto-remove at trade-execution.**
+- **Save warning (more adds than drops) = persistent banner**, renders live while editing.
+- **MVP reorder = up/down arrows**; real drag is a follow-up.
+
+### Verification
+
+- `npm run test`: **982 server + 612 client = 1594 tests green** (7 skipped, 1 todo, 121 files, ~34s total)
+- Client tsc clean (16.3s); server tsc shows the documented `local_server_tsc_zod_false_negative` for `shared/api/*.ts` (CI is the authority for shared schemas)
+
+### Pending / Next steps
+
+- **Merge order:** #251 first (migration policy is load-bearing for #256's safety guarantees — the CI grep gate would fail #256 if its SQL ever regressed to CONCURRENTLY), then #252 (CSS fix), then #255 + #256. Per `feedback_stacked_pr_squash_merge.md`, do NOT batch-merge in a `for pr in ...; gh pr merge` loop — rebase each before merging the next.
+- **Resume save-flow verification** for variants 2–4 (fa_add, il_stash, il_activate) on `/teams/LDY` once #252 lands.
+- **Wire List API PR** — CRUD for `WaiverAddEntry` and `WaiverDropEntry` scoped to a `WaiverPeriod`. Validation rules: hard block on drop list player with `Roster.acquiredAt > period.createdAt`; hard block on add list player not on Watchlist; hard block on add list player currently rostered; commissioner override = remove-only.
+- **Wire List UI PR** — owner two-list view under a new "Waiver Wire" tab; picker sub-routes (no modals); soft warning when adds > drops; up/down reorder; autosave.
+- **Commissioner UI PR** — read-only multi-team display in priority order (round-robin default); succeed/fail/skip controls drive the consume/free state machine.
+- **Results report + audit logging** — mirror existing `writeAuditLog()` pattern.
+
+### Concerns / Watch-items
+
+- **Doc count drift recurs (the third-or-so time this project).** This session's `npm run test` is 1594; CLAUDE.md said 1595, TESTING.md said 1544, Tech.tsx said 1273. All three updated in this `/doc` pass. The pre-commit hook idea (a one-line `vitest run --reporter=json | jq '.numTotalTests'` against the headline number) keeps coming up — worth wiring at some point.
+- **The two-list design preview's consume/free reducer is real spec logic** (`markOutcome` inside `WaiverWirePreview.tsx`). When the API PR lands, we should either extract that reducer into a shared module both client and server import, or — simpler — delete the preview's logic and rely on integration tests against the real server endpoint. Current state has the rules encoded twice, which is exactly the kind of drift this project keeps catching.
+- **PR #251 + PR #256 should land in order.** PR #256's migration uses plain `CREATE INDEX IF NOT EXISTS` per the corrected policy in #251. If #256 lands before #251, the CI grep guardrail isn't yet protecting future migrations from regressing.
+
+---
+
 ## Session 2026-05-04 — /ce:review on PRs #226–#230 + 7 follow-up PRs in parallel via worktrees
 
 Closed two stale PRs (#8, #9 from February — Aurora rolled out the opposite direction from #9's shadcn-default normalization; #8's tests already exist in the modules that have been refactored multiple times since). Then ran the multi-agent /ce:review against the 5 unpulled commits on `origin/main` (PRs #226–#230: planning JSON migration, roster move preview gates, home dashboard AI history, roster hub V3 consolidation, server typecheck restore — ~4000 LOC across 62 files). Synthesized 7 reviewer outputs into 17 todo files (`todos/154` through `170`), then dispatched 5 worktree agents + 1 audit in parallel to land the P2/P3 fixes.
