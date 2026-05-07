@@ -25,12 +25,13 @@ import {
   AmbientBg, Glass, IridText, SectionLabel, Chip,
 } from "../../../components/aurora/atoms";
 import "../../../components/aurora/aurora.css";
-import { getAuctionValues, getLeague, type PlayerSeasonStat } from "../../../api";
+import { getAuctionValues, getLeague, getPlayerSeasonStatsMeta, type PlayerSeasonStat } from "../../../api";
 import { toNum } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import { mapPosition } from "../../../lib/sportConfig";
 import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
 
 function norm(v: any) {
   return String(v ?? "").trim();
@@ -81,6 +82,7 @@ export default function AuctionValues() {
   };
 
   const [selected, setSelected] = useState<PlayerSeasonStat | null>(null);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -88,12 +90,14 @@ export default function AuctionValues() {
       try {
         setLoading(true);
         setError(null);
-        const [data, league] = await Promise.all([
+        const [data, league, statsMeta] = await Promise.all([
           getAuctionValues(),
           getLeague(leagueId).catch(() => null),
+          getPlayerSeasonStatsMeta(leagueId).catch(() => null),
         ]);
         if (!mounted) return;
         setRows(data ?? []);
+        setComputedAt(statsMeta?.computedAt ?? null);
         if (league?.league?.teams) {
           const map: Record<string, string> = {};
           for (const t of league.league.teams) map[t.code?.toUpperCase() ?? ""] = t.name;
@@ -201,6 +205,12 @@ export default function AuctionValues() {
             </div>
           </div>
         </Glass>
+
+        {computedAt && (
+          <div style={{ marginBottom: 8, display: "flex", justifyContent: "flex-end" }}>
+            <DataFreshness computedAt={computedAt} />
+          </div>
+        )}
 
         {/* Table */}
         <Glass padded={false}>

@@ -8,12 +8,13 @@ import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
 import { POS_ORDER } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots } from '../../../lib/sportConfig';
-import { getPlayerSeasonStats, type PlayerSeasonStat } from '../../../api';
+import { getPlayerSeasonStatsMeta, type PlayerSeasonStat } from '../../../api';
 import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
+import { StatsUpdated } from '../../../components/shared/StatsTables';
 
 interface AuctionCompleteLegacyProps {
   auctionState: ClientAuctionState;
@@ -104,8 +105,14 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
 
   // Player stats from CSV (for stat columns)
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
+  const [statsComputedAt, setStatsComputedAt] = useState<string | null>(null);
   useEffect(() => {
-    getPlayerSeasonStats(leagueId).then(setPlayerStats).catch(() => {});
+    getPlayerSeasonStatsMeta(leagueId)
+      .then((meta) => {
+        setPlayerStats(meta.stats);
+        setStatsComputedAt(meta.computedAt ?? null);
+      })
+      .catch(() => {});
   }, [leagueId]);
 
   // Build stats lookup by player name (case-insensitive)
@@ -437,7 +444,10 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
 
       {/* Team Results */}
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Draft Results by Team</h2>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Draft Results by Team</h2>
+          <StatsUpdated source="synced" timestamp={statsComputedAt} className="text-xs" />
+        </div>
         <div className="rounded-xl border border-[var(--lg-border-subtle)] overflow-hidden divide-y divide-[var(--lg-divide)]">
           {teamResults.map((team) => {
             const isExpanded = expandedTeamId === team.id;

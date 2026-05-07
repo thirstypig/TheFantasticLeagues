@@ -626,7 +626,7 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
   const sanitized = state.nomination?.proxyBids
     ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
     : state;
-  res.json(sanitized);
+  res.json({ ...sanitized, computedAt: new Date().toISOString() });
 }));
 
 // POST /api/auction/init
@@ -1088,7 +1088,7 @@ router.get("/bid-history", requireAuth, requireLeagueMember("leagueId"), asyncHa
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
   const leagueTeamIds = (await prisma.team.findMany({ where: { leagueId }, select: { id: true } })).map(t => t.id);
-  if (leagueTeamIds.length === 0) return res.json({ lots: [] });
+  if (leagueTeamIds.length === 0) return res.json({ lots: [], computedAt: new Date().toISOString() });
 
   const lots = await prisma.auctionLot.findMany({
     where: { nominatingTeamId: { in: leagueTeamIds } },
@@ -1122,6 +1122,7 @@ router.get("/bid-history", requireAuth, requireLeagueMember("leagueId"), asyncHa
         ts: b.ts,
       })),
     })),
+    computedAt: new Date().toISOString(),
   });
 }));
 

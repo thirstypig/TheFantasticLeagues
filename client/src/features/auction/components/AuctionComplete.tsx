@@ -25,13 +25,14 @@ import { useLeague } from '../../../contexts/LeagueContext';
 import { track } from '../../../lib/posthog';
 import { POS_ORDER } from '../../../lib/baseballUtils';
 import { mapPosition, positionToSlots } from '../../../lib/sportConfig';
-import { getPlayerSeasonStats, type PlayerSeasonStat } from '../../../api';
+import { getPlayerSeasonStatsMeta, type PlayerSeasonStat } from '../../../api';
 import { saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
 import PlayerExpandedRow from './PlayerExpandedRow';
 import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
 import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
+import { DataFreshness } from '../../../components/shared/DataFreshness';
 
 interface AuctionCompleteProps {
   auctionState: ClientAuctionState;
@@ -131,8 +132,14 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
   const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
 
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
+  const [statsComputedAt, setStatsComputedAt] = useState<string | null>(null);
   useEffect(() => {
-    getPlayerSeasonStats(leagueId).then(setPlayerStats).catch(() => {});
+    getPlayerSeasonStatsMeta(leagueId)
+      .then((meta) => {
+        setPlayerStats(meta.stats);
+        setStatsComputedAt(meta.computedAt ?? null);
+      })
+      .catch(() => {});
   }, [leagueId]);
 
   const statsLookup = useMemo(() => {
@@ -480,7 +487,10 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
 
       {/* Team Results accordion */}
       <div>
-        <SectionLabel>✦ Draft Results by Team</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <SectionLabel>✦ Draft Results by Team</SectionLabel>
+          {statsComputedAt && <DataFreshness computedAt={statsComputedAt} />}
+        </div>
         <Glass padded={false}>
           <div>
             {teamResults.map((team, idx) => {
