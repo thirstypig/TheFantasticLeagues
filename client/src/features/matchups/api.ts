@@ -26,16 +26,16 @@ export interface StandingEntry {
   points: number;
 }
 
-export async function getMatchups(leagueId: number, week?: number): Promise<{ matchups: MatchupEntry[] }> {
+export async function getMatchups(leagueId: number, week?: number): Promise<{ matchups: MatchupEntry[]; computedAt?: string }> {
   const url = week ? `${API_BASE}/matchups?leagueId=${leagueId}&week=${week}` : `${API_BASE}/matchups?leagueId=${leagueId}`;
   return fetchJsonApi(url);
 }
 
-export async function getMyMatchup(leagueId: number, week: number): Promise<{ matchup: MatchupEntry | null; myTeamId: number }> {
+export async function getMyMatchup(leagueId: number, week: number): Promise<{ matchup: MatchupEntry | null; myTeamId: number; computedAt?: string }> {
   return fetchJsonApi(`${API_BASE}/matchups/my-matchup?leagueId=${leagueId}&week=${week}`);
 }
 
-export async function getH2HStandings(leagueId: number): Promise<{ standings: StandingEntry[] }> {
+export async function getH2HStandings(leagueId: number): Promise<{ standings: StandingEntry[]; computedAt?: string }> {
   return fetchJsonApi(`${API_BASE}/matchups/standings?leagueId=${leagueId}`);
 }
 

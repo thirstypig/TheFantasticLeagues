@@ -80,7 +80,7 @@ router.get("/", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async
     orderBy: [{ week: "asc" }, { id: "asc" }],
   });
 
-  res.json({ matchups });
+  res.json({ matchups, computedAt: new Date().toISOString() });
 }));
 
 // GET /api/matchups/my-matchup?leagueId=X&week=Y — Get current user's matchup
@@ -104,7 +104,7 @@ router.get("/my-matchup", requireAuth, requireLeagueMember("leagueId"), asyncHan
     },
   });
 
-  res.json({ matchup, myTeamId: team.id });
+  res.json({ matchup, myTeamId: team.id, computedAt: new Date().toISOString() });
 }));
 
 // POST /api/matchups/score — Score a week's matchups
@@ -228,7 +228,7 @@ router.get("/standings", requireAuth, requireLeagueMember("leagueId"), asyncHand
     gb: i === 0 ? 0 : Math.round(((leader.wins - s.wins) + (s.losses - leader.losses)) / 2 * 10) / 10,
   }));
 
-  res.json({ standings: result });
+  res.json({ standings: result, computedAt: new Date().toISOString() });
 }));
 
 export const matchupsRouter = router;
