@@ -1219,15 +1219,35 @@ export default function Team() {
   // (span 4) before session 89's polish pass; moved into page flow so
   // the roster table can claim full horizontal real estate for the wider
   // stat column set (AB/H for hitters, BB+H/ER for pitchers).
+  //
+  // `activeInsight` mirrors the legacy `TeamLegacy.tsx` pattern (see lines
+  // 436–441 there): when the user picks a historical week from the bottom
+  // weekly-insights selector, surface that week's insights here. Otherwise
+  // fall back to the live current-week `aiInsights`. `WeeklyInsightEntry`
+  // extends `TeamInsightsResult`, so the structural shape (insights[],
+  // overallGrade) is compatible — no narrowing needed in the JSX below.
+  const activeInsight: TeamInsightsResult | WeeklyInsightEntry | null =
+    selectedWeekKey
+      ? insightHistory.find((w) => w.weekKey === selectedWeekKey) ?? aiInsights
+      : aiInsights;
+  const activeInsightWeekKey =
+    activeInsight && "weekKey" in activeInsight ? activeInsight.weekKey : null;
   const lineupIntelligenceCard = (
     <Glass strong>
-      <SectionLabel>✦ Lineup intelligence</SectionLabel>
-      {aiInsights?.insights?.length ? (
+      <SectionLabel>
+        ✦ Lineup intelligence
+        {activeInsightWeekKey && selectedWeekKey && (
+          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 500, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+            · {activeInsightWeekKey}
+          </span>
+        )}
+      </SectionLabel>
+      {activeInsight?.insights?.length ? (
         <>
-          {aiInsights.overallGrade && (
+          {activeInsight.overallGrade && (
             <div style={{ marginTop: 4, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>Overall grade</span>
-              <IridText size={20}>{aiInsights.overallGrade}</IridText>
+              <IridText size={20}>{activeInsight.overallGrade}</IridText>
             </div>
           )}
           <div
@@ -1237,7 +1257,7 @@ export default function Team() {
               gap: 8,
             }}
           >
-            {aiInsights.insights.slice(0, 4).map((r, i) => (
+            {activeInsight.insights.slice(0, 4).map((r, i) => (
               <div
                 key={i}
                 style={{
@@ -1828,10 +1848,10 @@ export default function Team() {
           )}
 
           {/* Weekly insights history — week selector when ≥2 weeks exist.
-              Mirrors the legacy week-tab UX. The active week's insight is
-              not yet wired into the Aurora Lineup Intelligence card; that
-              comes in the next slice. For now this surfaces that prior
-              weeks exist and lets the user pick one. */}
+              Mirrors the legacy week-tab UX. The selected week drives the
+              `activeInsight` value above, which feeds the Lineup
+              Intelligence card. Clicking the same pill toggles back to
+              the current week's live insights. */}
           {insightHistory.length >= 2 && (
             <div style={{ gridColumn: "span 12", marginTop: 4 }}>
               <Glass>
@@ -1843,7 +1863,7 @@ export default function Team() {
                       <button
                         key={week.weekKey}
                         type="button"
-                        onClick={() => setSelectedWeekKey(week.weekKey)}
+                        onClick={() => setSelectedWeekKey(isActive ? null : week.weekKey)}
                         style={{
                           flexShrink: 0,
                           padding: "6px 12px",
