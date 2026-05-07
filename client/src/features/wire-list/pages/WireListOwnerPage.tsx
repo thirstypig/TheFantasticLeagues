@@ -28,6 +28,7 @@ import {
 import { getTeams } from "../../teams/api";
 import AddPicker from "../components/AddPicker";
 import DropPicker from "../components/DropPicker";
+import "../wireList.css";
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -254,7 +255,7 @@ export default function WireListOwnerPage() {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+        <div className="wl-two-col">
           {/* Add list */}
           <Section>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
