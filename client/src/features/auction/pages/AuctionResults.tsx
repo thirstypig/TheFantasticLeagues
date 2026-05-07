@@ -21,19 +21,22 @@ import type { ClientAuctionState } from '../hooks/useAuctionState';
 import AuctionComplete from '../components/AuctionComplete';
 import { AmbientBg, Glass, SectionLabel } from '../../../components/aurora/atoms';
 import '../../../components/aurora/aurora.css';
+import { DataFreshness } from '../../../components/shared/DataFreshness';
 
 export default function AuctionResults() {
   const { leagueId } = useLeague();
   const [auctionState, setAuctionState] = useState<ClientAuctionState | null>(null);
   const [myTeamId, setMyTeamId] = useState<number | undefined>(undefined);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refetchState = React.useCallback(async () => {
     if (!leagueId) return;
     try {
-      const state = await fetchJsonApi<ClientAuctionState>(`${API_BASE}/auction/state?leagueId=${leagueId}`);
+      const state = await fetchJsonApi<ClientAuctionState & { computedAt?: string }>(`${API_BASE}/auction/state?leagueId=${leagueId}`);
       setAuctionState(state);
+      setComputedAt(state?.computedAt ?? null);
     } catch { /* non-critical — optimistic UI already shows the change */ }
   }, [leagueId]);
 
@@ -47,12 +50,13 @@ export default function AuctionResults() {
         setError(null);
 
         const [state, meRes] = await Promise.all([
-          fetchJsonApi<ClientAuctionState>(`${API_BASE}/auction/state?leagueId=${leagueId}`),
+          fetchJsonApi<ClientAuctionState & { computedAt?: string }>(`${API_BASE}/auction/state?leagueId=${leagueId}`),
           getMe(),
         ]);
 
         if (!mounted) return;
         setAuctionState(state);
+        setComputedAt(state?.computedAt ?? null);
 
         const myUserId = meRes.user?.id;
         if (myUserId) {
@@ -101,7 +105,14 @@ export default function AuctionResults() {
         )}
 
         {!loading && !error && auctionState && auctionState.status !== 'not_started' && (
-          <AuctionComplete auctionState={auctionState} myTeamId={myTeamId} onRefresh={refetchState} />
+          <>
+            {computedAt && (
+              <div style={{ marginBottom: 8, display: "flex", justifyContent: "flex-end" }}>
+                <DataFreshness computedAt={computedAt} />
+              </div>
+            )}
+            <AuctionComplete auctionState={auctionState} myTeamId={myTeamId} onRefresh={refetchState} />
+          </>
         )}
 
         <div style={{ marginTop: 16, textAlign: "center", fontSize: 11, color: "var(--am-text-faint)" }}>
