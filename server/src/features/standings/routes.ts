@@ -68,7 +68,7 @@ router.get("/period/current", requireAuth, requireLeagueMember("leagueId"), asyn
     points: s.points,
   }));
 
-  res.json({ periodId: period.id, data });
+  res.json({ periodId: period.id, data, computedAt: new Date().toISOString() });
 }));
 
 // --- Waiver priority standings: /api/standings/waiver-priority ---
@@ -280,7 +280,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     totalDeltaMap.set(s.teamId, snapshots.length > 0 ? s.points - prevTotal : 0);
   }
 
-  res.json({ periodId: pid, categories, teamCount: teamStats.length, totalDelta: Object.fromEntries(totalDeltaMap) });
+  res.json({ periodId: pid, categories, teamCount: teamStats.length, totalDelta: Object.fromEntries(totalDeltaMap), computedAt: new Date().toISOString() });
 }));
 
 // --- Season (cumulative) standings: /api/standings/season ---
@@ -290,7 +290,7 @@ router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
   // Shared helper parallelizes per-period DB calls via Promise.all.
-  const { periodIds, periodData } = await getSeasonStandings(leagueId);
+  const { periodIds, periodData, computedAt } = await getSeasonStandings(leagueId);
 
   const periods = await prisma.period.findMany({
     where: { leagueId, id: { in: periodIds } },
@@ -345,7 +345,7 @@ router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler
     h2hStandings = await engine.computeSeasonStandings(leagueId);
   }
 
-  res.json({ periodIds, periodNames, categoryKeys, rows, scoringFormat, h2hStandings });
+  res.json({ periodIds, periodNames, categoryKeys, rows, scoringFormat, h2hStandings, computedAt });
 }));
 
 // --- Settlement data: /api/standings/settlement/:leagueId ---

@@ -49,11 +49,12 @@ router.get("/", requireAuth, asyncHandler(async (req, res) => {
     | "pitchers";
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
 
-  const players = await withPlayersCache(leagueId, availability, type, () =>
-    loadPlayersList(leagueId, availability, type),
-  );
+  const cached = await withPlayersCache(leagueId, availability, type, async () => ({
+    players: await loadPlayersList(leagueId, availability, type),
+    computedAt: new Date().toISOString(),
+  }));
 
-  res.json({ players });
+  res.json(cached);
 }));
 
 /**
@@ -579,7 +580,7 @@ dataRouter.get("/player-period-stats", requireAuth, asyncHandler(async (req, res
     };
   });
 
-  res.json({ stats, periods, activePeriodId: activePeriod.id });
+  res.json({ stats, periods, activePeriodId: activePeriod.id, computedAt: new Date().toISOString() });
 }));
 
 /** GET /api/auction-values?leagueId=N */

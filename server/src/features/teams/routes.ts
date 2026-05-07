@@ -377,7 +377,7 @@ router.get("/:id/roster-hub", requireAuth, asyncHandler(async (req, res) => {
 
   try {
     const hub = await teamService.getTeamRosterHub(teamId);
-    res.json(hub);
+    res.json({ ...hub, computedAt: new Date().toISOString() });
   } catch (e) {
     if ((e as Error).message === "Team not found") {
       return res.status(404).json({ error: "Team not found" });
@@ -398,7 +398,7 @@ router.get("/:id/summary", requireAuth, asyncHandler(async (req, res) => {
 
   try {
     const summary = await teamService.getTeamSummary(teamId);
-    res.json(summary);
+    res.json({ ...summary, computedAt: new Date().toISOString() });
   } catch (e) {
     if ((e as Error).message === "Team not found") {
       return res.status(404).json({ error: "Team not found" });
