@@ -126,6 +126,31 @@ export const DropEntryResponseSchema = z.object({
 });
 export type DropEntryResponse = z.infer<typeof DropEntryResponseSchema>;
 
+// ─── Outcome / processor bodies ──────────────────────────────────────
+
+/**
+ * POST /api/wire-list/adds/:id/fail and /skip — commissioner records why.
+ */
+export const RecordOutcomeBodySchema = z.object({
+  reason: z.string().min(1).max(280).optional(),
+});
+export type RecordOutcomeBody = z.infer<typeof RecordOutcomeBodySchema>;
+
+/**
+ * GET /api/wire-list/periods/:id/results — read-only multi-team view.
+ */
+export const PeriodResultsResponseSchema = z.object({
+  period: PeriodResponseSchema,
+  byTeam: z.array(
+    z.object({
+      teamId: z.number().int().positive(),
+      adds: z.array(AddEntryResponseSchema),
+      drops: z.array(DropEntryResponseSchema),
+    }),
+  ),
+});
+export type PeriodResultsResponse = z.infer<typeof PeriodResultsResponseSchema>;
+
 // ─── Error codes ─────────────────────────────────────────────────────
 
 /**
@@ -144,5 +169,9 @@ export const WireListErrorCodeSchema = z.enum([
   "ENTRY_NOT_FOUND",
   "ENTRY_NOT_OWNED",
   "ENTRY_ALREADY_PROCESSED",
+  "PERIOD_NOT_LOCKED",
+  "NO_DROP_AVAILABLE",
+  "POSITION_INCOMPATIBLE",
+  "FINALIZE_BLOCKED",
 ]);
 export type WireListErrorCode = z.infer<typeof WireListErrorCodeSchema>;
