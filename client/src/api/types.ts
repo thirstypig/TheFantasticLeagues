@@ -159,6 +159,8 @@ export type SeasonStandingsApiResponse = {
   periodNames?: string[];
   categoryKeys?: string[];
   rows: SeasonStandingRow[];
+  /** Server timestamp marking when these standings were computed (ISO 8601). */
+  computedAt?: string;
 };
 
 export type PlayerProfile = {

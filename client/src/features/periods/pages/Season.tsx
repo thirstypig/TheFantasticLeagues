@@ -26,6 +26,7 @@ import "../../../components/aurora/aurora.css";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getSeasonStandings } from "../../../api";
 import CategoryStandingsView from "../components/CategoryStandingsView";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
 
 interface MatrixRow {
   teamId: number;
@@ -52,7 +53,7 @@ export default function Season() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"periods" | "categories">("periods");
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!leagueId) return;
@@ -80,7 +81,7 @@ export default function Season() {
         });
         normalized.sort((a, b) => b.totalPoints - a.totalPoints);
         setRows(normalized);
-        setUpdatedAt(new Date());
+        setComputedAt(typeof data.computedAt === "string" ? data.computedAt : null);
       })
       .catch(err => {
         if (canceled) return;
@@ -138,9 +139,9 @@ export default function Season() {
                   <div style={{ fontFamily: "var(--am-display)", fontSize: 36, lineHeight: 1, letterSpacing: -0.4 }}>
                     {currentLeagueName || "League"}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6 }}>
-                    {rows.length > 0 && `${rows.length} teams · ${periodNames.length} period${periodNames.length === 1 ? "" : "s"}`}
-                    {updatedAt && ` · refreshed ${formatTimeAgo(updatedAt)}`}
+                  <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    {rows.length > 0 && <span>{rows.length} teams · {periodNames.length} period{periodNames.length === 1 ? "" : "s"}</span>}
+                    {computedAt && <><span aria-hidden="true">·</span><DataFreshness computedAt={computedAt} className="text-xs" /></>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -341,16 +342,6 @@ export default function Season() {
 }
 
 // ─── helpers ───
-
-function formatTimeAgo(d: Date): string {
-  const ms = Date.now() - d.getTime();
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return "moments ago";
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.floor(hr / 24)}d ago`;
-}
 
 // Period names from the API are sometimes long (e.g., "Mar 23 – Mar 29");
 // shorten for matrix headers so the table doesn't sprawl horizontally.

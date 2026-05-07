@@ -610,7 +610,8 @@ async function computeWithPeriodStats(
 // first is still computing, both share the same in-flight Promise rather than
 // firing parallel `getSeasonStandingsUncached()` calls (mirrors the dashboard
 // service cache pattern).
-type StandingsResult = Awaited<ReturnType<typeof getSeasonStandingsUncached>>;
+type StandingsCore = Awaited<ReturnType<typeof getSeasonStandingsUncached>>;
+type StandingsResult = StandingsCore & { computedAt: string };
 interface StandingsCacheEntry {
   data?: StandingsResult;
   expiry: number;
@@ -628,22 +629,19 @@ export function clearStandingsCache(leagueId?: number): void {
  * Season-level standings: sum roto points across all active/completed periods.
  * Parallelizes per-period DB calls via Promise.all (~15× faster than sequential).
  * Shared by `/api/standings/season` and `/api/reports/:leagueId`.
- * Results cached for 2 minutes (stats change only on daily cron syncs).
+ * Results cached for 2 minutes; `computedAt` reflects when this row was first
+ * persisted into the cache (not when the request returned), so two clients
+ * served the same cached result see the same freshness timestamp.
  */
-export async function getSeasonStandings(
-  leagueId: number,
-): Promise<{
-  periodIds: number[];
-  /** Per-period detail (teamStats + standings for each period). */
-  periodData: Array<{ teamStats: TeamStatRow[]; standings: StandingsRow[] }>;
-  /** Roto points summed across periods, sorted desc, ranked. */
-  seasonRows: Array<{ rank: number; teamId: number; teamName: string; totalPoints: number }>;
-}> {
+export async function getSeasonStandings(leagueId: number): Promise<StandingsResult> {
   const cached = standingsCache.get(leagueId);
   if (cached?.data && cached.expiry > Date.now()) return cached.data;
   if (cached?.pending) return cached.pending;
 
-  const pending = getSeasonStandingsUncached(leagueId);
+  const pending = (async (): Promise<StandingsResult> => {
+    const core = await getSeasonStandingsUncached(leagueId);
+    return { ...core, computedAt: new Date().toISOString() };
+  })();
   standingsCache.set(leagueId, { data: cached?.data, expiry: 0, pending });
   try {
     const result = await pending;

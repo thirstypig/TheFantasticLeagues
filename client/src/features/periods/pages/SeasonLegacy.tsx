@@ -186,7 +186,7 @@ const SeasonPage: React.FC = () => {
         const normalized = (data.rows || []).map(r => normalizeSeasonRow(r as any, data.periodIds));
         setRows(normalized);
         if (data.categoryKeys) setCategoryKeys(data.categoryKeys);
-        setSeasonUpdatedAt(new Date());
+        setSeasonUpdatedAt(typeof (data as any).computedAt === "string" ? new Date((data as any).computedAt) : new Date());
 
         // Capture scoring format and H2H standings from API
         if ((data as any).scoringFormat) setApiScoringFormat((data as any).scoringFormat);
@@ -287,7 +287,7 @@ const SeasonPage: React.FC = () => {
         setCategoryGroups(groupMap);
         setCategoryLabels(labelMap);
         setPeriodSummaryRows(Array.from(teamSummaryMap.values()).sort((a, b) => b.totalPoints - a.totalPoints));
-        setPeriodUpdatedAt(new Date());
+        setPeriodUpdatedAt(typeof (resp as any).computedAt === "string" ? new Date((resp as any).computedAt) : new Date());
       } catch (err: unknown) {
         console.error("Failed to load period standings", err);
       } finally {

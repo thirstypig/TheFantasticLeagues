@@ -8,7 +8,9 @@ import { TeamNameLink } from "./TeamNameLink";
 /**
  * Small timestamp blurb for data freshness. Place above any stats table.
  * - `source`: "live" | "synced" | "mlb-api" controls the label prefix
- * - `timestamp`: ISO string or Date, shown as local time
+ * - `timestamp`: ISO string or Date marking when the SERVER computed/synced
+ *   the underlying data. Falls back to nothing when missing — never lies
+ *   with `new Date()`.
  * - `className`: optional extra classes
  */
 export function StatsUpdated({ source = "synced", timestamp, className = "" }: {
@@ -17,18 +19,18 @@ export function StatsUpdated({ source = "synced", timestamp, className = "" }: {
   className?: string;
 }) {
   const prefix = source === "live" ? "Live" : source === "mlb-api" ? "Source: MLB" : "Stats synced · statsapi.mlb.com";
-  let timeStr = "";
+  let timeStr: string | null = null;
   if (timestamp) {
     try {
       const d = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
-      timeStr = d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      if (!Number.isNaN(d.getTime())) {
+        timeStr = d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      }
     } catch { /* ignore */ }
-  } else {
-    timeStr = new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   }
   return (
     <div className={`text-[9px] text-[var(--lg-text-muted)] opacity-60 ${className}`}>
-      {prefix} · {timeStr}
+      {prefix}{timeStr ? ` · ${timeStr}` : ""}
     </div>
   );
 }
