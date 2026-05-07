@@ -1,13 +1,13 @@
 /**
  * /teams/:teamCode/wire-list — owner two-list view backed by /api/wire-list/*.
  *
- * Slice 1 (this file): view existing entries, reorder via up/down arrows,
- * delete, change drop mode. Adding entries (FA picker for adds, roster
- * picker for drops) ships in slice 2.
+ * Slice 1: view existing entries, reorder via up/down arrows, delete,
+ *          change drop mode.
+ * Slice 2: inline pickers (FA picker for adds, roster picker for drops).
  *
  * Read-only when period.status !== "PENDING" (LOCKED / PROCESSED).
  */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
@@ -26,6 +26,8 @@ import {
   type WaiverDropMode,
 } from "../api";
 import { getTeams } from "../../teams/api";
+import AddPicker from "../components/AddPicker";
+import DropPicker from "../components/DropPicker";
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -62,6 +64,11 @@ export default function WireListOwnerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Set<number>>(new Set());
+  const [showAddPicker, setShowAddPicker] = useState(false);
+  const [showDropPicker, setShowDropPicker] = useState(false);
+
+  const addPlayerIds = useMemo(() => new Set(adds.map((a) => a.playerId)), [adds]);
+  const dropPlayerIds = useMemo(() => new Set(drops.map((d) => d.playerId)), [drops]);
 
   const reload = useCallback(async () => {
     if (!leagueId || !teamCode) return;
@@ -250,12 +257,29 @@ export default function WireListOwnerPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
           {/* Add list */}
           <Section>
-            <SectionLabel>Add list · ranked top → bottom</SectionLabel>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <SectionLabel>Add list · ranked top → bottom</SectionLabel>
+              {!isReadOnly && !showAddPicker && (
+                <button onClick={() => setShowAddPicker(true)} style={addBtnStyle}>+ Add player</button>
+              )}
+            </div>
+            {showAddPicker && period && teamId !== null && leagueId && (
+              <AddPicker
+                periodId={period.id}
+                teamId={teamId}
+                leagueId={leagueId}
+                excludePlayerIds={addPlayerIds}
+                onAdded={() => { setShowAddPicker(false); reload(); }}
+                onClose={() => setShowAddPicker(false)}
+              />
+            )}
             <div style={{ marginTop: 8 }}>
               {adds.length === 0 ? (
                 <Empty>
                   No Adds yet.{" "}
-                  {!isReadOnly && <Link to={`/players?leagueId=${leagueId}`} style={linkStyle}>Browse free agents →</Link>}
+                  {!isReadOnly && !showAddPicker && (
+                    <button onClick={() => setShowAddPicker(true)} style={inlineLinkBtn}>Add a player →</button>
+                  )}
                 </Empty>
               ) : (
                 adds.map((a, i) => (
@@ -281,12 +305,28 @@ export default function WireListOwnerPage() {
 
           {/* Drop list */}
           <Section>
-            <SectionLabel>Drop list · top = drop first</SectionLabel>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <SectionLabel>Drop list · top = drop first</SectionLabel>
+              {!isReadOnly && !showDropPicker && (
+                <button onClick={() => setShowDropPicker(true)} style={addBtnStyle}>+ Add drop</button>
+              )}
+            </div>
+            {showDropPicker && period && teamId !== null && (
+              <DropPicker
+                periodId={period.id}
+                teamId={teamId}
+                excludePlayerIds={dropPlayerIds}
+                onAdded={() => { setShowDropPicker(false); reload(); }}
+                onClose={() => setShowDropPicker(false)}
+              />
+            )}
             <div style={{ marginTop: 8 }}>
               {drops.length === 0 ? (
                 <Empty>
                   No Drops yet.{" "}
-                  {!isReadOnly && <Link to={`/teams/${teamCode}`} style={linkStyle}>Pick from your roster →</Link>}
+                  {!isReadOnly && !showDropPicker && (
+                    <button onClick={() => setShowDropPicker(true)} style={inlineLinkBtn}>Pick from your roster →</button>
+                  )}
                 </Empty>
               ) : (
                 drops.map((d, i) => (
@@ -326,11 +366,20 @@ export default function WireListOwnerPage() {
 
 // ─── Atoms (kept inline so the slice stays self-contained) ───────────
 
-const linkStyle: React.CSSProperties = { color: "var(--am-accent)", textDecoration: "underline" };
 const btnStyle: React.CSSProperties = {
   padding: "6px 12px", borderRadius: 8, fontSize: 13,
   background: "var(--am-chip)", color: "var(--am-text)",
   border: "1px solid var(--am-border)", cursor: "pointer",
+};
+const addBtnStyle: React.CSSProperties = {
+  padding: "4px 10px", fontSize: 11, fontWeight: 600,
+  borderRadius: 6, background: "var(--am-accent)",
+  color: "var(--am-bg)", border: "none", cursor: "pointer",
+};
+const inlineLinkBtn: React.CSSProperties = {
+  background: "none", border: "none", padding: 0,
+  color: "var(--am-accent)", textDecoration: "underline",
+  cursor: "pointer", font: "inherit",
 };
 
 function Section({ children }: { children: React.ReactNode }) {
