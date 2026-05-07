@@ -14,6 +14,7 @@ import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
 import SeasonLegacy from "./features/periods/pages/SeasonLegacy";
 import Team from "./features/teams/pages/Team";
+import WireListOwnerPage from "./features/wire-list/pages/WireListOwnerPage";
 import TeamLegacy from "./features/teams/pages/TeamLegacy";
 import TeamsIndex from "./features/teams/pages/TeamsIndex";
 import Players from "./features/players/pages/Players";
@@ -181,6 +182,7 @@ export default function App() {
                     <Route path="/teams/:teamCode/manage/claim" element={<Team />} />
                     <Route path="/teams/:teamCode/manage/il-stash" element={<Team />} />
                     <Route path="/teams/:teamCode/manage/il-activate" element={<Team />} />
+                    <Route path="/teams/:teamCode/wire-list" element={<WireListOwnerPage />} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team
                         shortcut (PR #132) and external bookmarks both land here. */}
