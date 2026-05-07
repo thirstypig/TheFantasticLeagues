@@ -26,6 +26,8 @@ import { nextDayEffective } from "../../lib/utils.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
+import { sendPushToUser } from "../../lib/pushService.js";
+import { logger } from "../../lib/logger.js";
 import { RecordOutcomeBodySchema } from "../../../../shared/api/wireList.js";
 
 const router = Router();
@@ -317,6 +319,53 @@ router.post(
       resourceId: periodId,
       metadata: { addsApplied: succeededAdds.length, ...summary },
     });
+
+    // Fire-and-forget: push notifications to each team owner with their
+    // outcome summary. Aggregate per-team so a team owner sees one push,
+    // not one per Add. Mirrors legacy waivers/process notification flow.
+    (async () => {
+      try {
+        const allAdds = await prisma.waiverAddEntry.findMany({
+          where: { periodId },
+          include: { player: { select: { name: true } } },
+        });
+        const byTeam = new Map<number, typeof allAdds>();
+        for (const a of allAdds) {
+          if (!byTeam.has(a.teamId)) byTeam.set(a.teamId, []);
+          byTeam.get(a.teamId)!.push(a);
+        }
+        for (const [teamId, adds] of byTeam) {
+          const successes = adds.filter((a) => a.outcome === "SUCCEEDED").map((a) => a.player.name);
+          const fails = adds.filter((a) => a.outcome === "FAILED" || a.outcome === "SKIPPED").length;
+          const owners = await prisma.teamOwnership.findMany({
+            where: { teamId },
+            select: { userId: true },
+          });
+          const title =
+            successes.length > 0 ? `Wire List: ${successes.length} added`
+            : fails > 0 ? "Wire List: no adds went through"
+            : "Wire List: period finalized";
+          const body =
+            successes.length > 0
+              ? `Added: ${successes.slice(0, 3).join(", ")}${successes.length > 3 ? "…" : ""}`
+              : fails > 0
+              ? `${fails} ${fails === 1 ? "claim" : "claims"} did not succeed.`
+              : "No claims this period.";
+          for (const o of owners) {
+            sendPushToUser(o.userId, {
+              title,
+              body,
+              tag: `wire-list-finalize-${periodId}`,
+              url: `/teams/${teamId}/wire-list`,
+            }, "waiverResult").catch((err) =>
+              logger.warn({ err, userId: o.userId }, "Wire-list finalize push failed"),
+            );
+          }
+        }
+      } catch (err) {
+        logger.warn({ err }, "Wire-list finalize notification fan-out failed");
+      }
+    })();
 
     res.json({
       period: summary.period,

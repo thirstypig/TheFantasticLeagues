@@ -28,6 +28,12 @@ import "../components/aurora/aurora.css";
 import { useAuth } from "../auth/AuthProvider";
 import { useLeague } from "../contexts/LeagueContext";
 import { getSeasonStandings } from "../api";
+import {
+  getActivePeriod,
+  getAddEntries,
+  getDropEntries,
+  type WaiverPeriod,
+} from "../features/wire-list/api";
 import { getTransactions, type TransactionEvent } from "../features/transactions/api";
 import { cancelTrade, getTrades, type TradeProposal } from "../features/trades/api";
 import { getBoardCards, type BoardCard } from "../features/board/api";
@@ -64,6 +70,9 @@ export default function Home() {
   const [activeTrades, setActiveTrades] = useState<TradeProposal[]>([]);
   const [rosterAlerts, setRosterAlerts] = useState<RosterAlertPlayer[]>([]);
   const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
+  const [wirePeriod, setWirePeriod] = useState<WaiverPeriod | null>(null);
+  const [wireAddCount, setWireAddCount] = useState(0);
+  const [wireDropCount, setWireDropCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [standingsMode, setStandingsMode] = useState<"current" | "full">("current");
 
@@ -133,8 +142,28 @@ export default function Home() {
       }
     }).finally(() => { if (!canceled) setLoading(false); });
 
+    // Wire List: fetch active period + the user's add/drop counts in
+    // parallel. Soft-fails — the banner just hides on error.
+    if (myTeamId) {
+      getActivePeriod(leagueId).then(async ({ period }) => {
+        if (canceled) return;
+        if (!period) {
+          setWirePeriod(null);
+          return;
+        }
+        setWirePeriod(period);
+        const [adds, drops] = await Promise.allSettled([
+          getAddEntries(period.id, myTeamId),
+          getDropEntries(period.id, myTeamId),
+        ]);
+        if (canceled) return;
+        setWireAddCount(adds.status === "fulfilled" ? adds.value.entries.length : 0);
+        setWireDropCount(drops.status === "fulfilled" ? drops.value.entries.length : 0);
+      }).catch(() => { if (!canceled) setWirePeriod(null); });
+    }
+
     return () => { canceled = true; };
-  }, [leagueId]);
+  }, [leagueId, myTeamId]);
 
   // Derived: my team's standings row (rank, points).
   const myStanding = useMemo(() => {
@@ -203,6 +232,35 @@ export default function Home() {
       </Glass>
     </IridescentRing>
   );
+
+  const wirePeriodCard = wirePeriod && myTeamCode ? (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <SectionLabel>
+            Waiver Wire · {wirePeriod.status === "PENDING" ? "open" : wirePeriod.status.toLowerCase()}
+          </SectionLabel>
+          <div style={{ fontFamily: "var(--am-display)", fontSize: 18, marginTop: 4 }}>
+            {wirePeriod.status === "PENDING"
+              ? `Locks ${new Date(wirePeriod.deadlineAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+              : wirePeriod.status === "LOCKED"
+              ? "Locked — commissioner is processing outcomes"
+              : "Processed"}
+          </div>
+        </div>
+        <Link to={`/teams/${myTeamCode}/wire-list`} style={{ textDecoration: "none" }}>
+          <Chip strong style={{ cursor: "pointer" }}>Open list →</Chip>
+        </Link>
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+        <Chip>{wireAddCount} {wireAddCount === 1 ? "Add" : "Adds"}</Chip>
+        <Chip>{wireDropCount} {wireDropCount === 1 ? "Drop" : "Drops"}</Chip>
+        {wireAddCount > wireDropCount && wirePeriod.status === "PENDING" && (
+          <Chip color="#fbbf24">⚠ More Adds than Drops</Chip>
+        )}
+      </div>
+    </Glass>
+  ) : null;
 
   const standingsCard = (
     <Glass>
@@ -529,6 +587,7 @@ export default function Home() {
 
           <div className="home-column home-span-5">
             {heroCard}
+            {wirePeriodCard}
             {standingsCard}
             {activityCard}
             {tradeProposalCard}
