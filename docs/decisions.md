@@ -149,3 +149,21 @@ Documents the "why" behind key architectural choices. For reference docs, see `C
 - Keep docs/plans as rationale/proposals, not as the active todo list
 - Keep docs/solutions as postmortems/learnings, not as current task status
 - In-app Admin/Roadmap views should render from the unified planning data
+
+---
+
+## ADR-012: Waiver Wire List uses two independent ranked lists, not paired claims
+
+**Context (2026-05-06)**: Building a Waiver Wire List feature — owner-curated, ranked instructions that the commissioner runs on waiver day. The first design proposal had each row pair an ADD with a specific DROP (drop only fires if the matching add succeeds). Mid-spec the PM revised: the two lists are independent — a successful Add consumes the *next pending* Drop top-down, a failed Add doesn't consume anything, and excess successful Adds beyond the Drop list length get a SKIPPED outcome.
+
+**Decision**: Model the feature as `WaiverPeriod` (one row per league per waiver run) with two child collections: `WaiverAddEntry` and `WaiverDropEntry`. Each child carries its own priority, its own status enum, and its own constraints. Outcome attribution lives on `WaiverAddEntry.consumedDropEntryId` (1:1, `@unique`); a Drop's `status` field (PENDING/CONSUMED/UNUSED) is stored explicitly rather than derived via reverse-join.
+
+The legacy `WaiverClaim` model (paired-claim style, drives the existing `/api/waivers/process` engine) is **not modified**. Wire List is a parallel feature; the two coexist until the legacy auto-engine is retired.
+
+**Consequences**:
+- Two separate API surfaces (`POST /api/waivers/periods/:id/add-entries`, same for `drop-entries`) instead of one combined CRUD. Each has its own validation and uniqueness rules.
+- "Acquired this period" hard block (rule: a player added in this period cannot be on the same period's Drop List) reuses `Roster.acquiredAt > WaiverPeriod.createdAt` — no new column needed. Trade-in eligibility falls out for free since trades update `Roster.acquiredAt`.
+- The polymorphic-table alternative (one `WaiverEntry` table with a `type` discriminator) was considered and rejected: Add and Drop have different column shapes (only Drop has `dropMode`), and every query would need a `WHERE type=…` filter for no offsetting benefit.
+- The "execution outcome" of a waiver run lives entirely in `WaiverAddEntry.outcome` + `WaiverAddEntry.consumedDropEntryId` + `WaiverDropEntry.status`. No separate `WaiverRun` event-log model required for MVP — the post-run results report renders directly from these tables.
+- Hardcoded OGBA rules (NL-only filter, no add cap, no drop cap, drop after add prohibition) live in the API layer; structuring for a future per-league override is a server-side concern, not a schema concern.
+- Schema and migration shipped in PR #256 with empty tables — no risk to legacy `WaiverClaim`. CI guardrail in PR #251 enforces the migration policy that protects this and future waiver-related schema work.
