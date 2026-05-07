@@ -124,3 +124,57 @@ export async function createDropEntry(
     body: JSON.stringify(body),
   });
 }
+
+// ─── Processor (commissioner) ────────────────────────────────────────
+
+export interface PeriodResults {
+  period: WaiverPeriod;
+  byTeam: Array<{ teamId: number; adds: AddEntry[]; drops: DropEntry[] }>;
+}
+
+export async function getPeriodResults(periodId: number): Promise<PeriodResults> {
+  return fetchJsonApi<PeriodResults>(`${API_BASE}/wire-list/periods/${periodId}/results`);
+}
+
+export async function lockPeriod(periodId: number): Promise<WaiverPeriod> {
+  return fetchJsonApi<WaiverPeriod>(`${API_BASE}/wire-list/periods/${periodId}/lock`, {
+    method: "POST",
+  });
+}
+
+export async function finalizePeriod(periodId: number): Promise<{
+  period: WaiverPeriod;
+  addsApplied: number;
+  dropsConsumed: number;
+  dropsUnused: number;
+}> {
+  return fetchJsonApi(`${API_BASE}/wire-list/periods/${periodId}/finalize`, {
+    method: "POST",
+  });
+}
+
+export async function succeedAdd(addId: number): Promise<AddEntry> {
+  return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/adds/${addId}/succeed`, {
+    method: "POST",
+  });
+}
+
+export async function failAdd(addId: number, reason?: string): Promise<AddEntry> {
+  return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/adds/${addId}/fail`, {
+    method: "POST",
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+export async function skipAdd(addId: number, reason?: string): Promise<AddEntry> {
+  return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/adds/${addId}/skip`, {
+    method: "POST",
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+export async function revertAdd(addId: number): Promise<AddEntry> {
+  return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/adds/${addId}/revert`, {
+    method: "POST",
+  });
+}
