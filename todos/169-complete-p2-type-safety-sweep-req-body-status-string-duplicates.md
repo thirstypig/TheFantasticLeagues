@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "169"
 tags: [code-review, wire-list, typescript, type-safety]

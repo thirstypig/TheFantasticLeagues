@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "162"
 tags: [code-review, wire-list, prisma, schema-drift]

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "175"
 tags: [code-review, wire-list, architecture, dedup, security]

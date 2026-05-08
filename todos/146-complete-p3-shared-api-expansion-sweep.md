@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "146"
 tags: [code-review, shared-api, drift, type-safety]

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "166"
 tags: [code-review, wire-list, security, advisory-lock]
