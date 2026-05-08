@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getMyRoster, saveKeepers } from "../../leagues/api";
 import { getKeeperAiRecommendations, KeeperRecommendResult } from "../api";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
 import { useToast } from "../../../contexts/ToastContext";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { mapPosition } from "../../../lib/sportConfig";
@@ -31,6 +32,7 @@ export default function KeeperSelection() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isLocked, setIsLocked] = useState(false);
   const [keeperLimit, setKeeperLimit] = useState(4);
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   // AI Recommendations state
   const [aiResult, setAiResult] = useState<KeeperRecommendResult | null>(null);
@@ -47,6 +49,7 @@ export default function KeeperSelection() {
         setRoster(data.roster || []);
         setIsLocked(data.isLocked || false);
         setKeeperLimit(data.keeperLimit || 4);
+        setComputedAt(data.computedAt ?? null);
         
         // Initialize selections based on server state
         const initialKeepers = new Set<number>();
@@ -209,6 +212,14 @@ export default function KeeperSelection() {
                    </div>
                 </div>
             </div>
+
+            {/* Stats freshness badge — server-computed timestamp from
+                /api/leagues/:id/my-roster. */}
+            {computedAt && (
+              <div className="flex justify-end">
+                <DataFreshness computedAt={computedAt} className="text-xs text-[var(--lg-text-muted)]" />
+              </div>
+            )}
 
             {/* Roster Table */}
             <div className="overflow-hidden rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]">

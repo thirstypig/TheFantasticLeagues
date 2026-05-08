@@ -213,7 +213,7 @@ router.get("/leagues/:id/my-roster", requireAuth, asyncHandler(async (req, res) 
     projectedValue: r.player?.id ? (valueMap.get(r.player.id) ?? null) : null,
   }));
 
-  return res.json({ team, roster: enrichedRoster, isLocked, keeperLimit });
+  return res.json({ team, roster: enrichedRoster, isLocked, keeperLimit, computedAt: new Date().toISOString() });
 }));
 
 /**
