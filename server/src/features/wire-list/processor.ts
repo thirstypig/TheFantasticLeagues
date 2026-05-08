@@ -185,7 +185,15 @@ router.post(
     // ────────────────────────────────────────────────────────────────
     type FinalizeError = { code: "PERIOD_NOT_LOCKED" } | { code: "FINALIZE_BLOCKED"; blockers: Array<{ addId: number; code: string; detail: string }> } | { code: "DROP_NOT_ON_ROSTER"; addId: number; playerId: number };
 
-    type Summary = { period: Awaited<ReturnType<typeof prisma.waiverPeriod.update>>; dropsConsumed: number; dropsUnused: number; addsApplied: number };
+    type Summary = {
+      period: Awaited<ReturnType<typeof prisma.waiverPeriod.update>>;
+      dropsConsumed: number;
+      dropsUnused: number;
+      addsApplied: number;
+      // Per-team success names harvested INSIDE the tx so the push fan-out
+      // doesn't have to re-query waiverAddEntry afterwards (todo #171).
+      successesByTeam: Map<number, string[]>;
+    };
     let summary: Summary;
     try {
       summary = await prisma.$transaction(async (tx) => {
@@ -391,11 +399,22 @@ router.post(
           data: { status: "PROCESSED", processedAt: new Date() },
         });
 
+        // Group success names by team for the push fan-out (todo #171).
+        // Only SUCCEEDED adds contribute names; FAILED/SKIPPED counts are
+        // computed outside the tx with a leaner query.
+        const successesByTeam = new Map<number, string[]>();
+        for (const add of succeededAdds) {
+          const list = successesByTeam.get(add.teamId);
+          if (list) list.push(add.player.name);
+          else successesByTeam.set(add.teamId, [add.player.name]);
+        }
+
         return {
           period: updatedPeriod,
           dropsConsumed,
           dropsUnused: unusedDrops.count,
           addsApplied: succeededAdds.length,
+          successesByTeam,
         };
       });
     } catch (err) {
@@ -437,24 +456,57 @@ router.post(
     // Fire-and-forget: push notifications to each team owner with their
     // outcome summary. Aggregate per-team so a team owner sees one push,
     // not one per Add. Mirrors legacy waivers/process notification flow.
+    //
+    // todo #171: structure is "1 lean query for fail/skip counts + 1 batch
+    // teamOwnership query, group in memory" — replaces the prior shape of
+    // (a) re-querying every WaiverAddEntry with player includes and
+    // (b) issuing teamOwnership.findMany INSIDE a per-team loop, which
+    // was a textbook N+1 (12 teams = 12 round-trips).
+    const successesByTeam = summary.successesByTeam;
     (async () => {
       try {
-        const allAdds = await prisma.waiverAddEntry.findMany({
-          where: { periodId },
-          include: { player: { select: { name: true } } },
+        // Single lean query for FAILED/SKIPPED counts. Names aren't needed
+        // for these — just per-team counts — so no player include.
+        const nonSucceeded = await prisma.waiverAddEntry.findMany({
+          where: { periodId, outcome: { in: ["FAILED", "SKIPPED"] } },
+          select: { teamId: true },
         });
-        const byTeam = new Map<number, typeof allAdds>();
-        for (const a of allAdds) {
-          if (!byTeam.has(a.teamId)) byTeam.set(a.teamId, []);
-          byTeam.get(a.teamId)!.push(a);
+        const failsByTeam = new Map<number, number>();
+        for (const a of nonSucceeded) {
+          failsByTeam.set(a.teamId, (failsByTeam.get(a.teamId) ?? 0) + 1);
         }
-        for (const [teamId, adds] of byTeam) {
-          const successes = adds.filter((a) => a.outcome === "SUCCEEDED").map((a) => a.player.name);
-          const fails = adds.filter((a) => a.outcome === "FAILED" || a.outcome === "SKIPPED").length;
-          const owners = await prisma.teamOwnership.findMany({
-            where: { teamId },
-            select: { userId: true },
-          });
+
+        const teamIds = Array.from(
+          new Set([...successesByTeam.keys(), ...failsByTeam.keys()]),
+        );
+        if (teamIds.length === 0) return;
+
+        // Single teamOwnership query — replaces N per-team findMany calls.
+        const ownerships = await prisma.teamOwnership.findMany({
+          where: { teamId: { in: teamIds } },
+          select: { teamId: true, userId: true },
+        });
+        const ownersByTeam = new Map<number, Set<number>>();
+        for (const o of ownerships) {
+          let set = ownersByTeam.get(o.teamId);
+          if (!set) {
+            set = new Set();
+            ownersByTeam.set(o.teamId, set);
+          }
+          // Set dedupes (teamId, userId) — a user with multiple push
+          // devices on the same team still gets one sendPushToUser call;
+          // the per-device fan-out happens inside pushService.
+          set.add(o.userId);
+        }
+
+        let teamsNotified = 0;
+        let subscriptionsHit = 0;
+        for (const teamId of teamIds) {
+          const successes = successesByTeam.get(teamId) ?? [];
+          const fails = failsByTeam.get(teamId) ?? 0;
+          const userIds = ownersByTeam.get(teamId);
+          if (!userIds || userIds.size === 0) continue;
+
           const title =
             successes.length > 0 ? `Wire List: ${successes.length} added`
             : fails > 0 ? "Wire List: no adds went through"
@@ -465,17 +517,26 @@ router.post(
               : fails > 0
               ? `${fails} ${fails === 1 ? "claim" : "claims"} did not succeed.`
               : "No claims this period.";
-          for (const o of owners) {
-            sendPushToUser(o.userId, {
+
+          teamsNotified++;
+          subscriptionsHit += userIds.size;
+          for (const userId of userIds) {
+            sendPushToUser(userId, {
               title,
               body,
               tag: `wire-list-finalize-${periodId}`,
               url: `/teams/${teamId}/wire-list`,
             }, "waiverResult").catch((err) =>
-              logger.warn({ err, userId: o.userId }, "Wire-list finalize push failed"),
+              logger.warn({ err, userId }, "Wire-list finalize push failed"),
             );
           }
         }
+
+        const subscriptionsMissing = teamIds.length - teamsNotified;
+        logger.info(
+          { periodId, teamsNotified, subscriptionsHit, subscriptionsMissing },
+          "Wire-list finalize notifications dispatched",
+        );
       } catch (err) {
         logger.warn({ err }, "Wire-list finalize notification fan-out failed");
       }
