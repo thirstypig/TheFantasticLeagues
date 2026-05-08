@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "125"
 tags: [code-review, db, migrations, hardening]
@@ -73,3 +73,12 @@ Option 1.
 ### 2026-04-30 — Initial Discovery
 - **By:** /ce:review data-migration-expert agent
 - **Learnings:** Hand-written SQL discipline is good (per `MEMORY.md` shared-DB note) but the migrations directory should be runnable end-to-end on a fresh DB. `prisma db push` work has bypassed this.
+
+### 2026-05-07 — Resolution
+- **By:** worktree agent (chore/migration-hardening-125)
+- **Findings:** Two of three pieces were already shipped — `docs/runbooks/auto_resolve_slots_rollback.md` covers PR #180's destructive deletes (#142 PR), and CLAUDE.md "Database → Migrations" already documented unique-timestamps + CONCURRENTLY-forbidden + IF-EXISTS guards + rollback-runbook requirement. The two open gaps were (a) the missing `AiInsight` baseline `CREATE TABLE` and (b) two-phase column-drop convention not yet documented.
+- **Shipped in this PR:**
+  1. `prisma/migrations/20260330000000_baseline_aiinsight_table/migration.sql` — fully guarded baseline so `prisma migrate deploy` succeeds on a fresh DB. No-op against prod.
+  2. `docs/runbooks/baseline_aiinsight_rollback.md` — rollback path for the baseline (Path A: metadata-only revert; Path B: fresh-DB drop).
+  3. `docs/runbooks/_template_rollback.md` — reusable template referenced from CLAUDE.md so future destructive migrations get a runbook by default.
+  4. `CLAUDE.md` "Database → Migrations" — added two-phase column-drop convention paragraph + baseline-migration paragraph + template pointer; reaffirmed unique-timestamps. Reference in PR #180's migration SQL now points at its rollback runbook.

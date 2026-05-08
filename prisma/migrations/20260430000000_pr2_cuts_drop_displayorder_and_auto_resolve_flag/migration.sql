@@ -1,5 +1,6 @@
 -- PR2 simplification cuts (plan #166 §0 deepening synthesis)
 -- Plan: docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md
+-- Rollback runbook: docs/runbooks/auto_resolve_slots_rollback.md
 --
 -- The 10-agent deepening pass on PR2 cut ~40% of planned surface area. Two
 -- pieces of state added in PR1 (#167) turned out to be unnecessary and are
