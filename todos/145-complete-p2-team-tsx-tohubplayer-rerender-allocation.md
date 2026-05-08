@@ -1,10 +1,26 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "145"
 tags: [code-review, performance, teams, react]
 dependencies: []
 ---
+
+## Verified shipped — 2026-05-07
+
+The Option-1 cache lives in `client/src/features/teams/pages/Team.tsx` as the
+`useHubPlayers` hook (lines 147-169): a `useRef<Map<number, HubPlayerCacheEntry>>`
+keyed by `rosterId`, gated by `hubPlayerCacheKey(row)` derived from
+`HUB_PLAYER_CACHE_KEY_FIELDS` in `client/src/features/teams/lib/toHubPlayer.ts`
+(per sibling todo #162.2 — the cache key auto-widens when input fields are
+added, eliminating silent stale-cache risk). All three call sites
+(`baselineHubHitters`, `baselineHubPitchers`, `hubIl`) use the hook, and
+unseen-rosterId entries are GC'd inside the same `useMemo` pass.
+
+PR #298 also reduced upstream churn by replacing the legacy
+`getTeamDetails` × `getPlayerSeasonStatsMeta` client join with a single
+server-shaped `getTeamRosterHub()` call, so identity-stable rows now flow
+through the cache without the previous double-allocation.
 
 # Team.tsx allocates fresh RosterHubPlayer arrays on every render; mobile pill taps feel laggy
 
