@@ -28,6 +28,13 @@ import {
   CreateDropEntryBodySchema,
   UpdateDropEntryBodySchema,
   ReorderEntriesBodySchema,
+  type CreatePeriodBody,
+  type CreateAddEntryBody,
+  type UpdateAddEntryBody,
+  type CreateDropEntryBody,
+  type UpdateDropEntryBody,
+  type ReorderEntriesBody,
+  type WaiverPeriodStatus,
 } from "../../../../shared/api/wireList.js";
 import { logger } from "../../lib/logger.js";
 
@@ -76,7 +83,7 @@ class RaceLost extends Error {
 async function loadPendingPeriod(
   res: import("express").Response,
   periodId: number,
-): Promise<{ id: number; leagueId: number; createdAt: Date; status: string } | null> {
+): Promise<{ id: number; leagueId: number; createdAt: Date; status: WaiverPeriodStatus } | null> {
   const period = await prisma.waiverPeriod.findUnique({
     where: { id: periodId },
     select: { id: true, leagueId: true, createdAt: true, status: true },
@@ -92,7 +99,11 @@ async function loadPendingPeriod(
     });
     return null;
   }
-  return period;
+  // Narrow Prisma's wider enum (which includes CANCELLED) to the shared
+  // WaiverPeriodStatus union — wire-list code paths never set CANCELLED
+  // (see shared/api/wireList.ts comment). The status === "PENDING" branch
+  // above guarantees this is safe.
+  return period as typeof period & { status: WaiverPeriodStatus };
 }
 
 /**
@@ -109,7 +120,7 @@ async function loadPeriodForTeam(
   periodId: number,
   teamId: number,
 ): Promise<{
-  period: { id: number; leagueId: number; createdAt: Date; status: string };
+  period: { id: number; leagueId: number; createdAt: Date; status: WaiverPeriodStatus };
   team: { id: number; leagueId: number };
 } | null> {
   const [period, team] = await Promise.all([
@@ -132,7 +143,9 @@ async function loadPeriodForTeam(
     res.status(404).json({ error: "Waiver period not found", code: "PERIOD_NOT_FOUND" });
     return null;
   }
-  return { period, team };
+  // Narrow Prisma's wider enum (includes CANCELLED) to the shared union —
+  // wire-list code paths never set CANCELLED.
+  return { period: period as typeof period & { status: WaiverPeriodStatus }, team };
 }
 
 /**
@@ -219,7 +232,8 @@ router.post(
   validateBody(CreatePeriodBodySchema),
   asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
-    const { deadlineAt } = req.body as { deadlineAt: string };
+    const body: CreatePeriodBody = req.body;
+    const { deadlineAt } = body;
     const deadline = new Date(deadlineAt);
     if (deadline.getTime() <= Date.now()) {
       return res.status(400).json({ error: "deadlineAt must be in the future", code: "DEADLINE_IN_PAST" });
@@ -313,11 +327,8 @@ router.post(
   requireTeamOwner("teamId"),
   asyncHandler(async (req, res) => {
     const periodId = Number(req.params.periodId);
-    const { teamId, playerId, priority } = req.body as {
-      teamId: number;
-      playerId: number;
-      priority?: number;
-    };
+    const body: CreateAddEntryBody = req.body;
+    const { teamId, playerId } = body;
 
     // todo #161: cross-league probe-oracle guard FIRST — collapses
     // not-found, missing-team, and cross-league mismatch into one 404.
@@ -337,7 +348,7 @@ router.post(
     const acq = await assertNotAcquiredThisPeriod(teamId, playerId, period.createdAt);
     if (!acq.ok) return res.status(acq.status).json(acq.body);
 
-    const finalPriority = priority ?? (await nextAddPriority(periodId, teamId));
+    const finalPriority = await nextAddPriority(periodId, teamId);
 
     // todo #158: re-check period status INSIDE the same tx as the
     // create. The cron flips PENDING→LOCKED on a 5-min schedule;
@@ -383,7 +394,8 @@ router.patch(
   validateBody(UpdateAddEntryBodySchema),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
-    const { priority } = req.body as { priority: number };
+    const body: UpdateAddEntryBody = req.body;
+    const { priority } = body;
 
     const entry = await prisma.waiverAddEntry.findUnique({
       where: { id },
@@ -516,12 +528,8 @@ router.post(
   requireTeamOwner("teamId"),
   asyncHandler(async (req, res) => {
     const periodId = Number(req.params.periodId);
-    const { teamId, playerId, priority, dropMode } = req.body as {
-      teamId: number;
-      playerId: number;
-      priority?: number;
-      dropMode?: "RELEASE" | "IL_STASH";
-    };
+    const body: CreateDropEntryBody = req.body;
+    const { teamId, playerId, dropMode } = body;
 
     // todo #161: cross-league probe-oracle guard FIRST.
     const ctx = await loadPeriodForTeam(res, periodId, teamId);
@@ -543,7 +551,7 @@ router.post(
       return res.status(400).json({ error: "Player is not on this team's active roster", code: "PLAYER_NOT_ON_TEAM" });
     }
 
-    const finalPriority = priority ?? (await nextDropPriority(periodId, teamId));
+    const finalPriority = await nextDropPriority(periodId, teamId);
 
     try {
       // todo #158: re-check period status inside the same tx.
@@ -593,7 +601,8 @@ router.patch(
   validateBody(UpdateDropEntryBodySchema),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
-    const { priority, dropMode } = req.body as { priority?: number; dropMode?: "RELEASE" | "IL_STASH" };
+    const body: UpdateDropEntryBody = req.body;
+    const { priority, dropMode } = body;
 
     const entry = await prisma.waiverDropEntry.findUnique({
       where: { id },
@@ -700,11 +709,8 @@ router.post(
   requireTeamOwner("teamId"),
   asyncHandler(async (req, res) => {
     const periodId = Number(req.params.periodId);
-    const { kind, teamId, orderedIds } = req.body as {
-      kind: "ADD" | "DROP";
-      teamId: number;
-      orderedIds: number[];
-    };
+    const body: ReorderEntriesBody = req.body;
+    const { kind, teamId, orderedIds } = body;
 
     // Probe-oracle guard (todo #161): cross-league or missing → 404.
     const ctx = await loadPeriodForTeam(res, periodId, teamId);
@@ -730,7 +736,7 @@ router.post(
             select: { id: true },
           });
     const existingIds = new Set(existing.map((e) => e.id));
-    if (existing.length !== orderedIds.length || !orderedIds.every((id) => existingIds.has(id))) {
+    if (existing.length !== orderedIds.length || !orderedIds.every((id: number) => existingIds.has(id))) {
       return res.status(400).json({
         error: "orderedIds must list every entry for this team/period/kind exactly once",
         code: "REORDER_IDS_MISMATCH",

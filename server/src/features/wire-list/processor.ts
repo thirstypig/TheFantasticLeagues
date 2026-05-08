@@ -30,7 +30,11 @@ import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import { sendPushToUser } from "../../lib/pushService.js";
 import { logger } from "../../lib/logger.js";
-import { FailOutcomeBodySchema, SkipOutcomeBodySchema } from "../../../../shared/api/wireList.js";
+import {
+  FailOutcomeBodySchema,
+  SkipOutcomeBodySchema,
+  type WaiverPeriodStatus,
+} from "../../../../shared/api/wireList.js";
 
 const router = Router();
 
@@ -82,38 +86,45 @@ async function safeWriteAuditLog(
  * needs leagueId. Loads the entry, derives leagueId, then runs the same
  * commissioner check `requireCommissionerOrAdmin` would do — fail-closed.
  */
+const loadedAddEntrySelect = {
+  id: true,
+  periodId: true,
+  teamId: true,
+  playerId: true,
+  outcome: true,
+  consumedDropEntryId: true,
+  reason: true,
+  period: { select: { id: true, leagueId: true, createdAt: true, status: true } },
+} satisfies Prisma.WaiverAddEntrySelect;
+
+// Prisma-derived row type — single source of truth for the load shape.
+// The period.status field is narrowed to the shared WaiverPeriodStatus
+// union (Prisma's wider enum includes CANCELLED, but wire-list code paths
+// never set it; see shared/api/wireList.ts comment).
+type LoadedAddEntry = Omit<
+  Prisma.WaiverAddEntryGetPayload<{ select: typeof loadedAddEntrySelect }>,
+  "period"
+> & {
+  period: Omit<
+    Prisma.WaiverAddEntryGetPayload<{ select: typeof loadedAddEntrySelect }>["period"],
+    "status"
+  > & { status: WaiverPeriodStatus };
+};
+
 async function loadAddEntryAsCommissioner(
   req: import("express").Request,
   res: import("express").Response,
   addId: number,
-): Promise<{
-  id: number;
-  periodId: number;
-  teamId: number;
-  playerId: number;
-  outcome: string;
-  consumedDropEntryId: number | null;
-  reason: string | null;
-  period: { id: number; leagueId: number; createdAt: Date; status: string };
-} | null> {
+): Promise<LoadedAddEntry | null> {
   const entry = await prisma.waiverAddEntry.findUnique({
     where: { id: addId },
-    select: {
-      id: true,
-      periodId: true,
-      teamId: true,
-      playerId: true,
-      outcome: true,
-      consumedDropEntryId: true,
-      reason: true,
-      period: { select: { id: true, leagueId: true, createdAt: true, status: true } },
-    },
+    select: loadedAddEntrySelect,
   });
   if (!entry) {
     res.status(404).json({ error: "Add entry not found", code: "ENTRY_NOT_FOUND" });
     return null;
   }
-  if (req.user!.isAdmin) return entry;
+  if (req.user!.isAdmin) return entry as LoadedAddEntry;
 
   const m = await prisma.leagueMembership.findUnique({
     where: { leagueId_userId: { leagueId: entry.period.leagueId, userId: req.user!.id } },
@@ -123,7 +134,7 @@ async function loadAddEntryAsCommissioner(
     res.status(403).json({ error: "Commissioner only" });
     return null;
   }
-  return entry;
+  return entry as LoadedAddEntry;
 }
 
 /**
