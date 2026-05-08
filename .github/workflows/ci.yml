@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - run: cd server && npm ci
       - run: cd client && npm ci
+      - run: cd mcp-servers/fbst-app && npm ci
+      - run: cd mcp-servers/mlb-data && npm ci
 
       # TypeScript checks
       - name: TypeScript (client)
@@ -32,6 +34,10 @@ jobs:
         run: npm run test:server
       - name: Client tests
         run: npm run test:client
+      - name: MCP fbst-app tests
+        run: cd mcp-servers/fbst-app && npm test
+      - name: MCP mlb-data tests
+        run: cd mcp-servers/mlb-data && npm test
 
   audit:
     runs-on: ubuntu-latest
