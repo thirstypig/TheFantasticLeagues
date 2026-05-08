@@ -117,6 +117,8 @@ export const PlayerSeasonStatSchema = z.object({
 /** The full response envelope. */
 export const PlayerSeasonStatsResponseSchema = z.object({
   stats: z.array(PlayerSeasonStatSchema),
+  /** Server timestamp marking when this response was assembled (ISO 8601). */
+  computedAt: z.string().optional(),
 });
 
 /** Inferred type used by both client and server. */

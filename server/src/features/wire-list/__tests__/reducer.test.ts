@@ -27,6 +27,7 @@ vi.mock("../../../db/prisma.js", () => {
     waiverAddEntry: {
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
     },
     waiverDropEntry: {
@@ -36,10 +37,12 @@ vi.mock("../../../db/prisma.js", () => {
     },
     roster: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       updateMany: vi.fn(),
+      update: vi.fn(),
       create: vi.fn(),
     },
-    transactionEvent: { create: vi.fn() },
+    transactionEvent: { create: vi.fn(), createMany: vi.fn() },
     player: { findUnique: vi.fn() },
     league: { findUnique: vi.fn() },
     $queryRaw: vi.fn(),
@@ -285,23 +288,24 @@ describe("POST /periods/:periodId/finalize", () => {
         player: { id: 500, name: "Add Guy", posPrimary: "OF", posList: "OF" },
       },
     ]);
-    // Blocker re-validation pass:
+    // Blocker re-validation pass + batched preload (post-#277):
     //   findFirst #1: still-FA check → null (good, player not on a roster)
     //   findFirst #2: drop player still on team → some row (good)
-    //   findFirst #3: dropRoster (capture slot before release) → some row
+    //   findMany: drop rosters preload (1 row keyed by teamId-playerId)
     mockTx.roster.findFirst
       .mockResolvedValueOnce(null) // stillFA
-      .mockResolvedValueOnce({ id: 1500 }) // dropRoster blocker check
-      .mockResolvedValueOnce({ id: 1500, assignedPosition: "OF" }); // dropRoster slot capture
+      .mockResolvedValueOnce({ id: 1500 }); // drop player still on team
+    mockTx.roster.findMany.mockResolvedValue([
+      { id: 1500, teamId: 5, playerId: 700, assignedPosition: "OF" },
+    ]);
     mockTx.player.findUnique
-      .mockResolvedValueOnce({ mlbTeam: "LAD" }) // adds player team check
-      .mockResolvedValueOnce({ name: "Drop Guy" }); // for drop TransactionEvent text
+      .mockResolvedValueOnce({ mlbTeam: "LAD" }); // adds player team check (drop name preloaded via include)
     mockTx.roster.updateMany.mockResolvedValue({ count: 1 }); // released
     mockTx.roster.create.mockResolvedValue({ id: 9999 });
-    mockTx.transactionEvent.create.mockResolvedValue({ id: 1 });
-    mockTx.waiverAddEntry.update.mockResolvedValue({});
-    mockTx.waiverDropEntry.update.mockResolvedValue({});
-    mockTx.waiverDropEntry.updateMany.mockResolvedValue({ count: 0 }); // unused drops
+    // Post-#277: events written via createMany at end-of-loop, not per-row create.
+    mockTx.transactionEvent.createMany.mockResolvedValue({ count: 2 });
+    mockTx.waiverAddEntry.updateMany.mockResolvedValue({ count: 1 }); // processedAt batch
+    mockTx.waiverDropEntry.updateMany.mockResolvedValue({ count: 0 }); // unused drops + processedAt batch
     mockTx.waiverPeriod.update.mockResolvedValue({
       id: 1, leagueId: 7, status: "PROCESSED", processedAt: new Date(), createdAt: new Date("2026-05-01"),
     });
@@ -316,11 +320,13 @@ describe("POST /periods/:periodId/finalize", () => {
     expect(res.body.dropsConsumed).toBe(1);
     expect(res.body.period.status).toBe("PROCESSED");
 
-    // Assertions on the critical writes
+    // Assertions on the critical writes (post-#277 batched flow)
     expect(mockTx.roster.create).toHaveBeenCalledTimes(1);
-    expect(mockTx.transactionEvent.create).toHaveBeenCalledTimes(2); // one ADD, one DROP
-    const calls = mockTx.transactionEvent.create.mock.calls.map((c: any) => c[0].data.transactionType);
-    expect(calls).toEqual(expect.arrayContaining(["ADD", "DROP"]));
+    // Per-row tx.transactionEvent.create replaced with end-of-loop createMany
+    expect(mockTx.transactionEvent.createMany).toHaveBeenCalledTimes(1);
+    const eventCalls = mockTx.transactionEvent.createMany.mock.calls[0][0].data as Array<{ transactionType: string }>;
+    const types = eventCalls.map((e) => e.transactionType);
+    expect(types).toEqual(expect.arrayContaining(["ADD", "DROP"]));
     expect(mockTx.waiverPeriod.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 1 }, data: expect.objectContaining({ status: "PROCESSED" }) }),
     );

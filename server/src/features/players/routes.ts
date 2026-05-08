@@ -521,7 +521,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
   // Typed against the shared contract — adding or removing a field from the
   // server response that the client's inferred type doesn't expect is a
   // compile error. See docs/CONTRACT_TESTING.md.
-  const body: PlayerSeasonStatsResponse = { stats: expandedStats };
+  const body: PlayerSeasonStatsResponse = { stats: expandedStats, computedAt: new Date().toISOString() };
   res.json(body);
 }));
 
