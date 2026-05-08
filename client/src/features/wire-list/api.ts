@@ -8,20 +8,19 @@ import type {
   WaiverDropMode,
   WaiverAddOutcome,
   WaiverDropStatus,
-} from "../../../../shared/api/wireList";
+  PeriodResponse,
+  AddEntryResponse,
+  DropEntryResponse,
+} from "@shared/api/wireList";
 
 // Re-export shared types so existing callers continue to import from here.
 export type { WaiverPeriodStatus, WaiverDropMode, WaiverAddOutcome, WaiverDropStatus };
 
-export interface WaiverPeriod {
-  id: number;
-  leagueId: number;
-  deadlineAt: string;
-  lockedAt: string | null;
-  processedAt: string | null;
-  status: WaiverPeriodStatus;
-  createdAt: string;
-}
+// Wire-format types come straight from the shared schema (single source of
+// truth — see todo #169). The client extends only with optional `player`
+// enrichment that the server includes via Prisma `include`.
+
+export type WaiverPeriod = PeriodResponse;
 
 export interface AddEntryPlayer {
   id: number;
@@ -31,32 +30,9 @@ export interface AddEntryPlayer {
   mlbId: number | null;
 }
 
-export interface AddEntry {
-  id: number;
-  periodId: number;
-  teamId: number;
-  playerId: number;
-  priority: number;
-  outcome: WaiverAddOutcome;
-  consumedDropEntryId: number | null;
-  reason: string | null;
-  processedAt: string | null;
-  createdAt: string;
-  player?: AddEntryPlayer;
-}
+export type AddEntry = AddEntryResponse & { player?: AddEntryPlayer };
 
-export interface DropEntry {
-  id: number;
-  periodId: number;
-  teamId: number;
-  playerId: number;
-  priority: number;
-  dropMode: WaiverDropMode;
-  status: WaiverDropStatus;
-  processedAt: string | null;
-  createdAt: string;
-  player?: AddEntryPlayer;
-}
+export type DropEntry = DropEntryResponse & { player?: AddEntryPlayer };
 
 // ─── API calls ───────────────────────────────────────────────────────
 
