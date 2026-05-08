@@ -45,12 +45,15 @@ import {
 import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
 import { clearStandingsCache } from "../standings/services/standingsService.js";
+import { clearAwardsCache } from "../awards/services/awardsService.js";
 
 /**
  * Invalidate every cache keyed on (leagueId, ...) after a successful roster
  * mutation (claim, drop, il-stash, il-activate). The `/api/players` cache is
  * the primary target (todo #137); the standings cache is a free addition that
- * also satisfies todo #143 (standings invalidation on mutations).
+ * also satisfies todo #143 (standings invalidation on mutations); the awards
+ * cache (todo #119) joins the same fan-out so MVP/Cy Young rankings reflect
+ * roster moves on the next refresh.
  *
  * Sync, lightweight, must run after the transaction commits but before the
  * response is sent — otherwise a follow-up request can read a stale cache
@@ -59,6 +62,7 @@ import { clearStandingsCache } from "../standings/services/standingsService.js";
 function invalidateLeagueCaches(leagueId: number): void {
   clearPlayersCache(leagueId);
   clearStandingsCache(leagueId);
+  clearAwardsCache(leagueId);
 }
 
 /**

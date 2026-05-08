@@ -18,10 +18,12 @@ import { prisma } from "../../../db/prisma.js";
 // and server import from there so a drift between server response and
 // consumer expectation is a TypeScript compile error, not a runtime bug.
 // The persisted blob in `AiInsight.data.awards` conforms to the same shape.
-import type {
-  AwardsRankings,
-  CyYoungCandidate,
-  MvpCandidate,
+import {
+  AwardsRankingsSchema,
+  type AwardsRankings,
+  type AwardsResponse,
+  type CyYoungCandidate,
+  type MvpCandidate,
 } from "../../../../../shared/api/awards.js";
 
 // Re-export inferred types for back-compat with consumers that still import
@@ -399,4 +401,109 @@ export function formatCyYoungForPrompt(rankings: AwardsRankings): string {
       `${c.stats.W}-${c.stats.L} W-L, ${c.stats.K9.toFixed(1)} K/9, ${c.stats.SV} SV (${c.stats.IP.toFixed(1)} IP)`,
     )
     .join("\n");
+}
+
+// ─── Cache layer (todo #119) ───────────────────────────────────────────────
+//
+// Awards rankings change only when player stats change — and stats change
+// only on the daily 13:00 UTC sync. A 5-min TTL is generous: it covers the
+// home-page polling pattern (multiple owners refreshing the leaderboard
+// within a window) without ever serving genuinely stale data.
+//
+// `pending` provides stampede protection: if N requests arrive for the same
+// (leagueId, weekKey) while the first compute is in flight, all N share the
+// single Promise instead of firing N parallel `computeAwardsRankings` calls.
+// Mirrors `standingsService.ts:608+` (PR #179).
+//
+// The cached value is the full `AwardsResponse` envelope including the
+// `source` discriminator, so consumers see consistent values whether the
+// underlying read came from the persisted digest blob or a fresh compute.
+
+interface AwardsCacheEntry {
+  data?: AwardsResponse;
+  expiry: number;
+  pending?: Promise<AwardsResponse>;
+}
+
+const awardsCache = new Map<string, AwardsCacheEntry>();
+const AWARDS_CACHE_TTL = 300_000; // 5 minutes
+
+function awardsCacheKey(leagueId: number, weekKey: string): string {
+  return `${leagueId}:${weekKey}`;
+}
+
+/**
+ * Invalidate the awards cache. Called from the leaguewide cache-invalidation
+ * helper (`invalidateLeagueCaches` in transactions/routes.ts) on any roster
+ * mutation, and may be called from the daily stats sync once that lands in
+ * a separate refactor.
+ *
+ * `leagueId` clears every weekKey for that league; `undefined` clears all.
+ */
+export function clearAwardsCache(leagueId?: number): void {
+  if (leagueId === undefined) {
+    awardsCache.clear();
+    return;
+  }
+  const prefix = `${leagueId}:`;
+  for (const key of awardsCache.keys()) {
+    if (key.startsWith(prefix)) awardsCache.delete(key);
+  }
+}
+
+/**
+ * Read awards for a (league, week), preferring the persisted digest snapshot
+ * and falling through to on-demand compute. Result is cached for 5 minutes
+ * with stampede coalescing — this is the canonical entry point for the
+ * route handler and any future digest consumer that needs the structured
+ * rankings.
+ *
+ * Failure of the persisted-blob shape validation (todo #118) silently falls
+ * through to compute, same as before; the cache stores whatever we end up
+ * returning so a malformed-blob league doesn't pay the validation cost on
+ * every request.
+ */
+export async function getAwardsForWeek(
+  leagueId: number,
+  weekKey: string,
+): Promise<AwardsResponse> {
+  const key = awardsCacheKey(leagueId, weekKey);
+  const cached = awardsCache.get(key);
+  if (cached?.data && cached.expiry > Date.now()) return cached.data;
+  if (cached?.pending) return cached.pending;
+
+  const pending = (async (): Promise<AwardsResponse> => {
+    // 1. Persisted snapshot — digest write path stores the full rankings
+    //    envelope under data.awards (pre-#115 rows lack the field).
+    const persisted = await prisma.aiInsight.findFirst({
+      where: { type: "league_digest", leagueId, weekKey },
+      select: { data: true, createdAt: true },
+    });
+    if (persisted?.data && typeof persisted.data === "object") {
+      const parsed = AwardsRankingsSchema.safeParse(
+        (persisted.data as Record<string, unknown>).awards,
+      );
+      if (parsed.success) {
+        return {
+          ...parsed.data,
+          source: "persisted",
+          digestGeneratedAt: persisted.createdAt.toISOString(),
+        };
+      }
+    }
+    // 2. Compute fallback — covers pre-#115 digests, malformed blobs, and
+    //    ad-hoc queries for weeks that never had a digest run.
+    const rankings = await computeAwardsRankings(leagueId, weekKey);
+    return { ...rankings, source: "computed" };
+  })();
+
+  awardsCache.set(key, { data: cached?.data, expiry: 0, pending });
+  try {
+    const result = await pending;
+    awardsCache.set(key, { data: result, expiry: Date.now() + AWARDS_CACHE_TTL });
+    return result;
+  } catch (err) {
+    awardsCache.delete(key);
+    throw err;
+  }
 }

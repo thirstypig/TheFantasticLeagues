@@ -31,6 +31,7 @@ const mockPrisma = prisma as any;
 
 import express from "express";
 import { awardsRouter } from "../routes.js";
+import { clearAwardsCache } from "../services/awardsService.js";
 import supertest from "supertest";
 
 const app = express();
@@ -46,6 +47,10 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The service-layer cache (todo #119) is process-scoped — clear between
+  // tests so each test sees its own mock prisma responses, not a hit from
+  // a previous test's compute path.
+  clearAwardsCache();
 });
 
 describe("GET /api/leagues/:leagueId/awards", () => {
@@ -151,5 +156,48 @@ describe("GET /api/leagues/:leagueId/awards", () => {
     expect(res.status).toBe(200);
     // weekKey is YYYY-WNN — verify it matches that pattern (i.e., default applied)
     expect(res.body.weekKey).toMatch(/^\d{4}-W\d{2}$/);
+  });
+
+  it("serves repeat requests for the same (league, week) from cache without re-querying prisma (todo #119)", async () => {
+    mockPrisma.aiInsight.findFirst.mockResolvedValue(null);
+    mockPrisma.period.findMany.mockResolvedValue([]);
+    mockPrisma.team.findMany.mockResolvedValue([]);
+
+    const a = await supertest(app).get("/api/leagues/1/awards?weekKey=2026-W14");
+    const b = await supertest(app).get("/api/leagues/1/awards?weekKey=2026-W14");
+
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    // First request hits prisma; second is served from cache
+    expect(mockPrisma.aiInsight.findFirst).toHaveBeenCalledTimes(1);
+    // Same body either way
+    expect(b.body).toEqual(a.body);
+  });
+
+  it("coalesces concurrent compute requests via the in-flight pending promise (todo #119)", async () => {
+    let resolveFindFirst: (value: unknown) => void = () => {};
+    const findFirstPromise = new Promise((resolve) => {
+      resolveFindFirst = resolve;
+    });
+    mockPrisma.aiInsight.findFirst.mockReturnValue(findFirstPromise);
+    mockPrisma.period.findMany.mockResolvedValue([]);
+    mockPrisma.team.findMany.mockResolvedValue([]);
+
+    // Fire three concurrent requests before the first compute resolves —
+    // all three should join the same pending Promise rather than each
+    // triggering a fresh prisma read.
+    const [a, b, c] = await Promise.all([
+      Promise.resolve().then(() => supertest(app).get("/api/leagues/1/awards?weekKey=2026-W15")),
+      Promise.resolve().then(() => supertest(app).get("/api/leagues/1/awards?weekKey=2026-W15")),
+      Promise.resolve().then(() => supertest(app).get("/api/leagues/1/awards?weekKey=2026-W15")),
+      // Resolve after the three requests have all entered the cache layer
+      Promise.resolve().then(() => resolveFindFirst(null)),
+    ]);
+
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    expect(c.status).toBe(200);
+    // Single prisma read shared by all three concurrent callers
+    expect(mockPrisma.aiInsight.findFirst).toHaveBeenCalledTimes(1);
   });
 });
