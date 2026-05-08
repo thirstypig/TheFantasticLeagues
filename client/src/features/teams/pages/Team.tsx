@@ -19,7 +19,7 @@
  * Port the deferred features into Aurora when the pilot expands.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Outlet, useNavigate, useOutlet, useParams, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DndContext } from "@dnd-kit/core";
 import { useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor } from "@dnd-kit/core";
@@ -49,23 +49,22 @@ import { useRosterHubDrag, isMlbIlStatusUi } from "../hooks/useRosterHubDrag";
 import { ilStash, ilActivate, syncIlStatus } from "../../transactions/api";
 import {
   RosterHubV3,
-  SubrouteContainer,
   type RosterHubPlayer,
   FreeAgentPanel,
   DropPool,
   SaveDiffPreviewModal,
   type DiffRow,
 } from "../components/RosterHub";
+import type { TeamManageContext } from "./teamManageContext";
 import { useFreeAgents } from "../hooks/useFreeAgents";
 import type { RowAction } from "../components/RosterHub/RowActionMenu";
 import { toHubPlayer, hubPlayerCacheKey } from "../lib/toHubPlayer";
 // Cross-feature import: roster mutations live in the transactions feature.
 // Per CLAUDE.md "Cross-Feature Dependencies", this is documented in the
-// project root. The v3 hub remounts these existing panels as inline sub-routes
-// (per plan §0.5 refinement #2 "no modals") rather than rewriting them.
-import AddDropPanel from "../../transactions/components/RosterMovesTab/AddDropPanel";
-import PlaceOnIlPanel from "../../transactions/components/RosterMovesTab/PlaceOnIlPanel";
-import ActivateFromIlPanel from "../../transactions/components/RosterMovesTab/ActivateFromIlPanel";
+// project root. The v3 hub remounts these panels as nested-route children
+// (`/teams/:teamCode/manage/:mode`) via React Router's `<Outlet />` rather
+// than rewriting them. The actual panel imports moved to
+// `components/RosterHub/ManagePanel.tsx` (todo #150 refactor).
 import type { RosterMovesPlayer } from "../../transactions/components/RosterMovesTab/types";
 import { loadRosterMovePlayers } from "../../transactions/lib/loadRosterMovePlayers";
 import type { RosterHubRow } from "@shared/api/teams";
@@ -177,18 +176,14 @@ export default function Team() {
   const authUser = me?.user;
   const { leagueId, currentLeagueName, myTeamId, myTeamCode, leagueRules, seasonStatus } = useLeague();
 
-  // Sub-route detection for the manage flows. Each match flips the table
-  // surface to a SubrouteContainer wrapping the existing transactions panel.
-  const claimMatch = useMatch("/teams/:teamCode/manage/claim");
-  const ilStashMatch = useMatch("/teams/:teamCode/manage/il-stash");
-  const ilActivateMatch = useMatch("/teams/:teamCode/manage/il-activate");
-  const manageMode: "claim" | "il-stash" | "il-activate" | null = claimMatch
-    ? "claim"
-    : ilStashMatch
-    ? "il-stash"
-    : ilActivateMatch
-    ? "il-activate"
-    : null;
+  // Sub-route detection for the manage flows. Per todo #150 the manage
+  // panels are now declarative nested routes (`/teams/:teamCode/manage/:mode`)
+  // rendered via React Router's `<Outlet />`. `useOutlet()` returns the
+  // resolved child element (truthy) when a sub-route is mounted, falsy on
+  // the bare `/teams/:teamCode` URL — so we can flip the roster surface
+  // between the table and the outlet without re-deriving the URL ourselves.
+  const manageOutlet = useOutlet();
+  const inManageFlow = manageOutlet !== null;
   const queryEffectiveDate = searchParams.get("effectiveDate");
   const queryPlayerIdRaw = searchParams.get("playerId");
   const queryPlayerId = queryPlayerIdRaw ? Number(queryPlayerIdRaw) : null;
@@ -1164,6 +1159,31 @@ export default function Team() {
     navigate(`/teams/${code}`);
   }, [navigate, code]);
 
+  // Outlet context plumbed to ManagePanel (and any future manage child
+  // route). Memoized so identity is stable across renders that don't
+  // touch any of these inputs — the child consumes via `useOutletContext`,
+  // which doesn't subscribe to context-value identity changes itself, but
+  // memoizing here keeps the panel's `useMemo`/`useCallback` deps clean.
+  const manageOutletContext = useMemo<TeamManageContext>(() => ({
+    leagueId: leagueId ?? null,
+    teamId: teamMeta?.id ?? null,
+    canManage,
+    players,
+    effectiveDate: pending.state.effectiveDate,
+    initialManagePlayerId,
+    onBack: onBackToRoster,
+    onPanelComplete,
+  }), [
+    leagueId,
+    teamMeta?.id,
+    canManage,
+    players,
+    pending.state.effectiveDate,
+    initialManagePlayerId,
+    onBackToRoster,
+    onPanelComplete,
+  ]);
+
   const totalSpent = useMemo(() =>
     displayRoster.reduce((s, p) => s + (p.price ?? 0), 0),
     [displayRoster]);
@@ -1402,58 +1422,12 @@ export default function Team() {
               pitchers) has room to breathe; Lineup Intelligence moves
               below, also full-width, instead of sitting in a right rail. */}
           <div style={{ gridColumn: "span 12" }}>
-            {manageMode ? (
-              <SubrouteContainer
-                title={
-                  manageMode === "claim"
-                    ? "Add free agent"
-                    : manageMode === "il-stash"
-                    ? "Place on IL"
-                    : "Activate from IL"
-                }
-                blurb={
-                  manageMode === "claim"
-                    ? "Pick a free agent and the player on your roster they'll replace. Auto-resolve handles slot conflicts."
-                    : manageMode === "il-stash"
-                    ? "Move an injured player to your IL slot and bring in a replacement at their vacated position."
-                    : "Return a player from IL and pick an active-roster player to drop in their place."
-                }
-                onBack={onBackToRoster}
-              >
-                {!canManage ? (
-                  <div style={{ padding: 16, color: "var(--am-text-muted)", fontSize: 12 }}>
-                    Roster transactions on this team are not available to you.
-                  </div>
-                ) : !leagueId || !teamMeta ? (
-                  <div style={{ padding: 16, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>
-                ) : manageMode === "claim" ? (
-	                  <AddDropPanel
-	                    leagueId={leagueId}
-	                    teamId={teamMeta.id}
-	                    players={players}
-	                    onComplete={onPanelComplete}
-	                    effectiveDate={pending.state.effectiveDate ?? undefined}
-	                  />
-	                ) : manageMode === "il-stash" ? (
-	                  <PlaceOnIlPanel
-	                    leagueId={leagueId}
-	                    teamId={teamMeta.id}
-	                    players={players}
-	                    onComplete={onPanelComplete}
-	                    effectiveDate={pending.state.effectiveDate ?? undefined}
-	                    initialStashPlayerId={initialManagePlayerId}
-	                  />
-	                ) : (
-	                  <ActivateFromIlPanel
-	                    leagueId={leagueId}
-	                    teamId={teamMeta.id}
-	                    players={players}
-	                    onComplete={onPanelComplete}
-	                    effectiveDate={pending.state.effectiveDate ?? undefined}
-	                    initialActivatePlayerId={initialManagePlayerId}
-	                  />
-                )}
-              </SubrouteContainer>
+            {inManageFlow ? (
+              // Manage sub-routes render via `<Outlet />`. The child route
+              // (ManagePanel) reads its inputs from this outlet context, so
+              // Team owns all the state and the child only owns "which
+              // panel for which URL". Per todo #150.
+              <Outlet context={manageOutletContext} />
             ) : (
               <DndContext
                 sensors={dndSensors}
@@ -1585,7 +1559,7 @@ export default function Team() {
                 designation but the daily sync hasn't auto-stashed them.
                 Each chip carries a Resync button that calls
                 POST /api/transactions/sync-il-status. */}
-            {ghostIlSuspects.length > 0 && !manageMode && (
+            {ghostIlSuspects.length > 0 && !inManageFlow && (
               <Glass style={{ marginTop: 12, padding: 12 }}>
                 <SectionLabel>✦ Status missing — possible IL stashes</SectionLabel>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
@@ -1639,7 +1613,7 @@ export default function Team() {
             {/* FA suggestion chips (direction-lock IL #6) — for each
                 il_stash queued, show "Add a FA to fill this slot →"
                 opening the FA panel pre-filtered to the freed slot. */}
-            {ilStashFreedSlots.size > 0 && !manageMode && canManage && (
+            {ilStashFreedSlots.size > 0 && !inManageFlow && canManage && (
               <Glass style={{ marginTop: 12, padding: 12 }}>
                 <SectionLabel>✦ Freed slots — fill from FA?</SectionLabel>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
