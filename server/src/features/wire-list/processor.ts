@@ -126,6 +126,127 @@ async function loadAddEntryAsCommissioner(
   return entry;
 }
 
+/**
+ * Mirror of `loadAddEntryAsCommissioner`'s membership lookup, keyed by
+ * periodId instead of entry id. Used by `/lock` and `/finalize` to factor
+ * out the byte-similar inline `prisma.leagueMembership.findUnique` blocks.
+ * On failure writes the appropriate 404/403 to `res` and returns `null`.
+ * On success returns the period's `{ leagueId, periodId, status, createdAt }`.
+ *
+ * `/results` (a read endpoint that allows any league member) intentionally
+ * does NOT use this helper — that section is owned by todo #172.
+ */
+async function assertCommissionerForPeriod(
+  req: import("express").Request,
+  res: import("express").Response,
+  periodIdParam: string | undefined,
+): Promise<{ leagueId: number; periodId: number; status: string; createdAt: Date } | null> {
+  const periodId = Number(periodIdParam);
+  const period = await prisma.waiverPeriod.findUnique({
+    where: { id: periodId },
+    select: { id: true, leagueId: true, status: true, createdAt: true },
+  });
+  if (!period) {
+    res.status(404).json({ error: "Period not found", code: "PERIOD_NOT_FOUND" });
+    return null;
+  }
+  if (!req.user!.isAdmin) {
+    const m = await prisma.leagueMembership.findUnique({
+      where: { leagueId_userId: { leagueId: period.leagueId, userId: req.user!.id } },
+      select: { role: true },
+    });
+    if (m?.role !== "COMMISSIONER") {
+      res.status(403).json({ error: "Commissioner only" });
+      return null;
+    }
+  }
+  return { leagueId: period.leagueId, periodId: period.id, status: period.status, createdAt: period.createdAt };
+}
+
+// ─── Outcome handler guards (file-local) ─────────────────────────────
+//
+// `/succeed`, `/fail`, `/skip` all require: period LOCKED + entry PENDING.
+// `/revert` requires: period LOCKED + entry NOT PENDING (already-processed).
+// Prior to consolidation each of the four routes inlined these two checks
+// with the same status codes and message templates; helper-level dedup
+// removes the drift surface (todo #170).
+
+type OutcomeEntry = { outcome: string; period: { status: string } };
+
+/** Guard for `/succeed`, `/fail`, `/skip`. Writes 403/409 + returns false on failure. */
+function ensureLockedPeriodAndPendingEntry(
+  entry: OutcomeEntry,
+  res: import("express").Response,
+): boolean {
+  if (entry.period.status !== "LOCKED") {
+    res.status(403).json({
+      error: "Outcomes can only be set on LOCKED periods",
+      code: "PERIOD_NOT_LOCKED",
+    });
+    return false;
+  }
+  if (entry.outcome !== "PENDING") {
+    res.status(409).json({
+      error: `Entry already ${entry.outcome} — revert before changing`,
+      code: "ENTRY_ALREADY_PROCESSED",
+    });
+    return false;
+  }
+  return true;
+}
+
+/** Mirror of the above for `/revert`: period LOCKED, entry NOT PENDING. */
+function ensureLockedPeriodAndProcessedEntry(
+  entry: OutcomeEntry,
+  res: import("express").Response,
+): boolean {
+  if (entry.period.status !== "LOCKED") {
+    res.status(403).json({
+      error: "Revert only allowed before finalize — period must be LOCKED",
+      code: "PERIOD_NOT_LOCKED",
+    });
+    return false;
+  }
+  if (entry.outcome === "PENDING") {
+    res.status(409).json({
+      error: "Entry is already PENDING — nothing to revert",
+      code: "ENTRY_ALREADY_PROCESSED",
+    });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Single body for `/fail` and `/skip` — they're byte-for-byte identical
+ * except for the outcome literal and the audit action string. Caller has
+ * already passed the entry through `loadAddEntryAsCommissioner` and
+ * `ensureLockedPeriodAndPendingEntry`.
+ */
+async function recordTerminalOutcome(
+  outcome: "FAILED" | "SKIPPED",
+  entry: { id: number },
+  reason: string | null | undefined,
+  req: import("express").Request,
+  res: import("express").Response,
+): Promise<void> {
+  const updated = await prisma.waiverAddEntry.update({
+    where: { id: entry.id },
+    data: { outcome, reason: reason ?? null },
+  });
+  await safeWriteAuditLog(
+    {
+      userId: req.user!.id,
+      action: outcome === "FAILED" ? "WIRE_LIST_ADD_FAIL" : "WIRE_LIST_ADD_SKIP",
+      resourceType: "WaiverAddEntry",
+      resourceId: entry.id,
+      metadata: { reason },
+    },
+    { req },
+  );
+  res.json(updated);
+}
+
 // ─── Period transitions ──────────────────────────────────────────────
 
 // POST /api/wire-list/periods/:periodId/lock
@@ -133,24 +254,13 @@ router.post(
   "/periods/:periodId/lock",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const periodId = Number(req.params.periodId);
-    const period = await prisma.waiverPeriod.findUnique({
-      where: { id: periodId },
-      select: { id: true, leagueId: true, status: true },
-    });
-    if (!period) return res.status(404).json({ error: "Period not found", code: "PERIOD_NOT_FOUND" });
+    const ctx = await assertCommissionerForPeriod(req, res, req.params.periodId);
+    if (!ctx) return;
+    const { periodId, status } = ctx;
 
-    if (!req.user!.isAdmin) {
-      const m = await prisma.leagueMembership.findUnique({
-        where: { leagueId_userId: { leagueId: period.leagueId, userId: req.user!.id } },
-        select: { role: true },
-      });
-      if (m?.role !== "COMMISSIONER") return res.status(403).json({ error: "Commissioner only" });
-    }
-
-    if (period.status !== "PENDING") {
+    if (status !== "PENDING") {
       return res.status(403).json({
-        error: `Period is ${period.status} — only PENDING periods can be locked`,
+        error: `Period is ${status} — only PENDING periods can be locked`,
         code: "PERIOD_NOT_PENDING",
       });
     }
@@ -177,20 +287,10 @@ router.post(
   "/periods/:periodId/finalize",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const periodId = Number(req.params.periodId);
-    const period = await prisma.waiverPeriod.findUnique({
-      where: { id: periodId },
-      select: { id: true, leagueId: true, status: true, createdAt: true },
-    });
-    if (!period) return res.status(404).json({ error: "Period not found", code: "PERIOD_NOT_FOUND" });
-
-    if (!req.user!.isAdmin) {
-      const m = await prisma.leagueMembership.findUnique({
-        where: { leagueId_userId: { leagueId: period.leagueId, userId: req.user!.id } },
-        select: { role: true },
-      });
-      if (m?.role !== "COMMISSIONER") return res.status(403).json({ error: "Commissioner only" });
-    }
+    const ctx = await assertCommissionerForPeriod(req, res, req.params.periodId);
+    if (!ctx) return;
+    const { periodId } = ctx;
+    const period = { id: periodId, leagueId: ctx.leagueId, status: ctx.status, createdAt: ctx.createdAt };
 
     if (period.status !== "LOCKED") {
       return res.status(403).json({
@@ -611,19 +711,7 @@ router.post(
     const id = Number(req.params.id);
     const entry = await loadAddEntryAsCommissioner(req, res, id);
     if (!entry) return;
-
-    if (entry.period.status !== "LOCKED") {
-      return res.status(403).json({
-        error: "Outcomes can only be set on LOCKED periods",
-        code: "PERIOD_NOT_LOCKED",
-      });
-    }
-    if (entry.outcome !== "PENDING") {
-      return res.status(409).json({
-        error: `Entry already ${entry.outcome} — revert before changing`,
-        code: "ENTRY_ALREADY_PROCESSED",
-      });
-    }
+    if (!ensureLockedPeriodAndPendingEntry(entry, res)) return;
 
     // Re-validate eligibility at outcome time. State may have moved since
     // the owner submitted (e.g. earlier wire-list outcome consumed this
@@ -793,29 +881,8 @@ router.post(
     const { reason } = req.body as { reason: string };
     const entry = await loadAddEntryAsCommissioner(req, res, id);
     if (!entry) return;
-
-    if (entry.period.status !== "LOCKED") {
-      return res.status(403).json({ error: "Outcomes can only be set on LOCKED periods", code: "PERIOD_NOT_LOCKED" });
-    }
-    if (entry.outcome !== "PENDING") {
-      return res.status(409).json({ error: `Entry already ${entry.outcome} — revert before changing`, code: "ENTRY_ALREADY_PROCESSED" });
-    }
-
-    const updated = await prisma.waiverAddEntry.update({
-      where: { id },
-      data: { outcome: "FAILED", reason: reason ?? null },
-    });
-    await safeWriteAuditLog(
-      {
-        userId: req.user!.id,
-        action: "WIRE_LIST_ADD_FAIL",
-        resourceType: "WaiverAddEntry",
-        resourceId: id,
-        metadata: { reason },
-      },
-      { req },
-    );
-    res.json(updated);
+    if (!ensureLockedPeriodAndPendingEntry(entry, res)) return;
+    await recordTerminalOutcome("FAILED", entry, reason, req, res);
   }),
 );
 
@@ -829,29 +896,8 @@ router.post(
     const { reason } = req.body as { reason?: string };
     const entry = await loadAddEntryAsCommissioner(req, res, id);
     if (!entry) return;
-
-    if (entry.period.status !== "LOCKED") {
-      return res.status(403).json({ error: "Outcomes can only be set on LOCKED periods", code: "PERIOD_NOT_LOCKED" });
-    }
-    if (entry.outcome !== "PENDING") {
-      return res.status(409).json({ error: `Entry already ${entry.outcome} — revert before changing`, code: "ENTRY_ALREADY_PROCESSED" });
-    }
-
-    const updated = await prisma.waiverAddEntry.update({
-      where: { id },
-      data: { outcome: "SKIPPED", reason: reason ?? null },
-    });
-    await safeWriteAuditLog(
-      {
-        userId: req.user!.id,
-        action: "WIRE_LIST_ADD_SKIP",
-        resourceType: "WaiverAddEntry",
-        resourceId: id,
-        metadata: { reason },
-      },
-      { req },
-    );
-    res.json(updated);
+    if (!ensureLockedPeriodAndPendingEntry(entry, res)) return;
+    await recordTerminalOutcome("SKIPPED", entry, reason, req, res);
   }),
 );
 
@@ -863,19 +909,7 @@ router.post(
     const id = Number(req.params.id);
     const entry = await loadAddEntryAsCommissioner(req, res, id);
     if (!entry) return;
-
-    if (entry.period.status !== "LOCKED") {
-      return res.status(403).json({
-        error: "Revert only allowed before finalize — period must be LOCKED",
-        code: "PERIOD_NOT_LOCKED",
-      });
-    }
-    if (entry.outcome === "PENDING") {
-      return res.status(409).json({
-        error: "Entry is already PENDING — nothing to revert",
-        code: "ENTRY_ALREADY_PROCESSED",
-      });
-    }
+    if (!ensureLockedPeriodAndProcessedEntry(entry, res)) return;
 
     // ────────────────────────────────────────────────────────────────
     // Atomicity (todo #157): freeing the drop and clearing the
