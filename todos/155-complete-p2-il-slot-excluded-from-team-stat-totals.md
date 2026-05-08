@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "155"
 tags: [code-review, standings, correctness, fantasy-rules]
@@ -89,6 +89,10 @@ Start with **Option 1** for the standings live-correctness fix; track Option 2 a
 ## Work Log
 
 - 2026-05-05 — Surfaced during a stat-correctness audit after the Doyers test-churn reversal. Verified: `computeWithDailyStats` at `standingsService.ts:459-491` and `computeWithPeriodStats` at `standingsService.ts:556-582` both lack IL exclusion. `assignedPosition` is read only for two-way pitcher classification.
+- 2026-05-07 — Verified shipped (Option 1 implemented). IL-skip guard present in both code paths:
+  - `server/src/features/standings/services/standingsService.ts:465` (`computeWithDailyStats`) — `if ((roster.assignedPosition ?? "").toUpperCase() === "IL") continue;` plus the documented current-state caveat from Option 1.
+  - `server/src/features/standings/services/standingsService.ts:569` (`computeWithPeriodStats`) — matching guard with cross-reference comment.
+  - `server/src/features/standings/__tests__/standingsService.IL.test.ts` — 5 tests covering daily-stats exclusion, casing-insensitive match, defensive non-IL-slot acceptance, ERA/WHIP zero-division, and period-stats fallback path. Closing as phantom; only the todo file frontmatter was stale.
 
 ## Resources
 
