@@ -468,7 +468,7 @@ model Player {
   /// — never normalized. Powers the v3 hub ghost-IL warning chip and the
   /// `isMlbIlStatusUi` eligibility gate. Populated by the daily
   /// `syncAllPlayers` cron from each team's 40-man roster `status.description`.
-  mlbStatus  String?
+  mlbStatus String?
 
   createdAt DateTime @default(now())
 
@@ -965,7 +965,7 @@ model WaiverPeriod {
   status      WaiverPeriodStatus @default(PENDING)
   createdAt   DateTime           @default(now())
 
-  league      League            @relation(fields: [leagueId], references: [id])
+  league      League            @relation(fields: [leagueId], references: [id], onDelete: Restrict)
   addEntries  WaiverAddEntry[]
   dropEntries WaiverDropEntry[]
 
@@ -987,9 +987,9 @@ model WaiverAddEntry {
   createdAt           DateTime         @default(now())
 
   period       WaiverPeriod     @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  team         Team             @relation(fields: [teamId], references: [id])
-  player       Player           @relation("WaiverAddPlayer", fields: [playerId], references: [id])
-  consumedDrop WaiverDropEntry? @relation("ConsumedDrop", fields: [consumedDropEntryId], references: [id])
+  team         Team             @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  player       Player           @relation("WaiverAddPlayer", fields: [playerId], references: [id], onDelete: Restrict)
+  consumedDrop WaiverDropEntry? @relation("ConsumedDrop", fields: [consumedDropEntryId], references: [id], onDelete: SetNull)
 
   @@unique([periodId, teamId, priority]) // one entry per priority slot per (period, team)
   @@unique([periodId, teamId, playerId]) // can't queue same player twice in one period
@@ -1009,8 +1009,8 @@ model WaiverDropEntry {
   createdAt   DateTime         @default(now())
 
   period     WaiverPeriod    @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  team       Team            @relation(fields: [teamId], references: [id])
-  player     Player          @relation("WaiverDropPlayer", fields: [playerId], references: [id])
+  team       Team            @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  player     Player          @relation("WaiverDropPlayer", fields: [playerId], references: [id], onDelete: Restrict)
   consumedBy WaiverAddEntry? @relation("ConsumedDrop")
 
   @@unique([periodId, teamId, priority])

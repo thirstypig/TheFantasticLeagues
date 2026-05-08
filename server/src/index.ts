@@ -357,27 +357,30 @@ async function main() {
   // Every 5 min: auto-lock waiver periods whose deadline has passed.
   // Flips PENDING → LOCKED so owners can no longer mutate entries.
   // Commissioner still finalizes manually (succeed/fail/skip per Add).
-  // Advisory-locked for multi-instance safety.
+  // Uses xact-scoped advisory lock so the lock auto-releases on commit/rollback —
+  // safe across Prisma's pool + Supabase pgBouncer (a session-scoped lock could
+  // orphan if unlock landed on a different pooled connection). See todo #166.
   cron.schedule("*/5 * * * *", async () => {
     try {
       const lockKey = 0x57495245; // "WIRE"
-      const locked = await prisma.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${lockKey}) as locked`;
-      if (!locked[0]?.locked) return;
-      try {
-        const now = new Date();
-        const overdue = await prisma.waiverPeriod.findMany({
-          where: { status: "PENDING", deadlineAt: { lte: now } },
-          select: { id: true, leagueId: true },
-        });
-        if (overdue.length === 0) return;
-        const result = await prisma.waiverPeriod.updateMany({
-          where: { id: { in: overdue.map((p) => p.id) } },
-          data: { status: "LOCKED", lockedAt: now },
-        });
-        logger.info({ count: result.count, periodIds: overdue.map((p) => p.id) }, "Auto-locked waiver periods past deadline");
-      } finally {
-        await prisma.$queryRaw`SELECT pg_advisory_unlock(${lockKey})`;
-      }
+      await prisma.$transaction(
+        async (tx) => {
+          const lockResult = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${lockKey}) AS locked`;
+          if (!lockResult[0]?.locked) return;
+          const now = new Date();
+          const overdue = await tx.waiverPeriod.findMany({
+            where: { status: "PENDING", deadlineAt: { lte: now } },
+            select: { id: true, leagueId: true },
+          });
+          if (overdue.length === 0) return;
+          const result = await tx.waiverPeriod.updateMany({
+            where: { id: { in: overdue.map((p) => p.id) } },
+            data: { status: "LOCKED", lockedAt: now },
+          });
+          logger.info({ count: result.count, periodIds: overdue.map((p) => p.id) }, "Auto-locked waiver periods past deadline");
+        },
+        { isolationLevel: "Serializable" },
+      );
     } catch (err) {
       logger.error({ error: String(err) }, "Wire-list auto-lock failed");
     }
