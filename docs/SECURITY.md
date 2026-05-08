@@ -34,10 +34,28 @@ FBST uses **Supabase Auth** (Google/Yahoo OAuth) with JWT tokens.
 | **trades** | POST | `/api/trades/:id/accept` | requireAuth |
 | **trades** | POST | `/api/trades/:id/reject` | requireAuth |
 | **trades** | POST | `/api/trades/:id/process` | requireAdmin |
-| **transactions** | GET | `/api/transactions` | public |
-| **transactions** | POST | `/api/transactions/claim` | requireAuth |
-| **teams** | GET | `/api/teams` | public |
-| **teams** | GET | `/api/teams/:id/summary` | public |
+| **transactions** | GET | `/api/transactions` | requireAuth + requireLeagueMember |
+| **transactions** | POST | `/api/transactions/claim` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/claim/preview` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/drop` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/il-stash` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/il-stash/preview` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/il-activate` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/il-activate/preview` | requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
+| **transactions** | POST | `/api/transactions/sync-il-status` | requireAuth + requireTeamOwnerOrCommissioner |
+| **players** | GET | `/api/players` | requireAuth |
+| **players** | GET | `/api/players/:mlbId` | requireAuth |
+| **players** | GET | `/api/players/:mlbId/eligible-slots` | requireAuth + rateLimitPerUser(60/min) |
+| **players** | GET | `/api/players/:mlbId/fielding` | requireAuth |
+| **players** | GET | `/api/players/:mlbId/news` | requireAuth |
+| **players** | GET | `/api/players/news/transactions` | requireAuth |
+| **awards** | GET | `/api/leagues/:leagueId/awards` | requireAuth + rateLimitPerUser(30/min) |
+| **teams** | GET | `/api/teams` | requireAuth |
+| **teams** | GET | `/api/teams/:id/summary` | requireAuth |
+| **teams** | GET | `/api/teams/:id/roster-hub` | requireAuth |
+| **teams** | GET | `/api/teams/:id/period-roster` | requireAuth |
+| **teams** | GET | `/api/teams/ai-insights` | requireAuth + requireLeagueMember |
+| **teams** | GET | `/api/teams/ai-insights/history` | requireAuth + requireLeagueMember |
 | **teams** | PATCH | `/api/teams/:teamId/roster/:rosterId` | requireAuth |
 | **auth** | GET | `/api/auth/health` | public |
 | **auth** | GET | `/api/auth/me` | public (returns null if unauthenticated) |
