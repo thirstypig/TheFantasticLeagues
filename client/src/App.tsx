@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
 import Team from "./features/teams/pages/Team";
+import { ManagePanel } from "./features/teams/components/RosterHub/ManagePanel";
 import WireListOwnerPage from "./features/wire-list/pages/WireListOwnerPage";
 import WireListCommissionerPage from "./features/wire-list/pages/WireListCommissionerPage";
 import TeamLegacy from "./features/teams/pages/TeamLegacy";
@@ -154,17 +155,19 @@ export default function App() {
                         viewer — features the Aurora pilot intentionally
                         doesn't port yet. */}
                     <Route path="/teams/:teamCode/classic" element={<TeamLegacy />} />
-                    <Route path="/teams/:teamCode" element={<Team />} />
                     {/* Aurora roster-hub v3 sub-routes — replace the old modal
                         flow on Team page (per plan §0.5 refinement #2 "no
                         modals"). Each manages a focused mutation flow: claim
                         (free-agent add+drop), il-stash (place on IL +
                         replacement), il-activate (return from IL + drop).
-                        Team renders its header + a SubrouteContainer wrapping
-                        the existing RosterMovesTab panels. */}
-                    <Route path="/teams/:teamCode/manage/claim" element={<Team />} />
-                    <Route path="/teams/:teamCode/manage/il-stash" element={<Team />} />
-                    <Route path="/teams/:teamCode/manage/il-activate" element={<Team />} />
+                        Per todo #150, the panels mount as nested-route
+                        children of <Team /> via React Router's <Outlet />.
+                        Team owns the page chrome + shared state; ManagePanel
+                        reads its inputs from `useOutletContext` and renders
+                        the matching transactions panel for the URL `:mode`. */}
+                    <Route path="/teams/:teamCode" element={<Team />}>
+                      <Route path="manage/:mode" element={<ManagePanel />} />
+                    </Route>
                     <Route path="/teams/:teamCode/wire-list" element={<WireListOwnerPage />} />
                     <Route path="/commissioner/:leagueId/wire-list" element={<WireListCommissionerPage />} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
