@@ -79,11 +79,16 @@ const goodRankings: AwardsRankings = {
 // ─── 1. Known-good round-trip ────────────────────────────────────
 
 describe("AwardsResponseSchema — known-good fixtures round-trip", () => {
+  // `availableWeeks` (todo #179) is required on the envelope. The schema test
+  // exercises an empty list — `awardsRoutes.test.ts` covers populated lists.
+  const goodAvailableWeeks: { weekKey: string; digestGeneratedAt: string }[] = [];
+
   it("accepts a persisted-source payload with digestGeneratedAt", () => {
     const payload = {
       ...goodRankings,
       source: "persisted" as const,
       digestGeneratedAt: "2026-04-29T01:00:00.000Z",
+      availableWeeks: goodAvailableWeeks,
     };
     const parsed = AwardsResponseSchema.parse(payload);
     expect(parsed).toEqual(payload);
@@ -94,6 +99,7 @@ describe("AwardsResponseSchema — known-good fixtures round-trip", () => {
     const payload = {
       ...goodRankings,
       source: "computed" as const,
+      availableWeeks: goodAvailableWeeks,
     };
     const parsed = AwardsResponseSchema.parse(payload);
     expect(parsed).toEqual(payload);
