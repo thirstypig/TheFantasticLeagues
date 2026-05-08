@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "157"
 tags: [code-review, wire-list, security, races, correctness]

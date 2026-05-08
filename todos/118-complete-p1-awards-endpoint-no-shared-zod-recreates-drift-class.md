@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: "118"
 tags: [code-review, drift, awards, mlb-feed, contract]

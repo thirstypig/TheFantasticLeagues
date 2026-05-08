@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "142"
 tags: [code-review, data-migration, transactions, deployment]
