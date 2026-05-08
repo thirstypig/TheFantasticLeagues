@@ -2,9 +2,22 @@
 import { API_BASE, fetchJsonApi } from '../../api/base';
 import { TeamDetailResponse } from '../../api/types';
 import { track } from '../../lib/posthog';
+import type { RosterHubResponse } from '@shared/api/teams';
 
 export async function getTeamDetails(teamId: number): Promise<TeamDetailResponse> {
   return fetchJsonApi<TeamDetailResponse>(`${API_BASE}/teams/${teamId}/summary`);
+}
+
+/**
+ * GET /api/teams/:id/roster-hub — server-shaped hub roster.
+ *
+ * Returns hitters / pitchers / IL rows pre-joined with stats and partitioned
+ * server-side. Replaces the legacy client-side join of
+ * `getTeamDetails().currentRoster` × `getPlayerSeasonStatsMeta(leagueId).stats`
+ * (todo #140). The wire format is `RosterHubResponse` from `@shared/api/teams`.
+ */
+export async function getTeamRosterHub(teamId: number): Promise<RosterHubResponse & { computedAt: string | null }> {
+  return fetchJsonApi(`${API_BASE}/teams/${teamId}/roster-hub`);
 }
 
 export async function getTeams(leagueId?: number): Promise<any[]> {

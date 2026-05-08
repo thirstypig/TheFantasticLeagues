@@ -34,6 +34,8 @@ export const RosterHubRowSchema = z.object({
   rosterId: z.number(),
   /** Prisma Player.id — stable across roster mutations (claim/drop). */
   playerId: z.number(),
+  /** MLB statsapi person id; null for synthetic / pre-import filler players. */
+  mlbId: z.number().nullable().optional(),
   playerName: z.string(),
   /** Primary eligibility code (single position, e.g. "OF"). */
   posPrimary: z.string().nullable().optional(),

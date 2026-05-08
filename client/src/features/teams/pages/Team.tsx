@@ -29,13 +29,13 @@ import {
 import "../../../components/aurora/aurora.css";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { getTeams, getTeamDetails, getTeamAiInsights, getPlayerSeasonStatsMeta, getSeasonStandings } from "../../../api";
+import { getTeams, getTeamAiInsights, getTeamRosterHub, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
 import { getTeamAiInsightsHistory, type WeeklyInsightEntry } from "../api";
-import type { TeamInsightsResult, PlayerSeasonStat } from "../../../api";
+import type { TeamInsightsResult } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
 import {
   usePendingChanges,
@@ -264,97 +264,66 @@ export default function Team() {
           ownerName: team.ownerUser?.name || team.ownerUser?.email || team.owner || null,
         });
 
-        // Roster comes from getTeamDetails (currentRoster: [{id, playerId,
-        // name, posPrimary, price}]). We then enrich with stats from
-        // getPlayerSeasonStats which carries the league pool with
-        // assignedPosition + per-stat numbers. Match by mlb_id where
-        // possible, fallback to playerId joined against (id) field.
-        const [detailsRes, aiRes, statsRes, panelPlayersRes] = await Promise.allSettled([
-          getTeamDetails(team.id),
+        // Roster comes from the server-shaped hub-roster endpoint
+        // (`GET /api/teams/:id/roster-hub`). The server already partitions
+        // hitters / pitchers / IL and pre-joins per-row stats — todo #140
+        // collapsed the legacy two-call client join (getTeamDetails ×
+        // getPlayerSeasonStatsMeta) into one network call.
+        const [hubRes, aiRes, panelPlayersRes] = await Promise.allSettled([
+          getTeamRosterHub(team.id),
           getTeamAiInsights(leagueId, team.id),
-          getPlayerSeasonStatsMeta(leagueId).then(m => { setComputedAt(m.computedAt); return m.stats; }),
           // Shared loader produces the enriched RosterMovesPlayer shape
           // (_dbPlayerId / _dbTeamId / assignedPosition populated for the
-          // active team) that the transactions panels need. Replaces the
-          // legacy `setPlayers(stats)` cast that left every drop dropdown
-          // empty in production (todo #116).
+          // active team) that the transactions panels need. Separate
+          // concern from the team's own roster — covers the FA pool too.
           loadRosterMovePlayers(leagueId, team.id),
         ]);
         if (canceled) return;
 
-        if (detailsRes.status === "fulfilled") {
-          const raw = detailsRes.value.currentRoster ?? [];
-          const stats = statsRes.status === "fulfilled" ? statsRes.value : ([] as PlayerSeasonStat[]);
+        if (hubRes.status === "fulfilled") {
+          const hub = hubRes.value;
+          setComputedAt(hub.computedAt);
           // Cache the enriched player pool for the transactions panels.
           setPlayers(
             panelPlayersRes.status === "fulfilled" ? panelPlayersRes.value : [],
           );
-          // Index stats by Prisma player id (the integer foreign key on
-          // the Roster row) — the only stable identifier available on
-          // both sides without going through mlb_id casting. `id` is on
-          // the shared schema (`shared/api/playerSeasonStats.ts:28`) so
-          // typed access is sufficient; no cast needed (todo #131).
-          const statsByPid = new Map<number, PlayerSeasonStat>();
-          for (const s of stats) {
-            if (s.id) statsByPid.set(s.id, s);
-          }
-
-          const players: RosterPlayer[] = raw.map((row) => {
-            const stat = statsByPid.get(row.playerId);
-            // assignedPosition is only present on stat rows enriched
-            // by the league pool's roster join; fall back to posPrimary
-            // when missing (free-agent or stat sync hasn't run yet).
-            const assigned = row.assignedPosition || stat?.assignedPosition || row.posPrimary;
-            return {
-              rosterId: row.id,
-              playerId: row.playerId,
-              mlbId: row.mlbId,
-              playerName: row.name,
-              posPrimary: row.posPrimary,
-              // posList is the full eligibility list (e.g. "OF,2B"). Server
-              // started exposing it on TeamDetailResponse alongside posPrimary
-              // — falling back to posPrimary keeps single-position players
-              // rendering cleanly when posList is null.
-              posList: row.posList || row.posPrimary,
-              position: row.posPrimary,
-              assignedPosition: assigned,
-              isPitcher: PITCHER_POS.has(assigned || row.posPrimary || ""),
-              price: row.price,
-              mlbTeam: row.mlbTeam || stat?.mlb_team || stat?.mlbTeam || undefined,
-              isKeeper: row.isKeeper ?? stat?.isKeeper,
-              gamesByPos: row.gamesByPos,
-              // mlbStatus is null on the wire when no status known
-              // (free agent, synthetic row); pass through unchanged so the
-              // ghost-IL chip stays dormant for those rows.
-              mlbStatus: row.mlbStatus ?? undefined,
-              // Rate stats are `number | null | undefined` per the schema
-              // (PR #197 / todo #144). Pass `null` through as `undefined`
-              // so the row type's `number | string | undefined` shape
-              // holds — the row component renders both as "—".
-              // Hitter stats — AB and H added in session 89 so users can
-              // verify AVG = H/AB at a glance (Yahoo-style).
-              AB: stat?.AB,
-              H: stat?.H,
-              AVG: stat?.AVG ?? undefined,
-              HR: stat?.HR,
-              R: stat?.R,
-              RBI: stat?.RBI,
-              SB: stat?.SB,
-              // Pitcher stats — IP, BB_H (BB+H combined wire-format),
-              // ER added in session 89 so users can verify
-              // ERA = (ER × 9) / IP and WHIP = (BB+H) / IP.
-              IP: stat?.IP ?? undefined,
-              BB_H: stat?.BB_H ?? undefined,
-              ER: stat?.ER ?? undefined,
-              // (Schema allows IP/ER/BB_H as `null` — coerce to undefined
-              //  so the row's `number | string | undefined` shape holds.)
-              W: stat?.W,
-              SV: stat?.SV,
-              K: stat?.K,
-              ERA: stat?.ERA ?? undefined,
-              WHIP: stat?.WHIP ?? undefined,
-            };
-          });
+          // Server emits one row shape (RosterHubRow); concatenate the
+          // partitions into the page's RosterPlayer[] state. Each row
+          // already carries pre-joined stats — no client-side join.
+          const allRows = [...hub.hitters, ...hub.pitchers, ...hub.ilPlayers];
+          const players: RosterPlayer[] = allRows.map((row) => ({
+            rosterId: row.rosterId,
+            playerId: row.playerId,
+            mlbId: row.mlbId ?? null,
+            playerName: row.playerName,
+            posPrimary: row.posPrimary ?? undefined,
+            posList: row.posList ?? row.posPrimary ?? undefined,
+            position: row.position ?? row.posPrimary ?? undefined,
+            assignedPosition: row.assignedPosition ?? undefined,
+            isPitcher: row.isPitcher,
+            price: row.price ?? null,
+            mlbTeam: row.mlbTeam,
+            isKeeper: row.isKeeper ?? undefined,
+            gamesByPos: row.gamesByPos,
+            mlbStatus: row.mlbStatus ?? undefined,
+            // Hitter stats
+            AB: row.AB,
+            H: row.H,
+            AVG: row.AVG,
+            HR: row.HR,
+            R: row.R,
+            RBI: row.RBI,
+            SB: row.SB,
+            // Pitcher stats
+            IP: row.IP,
+            BB_H: row.BB_H,
+            ER: row.ER,
+            W: row.W,
+            SV: row.SV,
+            K: row.K,
+            ERA: row.ERA,
+            WHIP: row.WHIP,
+          }));
           setRoster(players);
         }
 
