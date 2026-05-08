@@ -1,17 +1,9 @@
 /*
  * Aurora-specific behavior tests for the AuctionValues page (PR #145).
  *
- * Scope: ONLY what Aurora adds beyond the legacy data behavior, which
- * is fully covered by AuctionValuesLegacy.test.tsx running against the
- * preserved legacy implementation.
- *
- * Concrete regressions these tests prevent:
- *   - Someone deletes the footer escape link, leaving users no way to
- *     fall back to /auction-values-classic if Aurora misses a feature.
- *   - Someone re-points the link to a wrong route.
- *   - Aurora wrapper class disappears (would break the scoped CSS
- *     tokens — Aurora atoms only resolve their custom properties under
- *     `.aurora-theme`).
+ * Scope: ONLY what Aurora adds beyond the legacy data behavior. The
+ * legacy escape route (`/auction-values-classic`) was retired in #124
+ * Phase 1 — Aurora is the only AuctionValues page now.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -62,12 +54,4 @@ describe("Aurora AuctionValues", () => {
     });
   });
 
-  it("renders the footer escape link to /auction-values-classic", async () => {
-    renderWithRouter();
-    await waitFor(() => {
-      const link = screen.getByRole("link", { name: /view classic auction values/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/auction-values-classic");
-    });
-  });
 });

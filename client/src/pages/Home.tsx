@@ -635,20 +635,6 @@ export default function Home() {
             </Glass>
           </div>
 
-          {/* Legacy escape hatch */}
-          <div className="home-span-12" style={{ textAlign: "center", marginTop: 4 }}>
-            <Link
-              to="/home-classic"
-              style={{
-                fontSize: 11,
-                color: "var(--am-text-faint)",
-                textDecoration: "none",
-                letterSpacing: 0.5,
-              }}
-            >
-              <Dot color="var(--am-text-faint)" /> Aurora pilot · view classic Home →
-            </Link>
-          </div>
         </div>
       </div>
     </div>

@@ -115,9 +115,6 @@ export default function AuctionResults() {
           </>
         )}
 
-        <div style={{ marginTop: 16, textAlign: "center", fontSize: 11, color: "var(--am-text-faint)" }}>
-          Need the original layout? <Link to="/auction-results-classic" style={{ color: "var(--am-text-muted)", textDecoration: "underline" }}>View classic Auction Results →</Link>
-        </div>
       </div>
     </div>
   );

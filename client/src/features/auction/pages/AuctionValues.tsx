@@ -300,10 +300,6 @@ export default function AuctionValues() {
           )}
         </Glass>
 
-        {/* Footer escape link */}
-        <div style={{ marginTop: 16, textAlign: "center", fontSize: 11, color: "var(--am-text-faint)" }}>
-          Need a feature you can't find? <Link to="/auction-values-classic" style={{ color: "var(--am-text-muted)", textDecoration: "underline" }}>View classic Auction Values →</Link>
-        </div>
       </div>
 
       <PlayerDetailModal open={!!selected} player={selected} onClose={() => setSelected(null)} />

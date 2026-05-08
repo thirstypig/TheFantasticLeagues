@@ -473,10 +473,6 @@ export default function Players() {
           )}
         </Glass>
 
-        {/* Footer escape link to legacy */}
-        <div style={{ marginTop: 16, textAlign: 'center', fontSize: 11, color: 'var(--am-text-faint)' }}>
-          Need a feature you can't find? <Link to="/players-classic" style={{ color: 'var(--am-text-muted)', textDecoration: 'underline' }}>View classic Players →</Link>
-        </div>
       </div>
 
     </div>
