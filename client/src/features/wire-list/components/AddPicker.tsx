@@ -1,13 +1,16 @@
 /**
  * Inline FA picker for the Wire List Add list.
  *
- * Loads the league's player season stats once (already filtered server-side
- * to the league's stats source via `getLeagueStatsSource`). We further
- * filter to free agents — `ogba_team_code` empty/null — and exclude players
- * already in the team's Add list.
+ * Server does the FA filtering (todo #164): the picker calls
+ * `getFreeAgentsForWireList` with `freeAgentsOnly=true&take=50` and a
+ * debounced `q`, so the response is ~50 rows instead of ~600 and the
+ * mobile open round-trip is dominated by latency, not payload size.
+ *
+ * Players already in the team's Add list are still excluded client-side
+ * via `excludePlayerIds` — that filter depends on data we already have.
  */
-import { useEffect, useMemo, useState } from "react";
-import { getPlayerSeasonStats, type PlayerSeasonStat } from "../../../api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getFreeAgentsForWireList, type PlayerSeasonStat } from "../../../api";
 import { ApiError } from "../../../api/base";
 import { createAddEntry } from "../api";
 
@@ -25,29 +28,61 @@ export default function AddPicker({ periodId, teamId, leagueId, excludePlayerIds
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
 
+  // Debounce the search query so each keystroke doesn't fire a request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Per-(leagueId, q) cache so a re-opened picker with the same query
+  // reuses the in-flight promise instead of re-fetching.
+  const cacheRef = useRef<Map<string, Promise<PlayerSeasonStat[]>>>(new Map());
+
   useEffect(() => {
     setLoading(true);
-    getPlayerSeasonStats(leagueId)
-      .then((all) => {
-        // Free agents only: server emits empty string when not rostered.
-        const fas = all.filter((p) => !p.ogba_team_code || p.ogba_team_code === "");
-        setPlayers(fas);
+    setError(null);
+    const cacheKey = `${leagueId}|${debouncedQuery}`;
+    let promise = cacheRef.current.get(cacheKey);
+    if (!promise) {
+      promise = getFreeAgentsForWireList(leagueId, {
+        q: debouncedQuery || undefined,
+        take: 50,
+      });
+      cacheRef.current.set(cacheKey, promise);
+    }
+    let cancelled = false;
+    promise
+      .then((rows) => {
+        if (cancelled) return;
+        setPlayers(rows);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : String(err)))
-      .finally(() => setLoading(false));
-  }, [leagueId]);
+      .catch((err) => {
+        if (cancelled) return;
+        // On failure, drop the bad cache entry so the next attempt retries.
+        cacheRef.current.delete(cacheKey);
+        setError(err instanceof ApiError ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [leagueId, debouncedQuery]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    // Server already filtered FAs and applied the search; we only strip
+    // out players already in the Add list (the server can't know that)
+    // and clamp again as a defensive guard.
     return players
       .filter((p) => !excludePlayerIds.has(p.id))
-      .filter((p) => !q || (p.player_name ?? "").toLowerCase().includes(q))
       .slice(0, 50);
-  }, [players, query, excludePlayerIds]);
+  }, [players, excludePlayerIds]);
 
   async function handleAdd(playerId: number) {
     setBusy(playerId);

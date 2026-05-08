@@ -18,6 +18,7 @@ import {
 } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
+import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import {
@@ -31,6 +32,26 @@ import {
 import { logger } from "../../lib/logger.js";
 
 const router = Router();
+
+// ─── Per-user rate limiters (todo #167) ──────────────────────────────
+//
+// Defense-in-depth above the global IP limiter. Token bucket: capacity
+// 30, refill 0.5 tokens/sec (full refill in 60s). Caps a single
+// authenticated user at 30 mutations/min on each list — well above any
+// legitimate UI flow (a click takes seconds), well below the cost
+// ceiling of ~5 queries per add. Buckets are per (userId, scope) so
+// add and drop traffic don't share capacity. Same shared pattern used
+// by `/api/players/:mlbId/eligible-slots` (`players/routes.ts:286`).
+const wireListAddRateLimit = rateLimitPerUser({
+  capacity: 30,
+  windowMs: 60_000,
+  bucketName: "wire-list:add",
+});
+const wireListDropRateLimit = rateLimitPerUser({
+  capacity: 30,
+  windowMs: 60_000,
+  bucketName: "wire-list:drop",
+});
 
 /**
  * Sentinel thrown inside a $transaction when the period status check
@@ -306,6 +327,7 @@ router.get(
 router.post(
   "/periods/:periodId/adds",
   requireAuth,
+  wireListAddRateLimit,
   validateBody(CreateAddEntryBodySchema),
   requireTeamOwner("teamId"),
   asyncHandler(async (req, res) => {
@@ -376,6 +398,7 @@ router.post(
 router.patch(
   "/adds/:id",
   requireAuth,
+  wireListAddRateLimit,
   validateBody(UpdateAddEntryBodySchema),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
@@ -433,6 +456,7 @@ router.patch(
 router.delete(
   "/adds/:id",
   requireAuth,
+  wireListAddRateLimit,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const entry = await prisma.waiverAddEntry.findUnique({
@@ -506,6 +530,7 @@ router.get(
 router.post(
   "/periods/:periodId/drops",
   requireAuth,
+  wireListDropRateLimit,
   validateBody(CreateDropEntryBodySchema),
   requireTeamOwner("teamId"),
   asyncHandler(async (req, res) => {
@@ -583,6 +608,7 @@ router.post(
 router.patch(
   "/drops/:id",
   requireAuth,
+  wireListDropRateLimit,
   validateBody(UpdateDropEntryBodySchema),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
@@ -640,6 +666,7 @@ router.patch(
 router.delete(
   "/drops/:id",
   requireAuth,
+  wireListDropRateLimit,
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const entry = await prisma.waiverDropEntry.findUnique({

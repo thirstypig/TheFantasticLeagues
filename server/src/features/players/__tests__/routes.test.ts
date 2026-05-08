@@ -379,6 +379,65 @@ describe("GET /player-season-stats", () => {
   });
 });
 
+// ── GET /player-season-stats — FA filter pushdown (todo #164) ────
+
+describe("GET /player-season-stats — FA filter pushdown (todo #164)", () => {
+  it("pushes `freeAgentsOnly=true` into Prisma where clause as `id: { notIn: rosteredIds }`", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 545361, name: "Free Agent", posPrimary: "SS", posList: "SS", mlbTeam: "NYM" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([
+      { playerId: 99, team: { id: 7, code: "ABC", leagueId: 1, name: "Aces" }, price: 10 },
+    ]);
+
+    const res = await supertest(app).get(
+      "/player-season-stats?leagueId=1&freeAgentsOnly=true",
+    );
+    expect(res.status).toBe(200);
+    const where = mockPrisma.player.findMany.mock.calls[0][0].where;
+    expect(where.id).toEqual({ notIn: [99] });
+  });
+
+  it("pushes `q` into Prisma where clause as case-insensitive name contains", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get(
+      "/player-season-stats?leagueId=1&freeAgentsOnly=true&q=trout",
+    );
+    expect(res.status).toBe(200);
+    const where = mockPrisma.player.findMany.mock.calls[0][0].where;
+    expect(where.name).toEqual({ contains: "trout", mode: "insensitive" });
+  });
+
+  it("clamps the response with `take` (capped defensively at 200)", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    await supertest(app).get(
+      "/player-season-stats?leagueId=1&freeAgentsOnly=true&take=50",
+    );
+    expect(mockPrisma.player.findMany.mock.calls[0][0].take).toBe(50);
+
+    await supertest(app).get(
+      "/player-season-stats?leagueId=1&freeAgentsOnly=true&take=10000",
+    );
+    expect(mockPrisma.player.findMany.mock.calls[1][0].take).toBe(200);
+  });
+
+  it("does not change default behavior when freeAgentsOnly is omitted", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([
+      { playerId: 99, team: { id: 7, code: "ABC", leagueId: 1, name: "Aces" }, price: 10 },
+    ]);
+
+    await supertest(app).get("/player-season-stats?leagueId=1");
+    const where = mockPrisma.player.findMany.mock.calls[0][0].where;
+    expect(where.id).toBeUndefined();
+    expect(where.name?.contains).toBeUndefined();
+  });
+});
+
 // ── GET /player-period-stats ─────────────────────────────────────
 
 describe("GET /player-period-stats", () => {
