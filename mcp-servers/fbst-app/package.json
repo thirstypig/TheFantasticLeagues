@@ -1,0 +1,24 @@
+{
+  "name": "@fbst/app-mcp",
+  "version": "1.0.0",
+  "description": "MCP server: FBST app tools (wire-list owner CRUD + commissioner reducer)",
+  "type": "module",
+  "main": "dist/mcp-servers/fbst-app/src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/mcp-servers/fbst-app/src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  }
+}
