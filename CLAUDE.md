@@ -152,7 +152,7 @@ Some features import from other features' services or components.
 - `mlb-feed/services/digestService` imports `standings/services/standingsService` (dynamic, for digest context)
 - `mlb-feed/services/digestService` imports `lib/sportConfig` (dynamic, `isKeeperRoster`)
 - `mlb-feed/services/digestService` imports `awards/services/awardsService` (static, for Fantasy MVP / Cy Young rankings embedded in the digest payload)
-- `mlb-feed/routes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
+- `mlb-feed/digestRoutes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
 - `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
 - `wire-list/processor.ts` imports `transactions/lib/positionInherit` (`isEligibleForSlot` for position-eligibility re-check at succeed time, mirroring legacy waivers processor)
@@ -216,6 +216,8 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `client/src/hooks/usePlayerNews.ts` — shared hook for player news via `GET /api/mlb/player-news` (server-side RSS aggregation)
 - `server/src/features/mlb-feed/services/rssParser.ts` — shared RSS XML parser with link URL validation, 5-min TTL cache
 - `server/src/features/mlb-feed/digestRoutes.ts` — digest + headlines sub-router (extracted from routes.ts)
+- `server/src/features/mlb-feed/scoresRoutes.ts` — scores + transactions + my-players-today + roster-stats-today sub-router (extracted from routes.ts in #147)
+- `server/src/features/mlb-feed/playerNewsRoutes.ts` — RSS feed sub-router: /player-news, /trade-rumors, /yahoo-sports, /mlb-news, /espn-news (extracted from routes.ts in #147)
 - `client/src/components/shared/StatsTables.tsx` — shared stats tables (used by standings, archive, periods)
 - `client/src/contexts/LeagueContext.tsx` — app-wide league context (leagueId, outfieldMode, seasonStatus, myTeamId, leagues list); value memoized, exports `findMyTeam<T>` helper
 - `client/src/hooks/useSeasonGating.ts` — `useSeasonGating()` hook returning feature availability flags based on season status
