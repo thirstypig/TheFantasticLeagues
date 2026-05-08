@@ -4,6 +4,89 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-07/08 — Stats freshness rollout + Wire List v1.1 hardening (27 PRs in one session)
+
+The longest session of the project. Started with `/session-start` after Wire List v1 shipped 2026-05-06, ran through `/ce:review` of the wire-list stack, browser-verified prod, surfaced two regressions, rolled out a server-side `computedAt` foundation across 8 stat pages, restored Watchlist + Trade Block + Wire List link to the Aurora team page, and closed every prioritized P1 + P2 wire-list todo from the multi-agent code review — plus full test coverage for everything new.
+
+### Shipped — 27 PRs
+
+| Wave | PR | Scope |
+|---|---|---|
+| 1 | #252 | FA-panel CSS landing fix (session 89 cleanup) |
+| 2 | #268 | Server-side `computedAt` foundation: 7 stat endpoints + `<DataFreshness>` component + Season/SeasonLegacy wired + 23 wire-list review todos committed |
+| 2 | #270 | Players Aurora/Legacy + Team Aurora/Legacy wired with the date+time badge |
+| 2 | #271 | Matchups + PlayerDetail + KeeperRoster endpoints get `computedAt`; Matchup + PlayerDetail pages wired |
+| 2 | #272 | Aurora `/teams/:code` restores Watchlist + Trade Block + Wire List link card + insights week selector + period-roster pill row |
+| 2 | #273 | Auction `computedAt` (state + bid-history) + AuctionResults / AuctionValues / AuctionComplete wired |
+| 2 | #274 | Aurora insights selector wires into Lineup Intelligence card (with `weekKey in activeInsight` narrowing fix) |
+| 2 | #279 | InjuredList + KeeperSelection + MatchupLegacy badge wires |
+| 2 | #281 | **Hot fix:** plumb `computedAt` through `PlayerSeasonStatsResponseSchema` + `getSeasonStandings` client wrapper. Browser-verify caught the regression — typed body literal stripped the field because the shared schema didn't declare it. |
+| 3 | #275 | Wire-list P1 atomicity trio (#156 + #157 + #158): finalize TOCTOU + succeed/revert race + auto-lock cron vs owner-mutation race — wrapping state-reads in `prisma.$transaction` with status-CAS and clean 409 codes |
+| 3 | #276 | Delete `WaiverWirePreview.tsx` (-872 LOC, todo #163, reducer drift eliminated) |
+| 3 | #277 | Wire-list finalize batching (#160) — ~290 calls → ~10 inside the `$transaction` |
+| 3 | #278 | Atomic reorder endpoint (#159) + cross-league probe oracle close (#161) — `loadPeriodForTeam` helper + two-pass priority swap |
+| 3 | #280 | Wire-list hardening trio (#162 + #166 + #168): Prisma onDelete schema alignment, `pg_try_advisory_xact_lock` for cron, 7-scenario reducer state-machine tests |
+| 4 | #282 | Partial-on-PENDING deadline index (#173) for cron predicate |
+| 4 | #283 | New `mcp-servers/fbst-app/` MCP server with 12 wire-list tools (#176) — owner CRUD + commissioner reducer, reuses `shared/api/wireList.ts` Zod schemas |
+| 4 | #284 | Server hardening (#164 + #167 + #165): FA picker server-side filter pushdown + rate limits on mutations + await audit log on state-changing endpoints |
+| 4 | #285 | Finalize push fan-out batching (#171) — 12 teamOwnership queries → 1 |
+| 4 | #286 | Schema simplification (#177 + #178): drop `CANCELLED` enum value, drop optional `priority` from create body, split `RecordOutcomeBodySchema` → `FailOutcomeBodySchema` (reason required) + `SkipOutcomeBodySchema` (optional), centralize advisory lock keys in `lib/advisoryLocks.ts` |
+| 5 | #287 | Free-agent detection extracted to `transactions/lib/freeAgent.ts` (#175) + fail-closed empty-mlbTeam tightening (was fail-open) |
+| 5 | #288 | Outcome-handler guards consolidated into 4 file-local helpers (#170) |
+| 5 | #289 | Type-safety sweep (#169): `req.body` Zod inference + `WaiverPeriodStatus`/`WaiverAddOutcome` discriminated unions + dedupe client interfaces against shared schema + `Prisma.WaiverAddEntryGetPayload` |
+| 5 | #290 | `getPeriodResults` one-pass groupBy + commissioner local-patch (#172) — ~36 full reloads per period → 1 |
+| 6 | #291 | **`processorService` extraction (#174):** processor.ts 1037 → 542 LOC (−48%, −495); new 648-LOC service module + 11 direct-service tests; routes become thin dispatchers; `WireListServiceError` typed error class for clean HTTP mapping |
+| 7 | #292 | Aurora `/teams/:code` test coverage — 12 tests for Watchlist/TradeBlock/WireList cards, insights selector, period-roster pill row, narrowing fix |
+| 7 | #293 | `<DataFreshness>` unit tests (16) + cross-cutting `computedAt` contract test (2) |
+| 7 | #294 | MCP fbst-app contract suite (35 tests) + **caught a latent prod bug** — registration would crash on first invocation because PR #283 referenced `.shape.priority` after it was removed in PR #286. Smoke tests in #283 hadn't actually run. |
+
+Plus production data: **Michael Busch reverted on Demolition Lumber Co** (test residue from session 75; restored via direct DB ops in `prisma.$transaction`).
+
+### Wire List backlog status
+
+All 21 prioritized wire-list todos closed: 7 P1s (#156–#162), 12 P2s (#163, #164, #165, #166, #167, #168, #169, #170, #171, #172, #173, #174, #175, #176), 2 P3 cleanup bundles (#177, #178). The wire-list module is now fully reviewed, hardened, performance-tuned, type-safe, service-extracted, and agent-callable.
+
+### Test counts at session end
+
+- **Server:** 1060 tests pass, 7 skipped, 1 todo (82 files) — was 1006/7/1 at session start (+54 tests).
+- **Client:** 661 pass (52 files) — was 633 at session start (+28 tests).
+- **MCP fbst-app:** 53 pass (3 files) — new package wired in this session.
+- **MCP mlb-data:** 50 pass (4 files) — unchanged.
+- **Total:** 1824 unit/integration tests green, plus the 1 E2E. ~+220 tests added this session across 27 PRs.
+
+Local `tsc --noEmit` clean both sides. Phantom `Cannot find module 'zod'` errors on local server tsc for `shared/api/*.ts` continue per memory `local_server_tsc_zod_false_negative.md` — CI is the authority for shared-schema typechecking.
+
+### Process learnings
+
+- **Multi-agent worktree dispatch worked at scale.** Up to 6 agents in parallel on isolated worktree branches, each on a non-conflicting section of the same files (processor.ts, routes.ts), produced 5+ PRs merging within minutes of each other without rebase pain. Section-level scoping in agent prompts is the discipline that makes it safe.
+- **Worktree isolation is leaky.** Almost every agent that needed to run `tsc` or `vitest` ended up copying files into the main checkout because their worktree had no `node_modules`. Future fix: pre-symlink `node_modules/` into agent worktrees, or accept that worktree agents are tsc-blind and trust CI exclusively. Several "main checkout has dirty files" cleanups during the session were the friction tax.
+- **Tests-pass-by-definition struck.** PR #283's MCP server shipped with `.shape.priority` references that crashed on first invocation; the smoke tests in #283 didn't catch it because `mcp-servers/fbst-app/` had no `node_modules` and wasn't wired into CI. PR #294 fixed both the bug and the test gap. Action item: wire `mcp-servers/fbst-app/` into `.github/workflows/ci.yml`.
+- **Browser-verify caught two regressions** that tsc + unit tests both passed: (1) `/teams/LDY` and `/season` Aurora pages silently lost the badge because the typed body literal stripped `computedAt` (PR #281); (2) `getSeasonStandings` client wrapper destructured the response and discarded `computedAt` (also PR #281). Both fixed in one PR. Reinforces: contract tests at the wire shape are the only reliable guard against silent stripping.
+- **Race-condition fix pattern confirmed.** All atomicity P1s (#156–#158) closed via the same recipe: read state inside `prisma.$transaction`, use `updateMany`/`update where: { ..., status: "..." }` as a status-CAS, catch P2002 → translate to typed 409. The cleanup landed in 4 PRs (#275, #277, #278) with a unified `WireListServiceError` shape.
+
+### Pending / Next Steps
+
+- **Wire `mcp-servers/fbst-app/` into CI** — `.github/workflows/ci.yml` runs `mlb-data` tests but not `fbst-app`. Without this, the same "tests pass by definition" failure mode could recur.
+- **Browser-verify prod after Railway deploy** — full sweep was paused on the login wall earlier; resumed to verify date+time badges on `/teams/LDY`, `/season`, `/players`, `/matchup`, classic equivalents — all confirmed live.
+- **Sweep stale agent worktrees** — 30+ locked worktrees from prior parallel-dispatch sessions accumulated in `.claude/worktrees/`. Most branches already merged via squash. `git worktree list` followed by `git worktree remove -f -f` is the cleanup.
+- **Stats freshness on auction state cache** — `getAuctionState` currently has `computedAt: new Date().toISOString()` per request. Once the auction state cache layer (analogous to standingsCache) is reintroduced, `computedAt` should be stamped at cache-write time so two clients see the same freshness.
+- **#168 reducer test gap closed but coverage is mock-driven.** The 7 reducer scenarios + 11 service-level tests all run against mocked Prisma. A real test DB would let us catch a class of integration regressions the mocks can't.
+
+### Concerns / Tech Debt
+
+- **Worktree pollution** during this session created 7 "agent left files in main checkout" incidents. Each cost ~30s of cleanup. Worth solving infrastructurally before the next big multi-agent session.
+- **Phantom local-tsc zod errors** continue to mask real schema work — agents have learned to filter them out per the memory note, but a proper fix (whatever the relative-import resolver wants) would let local tsc become trustworthy again.
+- **2 of the dispatched agents got Bash denials at random** (the cleanup #177/#178 agent and the DataFreshness test agent). The work was completed by the main session in both cases, but the variability is unexplained.
+
+### Test Results
+- Server: 1060 passing / 7 skipped / 1 todo (82 files)
+- Client: 661 passing (52 files)
+- MCP fbst-app: 53 passing (3 files)
+- MCP mlb-data: 50 passing (4 files)
+- Total: 1824 tests green, 0 failing
+
+---
+
 ## Session 2026-05-06 (late) — Wire List v1 shipped end-to-end (9 PRs after the design+schema base)
 
 Picked up directly from the earlier 2026-05-06 session that had landed PR #251 (migration policy), #255 (design preview), #256 (schema). User said "lets continue with the wire list feature" — drove the full v1 to ship in one continuous session. Final state: 13 Wire List PRs merged, one (#267) open with CI green awaiting merge, full UI + processor + cron + push notifications + dashboard banner all live.

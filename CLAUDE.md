@@ -28,7 +28,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 28 feature modules mirrored client/server
+- 31 feature modules under `server/src/features/`; 27 with a corresponding client surface
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -359,7 +359,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (982 server + 612 client + 50 MCP + 1 E2E = 1645 tests, 28 feature modules)
+### Current Test Coverage (1060 server + 661 client + 53 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 1825 tests, 31 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 

@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-05-06
+Last updated: 2026-05-08
 
 ## Source Of Truth
 
@@ -73,11 +73,34 @@ SEO and blog expansion are intentionally on hold while roster management, standi
 
 Stripe and growth work remain roadmap items, but they should not displace active OGBA in-season correctness work.
 
+### Stats freshness rollout (2026-05-07/08)
+
+Server-supplied `computedAt` ISO timestamps now flow through every stats endpoint and surface as date+time badges across pages. The badge format is "Updated MMM D, h:MM AM" — visible without hover, tooltip carries the full local string + relative time.
+
+- 7 stats endpoints expose `computedAt` (standings/season, standings/period/current, period-category-standings, teams/:id summary + roster-hub, players list, player-season-stats, player-period-stats, player detail + fielding, matchups list + my-matchup + standings, keeper-prep roster, auction state + bid-history).
+- Client surfaces: Season, SeasonLegacy, Players (Aurora + Legacy), Team (Aurora v3 hub + Legacy), Matchup (Aurora + Legacy), PlayerDetail, InjuredList, KeeperSelection, AuctionResults, AuctionValues, AuctionComplete.
+- Foundation lives at `client/src/components/shared/DataFreshness.tsx` (Aurora) and `<StatsUpdated>` in `components/shared/StatsTables.tsx` (legacy).
+- Contract test at `server/src/__tests__/integration/stats-computed-at-contract.test.ts` is the cross-cutting safety net so the wire shape can't silently drop the field again.
+
+### Wire List v1.1 hardening (2026-05-07/08)
+
+After v1 shipped 2026-05-06, a multi-agent `/ce:review` produced 23 todos (#156–#178). Every prioritized P1 and P2 closed in the same session via 14 PRs:
+
+- **Atomicity** (#156–#158): finalize TOCTOU + double-finalize race + succeed/revert race + auto-lock cron vs owner mutation race — all closed by wrapping state-reads in `prisma.$transaction` with status-CAS. Race losers get clean 409 codes (`PERIOD_NOT_LOCKED`, `DROP_RACE_LOST`).
+- **Atomic reorder** (#159): replaced 3-call client swap with `POST /periods/:periodId/reorder` (two-pass server-side rewrite).
+- **Performance** (#160, #171, #172, #173): finalize batched (~290 calls → ~10), push fan-out batched (12 teamOwnership queries → 1), `getPeriodResults` one-pass + commissioner local-patch, partial-on-PENDING deadline index for cron.
+- **Security** (#161, #165, #166, #167): cross-league probe oracle closed via `loadPeriodForTeam`, audit logs awaited on state-changing endpoints, advisory locks switched to `pg_try_advisory_xact_lock` (pgBouncer-safe), rate limits on mutation endpoints.
+- **Type safety** (#169): `req.body as` casts replaced with Zod inference, `status: string` replaced with `WaiverPeriodStatus` discriminated union, client redeclared interfaces deleted in favor of shared schema imports, `loadAddEntryAsCommissioner` uses `Prisma.WaiverAddEntryGetPayload`.
+- **Architecture** (#163, #170, #174, #175): WaiverWirePreview deleted (-872 LOC, reducer drift), outcome handlers consolidated into 4 file-local helpers, `processorService.ts` extracted (`processor.ts` 1037 → 542 LOC, −48%), free-agent detection extracted to `transactions/lib/freeAgent.ts` with fail-closed empty-mlbTeam tightening.
+- **Tests** (#168): 7-scenario reducer state-machine + finalize call-count budget + 11 new direct-service unit tests.
+- **MCP** (#176): new `mcp-servers/fbst-app/` server registers 12 wire-list tools (4 reads, 3 owner writes, 5 commissioner reducer) reusing `shared/api/wireList.ts` Zod schemas as input validators.
+
+The wire-list module is now fully reviewed, hardened, performance-tuned, type-safe, service-extracted, and agent-callable.
+
 ## Verification Baseline
 
 Recent verification for this workstream:
 
-- `npm run test`: 1006 server + 633 client = **1639 tests green** (7 skipped, 1 todo)
-- `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean
-- Browser smoke at `http://localhost:3011/` (port 3010 currently held by an orphan dev server) — Home dashboard, Team page V3 hub, AddDrop / Place-on-IL / Activate-from-IL panels all rendering without console errors
-- AddDrop preview-effect regression check: 0 spurious `claim/preview` POSTs from sort/type interactions; exactly 1 POST per drop selection (per `fix/adddrop-preview-deps`, todo #154)
+- `npm run test`: 1060 server + 661 client + 53 MCP fbst-app + 50 MCP mlb-data = **1824 tests green** (7 skipped, 1 todo).
+- `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean.
+- Browser-verified on prod (https://app.thefantasticleagues.com) — date+time badge rendering on `/teams/:code`, `/season`, `/players`, `/matchup`, classic equivalents.
