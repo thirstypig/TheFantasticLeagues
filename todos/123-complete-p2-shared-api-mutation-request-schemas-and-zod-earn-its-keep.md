@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "123"
 tags: [code-review, contract, shared-api, zod, transactions]
@@ -96,3 +96,45 @@ Option 1 — pair with #118 (awards Zod) for one cohesive "make `shared/api/` ac
 ### 2026-04-30 — Initial Discovery
 - **By:** /ce:review (agent-native + simplicity reviewers split on direction)
 - **Learnings:** Two reviewers reached opposite conclusions on `rosterMoves.ts` Zod — agent-native says "lift more schemas in," simplicity says "delete the ceremonial Zod." Reconciliation: lift more AND make `.parse()` happen, so the Zod earns its bundle cost.
+
+### 2026-05-07 — Resolution (Option 1)
+- **By:** automated agent
+- **Found:** 3 of 4 mutation schemas already lifted in earlier PRs
+  (`ClaimRequestSchema` `shared/api/rosterMoves.ts:209`,
+  `IlStashRequestSchema` `:233`, `IlActivateRequestSchema` `:253`).
+  `dropSchema` was the only remaining inline holdout in
+  `server/src/features/transactions/routes.ts`. Zod calls were also still
+  ceremonial — only inferred types were imported on the client.
+- **Did:**
+  1. Added `DropRequestSchema` to `shared/api/rosterMoves.ts`; server now
+     imports it and the inline `dropSchema` + unused `effectiveDateSchema`
+     + unused `z` import are gone.
+  2. Added a generic `parseJsonResponse(schema, payload, context?)` helper
+     to `client/src/api/base.ts` (advisory `safeParse`, console.warn on
+     mismatch, returns the raw payload so we don't break user flows on
+     drift).
+  3. Wired `.parse(body)` into the four client mutation helpers
+     (`previewClaim`, `ilStash`, `previewIlStash`, `ilActivate`,
+     `previewIlActivate`) and the `syncIlStatus` body in
+     `client/src/features/transactions/api.ts`.
+  4. Made `syncIlStatus` the response-validation pilot —
+     `parseJsonResponse(SyncIlStatusResponseSchema, raw, 'syncIlStatus')`
+     before returning, satisfying acceptance criterion 4.
+- **Acceptance:**
+  - [x] All 4 mutation schemas in `shared/api/rosterMoves.ts`
+  - [x] Client uses `*Schema.parse(body)` before fetch (helpers; raw inline
+        `fetchJsonApi(/transactions/{drop,claim})` calls in panels +
+        ActivityPage left as a follow-up — out of scope for this PR per the
+        "P2: don't fan out" constraint).
+  - [x] Server `validateBody(claimSchema)` middleware unchanged in behavior
+  - [x] At least 1 endpoint response is `safeParse`'d on the client
+        (`syncIlStatus` is the pilot).
+  - [ ] Server tsc + vitest, client tsc + vitest — verified by CI; local
+        node_modules unavailable in the worktree.
+- **Follow-up (deferred, not blocking close):**
+  - Inline mutation calls in `client/src/features/transactions/components/RosterMovesTab/AddDropPanel.tsx`
+    and `client/src/features/transactions/pages/ActivityPage.tsx` still bypass
+    the helper functions; they don't run `.parse(body)`. A small refactor
+    would route them through new `claim()` / `dropPlayer()` helpers in
+    `client/src/features/transactions/api.ts` so every outbound mutation
+    goes through the parse boundary.

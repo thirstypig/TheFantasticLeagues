@@ -224,6 +224,23 @@ export const ClaimRequestSchema = z
 export type ClaimRequest = z.infer<typeof ClaimRequestSchema>;
 
 /**
+ * Body: POST /api/transactions/drop
+ *
+ * Plain drop — no incoming player. The server frees the dropped player's
+ * slot and the bipartite matcher reshuffles BN if needed.
+ */
+export const DropRequestSchema = z.object({
+  leagueId: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  playerId: z.number().int().positive(),
+  effectiveDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
+    .optional(),
+});
+export type DropRequest = z.infer<typeof DropRequestSchema>;
+
+/**
  * Body: POST /api/transactions/il-stash
  *
  * Stash-only mode: omit both `addPlayerId` and `addMlbId`. The freed slot

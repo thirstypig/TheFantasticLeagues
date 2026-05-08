@@ -1,7 +1,6 @@
 // server/src/routes/transactions.ts
 import crypto from "crypto";
 import { Router } from "express";
-import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireLeagueMember, requireTeamOwnerOrCommissioner } from "../../middleware/auth.js";
@@ -26,6 +25,7 @@ import { getMlbPlayerStatus } from "../../lib/mlbApi.js";
 import {
   SyncIlStatusBodySchema,
   ClaimRequestSchema,
+  DropRequestSchema,
   IlStashRequestSchema,
   IlActivateRequestSchema,
   type ClaimResponse,
@@ -93,24 +93,10 @@ async function enqueueReconcileForEffective(
   }
 }
 
-// ISO date (YYYY-MM-DD) or full ISO datetime. Commissioner/admin only;
-// validated per-route. Null/omit = default to nextDayEffective().
-const effectiveDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}($|T)/, "effectiveDate must be YYYY-MM-DD or ISO datetime")
-  .optional();
-
-const dropSchema = z.object({
-  leagueId: z.number().int().positive(),
-  teamId: z.number().int().positive(),
-  playerId: z.number().int().positive(),
-  effectiveDate: effectiveDateSchema,
-});
-
-// Claim envelope is now sourced from `shared/api/rosterMoves.ts` (#194).
-// The route uses the shared schema directly so client and server can never
-// drift. The tightened `mlbId` regex/bounds (#187) live in MlbIdSchema
-// inside the shared file.
+// Drop / Claim envelopes are sourced from `shared/api/rosterMoves.ts` so client
+// and server can never drift (todo #123). The tightened `mlbId` regex/bounds
+// (#187) live in MlbIdSchema inside the shared file.
+const dropSchema = DropRequestSchema;
 const claimSchema = ClaimRequestSchema;
 
 const router = Router();

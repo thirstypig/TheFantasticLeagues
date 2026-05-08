@@ -1,4 +1,5 @@
 
+import type { ZodTypeAny, infer as ZodInfer } from 'zod';
 import { JsonError } from './types';
 
 /**
@@ -156,6 +157,31 @@ export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<
   }
 
   return (maybeJson ?? ({} as T)) as T;
+}
+
+/**
+ * Best-effort runtime validation of a response payload against a `shared/api/`
+ * Zod schema (todo #123). On `safeParse` failure the parse error is logged via
+ * `console.warn` and the unvalidated payload is returned — the schema is
+ * advisory at the client boundary, not authoritative. The intent is drift
+ * detection: when client and server disagree on a wire shape, the warning
+ * surfaces in dev tools without breaking the user flow.
+ */
+export function parseJsonResponse<S extends ZodTypeAny>(
+  schema: S,
+  payload: unknown,
+  context?: string,
+): ZodInfer<S> {
+  const result = schema.safeParse(payload);
+  if (!result.success) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[parseJsonResponse]${context ? ` ${context}` : ""} schema mismatch:`,
+      result.error.issues,
+    );
+    return payload as ZodInfer<S>;
+  }
+  return result.data;
 }
 
 export async function fetchJsonPublic<T>(url: string): Promise<T> {

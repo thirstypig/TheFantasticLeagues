@@ -1,5 +1,12 @@
 
-import { fetchJsonApi, API_BASE } from '../../api/base';
+import { fetchJsonApi, API_BASE, parseJsonResponse } from '../../api/base';
+import {
+    ClaimRequestSchema,
+    IlStashRequestSchema,
+    IlActivateRequestSchema,
+    SyncIlStatusBodySchema,
+    SyncIlStatusResponseSchema,
+} from '@shared/api/rosterMoves';
 import type {
     ClaimRequest as SharedClaimRequest,
     ClaimResponse,
@@ -68,9 +75,14 @@ export interface RosterMovePreviewResult {
 }
 
 export async function previewClaim(params: SharedClaimRequest): Promise<RosterMovePreviewResult> {
+    // Validate the request body at the client boundary against the shared
+    // schema (todo #123). Throws ZodError synchronously if a caller passes a
+    // body shape the server's `validateBody(ClaimRequestSchema)` would reject —
+    // surfaces drift in dev/test before the fetch round-trip.
+    const body = ClaimRequestSchema.parse(params);
     return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/claim/preview`, {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(body),
     });
 }
 
@@ -99,16 +111,18 @@ export interface IlStashParams {
 }
 
 export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number | null; stashOnly?: boolean; appliedReassignments?: AppliedReassignment[] }> {
+    const body = IlStashRequestSchema.parse(params);
     return fetchJsonApi(`${API_BASE}/transactions/il-stash`, {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(body),
     });
 }
 
 export async function previewIlStash(params: IlStashParams): Promise<RosterMovePreviewResult> {
+    const body = IlStashRequestSchema.parse(params);
     return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/il-stash/preview`, {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(body),
     });
 }
 
@@ -122,16 +136,18 @@ export interface IlActivateParams {
 }
 
 export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
+    const body = IlActivateRequestSchema.parse(params);
     return fetchJsonApi(`${API_BASE}/transactions/il-activate`, {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(body),
     });
 }
 
 export async function previewIlActivate(params: IlActivateParams): Promise<RosterMovePreviewResult> {
+    const body = IlActivateRequestSchema.parse(params);
     return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/il-activate/preview`, {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(body),
     });
 }
 
@@ -156,10 +172,16 @@ export async function syncIlStatus(params: {
     teamId: number;
     playerId: number;
 }): Promise<SyncIlStatusResult> {
-    return fetchJsonApi(`${API_BASE}/transactions/sync-il-status`, {
+    const body = SyncIlStatusBodySchema.parse(params);
+    const raw = await fetchJsonApi<unknown>(`${API_BASE}/transactions/sync-il-status`, {
         method: 'POST',
-        body: JSON.stringify(params),
+        body: JSON.stringify(body),
     });
+    // Pilot of `parseJsonResponse` per todo #123 acceptance: at least one
+    // endpoint response is `safeParse`d on the client. Drift is logged via
+    // console.warn rather than thrown — schema is advisory at the client
+    // boundary, not authoritative.
+    return parseJsonResponse(SyncIlStatusResponseSchema, raw, 'syncIlStatus');
 }
 
 /**
