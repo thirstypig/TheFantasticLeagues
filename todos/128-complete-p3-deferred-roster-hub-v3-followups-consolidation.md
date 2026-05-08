@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "128"
 tags: [code-review, planning, v3-hub, deferred]
@@ -77,3 +77,17 @@ For each deferred item, see:
 
 ### 2026-04-30 — Initial Discovery
 - **By:** /ce:review architecture-strategist agent
+
+### 2026-05-07 — Closed via consolidation pass (Option 1 chosen retroactively)
+- **By:** docs-only PR `chore/consolidate-v3-followups-128`
+- The four deferred items split into dedicated tracking todos so future sessions don't re-rediscover them:
+  - **#180** — Real per-position GP via `Player.posGames` JSON column + `syncPositionEligibility` cron update
+  - **#181** — `rosterVersion` etag for cross-tab safety on roster PATCH
+  - **#182** — Drag-to-mutate via dnd-kit (drop handler queues into `usePendingChanges`)
+  - **#183** — Pending-changes save/revert flow (per-row PATCH semantics)
+- Inline comments updated to cite the new todos:
+  - `client/src/features/teams/lib/toHubPlayer.ts:32` → cites #180
+  - `client/src/features/teams/lib/toHubPlayer.ts:64` → cites #180
+  - `shared/api/rosterMoves.ts:95` → cites #180
+  - `client/src/features/teams/pages/Team.tsx:555` → cites #182
+- The Recommended Action above said Option 2; with a week of hindsight the team picked Option 1 — the consolidated index alone wasn't a discoverable home once design conversations needed somewhere to attach.

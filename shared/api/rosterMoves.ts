@@ -92,7 +92,7 @@ export type PositionEligibility = z.infer<typeof PositionEligibilitySchema>;
  * `eligibleSlots` is the union (deduped) across every position in `posList`.
  * `perPosition` carries the breakdown for UI cells that want to show e.g.
  * "OF (12) · 2B (3) · MI" — the GP suffixes come from a sibling endpoint
- * (`Player.posGames`) shipped in a later PR.
+ * (`Player.posGames`) shipped in a later PR — see todos/180-pending-p3-real-per-position-gp-via-player-posgames.md
  */
 export const EligibleSlotsResponseSchema = z.object({
   playerId: z.number(),
