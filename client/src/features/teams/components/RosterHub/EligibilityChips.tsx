@@ -20,9 +20,9 @@ interface EligibilityChipsProps {
 }
 
 /**
- * Renders one small chip per eligible slot. Memoized via the parent
- * `RosterRow` (`React.memo`) and stable inputs — `slotsFor()` is
- * pure — so this stays cheap inside a 23-row table.
+ * Renders one small chip per eligible slot. `slotsFor()` is pure and
+ * the result is `useMemo`-cached on `posList`, so this stays cheap
+ * inside a 23-row table even though the parent rows aren't memoized.
  */
 export function EligibilityChips({ posList, activeSlots }: EligibilityChipsProps) {
   const slots = useMemo(() => Array.from(slotsFor(posList)), [posList]);
