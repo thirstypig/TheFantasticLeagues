@@ -121,12 +121,31 @@ export default function WireListCommissionerPage() {
   const handleAddOutcome = useCallback(async (
     addId: number,
     fn: () => Promise<AddEntry>,
+    opts?: { reloadAfter?: boolean },
   ) => {
     setBusyAddId(addId);
     setError(null);
     try {
-      await fn();
-      await reload();
+      const updated = await fn();
+      // Local-patch for succeed/fail/skip — splice the returned entry into
+      // byTeam without re-fetching teams + listPeriods + getPeriodResults.
+      // Revert is the one case that needs a full reload because it can free
+      // a drop that another team's add could now consume — set reloadAfter:true
+      // for that path. (todo #172)
+      if (opts?.reloadAfter) {
+        await reload();
+      } else {
+        setByTeam((prev) =>
+          prev.map((bucket) =>
+            bucket.teamId === updated.teamId
+              ? {
+                  ...bucket,
+                  adds: bucket.adds.map((a) => (a.id === updated.id ? updated : a)),
+                }
+              : bucket,
+          ),
+        );
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         const body = err.body as { error?: string; code?: string } | null;
@@ -296,7 +315,7 @@ export default function WireListCommissionerPage() {
                     <strong>{add?.player?.name ?? `Add #${b.addId}`}</strong> · {b.detail}
                   </span>
                   <button
-                    onClick={() => handleAddOutcome(b.addId, () => revertAdd(b.addId))}
+                    onClick={() => handleAddOutcome(b.addId, () => revertAdd(b.addId), { reloadAfter: true })}
                     disabled={busyAddId === b.addId}
                     style={btnSmall}
                   >
@@ -347,7 +366,7 @@ export default function WireListCommissionerPage() {
                     const reason = prompt("Reason (optional, default = no drop slot):") ?? undefined;
                     handleAddOutcome(id, () => skipAdd(id, reason || undefined));
                   }}
-                  onRevert={(id) => handleAddOutcome(id, () => revertAdd(id))}
+                  onRevert={(id) => handleAddOutcome(id, () => revertAdd(id), { reloadAfter: true })}
                 />
               );
             })}
