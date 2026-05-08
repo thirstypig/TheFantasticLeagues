@@ -173,19 +173,21 @@ export async function getSeasonStandings(leagueId?: number): Promise<SeasonStand
       const url = `${API_BASE}/season?leagueId=${lid}`;
       const raw = await fetchJsonApi<Record<string, unknown>>(url);
 
+      const computedAt = typeof raw?.computedAt === "string" ? raw.computedAt : undefined;
+
       // Backend returns { data: [...] }
       if (raw && Array.isArray(raw.data)) {
-           return { periodIds: [], rows: raw.data as SeasonStandingRow[] };
+           return { periodIds: [], rows: raw.data as SeasonStandingRow[], computedAt };
       }
 
       if (raw && Array.isArray(raw.rows)) {
         const periodIds = Array.isArray(raw.periodIds) ? (raw.periodIds as unknown[]).map((x) => Number(x)).filter(Number.isFinite) : [];
         const periodNames = Array.isArray(raw.periodNames) ? raw.periodNames as string[] : [];
         const categoryKeys = Array.isArray(raw.categoryKeys) ? raw.categoryKeys as string[] : [];
-        return { periodIds, periodNames, categoryKeys, rows: raw.rows as SeasonStandingRow[] };
+        return { periodIds, periodNames, categoryKeys, rows: raw.rows as SeasonStandingRow[], computedAt };
       }
-      if (Array.isArray(raw)) return { periodIds: [], rows: raw as SeasonStandingRow[] };
-      return { periodIds: [], rows: [] };
+      if (Array.isArray(raw)) return { periodIds: [], rows: raw as SeasonStandingRow[], computedAt };
+      return { periodIds: [], rows: [], computedAt };
     })());
   }
   return _seasonStandingsCache.get(cacheKey)!;
