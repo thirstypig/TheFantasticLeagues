@@ -20,7 +20,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
-import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
+import { assertPlayerIsFreeAgent } from "../transactions/lib/freeAgent.js";
 import {
   CreatePeriodBodySchema,
   CreateAddEntryBodySchema,
@@ -180,33 +180,14 @@ async function nextDropPriority(periodId: number, teamId: number): Promise<numbe
 }
 
 /**
- * Verify the player is a free agent in this league — i.e. not on any
- * roster, and on an MLB team allowed by the league's stats_source.
+ * Verify the player is a free agent in this league. Thin wrapper around
+ * `transactions/lib/freeAgent.assertPlayerIsFreeAgent` — the shared lib is
+ * the single source of truth (todo #175). Note the parameter order flip
+ * vs the lib (legacy callers pass leagueId first); the lib uses
+ * `(playerId, leagueId)` to match other transaction helpers.
  */
 async function assertPlayerIsFA(leagueId: number, playerId: number): Promise<{ ok: true } | { ok: false; status: number; body: { error: string; code: string } }> {
-  const player = await prisma.player.findUnique({
-    where: { id: playerId },
-    select: { id: true, mlbTeam: true },
-  });
-  if (!player) {
-    return { ok: false, status: 404, body: { error: "Player not found", code: "PLAYER_NOT_FA" } };
-  }
-
-  const onRoster = await prisma.roster.findFirst({
-    where: { playerId, releasedAt: null, team: { leagueId } },
-    select: { id: true },
-  });
-  if (onRoster) {
-    return { ok: false, status: 400, body: { error: "Player is already on a roster in this league", code: "PLAYER_NOT_FA" } };
-  }
-
-  const allowed = getTeamsForSource(await getLeagueStatsSource(leagueId));
-  const team = player.mlbTeam ?? "";
-  const isAllowed = !allowed || !team || team === "FA" || allowed.has(team);
-  if (!isAllowed) {
-    return { ok: false, status: 400, body: { error: "Player's MLB team is outside this league's stats source", code: "PLAYER_NOT_FA" } };
-  }
-  return { ok: true };
+  return assertPlayerIsFreeAgent(playerId, leagueId);
 }
 
 /**

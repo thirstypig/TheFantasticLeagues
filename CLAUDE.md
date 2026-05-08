@@ -156,6 +156,7 @@ Some features import from other features' services or components.
 - `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
 - `wire-list/processor.ts` imports `transactions/lib/positionInherit` (`isEligibleForSlot` for position-eligibility re-check at succeed time, mirroring legacy waivers processor)
+- `wire-list/routes.ts` imports `transactions/lib/freeAgent` (`assertPlayerIsFreeAgent` — single source of truth for FA detection per todo #175; legacy `waivers/routes.ts` uses a different policy and is intentionally not migrated)
 - `wire-list/processor.ts` imports `lib/pushService` (per-team summary push at finalize)
 - `matchups/routes.ts` imports `standings/services/standingsService` (H2H scoring from category stats)
 - `draft/routes.ts` imports `seasons/services/seasonService` (auto-transition on draft completion)
