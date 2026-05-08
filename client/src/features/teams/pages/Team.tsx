@@ -1230,8 +1230,10 @@ export default function Team() {
     selectedWeekKey
       ? insightHistory.find((w) => w.weekKey === selectedWeekKey) ?? aiInsights
       : aiInsights;
-  const activeInsightWeekKey =
-    activeInsight && "weekKey" in activeInsight ? activeInsight.weekKey : null;
+  const activeInsightWeekKey: string | null =
+    activeInsight && "weekKey" in activeInsight
+      ? (activeInsight as WeeklyInsightEntry).weekKey
+      : null;
   const lineupIntelligenceCard = (
     <Glass strong>
       <SectionLabel>
