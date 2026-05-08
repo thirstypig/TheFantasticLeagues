@@ -5,6 +5,7 @@ import { getMyMatchup, getH2HStandings, type MatchupEntry, type StandingEntry } 
 import PageHeader from "../../../components/ui/PageHeader";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ThemedTable, ThemedThead, ThemedTr, ThemedTh, ThemedTd } from "../../../components/ui/ThemedTable";
+import { StatsUpdated } from "../../../components/shared/StatsTables";
 
 /*
  * MatchupLegacy — pre-Aurora Matchup page, preserved at /matchup-classic
@@ -19,17 +20,19 @@ export default function MatchupLegacy() {
   const [standings, setStandings] = useState<StandingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"matchup" | "standings">("matchup");
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!leagueId) return;
     setLoading(true);
     Promise.all([
-      getMyMatchup(leagueId, week).catch(() => ({ matchup: null, myTeamId: 0 })),
-      getH2HStandings(leagueId).catch(() => ({ standings: [] })),
+      getMyMatchup(leagueId, week).catch(() => ({ matchup: null, myTeamId: 0, computedAt: undefined as string | undefined })),
+      getH2HStandings(leagueId).catch(() => ({ standings: [], computedAt: undefined as string | undefined })),
     ]).then(([m, s]) => {
       setMatchup(m.matchup);
       setMyTeamId(m.myTeamId);
       setStandings(s.standings);
+      setComputedAt(m.computedAt ?? s.computedAt ?? null);
     }).finally(() => setLoading(false));
   }, [leagueId, week]);
 
@@ -38,6 +41,8 @@ export default function MatchupLegacy() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 md:px-6 md:py-10">
       <PageHeader title="Head-to-Head" subtitle="Weekly matchups and standings" />
+
+      <StatsUpdated source="synced" timestamp={computedAt} className="text-right mb-1" />
 
       {/* Tab selector */}
       <div className="flex gap-1 mb-6">

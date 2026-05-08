@@ -43,7 +43,7 @@ export async function unlockKeepers(leagueId: number): Promise<{ success: boolea
   });
 }
 
-export async function getTeamRosterForKeeperPrep(leagueId: number, teamId: number): Promise<{ roster: any[]; keeperLimit: number }> {
+export async function getTeamRosterForKeeperPrep(leagueId: number, teamId: number): Promise<{ roster: any[]; keeperLimit: number; computedAt?: string }> {
   return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/keeper-prep/team/${teamId}/roster`);
 }
 

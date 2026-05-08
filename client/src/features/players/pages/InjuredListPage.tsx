@@ -20,6 +20,7 @@ import { getLeague } from "../../../api";
 import type { LeagueTeam } from "../../../api/types";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { Glass, SectionLabel, IridText, Chip, Dot } from "../../../components/aurora/atoms";
+import { DataFreshness } from "../../../components/shared/DataFreshness";
 import type { RosterAlertPlayer } from "../../../components/shared/RosterAlertAccordion";
 import { AL_TEAMS, NL_TEAMS } from "../../../lib/sports/baseball";
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
@@ -61,6 +62,7 @@ export default function InjuredListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("ALL");
+  const [computedAt, setComputedAt] = useState<string | null>(null);
 
   // Load teams + per-team roster status in parallel.
   useEffect(() => {
@@ -75,6 +77,18 @@ export default function InjuredListPage() {
         if (canceled) return;
         const ts = league.teams ?? [];
         setTeams(ts);
+
+        // Pull computedAt from the cached players list (PR #268). Done in
+        // parallel with the per-team fan-out below so it doesn't block.
+        // The page itself doesn't render the player rows from here — IL
+        // entries come from /mlb/roster-status — but the underlying
+        // player metadata comes from the same cached pool, so this is
+        // the right freshness signal to surface.
+        fetchJsonApi<{ computedAt?: string }>(
+          `${API_BASE}/players?leagueId=${leagueId}&availability=all&type=all`,
+        ).then((res) => {
+          if (!canceled) setComputedAt(res.computedAt ?? null);
+        }).catch(() => { /* non-fatal — badge just stays hidden */ });
 
         if (ts.length === 0) {
           setEntries([]);
@@ -189,6 +203,11 @@ export default function InjuredListPage() {
             </div>
             {currentLeagueName && (
               <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>{currentLeagueName}</div>
+            )}
+            {computedAt && (
+              <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>
+                <DataFreshness computedAt={computedAt} className="text-xs" />
+              </div>
             )}
           </div>
           {total > 0 && (

@@ -53,8 +53,8 @@ export async function adminImportRosters(leagueId: number, csvContent: string): 
     });
 }
 
-export async function getMyRoster(leagueId: number): Promise<{ team: any; roster: any[]; isLocked: boolean; keeperLimit: number }> {
-    return fetchJsonApi<{ team: any; roster: any[]; isLocked: boolean; keeperLimit: number }>(`${API_BASE}/leagues/${leagueId}/my-roster`);
+export async function getMyRoster(leagueId: number): Promise<{ team: any; roster: any[]; isLocked: boolean; keeperLimit: number; computedAt?: string }> {
+    return fetchJsonApi<{ team: any; roster: any[]; isLocked: boolean; keeperLimit: number; computedAt?: string }>(`${API_BASE}/leagues/${leagueId}/my-roster`);
 }
 
 export async function saveKeepers(leagueId: number, keeperIds: number[]): Promise<{ success: boolean; count: number }> {
