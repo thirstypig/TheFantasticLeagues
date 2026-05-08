@@ -4,10 +4,26 @@
 // (refinement #3) and shows a compact role-aware stat line below the
 // name. Sectioned headers ("Hitters" / "Pitchers") are rendered by the
 // parent (RosterHubV3); this component renders one row.
+//
+// Per todo #127, the action-menu state, name-decoration prefix, subtitle,
+// revert button, kebab menu, and class-name builder are sourced from
+// `./rowShared` so the desktop variant (`RosterRowV3`) shares them
+// without drift. The container element type (`<div>` flex card vs the
+// desktop `<tr>`) and the single dot-separated stat string vs the
+// desktop's individual stat cells remain layout-specific — see
+// `rowShared.tsx` for the rationale on why a full unified component
+// was rejected.
 
-import React, { useRef, useState } from "react";
+import React from "react";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
-import { RowActionMenu, type RowAction } from "./RowActionMenu";
+import { type RowAction } from "./RowActionMenu";
+import {
+  ActionMenuTrigger,
+  PlayerNameContent,
+  PlayerSubtitle,
+  RevertButton,
+  buildRowClasses,
+} from "./rowShared";
 import type { RosterHubPlayer } from "./types";
 
 /**
@@ -82,28 +98,19 @@ export function MobileRowV3({
   dnd,
   isShakeRejecting,
 }: MobileRowV3Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-
-  const onTriggerClick = () => {
-    if (triggerRef.current) {
-      setAnchorRect(triggerRef.current.getBoundingClientRect());
-    }
-    setMenuOpen(true);
-  };
-
-  const classes = ["am-roster-mobile-row"];
-  if (isPending) classes.push("am-roster-row-pending");
-  if (isEligible && !isPending) classes.push("am-roster-row-eligible");
-  if (isDimmed) classes.push("am-roster-row-dimmed");
-  if (dnd?.isDragging) classes.push("am-roster-row-dragging-source");
-  if (dnd?.isOverEligible) classes.push("am-roster-row-drop-target");
-  if (isShakeRejecting) classes.push("am-roster-row-shake");
+  const className = buildRowClasses({
+    base: "am-roster-mobile-row",
+    isPending,
+    isEligible,
+    isDimmed,
+    isDragging: dnd?.isDragging,
+    isOverEligible: dnd?.isOverEligible,
+    isShakeRejecting,
+  });
 
   return (
     <div
-      className={classes.join(" ")}
+      className={className}
       ref={dnd?.rowRef}
       style={dnd?.rowStyle}
       data-roster-row={String(player.rosterId)}
@@ -125,17 +132,9 @@ export function MobileRowV3({
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
-          {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
-          {player.isKeeper && (
-            <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
-              ★
-            </span>
-          )}
-          {player.name}
+          <PlayerNameContent player={player} isPending={isPending} />
         </span>
-        <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
-          {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
-        </span>
+        <PlayerSubtitle player={player} />
         <span style={{ fontSize: 11.5, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
           {statSummaryFor(player) || "—"}
         </span>
@@ -152,35 +151,9 @@ export function MobileRowV3({
             ⋮⋮
           </button>
         )}
-        {isPending && onRevert && (
-          <button
-            type="button"
-            className="am-roster-revert-button"
-            onClick={onRevert}
-            aria-label={`Revert pending change for ${player.name}`}
-            title="Revert this change"
-          >
-            ↩
-          </button>
-        )}
-        {actions.length > 0 && (
-          <>
-            <button
-              type="button"
-              ref={triggerRef}
-              className="am-roster-action-trigger"
-              onClick={onTriggerClick}
-              aria-label={`Open actions menu for ${player.name}`}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-            >
-              …
-            </button>
-            <RowActionMenu actions={actions} open={menuOpen} onClose={() => setMenuOpen(false)} anchorRect={anchorRect} />
-          </>
-        )}
+        {isPending && onRevert && <RevertButton player={player} onRevert={onRevert} />}
+        <ActionMenuTrigger player={player} actions={actions} />
       </div>
     </div>
   );
 }
-
