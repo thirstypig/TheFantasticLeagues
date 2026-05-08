@@ -210,11 +210,17 @@ router.post(
       });
     }
 
-    const slotCapacities = await loadSlotCapacities(prisma as any, leagueId);
-    const { candidates } = await buildCandidatesForTeam(prisma as any, teamId, {
-      excludeRosterIds: dropRosterPreview ? [dropRosterPreview.id] : [],
-      includeNewPlayer: { playerId: player.id, posList: player.posList ?? "" },
-    });
+    // Parallel reads — slotCapacities (LeagueRule) and candidates (roster +
+    // players) take independent inputs. Per todo #139 these were serial,
+    // pinning the only Supabase connection across two round trips.
+    const [slotCapacities, candidatesResult] = await Promise.all([
+      loadSlotCapacities(prisma as any, leagueId),
+      buildCandidatesForTeam(prisma as any, teamId, {
+        excludeRosterIds: dropRosterPreview ? [dropRosterPreview.id] : [],
+        includeNewPlayer: { playerId: player.id, posList: player.posList ?? "" },
+      }),
+    ]);
+    const { candidates } = candidatesResult;
     let result = resolveLineup(candidates, slotCapacities);
     if (result.ok === false) {
       const refreshed = await verifyEligibilityUnchanged(prisma as any, candidates);
@@ -502,8 +508,14 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     // conflicts. Reads a fresh in-tx view so the daily eligibility sync
     // doesn't race us.
     if (enforce && dropPlayerId && inheritedPos && inheritedPos !== "IL") {
-      const slotCapacities = await loadSlotCapacities(tx, leagueId);
-      const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
+      // Parallel reads inside the tx — both touch independent rows.
+      // Holds the connection ~300ms→~150ms per claim under
+      // connection_limit=1 (todo #139).
+      const [slotCapacities, candidatesResult] = await Promise.all([
+        loadSlotCapacities(tx, leagueId),
+        buildCandidatesForTeam(tx, teamId),
+      ]);
+      const { candidates, playerNames } = candidatesResult;
 
       // Build rosterRowToPlayerId for echo (newRoster id → playerId).
       const rosterRowToPlayerId = new Map<number, number>();
@@ -799,11 +811,15 @@ router.post(
       throw err;
     }
 
-    const slotCapacities = await loadSlotCapacities(prisma as any, leagueId);
-    const { candidates } = await buildCandidatesForTeam(prisma as any, teamId, {
-      excludeRosterIds: [stashRoster.id],
-      includeNewPlayer: addPlayer ? { playerId: addPlayer.id, posList: addPlayer.posList ?? "" } : undefined,
-    });
+    // Parallel reads — independent inputs (todo #139).
+    const [slotCapacities, candidatesResult] = await Promise.all([
+      loadSlotCapacities(prisma as any, leagueId),
+      buildCandidatesForTeam(prisma as any, teamId, {
+        excludeRosterIds: [stashRoster.id],
+        includeNewPlayer: addPlayer ? { playerId: addPlayer.id, posList: addPlayer.posList ?? "" } : undefined,
+      }),
+    ]);
+    const { candidates } = candidatesResult;
     let result = resolveLineup(candidates, slotCapacities);
     if (result.ok === false) {
       const refreshed = await verifyEligibilityUnchanged(prisma as any, candidates);
@@ -1029,8 +1045,12 @@ router.post(
         // strict inherited slot turned out to be infeasible (e.g., the
         // added player can't actually play the stashed player's slot).
         {
-          const slotCapacities = await loadSlotCapacities(tx, leagueId);
-          const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
+          // Parallel reads inside the tx (todo #139).
+          const [slotCapacities, candidatesResult] = await Promise.all([
+            loadSlotCapacities(tx, leagueId),
+            buildCandidatesForTeam(tx, teamId),
+          ]);
+          const { candidates, playerNames } = candidatesResult;
           const rosterRowToPlayerId = new Map<number, number>();
           for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
           if (addPlayer && newStashRoster && addPlayer.name) {
@@ -1235,11 +1255,15 @@ router.post(
       });
     }
 
-    const slotCapacities = await loadSlotCapacities(prisma as any, leagueId);
-    const { candidates } = await buildCandidatesForTeam(prisma as any, teamId, {
-      excludeRosterIds: [ilRoster.id, dropRoster.id],
-      includeNewPlayer: { playerId: activatePlayer.id, posList: activatePlayer.posList ?? "" },
-    });
+    // Parallel reads — independent inputs (todo #139).
+    const [slotCapacities, candidatesResult] = await Promise.all([
+      loadSlotCapacities(prisma as any, leagueId),
+      buildCandidatesForTeam(prisma as any, teamId, {
+        excludeRosterIds: [ilRoster.id, dropRoster.id],
+        includeNewPlayer: { playerId: activatePlayer.id, posList: activatePlayer.posList ?? "" },
+      }),
+    ]);
+    const { candidates } = candidatesResult;
     let result = resolveLineup(candidates, slotCapacities);
     if (result.ok === false) {
       const refreshed = await verifyEligibilityUnchanged(prisma as any, candidates);
@@ -1394,8 +1418,12 @@ router.post(
         // Yahoo-style auto-resolve: re-shuffle the active roster if the
         // strict inherited slot turned out to be infeasible.
         {
-          const slotCapacities = await loadSlotCapacities(tx, leagueId);
-          const { candidates, playerNames } = await buildCandidatesForTeam(tx, teamId);
+          // Parallel reads inside the tx (todo #139).
+          const [slotCapacities, candidatesResult] = await Promise.all([
+            loadSlotCapacities(tx, leagueId),
+            buildCandidatesForTeam(tx, teamId),
+          ]);
+          const { candidates, playerNames } = candidatesResult;
           const rosterRowToPlayerId = new Map<number, number>();
           for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
 
