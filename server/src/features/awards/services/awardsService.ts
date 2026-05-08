@@ -125,12 +125,18 @@ const CY_YOUNG_STAT_KEYS = [
 
 // ─── Helpers ───
 
-/** Z-score: (value - mean) / stddev. SD floor at 1 to avoid divide-by-zero. */
+/**
+ * Z-score: (value - mean) / stddev. SD floor at 1 to avoid divide-by-zero.
+ * Non-finite inputs (NaN / ±Infinity) coerce to 0 so a single bad row from
+ * Prisma `_sum` (which is `number | null` upstream and `?? 0`'d at the call
+ * site) cannot poison the entire ranking with NaNs.
+ */
 function zScores(vals: number[]): number[] {
   if (vals.length === 0) return [];
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  const sd = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length) || 1;
-  return vals.map(v => (v - mean) / sd);
+  const safe = vals.map(v => (Number.isFinite(v) ? v : 0));
+  const mean = safe.reduce((a, b) => a + b, 0) / safe.length;
+  const sd = Math.sqrt(safe.reduce((s, v) => s + (v - mean) ** 2, 0) / safe.length) || 1;
+  return safe.map(v => (v - mean) / sd);
 }
 
 // ─── Main computation ───
@@ -342,7 +348,7 @@ export async function computeAwardsRankings(
         );
         const isRelief = p.sv > 0 && !p.isStarter;
         const cyScore = isRelief ? relieverScore * RELIEVER_DISCOUNT : starterScore;
-        return { p, i, cyScore, role: (isRelief ? "RP" : "SP") as "SP" | "RP" };
+        return { p, i, cyScore, role: isRelief ? ("RP" as const) : ("SP" as const) };
       })
       .sort((a, b) => b.cyScore - a.cyScore)
       .slice(0, 3)

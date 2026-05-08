@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
@@ -119,7 +120,7 @@ router.get("/league-digest", requireAuth, requireLeagueMember("leagueId"), async
       leagueId,
       teamId: firstTeamId,
       weekKey,
-      data: persistedPayload as any,
+      data: persistedPayload as Prisma.InputJsonValue,
     },
   }).catch(err => {
     if (!(err as any)?.code?.includes("P2002")) {
@@ -156,7 +157,7 @@ router.post("/league-digest/vote", requireAuth, validateBody(voteSchema), requir
 
     await tx.aiInsight.update({
       where: { id: insightId },
-      data: { data: { ...data, votes: updatedVotes } as any },
+      data: { data: { ...data, votes: updatedVotes } as Prisma.InputJsonValue },
     });
     return updatedVotes;
   });
