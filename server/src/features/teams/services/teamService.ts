@@ -239,6 +239,7 @@ export class TeamService {
       return {
         rosterId: row.id,
         playerId: row.playerId,
+        mlbId: row.mlbId ?? undefined,
         playerName: row.name,
         posPrimary: row.posPrimary,
         posList: row.posList ?? row.posPrimary,

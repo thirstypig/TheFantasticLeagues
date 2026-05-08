@@ -30,6 +30,7 @@ vi.mock("../../../api", () => ({
   getPlayerSeasonStats: vi.fn(),
   getPlayerSeasonStatsMeta: vi.fn(() => Promise.resolve({ stats: [], computedAt: null })),
   getTeamDetails: vi.fn(),
+  getTeamRosterHub: vi.fn(),
   getTeams: vi.fn(),
   getTeamAiInsights: vi.fn().mockResolvedValue(null),
   getSeasonStandings: vi.fn().mockResolvedValue({ periodIds: [], periodNames: [] }),
@@ -174,7 +175,7 @@ vi.mock("@dnd-kit/core", async () => {
   };
 });
 
-import { getPlayerSeasonStats, getTeamDetails, getTeams, getSeasonStandings } from "../../../api";
+import { getPlayerSeasonStats, getTeamDetails, getTeamRosterHub, getTeams, getSeasonStandings } from "../../../api";
 import { getTeamAiInsightsHistory, getTeamPeriodRoster } from "../api";
 import Team from "../pages/Team";
 
@@ -202,6 +203,15 @@ beforeEach(() => {
   vi.mocked(getTeams).mockResolvedValue(mockDbTeams as any);
   vi.mocked(getPlayerSeasonStats).mockResolvedValue([]);
   vi.mocked(getTeamDetails).mockResolvedValue({ currentRoster: [] } as any);
+  vi.mocked(getTeamRosterHub).mockResolvedValue({
+    team: { id: 10, leagueId: 1, name: "Aces", owner: "Tester", budget: 260 },
+    period: null,
+    hitters: [],
+    pitchers: [],
+    ilPlayers: [],
+    droppedPlayers: [],
+    computedAt: null,
+  } as any);
   vi.mocked(getSeasonStandings).mockResolvedValue({ periodIds: [], periodNames: [] } as any);
   vi.mocked(getTeamAiInsightsHistory).mockResolvedValue({ weeks: [] });
   vi.mocked(getTeamPeriodRoster).mockResolvedValue({ roster: [] } as any);

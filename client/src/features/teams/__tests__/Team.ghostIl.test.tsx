@@ -21,6 +21,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 vi.mock("../../../api", () => ({
   getPlayerSeasonStats: vi.fn(), getPlayerSeasonStatsMeta: vi.fn(() => Promise.resolve({ stats: [], computedAt: null })),
   getTeamDetails: vi.fn(),
+  getTeamRosterHub: vi.fn(),
   getTeams: vi.fn(),
   getTeamAiInsights: vi.fn().mockResolvedValue(null),
   getSeasonStandings: vi.fn().mockResolvedValue({ periodIds: [], periodNames: [] }),
@@ -137,7 +138,44 @@ vi.mock("@dnd-kit/core", async () => {
   };
 });
 
-import { getPlayerSeasonStats, getTeamDetails, getTeams } from "../../../api";
+import { getPlayerSeasonStats, getTeamDetails, getTeamRosterHub, getTeams } from "../../../api";
+
+/**
+ * Adapter: convert legacy `currentRoster` test fixtures to the
+ * `getTeamRosterHub` partitioned response. Lets each test stay readable
+ * with its single-row inputs while exercising the new wire shape.
+ */
+function asHub(rows: any[]): any {
+  const PITCHER = new Set(["P", "SP", "RP"]);
+  const hubRows = rows.map((r) => {
+    const isPitcher = PITCHER.has((r.assignedPosition || r.posPrimary || "").toUpperCase());
+    return {
+      rosterId: r.id,
+      playerId: r.playerId,
+      mlbId: r.mlbId ?? null,
+      playerName: r.name,
+      posPrimary: r.posPrimary,
+      posList: r.posList ?? r.posPrimary,
+      position: r.posPrimary,
+      assignedPosition: r.assignedPosition ?? r.posPrimary,
+      isPitcher,
+      price: r.price ?? null,
+      mlbTeam: r.mlbTeam,
+      isKeeper: r.isKeeper ?? null,
+      gamesByPos: r.gamesByPos,
+      mlbStatus: r.mlbStatus ?? null,
+    };
+  });
+  return {
+    team: { id: 10, leagueId: 1, name: "Aces", owner: "Tester", budget: 260 },
+    period: null,
+    hitters: hubRows.filter((r) => !r.isPitcher && r.assignedPosition !== "IL"),
+    pitchers: hubRows.filter((r) => r.isPitcher && r.assignedPosition !== "IL"),
+    ilPlayers: hubRows.filter((r) => r.assignedPosition === "IL"),
+    droppedPlayers: [],
+    computedAt: null,
+  };
+}
 import Team from "../pages/Team";
 
 const mockDbTeams = [{ id: 10, code: "ACES", name: "Aces" }];
@@ -170,17 +208,16 @@ afterEach(() => {
 
 describe("Team page (Aurora) — ghost-IL warning chip wakes up with Player.mlbStatus", () => {
   it("renders the ghost-IL chip when mlbStatus is Injured-Day and player is NOT on IL slot", async () => {
-    vi.mocked(getTeamDetails).mockResolvedValue({
-      team: { id: 10, name: "Aces", owner: "Tester", budget: 260 },
-      currentRoster: [
+    vi.mocked(getTeamRosterHub).mockResolvedValue(
+      asHub([
         {
           id: 1, playerId: 100, name: "Mike Trout", posPrimary: "OF", posList: "OF",
           mlbTeam: "LAA", price: 45,
           assignedPosition: "OF", // active — NOT "IL"
           mlbStatus: "Injured 10-Day", // gap: status says IL, slot says OF
         },
-      ],
-    } as any);
+      ]),
+    );
 
     renderTeam();
 
@@ -193,17 +230,16 @@ describe("Team page (Aurora) — ghost-IL warning chip wakes up with Player.mlbS
   });
 
   it("does NOT render the ghost-IL chip when mlbStatus is Active", async () => {
-    vi.mocked(getTeamDetails).mockResolvedValue({
-      team: { id: 10, name: "Aces", owner: "Tester", budget: 260 },
-      currentRoster: [
+    vi.mocked(getTeamRosterHub).mockResolvedValue(
+      asHub([
         {
           id: 1, playerId: 100, name: "Mike Trout", posPrimary: "OF", posList: "OF",
           mlbTeam: "LAA", price: 45,
           assignedPosition: "OF",
           mlbStatus: "Active",
         },
-      ],
-    } as any);
+      ]),
+    );
 
     renderTeam();
 
@@ -222,20 +258,16 @@ describe("Team page (Aurora) — ghost-IL warning chip wakes up with Player.mlbS
     // (not the team-detail row directly) — see RosterPlayer mapping in
     // pages/Team.tsx around the `stat?.assignedPosition || row.posPrimary`
     // line. So the test must seed both surfaces to drive the IL slot.
-    vi.mocked(getTeamDetails).mockResolvedValue({
-      team: { id: 10, name: "Aces", owner: "Tester", budget: 260 },
-      currentRoster: [
+    vi.mocked(getTeamRosterHub).mockResolvedValue(
+      asHub([
         {
           id: 1, playerId: 100, name: "Mike Trout", posPrimary: "OF", posList: "OF",
           mlbTeam: "LAA", price: 45,
           assignedPosition: "IL",
           mlbStatus: "Injured 10-Day",
         },
-      ],
-    } as any);
-    vi.mocked(getPlayerSeasonStats).mockResolvedValue([
-      { id: 100, assignedPosition: "IL" } as any,
-    ]);
+      ]),
+    );
 
     renderTeam();
 
@@ -249,17 +281,16 @@ describe("Team page (Aurora) — ghost-IL warning chip wakes up with Player.mlbS
     // Free agents and synthetic rows have no MLB status. The chip stays
     // dormant exactly like before this PR — we only wake it up when the
     // wire payload includes a real Injured-Day designation.
-    vi.mocked(getTeamDetails).mockResolvedValue({
-      team: { id: 10, name: "Aces", owner: "Tester", budget: 260 },
-      currentRoster: [
+    vi.mocked(getTeamRosterHub).mockResolvedValue(
+      asHub([
         {
           id: 1, playerId: 100, name: "Mike Trout", posPrimary: "OF", posList: "OF",
           mlbTeam: "LAA", price: 45,
           assignedPosition: "OF",
           mlbStatus: null,
         },
-      ],
-    } as any);
+      ]),
+    );
 
     renderTeam();
 
