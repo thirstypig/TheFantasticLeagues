@@ -256,7 +256,13 @@ export default function Team() {
           name: team.name,
           code: team.code ?? code,
           budget: team.budget,
-          ownerName: team.ownerUser?.name || team.ownerUser?.email || team.owner || null,
+          // `GET /api/teams` only selects `owner` (legacy string column),
+          // not the User relation — todo #121 caught the previously-silent
+          // `team.ownerUser?.name || team.ownerUser?.email` fallback chain
+          // that always evaluated to `undefined`. If we ever need the User
+          // relation here, add `include: { ownerUser: ... }` to the server
+          // select and extend `LeagueTeam` accordingly.
+          ownerName: team.owner ?? null,
         });
 
         // Roster comes from the server-shaped hub-roster endpoint
@@ -388,7 +394,10 @@ export default function Team() {
   const displayRoster: RosterPlayer[] = useMemo(() => {
     if (periodMode === "season" || !periodRoster) return roster;
     return periodRoster.map(r => {
-      const ps = r.periodStats || {};
+      // Use Partial because the row may have no period-stats yet (synthetic
+      // rows, mid-period sync gap). Each Number(...) call below tolerates
+      // undefined fields by falling back to 0.
+      const ps: Partial<NonNullable<typeof r.periodStats>> = r.periodStats ?? {};
       const isPitcher = PITCHER_POS.has((r.assignedPosition || r.posPrimary || "").toUpperCase());
       // Compute derived stats client-side (route returns raw counts)
       const ab = Number(ps.AB) || 0;

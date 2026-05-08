@@ -43,13 +43,24 @@ export interface TransactionEvent {
   status: string; // PENDING, APPROVED, REJECTED
   team?: { name: string };
   player?: { name: string };
-  
+
   // Legacy / Raw fields
   effDate?: string;
   effDateRaw?: string;
   ogbaTeamName?: string;
   playerAliasRaw?: string;
   transactionRaw?: string;
+
+  // Server-augmented wire fields (todo #121: previously declared via local
+  // `as TransactionEvent & {…}` intersections in consumer pages, now hoisted
+  // here so the canonical type matches the wire). The server emits these on
+  // every row from `GET /api/transactions`:
+  /** Effective date in ISO format — `effDateRaw` parsed into a date string. */
+  effectiveDate?: string;
+  /** Server-side row creation timestamp (ISO 8601). */
+  createdAt?: string;
+  /** Discriminated transaction kind: ADD / DROP / TRADE / IL_STASH / IL_ACTIVATE / etc. */
+  transactionType?: string;
 }
 
 export async function getTransactions(params?: { leagueId?: number; teamId?: number; skip?: number; take?: number }): Promise<{ transactions: TransactionEvent[], total: number }> {
