@@ -78,13 +78,13 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `auth` | routes | 5 pages, api | Login, signup, password reset, landing |
 | `leagues` | routes, rules-routes | api only | League CRUD, rules management (pages removed; API used by admin, commissioner, keeper-prep) |
 | `teams` | routes, teamService | 2 pages, 4 components, api | Team management, roster views |
-| `players` | routes, dataService | 1 page, 2 components, api | Player search, stats, detail modals |
+| `players` | routes, dataService | 1 page, 2 components, api | Player search/detail (`GET /api/players`, `GET /:mlbId`), per-player slot eligibility (`GET /:mlbId/eligible-slots` — rate-limited 60/min/user), fielding stats (`GET /:mlbId/fielding`), per-player news (`GET /:mlbId/news`), MLB transactions feed (`GET /news/transactions`). All endpoints require auth |
 | `roster` | routes, rosterImport-routes | 5 components | Roster grid, controls, import |
 | `standings` | routes, standingsService | api only | Standings computation (pages removed; StatsTables promoted to shared components) |
 | `trades` | routes | 1 page, 1 component, api | Trade proposals, voting |
 | `waivers` | routes | (minimal) | Legacy paired-row waiver-claim auto-engine (FAAB-style) — kept running; new owners use `wire-list` |
 | `wire-list` | routes, processor | 2 pages, 2 picker components, api | Two-list waiver model: ranked Add list + ranked Drop list per period. Commissioner-driven consume/free reducer (succeed/fail/skip/revert), atomic finalize, auto-lock at deadline, push notifications on outcomes. Owner UI at `/teams/:code/wire-list`, commissioner UI at `/commissioner/:leagueId/wire-list`. See `docs/decisions.md` ADR-012 |
-| `transactions` | routes | 1 page, api | Transaction history |
+| `transactions` | routes | 1 page, api | Transaction history (`GET /api/transactions`), claim/drop (`POST /transactions/{claim,drop}` + `/preview`), atomic IL stash and activate (`POST /transactions/{il-stash,il-activate}` + `/preview`), MLB status sync (`POST /transactions/sync-il-status`). All writes: requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
 | `auction` | routes, auctionImport | 2 pages, 14 components, 5 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace, settings, timer, sold visual) |
 | `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
 | `commissioner` | routes, CommissionerService | 1 page, 5 components | Commissioner admin tools |
