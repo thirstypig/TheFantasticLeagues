@@ -19,7 +19,19 @@ import { getAwardsForWeek } from "./services/awardsService.js";
 
 const router = Router();
 
-const WEEK_KEY_REGEX = /^\d{4}-W\d{2}$/;
+/**
+ * ISO weekKey regex tightened from `/^\d{4}-W\d{2}$/` (todo #179).
+ *
+ * Old regex accepted nonsense like `0000-W00` and `9999-W99` — the route
+ * fell through to compute and returned an empty result, so this is a
+ * semantic fix not a security fix, but it lets us reject malformed input
+ * at the seam instead of doing useless DB work for it.
+ *
+ * - Year:   `20[2-9]\d` covers 2020..2099. OGBA started ~2024; padding
+ *   forward 75 years is plenty given the app's lifecycle.
+ * - Week:   `0[1-9]|[1-4]\d|5[0-3]` is W01..W53 (ISO weeks max at 53).
+ */
+const WEEK_KEY_REGEX = /^(20[2-9]\d)-W(0[1-9]|[1-4]\d|5[0-3])$/;
 
 router.get(
   "/:leagueId/awards",

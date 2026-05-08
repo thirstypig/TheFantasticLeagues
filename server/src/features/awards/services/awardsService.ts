@@ -20,11 +20,13 @@ import { prisma } from "../../../db/prisma.js";
 // The persisted blob in `AiInsight.data.awards` conforms to the same shape.
 import {
   AwardsRankingsSchema,
+  type AwardsAvailableWeek,
   type AwardsRankings,
   type AwardsResponse,
   type CyYoungCandidate,
   type MvpCandidate,
 } from "../../../../../shared/api/awards.js";
+import { getWeekKey, weekKeyLabel } from "../../../lib/utils.js";
 
 // Re-export inferred types for back-compat with consumers that still import
 // these from the service module (digestService, route handlers, tests).
@@ -403,6 +405,34 @@ export function formatCyYoungForPrompt(rankings: AwardsRankings): string {
     .join("\n");
 }
 
+// ─── Available-weeks enumeration (todo #179) ─────────────────────────────
+//
+// Build the same shape `mlb-feed/digestRoutes.ts:23-43` returns from
+// `/league-digest/weeks`: one entry per persisted league_digest row, plus
+// a synthetic entry for the current week if it isn't already in the list.
+// Awards rankings are round-tripped from the same digest rows, so this is
+// the exact set of weeks an agent can ask `?weekKey=…` for and expect a
+// `source: "persisted"` response.
+
+function buildAvailableWeeks(
+  rows: { weekKey: string; createdAt: Date }[],
+): AwardsAvailableWeek[] {
+  const weeks: AwardsAvailableWeek[] = rows.map(r => ({
+    weekKey: r.weekKey,
+    label: weekKeyLabel(r.weekKey),
+    generatedAt: r.createdAt.toISOString(),
+  }));
+  const currentWeekKey = getWeekKey();
+  if (!weeks.some(w => w.weekKey === currentWeekKey)) {
+    weeks.push({
+      weekKey: currentWeekKey,
+      label: weekKeyLabel(currentWeekKey),
+      generatedAt: null,
+    });
+  }
+  return weeks;
+}
+
 // ─── Cache layer (todo #119) ───────────────────────────────────────────────
 //
 // Awards rankings change only when player stats change — and stats change
@@ -473,12 +503,30 @@ export async function getAwardsForWeek(
   if (cached?.pending) return cached.pending;
 
   const pending = (async (): Promise<AwardsResponse> => {
-    // 1. Persisted snapshot — digest write path stores the full rankings
-    //    envelope under data.awards (pre-#115 rows lack the field).
-    const persisted = await prisma.aiInsight.findFirst({
-      where: { type: "league_digest", leagueId, weekKey },
-      select: { data: true, createdAt: true },
-    });
+    // Fan out the persisted-week lookup with the targeted findFirst so the
+    // `availableWeeks` enumeration (todo #179) doesn't add a second
+    // serialized round-trip under `connection_limit=1`. Mirrors the
+    // canonical pattern in `mlb-feed/digestRoutes.ts:23-43`.
+    const [persisted, weekRows] = await Promise.all([
+      // 1. Persisted snapshot — digest write path stores the full rankings
+      //    envelope under data.awards (pre-#115 rows lack the field).
+      prisma.aiInsight.findFirst({
+        where: { type: "league_digest", leagueId, weekKey },
+        select: { data: true, createdAt: true },
+      }),
+      // 2. All persisted digest weeks for this league (todo #179) — the
+      //    same shape `/league-digest/weeks` returns. Awards is round-
+      //    tripped from the same `AiInsight(type=league_digest)` rows, so
+      //    the enumeration is identical.
+      prisma.aiInsight.findMany({
+        where: { type: "league_digest", leagueId },
+        select: { weekKey: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
+
+    const availableWeeks = buildAvailableWeeks(weekRows);
+
     if (persisted?.data && typeof persisted.data === "object") {
       const parsed = AwardsRankingsSchema.safeParse(
         (persisted.data as Record<string, unknown>).awards,
@@ -488,13 +536,14 @@ export async function getAwardsForWeek(
           ...parsed.data,
           source: "persisted",
           digestGeneratedAt: persisted.createdAt.toISOString(),
+          availableWeeks,
         };
       }
     }
-    // 2. Compute fallback — covers pre-#115 digests, malformed blobs, and
-    //    ad-hoc queries for weeks that never had a digest run.
+    // Compute fallback — covers pre-#115 digests, malformed blobs, and
+    // ad-hoc queries for weeks that never had a digest run.
     const rankings = await computeAwardsRankings(leagueId, weekKey);
-    return { ...rankings, source: "computed" };
+    return { ...rankings, source: "computed", availableWeeks };
   })();
 
   awardsCache.set(key, { data: cached?.data, expiry: 0, pending });

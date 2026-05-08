@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "179"
 tags: [code-review, simplicity, awards]
@@ -78,3 +78,19 @@ Option 1.
 ### 2026-05-07 — Carve-out
 - Original todo #148 conflated three independent items across two
   feature modules. Awards split here so it can be picked up cleanly.
+
+### 2026-05-07 — Shipped (Option 1)
+- `WEEK_KEY_REGEX` tightened to `/^(20[2-9]\d)-W(0[1-9]|[1-4]\d|5[0-3])$/`
+  in `server/src/features/awards/routes.ts`. Rejects pre-2020 / post-2099
+  years and W00 / W54+ at the seam.
+- `AwardsResponseSchema` extended with `availableWeeks: AwardsAvailableWeek[]`
+  in `shared/api/awards.ts`. Both branches of the discriminated union carry
+  it. Shape mirrors `/league-digest/weeks` — `{ weekKey, label, generatedAt }`.
+- `awardsService.getAwardsForWeek()` now does a single `Promise.all`
+  fan-out so the persisted-week enumeration doesn't add a second
+  serialized round-trip under `connection_limit=1`. New
+  `buildAvailableWeeks()` helper appends a synthetic current-week entry
+  when no digest exists for it (mirrors `digestRoutes.ts:23-43`).
+- `__tests__/routes.test.ts` extended with 14 new tests (10 regex
+  reject/accept matrix + 4 availableWeeks behaviors). 35/35 pass.
+- Server tsc clean (modulo phantom zod errors on `shared/api/*.ts`).

@@ -170,6 +170,25 @@ export const AwardsRankingsSchema = z
   })
   .strict();
 
+// ─── Available weeks (todo #179) ─────────────────────────────────
+
+/**
+ * One entry in the `availableWeeks` enumeration on the awards response.
+ * Mirrors the shape `mlb-feed/digestRoutes.ts` already exposes for
+ * `/league-digest/weeks` so consumers see one consistent vocabulary.
+ *
+ * `generatedAt` is the digest row's createdAt (when a persisted snapshot
+ * exists) or `null` for the synthetic current-week entry that we always
+ * append even when no digest has run yet.
+ */
+export const AwardsAvailableWeekSchema = z
+  .object({
+    weekKey: z.string(),
+    label: z.string(),
+    generatedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+
 // ─── Wire envelope ───────────────────────────────────────────────
 
 /**
@@ -184,6 +203,11 @@ export const AwardsRankingsSchema = z
  *   schema validation, in which case we re-compute defensively). No
  *   `digestGeneratedAt` because there is no digest row.
  *
+ * Both branches carry `availableWeeks` (todo #179): the list of weekKeys
+ * that have a persisted snapshot, plus the current week (synthetic). One
+ * call answers both "this week's awards" and "what other weeks can I
+ * ask for?" — saves a round-trip vs a separate sub-route.
+ *
  * Forcing the discriminator at the schema layer means consumers must handle
  * both branches at compile time — they can't accidentally `.digestGeneratedAt`
  * a freshly computed payload and get `undefined`.
@@ -192,9 +216,11 @@ export const AwardsResponseSchema = z.discriminatedUnion("source", [
   AwardsRankingsSchema.extend({
     source: z.literal("persisted"),
     digestGeneratedAt: z.string().datetime(),
+    availableWeeks: z.array(AwardsAvailableWeekSchema),
   }),
   AwardsRankingsSchema.extend({
     source: z.literal("computed"),
+    availableWeeks: z.array(AwardsAvailableWeekSchema),
   }),
 ]);
 
@@ -210,3 +236,4 @@ export type CyYoungCandidate = z.infer<typeof CyYoungCandidateSchema>;
 
 export type AwardsRankings = z.infer<typeof AwardsRankingsSchema>;
 export type AwardsResponse = z.infer<typeof AwardsResponseSchema>;
+export type AwardsAvailableWeek = z.infer<typeof AwardsAvailableWeekSchema>;
