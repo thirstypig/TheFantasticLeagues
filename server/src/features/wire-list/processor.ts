@@ -202,10 +202,13 @@ router.post(
         }
 
         // Re-load succeeded adds INSIDE the tx (snapshot consistency).
+        // `consumedDrop.player` is included so the per-iteration body never
+        // needs to re-fetch the dropped player's name (previously a
+        // redundant `tx.player.findUnique` per loop — todo #160).
         const succeededAdds = await tx.waiverAddEntry.findMany({
           where: { periodId, outcome: "SUCCEEDED" },
           include: {
-            consumedDrop: true,
+            consumedDrop: { include: { player: { select: { name: true } } } },
             player: { select: { id: true, name: true, posPrimary: true, posList: true } },
           },
           orderBy: [{ teamId: "asc" }, { priority: "asc" }],
@@ -246,25 +249,59 @@ router.post(
           throw err;
         }
 
+        // ─── Batch I/O setup (todo #160) ─────────────────────────────
+        // Preload every drop roster row in ONE query, keyed by
+        // (teamId, playerId). Replaces N per-iteration findFirst calls.
+        const succeededWithDrop = succeededAdds.filter((a) => a.consumedDrop);
+        const dropRosters = succeededWithDrop.length === 0
+          ? []
+          : await tx.roster.findMany({
+              where: {
+                releasedAt: null,
+                OR: succeededWithDrop.map((a) => ({
+                  teamId: a.teamId,
+                  playerId: a.consumedDrop!.playerId,
+                })),
+              },
+              select: { id: true, teamId: true, playerId: true, assignedPosition: true },
+            });
+        const dropRosterByKey = new Map(
+          dropRosters.map((r) => [`${r.teamId}-${r.playerId}`, r]),
+        );
+
+        // Accumulators for end-of-loop batched writes.
+        const eventRows: Array<{
+          rowHash: string;
+          leagueId: number;
+          season: number;
+          effDate: Date;
+          submittedAt: Date;
+          teamId: number;
+          playerId: number;
+          transactionRaw: string;
+          transactionType: string;
+        }> = [];
+        const processedAddIds: number[] = [];
+        const processedDropIds: number[] = [];
+
         let dropsConsumed = 0;
+        const now = new Date();
         for (const add of succeededAdds) {
           if (!add.consumedDrop) continue;
           const drop = add.consumedDrop;
 
-          // Capture the dropped player's slot BEFORE releasing — needed for
-          // position-inherit on the added player.
-          const dropRoster = await tx.roster.findFirst({
-            where: { teamId: add.teamId, playerId: drop.playerId, releasedAt: null },
-            select: { id: true, assignedPosition: true },
-          });
+          const dropRoster = dropRosterByKey.get(`${add.teamId}-${drop.playerId}`);
+          if (!dropRoster) {
+            const err: FinalizeError = { code: "DROP_NOT_ON_ROSTER", addId: add.id, playerId: drop.playerId };
+            throw err;
+          }
 
-          // Atomic release with count assertion (todo #156): if the
-          // drop player was moved off this roster between blocker pass
-          // and now (impossible inside the same tx unless a parallel
-          // raw-SQL writer exists, but the assertion is cheap and
-          // guards against future regressions), throw and roll back.
+          // Atomic release with count assertion (todo #156): scope on
+          // the preloaded id AND releasedAt: null — preserves the
+          // exactly-one-row guarantee even if a parallel writer raced
+          // us between preload and now.
           const released = await tx.roster.updateMany({
-            where: { teamId: add.teamId, playerId: drop.playerId, releasedAt: null },
+            where: { id: dropRoster.id, releasedAt: null },
             data: {
               releasedAt: effective,
               source: drop.dropMode === "IL_STASH" ? "WIRE_LIST_IL_STASH" : "WIRE_LIST_DROP",
@@ -275,65 +312,74 @@ router.post(
             throw err;
           }
 
-        // Position-inherit (matches legacy waivers/routes.ts convention):
-        // under ENFORCE, take the drop's slot when it isn't IL; otherwise
-        // primary-position fallback.
-        const inherited = dropRoster?.assignedPosition && dropRoster.assignedPosition !== "IL"
-          ? dropRoster.assignedPosition
-          : null;
-        const primary = (add.player.posPrimary ?? "UT").toUpperCase();
-        const fallback = PITCHER_POS.has(primary) ? "P" : primary;
-        const assignedPos = enforceRosterRules() && inherited ? inherited : fallback;
+          // Position-inherit (matches legacy waivers/routes.ts convention):
+          // under ENFORCE, take the drop's slot when it isn't IL; otherwise
+          // primary-position fallback.
+          const inherited = dropRoster.assignedPosition && dropRoster.assignedPosition !== "IL"
+            ? dropRoster.assignedPosition
+            : null;
+          const primary = (add.player.posPrimary ?? "UT").toUpperCase();
+          const fallback = PITCHER_POS.has(primary) ? "P" : primary;
+          const assignedPos = enforceRosterRules() && inherited ? inherited : fallback;
 
-        await tx.roster.create({
-          data: {
-            teamId: add.teamId,
-            playerId: add.playerId,
-            source: "WIRE_LIST",
-            price: 0,
-            acquiredAt: effective,
-            assignedPosition: assignedPos,
-          },
-        });
+          await tx.roster.create({
+            data: {
+              teamId: add.teamId,
+              playerId: add.playerId,
+              source: "WIRE_LIST",
+              price: 0,
+              acquiredAt: effective,
+              assignedPosition: assignedPos,
+            },
+          });
 
-        await tx.transactionEvent.create({
-          data: {
+          // Accumulate transaction events; flushed via createMany after
+          // the loop. Uses consumedDrop.player.name (preloaded) instead
+          // of a per-iteration tx.player.findUnique (todo #160).
+          eventRows.push({
             rowHash: `WIRE-LIST-ADD-${crypto.randomUUID()}-${add.playerId}`,
             leagueId: period.leagueId,
             season: seasonYear,
             effDate: effective,
-            submittedAt: new Date(),
+            submittedAt: now,
             teamId: add.teamId,
             playerId: add.playerId,
             transactionRaw: `Wire List: added ${add.player.name}`,
             transactionType: "ADD",
-          },
-        });
-        const dropPlayer = await tx.player.findUnique({ where: { id: drop.playerId }, select: { name: true } });
-        await tx.transactionEvent.create({
-          data: {
+          });
+          eventRows.push({
             rowHash: `WIRE-LIST-DROP-${crypto.randomUUID()}-${drop.playerId}`,
             leagueId: period.leagueId,
             season: seasonYear,
             effDate: effective,
-            submittedAt: new Date(),
+            submittedAt: now,
             teamId: add.teamId,
             playerId: drop.playerId,
-            transactionRaw: `Wire List: ${drop.dropMode === "IL_STASH" ? "IL-stashed" : "released"} ${dropPlayer?.name ?? `#${drop.playerId}`}`,
+            transactionRaw: `Wire List: ${drop.dropMode === "IL_STASH" ? "IL-stashed" : "released"} ${drop.player?.name ?? `#${drop.playerId}`}`,
             transactionType: "DROP",
-          },
-        });
+          });
 
-        await tx.waiverAddEntry.update({
-          where: { id: add.id },
-          data: { processedAt: new Date() },
-        });
-        await tx.waiverDropEntry.update({
-          where: { id: drop.id },
-          data: { processedAt: new Date() },
-        });
-        dropsConsumed++;
-      }
+          processedAddIds.push(add.id);
+          processedDropIds.push(drop.id);
+          dropsConsumed++;
+        }
+
+        // ─── Batched flush (todo #160) ───────────────────────────────
+        if (eventRows.length > 0) {
+          await tx.transactionEvent.createMany({ data: eventRows });
+        }
+        if (processedAddIds.length > 0) {
+          await tx.waiverAddEntry.updateMany({
+            where: { id: { in: processedAddIds } },
+            data: { processedAt: now },
+          });
+        }
+        if (processedDropIds.length > 0) {
+          await tx.waiverDropEntry.updateMany({
+            where: { id: { in: processedDropIds } },
+            data: { processedAt: now },
+          });
+        }
 
       const unusedDrops = await tx.waiverDropEntry.updateMany({
         where: { periodId, status: "PENDING" },
