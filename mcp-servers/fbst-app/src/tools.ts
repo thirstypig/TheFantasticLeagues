@@ -13,7 +13,7 @@ import {
   CreateAddEntryBodySchema,
   CreateDropEntryBodySchema,
   ReorderEntriesBodySchema,
-  RecordOutcomeBodySchema,
+  FailOutcomeBodySchema,
 } from "../../../shared/api/wireList.js";
 import { FbstApiClient, formatError } from "./apiClient.js";
 
@@ -101,17 +101,15 @@ export function registerWireListTools(server: McpServer, client: FbstApiClient):
 
   server.tool(
     "wire_list_create_add",
-    "Submit a new Add entry to a team's wire-list claim queue. Optional priority defaults to next-highest.",
+    "Submit a new Add entry to a team's wire-list claim queue. Priority is server-assigned (next available).",
     {
       periodId: z.number().int().positive().describe("Period ID"),
       teamId: CreateAddEntryBodySchema.shape.teamId.describe("Owning team ID"),
       playerId: CreateAddEntryBodySchema.shape.playerId.describe("Target Player.id (DB row id, not MLB id)"),
-      priority: CreateAddEntryBodySchema.shape.priority.describe("Optional explicit priority (1 = highest)"),
     },
-    async ({ periodId, teamId, playerId, priority }) => {
+    async ({ periodId, teamId, playerId }) => {
       try {
         const body: Record<string, unknown> = { teamId, playerId };
-        if (priority !== undefined) body.priority = priority;
         const data = await client.request("POST", `/api/wire-list/periods/${periodId}/adds`, { body });
         return ok(data);
       } catch (err) {
@@ -128,13 +126,11 @@ export function registerWireListTools(server: McpServer, client: FbstApiClient):
       teamId: CreateDropEntryBodySchema.shape.teamId.describe("Owning team ID"),
       playerId: CreateDropEntryBodySchema.shape.playerId.describe("Player.id to drop"),
       dropMode: CreateDropEntryBodySchema.shape.dropMode.describe('"RELEASE" or "IL_STASH"'),
-      priority: CreateDropEntryBodySchema.shape.priority.describe("Optional explicit priority"),
     },
-    async ({ periodId, teamId, playerId, dropMode, priority }) => {
+    async ({ periodId, teamId, playerId, dropMode }) => {
       try {
         const body: Record<string, unknown> = { teamId, playerId };
         if (dropMode !== undefined) body.dropMode = dropMode;
-        if (priority !== undefined) body.priority = priority;
         const data = await client.request("POST", `/api/wire-list/periods/${periodId}/drops`, { body });
         return ok(data);
       } catch (err) {
@@ -201,12 +197,11 @@ export function registerWireListTools(server: McpServer, client: FbstApiClient):
     "Commissioner action: mark an Add entry FAILED with a stable, audit-logged reason.",
     {
       addEntryId: z.number().int().positive().describe("WaiverAddEntry ID"),
-      reason: RecordOutcomeBodySchema.shape.reason.describe("Free-form reason (1–280 chars). Optional but recommended."),
+      reason: FailOutcomeBodySchema.shape.reason.describe("Free-form reason (1–280 chars). Required."),
     },
     async ({ addEntryId, reason }) => {
       try {
-        const body: Record<string, unknown> = {};
-        if (reason !== undefined) body.reason = reason;
+        const body: Record<string, unknown> = { reason };
         const data = await client.request("POST", `/api/wire-list/adds/${addEntryId}/fail`, { body });
         return ok(data);
       } catch (err) {
