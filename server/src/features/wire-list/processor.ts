@@ -22,16 +22,58 @@ import { prisma } from "../../db/prisma.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
-import { writeAuditLog } from "../../lib/auditLog.js";
+import { writeAuditLogAwait, type AuditLogParams } from "../../lib/auditLog.js";
+import * as errorBuffer from "../../lib/errorBuffer.js";
 import { nextDayEffective } from "../../lib/utils.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import { sendPushToUser } from "../../lib/pushService.js";
 import { logger } from "../../lib/logger.js";
-import { RecordOutcomeBodySchema } from "../../../../shared/api/wireList.js";
+import { FailOutcomeBodySchema, SkipOutcomeBodySchema } from "../../../../shared/api/wireList.js";
 
 const router = Router();
+
+// ─── Audit log helper (todo #165) ────────────────────────────────────
+//
+// Wire-list state-changing endpoints (lock, finalize, succeed, fail,
+// skip, revert) MUST await audit-log writes so a transient DB failure
+// surfaces as a structured log line — not a silent gap in the audit
+// trail. The underlying mutation has already committed by the time
+// this runs, so we never propagate the failure as a 5xx; the response
+// stays 200 and the failure is captured server-side.
+//
+// /finalize additionally pushes the failure into the admin errorBuffer
+// (visible via /api/admin/errors) because the mutation is irreversible
+// and zero-loss visibility matters most there.
+async function safeWriteAuditLog(
+  params: AuditLogParams,
+  opts?: { req?: import("express").Request; pushToErrorBuffer?: boolean },
+): Promise<void> {
+  try {
+    await writeAuditLogAwait(params);
+  } catch (err) {
+    const requestId = (opts?.req as { requestId?: string } | undefined)?.requestId ?? "unknown";
+    logger.error(
+      { error: String(err), audit: params, requestId },
+      "wire-list: failed to write audit log",
+    );
+    if (opts?.pushToErrorBuffer) {
+      errorBuffer.push({
+        ref: `ERR-${requestId}`,
+        requestId,
+        message: `Audit log write failed for ${params.action} (resourceId=${params.resourceId ?? "?"}): ${String(err)}`,
+        stack: err instanceof Error ? (err.stack ?? null) : null,
+        path: opts?.req?.path ?? "(unknown)",
+        method: opts?.req?.method ?? "(unknown)",
+        userId: opts?.req?.user?.id ?? null,
+        userEmail: (opts?.req?.user as { email?: string | null } | undefined)?.email ?? null,
+        statusCode: 200,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+}
 
 // ─── Authorization helper ────────────────────────────────────────────
 
@@ -117,12 +159,15 @@ router.post(
       where: { id: periodId },
       data: { status: "LOCKED", lockedAt: new Date() },
     });
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "WIRE_LIST_PERIOD_LOCK",
-      resourceType: "WaiverPeriod",
-      resourceId: periodId,
-    });
+    await safeWriteAuditLog(
+      {
+        userId: req.user!.id,
+        action: "WIRE_LIST_PERIOD_LOCK",
+        resourceType: "WaiverPeriod",
+        resourceId: periodId,
+      },
+      { req },
+    );
     res.json(updated);
   }),
 );
@@ -445,13 +490,18 @@ router.post(
       throw err;
     }
 
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "WIRE_LIST_PERIOD_FINALIZE",
-      resourceType: "WaiverPeriod",
-      resourceId: periodId,
-      metadata: { addsApplied: summary.addsApplied, dropsConsumed: summary.dropsConsumed, dropsUnused: summary.dropsUnused },
-    });
+    await safeWriteAuditLog(
+      {
+        userId: req.user!.id,
+        action: "WIRE_LIST_PERIOD_FINALIZE",
+        resourceType: "WaiverPeriod",
+        resourceId: periodId,
+        metadata: { addsApplied: summary.addsApplied, dropsConsumed: summary.dropsConsumed, dropsUnused: summary.dropsUnused },
+      },
+      // /finalize is irreversible — push failures to admin errorBuffer
+      // for zero-loss visibility (todo #165 recommended action).
+      { req, pushToErrorBuffer: true },
+    );
 
     // Fire-and-forget: push notifications to each team owner with their
     // outcome summary. Aggregate per-team so a team owner sees one push,
@@ -718,13 +768,16 @@ router.post(
       throw err;
     }
 
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "WIRE_LIST_ADD_SUCCEED",
-      resourceType: "WaiverAddEntry",
-      resourceId: id,
-      metadata: { consumedDropEntryId },
-    });
+    await safeWriteAuditLog(
+      {
+        userId: req.user!.id,
+        action: "WIRE_LIST_ADD_SUCCEED",
+        resourceType: "WaiverAddEntry",
+        resourceId: id,
+        metadata: { consumedDropEntryId },
+      },
+      { req },
+    );
 
     res.json(updated);
   }),
@@ -734,10 +787,10 @@ router.post(
 router.post(
   "/adds/:id/fail",
   requireAuth,
-  validateBody(RecordOutcomeBodySchema),
+  validateBody(FailOutcomeBodySchema),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
-    const { reason } = req.body as { reason?: string };
+    const { reason } = req.body as { reason: string };
     const entry = await loadAddEntryAsCommissioner(req, res, id);
     if (!entry) return;
 
@@ -752,13 +805,16 @@ router.post(
       where: { id },
       data: { outcome: "FAILED", reason: reason ?? null },
     });
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "WIRE_LIST_ADD_FAIL",
-      resourceType: "WaiverAddEntry",
-      resourceId: id,
-      metadata: { reason },
-    });
+    await safeWriteAuditLog(
+      {
+        userId: req.user!.id,
+        action: "WIRE_LIST_ADD_FAIL",
+        resourceType: "WaiverAddEntry",
+        resourceId: id,
+        metadata: { reason },
+      },
+      { req },
+    );
     res.json(updated);
   }),
 );
@@ -767,7 +823,7 @@ router.post(
 router.post(
   "/adds/:id/skip",
   requireAuth,
-  validateBody(RecordOutcomeBodySchema),
+  validateBody(SkipOutcomeBodySchema),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const { reason } = req.body as { reason?: string };
@@ -785,13 +841,16 @@ router.post(
       where: { id },
       data: { outcome: "SKIPPED", reason: reason ?? null },
     });
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "WIRE_LIST_ADD_SKIP",
-      resourceType: "WaiverAddEntry",
-      resourceId: id,
-      metadata: { reason },
-    });
+    await safeWriteAuditLog(
+      {
+        userId: req.user!.id,
+        action: "WIRE_LIST_ADD_SKIP",
+        resourceType: "WaiverAddEntry",
+        resourceId: id,
+        metadata: { reason },
+      },
+      { req },
+    );
     res.json(updated);
   }),
 );
@@ -858,13 +917,16 @@ router.post(
       throw err;
     }
 
-    writeAuditLog({
-      userId: req.user!.id,
-      action: "WIRE_LIST_ADD_REVERT",
-      resourceType: "WaiverAddEntry",
-      resourceId: id,
-      metadata: { fromOutcome: entry.outcome, freedDropEntryId: entry.consumedDropEntryId },
-    });
+    await safeWriteAuditLog(
+      {
+        userId: req.user!.id,
+        action: "WIRE_LIST_ADD_REVERT",
+        resourceType: "WaiverAddEntry",
+        resourceId: id,
+        metadata: { fromOutcome: entry.outcome, freedDropEntryId: entry.consumedDropEntryId },
+      },
+      { req },
+    );
 
     res.json(updated);
   }),

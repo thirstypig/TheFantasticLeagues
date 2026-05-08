@@ -4,6 +4,7 @@ import { requireAuth } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { prisma } from "../../db/prisma.js";
+import { Prisma } from "@prisma/client";
 import type { PlayerSeasonStatsResponse } from "../../../../shared/api/playerSeasonStats.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../lib/mlbTeams.js";
 import { mlbGetJson } from "../../lib/mlbApi.js";
@@ -427,29 +428,66 @@ router.get("/:mlbId/news", requireAuth, asyncHandler(async (req, res) => {
 
 const dataRouter = Router();
 
-/** GET /api/player-season-stats?leagueId=N */
+/**
+ * GET /api/player-season-stats?leagueId=N[&freeAgentsOnly=true&q=&take=50]
+ *
+ * Query params (todo #164):
+ * - `freeAgentsOnly=true` — server-side filter: exclude any player on
+ *   an active roster in this league. Wire-list AddPicker uses this to
+ *   stop ferrying 600 rows on every open just to throw away ~550 of
+ *   them client-side. Default behavior unchanged when omitted.
+ * - `q` — case-insensitive substring on `Player.name`. Pushed into the
+ *   Prisma where clause so the response stays small even before
+ *   `take` clamps. Empty string is treated as no filter.
+ * - `take` — clamp the response size (default unbounded; common pickers
+ *   pass 50; defensively clamped to 200).
+ */
 dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId || !Number.isFinite(leagueId) || leagueId <= 0) {
     return res.status(400).json({ error: "Missing or invalid leagueId" });
   }
 
-  // Get real players from DB (exclude filler/test players at query level)
-  const allPlayers = await prisma.player.findMany({
-    where: {
-      OR: [
-        { mlbId: null },
-        { mlbId: { lt: 900000 } },
-      ],
-      NOT: { name: { startsWith: "Filler Hitter" } },
-    },
-    select: { id: true, mlbId: true, name: true, posPrimary: true, posList: true, mlbTeam: true },
-  });
+  const freeAgentsOnly = String(req.query.freeAgentsOnly ?? "") === "true";
+  const rawQ = String(req.query.q ?? "").trim();
+  const q = rawQ.length > 0 ? rawQ : null;
+  const rawTake = req.query.take != null ? Number(req.query.take) : null;
+  // Clamp to a sensible ceiling — we don't want the picker to start
+  // fetching the whole league back if a caller sends `take=10000`.
+  const take = rawTake && Number.isFinite(rawTake) && rawTake > 0
+    ? Math.min(Math.floor(rawTake), 200)
+    : null;
 
-  // Get active rosters for this league
+  // Get active rosters for this league. We need this regardless: when
+  // `freeAgentsOnly=true` we use it to push down a `notIn` filter; when
+  // false we use it to enrich the response with team-code/team-name.
   const rosters = await prisma.roster.findMany({
     where: { team: { leagueId }, releasedAt: null },
     include: { team: true },
+  });
+  const rosteredPlayerIds = rosters.map((r) => r.playerId);
+
+  // Build the player where clause. Filter pushdown for FA-only callers
+  // (todo #164) avoids loading ~600 rows into memory just to drop ~550.
+  const playerWhere: Prisma.PlayerWhereInput = {
+    OR: [
+      { mlbId: null },
+      { mlbId: { lt: 900000 } },
+    ],
+    NOT: { name: { startsWith: "Filler Hitter" } },
+    ...(freeAgentsOnly && rosteredPlayerIds.length > 0
+      ? { id: { notIn: rosteredPlayerIds } }
+      : {}),
+    ...(q
+      ? { name: { contains: q, mode: "insensitive" as const } }
+      : {}),
+  };
+
+  // Get real players from DB (exclude filler/test players at query level)
+  const allPlayers = await prisma.player.findMany({
+    where: playerWhere,
+    select: { id: true, mlbId: true, name: true, posPrimary: true, posList: true, mlbTeam: true },
+    ...(take ? { take } : {}),
   });
 
   const rosterMap = new Map<number, { teamCode: string; teamName: string; price: number }>();

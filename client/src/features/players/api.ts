@@ -147,6 +147,36 @@ export async function getPlayerSeasonStats(leagueId?: number): Promise<PlayerSea
   return (await getPlayerSeasonStatsMeta(leagueId)).stats;
 }
 
+/**
+ * Wire-list AddPicker — server-side FA filter pushdown (todo #164).
+ *
+ * Stops AddPicker from pulling the full ~600-row league season-stats
+ * payload just to throw away the rostered ~550. The `freeAgentsOnly=true`
+ * flag pushes the rostered-player exclusion into the Prisma query, and
+ * `q` runs as a case-insensitive ILIKE on `Player.name` so a typed
+ * search clamps the response before `take` does.
+ *
+ * NOT cached at this layer — the picker manages its own per-(leagueId, q)
+ * memoization and debounce so each keystroke doesn't open a fresh round
+ * trip but a re-opened picker with the same query reuses the in-flight
+ * promise.
+ */
+export async function getFreeAgentsForWireList(
+  leagueId: number,
+  opts?: { q?: string; take?: number },
+): Promise<PlayerSeasonStat[]> {
+  const params = new URLSearchParams({
+    leagueId: String(leagueId),
+    freeAgentsOnly: "true",
+  });
+  if (opts?.q) params.set("q", opts.q);
+  if (opts?.take) params.set("take", String(opts.take));
+  const url = `${API_BASE}/player-season-stats?${params.toString()}`;
+  const resp = await fetchJsonApi<{ stats: Record<string, any>[]; computedAt?: string }>(url); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const raw = resp?.stats ?? [];
+  return dedupeByRowId(raw.map(normalizeTwoWayRow), "season");
+}
+
 export async function getPlayerPeriodStatsMeta(leagueId?: number): Promise<PeriodStatsCached> {
   const key = leagueId ?? 1;
   if (!_periodStatsCache.has(key)) {
