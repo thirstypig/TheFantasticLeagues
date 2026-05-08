@@ -525,11 +525,6 @@ export default function ActivityPage() {
         </>
       )}
 
-      {/* Footer escape link */}
-      <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "var(--am-text-faint)" }}>
-        Need the original layout? <Link to="/activity-classic" style={{ color: "var(--am-text-muted)", textDecoration: "underline" }}>View classic Activity →</Link>
-      </div>
-
       {/* Trade Context Modal */}
       {contextTrade && (
         <div

@@ -3,23 +3,19 @@ import React, { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AuroraShell from "./components/aurora/AuroraShell";
-const ActivityPageLegacy = React.lazy(() => import("./features/transactions/pages/ActivityPageLegacy"));
 const InjuredListPage = React.lazy(() => import("./features/players/pages/InjuredListPage"));
 const AuctionLegacy = React.lazy(() => import("./features/auction/pages/AuctionLegacy"));
 
 // Core routes — static imports (high-traffic, always needed)
 import Home from "./pages/Home";
-import HomeLegacy from "./pages/HomeLegacy";
 import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
-import SeasonLegacy from "./features/periods/pages/SeasonLegacy";
 import Team from "./features/teams/pages/Team";
 import WireListOwnerPage from "./features/wire-list/pages/WireListOwnerPage";
 import WireListCommissionerPage from "./features/wire-list/pages/WireListCommissionerPage";
 import TeamLegacy from "./features/teams/pages/TeamLegacy";
 import TeamsIndex from "./features/teams/pages/TeamsIndex";
 import Players from "./features/players/pages/Players";
-import PlayersLegacy from "./features/players/pages/PlayersLegacy";
 import PlayerDetail from "./features/players/pages/PlayerDetail";
 import ActivityPage from "./features/transactions/pages/ActivityPage";
 import Login from "./features/auth/pages/Login";
@@ -33,9 +29,7 @@ const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
 const Auction = React.lazy(() => import("./features/auction/pages/Auction"));
 const AuctionResults = React.lazy(() => import("./features/auction/pages/AuctionResults"));
-const AuctionResultsLegacy = React.lazy(() => import("./features/auction/pages/AuctionResultsLegacy"));
 const AuctionValues = React.lazy(() => import("./features/auction/pages/AuctionValues"));
-const AuctionValuesLegacy = React.lazy(() => import("./features/auction/pages/AuctionValuesLegacy"));
 const KeeperSelection = React.lazy(() => import("./features/keeper-prep/pages/KeeperSelection"));
 const Rules = React.lazy(() => import("./features/leagues/pages/Rules"));
 const Profile = React.lazy(() => import("./features/auth/pages/Profile"));
@@ -63,7 +57,6 @@ const JoinLeague = React.lazy(() => import("./features/leagues/pages/JoinLeague"
 const DiscoverLeagues = React.lazy(() => import("./features/leagues/pages/DiscoverLeagues"));
 const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
 const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));
-const MatchupLegacy = React.lazy(() => import("./features/matchups/pages/MatchupLegacy"));
 const TradingBlockPage = React.lazy(() => import("./features/trading-block/pages/TradingBlockPage"));
 const BoardPage = React.lazy(() => import("./features/board/pages/BoardPage"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
@@ -149,17 +142,7 @@ export default function App() {
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Home />} />
-                    {/* Pre-Aurora Home preserved for side-by-side comparison
-                        during the PR #135 pilot. Remove once Aurora is fully
-                        rolled out (or when the legacy features — digest,
-                        scores, news, depth charts — are ported into Aurora). */}
-                    <Route path="/home-classic" element={<HomeLegacy />} />
                     <Route path="/season" element={<Season />} />
-                    {/* Pre-Aurora Standings preserved for users who need
-                        Period Detail / H2H Matchups views (PR #138 pilot
-                        ports the matrix only). Remove once those views are
-                        ported into Aurora. */}
-                    <Route path="/season-classic" element={<SeasonLegacy />} />
                     {/* Teams index — Explore section's "Teams" entry per
                         the Sitemap & Navigation design. Lists all teams in
                         the active league with cards linking to the existing
@@ -189,9 +172,6 @@ export default function App() {
                         shortcut (PR #132) and external bookmarks both land here. */}
                     <Route path="/my-team" element={<MyTeamRedirect />} />
                     <Route path="/players" element={<Players />} />
-                    {/* Pre-Aurora Players preserved for any feature that
-                        the Aurora pilot doesn't port yet (PR #141). */}
-                    <Route path="/players-classic" element={<PlayersLegacy />} />
                     {/* Aurora Player Detail page (screen #5). PlayerDetailModal
                         still ships for inline use elsewhere (Auction, Team,
                         Trading Block, Watchlist, Board, Draft Report). */}
@@ -199,11 +179,6 @@ export default function App() {
                     {/* League-wide IL page — sortable by AL/NL + by team. Linked from Standings hero. */}
                     <Route path="/injured-list" element={<InjuredListPage />} />
                     <Route path="/activity" element={<ActivityPage />} />
-                    {/* Aurora Activity (post-shell rollout). Legacy preserved
-                        for any feature the Aurora pilot doesn't deep-port yet
-                        (legacy ActivityWaiversTab / RosterMovesTab still
-                        embedded inside Aurora wrapper). */}
-                    <Route path="/activity-classic" element={<ActivityPageLegacy />} />
                     <Route path="/transactions" element={<Navigate to="/activity" replace />} />
                     <Route path="/trades" element={<Navigate to="/activity" replace />} />
                     <Route path="/trading-block" element={<Navigate to="/board" replace />} />
@@ -215,20 +190,9 @@ export default function App() {
                         if the Aurora live floor regresses mid-draft. */}
                     <Route path="/auction-classic" element={<ErrorBoundary name="auction-classic"><AuctionLegacy /></ErrorBoundary>} />
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
-                    {/* Aurora Auction Results (PR-2a of auction module split).
-                        Legacy preserved at /auction-results-classic. */}
-                    <Route path="/auction-results-classic" element={<ErrorBoundary name="auction-results-classic"><AuctionResultsLegacy /></ErrorBoundary>} />
-                    {/* Aurora Auction Values (PR-1 of auction module split).
-                        Page existed in the codebase but was orphan (no route);
-                        Aurora rollout restores reachability. Legacy preserved
-                        at /auction-values-classic. */}
                     <Route path="/auction-values" element={<AuctionValues />} />
-                    <Route path="/auction-values-classic" element={<AuctionValuesLegacy />} />
                     <Route path="/draft" element={<ErrorBoundary name="draft"><Draft /></ErrorBoundary>} />
                     <Route path="/matchup" element={<MatchupPage />} />
-                    {/* Pre-Aurora Matchup preserved for any feature the
-                        Aurora pilot doesn't port yet (Aurora screen #6). */}
-                    <Route path="/matchup-classic" element={<MatchupLegacy />} />
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
