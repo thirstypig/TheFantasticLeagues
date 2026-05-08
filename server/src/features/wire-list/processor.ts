@@ -966,12 +966,23 @@ router.get(
       }),
     ]);
 
-    const teamIds = Array.from(new Set([...adds.map((a) => a.teamId), ...drops.map((d) => d.teamId)])).sort((a, b) => a - b);
-    const byTeam = teamIds.map((teamId) => ({
-      teamId,
-      adds: adds.filter((a) => a.teamId === teamId),
-      drops: drops.filter((d) => d.teamId === teamId),
-    }));
+    // One-pass groupBy (todo #172) — was three nested filter() calls,
+    // O(teams × (adds + drops)). The filter approach is fine at 12×80 today
+    // but degrades quadratically and is needless work given a single linear
+    // scan does it.
+    type TeamBucket = { teamId: number; adds: typeof adds; drops: typeof drops };
+    const buckets = new Map<number, TeamBucket>();
+    const ensure = (teamId: number): TeamBucket => {
+      let b = buckets.get(teamId);
+      if (!b) {
+        b = { teamId, adds: [], drops: [] };
+        buckets.set(teamId, b);
+      }
+      return b;
+    };
+    for (const a of adds) ensure(a.teamId).adds.push(a);
+    for (const d of drops) ensure(d.teamId).drops.push(d);
+    const byTeam = Array.from(buckets.values()).sort((a, b) => a.teamId - b.teamId);
 
     res.json({ period, byTeam });
   }),
