@@ -92,6 +92,29 @@ export async function getDropEntries(periodId: number, teamId: number): Promise<
   );
 }
 
+/**
+ * Atomic reorder of all Add or Drop entries for a (period, team, kind).
+ * Replaces the legacy 3-call swap dance (todo #159). Server rewrites
+ * priorities in a single transaction (negative temps then final values).
+ *
+ * `orderedIds` MUST list every entry for the team/period/kind exactly
+ * once — index 0 becomes priority 1, etc.
+ */
+export async function reorderEntries(
+  periodId: number,
+  kind: "ADD" | "DROP",
+  teamId: number,
+  orderedIds: number[],
+): Promise<{ entries: AddEntry[] | DropEntry[] }> {
+  return fetchJsonApi<{ entries: AddEntry[] | DropEntry[] }>(
+    `${API_BASE}/wire-list/periods/${periodId}/reorder`,
+    {
+      method: "POST",
+      body: JSON.stringify({ kind, teamId, orderedIds }),
+    },
+  );
+}
+
 export async function updateAddPriority(id: number, priority: number): Promise<AddEntry> {
   return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/adds/${id}`, {
     method: "PATCH",

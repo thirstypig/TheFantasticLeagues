@@ -26,7 +26,9 @@ import {
   UpdateAddEntryBodySchema,
   CreateDropEntryBodySchema,
   UpdateDropEntryBodySchema,
+  ReorderEntriesBodySchema,
 } from "../../../../shared/api/wireList.js";
+import { logger } from "../../lib/logger.js";
 
 const router = Router();
 
@@ -70,6 +72,46 @@ async function loadPendingPeriod(
     return null;
   }
   return period;
+}
+
+/**
+ * Probe-oracle guard (todo #161): verify the URL `:periodId` and the
+ * body/query `teamId` belong to the same league. Collapse all of
+ * {missing period, missing team, cross-league mismatch} into a single
+ * 404 PERIOD_NOT_FOUND so an attacker cannot enumerate periods or teams
+ * across leagues. Logs the distinguishing reason for ops.
+ *
+ * Returns the period+team rows on success, or sends 404 and `null`.
+ */
+async function loadPeriodForTeam(
+  res: import("express").Response,
+  periodId: number,
+  teamId: number,
+): Promise<{
+  period: { id: number; leagueId: number; createdAt: Date; status: string };
+  team: { id: number; leagueId: number };
+} | null> {
+  const [period, team] = await Promise.all([
+    prisma.waiverPeriod.findUnique({
+      where: { id: periodId },
+      select: { id: true, leagueId: true, createdAt: true, status: true },
+    }),
+    prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, leagueId: true },
+    }),
+  ]);
+  if (!period || !team || period.leagueId !== team.leagueId) {
+    const reason = !period
+      ? "period_not_found"
+      : !team
+        ? "team_not_found"
+        : "cross_league_mismatch";
+    logger.warn?.({ periodId, teamId, reason }, "wire-list: loadPeriodForTeam rejected");
+    res.status(404).json({ error: "Waiver period not found", code: "PERIOD_NOT_FOUND" });
+    return null;
+  }
+  return { period, team };
 }
 
 /**
@@ -246,6 +288,9 @@ router.get(
       const owns = await isTeamOwner(teamId, req.user!.id);
       if (!owns) return res.status(403).json({ error: "You do not own this team" });
     }
+    // todo #161: verify period and team share a league before any data read.
+    const ctx = await loadPeriodForTeam(res, periodId, teamId);
+    if (!ctx) return;
     const entries = await prisma.waiverAddEntry.findMany({
       where: { periodId, teamId },
       include: {
@@ -271,12 +316,16 @@ router.post(
       priority?: number;
     };
 
-    const period = await loadPendingPeriod(res, periodId);
-    if (!period) return;
-
-    const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
-    if (!team || team.leagueId !== period.leagueId) {
-      return res.status(400).json({ error: "Team does not belong to this period's league" });
+    // todo #161: cross-league probe-oracle guard FIRST — collapses
+    // not-found, missing-team, and cross-league mismatch into one 404.
+    const ctx = await loadPeriodForTeam(res, periodId, teamId);
+    if (!ctx) return;
+    const period = ctx.period;
+    if (period.status !== "PENDING") {
+      return res.status(403).json({
+        error: `Period is ${period.status} — cannot modify entries`,
+        code: "PERIOD_NOT_PENDING",
+      });
     }
 
     const fa = await assertPlayerIsFA(period.leagueId, playerId);
@@ -439,6 +488,9 @@ router.get(
       const owns = await isTeamOwner(teamId, req.user!.id);
       if (!owns) return res.status(403).json({ error: "You do not own this team" });
     }
+    // todo #161: verify period and team share a league before any data read.
+    const ctx = await loadPeriodForTeam(res, periodId, teamId);
+    if (!ctx) return;
     const entries = await prisma.waiverDropEntry.findMany({
       where: { periodId, teamId },
       include: {
@@ -465,12 +517,15 @@ router.post(
       dropMode?: "RELEASE" | "IL_STASH";
     };
 
-    const period = await loadPendingPeriod(res, periodId);
-    if (!period) return;
-
-    const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
-    if (!team || team.leagueId !== period.leagueId) {
-      return res.status(400).json({ error: "Team does not belong to this period's league" });
+    // todo #161: cross-league probe-oracle guard FIRST.
+    const ctx = await loadPeriodForTeam(res, periodId, teamId);
+    if (!ctx) return;
+    const period = ctx.period;
+    if (period.status !== "PENDING") {
+      return res.status(403).json({
+        error: `Period is ${period.status} — cannot modify entries`,
+        code: "PERIOD_NOT_PENDING",
+      });
     }
 
     // Drop list eligibility: player must currently be on this team's active roster.
@@ -620,6 +675,145 @@ router.delete(
       metadata: { periodId: entry.periodId, teamId: entry.teamId },
     });
     res.json({ success: true });
+  }),
+);
+
+// ─── Reorder (atomic batch update) ───────────────────────────────────
+
+// POST /api/wire-list/periods/:periodId/reorder
+// todo #159: replace the legacy 3-call ▲/▼ swap dance with a single
+// transaction that rewrites every priority for the (period, team, kind)
+// in two passes — negative temps then final values — to dodge the
+// `(periodId, teamId, priority)` unique constraint.
+router.post(
+  "/periods/:periodId/reorder",
+  requireAuth,
+  validateBody(ReorderEntriesBodySchema),
+  requireTeamOwner("teamId"),
+  asyncHandler(async (req, res) => {
+    const periodId = Number(req.params.periodId);
+    const { kind, teamId, orderedIds } = req.body as {
+      kind: "ADD" | "DROP";
+      teamId: number;
+      orderedIds: number[];
+    };
+
+    // Probe-oracle guard (todo #161): cross-league or missing → 404.
+    const ctx = await loadPeriodForTeam(res, periodId, teamId);
+    if (!ctx) return;
+    if (ctx.period.status !== "PENDING") {
+      return res.status(403).json({
+        error: `Period is ${ctx.period.status} — cannot reorder`,
+        code: "PERIOD_NOT_PENDING",
+      });
+    }
+
+    // Verify all orderedIds belong to this (period, team, kind). Reject
+    // mismatches before opening the transaction so the rollback path is
+    // never taken for client-side errors.
+    const existing =
+      kind === "ADD"
+        ? await prisma.waiverAddEntry.findMany({
+            where: { periodId, teamId },
+            select: { id: true },
+          })
+        : await prisma.waiverDropEntry.findMany({
+            where: { periodId, teamId },
+            select: { id: true },
+          });
+    const existingIds = new Set(existing.map((e) => e.id));
+    if (existing.length !== orderedIds.length || !orderedIds.every((id) => existingIds.has(id))) {
+      return res.status(400).json({
+        error: "orderedIds must list every entry for this team/period/kind exactly once",
+        code: "REORDER_IDS_MISMATCH",
+      });
+    }
+    if (new Set(orderedIds).size !== orderedIds.length) {
+      return res.status(400).json({
+        error: "orderedIds contains duplicates",
+        code: "REORDER_IDS_MISMATCH",
+      });
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Re-check status inside the tx (cron flips PENDING→LOCKED on a
+        // 5-min schedule; same guard pattern as todo #158).
+        const fresh = await tx.waiverPeriod.findUnique({
+          where: { id: periodId },
+          select: { status: true },
+        });
+        if (!fresh || fresh.status !== "PENDING") {
+          throw new RaceLost("PERIOD_NOT_PENDING");
+        }
+
+        // Phase 1: write all rows to negative temp priorities to dodge the
+        // (periodId, teamId, priority) unique constraint, which is checked
+        // at statement boundary by Postgres.
+        for (let i = 0; i < orderedIds.length; i++) {
+          const id = orderedIds[i];
+          if (kind === "ADD") {
+            await tx.waiverAddEntry.update({
+              where: { id },
+              data: { priority: -(i + 1) },
+            });
+          } else {
+            await tx.waiverDropEntry.update({
+              where: { id },
+              data: { priority: -(i + 1) },
+            });
+          }
+        }
+        // Phase 2: write final priorities (1-indexed, dense).
+        for (let i = 0; i < orderedIds.length; i++) {
+          const id = orderedIds[i];
+          if (kind === "ADD") {
+            await tx.waiverAddEntry.update({
+              where: { id },
+              data: { priority: i + 1 },
+            });
+          } else {
+            await tx.waiverDropEntry.update({
+              where: { id },
+              data: { priority: i + 1 },
+            });
+          }
+        }
+      });
+    } catch (err) {
+      if (err instanceof RaceLost) {
+        return res.status(403).json({ error: "Period locked — cannot reorder", code: err.code });
+      }
+      throw err;
+    }
+
+    // Return the new ordered list (same include shape as GET).
+    const entries =
+      kind === "ADD"
+        ? await prisma.waiverAddEntry.findMany({
+            where: { periodId, teamId },
+            include: {
+              player: { select: { id: true, name: true, posPrimary: true, mlbTeam: true, mlbId: true } },
+            },
+            orderBy: { priority: "asc" },
+          })
+        : await prisma.waiverDropEntry.findMany({
+            where: { periodId, teamId },
+            include: {
+              player: { select: { id: true, name: true, posPrimary: true, mlbTeam: true, mlbId: true } },
+            },
+            orderBy: { priority: "asc" },
+          });
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: kind === "ADD" ? "WIRE_LIST_ADD_REORDER" : "WIRE_LIST_DROP_REORDER",
+      resourceType: kind === "ADD" ? "WaiverAddEntry" : "WaiverDropEntry",
+      resourceId: periodId,
+      metadata: { periodId, teamId, orderedIds },
+    });
+
+    res.json({ entries });
   }),
 );
 

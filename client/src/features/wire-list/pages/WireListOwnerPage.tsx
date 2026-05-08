@@ -16,10 +16,10 @@ import {
   getActivePeriod,
   getAddEntries,
   getDropEntries,
-  updateAddPriority,
   updateDropEntry,
   deleteAddEntry,
   deleteDropEntry,
+  reorderEntries,
   type WaiverPeriod,
   type AddEntry,
   type DropEntry,
@@ -120,42 +120,53 @@ export default function WireListOwnerPage() {
     });
   }, []);
 
-  // Swap two adjacent priorities. We use a temporary out-of-band priority on
-  // one of them to dodge the (periodId, teamId, priority) unique constraint
-  // — Postgres validates uniqueness at statement boundary, not commit.
+  // Swap two adjacent priorities. todo #159: now a single atomic call to
+  // POST /periods/:periodId/reorder. We compute the post-swap order
+  // locally, optimistically update state, and only reload() on error.
   const swapAddPriorities = useCallback(async (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (j < 0 || j >= adds.length) return;
+    if (!period || teamId === null) return;
     const a = adds[i];
     const b = adds[j];
-    const tempPriority = Math.max(...adds.map((x) => x.priority)) + 100;
+    const reordered = adds.slice();
+    reordered[i] = b;
+    reordered[j] = a;
+    const orderedIds = reordered.map((x) => x.id);
+    // Optimistic priority renumbering (1-indexed, dense — matches server).
+    const optimistic = reordered.map((x, idx) => ({ ...x, priority: idx + 1 }));
+    setAdds(optimistic);
     try {
-      await withPending(a.id, () => updateAddPriority(a.id, tempPriority));
-      await withPending(b.id, () => updateAddPriority(b.id, a.priority));
-      await withPending(a.id, () => updateAddPriority(a.id, b.priority));
-      await reload();
+      await withPending(a.id, () =>
+        reorderEntries(period.id, "ADD", teamId, orderedIds),
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : String(err));
       await reload();
     }
-  }, [adds, reload, withPending]);
+  }, [adds, period, teamId, reload, withPending]);
 
   const swapDropPriorities = useCallback(async (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (j < 0 || j >= drops.length) return;
+    if (!period || teamId === null) return;
     const a = drops[i];
     const b = drops[j];
-    const tempPriority = Math.max(...drops.map((x) => x.priority)) + 100;
+    const reordered = drops.slice();
+    reordered[i] = b;
+    reordered[j] = a;
+    const orderedIds = reordered.map((x) => x.id);
+    const optimistic = reordered.map((x, idx) => ({ ...x, priority: idx + 1 }));
+    setDrops(optimistic);
     try {
-      await withPending(a.id, () => updateDropEntry(a.id, { priority: tempPriority }));
-      await withPending(b.id, () => updateDropEntry(b.id, { priority: a.priority }));
-      await withPending(a.id, () => updateDropEntry(a.id, { priority: b.priority }));
-      await reload();
+      await withPending(a.id, () =>
+        reorderEntries(period.id, "DROP", teamId, orderedIds),
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : String(err));
       await reload();
     }
-  }, [drops, reload, withPending]);
+  }, [drops, period, teamId, reload, withPending]);
 
   const removeAdd = useCallback(async (id: number) => {
     try {

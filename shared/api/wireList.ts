@@ -77,6 +77,21 @@ export const UpdateAddEntryBodySchema = z.object({
 });
 export type UpdateAddEntryBody = z.infer<typeof UpdateAddEntryBodySchema>;
 
+/**
+ * POST /api/wire-list/periods/:periodId/reorder — atomic reorder of all
+ * Add or Drop entries for a (period, team, kind). Replaces the legacy 3-call
+ * swap dance (todo #159). Server rewrites priorities in a single transaction
+ * using a two-pass (negative-temp then final) technique to dodge the
+ * `(periodId, teamId, priority)` unique constraint.
+ */
+export const ReorderEntriesBodySchema = z.object({
+  kind: z.enum(["ADD", "DROP"]),
+  teamId: z.number().int().positive(),
+  /** New ordering — index 0 becomes priority 1, index 1 becomes priority 2, etc. */
+  orderedIds: z.array(z.number().int().positive()).min(1),
+});
+export type ReorderEntriesBody = z.infer<typeof ReorderEntriesBodySchema>;
+
 export const AddEntryResponseSchema = z.object({
   id: z.number().int().positive(),
   periodId: z.number().int().positive(),
@@ -175,5 +190,6 @@ export const WireListErrorCodeSchema = z.enum([
   "FINALIZE_BLOCKED",
   "DROP_RACE_LOST",
   "FINALIZE_RACE_LOST",
+  "REORDER_IDS_MISMATCH",
 ]);
 export type WireListErrorCode = z.infer<typeof WireListErrorCodeSchema>;
