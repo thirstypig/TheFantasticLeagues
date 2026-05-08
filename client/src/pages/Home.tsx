@@ -380,13 +380,12 @@ export default function Home() {
       )}
       <div style={{ marginTop: 6 }}>
         {activity.map((a, i) => {
-          const extras = a as TransactionEvent & {
-            effectiveDate?: string;
-            createdAt?: string;
-            transactionType?: string;
-          };
-          const ago = timeAgo(extras.effectiveDate ?? extras.createdAt);
-          const type = String(extras.transactionType ?? a.type ?? "Move");
+          // Server-augmented fields (`effectiveDate`, `createdAt`,
+          // `transactionType`) now live on the canonical `TransactionEvent`
+          // type — todo #121 hoisted them out of this local intersection
+          // cast and into the type definition itself.
+          const ago = timeAgo(a.effectiveDate ?? a.createdAt);
+          const type = String(a.transactionType ?? a.type ?? "Move");
           const text =
             a.playerAliasRaw ??
             a.transactionRaw ??

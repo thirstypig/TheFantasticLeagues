@@ -1,6 +1,6 @@
 
 import { API_BASE, fetchJsonApi } from '../../api/base';
-import { TeamDetailResponse } from '../../api/types';
+import { TeamDetailResponse, type LeagueTeam } from '../../api/types';
 import { track } from '../../lib/posthog';
 import type { RosterHubResponse } from '@shared/api/teams';
 
@@ -20,10 +20,31 @@ export async function getTeamRosterHub(teamId: number): Promise<RosterHubRespons
   return fetchJsonApi(`${API_BASE}/teams/${teamId}/roster-hub`);
 }
 
-export async function getTeams(leagueId?: number): Promise<any[]> {
+export async function getTeams(leagueId?: number): Promise<LeagueTeam[]> {
   const params = leagueId ? `?leagueId=${leagueId}` : '';
-  const resp = await fetchJsonApi<{ teams: any[] }>(`${API_BASE}/teams${params}`);
+  const resp = await fetchJsonApi<{ teams: LeagueTeam[] }>(`${API_BASE}/teams${params}`);
   return resp.teams;
+}
+
+/**
+ * Server response from `PATCH /api/teams/:teamId/roster/:rosterId` —
+ * `{ roster: <updated row> }`. The `roster` field is a structural subset
+ * of the Prisma Roster row that the route actually returns
+ * (`prisma.roster.update`). Caller currently only reads success/failure;
+ * the typed shape exists so a future caller can rely on the field set.
+ */
+export interface UpdateRosterPositionResponse {
+  roster: {
+    id: number;
+    teamId: number;
+    playerId: number;
+    assignedPosition: string | null;
+    acquiredAt: string;
+    releasedAt: string | null;
+    source: string;
+    price: number | null;
+    isKeeper?: boolean | null;
+  };
 }
 
 export async function updateRosterPosition(
@@ -36,16 +57,37 @@ export async function updateRosterPosition(
    * recompute period stats). Pass YYYY-MM-DD or full ISO datetime.
    */
   effectiveDate?: string,
-): Promise<any> {
+): Promise<UpdateRosterPositionResponse> {
   const body: Record<string, unknown> = { assignedPosition: position };
   if (effectiveDate) body.effectiveDate = effectiveDate;
-  return fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
+  return fetchJsonApi<UpdateRosterPositionResponse>(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   });
 }
 
 // --- Period Roster ---
+
+/**
+ * Per-period stat shape carried by `GET /api/teams/:id/period-roster` rows.
+ * Mirrors the same shape that `TeamDetailResponse.currentRoster[].periodStats`
+ * declares in `client/src/api/types.ts` — both are produced by the same
+ * server-side join on `PlayerStatsPeriod`. Was `any | null` (todo #121).
+ */
+export interface PeriodRosterStats {
+  W: number;
+  SV: number;
+  K: number;
+  IP: number;
+  ER: number;
+  BB_H: number;
+  R: number;
+  HR: number;
+  RBI: number;
+  SB: number;
+  AB: number;
+  H: number;
+}
 
 export interface PeriodRosterEntry {
   id: number;
@@ -61,7 +103,7 @@ export interface PeriodRosterEntry {
   price: number;
   assignedPosition: string | null;
   isActive: boolean;
-  periodStats: any | null;
+  periodStats: PeriodRosterStats | null;
 }
 
 export async function getTeamPeriodRoster(teamId: number, periodId: number): Promise<{

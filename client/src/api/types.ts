@@ -131,7 +131,10 @@ export type LeagueTeam = {
   name: string;
   code: string;
   ownerUserId?: number | null;
+  /** Legacy display name string carried on the Team row itself. */
   owner?: string | null;
+  /** Auction/keeper budget remaining; emitted by `GET /api/teams` (todo #121). */
+  budget?: number | null;
   ownerships?: TeamOwnership[];
 };
 

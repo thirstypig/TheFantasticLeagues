@@ -1,9 +1,19 @@
 
 import { fetchJsonApi, API_BASE } from '../../api/base';
 
-export async function getPeriodStandings(periodId?: number, leagueId?: number): Promise<any> {
+/**
+ * Shape returned by `GET /api/standings/period/current` — the active period's
+ * roto standings (todo #121: was `Promise<any>`).
+ */
+export type PeriodStandingsResponse = {
+  periodId: number;
+  data: { teamId: number; teamName: string; teamCode: string; points: number }[];
+  computedAt: string;
+};
+
+export async function getPeriodStandings(_periodId: number | undefined, leagueId?: number): Promise<PeriodStandingsResponse> {
   const lid = leagueId || 1;
-  return fetchJsonApi(`${API_BASE}/period/current?leagueId=${lid}`);
+  return fetchJsonApi<PeriodStandingsResponse>(`${API_BASE}/period/current?leagueId=${lid}`);
 }
 
 export type WaiverPriorityStandings = {
