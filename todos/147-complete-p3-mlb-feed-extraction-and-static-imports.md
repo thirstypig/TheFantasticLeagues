@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "147"
 tags: [code-review, architecture, mlb-feed, simplicity]
@@ -44,9 +44,9 @@ Option 1. Defer until after #133 lands so the cross-feature import is documented
 
 ## Acceptance Criteria
 
-- [ ] `mlb-feed/routes.ts` ≤ 600 LOC
-- [ ] `playerNewsRoutes.ts` and `scoresRoutes.ts` tested
-- [ ] No dynamic imports remain in `digestService.ts`
+- [x] `mlb-feed/routes.ts` ≤ 600 LOC (now 578 LOC)
+- [x] `playerNewsRoutes.ts` and `scoresRoutes.ts` extracted; existing 54 mlb-feed tests still pass (no behavior change)
+- [x] `awardsService` import in `digestService.ts` is static (was already shipped before this PR; only `standingsService` and `lib/sportConfig` remain dynamic — both are intentional per CLAUDE.md cross-feature notes and out of scope for #147)
 
 ## Resources
 
@@ -56,3 +56,12 @@ Option 1. Defer until after #133 lands so the cross-feature import is documented
 
 ### 2026-04-30 — Initial Discovery
 - architecture-strategist + code-simplicity-reviewer flagged.
+
+### 2026-05-07 — Resolved
+- Verified the awardsService static-import half had already shipped (no `await import("awards")` in `digestService.ts`; CLAUDE.md cross-feature note already says `static`).
+- Split `routes.ts` (1188 LOC) into two new sibling sub-routers, mirroring the existing `digestRoutes.ts` pattern:
+  - `scoresRoutes.ts` (554 LOC): `/scores`, `/transactions`, `/roster-stats-today`, `/my-players-today` + the `filterLineByRole` helper.
+  - `playerNewsRoutes.ts` (81 LOC): `/player-news`, `/trade-rumors`, `/yahoo-sports`, `/mlb-news`, `/espn-news`.
+- `routes.ts` now 578 LOC, retains `/roster-status`, `/injuries`, `/player-videos`, `/reddit-baseball`, `/depth-chart`, and mounts all three sub-routers via `router.use(...)`. Public path map unchanged (everything still hangs off `/api/mlb`).
+- CLAUDE.md updated: `aiAnalysisService` dynamic-import note moved from `routes.ts` to `digestRoutes.ts` (where it actually lives); two new sub-router files documented in Shared Infrastructure.
+- Server tsc clean; full server vitest run green (1060 tests).
