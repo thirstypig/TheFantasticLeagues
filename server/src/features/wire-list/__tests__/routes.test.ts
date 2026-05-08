@@ -28,20 +28,17 @@ describe("wire-list — schema validation", () => {
   });
 
   describe("CreateAddEntryBodySchema", () => {
-    it("accepts minimal valid body (priority optional)", () => {
+    it("accepts minimal valid body (no priority — server assigns)", () => {
       const r = CreateAddEntryBodySchema.safeParse({ teamId: 1, playerId: 100 });
       expect(r.success).toBe(true);
-      if (r.success) expect(r.data.priority).toBeUndefined();
     });
 
-    it("accepts explicit priority", () => {
-      const r = CreateAddEntryBodySchema.safeParse({ teamId: 1, playerId: 100, priority: 3 });
+    it("strips an unexpected priority field (server assigns next slot)", () => {
+      // priority is intentionally not part of the schema (todo #177); Zod
+      // strips unknown keys by default. Reorder uses POST /reorder.
+      const r = CreateAddEntryBodySchema.safeParse({ teamId: 1, playerId: 100, priority: 3 } as any);
       expect(r.success).toBe(true);
-    });
-
-    it("rejects zero priority", () => {
-      const r = CreateAddEntryBodySchema.safeParse({ teamId: 1, playerId: 100, priority: 0 });
-      expect(r.success).toBe(false);
+      if (r.success) expect((r.data as Record<string, unknown>).priority).toBeUndefined();
     });
 
     it("rejects negative IDs", () => {
