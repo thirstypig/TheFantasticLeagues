@@ -3,13 +3,15 @@
  * Server contract: shared/api/wireList.ts; routes: server/src/features/wire-list/.
  */
 import { fetchJsonApi, API_BASE } from "../../api/base";
+import type {
+  WaiverPeriodStatus,
+  WaiverDropMode,
+  WaiverAddOutcome,
+  WaiverDropStatus,
+} from "../../../../shared/api/wireList";
 
-// ─── Wire types (mirror Prisma + shared schemas) ─────────────────────
-
-export type WaiverPeriodStatus = "PENDING" | "LOCKED" | "PROCESSED" | "CANCELLED";
-export type WaiverDropMode = "RELEASE" | "IL_STASH";
-export type WaiverAddOutcome = "PENDING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
-export type WaiverDropStatus = "PENDING" | "CONSUMED" | "UNUSED";
+// Re-export shared types so existing callers continue to import from here.
+export type { WaiverPeriodStatus, WaiverDropMode, WaiverAddOutcome, WaiverDropStatus };
 
 export interface WaiverPeriod {
   id: number;
@@ -146,7 +148,7 @@ export async function deleteDropEntry(id: number): Promise<{ success: boolean }>
 
 export async function createAddEntry(
   periodId: number,
-  body: { teamId: number; playerId: number; priority?: number },
+  body: { teamId: number; playerId: number },
 ): Promise<AddEntry> {
   return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/periods/${periodId}/adds`, {
     method: "POST",
@@ -156,7 +158,7 @@ export async function createAddEntry(
 
 export async function createDropEntry(
   periodId: number,
-  body: { teamId: number; playerId: number; priority?: number; dropMode?: WaiverDropMode },
+  body: { teamId: number; playerId: number; dropMode?: WaiverDropMode },
 ): Promise<DropEntry> {
   return fetchJsonApi<DropEntry>(`${API_BASE}/wire-list/periods/${periodId}/drops`, {
     method: "POST",

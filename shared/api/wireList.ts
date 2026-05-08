@@ -16,11 +16,13 @@ import { z } from "zod";
 export const WaiverDropModeSchema = z.enum(["RELEASE", "IL_STASH"]);
 export type WaiverDropMode = z.infer<typeof WaiverDropModeSchema>;
 
+// CANCELLED is intentionally absent from the Zod schema — no code path sets it
+// for wire-list periods. The Prisma enum still has it (removing would require
+// a migration). Reintroduce here when a cancel endpoint actually ships.
 export const WaiverPeriodStatusSchema = z.enum([
   "PENDING",
   "LOCKED",
   "PROCESSED",
-  "CANCELLED",
 ]);
 export type WaiverPeriodStatus = z.infer<typeof WaiverPeriodStatusSchema>;
 
@@ -67,13 +69,14 @@ export type PeriodResponse = z.infer<typeof PeriodResponseSchema>;
 export const CreateAddEntryBodySchema = z.object({
   teamId: z.number().int().positive(),
   playerId: z.number().int().positive(),
-  /** Optional explicit priority. If omitted, server appends as next priority. */
-  priority: z.number().int().positive().optional(),
+  // priority is server-assigned (next available). The optional client-supplied
+  // priority was dead code per todo #177; reorder now goes through the atomic
+  // `/reorder` endpoint (PR #278). Reintroduce only if a bulk-import path needs it.
 });
 export type CreateAddEntryBody = z.infer<typeof CreateAddEntryBodySchema>;
 
 export const UpdateAddEntryBodySchema = z.object({
-  priority: z.number().int().positive(),
+  priority: z.number().int().positive().max(999),
 });
 export type UpdateAddEntryBody = z.infer<typeof UpdateAddEntryBodySchema>;
 
@@ -111,14 +114,14 @@ export type AddEntryResponse = z.infer<typeof AddEntryResponseSchema>;
 export const CreateDropEntryBodySchema = z.object({
   teamId: z.number().int().positive(),
   playerId: z.number().int().positive(),
-  priority: z.number().int().positive().optional(),
+  // priority is server-assigned (see CreateAddEntryBody note above).
   dropMode: WaiverDropModeSchema.optional(),
 });
 export type CreateDropEntryBody = z.infer<typeof CreateDropEntryBodySchema>;
 
 export const UpdateDropEntryBodySchema = z
   .object({
-    priority: z.number().int().positive().optional(),
+    priority: z.number().int().positive().max(999).optional(),
     dropMode: WaiverDropModeSchema.optional(),
   })
   .refine(
@@ -144,11 +147,26 @@ export type DropEntryResponse = z.infer<typeof DropEntryResponseSchema>;
 // ─── Outcome / processor bodies ──────────────────────────────────────
 
 /**
- * POST /api/wire-list/adds/:id/fail and /skip — commissioner records why.
+ * POST /api/wire-list/adds/:id/fail — reason required (commissioner explains why).
  */
-export const RecordOutcomeBodySchema = z.object({
+export const FailOutcomeBodySchema = z.object({
+  reason: z.string().min(1).max(280),
+});
+export type FailOutcomeBody = z.infer<typeof FailOutcomeBodySchema>;
+
+/**
+ * POST /api/wire-list/adds/:id/skip — reason optional (often a tactical decision).
+ */
+export const SkipOutcomeBodySchema = z.object({
   reason: z.string().min(1).max(280).optional(),
 });
+export type SkipOutcomeBody = z.infer<typeof SkipOutcomeBodySchema>;
+
+/**
+ * @deprecated Use FailOutcomeBodySchema or SkipOutcomeBodySchema directly.
+ * Retained as the loose superset for any caller that hasn't split yet.
+ */
+export const RecordOutcomeBodySchema = SkipOutcomeBodySchema;
 export type RecordOutcomeBody = z.infer<typeof RecordOutcomeBodySchema>;
 
 /**

@@ -63,6 +63,7 @@ import { syncAllActivePeriods, syncDailyStats } from './features/players/service
 import { snapshotAllActiveLeaguesCategoryDaily } from './features/standings/services/categoryDailySnapshotService.js';
 import * as errorBuffer from './lib/errorBuffer.js';
 import { isRosterRuleError, type RosterRuleErrorCode } from "./lib/rosterRuleError.js";
+import { ADVISORY_LOCKS } from "./lib/advisoryLocks.js";
 
 // Validate required env vars at startup
 const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET", "IP_HASH_SECRET"];
@@ -330,7 +331,7 @@ async function main() {
   // pg_try_advisory_lock keeps this safe under multi-instance deploys.
   cron.schedule("*/15 * * * *", async () => {
     try {
-      const lockKey = 0x53455353; // "SESS"
+      const lockKey = ADVISORY_LOCKS.sessionPurge;
       const locked = await prisma.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${lockKey}) as locked`;
       if (!locked[0]?.locked) return;
       try {
@@ -362,7 +363,7 @@ async function main() {
   // orphan if unlock landed on a different pooled connection). See todo #166.
   cron.schedule("*/5 * * * *", async () => {
     try {
-      const lockKey = 0x57495245; // "WIRE"
+      const lockKey = ADVISORY_LOCKS.wireListAutoLock;
       await prisma.$transaction(
         async (tx) => {
           const lockResult = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${lockKey}) AS locked`;
@@ -394,7 +395,7 @@ async function main() {
   // Advisory lock keeps this safe under multi-instance Railway deploys.
   cron.schedule("15 4 * * *", async () => {
     try {
-      const lockKey = 0x50555247; // "PURG"
+      const lockKey = ADVISORY_LOCKS.userMetricsPurge;
       const locked = await prisma.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${lockKey}) as locked`;
       if (!locked[0]?.locked) return;
       try {
