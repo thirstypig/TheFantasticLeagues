@@ -13,11 +13,25 @@
 // Memoized with React's default shallow compare so rendered player fields
 // (stats, eligibility, GP suffixes, keeper marker, MLB team) cannot go stale
 // when the parent receives fresh roster data.
+//
+// Per todo #127, the action-menu state, name-decoration prefix, subtitle,
+// revert button, kebab menu, and class-name builder are sourced from
+// `./rowShared` so the mobile variant (`MobileRowV3`) can share them
+// without drift. The container element type (`<tr>`/`<td>`) and the
+// role-aware stat cells remain desktop-specific — see `rowShared.tsx`
+// for the rationale on why a full unified component was rejected.
 
-import React, { useRef, useState } from "react";
+import React from "react";
 import { ThemedTr, ThemedTd } from "../../../../components/ui/ThemedTable";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
-import { RowActionMenu, type RowAction } from "./RowActionMenu";
+import { type RowAction } from "./RowActionMenu";
+import {
+  ActionMenuTrigger,
+  PlayerNameContent,
+  PlayerSubtitle,
+  RevertButton,
+  buildRowClasses,
+} from "./rowShared";
 import type { RosterHubPlayer } from "./types";
 
 /**
@@ -81,7 +95,6 @@ function fmtAvg(v: number | string | undefined): string {
 
 export function RosterRowV3({
   player,
-  role,
   isSelected,
   isEligible,
   isDimmed,
@@ -96,28 +109,20 @@ export function RosterRowV3({
   dnd,
   isShakeRejecting,
 }: RosterRowV3Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-
-  const onTriggerClick = () => {
-    if (triggerRef.current) {
-      setAnchorRect(triggerRef.current.getBoundingClientRect());
-    }
-    setMenuOpen(true);
-  };
-
-  const rowClasses: string[] = [];
-  if (isPending) rowClasses.push("am-roster-row-pending");
-  if (isEligible && !isPending) rowClasses.push("am-roster-row-eligible");
-  if (isDimmed) rowClasses.push("am-roster-row-dimmed");
-  if (isDragSource || dnd?.isDragging) rowClasses.push("am-roster-row-dragging-source");
-  if (isDropTarget || dnd?.isOverEligible) rowClasses.push("am-roster-row-drop-target");
-  if (isShakeRejecting) rowClasses.push("am-roster-row-shake");
+  const className = buildRowClasses({
+    isPending,
+    isEligible,
+    isDimmed,
+    isDragSource,
+    isDropTarget,
+    isDragging: dnd?.isDragging,
+    isOverEligible: dnd?.isOverEligible,
+    isShakeRejecting,
+  });
 
   return (
     <ThemedTr
-      className={rowClasses.join(" ")}
+      className={className}
       innerRef={dnd?.rowRef}
       style={dnd?.rowStyle}
       extraProps={{ "data-roster-row": String(player.rosterId) } as React.HTMLAttributes<HTMLTableRowElement>}
@@ -174,17 +179,9 @@ export function RosterRowV3({
                 cursor: onToggleExpand ? "pointer" : "default",
               }}
             >
-              {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
-              {player.isKeeper && (
-                <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
-                  ★
-                </span>
-              )}
-              {player.name}
+              <PlayerNameContent player={player} isPending={isPending} />
             </button>
-            <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
-              {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
-            </span>
+            <PlayerSubtitle player={player} />
           </div>
         </div>
       </ThemedTd>
@@ -226,33 +223,8 @@ export function RosterRowV3({
           inline ↩ revert affordance live here now. */}
       <ThemedTd align="right">
         <div style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
-          {isPending && onRevert && (
-            <button
-              type="button"
-              className="am-roster-revert-button"
-              onClick={onRevert}
-              aria-label={`Revert pending change for ${player.name}`}
-              title="Revert this change"
-            >
-              ↩
-            </button>
-          )}
-          {actions.length > 0 && (
-            <>
-              <button
-                type="button"
-                ref={triggerRef}
-                className="am-roster-action-trigger"
-                onClick={onTriggerClick}
-                aria-label={`Open actions menu for ${player.name}`}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-              >
-                …
-              </button>
-              <RowActionMenu actions={actions} open={menuOpen} onClose={() => setMenuOpen(false)} anchorRect={anchorRect} />
-            </>
-          )}
+          {isPending && onRevert && <RevertButton player={player} onRevert={onRevert} />}
+          <ActionMenuTrigger player={player} actions={actions} />
         </div>
       </ThemedTd>
     </ThemedTr>
@@ -269,4 +241,3 @@ function StatTd({ children }: { children: React.ReactNode }) {
     </ThemedTd>
   );
 }
-
