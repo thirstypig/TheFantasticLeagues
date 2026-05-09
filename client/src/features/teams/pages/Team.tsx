@@ -552,7 +552,7 @@ export default function Team() {
 
   // Pill-click selection is display-only in this slice — the visual
   // highlight signals "this row is the focus" but no mutation is queued
-  // (drag-to-mutate is the new mutation entry point for swaps).
+  // (drag-to-mutate is the new mutation entry point for swaps — see todos/182-pending-p3-drag-to-mutate-via-dnd-kit.md).
   const onPillClick = useCallback((rosterId: number) => {
     setSelectedRosterId(prev => (prev === rosterId ? null : rosterId));
   }, []);

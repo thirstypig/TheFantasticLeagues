@@ -29,7 +29,7 @@ export interface RosterPlayerInput {
   isPitcher?: boolean;
   mlbTeam?: string;
   isKeeper?: boolean;
-  /** Per-position GP — synthetic today, real when Player.posGames lands. */
+  /** Per-position GP — synthetic today, real when Player.posGames lands. See todos/180-pending-p3-real-per-position-gp-via-player-posgames.md */
   gamesByPos?: Record<string, number>;
   /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …).
    *  Verbatim per direction-lock IL #1 — never normalized. */
@@ -61,7 +61,7 @@ export interface RosterPlayerInput {
  *
  * Critical contracts the unit tests pin down:
  *   - `playerId` is the Prisma Player.id, NOT rosterId. Mutation flows
- *     and per-player API calls (eligible-slots, posGames) key off this.
+ *     and per-player API calls (eligible-slots, posGames — see todos/180) key off this.
  *   - `posList` carries the full multi-position eligibility (e.g.
  *     "OF,2B"). When null, falls back to posPrimary so single-position
  *     players still render a chip — never returns empty string when at
