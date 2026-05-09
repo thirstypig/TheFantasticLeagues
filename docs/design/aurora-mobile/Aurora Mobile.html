@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aurora · mobile-optimized</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #050a14; font-family: "Inter", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="data.js"></script>
+  <script src="data2.js"></script>
+  <script src="ambient-theme.js?v=4"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="mobile-aurora-atoms.jsx"></script>
+  <script type="text/babel" src="mobile-aurora-screens.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="env,react">
+    const { DesignCanvas, DCSection, DCArtboard, PhoneFrame, TabletFrame } = window;
+
+    const SCREENS = [
+      { k: "MHome",      label: "Home" },
+      { k: "MTeam",      label: "Team · roster" },
+      { k: "MStandings", label: "Standings · table" },
+      { k: "MPlayers",   label: "Players · sortable" },
+      { k: "MMore",      label: "More" },
+    ];
+
+    function Phone({ mode, screenKey, role = "manager" }) {
+      const Screen = window[screenKey];
+      return (
+        <PhoneFrame palette="aurora" mode={mode}>
+          <Screen role={role} />
+        </PhoneFrame>
+      );
+    }
+
+    /* iPad master-detail using existing mobile screens */
+    function IPadSplit({ mode, role = "manager" }) {
+      return (
+        <TabletFrame palette="aurora" mode={mode} width={1024} height={768}>
+          <div style={{ display: "grid", gridTemplateColumns: "390px 1fr", height: "100%" }}>
+            <div style={{ borderRight: "1px solid var(--am-border)", position: "relative", overflow: "hidden" }}>
+              <window.MStandings role={role} />
+            </div>
+            <div style={{ position: "relative", overflow: "hidden" }}>
+              <window.MPlayers role={role} />
+            </div>
+          </div>
+        </TabletFrame>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas
+          title="Aurora · mobile v2"
+          subtitle="Rebuilt to your feedback: stats fit without horizontal scroll, standings is a sortable table (Hitting / Pitching / Total), players are sortable with 4 stats and tap-to-expand inline career, roster is denser, bottom dock is solid + larger touch targets, and Commissioner role gets an extra tab and a dedicated More-sheet section.">
+
+          <DCSection id="phone-dark" title="iPhone · Aurora dark · manager" subtitle="390×844 · core 6 screens for the regular member.">
+            {SCREENS.map(s => (
+              <DCArtboard key={s.k + "-d"} id={"phone-d-" + s.k} label={s.label} width={420} height={880}>
+                <div style={{ padding: 15 }}><Phone mode="dark" screenKey={s.k} role="manager" /></div>
+              </DCArtboard>
+            ))}
+          </DCSection>
+
+          <DCSection id="phone-light" title="iPhone · Aurora light · manager" subtitle="Same layouts, light palette — paper-bright.">
+            {SCREENS.map(s => (
+              <DCArtboard key={s.k + "-l"} id={"phone-l-" + s.k} label={s.label} width={420} height={880}>
+                <div style={{ padding: 15 }}><Phone mode="light" screenKey={s.k} role="manager" /></div>
+              </DCArtboard>
+            ))}
+          </DCSection>
+
+          <DCSection id="commish" title="Commissioner role · extra menu" subtitle="When the logged-in user is a commissioner: a 4th 'Commish' tab replaces 'Coach', and the More sheet exposes a dedicated Commissioner section (League settings, Trade approvals, Period close, Auction setup, Audit log).">
+            <DCArtboard id="ph-commish-home" label="Home (commish)" width={420} height={880}>
+              <div style={{ padding: 15 }}><Phone mode="dark" screenKey="MHome" role="commish" /></div>
+            </DCArtboard>
+            <DCArtboard id="ph-commish-more" label="More sheet (commish)" width={420} height={880}>
+              <div style={{ padding: 15 }}><Phone mode="dark" screenKey="MMore" role="commish" /></div>
+            </DCArtboard>
+            <DCArtboard id="ph-commish-more-l" label="More sheet · light" width={420} height={880}>
+              <div style={{ padding: 15 }}><Phone mode="light" screenKey="MMore" role="commish" /></div>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="ipad" title="iPad · split view" subtitle="Master-detail. Same mobile screens composed side-by-side — no extra layouts to maintain.">
+            <DCArtboard id="ipad-d" label="iPad · Dark" width={1060} height={810}>
+              <div style={{ padding: 18 }}><IPadSplit mode="dark" /></div>
+            </DCArtboard>
+            <DCArtboard id="ipad-l" label="iPad · Light" width={1060} height={810}>
+              <div style={{ padding: 18 }}><IPadSplit mode="light" /></div>
+            </DCArtboard>
+          </DCSection>
+
+        </DesignCanvas>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
