@@ -4,6 +4,70 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-08 — Code-review backlog cleanup + hardening (22 PRs)
+
+Picked up immediately after the 2026-05-07/08 27-PR push. The wire-list module was fully hardened; this session cleared the *next* layer of backlog — phantom-todo cleanup, type drift, dead code, perf hardening, and one bug-audit-driven defensive fix. **22 PRs merged, zero open at session end, browser-verified.**
+
+### Shipped — 22 PRs
+
+| Wave | PR | Scope |
+|---|---|---|
+| 1 | #296 | CI runs MCP test suites (closes the gap from PR #283 / #294) — bumped `mcp-servers/fbst-app` to `zod ^4.3.6` to match root, fixing a "Mixed Zod versions" CI failure local hadn't surfaced |
+| 1 | #297 | **37 phantom-pending todos** renamed to complete — cleanup PRs cited PR numbers (`#194`, `#196`) instead of `todo #N\b`, so the prior strict-grep sweep missed them |
+| 2 | #298 | **#140** — Team.tsx consumes `getTeamRosterHub()` server endpoint, replacing the legacy 2-call `getTeamDetails + getPlayerSeasonStatsMeta` join |
+| 2 | #299 | **#122** — CLAUDE.md feature-module rows + `docs/SECURITY.md` endpoint matrix sync; corrected several "public" labels that actually require auth |
+| 2 | #300 | **#139** — transactions claim/il-stash/il-activate parallelize independent reads inside the `$transaction` (loadSlotCapacities + buildCandidatesForTeam); ~30% shorter lock window under `connection_limit=1` |
+| 2 | #301 | **#124 Phase 1** — delete 7 `*Legacy.tsx` pages + classic routes (HomeLegacy, SeasonLegacy, PlayersLegacy, MatchupLegacy, ActivityPageLegacy, AuctionResultsLegacy, AuctionValuesLegacy) — **−4,432 LOC** |
+| 3 | #302 | **#119** — TTL cache + stampede coalescing on `GET /api/leagues/:id/awards`, mirrored from standings cache pattern; wired into `invalidateLeagueCaches` for roster mutations |
+| 3 | #303 | Phantom — `useHubPlayers` cache + #298 already shipped #145's intent |
+| 3 | #304 | Phantom — `assignedPosition === "IL"` skip already in standings.IL.test.ts (#155) |
+| 3 | #305 | **#147** — `mlb-feed/routes.ts` 1188 → 578 LOC by extracting `scoresRoutes` (554 LOC) and `playerNewsRoutes` (81 LOC); CLAUDE.md cross-feature-deps updated |
+| 3 | #306 | **94 todos** YAML `status:` field aligned with filename status — left over from PR #297's filename-only renames |
+| 4 | #307 | Phantom — eligible-slots YAGNI claim wrong (SP/RP `narrowSlot` test + Roster.assignedPosition contract depends on them); spawned new todo #179 for the awards path validation half |
+| 4 | #308 | **#123** — `DropRequestSchema` lifted to `shared/api/rosterMoves.ts` (was the last inline holdout); 6 client mutation helpers run `Schema.parse(params)` before fetch; new `parseJsonResponse(schema, payload)` advisory helper at `client/src/api/base.ts` (pilot on `syncIlStatus`) |
+| 4 | #309 | **#150** — Team.tsx manage sub-routes (`/teams/:teamCode/manage/{claim,il-stash,il-activate}`) refactored from `useMatch` chain to nested-route `<Outlet />` pattern; new `ManagePanel.tsx` (97 LOC) + typed `teamManageContext.ts` |
+| 5 | #310 | **#179** — awards `weekKey` regex tightened (`/^(20[2-9]\d)-W(0[1-9]|[1-4]\d|5[0-3])$/`); `availableWeeks` enum on `AwardsResponseSchema` (parallelized with `Promise.all` against `_prisma_migrations`); 14 new tests |
+| 5 | #311 | **#125** — `prisma/migrations/20260330000000_baseline_aiinsight_table/` (idempotent `IF NOT EXISTS` so prod is no-op, fresh DB now boots cleanly); `docs/runbooks/_template_rollback.md` + `baseline_aiinsight_rollback.md`; CLAUDE.md adds 2-phase column drop convention |
+| 5 | #312 | **#127** — extracted `rowShared.tsx` (`useActionMenu`, `buildRowClasses`, `PlayerNameContent`, `PlayerSubtitle`, `RevertButton`, `ActionMenuTrigger`) instead of forcing a unified `layout`-prop component; both `RosterRowV3` and `MobileRowV3` consume the shared pieces |
+| 5 | #313 | **#121** — typescript drift bundle: `getPeriodStandings` / `getTeams` / `updateRosterPosition` typed against actual server shapes; `PeriodRosterEntry.periodStats` `any|null` → `PeriodRosterStats|null`; `TransactionEvent` declares `effectiveDate`/`createdAt`/`transactionType`; `Home.tsx` cast removed. **Surfaced dead code** — `team.ownerUser?.name` chain in Team.tsx had been silently undefined since the GET /api/teams handler was written (server only selects `owner` legacy string) |
+| 6 | #314 | **#129** server cleanup nits — `as "SP"\|"RP"` cast → `as const`; `zScores` NaN/Infinity guards; `as any` Prisma JSON writes → `Prisma.InputJsonValue` |
+| 6 | #315 | **#154** — extract `home-bento` CSS to `client/src/pages/home.css`; fix stale `EligibilityChips` memo comment; dedupe `fmtRate` to `lib/sports/baseball.ts` canonical home (api/base re-exports) |
+| 6 | #316 | **#128** meta-tracking — created todos **#180** (real per-position GP via `Player.posGames`), **#181** (`rosterVersion` etag for cross-tab safety), **#182** (drag-to-mutate via dnd-kit), **#183** (pending-changes save/revert flow); inline comments cross-linked |
+| 7 | #317 | **#308 follow-up** — `extractServerError` now classifies `ZodError` throws distinctly ("Client validation failed at \"<path>\": <reason>. This is a bug — please report") instead of relabeling as "Roster rules are not satisfied"; duck-typed detector survives multi-zod-bundle hazard; 8 new tests |
+| 8 | #318 | Rename 4 leftover phantoms (#129, #140, #150, #154) — agents shipped the code but forgot `git mv pending → complete` in their commits |
+
+Plus uncommitted: 11 ManagePanel unit tests for PR #309 — pin route-segment → panel mapping, defensive `null` render for unknown `:mode`, permission/loading guard ordering, prop forwarding (effectiveDate `null → undefined` coercion).
+
+### Backlog status
+
+- **0 P1** open. Bug audit confirmed clean (no `FIXME/HACK/XXX`, all 3 crons properly try/caught + advisory-locked, no swallow-silently catches).
+- **0 P2** open. Every prior P2 closed this session.
+- **6 P3** open: **#126** agent-native polish (cross-cutting), **#130** TeamLegacy smoke test (gated on Phase 2 of #124), **#180/#181/#182/#183** (newly created from #316 — each multi-session: schema migration, etag strategy, dnd-kit optimistic UI, save/revert UX).
+
+### Test counts at session end
+
+- **Server:** 1079 (was 1060) — +19, mostly awards regex matrix (#310) + cleanup-nit guards (#314) + integration coverage.
+- **Client:** 661 (was 661 at session start; rebalanced — gained ManagePanel +11, ZodError +8, type-drift +0; lost 19 from `Season.test.tsx` and `AuctionValuesLegacy.test.tsx` deletions in #309/#301).
+- **MCP fbst-app:** 53; **MCP mlb-data:** 50; **E2E:** 1.
+- **Total:** 1844 (was 1825).
+
+Local `tsc --noEmit` clean both sides. CI green on every merged PR.
+
+### Process learnings
+
+- **Phantom-rename leakage persists.** Even with explicit guidance to rename `todos/N-pending-*.md → todos/N-complete-*.md` in the PR commit, four agents this session shipped code but forgot the rename. PR #318 cleaned them up. Future agent prompts should include the rename in the *acceptance criteria* the agent verifies before reporting back, not just in the constraints.
+- **Parallel-agent dispatch keeps producing clean concurrent merges** when each agent's prompt declares explicit *off-limits* paths. Three rounds of 3-way batches this session, no merge conflicts. The pattern: agent A (client only, no Team.tsx), agent B (server only, no client/), agent C (docs/meta only). Forward-declared coordination beats post-hoc resolution.
+- **`browser_close` recovers Playwright MCP from "Target page closed".** The tool gets stuck across sessions; explicitly closing the dead context lets a fresh `browser_navigate` create a new page. Memory-worthy.
+- **Bug audit caught one real risk** (`AddDropPanel` swallowing ZodError as "Roster rules are not satisfied") that PR #308 had introduced. The whole session was code-review-derived cleanup, not bug-hunting — important to flip modes occasionally and look for active prod issues.
+- **Test count "drift" is a tail of merge mechanics.** Across 22 PRs, the test count shifted server +19 / client neutral with hidden churn — agents added tests, agents deleted tests targeting deleted pages, both balanced. The summary number masks the per-PR signal.
+
+### Risk areas (still owed)
+
+- **Browser-verify the cumulative effect of #298 + #309 + #313 on Team.tsx.** Done in this session via Playwright MCP — passed (zero console errors, no `undefined` text on Activity, network calls match #298's intent). No follow-up needed.
+- **#311 baseline migration** is idempotent against prod, but if `schema.prisma` drifted from prod when the SQL was hand-written, fresh-DB spin-up could differ. Documented in the runbook's "Audit gap" section. Closeable by piping `pg_dump --schema-only` into a CI check next session.
+
+---
+
 ## Session 2026-05-07/08 — Stats freshness rollout + Wire List v1.1 hardening (27 PRs in one session)
 
 The longest session of the project. Started with `/session-start` after Wire List v1 shipped 2026-05-06, ran through `/ce:review` of the wire-list stack, browser-verified prod, surfaced two regressions, rolled out a server-side `computedAt` foundation across 8 stat pages, restored Watchlist + Trade Block + Wire List link to the Aurora team page, and closed every prioritized P1 + P2 wire-list todo from the multi-agent code review — plus full test coverage for everything new.
