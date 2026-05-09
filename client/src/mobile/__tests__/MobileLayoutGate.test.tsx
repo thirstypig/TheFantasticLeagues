@@ -99,9 +99,9 @@ describe("MobileLayoutGate", () => {
   it("falls through to the desktop child for routes without a mobile twin", () => {
     setMatchMedia(true);
     render(
-      <MemoryRouter initialEntries={["/players"]}>
+      <MemoryRouter initialEntries={["/board"]}>
         <MobileLayoutGate desktopChrome={DesktopChrome}>
-          <div data-testid="desktop-content">Players desktop</div>
+          <div data-testid="desktop-content">Board desktop</div>
         </MobileLayoutGate>
       </MemoryRouter>,
     );
