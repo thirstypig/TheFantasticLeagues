@@ -101,6 +101,6 @@ The wire-list module is now fully reviewed, hardened, performance-tuned, type-sa
 
 Recent verification for this workstream:
 
-- `npm run test`: 1060 server + 661 client + 53 MCP fbst-app + 50 MCP mlb-data = **1824 tests green** (7 skipped, 1 todo).
+- `npm run test`: 1079 server + 661 client + 53 MCP fbst-app + 50 MCP mlb-data = **1843 tests green** (7 skipped, 1 todo) + 1 E2E.
 - `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit` — both clean.
-- Browser-verified on prod (https://app.thefantasticleagues.com) — date+time badge rendering on `/teams/:code`, `/season`, `/players`, `/matchup`, classic equivalents.
+- Browser-verified on localhost — Team page (`/teams/LDY`) reads from new `roster-hub` endpoint per #298, manage sub-routes (`/manage/{claim,il-stash,il-activate}`) mount inline below team chrome per #309, Activity page renders without `undefined` text per #313.
