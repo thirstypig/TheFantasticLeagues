@@ -20,6 +20,7 @@ import type { LeagueListItem } from "../api";
 import "../components/aurora/aurora.css";
 import { MobileTabBar, type MobileRole } from "./MobileTabBar";
 import { MobileHome } from "./pages/MobileHome";
+import { MobileMore } from "./pages/MobileMore";
 import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
 
@@ -33,6 +34,9 @@ function pickMobilePage(pathname: string): React.ReactElement | null {
   }
   if (pathname === "/players") {
     return <MobilePlayers />;
+  }
+  if (pathname === "/more") {
+    return <MobileMore />;
   }
   return null;
 }
