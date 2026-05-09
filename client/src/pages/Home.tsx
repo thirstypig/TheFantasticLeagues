@@ -25,6 +25,7 @@ import {
   Chip, SectionLabel, Dot,
 } from "../components/aurora/atoms";
 import "../components/aurora/aurora.css";
+import "./home.css";
 import { useAuth } from "../auth/AuthProvider";
 import { useLeague } from "../contexts/LeagueContext";
 import { getSeasonStandings } from "../api";
