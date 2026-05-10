@@ -21,12 +21,14 @@
  *   - Watchlist star toggle — needs `getWatchlist` integration
  *   - Stats-mode toggle (season vs per-period)
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLeague } from "../../contexts/LeagueContext";
 import { getPlayerSeasonStatsMeta, type PlayerSeasonStat } from "../../api";
 import { isCMEligible, isMIEligible } from "../../lib/baseballUtils";
 import { NL_TEAMS } from "../../lib/sports/baseball";
+import { addToWatchlist, getWatchlist, removeFromWatchlist } from "../../features/watchlist/api";
+import { reportError } from "../../lib/errorBus";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
@@ -87,10 +89,13 @@ function statText(p: PlayerSeasonStat, key: Exclude<SortKey, "name">): string {
 
 export function MobilePlayers() {
   const nav = useNavigate();
-  const { leagueId } = useLeague();
+  const { leagueId, myTeamId } = useLeague();
   const [allPlayers, setAllPlayers] = useState<PlayerSeasonStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
+  const [watchPending, setWatchPending] = useState<Set<number>>(new Set());
+  const canWatch = myTeamId != null;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const group: GroupKey = searchParams.get("group") === "pitchers" ? "Pitchers" : "Hitters";
@@ -174,6 +179,68 @@ export function MobilePlayers() {
     };
   }, [leagueId]);
 
+  // Watchlist hydration — same shape desktop Players.tsx uses.
+  useEffect(() => {
+    if (myTeamId == null) {
+      setWatchedIds(new Set());
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const res = await getWatchlist(myTeamId);
+        if (!alive) return;
+        setWatchedIds(new Set(res.items.map((w) => w.player.id)));
+      } catch (err) {
+        reportError(err, { source: "mobile-watchlist-load" });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [myTeamId]);
+
+  const toggleWatch = useCallback(
+    async (playerId: number, isCurrentlyWatched: boolean, ev?: React.MouseEvent) => {
+      ev?.stopPropagation();
+      ev?.preventDefault();
+      if (myTeamId == null) return;
+      setWatchPending((prev) => new Set(prev).add(playerId));
+      // Optimistic flip — desktop pattern.
+      setWatchedIds((prev) => {
+        const next = new Set(prev);
+        if (isCurrentlyWatched) next.delete(playerId);
+        else next.add(playerId);
+        return next;
+      });
+      try {
+        if (isCurrentlyWatched) {
+          await removeFromWatchlist(playerId, myTeamId);
+        } else {
+          await addToWatchlist({ teamId: myTeamId, playerId });
+        }
+      } catch (err) {
+        // Rollback on failure.
+        setWatchedIds((prev) => {
+          const next = new Set(prev);
+          if (isCurrentlyWatched) next.add(playerId);
+          else next.delete(playerId);
+          return next;
+        });
+        reportError(err, {
+          source: isCurrentlyWatched ? "mobile-watchlist-remove" : "mobile-watchlist-add",
+        });
+      } finally {
+        setWatchPending((prev) => {
+          const next = new Set(prev);
+          next.delete(playerId);
+          return next;
+        });
+      }
+    },
+    [myTeamId],
+  );
+
   const positions = isHit ? HIT_POSITIONS : PITCH_POSITIONS;
   const sortKeys: readonly Exclude<SortKey, "name">[] = isHit ? HIT_SORT_KEYS : PITCH_SORT_KEYS;
 
@@ -225,7 +292,9 @@ export function MobilePlayers() {
 
   const visible = useMemo(() => sorted.slice(0, 200), [sorted]);
 
-  const cols = "minmax(0,1fr) 36px 36px 40px 40px";
+  const cols = canWatch
+    ? "20px minmax(0,1fr) 36px 36px 40px 40px"
+    : "minmax(0,1fr) 36px 36px 40px 40px";
 
   return (
     <div data-testid="mobile-players">
@@ -386,6 +455,7 @@ export function MobilePlayers() {
               background: "var(--am-surface-faint)",
             }}
           >
+            {canWatch && <div aria-hidden="true" />}
             <MSortHeader<SortKey>
               k="name"
               label="PLAYER"
@@ -420,7 +490,10 @@ export function MobilePlayers() {
               No players match these filters.
             </div>
           ) : (
-            visible.map((p, i) => (
+            visible.map((p, i) => {
+              const isWatched = watchedIds.has(p.id);
+              const pending = watchPending.has(p.id);
+              return (
               <div
                 key={p.id}
                 role="row"
@@ -437,6 +510,32 @@ export function MobilePlayers() {
                   cursor: p.mlb_id ? "pointer" : "default",
                 }}
               >
+                {canWatch && (
+                  <button
+                    type="button"
+                    onClick={(ev) => toggleWatch(p.id, isWatched, ev)}
+                    disabled={pending}
+                    aria-label={isWatched ? "Remove from watchlist" : "Add to watchlist"}
+                    aria-pressed={isWatched}
+                    data-testid="mobile-players-watch-toggle"
+                    data-watched={isWatched ? "1" : "0"}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      cursor: pending ? "wait" : "pointer",
+                      color: isWatched ? "var(--am-accent)" : "var(--am-text-faint)",
+                      opacity: pending ? 0.5 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 20,
+                      height: 20,
+                    }}
+                  >
+                    <Glyph kind={isWatched ? "starOn" : "star"} size={14} />
+                  </button>
+                )}
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
@@ -473,7 +572,8 @@ export function MobilePlayers() {
                   );
                 })}
               </div>
-            ))
+              );
+            })
           )}
         </MCard>
       </div>
