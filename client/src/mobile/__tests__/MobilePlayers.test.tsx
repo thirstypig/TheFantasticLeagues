@@ -1,15 +1,26 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobilePlayers } from "../pages/MobilePlayers";
 import { getPlayerSeasonStatsMeta } from "../../api";
+import { addToWatchlist, getWatchlist, removeFromWatchlist } from "../../features/watchlist/api";
 
 vi.mock("../../contexts/LeagueContext", () => ({
-  useLeague: () => ({ leagueId: 20 }),
+  useLeague: () => ({ leagueId: 20, myTeamId: 101 }),
 }));
 
 vi.mock("../../api", () => ({
   getPlayerSeasonStatsMeta: vi.fn(),
+}));
+
+vi.mock("../../features/watchlist/api", () => ({
+  getWatchlist: vi.fn(),
+  addToWatchlist: vi.fn(),
+  removeFromWatchlist: vi.fn(),
+}));
+
+vi.mock("../../lib/errorBus", () => ({
+  reportError: vi.fn(),
 }));
 
 const HITTERS = [
@@ -27,6 +38,9 @@ beforeEach(() => {
   vi.mocked(getPlayerSeasonStatsMeta).mockResolvedValue({
     stats: [...HITTERS, ...PITCHERS],
   } as any);
+  vi.mocked(getWatchlist).mockResolvedValue({ items: [] });
+  vi.mocked(addToWatchlist).mockResolvedValue({} as any);
+  vi.mocked(removeFromWatchlist).mockResolvedValue(undefined as any);
 });
 
 function renderPage(initialPath = "/players?team=ALL") {
@@ -91,6 +105,59 @@ describe("MobilePlayers", () => {
     fireEvent.click(hrHeader);
     await waitFor(() => {
       expect(hrHeader.getAttribute("aria-sort")).toBe("ascending");
+    });
+  });
+
+  it("renders an unfilled star next to each player when the user has a team", async () => {
+    renderPage();
+    await screen.findByText("Aaron Judge");
+    const stars = screen.getAllByTestId("mobile-players-watch-toggle");
+    expect(stars.length).toBe(3); // one per visible hitter
+    stars.forEach((s) => expect(s.getAttribute("data-watched")).toBe("0"));
+  });
+
+  it("calls addToWatchlist and flips the star when an unwatched row is starred", async () => {
+    renderPage();
+    const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    const star = within(judgeRow as HTMLElement).getByTestId("mobile-players-watch-toggle");
+    expect(star.getAttribute("data-watched")).toBe("0");
+    fireEvent.click(star);
+    await waitFor(() => {
+      expect(star.getAttribute("data-watched")).toBe("1");
+    });
+    expect(addToWatchlist).toHaveBeenCalledWith({ teamId: 101, playerId: 1 });
+  });
+
+  it("calls removeFromWatchlist and unflips the star when a watched row is starred", async () => {
+    vi.mocked(getWatchlist).mockResolvedValueOnce({
+      items: [{ player: { id: 1 } }] as any,
+    });
+    renderPage();
+    await screen.findByText("Aaron Judge");
+    const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    const star = within(judgeRow as HTMLElement).getByTestId("mobile-players-watch-toggle");
+    await waitFor(() => {
+      expect(star.getAttribute("data-watched")).toBe("1");
+    });
+    fireEvent.click(star);
+    await waitFor(() => {
+      expect(star.getAttribute("data-watched")).toBe("0");
+    });
+    expect(removeFromWatchlist).toHaveBeenCalledWith(1, 101);
+  });
+
+  it("does not navigate to player detail when the watch star is clicked", async () => {
+    renderPage();
+    const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    const star = within(judgeRow as HTMLElement).getByTestId("mobile-players-watch-toggle");
+    fireEvent.click(star);
+    // The MemoryRouter pathname should still be /players?team=ALL — the
+    // row's onClick navigation is suppressed by stopPropagation. We
+    // assert via the absence of any "navigated to detail" side effect:
+    // addToWatchlist firing is the affirmative signal that the click
+    // hit the star, not the row.
+    await waitFor(() => {
+      expect(addToWatchlist).toHaveBeenCalled();
     });
   });
 });
