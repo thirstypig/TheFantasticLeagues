@@ -22,6 +22,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
 import { getTeams, getTeamRosterHub, updateRosterPosition } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
+import { ilActivate, ilStash } from "../../features/transactions/api";
 import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
 import type { LeagueTeam } from "../../api/types";
@@ -30,6 +31,7 @@ import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridRing, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
 import { Glyph } from "../atoms/Glyph";
+import { MobileTeamIlActivateSheet } from "./MobileTeamIlActivateSheet";
 import { MobileTeamMoveSheet } from "./MobileTeamMoveSheet";
 
 type Tab = "Hitters" | "Pitchers" | "IL";
@@ -83,9 +85,12 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   // Roster row currently selected for a move — drives MobileTeamMoveSheet.
   const [moveSheetRow, setMoveSheetRow] = useState<RosterHubRow | null>(null);
   // rosterId set is the player's row id; tracks rows with an in-flight
-  // updateRosterPosition call to disable repeat moves while pending.
+  // updateRosterPosition / ilStash / ilActivate call to disable repeat
+  // moves while pending.
   const [movePending, setMovePending] = useState<Set<number>>(new Set());
   const [moveError, setMoveError] = useState<string | null>(null);
+  // IL activate flow — the IL player whose activation sheet is open.
+  const [ilActivateRow, setIlActivateRow] = useState<RosterHubRow | null>(null);
 
   // Resolve teamCode → teamId using the league's teams list, then fan
   // out to the roster hub + standings. This is the same join the
@@ -191,9 +196,16 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       });
 
       try {
-        await updateRosterPosition(teamId, row.rosterId, nextSlot);
+        if (nextSlot === "IL") {
+          // Stash-only — server's matcher fills the freed active slot
+          // from the bench. addPlayerId omitted.
+          if (leagueId == null) throw new Error("leagueId not resolved");
+          await ilStash({ leagueId, teamId, stashPlayerId: row.playerId });
+        } else {
+          await updateRosterPosition(teamId, row.rosterId, nextSlot);
+        }
       } catch (err: unknown) {
-        reportError(err, { source: "mobile-team-move" });
+        reportError(err, { source: nextSlot === "IL" ? "mobile-team-il-stash" : "mobile-team-move" });
         setMoveError(err instanceof Error ? err.message : "Failed to move player");
         // Rollback by restoring the previous slot on the row.
         setHub((prev) => {
@@ -217,8 +229,76 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         });
       }
     },
-    [teamId],
+    [teamId, leagueId],
   );
+
+  /**
+   * IL activate flow — pulls an IL player back to the active roster by
+   * dropping a roster player to make room. Server picks the slot via
+   * its bipartite matcher (the API doesn't accept an explicit slot).
+   */
+  const applyIlActivate = useCallback(
+    async (ilRow: RosterHubRow, dropTarget: RosterHubRow) => {
+      if (teamId == null || leagueId == null) return;
+      setIlActivateRow(null);
+      setMoveError(null);
+      setMovePending((prev) => new Set(prev).add(ilRow.rosterId));
+
+      // Optimistic: move the IL row off the IL list (we don't know the
+      // slot yet — assignedPosition stays the old one until the hub
+      // refetches). Drop the chosen player out of all three buckets.
+      setHub((prev) => {
+        if (!prev) return prev;
+        const filterDropped = (r: RosterHubRow) => r.rosterId !== dropTarget.rosterId;
+        const activated = { ...ilRow, assignedPosition: ilRow.posPrimary ?? "BN" };
+        return {
+          ...prev,
+          hitters: activated.isPitcher
+            ? prev.hitters.filter(filterDropped)
+            : [...prev.hitters.filter(filterDropped), activated],
+          pitchers: activated.isPitcher
+            ? [...prev.pitchers.filter(filterDropped), activated]
+            : prev.pitchers.filter(filterDropped),
+          ilPlayers: prev.ilPlayers.filter((r) => r.rosterId !== ilRow.rosterId),
+        };
+      });
+
+      try {
+        await ilActivate({
+          leagueId,
+          teamId,
+          activatePlayerId: ilRow.playerId,
+          dropPlayerId: dropTarget.playerId,
+        });
+        // Refetch the hub to get the server's authoritative slot
+        // assignment for the activated player.
+        try {
+          const refreshed = await getTeamRosterHub(teamId);
+          setHub(refreshed);
+        } catch {
+          // If the refetch fails, leave the optimistic state in place.
+        }
+      } catch (err: unknown) {
+        reportError(err, { source: "mobile-team-il-activate" });
+        setMoveError(err instanceof Error ? err.message : "Failed to activate from IL");
+        // Rollback by refetching the hub from server truth.
+        try {
+          const refreshed = await getTeamRosterHub(teamId);
+          setHub(refreshed);
+        } catch {
+          // Leave the optimistic state; user can refresh manually.
+        }
+      } finally {
+        setMovePending((prev) => {
+          const next = new Set(prev);
+          next.delete(ilRow.rosterId);
+          return next;
+        });
+      }
+    },
+    [teamId, leagueId],
+  );
+
   const teamName = hub?.team.name ?? teamCode ?? "Team";
   const budget = hub?.team.budget;
 
@@ -239,7 +319,10 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const isHit = tab !== "Pitchers";
   // Add a trailing 26px move-button column when the user can edit and
   // the active tab isn't IL (IL stash/activate is a separate flow).
-  const showMoveCol = canEdit && tab !== "IL";
+  // Both tabs (active hitters/pitchers and IL) get a move-button column
+  // for editable teams. The button's onClick branches on which tab is
+  // active — slot picker for active rows, drop-target picker for IL rows.
+  const showMoveCol = canEdit;
   const cols = showMoveCol
     ? "32px minmax(0,1fr) 36px 36px 36px 36px 26px"
     : "32px minmax(0,1fr) 36px 36px 36px 36px";
@@ -490,10 +573,14 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                     onClick={(ev) => {
                       ev.stopPropagation();
                       ev.preventDefault();
-                      setMoveSheetRow(p);
+                      if (tab === "IL") {
+                        setIlActivateRow(p);
+                      } else {
+                        setMoveSheetRow(p);
+                      }
                     }}
                     disabled={movePending.has(p.rosterId)}
-                    aria-label={`Move ${p.playerName}`}
+                    aria-label={tab === "IL" ? `Activate ${p.playerName}` : `Move ${p.playerName}`}
                     data-testid="mobile-team-move-btn"
                     data-roster-id={p.rosterId}
                     style={{
@@ -565,6 +652,15 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
           player={moveSheetRow}
           onPick={(slot) => applyMove(moveSheetRow, slot)}
           onDismiss={() => setMoveSheetRow(null)}
+        />
+      )}
+
+      {ilActivateRow && hub && (
+        <MobileTeamIlActivateSheet
+          player={ilActivateRow}
+          dropCandidates={[...hub.hitters, ...hub.pitchers]}
+          onPick={(target) => applyIlActivate(ilActivateRow, target)}
+          onDismiss={() => setIlActivateRow(null)}
         />
       )}
     </div>
