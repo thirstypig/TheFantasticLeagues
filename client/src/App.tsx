@@ -3,6 +3,7 @@ import React, { Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AuroraShell from "./components/aurora/AuroraShell";
+import { MobileLayoutGate } from "./mobile/MobileLayoutGate";
 const InjuredListPage = React.lazy(() => import("./features/players/pages/InjuredListPage"));
 const AuctionLegacy = React.lazy(() => import("./features/auction/pages/AuctionLegacy"));
 
@@ -139,7 +140,7 @@ export default function App() {
           path="/*"
           element={
             user ? (
-              <AuroraShell>
+              <MobileLayoutGate desktopChrome={AuroraShell}>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<Home />} />
@@ -254,7 +255,7 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-              </AuroraShell>
+              </MobileLayoutGate>
             ) : (
               <Suspense fallback={<PageLoader />}>
                 <Routes>
