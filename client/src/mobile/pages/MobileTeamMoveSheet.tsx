@@ -61,8 +61,10 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
   const current = player.assignedPosition ?? player.posPrimary ?? null;
 
   // Build the slot menu — eligible primary positions in POS_ORDER, then
-  // Bench at the end. SP / RP appear separately for pitchers since the
-  // server stores them as distinct slot codes.
+  // Bench, then IL. SP / RP appear separately for pitchers since the
+  // server stores them as distinct slot codes. IL is the last option
+  // and triggers the stash flow (different API endpoint); the parent
+  // discriminates on slot === "IL" in its onPick handler.
   const slotOptions = useMemo(() => {
     const slots: string[] = [];
     const order = player.isPitcher ? ["SP", "RP", "P"] : POS_ORDER;
@@ -70,6 +72,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
       if (eligible.has(pos)) slots.push(pos);
     }
     if (!slots.includes("BN")) slots.push("BN");
+    slots.push("IL");
     return slots;
   }, [eligible, player.isPitcher]);
 
@@ -202,7 +205,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
                   letterSpacing: 0.3,
                 }}
               >
-                {slot === "BN" ? "Bench" : slot}
+                {slot === "BN" ? "Bench" : slot === "IL" ? "IL stash" : slot}
                 {isCurrent && (
                   <div style={{ fontSize: 9, fontWeight: 600, marginTop: 2, opacity: 0.85 }}>
                     current
@@ -225,7 +228,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
           <span style={{ color: "var(--am-text-muted)", fontWeight: 600 }}>
             {player.posList ?? player.posPrimary ?? "—"}
           </span>
-          {". IL placement uses a separate flow."}
+          {". IL stash frees this slot; the server fills it from your bench."}
         </div>
       </div>
     </>

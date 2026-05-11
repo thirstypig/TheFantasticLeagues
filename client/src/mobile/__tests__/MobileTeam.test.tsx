@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileTeam } from "../pages/MobileTeam";
 import { getTeams, getTeamRosterHub, updateRosterPosition } from "../../features/teams/api";
+import { ilActivate, ilStash } from "../../features/transactions/api";
 import { getSeasonStandings } from "../../api";
 
 vi.mock("../../contexts/LeagueContext", () => ({
@@ -17,6 +18,11 @@ vi.mock("../../features/teams/api", () => ({
   getTeams: vi.fn(),
   getTeamRosterHub: vi.fn(),
   updateRosterPosition: vi.fn(),
+}));
+
+vi.mock("../../features/transactions/api", () => ({
+  ilStash: vi.fn(),
+  ilActivate: vi.fn(),
 }));
 
 vi.mock("../../api", () => ({
@@ -51,6 +57,8 @@ beforeEach(() => {
   ]);
   vi.mocked(getTeamRosterHub).mockResolvedValue(SAMPLE_HUB as any);
   vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 1 } } as any);
+  vi.mocked(ilStash).mockResolvedValue({ success: true, stashPlayerId: 1, addPlayerId: null });
+  vi.mocked(ilActivate).mockResolvedValue({ success: true, activatePlayerId: 20, dropPlayerId: 1 });
   vi.mocked(getSeasonStandings).mockResolvedValue({
     periodIds: [1, 2],
     rows: [
@@ -181,6 +189,64 @@ describe("MobileTeam (read-only)", () => {
     renderTeam("DLC");
     await screen.findByText("Mookie Betts");
     expect(screen.queryAllByTestId("mobile-team-move-btn").length).toBe(0);
+  });
+
+  it("offers an IL stash option in the move sheet for active players", async () => {
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    const mookieRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(mookieRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    const ilBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "IL");
+    expect(ilBtn).toBeTruthy();
+    expect(ilBtn).toHaveTextContent("IL stash");
+  });
+
+  it("calls ilStash and removes the row from active when IL is picked", async () => {
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    const mookieRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(mookieRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    const ilBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "IL")!;
+    fireEvent.click(ilBtn);
+    await waitFor(() => {
+      expect(ilStash).toHaveBeenCalledWith({ leagueId: 20, teamId: 101, stashPlayerId: 1 });
+    });
+  });
+
+  it("opens the IL activate sheet when the move button on an IL row is clicked", async () => {
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    const ilRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(ilRow).getByTestId("mobile-team-move-btn"));
+    expect(await screen.findByTestId("mobile-team-il-activate-sheet")).toBeInTheDocument();
+    // Drop candidates = all active hitters + pitchers (Mookie + Will + Glasnow)
+    const targets = screen.getAllByTestId("mobile-team-il-activate-drop-target");
+    expect(targets.length).toBe(3);
+  });
+
+  it("calls ilActivate with the right player ids when a drop target is picked", async () => {
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    const ilRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(ilRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-il-activate-sheet");
+    // Pick the first drop target (Mookie, playerId=1)
+    const target = screen.getAllByTestId("mobile-team-il-activate-drop-target")[0];
+    fireEvent.click(target);
+    await waitFor(() => {
+      expect(ilActivate).toHaveBeenCalledWith({
+        leagueId: 20,
+        teamId: 101,
+        activatePlayerId: 20,
+        dropPlayerId: 1,
+      });
+    });
   });
 
   it("dismisses the move sheet when the backdrop is clicked", async () => {
