@@ -34,6 +34,7 @@ import { MCard, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
 import { MSortHeader, type SortDir } from "../atoms/MSortHeader";
 import { Glyph } from "../atoms/Glyph";
+import { MobilePlayerExpand } from "./MobilePlayerExpand";
 
 type GroupKey = "Hitters" | "Pitchers";
 type LeagueChip = "All" | "NL" | "AL";
@@ -96,6 +97,8 @@ export function MobilePlayers() {
   const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
   const [watchPending, setWatchPending] = useState<Set<number>>(new Set());
   const canWatch = myTeamId != null;
+  // Player.id of the currently expanded inline panel; null = none open.
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const group: GroupKey = searchParams.get("group") === "pitchers" ? "Pitchers" : "Hitters";
@@ -493,13 +496,15 @@ export function MobilePlayers() {
             visible.map((p, i) => {
               const isWatched = watchedIds.has(p.id);
               const pending = watchPending.has(p.id);
+              const isOpen = expandedId === p.id;
               return (
+              <React.Fragment key={p.id}>
               <div
-                key={p.id}
                 role="row"
                 data-testid="mobile-players-row"
                 data-mlb-id={p.mlb_id}
-                onClick={() => p.mlb_id && nav(`/players/${p.mlb_id}`)}
+                data-expanded={isOpen ? "1" : "0"}
+                onClick={() => setExpandedId(isOpen ? null : p.id)}
                 style={{
                   display: "grid",
                   gridTemplateColumns: cols,
@@ -507,7 +512,8 @@ export function MobilePlayers() {
                   gap: 4,
                   padding: "8px 12px",
                   borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
-                  cursor: p.mlb_id ? "pointer" : "default",
+                  cursor: "pointer",
+                  background: isOpen ? "var(--am-chip-strong)" : "transparent",
                 }}
               >
                 {canWatch && (
@@ -572,6 +578,15 @@ export function MobilePlayers() {
                   );
                 })}
               </div>
+              {isOpen && (
+                <MobilePlayerExpand
+                  player={p}
+                  isWatched={isWatched}
+                  watchPending={pending}
+                  onToggleWatch={() => toggleWatch(p.id, isWatched)}
+                />
+              )}
+              </React.Fragment>
               );
             })
           )}
@@ -582,7 +597,7 @@ export function MobilePlayers() {
         <div style={{ fontSize: 10, color: "var(--am-text-faint)", padding: "0 4px" }}>
           {visible.length < sorted.length
             ? `Showing top ${visible.length} of ${sorted.length}. Tighten filters to narrow.`
-            : "Tap any column header to sort. Tap a row to open the full profile."}
+            : "Tap any column header to sort. Tap a row to expand career stats."}
         </div>
       </div>
     </div>
