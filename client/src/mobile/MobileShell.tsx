@@ -19,10 +19,14 @@ import { useTheme } from "../contexts/ThemeContext";
 import type { LeagueListItem } from "../api";
 import "../components/aurora/aurora.css";
 import { MobileTabBar, type MobileRole } from "./MobileTabBar";
+import { MobileHome } from "./pages/MobileHome";
 import { MobileStandings } from "./pages/MobileStandings";
 
 /** Map a pathname to a mobile page (or `null` to fall through to desktop). */
 function pickMobilePage(pathname: string): React.ReactElement | null {
+  if (pathname === "/") {
+    return <MobileHome />;
+  }
   if (pathname === "/season" || pathname.startsWith("/season/")) {
     return <MobileStandings />;
   }
