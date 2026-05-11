@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobilePlayers } from "../pages/MobilePlayers";
-import { getPlayerSeasonStatsMeta } from "../../api";
+import { getPlayerSeasonStatsMeta, getPlayerCareerStats } from "../../api";
 import { addToWatchlist, getWatchlist, removeFromWatchlist } from "../../features/watchlist/api";
 
 vi.mock("../../contexts/LeagueContext", () => ({
@@ -11,6 +11,7 @@ vi.mock("../../contexts/LeagueContext", () => ({
 
 vi.mock("../../api", () => ({
   getPlayerSeasonStatsMeta: vi.fn(),
+  getPlayerCareerStats: vi.fn(),
 }));
 
 vi.mock("../../features/watchlist/api", () => ({
@@ -41,6 +42,12 @@ beforeEach(() => {
   vi.mocked(getWatchlist).mockResolvedValue({ items: [] });
   vi.mocked(addToWatchlist).mockResolvedValue({} as any);
   vi.mocked(removeFromWatchlist).mockResolvedValue(undefined as any);
+  vi.mocked(getPlayerCareerStats).mockResolvedValue({
+    rows: [
+      { year: "2026", tm: "NYY", G: 140, AB: 480, R: 95, H: 130, d2B: 25, d3B: 0, HR: 50, RBI: 110, SB: 5, CS: 1, BB: 80, SO: 130, GS: 0, AVG: "0.271", OBP: "0.380", SLG: "0.560" },
+      { year: "2025", tm: "NYY", G: 145, AB: 510, R: 105, H: 145, d2B: 28, d3B: 1, HR: 45, RBI: 120, SB: 8, CS: 2, BB: 75, SO: 140, GS: 0, AVG: "0.284", OBP: "0.370", SLG: "0.530" },
+    ] as any,
+  });
 });
 
 function renderPage(initialPath = "/players?team=ALL") {
@@ -146,18 +153,55 @@ describe("MobilePlayers", () => {
     expect(removeFromWatchlist).toHaveBeenCalledWith(1, 101);
   });
 
-  it("does not navigate to player detail when the watch star is clicked", async () => {
+  it("does not expand the row when the watch star is clicked", async () => {
     renderPage();
     const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    expect(judgeRow.getAttribute("data-expanded")).toBe("0");
     const star = within(judgeRow as HTMLElement).getByTestId("mobile-players-watch-toggle");
     fireEvent.click(star);
-    // The MemoryRouter pathname should still be /players?team=ALL — the
-    // row's onClick navigation is suppressed by stopPropagation. We
-    // assert via the absence of any "navigated to detail" side effect:
-    // addToWatchlist firing is the affirmative signal that the click
-    // hit the star, not the row.
     await waitFor(() => {
       expect(addToWatchlist).toHaveBeenCalled();
+    });
+    expect(judgeRow.getAttribute("data-expanded")).toBe("0");
+  });
+
+  it("expands the inline panel when a row is tapped", async () => {
+    renderPage();
+    const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    fireEvent.click(judgeRow);
+    expect(await screen.findByTestId("mobile-player-expand")).toBeInTheDocument();
+    expect(judgeRow.getAttribute("data-expanded")).toBe("1");
+  });
+
+  it("collapses the inline panel when the same row is tapped again", async () => {
+    renderPage();
+    const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    fireEvent.click(judgeRow);
+    await screen.findByTestId("mobile-player-expand");
+    fireEvent.click(judgeRow);
+    await waitFor(() => {
+      expect(screen.queryByTestId("mobile-player-expand")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders the career table inside the expanded panel", async () => {
+    renderPage();
+    const judgeRow = (await screen.findByText("Aaron Judge")).closest("[data-testid='mobile-players-row']")!;
+    fireEvent.click(judgeRow);
+    await screen.findByTestId("mobile-player-expand-career");
+    // 2 mocked seasons render with year labels
+    expect(screen.getByText("2026")).toBeInTheDocument();
+    expect(screen.getByText("2025")).toBeInTheDocument();
+    expect(getPlayerCareerStats).toHaveBeenCalledWith("100", "hitting");
+  });
+
+  it("uses the pitching career endpoint when expanding a pitcher", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("tab", { name: "Pitchers" }));
+    const striderRow = (await screen.findByText("Spencer Strider")).closest("[data-testid='mobile-players-row']")!;
+    fireEvent.click(striderRow);
+    await waitFor(() => {
+      expect(getPlayerCareerStats).toHaveBeenCalledWith("1000", "pitching");
     });
   });
 });
