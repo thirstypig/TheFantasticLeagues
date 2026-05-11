@@ -412,6 +412,75 @@ export function MobileHome() {
           )}
         </MCard>
       </MSection>
+
+      {/* Quick links */}
+      <div style={{ padding: "0 14px 16px" }}>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 1.2,
+            textTransform: "uppercase",
+            color: "var(--am-text-faint)",
+            marginBottom: 8,
+            paddingLeft: 2,
+          }}
+        >
+          League
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+          }}
+        >
+          {[
+            { label: "Browse players", sub: "Search and filter", to: "/players" },
+            { label: "Activity", sub: "Recent transactions", to: "/activity" },
+            { label: "Board", sub: "Manager chatter", to: "/board" },
+            { label: "AI Hub", sub: "Insights + digest", to: "/ai" },
+            ...(myTeamCode ? [{ label: "Wire list", sub: "Waiver picks", to: `/teams/${myTeamCode}/wire-list` }] : []),
+            { label: "Standings", sub: "Full board", to: "/season" },
+          ].map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              style={{ textDecoration: "none" }}
+              data-testid="mobile-home-quick-link"
+            >
+              <div
+                style={{
+                  background: "var(--am-surface)",
+                  border: "1px solid var(--am-border)",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--am-text)",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {item.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 10.5,
+                    color: "var(--am-text-faint)",
+                    marginTop: 3,
+                  }}
+                >
+                  {item.sub}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
