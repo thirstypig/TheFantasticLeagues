@@ -226,6 +226,12 @@ export default function App() {
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/concepts" element={<Concepts />} />
                     <Route path="/community" element={<ProductBoard />} />
+                    {/* Mobile-only "More" tab landing page. On mobile,
+                        MobileLayoutGate substitutes the MobileMore twin
+                        before this redirect fires. On desktop the page
+                        has no analog (AuroraShell already exposes a more
+                        popover) so we send users home. */}
+                    <Route path="/more" element={<Navigate to="/" replace />} />
                     <Route path="/ai" element={<AIHub />} />
                     <Route path="/draft-report" element={<DraftReportPage />} />
                     {/* Aurora Weekly Report (screen #7). Net-new page —
