@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createAddEntry } from "../../features/wire-list/api";
 import {
   getPlayerCareerStats,
   type CareerHittingRow,
@@ -22,6 +23,10 @@ interface MobilePlayerExpandProps {
   isWatched: boolean;
   watchPending: boolean;
   onToggleWatch: () => void;
+  /** Set when there is a PENDING waiver period — enables the add-to-wire-list CTA. */
+  activePeriodId?: number;
+  /** The current user's team id — required to create the add entry. */
+  myTeamId?: number;
 }
 
 function isPitcherRow(p: PlayerSeasonStat): boolean {
@@ -92,12 +97,16 @@ export function MobilePlayerExpand({
   isWatched,
   watchPending,
   onToggleWatch,
+  activePeriodId,
+  myTeamId,
 }: MobilePlayerExpandProps) {
   const nav = useNavigate();
   const isPitcher = isPitcherRow(player);
   const [career, setCareer] = useState<CareerStatsResponse | null>(null);
   const [careerLoading, setCareerLoading] = useState(true);
   const [careerError, setCareerError] = useState(false);
+  const [addState, setAddState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!player.mlb_id) {
@@ -125,6 +134,24 @@ export function MobilePlayerExpand({
       canceled = true;
     };
   }, [player.mlb_id, isPitcher]);
+
+  useEffect(() => {
+    setAddState("idle");
+    setAddError(null);
+  }, [player.id]);
+
+  const handleAddToWireList = async () => {
+    if (!activePeriodId || !myTeamId) return;
+    setAddState("loading");
+    setAddError(null);
+    try {
+      await createAddEntry(activePeriodId, { teamId: myTeamId, playerId: player.id });
+      setAddState("done");
+    } catch (err: unknown) {
+      setAddState("error");
+      setAddError(err instanceof Error ? err.message : "Failed to add to wire list");
+    }
+  };
 
   // Pull last-4 real seasons (skip the synthetic "TOT" aggregate row).
   const careerRows = (career?.rows ?? [])
@@ -257,6 +284,29 @@ export function MobilePlayerExpand({
           <Glyph kind={isWatched ? "starOn" : "star"} size={14} />
           {isWatched ? "Watching" : "Watch"}
         </button>
+        {activePeriodId != null && myTeamId != null && (
+          <button
+            type="button"
+            onClick={handleAddToWireList}
+            disabled={addState === "loading" || addState === "done"}
+            data-testid="mobile-player-expand-add-wire"
+            style={{
+              flex: 1,
+              padding: "9px 12px",
+              borderRadius: 10,
+              background: addState === "done" ? "var(--am-chip-strong)" : "var(--am-chip)",
+              color: addState === "done" ? "var(--am-positive)" : "var(--am-accent)",
+              border: "1px solid " + (addState === "done" ? "var(--am-border-strong)" : "var(--am-border)"),
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: addState === "loading" || addState === "done" ? "default" : "pointer",
+              fontFamily: "inherit",
+              opacity: addState === "loading" ? 0.6 : 1,
+            }}
+          >
+            {addState === "done" ? "✓ Added" : addState === "loading" ? "Adding…" : "+ Wire list"}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => player.mlb_id && nav(`/players/${player.mlb_id}`)}
@@ -277,6 +327,11 @@ export function MobilePlayerExpand({
           Full Profile
         </button>
       </div>
+      {addState === "error" && addError && (
+        <div style={{ marginTop: 6, fontSize: 11, color: "var(--am-negative)", textAlign: "center" }}>
+          {addError}
+        </div>
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ import { getPlayerSeasonStatsMeta, type PlayerSeasonStat } from "../../api";
 import { isCMEligible, isMIEligible } from "../../lib/baseballUtils";
 import { NL_TEAMS } from "../../lib/sports/baseball";
 import { addToWatchlist, getWatchlist, removeFromWatchlist } from "../../features/watchlist/api";
+import { getActivePeriod, createAddEntry } from "../../features/wire-list/api";
 import { reportError } from "../../lib/errorBus";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridText } from "../atoms/MCard";
@@ -99,6 +100,7 @@ export function MobilePlayers() {
   const canWatch = myTeamId != null;
   // Player.id of the currently expanded inline panel; null = none open.
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [activePeriodId, setActivePeriodId] = useState<number | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const group: GroupKey = searchParams.get("group") === "pitchers" ? "Pitchers" : "Hitters";
@@ -180,6 +182,19 @@ export function MobilePlayers() {
     return () => {
       canceled = true;
     };
+  }, [leagueId]);
+
+  useEffect(() => {
+    if (!leagueId) return;
+    let canceled = false;
+    getActivePeriod(leagueId)
+      .then(({ period }) => {
+        if (canceled) return;
+        // Only surface the period id when it's still editable
+        setActivePeriodId(period?.status === "PENDING" ? period.id : null);
+      })
+      .catch(() => {});
+    return () => { canceled = true; };
   }, [leagueId]);
 
   // Watchlist hydration — same shape desktop Players.tsx uses.
@@ -584,6 +599,8 @@ export function MobilePlayers() {
                   isWatched={isWatched}
                   watchPending={pending}
                   onToggleWatch={() => toggleWatch(p.id, isWatched)}
+                  activePeriodId={activePeriodId ?? undefined}
+                  myTeamId={myTeamId ?? undefined}
                 />
               )}
               </React.Fragment>

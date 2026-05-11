@@ -24,6 +24,7 @@ import { MobileMore } from "./pages/MobileMore";
 import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
 import { MobileTeam } from "./pages/MobileTeam";
+import { MobileWireList } from "./pages/MobileWireList";
 
 /** Map a pathname to a mobile page (or `null` to fall through to desktop). */
 function pickMobilePage(pathname: string): React.ReactElement | null {
@@ -46,6 +47,10 @@ function pickMobilePage(pathname: string): React.ReactElement | null {
   const teamMatch = pathname.match(/^\/teams\/([^/]+)\/?$/);
   if (teamMatch) {
     return <MobileTeam teamCode={teamMatch[1]} />;
+  }
+  const wireListMatch = pathname.match(/^\/teams\/([^/]+)\/wire-list\/?$/);
+  if (wireListMatch) {
+    return <MobileWireList teamCode={wireListMatch[1]} />;
   }
   return null;
 }
