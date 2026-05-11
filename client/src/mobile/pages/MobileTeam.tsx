@@ -17,10 +17,10 @@
  * standings query (same data the desktop hero card uses).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
-import { getTeams, getTeamRosterHub, updateRosterPosition } from "../../features/teams/api";
+import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { reportError } from "../../lib/errorBus";
@@ -35,6 +35,9 @@ import { MobileTeamIlActivateSheet } from "./MobileTeamIlActivateSheet";
 import { MobileTeamMoveSheet } from "./MobileTeamMoveSheet";
 
 type Tab = "Hitters" | "Pitchers" | "IL";
+
+type PeriodMode = "season" | number;
+interface PeriodOption { id: number; name: string; }
 
 function teamInitials(name: string): string {
   return (
@@ -65,6 +68,44 @@ function rosterTeamCode(t: LeagueTeam): string | null {
   return typeof t.code === "string" ? t.code : null;
 }
 
+const PITCHER_SLOTS = new Set(["P", "SP", "RP"]);
+
+function periodEntryToDisplayRow(entry: PeriodRosterEntry): RosterHubRow {
+  const ps: Partial<PeriodRosterStats> = entry.periodStats ?? {};
+  const ab = Number(ps.AB) || 0;
+  const h = Number(ps.H) || 0;
+  const ip = Number(ps.IP) || 0;
+  const er = Number(ps.ER) || 0;
+  const bbH = Number(ps.BB_H) || 0;
+  const isPitcher = PITCHER_SLOTS.has((entry.assignedPosition || entry.posPrimary || "").toUpperCase());
+  return {
+    rosterId: entry.id,
+    playerId: entry.playerId,
+    mlbId: entry.mlbId,
+    playerName: entry.name,
+    posPrimary: entry.posPrimary,
+    position: entry.posPrimary,
+    assignedPosition: entry.assignedPosition || entry.posPrimary,
+    isPitcher,
+    mlbTeam: entry.mlbTeam ?? undefined,
+    AB: ab,
+    H: h,
+    AVG: ab > 0 ? h / ab : 0,
+    HR: ps.HR ?? 0,
+    R: ps.R ?? 0,
+    RBI: ps.RBI ?? 0,
+    SB: ps.SB ?? 0,
+    IP: ip,
+    BB_H: bbH,
+    ER: er,
+    W: ps.W ?? 0,
+    SV: ps.SV ?? 0,
+    K: ps.K ?? 0,
+    ERA: ip > 0 ? (er / ip) * 9 : 0,
+    WHIP: ip > 0 ? bbH / ip : 0,
+  };
+}
+
 interface MobileTeamProps {
   /** Resolved by MobileShell from the URL pathname. */
   teamCode: string;
@@ -91,6 +132,12 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const [moveError, setMoveError] = useState<string | null>(null);
   // IL activate flow — the IL player whose activation sheet is open.
   const [ilActivateRow, setIlActivateRow] = useState<RosterHubRow | null>(null);
+
+  // Period selector state
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("season");
+  const [periodOptions, setPeriodOptions] = useState<PeriodOption[]>([]);
+  const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
+  const [periodLoading, setPeriodLoading] = useState(false);
 
   // Resolve teamCode → teamId using the league's teams list, then fan
   // out to the roster hub + standings. This is the same join the
@@ -159,6 +206,36 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       canceled = true;
     };
   }, [leagueId, teamCode]);
+
+  // Fetch period options once when leagueId is resolved.
+  useEffect(() => {
+    if (!leagueId) return;
+    let canceled = false;
+    getSeasonStandings(leagueId)
+      .then((s) => {
+        if (canceled) return;
+        const ids = (s as Record<string, unknown>).periodIds as number[] ?? [];
+        const names = (s as Record<string, unknown>).periodNames as string[] ?? [];
+        setPeriodOptions(ids.map((id, i) => ({ id, name: names[i] || `Period ${i + 1}` })));
+      })
+      .catch(() => {});
+    return () => { canceled = true; };
+  }, [leagueId]);
+
+  // Fetch period roster when periodMode changes to a specific period.
+  useEffect(() => {
+    if (periodMode === "season" || teamId == null) {
+      setPeriodRoster(null);
+      return;
+    }
+    let canceled = false;
+    setPeriodLoading(true);
+    getTeamPeriodRoster(teamId, periodMode as number)
+      .then((res) => { if (!canceled) setPeriodRoster(res.roster); })
+      .catch(() => { if (!canceled) setPeriodRoster([]); })
+      .finally(() => { if (!canceled) setPeriodLoading(false); });
+    return () => { canceled = true; };
+  }, [periodMode, teamId]);
 
   const isMyTeam = !!myTeamId && teamId === myTeamId;
   // Mutations are allowed only on the user's own team (or by admins).
@@ -303,18 +380,27 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const budget = hub?.team.budget;
 
   const tabs = useMemo<Tab[]>(() => {
+    // No IL tab when viewing period stats
+    if (periodMode !== "season") return ["Hitters", "Pitchers"];
     if (!hub) return ["Hitters", "Pitchers"] as Tab[];
     return hub.ilPlayers.length > 0
       ? (["Hitters", "Pitchers", "IL"] as Tab[])
       : (["Hitters", "Pitchers"] as Tab[]);
-  }, [hub]);
+  }, [hub, periodMode]);
 
   const list: RosterHubRow[] = useMemo(() => {
+    // In period mode, map the period roster to display rows
+    if (periodMode !== "season" && periodRoster) {
+      const displayRows = periodRoster.map(periodEntryToDisplayRow);
+      if (tab === "Hitters") return displayRows.filter((r) => !r.isPitcher);
+      if (tab === "Pitchers") return displayRows.filter((r) => r.isPitcher);
+      return []; // No IL tab in period mode
+    }
     if (!hub) return [];
     if (tab === "Hitters") return hub.hitters;
     if (tab === "Pitchers") return hub.pitchers;
     return hub.ilPlayers;
-  }, [hub, tab]);
+  }, [hub, tab, periodMode, periodRoster]);
 
   const isHit = tab !== "Pitchers";
   // Add a trailing 26px move-button column when the user can edit and
@@ -441,6 +527,74 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         </MIridRing>
       </div>
 
+      {/* ADD FREE AGENT BUTTON — only for editable teams */}
+      {canEdit && teamCode && (
+        <div style={{ padding: "0 14px 8px" }}>
+          <Link
+            to={`/teams/${teamCode}/wire-list`}
+            style={{ textDecoration: "none", display: "block" }}
+          >
+            <div
+              style={{
+                padding: "9px 14px",
+                borderRadius: 10,
+                background: "var(--am-chip)",
+                border: "1px solid var(--am-border)",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--am-accent)",
+                textAlign: "center",
+                letterSpacing: 0.1,
+              }}
+            >
+              + Add free agent
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* PERIOD SELECTOR PILLS */}
+      {periodOptions.length > 0 && (
+        <div
+          style={{
+            padding: "0 14px 8px",
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {[{ key: "season" as const, label: "Cumulative" }, ...periodOptions.map((p) => ({ key: p.id as number | "season", label: p.name }))].map((opt) => {
+            const isActive = periodMode === opt.key;
+            return (
+              <button
+                key={String(opt.key)}
+                type="button"
+                onClick={() => setPeriodMode(opt.key as PeriodMode)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 99,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                  color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                  border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+          {periodLoading && (
+            <span style={{ fontSize: 11, color: "var(--am-text-faint)", marginLeft: 2 }}>
+              loading…
+            </span>
+          )}
+        </div>
+      )}
+
       {/* TABS */}
       <div style={{ padding: "0 14px 8px" }}>
         <MSegmented<Tab>
@@ -496,7 +650,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       {/* DENSE ROWS */}
       <div style={{ padding: "0 14px 12px" }}>
         <MCard padded={false}>
-          {loading && !hub ? (
+          {(loading && !hub) || (periodMode !== "season" && periodLoading) ? (
             <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
               Loading roster…
             </div>
