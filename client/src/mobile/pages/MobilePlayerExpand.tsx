@@ -150,6 +150,7 @@ export function MobilePlayerExpand({
     } catch (err: unknown) {
       setAddState("error");
       setAddError(err instanceof Error ? err.message : "Failed to add to wire list");
+      reportError(err, { source: "mobile-player-expand-add-wire" });
     }
   };
 

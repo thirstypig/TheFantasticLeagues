@@ -28,7 +28,7 @@ import { getPlayerSeasonStatsMeta, type PlayerSeasonStat } from "../../api";
 import { isCMEligible, isMIEligible } from "../../lib/baseballUtils";
 import { NL_TEAMS } from "../../lib/sports/baseball";
 import { addToWatchlist, getWatchlist, removeFromWatchlist } from "../../features/watchlist/api";
-import { getActivePeriod, createAddEntry } from "../../features/wire-list/api";
+import { getActivePeriod } from "../../features/wire-list/api";
 import { reportError } from "../../lib/errorBus";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridText } from "../atoms/MCard";

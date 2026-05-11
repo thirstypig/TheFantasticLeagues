@@ -11,7 +11,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLeague } from "../../contexts/LeagueContext";
-import { ApiError } from "../../api/base";
 import {
   getActivePeriod,
   getAddEntries,
@@ -26,6 +25,7 @@ import {
   type WaiverDropMode,
 } from "../../features/wire-list/api";
 import { getTeams } from "../../features/teams/api";
+import { reportError } from "../../lib/errorBus";
 import AddPicker from "../../features/wire-list/components/AddPicker";
 import DropPicker from "../../features/wire-list/components/DropPicker";
 import { MobileTopbar } from "../MobileTopbar";
@@ -73,6 +73,26 @@ function ModeToggle({ value, disabled, onChange }: {
   );
 }
 
+// ─── Style helpers ────────────────────────────────────────────────────
+
+const arrowBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  width: 32, height: 32, borderRadius: 8,
+  background: "var(--am-chip)", color: "var(--am-text)",
+  border: "1px solid var(--am-border)",
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.4 : 1,
+  fontSize: 11, lineHeight: 1,
+  display: "flex", alignItems: "center", justifyContent: "center",
+});
+
+const removeBtnStyle: React.CSSProperties = {
+  width: 32, height: 32, borderRadius: 8,
+  background: "transparent", color: "var(--am-text-muted)",
+  border: "1px solid var(--am-border)",
+  cursor: "pointer", fontSize: 16, lineHeight: 1,
+  display: "flex", alignItems: "center", justifyContent: "center",
+};
+
 // ─── Props ───────────────────────────────────────────────────────────
 
 interface MobileWireListProps {
@@ -98,26 +118,41 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
   const addPlayerIds = useMemo(() => new Set(adds.map((a) => a.playerId)), [adds]);
   const dropPlayerIds = useMemo(() => new Set(drops.map((d) => d.playerId)), [drops]);
 
-  const reload = useCallback(async () => {
+  // One-time team resolution — teamCode never changes for the life of this page.
+  useEffect(() => {
     if (!leagueId || !teamCode) return;
+    let canceled = false;
+    getTeams(leagueId)
+      .then((teams) => {
+        if (canceled) return;
+        const team = teams.find((t) => t.code === teamCode);
+        if (team) {
+          setTeamId(team.id);
+        } else {
+          setError("Team not found. Check the URL and try again.");
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (canceled) return;
+        setError(err instanceof Error ? err.message : "Failed to load team");
+        setLoading(false);
+      });
+    return () => { canceled = true; };
+  }, [leagueId, teamCode]);
+
+  // Reload period + entries whenever teamId resolves or changes (it shouldn't after init).
+  const reload = useCallback(async () => {
+    if (!leagueId || teamId === null) return;
     setLoading(true);
     setError(null);
     try {
-      const teams = await getTeams(leagueId);
-      const team = teams.find((t) => t.code === teamCode);
-      if (!team) {
-        setError(`No team with code ${teamCode}`);
-        setLoading(false);
-        return;
-      }
-      setTeamId(team.id);
-
       const { period: p } = await getActivePeriod(leagueId);
       setPeriod(p);
       if (p) {
         const [a, d] = await Promise.all([
-          getAddEntries(p.id, team.id),
-          getDropEntries(p.id, team.id),
+          getAddEntries(p.id, teamId),
+          getDropEntries(p.id, teamId),
         ]);
         setAdds(a.entries);
         setDrops(d.entries);
@@ -126,11 +161,11 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         setDrops([]);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
+      setError(err instanceof Error ? err.message : "Failed to load wire list");
     } finally {
       setLoading(false);
     }
-  }, [leagueId, teamCode]);
+  }, [leagueId, teamId]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -151,6 +186,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
     const j = i + dir;
     if (j < 0 || j >= adds.length) return;
     if (!period || teamId === null) return;
+    setError(null);
     const a = adds[i];
     const b = adds[j];
     const reordered = adds.slice();
@@ -164,7 +200,8 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         reorderEntries(period.id, "ADD", teamId, orderedIds),
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
+      reportError(err, { source: "mobile-wire-list-swap-add" });
+      setError(err instanceof Error ? err.message : "Failed to reorder");
       await reload();
     }
   }, [adds, period, teamId, reload, withPending]);
@@ -173,6 +210,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
     const j = i + dir;
     if (j < 0 || j >= drops.length) return;
     if (!period || teamId === null) return;
+    setError(null);
     const a = drops[i];
     const b = drops[j];
     const reordered = drops.slice();
@@ -186,35 +224,42 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         reorderEntries(period.id, "DROP", teamId, orderedIds),
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
+      reportError(err, { source: "mobile-wire-list-swap-drop" });
+      setError(err instanceof Error ? err.message : "Failed to reorder");
       await reload();
     }
   }, [drops, period, teamId, reload, withPending]);
 
   const removeAdd = useCallback(async (id: number) => {
+    setError(null);
     try {
       await withPending(id, () => deleteAddEntry(id));
       await reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
+      reportError(err, { source: "mobile-wire-list-remove-add" });
+      setError(err instanceof Error ? err.message : "Failed to remove");
     }
   }, [reload, withPending]);
 
   const removeDrop = useCallback(async (id: number) => {
+    setError(null);
     try {
       await withPending(id, () => deleteDropEntry(id));
       await reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
+      reportError(err, { source: "mobile-wire-list-remove-drop" });
+      setError(err instanceof Error ? err.message : "Failed to remove");
     }
   }, [reload, withPending]);
 
   const setDropMode = useCallback(async (id: number, dropMode: WaiverDropMode) => {
+    setError(null);
     try {
       await withPending(id, () => updateDropEntry(id, { dropMode }));
       await reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
+      reportError(err, { source: "mobile-wire-list-drop-mode" });
+      setError(err instanceof Error ? err.message : "Failed to update");
     }
   }, [reload, withPending]);
 
@@ -548,24 +593,3 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
   );
 }
 
-// ─── Style helpers ────────────────────────────────────────────────────
-
-function arrowBtnStyle(disabled: boolean): React.CSSProperties {
-  return {
-    width: 32, height: 32, borderRadius: 8,
-    background: "var(--am-chip)", color: "var(--am-text)",
-    border: "1px solid var(--am-border)",
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.4 : 1,
-    fontSize: 11, lineHeight: 1,
-    display: "flex", alignItems: "center", justifyContent: "center",
-  };
-}
-
-const removeBtnStyle: React.CSSProperties = {
-  width: 32, height: 32, borderRadius: 8,
-  background: "transparent", color: "var(--am-text-muted)",
-  border: "1px solid var(--am-border)",
-  cursor: "pointer", fontSize: 16, lineHeight: 1,
-  display: "flex", alignItems: "center", justifyContent: "center",
-};
