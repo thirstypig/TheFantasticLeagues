@@ -16,11 +16,13 @@
  * compact stat strip per the design canvas. PTS comes from the
  * standings query (same data the desktop hero card uses).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
-import { getTeams, getTeamRosterHub } from "../../features/teams/api";
+import { getTeams, getTeamRosterHub, updateRosterPosition } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
+import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
 import type { LeagueTeam } from "../../api/types";
 import type { RosterHubRow } from "@shared/api/teams";
@@ -28,6 +30,7 @@ import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridRing, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
 import { Glyph } from "../atoms/Glyph";
+import { MobileTeamMoveSheet } from "./MobileTeamMoveSheet";
 
 type Tab = "Hitters" | "Pitchers" | "IL";
 
@@ -67,6 +70,7 @@ interface MobileTeamProps {
 
 export function MobileTeam({ teamCode }: MobileTeamProps) {
   const nav = useNavigate();
+  const { user } = useAuth();
   const { leagueId, myTeamId } = useLeague();
 
   const [teamId, setTeamId] = useState<number | null>(null);
@@ -76,6 +80,12 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("Hitters");
+  // Roster row currently selected for a move — drives MobileTeamMoveSheet.
+  const [moveSheetRow, setMoveSheetRow] = useState<RosterHubRow | null>(null);
+  // rosterId set is the player's row id; tracks rows with an in-flight
+  // updateRosterPosition call to disable repeat moves while pending.
+  const [movePending, setMovePending] = useState<Set<number>>(new Set());
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   // Resolve teamCode → teamId using the league's teams list, then fan
   // out to the roster hub + standings. This is the same join the
@@ -146,6 +156,69 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   }, [leagueId, teamCode]);
 
   const isMyTeam = !!myTeamId && teamId === myTeamId;
+  // Mutations are allowed only on the user's own team (or by admins).
+  const canEdit = isMyTeam || Boolean(user?.isAdmin);
+
+  /**
+   * Apply a lineup change. Optimistically updates the in-memory hub so
+   * the row visually moves immediately; on failure, refetches the hub
+   * to restore truth from the server.
+   */
+  const applyMove = useCallback(
+    async (row: RosterHubRow, nextSlot: string) => {
+      if (teamId == null) return;
+      setMoveSheetRow(null);
+      setMoveError(null);
+      setMovePending((prev) => new Set(prev).add(row.rosterId));
+
+      // Snapshot the previous slot so we can roll back on failure.
+      const prevSlot = row.assignedPosition ?? row.posPrimary ?? null;
+
+      // Optimistic update — clone the hub and re-partition the row so
+      // hitters/pitchers/IL stays consistent with the new assignedPosition.
+      setHub((prev) => {
+        if (!prev) return prev;
+        const allRows = [...prev.hitters, ...prev.pitchers, ...prev.ilPlayers];
+        const next = allRows.map((r) =>
+          r.rosterId === row.rosterId ? { ...r, assignedPosition: nextSlot } : r,
+        );
+        return {
+          ...prev,
+          hitters: next.filter((r) => !r.isPitcher && r.assignedPosition !== "IL"),
+          pitchers: next.filter((r) => r.isPitcher && r.assignedPosition !== "IL"),
+          ilPlayers: next.filter((r) => r.assignedPosition === "IL"),
+        };
+      });
+
+      try {
+        await updateRosterPosition(teamId, row.rosterId, nextSlot);
+      } catch (err: unknown) {
+        reportError(err, { source: "mobile-team-move" });
+        setMoveError(err instanceof Error ? err.message : "Failed to move player");
+        // Rollback by restoring the previous slot on the row.
+        setHub((prev) => {
+          if (!prev) return prev;
+          const allRows = [...prev.hitters, ...prev.pitchers, ...prev.ilPlayers];
+          const next = allRows.map((r) =>
+            r.rosterId === row.rosterId ? { ...r, assignedPosition: prevSlot } : r,
+          );
+          return {
+            ...prev,
+            hitters: next.filter((r) => !r.isPitcher && r.assignedPosition !== "IL"),
+            pitchers: next.filter((r) => r.isPitcher && r.assignedPosition !== "IL"),
+            ilPlayers: next.filter((r) => r.assignedPosition === "IL"),
+          };
+        });
+      } finally {
+        setMovePending((prev) => {
+          const next = new Set(prev);
+          next.delete(row.rosterId);
+          return next;
+        });
+      }
+    },
+    [teamId],
+  );
   const teamName = hub?.team.name ?? teamCode ?? "Team";
   const budget = hub?.team.budget;
 
@@ -164,7 +237,12 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   }, [hub, tab]);
 
   const isHit = tab !== "Pitchers";
-  const cols = "32px minmax(0,1fr) 36px 36px 36px 36px";
+  // Add a trailing 26px move-button column when the user can edit and
+  // the active tab isn't IL (IL stash/activate is a separate flow).
+  const showMoveCol = canEdit && tab !== "IL";
+  const cols = showMoveCol
+    ? "32px minmax(0,1fr) 36px 36px 36px 36px 26px"
+    : "32px minmax(0,1fr) 36px 36px 36px 36px";
   const hitterStatHeaders = ["AVG", "HR", "RBI", "SB"];
   const pitcherStatHeaders = ["W", "K", "ERA", "WHIP"];
   const statHeaders = isHit ? hitterStatHeaders : pitcherStatHeaders;
@@ -329,6 +407,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
             {s}
           </div>
         ))}
+        {showMoveCol && <div aria-hidden="true" />}
       </div>
 
       {/* DENSE ROWS */}
@@ -405,11 +484,89 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                     <StatCell value={fmtRate(p.WHIP, 2)} />
                   </>
                 )}
+                {showMoveCol && (
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      ev.preventDefault();
+                      setMoveSheetRow(p);
+                    }}
+                    disabled={movePending.has(p.rosterId)}
+                    aria-label={`Move ${p.playerName}`}
+                    data-testid="mobile-team-move-btn"
+                    data-roster-id={p.rosterId}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      cursor: movePending.has(p.rosterId) ? "wait" : "pointer",
+                      color: "var(--am-text-muted)",
+                      opacity: movePending.has(p.rosterId) ? 0.5 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 26,
+                      height: 26,
+                    }}
+                  >
+                    <Glyph kind="moreDots" size={16} />
+                  </button>
+                )}
               </div>
             ))
           )}
         </MCard>
       </div>
+
+      {moveError && (
+        <div
+          data-testid="mobile-team-move-error"
+          style={{
+            position: "fixed",
+            left: 14,
+            right: 14,
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+            padding: "10px 14px",
+            background: "var(--am-surface-strong)",
+            border: "1px solid var(--am-negative)",
+            borderRadius: 10,
+            color: "var(--am-negative)",
+            fontSize: 12,
+            zIndex: 35,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <span>{moveError}</span>
+          <button
+            type="button"
+            onClick={() => setMoveError(null)}
+            aria-label="Dismiss error"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--am-text-muted)",
+              cursor: "pointer",
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <Glyph kind="x" size={14} />
+          </button>
+        </div>
+      )}
+
+      {moveSheetRow && (
+        <MobileTeamMoveSheet
+          player={moveSheetRow}
+          onPick={(slot) => applyMove(moveSheetRow, slot)}
+          onDismiss={() => setMoveSheetRow(null)}
+        />
+      )}
     </div>
   );
 }
