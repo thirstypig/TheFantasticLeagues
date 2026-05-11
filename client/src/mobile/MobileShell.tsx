@@ -23,6 +23,7 @@ import { MobileHome } from "./pages/MobileHome";
 import { MobileMore } from "./pages/MobileMore";
 import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
+import { MobileTeam } from "./pages/MobileTeam";
 
 /** Map a pathname to a mobile page (or `null` to fall through to desktop). */
 function pickMobilePage(pathname: string): React.ReactElement | null {
@@ -37,6 +38,14 @@ function pickMobilePage(pathname: string): React.ReactElement | null {
   }
   if (pathname === "/more") {
     return <MobileMore />;
+  }
+  // /teams/:teamCode — mobile twin renders read-only roster. Sub-routes
+  // like /teams/:teamCode/manage/:mode (the desktop ManagePanel) and
+  // /teams/:teamCode/classic still fall through to desktop until those
+  // mutation flows are ported (slice 5b).
+  const teamMatch = pathname.match(/^\/teams\/([^/]+)\/?$/);
+  if (teamMatch) {
+    return <MobileTeam teamCode={teamMatch[1]} />;
   }
   return null;
 }
