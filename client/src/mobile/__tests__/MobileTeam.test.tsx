@@ -249,6 +249,82 @@ describe("MobileTeam (read-only)", () => {
     });
   });
 
+  // ── Optimistic state side-effects — the API-call assertions above
+  //    verify wiring, but not the in-memory hub mutations a future
+  //    refactor could silently drop.
+
+  it("optimistically moves a stashed player from hitters to the IL tab", async () => {
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    const mookieRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(mookieRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    const ilBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "IL")!;
+    fireEvent.click(ilBtn);
+    await waitFor(() => {
+      expect(ilStash).toHaveBeenCalled();
+    });
+    // Mookie no longer in hitters view
+    expect(screen.queryByText("Mookie Betts")).not.toBeInTheDocument();
+    // Switch to IL tab — Mookie should now be there alongside the original Kershaw
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Mookie Betts");
+    expect(screen.getByText("Clayton Kershaw")).toBeInTheDocument();
+  });
+
+  it("rolls IL stash back to hitters when the API call fails", async () => {
+    vi.mocked(ilStash).mockRejectedValueOnce(new Error("IL_FULL"));
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    const mookieRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(mookieRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    const ilBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "IL")!;
+    fireEvent.click(ilBtn);
+    await waitFor(() => {
+      expect(screen.getByTestId("mobile-team-move-error")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/IL_FULL/)).toBeInTheDocument();
+    // Mookie should still be in the hitters tab — the optimistic move was reversed
+    expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
+  });
+
+  it("refetches the roster hub after a successful IL activate to reconcile the server-chosen slot", async () => {
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    // Initial mount fires one getTeamRosterHub call
+    const initialCallCount = vi.mocked(getTeamRosterHub).mock.calls.length;
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    const ilRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(ilRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-il-activate-sheet");
+    const target = screen.getAllByTestId("mobile-team-il-activate-drop-target")[0];
+    fireEvent.click(target);
+    await waitFor(() => {
+      // Second call after activate success — the matcher-chosen slot
+      // can only be learned by refetching.
+      expect(vi.mocked(getTeamRosterHub).mock.calls.length).toBeGreaterThan(initialCallCount);
+    });
+  });
+
+  it("surfaces an error toast and refetches when IL activate fails", async () => {
+    vi.mocked(ilActivate).mockRejectedValueOnce(new Error("INVALID_DROP_TARGET"));
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    const ilRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(ilRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-il-activate-sheet");
+    const target = screen.getAllByTestId("mobile-team-il-activate-drop-target")[0];
+    fireEvent.click(target);
+    await waitFor(() => {
+      expect(screen.getByTestId("mobile-team-move-error")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/INVALID_DROP_TARGET/)).toBeInTheDocument();
+  });
+
   it("dismisses the move sheet when the backdrop is clicked", async () => {
     renderTeam("LDY");
     await screen.findByText("Mookie Betts");
