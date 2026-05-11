@@ -701,3 +701,91 @@ project's memory, not a passive consumer of it. Flag inconsistencies between
 what the user is saying now and what's in project knowledge (this CLAUDE.md,
 the auto-memory under `~/.claude/projects/.../memory/`, or any in-repo
 docs).
+
+The bar for adding to memory is HIGH, not low — each line in MEMORY.md is
+loaded into every future conversation's context, so marginal entries
+compound. Add only when the pattern is non-obvious, the "why" is
+load-bearing, and there's a specific precedent (date, PR#, file). Skip when
+the rule restates something already captured, can be derived from current
+code, or is just session-specific procedural context.
+
+### Project Context
+
+**Who the user is:** James Chang — solo founder / PM running The Fantastic
+Leagues end-to-end. Comfortable directing technical work and reading code,
+but leans on Claude as the implementation hand. Strong product instincts
+(Yahoo Fantasy patterns, sports-domain expertise); not a deeply technical
+engineer. Owns the deploy pipeline (Railway), the DB (Supabase), and the
+roadmap.
+
+**What we're building:** **The Fantastic Leagues** (FBST) — a roto-style
+fantasy baseball platform replacing legacy spreadsheets for the OGBA league
+and (eventually) public auction-keeper leagues. React/Vite client + Express
+server + Postgres (Supabase) + Prisma, deployed on Railway at
+`app.thefantasticleagues.com`. Marketing site (Astro) at the sibling
+`thefantasticleagues-www` repo. Current stage: Aurora design system
+mid-rollout across 8+ screens; roster-rules enforcement enabled in OGBA;
+Wire List v1.1 hardened. Why it matters: real money is on the line — OGBA
+has entry fees, payouts, and a commissioner who depends on this app for
+period-close and audit logging.
+
+**Domain-specific caution:**
+
+- **CODE.** Default to flagging failure modes BEFORE proposing changes,
+  especially anything touching the roster, transactions, or payouts paths.
+  Don't assume libraries are installed — grep the relevant `package.json`.
+  Don't claim "tsc clean" from a tail-N window; pipe full output (memory
+  precedent: false-positive tsc-clean twice in session 89). Type-only
+  imports of shared schemas can mask runtime ESM/CJS bugs — verify with a
+  real runtime import path when changing `shared/api/*`.
+- **DB.** Local `.env` `DATABASE_URL` points at **prod Supabase**. Any
+  localhost mutation IS a prod mutation. Browser-verified mutations must
+  be reversed in the same session (precedent:
+  `feedback_test_addrops_full_cleanup.md`). Never write
+  `CREATE INDEX CONCURRENTLY` inside a Prisma migration — Prisma wraps
+  each migration in a transaction, the command fails with PG 25001 and
+  blocks all future Railway deploys via P3009 (precedent: 2026-05-05
+  outage).
+- **DEPLOY.** Railway runs `prisma migrate deploy` on boot. A bad migration
+  freezes the live build at yesterday's image until reverted. Migrations
+  warrant the same scrutiny as code changes touching production. The
+  marketing site is on a separate repo and separate deploy.
+- **DESIGN.** Aurora is rolling out screen-by-screen via the `aurora-theme`
+  wrapper + atoms; legacy preserved as `*Legacy.tsx` with a
+  `/x-classic` URL fallback. Yahoo Fantasy is the reference UX for
+  roster/lineup flows — never modals when stats need to stay visible
+  (sub-routes or inline expansion instead).
+- **VERIFICATION.** Browser verification is mandatory on any UI change
+  (precedent: `workflow_preferences.md`). Type-checks and test suites
+  verify code correctness, not feature correctness. If a feature can't be
+  tested in-browser, say so explicitly rather than claiming success.
+
+**Decisions already made — do not re-litigate:**
+
+- **Aurora replaces the legacy AppShell sidebar** across the authenticated
+  site. Pre-Aurora pages are preserved on disk for rollback, accessible at
+  `/x-classic` URLs.
+- **Stacked PRs merge sequentially, never as a rapid batch** — `for pr in
+  ...; gh pr merge` auto-closes children before they rebase (precedent:
+  session 88 lost 6 children).
+- **ENFORCE_ROSTER_RULES is ON for OGBA**; audit showed zero retroactive
+  fees. Rules 1–3 all shipped per `position_eligibility_layers.md`.
+- **Roster mutations live on the Roster Moves tab and v3 hub sub-routes**
+  (claim / il-stash / il-activate), not modals. No exceptions —
+  `feedback_yahoo_copy_no_modals.md`.
+- **Mobile twin pages are substituted via `MobileLayoutGate` route-aware
+  shell** at `(max-width: 767px)`. Desktop AuroraShell renders at ≥ 768px.
+  Routes are NOT duplicated — same URL works in both shells. Params
+  consumed via prop, not `useParams` (precedent:
+  `feedback_useparams_outside_route_match.md`).
+- **Free-tier Supabase needs both `DATABASE_URL` and `DIRECT_URL` on the
+  pooler with `connection_limit=1`** — direct connection is IPv6-only and
+  fails from Railway. Documented in
+  `supabase_railway_connection_setup.md`.
+
+**Tone:** Direct, decision-oriented, terse. One question at a time. Lead
+with a concrete recommendation, not a menu of options — the user prefers
+"I'd go with X because Y" over "here are A/B/C/D, what do you think?"
+Browser verification reports should state what was tested in one sentence,
+not summarize the diff. PRs land before session end whenever possible
+(precedent: `workflow_preferences.md`).
