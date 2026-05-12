@@ -4,6 +4,51 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-11 — Wire-list owner hook extraction + MCP tool parity + mobile tab P1 fix (2 PRs)
+
+Resumed mid-session from a compacted context. Completed `/ce:review` synthesis todos 184–194, fixed the VS Code TypeScript plugin, and wrote full test coverage for all new code.
+
+### Shipped — 2 PRs
+
+| PR | Scope |
+|---|---|
+| #333 | (Shipped end of prior session) FA add-to-wire-list CTA + `MobileWireList` twin page — mobile owner can now view and manage their wire-list queue |
+| #334 | Contract tests for 4 new MCP wire-list owner tools + VS Code TypeScript tsdk fix |
+
+Plus 8 commits to main directly (session was on `main`):
+- **fix(mobile):** `MobileTabBar` My Team active-state scoped to own team code only — was matching all `/teams/` paths (P1 bug: every team tab lit up when navigating to any team page)
+- **feat(mcp):** 4 new wire-list owner tools in `mcp-servers/fbst-app/`: `wire_list_delete_add`, `wire_list_delete_drop`, `wire_list_update_drop`, `wire_list_revert_add` — MCP tool count 12 → 16
+- **refactor(wire-list):** extracted `useWireListOwner` hook (`client/src/features/wire-list/hooks/`), `WireListRow.tsx`, `WaiverDropModeToggle.tsx`, `utils.ts (formatDeadline)` — deduplicating 120+ lines between `MobileWireList` and `WireListOwnerPage`
+- **fix:** parallel load — `getTeams` + `getActivePeriod` now run via `Promise.all` (was a serial two-effect cascade); 404 from `getActivePeriod` silenced (no active period is normal); non-404 errors go through `reportError` + static message only (no `serverMessage` leakage)
+- **refactor:** unified topbar in `MobileWireList` (4 duplicate `<MobileTopbar>` blocks collapsed to one variable)
+- **chore:** removed dead `MobileRole` type export from `MobileTabBar.tsx` (zero consumers)
+- **test:** 42 new client tests across 5 files (useWireListOwner, WireListRow, WaiverDropModeToggle, utils, MobileTabBar)
+- **chore:** VS Code `typescript.tsdk` pointed at `client/node_modules/typescript/lib` so IDE resolves types against project TS 5.9.3 not VS Code's bundled version
+
+### Test counts at session end
+
+- **Server:** 1079 (unchanged)
+- **Client:** 751 (was 661 at 2026-05-08 end; +90 across mobile Aurora PRs #320–#333 + this session's 42 new tests)
+- **MCP fbst-app:** 67 (was 53; +14 contract tests for new owner tools)
+- **MCP mlb-data:** 50; **E2E:** 1.
+- **Total:** 1948 (was 1844).
+
+Both `tsc --noEmit` clean. CI green on #334.
+
+### Process learnings
+
+- **`useParams` is empty for mobile twin pages** — twin pages rendered by `MobileShell.pickMobilePage` are substituted outside any `<Route>` match context, so `useParams()` returns `{}`. Parse URL segments in the shell and pass as props. Fixed in PR #324 (precedent now in memory).
+- **VS Code TypeScript plugin diagnose pattern**: if build/CI is clean but IDE shows errors, check `typescript.tsdk` — VS Code uses its own bundled TS by default, not the project's. Set `typescript.tsdk` + `typescript.enablePromptUseWorkspaceTsdk` in `.vscode/settings.json`.
+- **Stale tests from the same session**: the `/test-new` pass caught two tests asserting `data-tab-key="AI"` that had become stale when unified nav shipped earlier in the same session. Running `/test-new` after a feature is the right forcing function.
+
+### Backlog status
+
+- **0 P1** open.
+- **0 P2** open.
+- **Deferred P3** (unchanged): #180 (Player.posGames), #181 (rosterVersion etag), #182 (drag dnd-kit), #183 (pending-changes save/revert).
+
+---
+
 ## Session 2026-05-08 — Code-review backlog cleanup + hardening (22 PRs)
 
 Picked up immediately after the 2026-05-07/08 27-PR push. The wire-list module was fully hardened; this session cleared the *next* layer of backlog — phantom-todo cleanup, type drift, dead code, perf hardening, and one bug-audit-driven defensive fix. **22 PRs merged, zero open at session end, browser-verified.**

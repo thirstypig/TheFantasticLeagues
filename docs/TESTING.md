@@ -35,16 +35,16 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1079 server + 661 client = 1740 tests, ~20s total) + 53 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1079 server + 751 client = 1830 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
 **Current reality (2026-05-04):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent /ce:review work on PRs #226–#230 was verified with full unit suite (1544 green), both typechecks clean, and a 6-step browser smoke (Home → Team V3 hub → AddDrop preview-gating regression → Place-on-IL → Activate-from-IL) at `http://localhost:3011/`.
 
-## Current coverage (Session 81 baseline, 2026-04-27/28)
+## Current coverage (2026-05-11 baseline)
 
-### Server — 850 passing, 7 skipped, 1 todo, 59 files
+### Server — 1079 passing (last verified 2026-05-08)
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -85,6 +85,11 @@ Major covered areas (selected):
 - `lib/positionEligibility.test.ts` — 27 (slotsFor consolidation from the triplicated Phase 4 helpers)
 - `features/waivers/WaiverClaimForm.test.tsx` — 6 (in-season drop-required label, position eligibility)
 - `features/wire-list/__tests__/api.test.ts` — 21 (URL/method/body shape per wrapper: period CRUD + add/drop CRUD + processor — guards against route refactor, verb change, body shape drift, and the load-bearing `createWirePeriod` rename in #264)
+- `features/wire-list/__tests__/useWireListOwner.test.ts` — 11 (parallel load: getTeams + getActivePeriod in Promise.all; 404 from getActivePeriod → period null, no error; non-404 → static error + reportError; team not found; isReadOnly logic; early-return guard when leagueId null)
+- `features/wire-list/__tests__/WireListRow.test.tsx` — 10 (content rendering; ▲▼× hidden when isReadOnly; ▲ disabled for isFirst, ▼ disabled for isLast; WaiverDropModeToggle shown only for drop rows; opacity 0.5 when isPending)
+- `features/wire-list/__tests__/WaiverDropModeToggle.test.tsx` — 5 (REL/IL buttons rendered; onChange fires on toggle; onChange blocked on already-active; onChange blocked when disabled; buttons disabled when disabled prop set)
+- `features/wire-list/__tests__/utils.test.ts` — 4 (formatDeadline: non-empty string, numeric day present, no [object Object]/NaN, past date doesn't throw)
+- `mobile/__tests__/MobileTabBar.commish.test.tsx` — 7 (unified 5-tab set present; AI/Commish tabs absent; My Team tab scoped to own team code, not all /teams/ paths)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16
 - `features/keeper-prep/KeeperSelection.test.tsx` — 8
@@ -100,6 +105,12 @@ Major covered areas (selected):
 
 - `cache.test.ts` — 8, `rateLimiter.test.ts` — 5, `tools.test.ts` — 16, `integration.test.ts` — 21.
 Run from `mcp-servers/mlb-data/` with `npx vitest run`.
+
+### MCP (FBST App Tools) — 67 passing (not run by root `npm test`)
+
+- `tools.test.ts` — 2 (registration + uniqueness for all 16 tool names)
+- `contract.test.ts` — 53 (schema validation for 6 representative tools; HTTP shape for all 16 tools; auth flow — Bearer header + no-token clean fail; 5 error-code passthrough; 4 schema drift detectors via `WaiverDropModeSchema`, `CreateAddEntryBodySchema`, `CreateDropEntryBodySchema`, `FailOutcomeBodySchema`)
+Run from `mcp-servers/fbst-app/` with `npx vitest run`.
 
 ### E2E (Playwright) — 1 passing, 1 file
 
