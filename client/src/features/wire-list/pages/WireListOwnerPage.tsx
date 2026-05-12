@@ -7,50 +7,15 @@
  *
  * Read-only when period.status !== "PENDING" (LOCKED / PROCESSED).
  */
-import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
-import { ApiError } from "../../../api/base";
-import {
-  getActivePeriod,
-  getAddEntries,
-  getDropEntries,
-  updateDropEntry,
-  deleteAddEntry,
-  deleteDropEntry,
-  reorderEntries,
-  type WaiverPeriod,
-  type AddEntry,
-  type DropEntry,
-  type WaiverDropMode,
-} from "../api";
-import { getTeams } from "../../teams/api";
+import { useWireListOwner } from "../hooks/useWireListOwner";
+import { formatDeadline } from "../utils";
+import { WireListRow } from "../components/WireListRow";
 import AddPicker from "../components/AddPicker";
 import DropPicker from "../components/DropPicker";
 import "../wireList.css";
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function formatDeadline(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    weekday: "short", month: "short", day: "numeric",
-    hour: "numeric", minute: "2-digit",
-  });
-}
-
-function PosPill({ pos }: { pos: string | null }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center",
-      minWidth: 28, padding: "2px 8px", borderRadius: 6,
-      background: "var(--am-chip-strong)", color: "var(--am-text)",
-      fontFamily: "var(--am-mono)", fontSize: 11, fontWeight: 600,
-      border: "1px solid var(--am-border)",
-    }}>{pos ?? "—"}</span>
-  );
-}
 
 // ─── Page ────────────────────────────────────────────────────────────
 
@@ -58,142 +23,28 @@ export default function WireListOwnerPage() {
   const { teamCode } = useParams<{ teamCode: string }>();
   const { leagueId } = useLeague();
 
-  const [teamId, setTeamId] = useState<number | null>(null);
-  const [period, setPeriod] = useState<WaiverPeriod | null>(null);
-  const [adds, setAdds] = useState<AddEntry[]>([]);
-  const [drops, setDrops] = useState<DropEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<Set<number>>(new Set());
-  const [showAddPicker, setShowAddPicker] = useState(false);
-  const [showDropPicker, setShowDropPicker] = useState(false);
-
-  const addPlayerIds = useMemo(() => new Set(adds.map((a) => a.playerId)), [adds]);
-  const dropPlayerIds = useMemo(() => new Set(drops.map((d) => d.playerId)), [drops]);
-
-  const reload = useCallback(async () => {
-    if (!leagueId || !teamCode) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const teams = await getTeams(leagueId);
-      const team = teams.find((t) => t.code === teamCode);
-      if (!team) {
-        setError(`No team with code ${teamCode}`);
-        setLoading(false);
-        return;
-      }
-      setTeamId(team.id);
-
-      const { period: p } = await getActivePeriod(leagueId);
-      setPeriod(p);
-      if (p) {
-        const [a, d] = await Promise.all([
-          getAddEntries(p.id, team.id),
-          getDropEntries(p.id, team.id),
-        ]);
-        setAdds(a.entries);
-        setDrops(d.entries);
-      } else {
-        setAdds([]);
-        setDrops([]);
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [leagueId, teamCode]);
-
-  useEffect(() => { reload(); }, [reload]);
-
-  const isReadOnly = !period || period.status !== "PENDING";
-
-  const withPending = useCallback(<T,>(id: number, fn: () => Promise<T>): Promise<T> => {
-    setPending((s) => new Set(s).add(id));
-    return fn().finally(() => {
-      setPending((s) => {
-        const next = new Set(s);
-        next.delete(id);
-        return next;
-      });
-    });
-  }, []);
-
-  // Swap two adjacent priorities. todo #159: now a single atomic call to
-  // POST /periods/:periodId/reorder. We compute the post-swap order
-  // locally, optimistically update state, and only reload() on error.
-  const swapAddPriorities = useCallback(async (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= adds.length) return;
-    if (!period || teamId === null) return;
-    const a = adds[i];
-    const b = adds[j];
-    const reordered = adds.slice();
-    reordered[i] = b;
-    reordered[j] = a;
-    const orderedIds = reordered.map((x) => x.id);
-    // Optimistic priority renumbering (1-indexed, dense — matches server).
-    const optimistic = reordered.map((x, idx) => ({ ...x, priority: idx + 1 }));
-    setAdds(optimistic);
-    try {
-      await withPending(a.id, () =>
-        reorderEntries(period.id, "ADD", teamId, orderedIds),
-      );
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
-      await reload();
-    }
-  }, [adds, period, teamId, reload, withPending]);
-
-  const swapDropPriorities = useCallback(async (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= drops.length) return;
-    if (!period || teamId === null) return;
-    const a = drops[i];
-    const b = drops[j];
-    const reordered = drops.slice();
-    reordered[i] = b;
-    reordered[j] = a;
-    const orderedIds = reordered.map((x) => x.id);
-    const optimistic = reordered.map((x, idx) => ({ ...x, priority: idx + 1 }));
-    setDrops(optimistic);
-    try {
-      await withPending(a.id, () =>
-        reorderEntries(period.id, "DROP", teamId, orderedIds),
-      );
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
-      await reload();
-    }
-  }, [drops, period, teamId, reload, withPending]);
-
-  const removeAdd = useCallback(async (id: number) => {
-    try {
-      await withPending(id, () => deleteAddEntry(id));
-      await reload();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
-    }
-  }, [reload, withPending]);
-
-  const removeDrop = useCallback(async (id: number) => {
-    try {
-      await withPending(id, () => deleteDropEntry(id));
-      await reload();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
-    }
-  }, [reload, withPending]);
-
-  const setDropMode = useCallback(async (id: number, dropMode: WaiverDropMode) => {
-    try {
-      await withPending(id, () => updateDropEntry(id, { dropMode }));
-      await reload();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : String(err));
-    }
-  }, [reload, withPending]);
+  const {
+    teamId,
+    period,
+    adds,
+    drops,
+    loading,
+    error,
+    pending,
+    isReadOnly,
+    addPlayerIds,
+    dropPlayerIds,
+    showAddPicker,
+    setShowAddPicker,
+    showDropPicker,
+    setShowDropPicker,
+    reload,
+    swapAddPriorities,
+    swapDropPriorities,
+    removeAdd,
+    removeDrop,
+    setDropMode,
+  } = useWireListOwner(leagueId, teamCode ?? "");
 
   // ─── Render ────────────────────────────────────────────────────────
 
@@ -295,21 +146,21 @@ export default function WireListOwnerPage() {
                 </Empty>
               ) : (
                 adds.map((a, i) => (
-                  <Row key={a.id} pending={pending.has(a.id)}>
-                    <PriorityBadge>{a.priority}</PriorityBadge>
-                    <PosPill pos={a.player?.posPrimary ?? null} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, color: "var(--am-text)" }}>{a.player?.name ?? `#${a.playerId}`}</div>
-                      <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>{a.player?.mlbTeam ?? "FA"}</div>
-                    </div>
-                    {!isReadOnly && (
-                      <RowActions>
-                        <ArrowBtn disabled={i === 0} onClick={() => swapAddPriorities(i, -1)}>▲</ArrowBtn>
-                        <ArrowBtn disabled={i === adds.length - 1} onClick={() => swapAddPriorities(i, +1)}>▼</ArrowBtn>
-                        <RemoveBtn onClick={() => removeAdd(a.id)} />
-                      </RowActions>
-                    )}
-                  </Row>
+                  <WireListRow
+                    key={a.id}
+                    rank={a.priority}
+                    playerName={a.player?.name ?? `#${a.playerId}`}
+                    playerPos={a.player?.posPrimary ?? "—"}
+                    playerTeam={a.player?.mlbTeam ?? "FA"}
+                    isPending={pending.has(a.id)}
+                    isReadOnly={isReadOnly}
+                    compact={false}
+                    isFirst={i === 0}
+                    isLast={i === adds.length - 1}
+                    onMoveUp={() => swapAddPriorities(i, -1)}
+                    onMoveDown={() => swapAddPriorities(i, 1)}
+                    onRemove={() => removeAdd(a.id)}
+                  />
                 ))
               )}
             </div>
@@ -342,26 +193,23 @@ export default function WireListOwnerPage() {
                 </Empty>
               ) : (
                 drops.map((d, i) => (
-                  <Row key={d.id} pending={pending.has(d.id)}>
-                    <PriorityBadge>{d.priority}</PriorityBadge>
-                    <PosPill pos={d.player?.posPrimary ?? null} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, color: "var(--am-text)" }}>{d.player?.name ?? `#${d.playerId}`}</div>
-                      <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>{d.player?.mlbTeam ?? "—"}</div>
-                    </div>
-                    <ModeToggle
-                      value={d.dropMode}
-                      disabled={isReadOnly || pending.has(d.id)}
-                      onChange={(m) => setDropMode(d.id, m)}
-                    />
-                    {!isReadOnly && (
-                      <RowActions>
-                        <ArrowBtn disabled={i === 0} onClick={() => swapDropPriorities(i, -1)}>▲</ArrowBtn>
-                        <ArrowBtn disabled={i === drops.length - 1} onClick={() => swapDropPriorities(i, +1)}>▼</ArrowBtn>
-                        <RemoveBtn onClick={() => removeDrop(d.id)} />
-                      </RowActions>
-                    )}
-                  </Row>
+                  <WireListRow
+                    key={d.id}
+                    rank={d.priority}
+                    playerName={d.player?.name ?? `#${d.playerId}`}
+                    playerPos={d.player?.posPrimary ?? "—"}
+                    playerTeam={d.player?.mlbTeam ?? "—"}
+                    isPending={pending.has(d.id)}
+                    isReadOnly={isReadOnly}
+                    compact={false}
+                    isFirst={i === 0}
+                    isLast={i === drops.length - 1}
+                    onMoveUp={() => swapDropPriorities(i, -1)}
+                    onMoveDown={() => swapDropPriorities(i, 1)}
+                    onRemove={() => removeDrop(d.id)}
+                    dropMode={d.dropMode}
+                    onDropModeChange={(m) => setDropMode(d.id, m)}
+                  />
                 ))
               )}
             </div>
@@ -403,94 +251,10 @@ function Section({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Row({ children, pending }: { children: React.ReactNode; pending: boolean }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 8,
-      padding: "8px 6px", borderRadius: 8,
-      borderBottom: "1px solid var(--am-border-subtle)",
-      opacity: pending ? 0.5 : 1,
-      transition: "opacity 120ms ease",
-    }}>{children}</div>
-  );
-}
-
-function PriorityBadge({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center",
-      minWidth: 24, height: 24, borderRadius: 6,
-      background: "var(--am-chip)", color: "var(--am-text-muted)",
-      fontFamily: "var(--am-mono)", fontSize: 12, fontWeight: 600,
-    }}>{children}</span>
-  );
-}
-
-function RowActions({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: "flex", gap: 4 }}>{children}</div>;
-}
-
-function ArrowBtn({ children, disabled, onClick }: {
-  children: React.ReactNode; disabled?: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: 26, height: 26, borderRadius: 6,
-        background: "var(--am-chip)", color: "var(--am-text)",
-        border: "1px solid var(--am-border)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        fontSize: 11, lineHeight: 1,
-      }}
-    >{children}</button>
-  );
-}
-
-function RemoveBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: 26, height: 26, borderRadius: 6,
-        background: "transparent", color: "var(--am-text-muted)",
-        border: "1px solid var(--am-border)",
-        cursor: "pointer", fontSize: 14, lineHeight: 1,
-      }}
-      aria-label="Remove"
-    >×</button>
-  );
-}
-
 function Empty({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ padding: "24px 8px", fontSize: 13, color: "var(--am-text-muted)", textAlign: "center" }}>
       {children}
-    </div>
-  );
-}
-
-function ModeToggle({ value, disabled, onChange }: {
-  value: WaiverDropMode; disabled: boolean; onChange: (m: WaiverDropMode) => void;
-}) {
-  return (
-    <div style={{ display: "inline-flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--am-border)" }}>
-      {(["RELEASE", "IL_STASH"] as WaiverDropMode[]).map((m) => (
-        <button
-          key={m}
-          onClick={() => !disabled && value !== m && onChange(m)}
-          disabled={disabled}
-          style={{
-            padding: "4px 8px", fontSize: 10, fontWeight: 600,
-            background: value === m ? "var(--am-accent)" : "transparent",
-            color: value === m ? "var(--am-bg)" : "var(--am-text-muted)",
-            border: "none",
-            cursor: disabled ? "not-allowed" : "pointer",
-          }}
-        >{m === "RELEASE" ? "REL" : "IL"}</button>
-      ))}
     </div>
   );
 }
