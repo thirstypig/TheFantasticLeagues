@@ -573,7 +573,7 @@ the live Express API, so agents can drive the same flows a human owner or
 commissioner would. Lands the agent-native promise of "every user action is
 also a tool" for the wire-list module (todo #176).
 
-**Tools (12):**
+**Tools (16):**
 
 | Category | Tool | Endpoint |
 |----------|------|---------|
@@ -584,10 +584,14 @@ also a tool" for the wire-list module (todo #176).
 | Owner write | `wire_list_create_add` | `POST /api/wire-list/periods/:periodId/adds` |
 | Owner write | `wire_list_create_drop` | `POST /api/wire-list/periods/:periodId/drops` |
 | Owner write | `wire_list_reorder_entries` | `POST /api/wire-list/periods/:periodId/reorder` |
+| Owner write | `wire_list_delete_add` | `DELETE /api/wire-list/adds/:id` |
+| Owner write | `wire_list_delete_drop` | `DELETE /api/wire-list/drops/:id` |
+| Owner write | `wire_list_update_drop` | `PATCH /api/wire-list/drops/:id` |
 | Commissioner | `wire_list_lock_period` | `POST /api/wire-list/periods/:periodId/lock` |
 | Commissioner | `wire_list_succeed_add` | `POST /api/wire-list/adds/:id/succeed` |
 | Commissioner | `wire_list_fail_add` | `POST /api/wire-list/adds/:id/fail` |
 | Commissioner | `wire_list_skip_add` | `POST /api/wire-list/adds/:id/skip` |
+| Commissioner | `wire_list_revert_add` | `POST /api/wire-list/adds/:id/revert` |
 | Commissioner | `wire_list_finalize_period` | `POST /api/wire-list/periods/:periodId/finalize` |
 
 **Architecture:**

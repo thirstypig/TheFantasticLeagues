@@ -18,14 +18,14 @@ function makeServer(): { server: McpServer; registered: Set<string> } {
 }
 
 describe("wire-list tool registration", () => {
-  it("registers all 12 documented tool names", () => {
+  it("registers all 16 documented tool names", () => {
     const { server, registered } = makeServer();
     const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
     registerWireListTools(server, client);
     for (const name of WIRE_LIST_TOOL_NAMES) {
       expect(registered.has(name)).toBe(true);
     }
-    expect(WIRE_LIST_TOOL_NAMES.length).toBe(12);
+    expect(WIRE_LIST_TOOL_NAMES.length).toBe(16);
   });
 
   it("tool name list is unique", () => {
