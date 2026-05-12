@@ -1,97 +1,24 @@
 /**
  * Mobile twin of WireListOwnerPage — /teams/:code/wire-list on narrow viewports.
  *
- * Data-fetching logic mirrors WireListOwnerPage exactly (same hooks, same API
- * calls, same state shape). UI uses Aurora mobile atoms instead of Glass.
+ * Data-fetching logic lives in useWireListOwner (shared with WireListOwnerPage).
+ * UI uses Aurora mobile atoms instead of Glass.
  *
  * teamCode is received as a prop (parsed from pathname in MobileShell.pickMobilePage)
  * rather than via useParams, because this component renders outside any
  * React Router <Route> match context — useParams would return {}.
  */
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useLeague } from "../../contexts/LeagueContext";
-import {
-  getActivePeriod,
-  getAddEntries,
-  getDropEntries,
-  updateDropEntry,
-  deleteAddEntry,
-  deleteDropEntry,
-  reorderEntries,
-  type WaiverPeriod,
-  type AddEntry,
-  type DropEntry,
-  type WaiverDropMode,
-} from "../../features/wire-list/api";
-import { getTeams } from "../../features/teams/api";
-import { reportError } from "../../lib/errorBus";
+import { useWireListOwner } from "../../features/wire-list/hooks/useWireListOwner";
+import { formatDeadline } from "../../features/wire-list/utils";
+import { WireListRow } from "../../features/wire-list/components/WireListRow";
 import AddPicker from "../../features/wire-list/components/AddPicker";
 import DropPicker from "../../features/wire-list/components/DropPicker";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MSection, MLabel } from "../atoms/MCard";
 import { Glyph } from "../atoms/Glyph";
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function formatDeadline(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    weekday: "short", month: "short", day: "numeric",
-    hour: "numeric", minute: "2-digit",
-  });
-}
-
-// ─── Sub-components ──────────────────────────────────────────────────
-
-function ModeToggle({ value, disabled, onChange }: {
-  value: WaiverDropMode; disabled: boolean; onChange: (m: WaiverDropMode) => void;
-}) {
-  return (
-    <div style={{
-      display: "inline-flex", borderRadius: 6, overflow: "hidden",
-      border: "1px solid var(--am-border)",
-    }}>
-      {(["RELEASE", "IL_STASH"] as WaiverDropMode[]).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => !disabled && value !== m && onChange(m)}
-          disabled={disabled}
-          style={{
-            padding: "5px 8px", fontSize: 10, fontWeight: 600, lineHeight: 1,
-            background: value === m ? "var(--am-accent)" : "transparent",
-            color: value === m ? "var(--am-bg)" : "var(--am-text-muted)",
-            border: "none",
-            cursor: disabled ? "not-allowed" : "pointer",
-          }}
-        >
-          {m === "RELEASE" ? "REL" : "IL"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Style helpers ────────────────────────────────────────────────────
-
-const arrowBtnStyle = (disabled: boolean): React.CSSProperties => ({
-  width: 32, height: 32, borderRadius: 8,
-  background: "var(--am-chip)", color: "var(--am-text)",
-  border: "1px solid var(--am-border)",
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.4 : 1,
-  fontSize: 11, lineHeight: 1,
-  display: "flex", alignItems: "center", justifyContent: "center",
-});
-
-const removeBtnStyle: React.CSSProperties = {
-  width: 32, height: 32, borderRadius: 8,
-  background: "transparent", color: "var(--am-text-muted)",
-  border: "1px solid var(--am-border)",
-  cursor: "pointer", fontSize: 16, lineHeight: 1,
-  display: "flex", alignItems: "center", justifyContent: "center",
-};
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -105,175 +32,53 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
   const nav = useNavigate();
   const { leagueId } = useLeague();
 
-  const [teamId, setTeamId] = useState<number | null>(null);
-  const [period, setPeriod] = useState<WaiverPeriod | null>(null);
-  const [adds, setAdds] = useState<AddEntry[]>([]);
-  const [drops, setDrops] = useState<DropEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<Set<number>>(new Set());
-  const [showAddPicker, setShowAddPicker] = useState(false);
-  const [showDropPicker, setShowDropPicker] = useState(false);
+  const {
+    teamId,
+    period,
+    adds,
+    drops,
+    loading,
+    error,
+    pending,
+    isReadOnly,
+    addPlayerIds,
+    dropPlayerIds,
+    showAddPicker,
+    setShowAddPicker,
+    showDropPicker,
+    setShowDropPicker,
+    reload,
+    swapAddPriorities,
+    swapDropPriorities,
+    removeAdd,
+    removeDrop,
+    setDropMode,
+  } = useWireListOwner(leagueId, teamCode);
 
-  const addPlayerIds = useMemo(() => new Set(adds.map((a) => a.playerId)), [adds]);
-  const dropPlayerIds = useMemo(() => new Set(drops.map((d) => d.playerId)), [drops]);
+  // ─── Topbar (hoisted so all branches share it) ────────────────────
 
-  // One-time team resolution — teamCode never changes for the life of this page.
-  useEffect(() => {
-    if (!leagueId || !teamCode) return;
-    let canceled = false;
-    getTeams(leagueId)
-      .then((teams) => {
-        if (canceled) return;
-        const team = teams.find((t) => t.code === teamCode);
-        if (team) {
-          setTeamId(team.id);
-        } else {
-          setError("Team not found. Check the URL and try again.");
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (canceled) return;
-        setError(err instanceof Error ? err.message : "Failed to load team");
-        setLoading(false);
-      });
-    return () => { canceled = true; };
-  }, [leagueId, teamCode]);
-
-  // Reload period + entries whenever teamId resolves or changes (it shouldn't after init).
-  const reload = useCallback(async () => {
-    if (!leagueId || teamId === null) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { period: p } = await getActivePeriod(leagueId);
-      setPeriod(p);
-      if (p) {
-        const [a, d] = await Promise.all([
-          getAddEntries(p.id, teamId),
-          getDropEntries(p.id, teamId),
-        ]);
-        setAdds(a.entries);
-        setDrops(d.entries);
-      } else {
-        setAdds([]);
-        setDrops([]);
+  const topbar = (
+    <MobileTopbar
+      title="Wire List"
+      subtitle={
+        loading ? "Waiver picks" :
+        error ? "Waiver picks" :
+        !period ? "Waiver picks" :
+        isReadOnly ? "Read only" :
+        `Locks ${formatDeadline(period.deadlineAt)}`
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load wire list");
-    } finally {
-      setLoading(false);
-    }
-  }, [leagueId, teamId]);
-
-  useEffect(() => { reload(); }, [reload]);
-
-  const isReadOnly = !period || period.status !== "PENDING";
-
-  const withPending = useCallback(<T,>(id: number, fn: () => Promise<T>): Promise<T> => {
-    setPending((s) => new Set(s).add(id));
-    return fn().finally(() => {
-      setPending((s) => {
-        const next = new Set(s);
-        next.delete(id);
-        return next;
-      });
-    });
-  }, []);
-
-  const swapAddPriorities = useCallback(async (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= adds.length) return;
-    if (!period || teamId === null) return;
-    setError(null);
-    const a = adds[i];
-    const b = adds[j];
-    const reordered = adds.slice();
-    reordered[i] = b;
-    reordered[j] = a;
-    const orderedIds = reordered.map((x) => x.id);
-    const optimistic = reordered.map((x, idx) => ({ ...x, priority: idx + 1 }));
-    setAdds(optimistic);
-    try {
-      await withPending(a.id, () =>
-        reorderEntries(period.id, "ADD", teamId, orderedIds),
-      );
-    } catch (err) {
-      reportError(err, { source: "mobile-wire-list-swap-add" });
-      setError(err instanceof Error ? err.message : "Failed to reorder");
-      await reload();
-    }
-  }, [adds, period, teamId, reload, withPending]);
-
-  const swapDropPriorities = useCallback(async (i: number, dir: -1 | 1) => {
-    const j = i + dir;
-    if (j < 0 || j >= drops.length) return;
-    if (!period || teamId === null) return;
-    setError(null);
-    const a = drops[i];
-    const b = drops[j];
-    const reordered = drops.slice();
-    reordered[i] = b;
-    reordered[j] = a;
-    const orderedIds = reordered.map((x) => x.id);
-    const optimistic = reordered.map((x, idx) => ({ ...x, priority: idx + 1 }));
-    setDrops(optimistic);
-    try {
-      await withPending(a.id, () =>
-        reorderEntries(period.id, "DROP", teamId, orderedIds),
-      );
-    } catch (err) {
-      reportError(err, { source: "mobile-wire-list-swap-drop" });
-      setError(err instanceof Error ? err.message : "Failed to reorder");
-      await reload();
-    }
-  }, [drops, period, teamId, reload, withPending]);
-
-  const removeAdd = useCallback(async (id: number) => {
-    setError(null);
-    try {
-      await withPending(id, () => deleteAddEntry(id));
-      await reload();
-    } catch (err) {
-      reportError(err, { source: "mobile-wire-list-remove-add" });
-      setError(err instanceof Error ? err.message : "Failed to remove");
-    }
-  }, [reload, withPending]);
-
-  const removeDrop = useCallback(async (id: number) => {
-    setError(null);
-    try {
-      await withPending(id, () => deleteDropEntry(id));
-      await reload();
-    } catch (err) {
-      reportError(err, { source: "mobile-wire-list-remove-drop" });
-      setError(err instanceof Error ? err.message : "Failed to remove");
-    }
-  }, [reload, withPending]);
-
-  const setDropMode = useCallback(async (id: number, dropMode: WaiverDropMode) => {
-    setError(null);
-    try {
-      await withPending(id, () => updateDropEntry(id, { dropMode }));
-      await reload();
-    } catch (err) {
-      reportError(err, { source: "mobile-wire-list-drop-mode" });
-      setError(err instanceof Error ? err.message : "Failed to update");
-    }
-  }, [reload, withPending]);
+      leading={<Glyph kind="back" size={20} />}
+      onLeadingClick={() => nav(-1)}
+      trailing={period && !loading && !error ? <Glyph kind="moreDots" size={20} /> : undefined}
+    />
+  );
 
   // ─── Loading ──────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <div data-testid="mobile-wire-list">
-        <MobileTopbar
-          title="Wire List"
-          subtitle="Waiver picks"
-          leading={<Glyph kind="back" size={20} />}
-          onLeadingClick={() => nav(-1)}
-        />
+        {topbar}
         <div style={{ padding: "0 14px" }}>
           <MCard>
             <MLabel>Waiver Wire</MLabel>
@@ -291,12 +96,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
   if (error) {
     return (
       <div data-testid="mobile-wire-list">
-        <MobileTopbar
-          title="Wire List"
-          subtitle="Waiver picks"
-          leading={<Glyph kind="back" size={20} />}
-          onLeadingClick={() => nav(-1)}
-        />
+        {topbar}
         <div style={{ padding: "0 14px" }}>
           <MCard>
             <div style={{ color: "#f87171", marginBottom: 8, fontSize: 13 }}>Error: {error}</div>
@@ -322,12 +122,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
   if (!period) {
     return (
       <div data-testid="mobile-wire-list">
-        <MobileTopbar
-          title="Wire List"
-          subtitle="Waiver picks"
-          leading={<Glyph kind="back" size={20} />}
-          onLeadingClick={() => nav(-1)}
-        />
+        {topbar}
         <div style={{ padding: "0 14px" }}>
           <MCard>
             <MLabel>Waiver Wire</MLabel>
@@ -347,13 +142,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
 
   return (
     <div data-testid="mobile-wire-list">
-      <MobileTopbar
-        title="Wire List"
-        subtitle={isReadOnly ? "Read only" : `Locks ${formatDeadline(period.deadlineAt)}`}
-        leading={<Glyph kind="back" size={20} />}
-        onLeadingClick={() => nav(-1)}
-        trailing={<Glyph kind="moreDots" size={20} />}
-      />
+      {topbar}
 
       <div style={{ padding: "0 14px", display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -404,73 +193,21 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
               </div>
             ) : (
               adds.map((a, i) => (
-                <div
+                <WireListRow
                   key={a.id}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 14px",
-                    borderBottom: i < adds.length - 1 ? "1px solid var(--am-border-subtle)" : undefined,
-                    opacity: pending.has(a.id) ? 0.5 : 1,
-                    transition: "opacity 120ms ease",
-                  }}
-                >
-                  {/* Priority badge */}
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    minWidth: 24, height: 24, borderRadius: 6,
-                    background: "var(--am-chip)", color: "var(--am-text-muted)",
-                    fontFamily: "var(--am-mono)", fontSize: 12, fontWeight: 600,
-                    flexShrink: 0,
-                  }}>
-                    {a.priority}
-                  </span>
-                  {/* Position pill */}
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    padding: "2px 6px", borderRadius: 6,
-                    background: "var(--am-chip-strong)", color: "var(--am-text)",
-                    fontFamily: "var(--am-mono)", fontSize: 11, fontWeight: 600,
-                    border: "1px solid var(--am-border)",
-                    flexShrink: 0,
-                  }}>
-                    {a.player?.posPrimary ?? "—"}
-                  </span>
-                  {/* Player name + team */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {a.player?.name ?? `#${a.playerId}`}
-                    </div>
-                    <div style={{ fontSize: 10, color: "var(--am-text-muted)" }}>
-                      {a.player?.mlbTeam ?? "FA"}
-                    </div>
-                  </div>
-                  {/* Reorder + remove */}
-                  {!isReadOnly && (
-                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        onClick={() => swapAddPriorities(i, -1)}
-                        disabled={i === 0}
-                        style={arrowBtnStyle(i === 0)}
-                        aria-label="Move up"
-                      >▲</button>
-                      <button
-                        type="button"
-                        onClick={() => swapAddPriorities(i, 1)}
-                        disabled={i === adds.length - 1}
-                        style={arrowBtnStyle(i === adds.length - 1)}
-                        aria-label="Move down"
-                      >▼</button>
-                      <button
-                        type="button"
-                        onClick={() => removeAdd(a.id)}
-                        disabled={pending.has(a.id)}
-                        style={removeBtnStyle}
-                        aria-label="Remove"
-                      >×</button>
-                    </div>
-                  )}
-                </div>
+                  rank={a.priority}
+                  playerName={a.player?.name ?? `#${a.playerId}`}
+                  playerPos={a.player?.posPrimary ?? "—"}
+                  playerTeam={a.player?.mlbTeam ?? "FA"}
+                  isPending={pending.has(a.id)}
+                  isReadOnly={isReadOnly}
+                  compact={true}
+                  isFirst={i === 0}
+                  isLast={i === adds.length - 1}
+                  onMoveUp={() => swapAddPriorities(i, -1)}
+                  onMoveDown={() => swapAddPriorities(i, 1)}
+                  onRemove={() => removeAdd(a.id)}
+                />
               ))
             )}
           </MCard>
@@ -510,79 +247,23 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
               </div>
             ) : (
               drops.map((d, i) => (
-                <div
+                <WireListRow
                   key={d.id}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 14px",
-                    borderBottom: i < drops.length - 1 ? "1px solid var(--am-border-subtle)" : undefined,
-                    opacity: pending.has(d.id) ? 0.5 : 1,
-                    transition: "opacity 120ms ease",
-                  }}
-                >
-                  {/* Priority badge */}
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    minWidth: 24, height: 24, borderRadius: 6,
-                    background: "var(--am-chip)", color: "var(--am-text-muted)",
-                    fontFamily: "var(--am-mono)", fontSize: 12, fontWeight: 600,
-                    flexShrink: 0,
-                  }}>
-                    {d.priority}
-                  </span>
-                  {/* Position pill */}
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    padding: "2px 6px", borderRadius: 6,
-                    background: "var(--am-chip-strong)", color: "var(--am-text)",
-                    fontFamily: "var(--am-mono)", fontSize: 11, fontWeight: 600,
-                    border: "1px solid var(--am-border)",
-                    flexShrink: 0,
-                  }}>
-                    {d.player?.posPrimary ?? "—"}
-                  </span>
-                  {/* Player name + team */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {d.player?.name ?? `#${d.playerId}`}
-                    </div>
-                    <div style={{ fontSize: 10, color: "var(--am-text-muted)" }}>
-                      {d.player?.mlbTeam ?? "—"}
-                    </div>
-                  </div>
-                  {/* Mode toggle */}
-                  <ModeToggle
-                    value={d.dropMode}
-                    disabled={isReadOnly || pending.has(d.id)}
-                    onChange={(m) => setDropMode(d.id, m)}
-                  />
-                  {/* Reorder + remove */}
-                  {!isReadOnly && (
-                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        onClick={() => swapDropPriorities(i, -1)}
-                        disabled={i === 0}
-                        style={arrowBtnStyle(i === 0)}
-                        aria-label="Move up"
-                      >▲</button>
-                      <button
-                        type="button"
-                        onClick={() => swapDropPriorities(i, 1)}
-                        disabled={i === drops.length - 1}
-                        style={arrowBtnStyle(i === drops.length - 1)}
-                        aria-label="Move down"
-                      >▼</button>
-                      <button
-                        type="button"
-                        onClick={() => removeDrop(d.id)}
-                        disabled={pending.has(d.id)}
-                        style={removeBtnStyle}
-                        aria-label="Remove"
-                      >×</button>
-                    </div>
-                  )}
-                </div>
+                  rank={d.priority}
+                  playerName={d.player?.name ?? `#${d.playerId}`}
+                  playerPos={d.player?.posPrimary ?? "—"}
+                  playerTeam={d.player?.mlbTeam ?? "—"}
+                  isPending={pending.has(d.id)}
+                  isReadOnly={isReadOnly}
+                  compact={true}
+                  isFirst={i === 0}
+                  isLast={i === drops.length - 1}
+                  onMoveUp={() => swapDropPriorities(i, -1)}
+                  onMoveDown={() => swapDropPriorities(i, 1)}
+                  onRemove={() => removeDrop(d.id)}
+                  dropMode={d.dropMode}
+                  onDropModeChange={(m) => setDropMode(d.id, m)}
+                />
               ))
             )}
           </MCard>
@@ -592,4 +273,3 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
     </div>
   );
 }
-

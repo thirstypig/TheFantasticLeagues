@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Glyph, type GlyphKind } from "./atoms/Glyph";
 
 export type MobileTabKey = "Home" | "Players" | "MyTeam" | "Standings" | "More";
-export type MobileRole = "manager" | "commish";
 
 interface TabDef {
   k: MobileTabKey;
