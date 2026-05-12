@@ -109,7 +109,7 @@ describe("MobileLayoutGate", () => {
     expect(screen.getByTestId("desktop-content")).toBeInTheDocument();
   });
 
-  it("shows the manager dock when role is MEMBER/OWNER", () => {
+  it("shows the unified tab dock for any role", () => {
     setMatchMedia(true);
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -119,7 +119,11 @@ describe("MobileLayoutGate", () => {
       </MemoryRouter>,
     );
     const dock = screen.getByTestId("mobile-tab-bar");
-    expect(dock.querySelector('[data-tab-key="AI"]')).not.toBeNull();
+    // Unified tab set: role-conditional tabs (AI, Commish) replaced by fixed 5.
+    expect(dock.querySelector('[data-tab-key="Home"]')).not.toBeNull();
+    expect(dock.querySelector('[data-tab-key="MyTeam"]')).not.toBeNull();
+    expect(dock.querySelector('[data-tab-key="More"]')).not.toBeNull();
+    expect(dock.querySelector('[data-tab-key="AI"]')).toBeNull();
     expect(dock.querySelector('[data-tab-key="Commish"]')).toBeNull();
   });
 });
