@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Glyph, type GlyphKind } from "./atoms/Glyph";
 
-export type MobileTabKey = "Home" | "Players" | "Standings" | "AI" | "Commish" | "More";
+export type MobileTabKey = "Home" | "Players" | "MyTeam" | "Standings" | "More";
 export type MobileRole = "manager" | "commish";
 
 interface TabDef {
@@ -14,66 +14,54 @@ interface TabDef {
   matches: (path: string) => boolean;
 }
 
-function buildTabs(role: MobileRole, leagueId: number): TabDef[] {
-  const standings: TabDef = {
-    k: "Standings",
-    label: "Standings",
-    glyph: "trophy",
-    to: "/season",
-    matches: (p) => p === "/season" || p.startsWith("/season/"),
-  };
-  const home: TabDef = {
-    k: "Home",
-    label: "Home",
-    glyph: "home",
-    to: "/",
-    matches: (p) => p === "/",
-  };
-  const players: TabDef = {
-    k: "Players",
-    label: "Players",
-    glyph: "players",
-    to: "/players",
-    matches: (p) => p === "/players" || p.startsWith("/players/"),
-  };
-  const more: TabDef = {
-    k: "More",
-    label: "More",
-    glyph: "more",
-    to: "/more",
-    matches: (p) => p === "/more" || p.startsWith("/more/"),
-  };
-
-  if (role === "commish") {
-    const commish: TabDef = {
-      k: "Commish",
-      label: "Commish",
-      glyph: "shield",
-      to: leagueId ? `/commissioner/${leagueId}` : "/commissioner",
-      matches: (p) => p.startsWith("/commissioner"),
-    };
-    return [home, players, standings, commish, more];
-  }
-
-  const ai: TabDef = {
-    k: "AI",
-    label: "Coach",
-    glyph: "ai",
-    to: "/ai",
-    matches: (p) => p === "/ai" || p.startsWith("/ai/"),
-  };
-  return [home, players, standings, ai, more];
+function buildTabs(myTeamCode: string | null | undefined): TabDef[] {
+  return [
+    {
+      k: "Home",
+      label: "Home",
+      glyph: "home",
+      to: "/",
+      matches: (p) => p === "/",
+    },
+    {
+      k: "Players",
+      label: "Players",
+      glyph: "players",
+      to: "/players",
+      matches: (p) => p === "/players" || p.startsWith("/players/"),
+    },
+    {
+      k: "MyTeam",
+      label: "My Team",
+      glyph: "me",
+      to: myTeamCode ? `/teams/${myTeamCode}` : "/teams",
+      matches: (p) => p.startsWith("/teams/"),
+    },
+    {
+      k: "Standings",
+      label: "Standings",
+      glyph: "trophy",
+      to: "/season",
+      matches: (p) => p === "/season" || p.startsWith("/season/"),
+    },
+    {
+      k: "More",
+      label: "More",
+      glyph: "more",
+      to: "/more",
+      matches: (p) => p === "/more" || p.startsWith("/more/"),
+    },
+  ];
 }
 
 interface MobileTabBarProps {
-  role: MobileRole;
-  leagueId: number;
+  myTeamCode?: string | null;
 }
 
-export function MobileTabBar({ role, leagueId }: MobileTabBarProps) {
+export function MobileTabBar({ myTeamCode }: MobileTabBarProps) {
   const nav = useNavigate();
   const { pathname } = useLocation();
-  const tabs = buildTabs(role, leagueId);
+  const tabs = buildTabs(myTeamCode);
 
   return (
     <nav

@@ -11,19 +11,18 @@
  * desktop component keeps rendering. This lets us ship pages
  * incrementally without breaking deep links.
  */
-import React, { useMemo } from "react";
+import React from "react";
 import { useLocation } from "react-router-dom";
 import { useLeague } from "../contexts/LeagueContext";
-import { useAuth } from "../auth/AuthProvider";
 import { useTheme } from "../contexts/ThemeContext";
-import type { LeagueListItem } from "../api";
 import "../components/aurora/aurora.css";
-import { MobileTabBar, type MobileRole } from "./MobileTabBar";
+import { MobileTabBar } from "./MobileTabBar";
 import { MobileHome } from "./pages/MobileHome";
 import { MobileMore } from "./pages/MobileMore";
 import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
 import { MobileTeam } from "./pages/MobileTeam";
+import { MobileWireList } from "./pages/MobileWireList";
 
 /** Map a pathname to a mobile page (or `null` to fall through to desktop). */
 function pickMobilePage(pathname: string): React.ReactElement | null {
@@ -47,6 +46,10 @@ function pickMobilePage(pathname: string): React.ReactElement | null {
   if (teamMatch) {
     return <MobileTeam teamCode={teamMatch[1]} />;
   }
+  const wireListMatch = pathname.match(/^\/teams\/([^/]+)\/wire-list\/?$/);
+  if (wireListMatch) {
+    return <MobileWireList teamCode={wireListMatch[1]} />;
+  }
   return null;
 }
 
@@ -56,18 +59,8 @@ interface MobileShellProps {
 
 export function MobileShell({ children }: MobileShellProps) {
   const { pathname } = useLocation();
-  const { user } = useAuth();
   const { theme } = useTheme();
-  const { leagueId, leagues } = useLeague();
-
-  const role: MobileRole = useMemo(() => {
-    if (user?.isAdmin) return "commish";
-    const selected = (leagues ?? []).find((l: LeagueListItem) => l.id === leagueId);
-    if (selected?.access?.type === "MEMBER" && selected?.access?.role === "COMMISSIONER") {
-      return "commish";
-    }
-    return "manager";
-  }, [user, leagues, leagueId]);
+  const { myTeamCode } = useLeague();
 
   const mobilePage = pickMobilePage(pathname);
 
@@ -87,7 +80,7 @@ export function MobileShell({ children }: MobileShellProps) {
       >
         {mobilePage ?? children}
       </div>
-      <MobileTabBar role={role} leagueId={leagueId} />
+      <MobileTabBar myTeamCode={myTeamCode} />
     </div>
   );
 }
