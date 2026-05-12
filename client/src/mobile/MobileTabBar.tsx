@@ -35,7 +35,7 @@ function buildTabs(myTeamCode: string | null | undefined): TabDef[] {
       label: "My Team",
       glyph: "me",
       to: myTeamCode ? `/teams/${myTeamCode}` : "/teams",
-      matches: (p) => p.startsWith("/teams/"),
+      matches: (p) => myTeamCode ? p.startsWith(`/teams/${myTeamCode}`) : false,
     },
     {
       k: "Standings",
