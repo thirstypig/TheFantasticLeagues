@@ -31,8 +31,6 @@ import {
   MAICard,
   MChip,
 } from "../atoms/MCard";
-import { MSparkline } from "../atoms/MSparkline";
-import { Glyph } from "../atoms/Glyph";
 
 interface StandingsRow {
   teamId: number;
@@ -156,13 +154,6 @@ export function MobileHome() {
     return idx >= 0 ? { row: standings[idx], rank: idx + 1 } : null;
   }, [standings, myTeamId]);
 
-  const heroSparklineData = useMemo(() => {
-    if (!myStanding) return [] as number[];
-    return myStanding.row.periodPoints.length
-      ? myStanding.row.periodPoints
-      : [0, 0];
-  }, [myStanding]);
-
   const standingsTop5 = useMemo(() => standings.slice(0, 5), [standings]);
 
   const aiCards: Array<{ key: string; icon: string; title: string; body: string; cta: string; onClick: () => void }> = useMemo(() => {
@@ -196,8 +187,6 @@ export function MobileHome() {
       <MobileTopbar
         title={currentLeagueName || "Home"}
         subtitle={currentSeason ? `${currentSeason} · ${me?.user?.name ?? "Welcome"}` : me?.user?.name ?? "Welcome"}
-        leading={<Glyph kind="bell" size={20} />}
-        trailing={<Glyph kind="moreDots" size={20} />}
       />
 
       {/* Hero card */}
@@ -238,11 +227,6 @@ export function MobileHome() {
                 )}
               </div>
             </div>
-            {heroSparklineData.length > 1 && (
-              <div style={{ marginTop: 10 }}>
-                <MSparkline data={heroSparklineData} w={320} h={36} />
-              </div>
-            )}
             <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
               {myTeamCode && (
                 <Link
@@ -280,6 +264,21 @@ export function MobileHome() {
         style={{ padding: "0 14px 12px" }}
       >
         <MCard padded={false}>
+          {/* Header row */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "20px 1fr auto auto",
+              gap: 10,
+              padding: "6px 14px",
+              borderBottom: "1px solid var(--am-border)",
+            }}
+          >
+            <div />
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, color: "var(--am-text-faint)", textTransform: "uppercase" }}>Team</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, color: "var(--am-text-faint)", textTransform: "uppercase", textAlign: "right", minWidth: 36 }}>Period</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, color: "var(--am-text-faint)", textTransform: "uppercase", textAlign: "right", minWidth: 36 }}>Total</div>
+          </div>
           {loading && !standings.length ? (
             <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
               Loading standings…
@@ -287,6 +286,7 @@ export function MobileHome() {
           ) : standingsTop5.length ? (
             standingsTop5.map((t, i) => {
               const isMe = !!myTeamId && t.teamId === myTeamId;
+              const lastPeriodPts = t.periodPoints.length ? t.periodPoints[t.periodPoints.length - 1] : null;
               return (
                 <div
                   key={t.teamId}
@@ -295,7 +295,7 @@ export function MobileHome() {
                   onClick={() => t.teamCode && nav(`/teams/${t.teamCode}`)}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "20px 1fr auto",
+                    gridTemplateColumns: "20px 1fr auto auto",
                     alignItems: "center",
                     gap: 10,
                     padding: "10px 14px",
@@ -344,8 +344,13 @@ export function MobileHome() {
                       <div style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{t.owner}</div>
                     )}
                   </div>
-                  <div>
-                    <MIridText size={14} weight={700}>
+                  <div style={{ textAlign: "right", minWidth: 36 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
+                      {lastPeriodPts != null ? lastPeriodPts.toFixed(1) : "—"}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right", minWidth: 36 }}>
+                    <MIridText size={13} weight={700}>
                       {t.totalPoints.toFixed(1)}
                     </MIridText>
                   </div>
@@ -413,74 +418,6 @@ export function MobileHome() {
         </MCard>
       </MSection>
 
-      {/* Quick links */}
-      <div style={{ padding: "0 14px 16px" }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            color: "var(--am-text-faint)",
-            marginBottom: 8,
-            paddingLeft: 2,
-          }}
-        >
-          League
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 8,
-          }}
-        >
-          {[
-            { label: "Browse players", sub: "Search and filter", to: "/players" },
-            { label: "Activity", sub: "Recent transactions", to: "/activity" },
-            { label: "Board", sub: "Manager chatter", to: "/board" },
-            { label: "AI Hub", sub: "Insights + digest", to: "/ai" },
-            ...(myTeamCode ? [{ label: "Wire list", sub: "Waiver picks", to: `/teams/${myTeamCode}/wire-list` }] : []),
-            { label: "Standings", sub: "Full board", to: "/season" },
-          ].map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              style={{ textDecoration: "none" }}
-              data-testid="mobile-home-quick-link"
-            >
-              <div
-                style={{
-                  background: "var(--am-surface)",
-                  border: "1px solid var(--am-border)",
-                  borderRadius: 12,
-                  padding: "12px 14px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--am-text)",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {item.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: 10.5,
-                    color: "var(--am-text-faint)",
-                    marginTop: 3,
-                  }}
-                >
-                  {item.sub}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
