@@ -245,11 +245,11 @@ describe("HTTP shape (all 12 tools dispatch to the documented endpoint)", () => 
     return { run: () => t.cb(input as any), calls };
   }
 
-  it("registers all 12 documented names", () => {
+  it("registers all 16 documented names", () => {
     const { client } = makeClient();
     const captured = captureTools(client);
     for (const n of WIRE_LIST_TOOL_NAMES) expect(captured.has(n)).toBe(true);
-    expect(captured.size).toBe(12);
+    expect(captured.size).toBe(16);
   });
 
   it("wire_list_get_active_period → GET /api/wire-list/periods/active?leagueId=", async () => {

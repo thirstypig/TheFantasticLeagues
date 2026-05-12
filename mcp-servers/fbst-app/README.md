@@ -1,10 +1,10 @@
 # fbst-app MCP server
 
-Exposes FBST app actions as Claude-callable tools. v1 ships **12 tools wrapping the wire-list feature** (owner CRUD + commissioner reducer).
+Exposes FBST app actions as Claude-callable tools. v1 ships **16 tools wrapping the wire-list feature** (owner CRUD + commissioner reducer).
 
 This is the second MCP server in the repo — companion to [`mcp-servers/mlb-data/`](../mlb-data/), which is read-only MLB API proxy. fbst-app instead drives mutations against the local Express API, so an agent can run the same flows a human owner or commissioner would.
 
-## Tools (12)
+## Tools (16)
 
 ### Owner reads
 | Tool | Endpoint |
@@ -20,6 +20,9 @@ This is the second MCP server in the repo — companion to [`mcp-servers/mlb-dat
 | `wire_list_create_add` | `POST /api/wire-list/periods/:periodId/adds` |
 | `wire_list_create_drop` | `POST /api/wire-list/periods/:periodId/drops` |
 | `wire_list_reorder_entries` | `POST /api/wire-list/periods/:periodId/reorder` |
+| `wire_list_delete_add` | `DELETE /api/wire-list/adds/:id` |
+| `wire_list_delete_drop` | `DELETE /api/wire-list/drops/:id` |
+| `wire_list_update_drop` | `PATCH /api/wire-list/drops/:id` |
 
 ### Commissioner reducer
 | Tool | Endpoint |
@@ -28,6 +31,7 @@ This is the second MCP server in the repo — companion to [`mcp-servers/mlb-dat
 | `wire_list_succeed_add` | `POST /api/wire-list/adds/:id/succeed` |
 | `wire_list_fail_add` | `POST /api/wire-list/adds/:id/fail` |
 | `wire_list_skip_add` | `POST /api/wire-list/adds/:id/skip` |
+| `wire_list_revert_add` | `POST /api/wire-list/adds/:id/revert` |
 | `wire_list_finalize_period` | `POST /api/wire-list/periods/:periodId/finalize` |
 
 ## Schema reuse
@@ -83,7 +87,7 @@ cd mcp-servers/fbst-app && npx vitest run
 
 Two test files:
 - `apiClient.test.ts` — auth header attachment, base URL, error code surfacing, JSON serialization
-- `tools.test.ts` — registration sanity (all 12 tools register, names unique)
+- `tools.test.ts` — registration sanity (all 16 tools register, names unique)
 
 ## Out of scope for v1
 

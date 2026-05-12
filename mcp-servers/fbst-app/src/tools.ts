@@ -14,6 +14,7 @@ import {
   CreateDropEntryBodySchema,
   ReorderEntriesBodySchema,
   FailOutcomeBodySchema,
+  WaiverDropModeSchema,
 } from "../../../shared/api/wireList.js";
 import { FbstApiClient, formatError } from "./apiClient.js";
 
@@ -35,6 +36,7 @@ const LeagueIdInput = { leagueId: z.number().int().positive().describe("League I
 const PeriodIdInput = { periodId: z.number().int().positive().describe("Wire-list period ID (WaiverPeriod.id)") };
 const TeamIdInput = { teamId: z.number().int().positive().describe("Team ID") };
 const AddEntryIdInput = { addEntryId: z.number().int().positive().describe("WaiverAddEntry ID") };
+const DropEntryIdInput = { dropEntryId: z.number().int().positive().describe("WaiverDropEntry ID") };
 
 // ─── Registration ───────────────────────────────────────────────────
 
@@ -162,6 +164,53 @@ export function registerWireListTools(server: McpServer, client: FbstApiClient):
     },
   );
 
+  server.tool(
+    "wire_list_delete_add",
+    "Remove an Add entry from a team's wire-list claim queue. Only allowed while the period is PENDING.",
+    AddEntryIdInput,
+    async ({ addEntryId }) => {
+      try {
+        const data = await client.request("DELETE", `/api/wire-list/adds/${addEntryId}`);
+        return ok(data);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.tool(
+    "wire_list_delete_drop",
+    "Remove a Drop entry from a team's wire-list drop list. Only allowed while the period is PENDING.",
+    DropEntryIdInput,
+    async ({ dropEntryId }) => {
+      try {
+        const data = await client.request("DELETE", `/api/wire-list/drops/${dropEntryId}`);
+        return ok(data);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.tool(
+    "wire_list_update_drop",
+    "Change the drop mode on a Drop entry (RELEASE drops to FA; IL_STASH parks on the IL stash queue). Only allowed while the period is PENDING.",
+    {
+      dropEntryId: z.number().int().positive().describe("WaiverDropEntry ID"),
+      dropMode: WaiverDropModeSchema.describe('"RELEASE" or "IL_STASH"'),
+    },
+    async ({ dropEntryId, dropMode }) => {
+      try {
+        const data = await client.request("PATCH", `/api/wire-list/drops/${dropEntryId}`, {
+          body: { dropMode },
+        });
+        return ok(data);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
   // Commissioner reducer ─────────────────────────────────────────────
 
   server.tool(
@@ -225,6 +274,20 @@ export function registerWireListTools(server: McpServer, client: FbstApiClient):
   );
 
   server.tool(
+    "wire_list_revert_add",
+    "Commissioner action: revert a previously-succeeded Add entry back to PENDING (requires period LOCKED).",
+    AddEntryIdInput,
+    async ({ addEntryId }) => {
+      try {
+        const data = await client.request("POST", `/api/wire-list/adds/${addEntryId}/revert`);
+        return ok(data);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.tool(
     "wire_list_finalize_period",
     "Commissioner action: atomically finalize a LOCKED period — applies all SUCCEEDED Add/Drop pairs to rosters and emits push notifications.",
     PeriodIdInput,
@@ -248,9 +311,13 @@ export const WIRE_LIST_TOOL_NAMES = [
   "wire_list_create_add",
   "wire_list_create_drop",
   "wire_list_reorder_entries",
+  "wire_list_delete_add",
+  "wire_list_delete_drop",
+  "wire_list_update_drop",
   "wire_list_lock_period",
   "wire_list_succeed_add",
   "wire_list_fail_add",
   "wire_list_skip_add",
+  "wire_list_revert_add",
   "wire_list_finalize_period",
 ] as const;
