@@ -26,6 +26,7 @@ import {
   CreateDropEntryBodySchema,
   ReorderEntriesBodySchema,
   FailOutcomeBodySchema,
+  WaiverDropModeSchema,
 } from "../../../shared/api/wireList.js";
 
 // ─── Capture helpers ────────────────────────────────────────────────
@@ -210,6 +211,50 @@ describe("input-schema validation (drift catches malformed payloads)", () => {
     });
   });
 
+  describe("wire_list_delete_add / wire_list_delete_drop (AddEntryIdInput / DropEntryIdInput)", () => {
+    it("delete_add accepts a positive integer addEntryId", () => {
+      expect(shape("wire_list_delete_add").safeParse({ addEntryId: 10 }).success).toBe(true);
+    });
+
+    it("delete_add rejects non-positive addEntryId", () => {
+      expect(shape("wire_list_delete_add").safeParse({ addEntryId: 0 }).success).toBe(false);
+      expect(shape("wire_list_delete_add").safeParse({ addEntryId: -5 }).success).toBe(false);
+    });
+
+    it("delete_drop accepts a positive integer dropEntryId", () => {
+      expect(shape("wire_list_delete_drop").safeParse({ dropEntryId: 20 }).success).toBe(true);
+    });
+
+    it("delete_drop rejects wrong field name (addEntryId instead of dropEntryId)", () => {
+      // Regression: swapping Add/Drop IDs would silently delete the wrong entry.
+      expect(shape("wire_list_delete_drop").safeParse({ addEntryId: 20 }).success).toBe(false);
+    });
+  });
+
+  describe("wire_list_update_drop (dropMode required, enum-constrained)", () => {
+    const tool = "wire_list_update_drop";
+
+    it("accepts dropMode=RELEASE", () => {
+      expect(shape(tool).safeParse({ dropEntryId: 5, dropMode: "RELEASE" }).success).toBe(true);
+    });
+
+    it("accepts dropMode=IL_STASH", () => {
+      expect(shape(tool).safeParse({ dropEntryId: 5, dropMode: "IL_STASH" }).success).toBe(true);
+    });
+
+    it("rejects missing dropMode", () => {
+      expect(shape(tool).safeParse({ dropEntryId: 5 }).success).toBe(false);
+    });
+
+    it("rejects bogus dropMode string", () => {
+      expect(shape(tool).safeParse({ dropEntryId: 5, dropMode: "TRADE" }).success).toBe(false);
+    });
+
+    it("rejects negative dropEntryId", () => {
+      expect(shape(tool).safeParse({ dropEntryId: -1, dropMode: "RELEASE" }).success).toBe(false);
+    });
+  });
+
   describe("wire_list_fail_add (reason required, length-bounded)", () => {
     const tool = "wire_list_fail_add";
 
@@ -235,7 +280,7 @@ describe("input-schema validation (drift catches malformed payloads)", () => {
 
 // ─── 2. HTTP shape — endpoint + method + body for every tool ────────
 
-describe("HTTP shape (all 12 tools dispatch to the documented endpoint)", () => {
+describe("HTTP shape (all 16 tools dispatch to the documented endpoint)", () => {
   function exec(toolName: string, input: unknown) {
     const { client, calls } = makeClient({
       responder: () => ({ status: 200, body: { ok: true } }),
@@ -354,6 +399,42 @@ describe("HTTP shape (all 12 tools dispatch to the documented endpoint)", () => 
     await run();
     expect(calls[0].method).toBe("POST");
     expect(calls[0].url).toBe("https://api.test/api/wire-list/adds/42/skip");
+  });
+
+  it("wire_list_delete_add → DELETE /adds/:id (no body)", async () => {
+    const { client, calls } = makeClient({ responder: () => ({ status: 200, body: { ok: true } }) });
+    const captured = captureTools(client);
+    await captured.get("wire_list_delete_add")!.cb({ addEntryId: 55 });
+    expect(calls[0].method).toBe("DELETE");
+    expect(calls[0].url).toBe("https://api.test/api/wire-list/adds/55");
+    expect(calls[0].body).toBeUndefined();
+  });
+
+  it("wire_list_delete_drop → DELETE /drops/:id (no body)", async () => {
+    const { client, calls } = makeClient({ responder: () => ({ status: 200, body: { ok: true } }) });
+    const captured = captureTools(client);
+    await captured.get("wire_list_delete_drop")!.cb({ dropEntryId: 66 });
+    expect(calls[0].method).toBe("DELETE");
+    expect(calls[0].url).toBe("https://api.test/api/wire-list/drops/66");
+    expect(calls[0].body).toBeUndefined();
+  });
+
+  it("wire_list_update_drop → PATCH /drops/:id with {dropMode}", async () => {
+    const { client, calls } = makeClient({ responder: () => ({ status: 200, body: { ok: true } }) });
+    const captured = captureTools(client);
+    await captured.get("wire_list_update_drop")!.cb({ dropEntryId: 77, dropMode: "IL_STASH" });
+    expect(calls[0].method).toBe("PATCH");
+    expect(calls[0].url).toBe("https://api.test/api/wire-list/drops/77");
+    expect(JSON.parse(calls[0].body!)).toEqual({ dropMode: "IL_STASH" });
+  });
+
+  it("wire_list_revert_add → POST /adds/:id/revert (no body)", async () => {
+    const { client, calls } = makeClient({ responder: () => ({ status: 200, body: { ok: true } }) });
+    const captured = captureTools(client);
+    await captured.get("wire_list_revert_add")!.cb({ addEntryId: 42 });
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].url).toBe("https://api.test/api/wire-list/adds/42/revert");
+    expect(calls[0].body).toBeUndefined();
   });
 
   it("wire_list_finalize_period → POST /finalize", async () => {
@@ -527,6 +608,18 @@ describe("shared schema reuse — behavior parity", () => {
 
     expect(ReorderEntriesBodySchema.safeParse({ kind: "REORDER", teamId: 1, orderedIds: [1] }).success).toBe(false);
     expect(toolShape.safeParse({ periodId: 1, kind: "REORDER", teamId: 1, orderedIds: [1] }).success).toBe(false);
+  });
+
+  it("update_drop.dropMode parity with WaiverDropModeSchema (exactly RELEASE | IL_STASH)", () => {
+    const toolShape = shape("wire_list_update_drop");
+    for (const good of ["RELEASE", "IL_STASH"] as const) {
+      expect(WaiverDropModeSchema.safeParse(good).success).toBe(true);
+      expect(toolShape.safeParse({ dropEntryId: 1, dropMode: good }).success).toBe(true);
+    }
+    for (const bad of ["release", "il_stash", "TRADE", "", null] as const) {
+      expect(WaiverDropModeSchema.safeParse(bad as any).success).toBe(false);
+      expect(toolShape.safeParse({ dropEntryId: 1, dropMode: bad }).success).toBe(false);
+    }
   });
 
   it("fail_add.reason parity with FailOutcomeBodySchema (length 1..280, required)", () => {
