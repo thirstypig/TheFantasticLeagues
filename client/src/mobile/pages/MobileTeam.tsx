@@ -416,6 +416,31 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const pitcherStatHeaders = ["W", "K", "ERA", "WHIP"];
   const statHeaders = isHit ? hitterStatHeaders : pitcherStatHeaders;
 
+  const totals = useMemo(() => {
+    if (tab === "IL" || list.length === 0) return null;
+    let AB = 0, H = 0, HR = 0, RBI = 0, SB = 0;
+    let W = 0, K = 0, IP = 0, ER = 0, BB_H = 0;
+    for (const p of list) {
+      AB += p.AB ?? 0;
+      H += p.H ?? 0;
+      HR += p.HR ?? 0;
+      RBI += p.RBI ?? 0;
+      SB += p.SB ?? 0;
+      W += p.W ?? 0;
+      K += p.K ?? 0;
+      IP += p.IP ?? 0;
+      ER += p.ER ?? 0;
+      BB_H += p.BB_H ?? 0;
+    }
+    return {
+      AVG: AB > 0 ? H / AB : null,
+      HR, RBI, SB,
+      W, K,
+      ERA: IP > 0 ? (ER / IP) * 9 : null,
+      WHIP: IP > 0 ? BB_H / IP : null,
+    };
+  }, [tab, list]);
+
   return (
     <div data-testid="mobile-team">
       <MobileTopbar
@@ -609,47 +634,47 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         <div style={{ padding: "12px 18px", color: "var(--am-negative)", fontSize: 12 }}>{error}</div>
       )}
 
-      {/* COLUMN HEADER STRIP */}
-      <div
-        style={{
-          padding: "0 16px 4px",
-          display: "grid",
-          gridTemplateColumns: cols,
-          gap: 6,
-          alignItems: "center",
-        }}
-      >
-        <div />
-        <div
-          style={{
-            fontSize: 9,
-            letterSpacing: 0.6,
-            color: "var(--am-text-faint)",
-            fontWeight: 700,
-          }}
-        >
-          PLAYER
-        </div>
-        {statHeaders.map((s) => (
-          <div
-            key={s}
-            style={{
-              fontSize: 9,
-              letterSpacing: 0.6,
-              color: "var(--am-text-faint)",
-              fontWeight: 700,
-              textAlign: "right",
-            }}
-          >
-            {s}
-          </div>
-        ))}
-        {showMoveCol && <div aria-hidden="true" />}
-      </div>
-
       {/* DENSE ROWS */}
       <div style={{ padding: "0 14px 12px" }}>
         <MCard padded={false}>
+          {/* COLUMN HEADER STRIP */}
+          <div
+            style={{
+              padding: "6px 14px",
+              display: "grid",
+              gridTemplateColumns: cols,
+              gap: 6,
+              alignItems: "center",
+              borderBottom: "1px solid var(--am-border)",
+            }}
+          >
+            <div />
+            <div
+              style={{
+                fontSize: 9,
+                letterSpacing: 0.6,
+                color: "var(--am-text-faint)",
+                fontWeight: 700,
+              }}
+            >
+              PLAYER
+            </div>
+            {statHeaders.map((s) => (
+              <div
+                key={s}
+                style={{
+                  fontSize: 9,
+                  letterSpacing: 0.6,
+                  color: "var(--am-text-faint)",
+                  fontWeight: 700,
+                  textAlign: "right",
+                }}
+              >
+                {s}
+              </div>
+            ))}
+            {showMoveCol && <div aria-hidden="true" />}
+          </div>
           {(loading && !hub) || (periodMode !== "season" && periodLoading) ? (
             <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
               Loading roster…
@@ -659,7 +684,8 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
               No {tab.toLowerCase()} on this roster.
             </div>
           ) : (
-            list.map((p, i) => (
+            <>
+              {list.map((p, i) => (
               <div
                 key={p.rosterId}
                 data-testid="mobile-team-row"
@@ -755,7 +781,44 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                   </button>
                 )}
               </div>
-            ))
+              ))}
+              {totals && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: cols,
+                    gap: 6,
+                    alignItems: "center",
+                    padding: "7px 14px",
+                    borderTop: "2px solid var(--am-border)",
+                    background: "var(--am-chip)",
+                  }}
+                >
+                  <div style={{ fontSize: 8.5, fontWeight: 700, color: "var(--am-text-faint)", textAlign: "center" }}>
+                    TOT
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--am-text-muted)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {isHit ? "Hitter Totals" : "Pitcher Totals"}
+                  </div>
+                  {isHit ? (
+                    <>
+                      <StatCell value={totals.AVG != null ? fmtAvg(totals.AVG) : "—"} />
+                      <StatCell value={fmtInt(totals.HR)} />
+                      <StatCell value={fmtInt(totals.RBI)} />
+                      <StatCell value={fmtInt(totals.SB)} />
+                    </>
+                  ) : (
+                    <>
+                      <StatCell value={fmtInt(totals.W)} />
+                      <StatCell value={fmtInt(totals.K)} />
+                      <StatCell value={totals.ERA != null ? fmtRate(totals.ERA, 2) : "—"} />
+                      <StatCell value={totals.WHIP != null ? fmtRate(totals.WHIP, 2) : "—"} />
+                    </>
+                  )}
+                  {showMoveCol && <div />}
+                </div>
+              )}
+            </>
           )}
         </MCard>
       </div>

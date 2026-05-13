@@ -28,7 +28,6 @@ import {
   MIridText,
   MLabel,
   MSection,
-  MAICard,
   MChip,
 } from "../atoms/MCard";
 
@@ -156,31 +155,24 @@ export function MobileHome() {
 
   const standingsTop5 = useMemo(() => standings.slice(0, 5), [standings]);
 
-  const aiCards: Array<{ key: string; icon: string; title: string; body: string; cta: string; onClick: () => void }> = useMemo(() => {
-    const cards: Array<{ key: string; icon: string; title: string; body: string; cta: string; onClick: () => void }> = [];
-    for (const trade of activeTrades.slice(0, 2)) {
-      const proposer = trade.proposingTeam?.name ?? trade.proposer?.name ?? "Someone";
-      cards.push({
-        key: `trade-${trade.id}`,
-        icon: "↺",
-        title: `Trade proposal from ${proposer}`,
-        body: `${trade.items?.length ?? 0} player${(trade.items?.length ?? 0) === 1 ? "" : "s"} · awaiting your review`,
-        cta: "Review",
-        onClick: () => nav("/activity"),
-      });
-    }
-    for (const card of boardCards.slice(0, 2 - cards.length)) {
-      cards.push({
-        key: `board-${card.id}`,
-        icon: "✦",
-        title: card.title,
-        body: card.user?.name ? `${card.user.name} · ${timeAgo(card.createdAt)}` : timeAgo(card.createdAt),
-        cta: "Open",
-        onClick: () => nav("/board"),
-      });
-    }
-    return cards;
-  }, [activeTrades, boardCards, nav]);
+  // For each trade, split items by direction:
+  // items where senderId === proposingTeamId are given by proposer;
+  // items where senderId !== proposingTeamId are given by acceptor.
+  function tradeSides(trade: TradeProposal) {
+    const propId = trade.proposingTeamId ?? trade.proposer?.id;
+    const given = (trade.items ?? []).filter((i) => i.senderId === propId);
+    const received = (trade.items ?? []).filter((i) => i.senderId !== propId);
+    const nameList = (items: typeof given, max = 2) => {
+      const names = items.map((i) => i.player?.name ?? "Player").filter(Boolean);
+      if (names.length === 0) return "—";
+      if (names.length <= max) return names.join(", ");
+      return `${names.slice(0, max).join(", ")} +${names.length - max}`;
+    };
+    return {
+      proposerNames: nameList(given),
+      acceptorNames: nameList(received),
+    };
+  }
 
   return (
     <div data-testid="mobile-home">
@@ -242,18 +234,47 @@ export function MobileHome() {
         </MIridRing>
       </div>
 
-      {aiCards.length > 0 && (
+      {activeTrades.length > 0 && (
         <MSection
-          title="✦ For you"
+          title="↺ Trade Proposals"
           action="See all"
           onActionClick={() => nav("/activity")}
           style={{ padding: "0 14px 12px" }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {aiCards.map((c) => (
-              <MAICard key={c.key} icon={c.icon} title={c.title} body={c.body} cta={c.cta} onCtaClick={c.onClick} />
-            ))}
-          </div>
+          <MCard padded={false}>
+            {activeTrades.slice(0, 3).map((trade, i) => {
+              const { proposerNames, acceptorNames } = tradeSides(trade);
+              const proposer = trade.proposingTeam?.name ?? trade.proposer?.name ?? "—";
+              const acceptor = trade.acceptingTeam?.name ?? "—";
+              return (
+                <div
+                  key={trade.id}
+                  onClick={() => nav("/activity")}
+                  style={{
+                    padding: "10px 14px",
+                    borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--am-text)", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {proposer} ↔ {acceptor}
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--am-accent)", flexShrink: 0 }}>Review →</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 6, alignItems: "center" }}>
+                    <div style={{ fontSize: 10.5, color: "var(--am-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {proposerNames}
+                    </div>
+                    <div style={{ fontSize: 9, color: "var(--am-text-faint)", fontWeight: 700, padding: "0 2px" }}>→</div>
+                    <div style={{ fontSize: 10.5, color: "var(--am-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "right" }}>
+                      {acceptorNames}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </MCard>
         </MSection>
       )}
 
@@ -417,6 +438,46 @@ export function MobileHome() {
           )}
         </MCard>
       </MSection>
+
+      {boardCards.length > 0 && (
+        <MSection
+          title="✦ League Board"
+          action="See all"
+          onActionClick={() => nav("/board")}
+          style={{ padding: "0 14px 12px" }}
+        >
+          <MCard padded={false}>
+            {boardCards.map((card, i) => (
+              <div
+                key={card.id}
+                onClick={() => nav("/board")}
+                style={{
+                  padding: "10px 14px",
+                  borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--am-text)", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {card.title}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {card.user?.name && (
+                    <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{card.user.name}</span>
+                  )}
+                  <span style={{ fontSize: 9, color: "var(--am-text-faint)" }}>·</span>
+                  <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{timeAgo(card.createdAt)}</span>
+                  {card.replyCount > 0 && (
+                    <>
+                      <span style={{ fontSize: 9, color: "var(--am-text-faint)" }}>·</span>
+                      <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{card.replyCount} {card.replyCount === 1 ? "reply" : "replies"}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </MCard>
+        </MSection>
+      )}
 
     </div>
   );

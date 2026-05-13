@@ -110,6 +110,7 @@ export function MobilePlayers() {
     teamParam === "ALL_NL" ? "NL" : teamParam === "ALL_AL" ? "AL" : "All";
   const pos = searchParams.get("pos") ?? "All";
   const q = searchParams.get("q") ?? "";
+  const availOnly = searchParams.get("avail") === "1";
   const sortKeyRaw = searchParams.get("sort") ?? (isHit ? "HR" : "K");
   const sortDir: SortDir = (searchParams.get("desc") ?? "1") === "1" ? "desc" : "asc";
 
@@ -152,6 +153,7 @@ export function MobilePlayers() {
     setUrlParam("team", l === "NL" ? "ALL_NL" : l === "AL" ? "ALL_AL" : "ALL", { team: "ALL_NL" });
   };
   const setPos = (p: string) => setUrlParam("pos", p, { pos: "All" });
+  const setAvailOnly = (v: boolean) => setUrlParam("avail", v ? "1" : null, { avail: "" });
   const setQ = (s: string) => setUrlParam("q", s, { q: "" });
   const onSort = (k: SortKey) => {
     if (sortKey === k) {
@@ -273,6 +275,8 @@ export function MobilePlayers() {
       const abbr = teamAbbr(p);
       if (leagueChip === "NL" && !NL_TEAMS.has(abbr)) return false;
       if (leagueChip === "AL" && NL_TEAMS.has(abbr)) return false;
+      // Available-only filter
+      if (availOnly && (p.ogba_team_code || (p as unknown as Record<string, unknown>).team)) return false;
       // Position
       if (!matchesPosition(p, pos)) return false;
       // Search
@@ -286,7 +290,7 @@ export function MobilePlayers() {
       }
       return true;
     });
-  }, [allPlayers, isHit, leagueChip, pos, q]);
+  }, [allPlayers, isHit, leagueChip, availOnly, pos, q]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -389,8 +393,8 @@ export function MobilePlayers() {
         />
       </div>
 
-      {/* LEAGUE chips */}
-      <div style={{ padding: "0 14px 6px", display: "flex", gap: 5, alignItems: "center" }}>
+      {/* LEAGUE + AVAILABLE chips */}
+      <div style={{ padding: "0 14px 6px", display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
         <span
           style={{
             fontSize: 9.5,
@@ -427,6 +431,26 @@ export function MobilePlayers() {
             </button>
           );
         })}
+        <div style={{ width: 1, height: 16, background: "var(--am-border)", margin: "0 2px" }} />
+        <button
+          type="button"
+          onClick={() => setAvailOnly(!availOnly)}
+          data-testid="mobile-players-avail-filter"
+          style={{
+            padding: "4px 10px",
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: "pointer",
+            background: availOnly ? "var(--am-positive, #22c55e)" : "var(--am-chip)",
+            color: availOnly ? "#fff" : "var(--am-text-muted)",
+            border: "1px solid " + (availOnly ? "transparent" : "var(--am-border)"),
+            fontFamily: "inherit",
+            minHeight: 28,
+          }}
+        >
+          Available
+        </button>
       </div>
 
       {/* POSITION CHIPS */}

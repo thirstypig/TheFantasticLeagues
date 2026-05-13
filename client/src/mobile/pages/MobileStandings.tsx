@@ -15,6 +15,7 @@ import { useLeague } from "../../contexts/LeagueContext";
 import { getSeasonStandings, getPeriodCategoryStandings } from "../../api";
 import type {
   PeriodCategoryStandingsResponse,
+  PeriodCategoryStandingTable,
   PeriodCategoryKey,
 } from "../../api/types";
 import { MobileTopbar } from "../MobileTopbar";
@@ -99,6 +100,7 @@ export function MobileStandings() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [periodRows, setPeriodRows] = useState<PeriodRow[]>([]);
   const [periodMeta, setPeriodMeta] = useState<{ ids: number[]; names: string[] }>({ ids: [], names: [] });
+  const [catTables, setCatTables] = useState<PeriodCategoryStandingTable[]>([]);
 
   useEffect(() => {
     if (!leagueId) return;
@@ -141,6 +143,7 @@ export function MobileStandings() {
       .then((resp) => {
         if (canceled || !resp) return;
         setMatrix(buildMatrix(resp));
+        setCatTables(resp.categories ?? []);
       })
       .catch((err) => {
         if (canceled) return;
@@ -509,6 +512,61 @@ export function MobileStandings() {
             : "Each cell shows roto points (1–10). Tap any column header to sort. Green = top tier."}
         </div>
       </div>
+
+      {catTables.length > 0 && (
+        <div style={{ padding: "0 14px 24px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: "var(--am-text-faint)", textTransform: "uppercase", marginBottom: 10 }}>
+            Category Leaders
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {catTables.map((cat) => {
+              const top3 = (cat.rows ?? []).slice(0, 3);
+              const fmt = (v: number) => {
+                if (cat.key === "AVG") return v.toFixed(3).replace(/^0/, "");
+                if (cat.key === "ERA" || cat.key === "WHIP") return v.toFixed(2);
+                return String(Math.round(v));
+              };
+              return (
+                <MCard key={cat.key} padded={false}>
+                  <div style={{ padding: "8px 12px 6px", borderBottom: "1px solid var(--am-border)" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)", letterSpacing: 0.4 }}>{cat.key}</span>
+                    <span style={{ fontSize: 9, color: "var(--am-text-faint)", marginLeft: 6 }}>{cat.label}</span>
+                  </div>
+                  {top3.map((row, i) => {
+                    const isMe = !!myTeamId && (sortedRows.find((r) => r.teamCode === row.teamCode)?.teamId === myTeamId);
+                    return (
+                      <div
+                        key={row.teamCode}
+                        onClick={() => row.teamCode && nav(`/teams/${row.teamCode}`)}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "16px 1fr auto",
+                          gap: 6,
+                          alignItems: "center",
+                          padding: "6px 12px",
+                          borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
+                          cursor: row.teamCode ? "pointer" : "default",
+                          background: isMe ? "var(--am-chip)" : "transparent",
+                        }}
+                      >
+                        <span style={{ fontSize: 10, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-faint)", textAlign: "center" }}>
+                          {i + 1}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {row.teamName}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
+                          {fmt(row.value)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </MCard>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
