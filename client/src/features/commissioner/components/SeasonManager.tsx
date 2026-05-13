@@ -578,8 +578,8 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                               {p.name}
                             </div>
                             <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2 }}>
-                              {new Date(p.startDate).toLocaleDateString()} –{" "}
-                              {new Date(p.endDate).toLocaleDateString()}
+                              {new Date(p.startDate).toLocaleDateString("en-US", { timeZone: "UTC" })} –{" "}
+                              {new Date(p.endDate).toLocaleDateString("en-US", { timeZone: "UTC" })}
                             </div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

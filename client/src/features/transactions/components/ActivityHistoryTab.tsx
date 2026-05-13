@@ -297,20 +297,22 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
                     <ThemedTd className="pl-8">
                       <div className="flex flex-col gap-1">
                         <span>
-                          {tx.submittedAt
-                            ? new Date(tx.submittedAt).toLocaleDateString()
-                            : tx.effDate
-                              ? new Date(tx.effDate).toLocaleDateString()
-                              : tx.effDateRaw}
+                          {tx.effDate
+                            ? new Date(tx.effDate).toLocaleDateString("en-US", { timeZone: "UTC" })
+                            : tx.effDateRaw
+                              ? tx.effDateRaw
+                              : tx.submittedAt
+                                ? new Date(tx.submittedAt).toLocaleDateString()
+                                : "—"}
                         </span>
-                        {txBackdated && tx.effDate && (
+                        {txBackdated && tx.submittedAt && (
                           <span
                             data-testid="backdated-marker"
                             title={backdatedTooltip}
                             className="inline-flex items-center gap-1 self-start rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300"
                           >
                             <span aria-hidden>📅</span>
-                            Effective: {new Date(tx.effDate).toLocaleDateString()}
+                            Submitted: {new Date(tx.submittedAt).toLocaleDateString()}
                           </span>
                         )}
                       </div>
