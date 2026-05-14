@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1079 server + 751 client = 1830 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1079 server + 763 client = 1842 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -90,6 +90,12 @@ Major covered areas (selected):
 - `features/wire-list/__tests__/WaiverDropModeToggle.test.tsx` — 5 (REL/IL buttons rendered; onChange fires on toggle; onChange blocked on already-active; onChange blocked when disabled; buttons disabled when disabled prop set)
 - `features/wire-list/__tests__/utils.test.ts` — 4 (formatDeadline: non-empty string, numeric day present, no [object Object]/NaN, past date doesn't throw)
 - `mobile/__tests__/MobileTabBar.commish.test.tsx` — 7 (unified 5-tab set present; AI/Commish tabs absent; My Team tab scoped to own team code, not all /teams/ paths)
+- `mobile/__tests__/MobileLayoutGate.test.tsx` — 5 (desktop renders AppShell, mobile substitutes twin page, breakpoint boundary at 767px)
+- `mobile/__tests__/MobileMore.test.tsx` — 5 (manager profile strip, league section, commish items hidden for non-commish)
+- `mobile/__tests__/MobileHome.test.tsx` — 6 (hero card with rank; standings top-5 with YOU badge; activity feed with kind chips; Trade Proposals section with team names and player names; League Board section with card title and author; view-roster link to user's team)
+- `mobile/__tests__/MobileTeam.test.tsx` — 23 (roster hub fetch, tab switching, IL tab, hero strip, standings rank, move sheet, IL stash/activate flows, optimistic updates, rollback, refetch-on-success, backdrop dismiss, Hitter Totals row with summed numerators, Pitcher Totals row with rate stats derived from IP/ER/BB_H, IL tab hides totals)
+- `mobile/__tests__/MobilePlayers.test.tsx` — 18 (hitter list default, NL filter, position chip filter, pitchers tab, search, sort direction toggle, watch star rendering, addToWatchlist/removeFromWatchlist, star click doesn't expand, row expand/collapse, career table in expanded panel, pitching career endpoint, Available filter chip, Available hides rostered players, Available restores all, Available persists as avail=1 URL param)
+- `mobile/__tests__/MobileStandings.test.tsx` — 8 (team rows render, YOU badge in standings row, segmented control switches Hitting/Pitching columns, sort direction toggle, Category Leaders section renders, card per category with key label, top-3 teams with actual stat values, rank numbers 1–3 per card)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16
 - `features/keeper-prep/KeeperSelection.test.tsx` — 8

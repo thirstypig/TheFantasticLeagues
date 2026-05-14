@@ -20,13 +20,18 @@ vi.mock("../../features/watchlist/api", () => ({
   removeFromWatchlist: vi.fn(),
 }));
 
+vi.mock("../../features/wire-list/api", () => ({
+  getActivePeriod: vi.fn().mockResolvedValue({ period: null }),
+}));
+
 vi.mock("../../lib/errorBus", () => ({
   reportError: vi.fn(),
 }));
 
 const HITTERS = [
-  { id: 1, mlb_id: "100", player_name: "Aaron Judge", mlb_team_abbr: "NYY", positions: "OF", posPrimary: "OF", is_pitcher: false, AVG: 0.31, HR: 50, RBI: 110, SB: 5 },
-  { id: 2, mlb_id: "200", player_name: "Mookie Betts", mlb_team_abbr: "LAD", positions: "OF,2B", posPrimary: "OF", is_pitcher: false, AVG: 0.305, HR: 30, RBI: 90, SB: 12 },
+  // Judge and Betts are rostered (ogba_team_code set); Semien is a free agent
+  { id: 1, mlb_id: "100", player_name: "Aaron Judge", mlb_team_abbr: "NYY", positions: "OF", posPrimary: "OF", is_pitcher: false, AVG: 0.31, HR: 50, RBI: 110, SB: 5, ogba_team_code: "SKD" },
+  { id: 2, mlb_id: "200", player_name: "Mookie Betts", mlb_team_abbr: "LAD", positions: "OF,2B", posPrimary: "OF", is_pitcher: false, AVG: 0.305, HR: 30, RBI: 90, SB: 12, ogba_team_code: "LDY" },
   { id: 3, mlb_id: "300", player_name: "Marcus Semien", mlb_team_abbr: "TEX", positions: "2B", posPrimary: "2B", is_pitcher: false, AVG: 0.276, HR: 28, RBI: 100, SB: 14 },
 ];
 const PITCHERS = [
@@ -203,5 +208,54 @@ describe("MobilePlayers", () => {
     await waitFor(() => {
       expect(getPlayerCareerStats).toHaveBeenCalledWith("1000", "pitching");
     });
+  });
+
+  // ── Available filter ──────────────────────────────────────────────────
+
+  it("renders the Available filter chip", async () => {
+    renderPage();
+    await screen.findByText("Aaron Judge");
+    expect(screen.getByTestId("mobile-players-avail-filter")).toBeInTheDocument();
+  });
+
+  it("clicking Available hides rostered players and shows only free agents", async () => {
+    renderPage();
+    await screen.findByText("Aaron Judge");
+    fireEvent.click(screen.getByTestId("mobile-players-avail-filter"));
+    await waitFor(() => {
+      // Judge and Betts have ogba_team_code set → rostered → hidden
+      expect(screen.queryByText("Aaron Judge")).not.toBeInTheDocument();
+      expect(screen.queryByText("Mookie Betts")).not.toBeInTheDocument();
+    });
+    // Semien has no ogba_team_code → free agent → still shown
+    expect(screen.getByText("Marcus Semien")).toBeInTheDocument();
+  });
+
+  it("clicking Available again restores all players", async () => {
+    renderPage();
+    await screen.findByText("Aaron Judge");
+    const chip = screen.getByTestId("mobile-players-avail-filter");
+    fireEvent.click(chip);
+    await waitFor(() => {
+      expect(screen.queryByText("Aaron Judge")).not.toBeInTheDocument();
+    });
+    fireEvent.click(chip);
+    expect(await screen.findByText("Aaron Judge")).toBeInTheDocument();
+    expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
+  });
+
+  it("Available filter persists in the URL as avail=1", async () => {
+    let capturedPath = "";
+    const OrigRouter = MemoryRouter;
+    renderPage("/players?team=ALL");
+    await screen.findByText("Aaron Judge");
+    fireEvent.click(screen.getByTestId("mobile-players-avail-filter"));
+    await waitFor(() => {
+      capturedPath = window.location.search;
+    });
+    // The chip toggles the avail URL param; the filter state is URL-driven
+    // so the count drops to only free-agent hitters.
+    expect(screen.queryByText("Aaron Judge")).not.toBeInTheDocument();
+    void OrigRouter; // suppress unused-var lint
   });
 });

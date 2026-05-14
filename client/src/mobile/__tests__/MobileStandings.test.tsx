@@ -76,20 +76,24 @@ function renderStandings() {
 describe("MobileStandings", () => {
   it("renders the team rows after the data resolves", async () => {
     renderStandings();
-    expect(await screen.findByText("Los Doyers")).toBeInTheDocument();
-    expect(screen.getByText("Demolition Lumber Co.")).toBeInTheDocument();
-    expect(screen.getByText("Bleacher Creatures")).toBeInTheDocument();
+    // Team names appear in both the standings table and Category Leaders cards
+    expect((await screen.findAllByText("Los Doyers")).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Demolition Lumber Co.").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Bleacher Creatures").length).toBeGreaterThanOrEqual(1);
   });
 
   it("highlights the user's team with a YOU badge", async () => {
     renderStandings();
-    const ldy = await screen.findByText("Los Doyers");
-    expect(within(ldy.parentElement!).getByText("YOU")).toBeInTheDocument();
+    // Multiple "Los Doyers" elements exist (standings table + Category Leaders cards);
+    // only the standings row has the YOU badge inline.
+    const ldyItems = await screen.findAllByText("Los Doyers");
+    const ldyWithYou = ldyItems.find((el) => within(el.parentElement!).queryByText("YOU"));
+    expect(ldyWithYou).toBeDefined();
   });
 
   it("switches columns when the segmented control changes view", async () => {
     renderStandings();
-    await screen.findByText("Los Doyers");
+    await screen.findAllByText("Los Doyers"); // wait for data
     // Hitting view: AVG header should be visible.
     expect(screen.getByRole("tab", { name: "Hitting", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /AVG/ })).toBeInTheDocument();
@@ -104,12 +108,47 @@ describe("MobileStandings", () => {
 
   it("toggles sort direction when the same column header is clicked twice", async () => {
     renderStandings();
-    await screen.findByText("Los Doyers");
+    await screen.findAllByText("Los Doyers"); // wait for data
     const totalHeader = screen.getByRole("button", { name: /TOT/ });
     // Default sort is total/desc — click once to flip to ascending.
     fireEvent.click(totalHeader);
     expect(totalHeader.getAttribute("aria-sort")).toBe("ascending");
     fireEvent.click(totalHeader);
     expect(totalHeader.getAttribute("aria-sort")).toBe("descending");
+  });
+
+  // ── Category leaders ──────────────────────────────────────────────────
+
+  it("renders the Category Leaders section after data loads", async () => {
+    renderStandings();
+    expect(await screen.findByText("Category Leaders")).toBeInTheDocument();
+  });
+
+  it("shows a card per category with the category key as label", async () => {
+    renderStandings();
+    await screen.findByText("Category Leaders");
+    // Three categories in SAMPLE_RESPONSE: AVG, HR, ERA
+    expect(screen.getAllByText("AVG").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("HR").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("ERA").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("displays top-3 teams with actual stat values for each category", async () => {
+    renderStandings();
+    await screen.findByText("Category Leaders");
+    // AVG leader: Los Doyers at .282
+    expect(screen.getByText(".282")).toBeInTheDocument();
+    // HR leader: Demolition Lumber Co. at 130
+    expect(screen.getByText("130")).toBeInTheDocument();
+    // ERA leader: Los Doyers at 3.42
+    expect(screen.getByText("3.42")).toBeInTheDocument();
+  });
+
+  it("shows rank numbers 1–3 inside each category card", async () => {
+    renderStandings();
+    await screen.findByText("Category Leaders");
+    // Multiple "1", "2", "3" rank cells should appear (one set per category)
+    const ones = screen.getAllByText("1");
+    expect(ones.length).toBeGreaterThanOrEqual(3); // one per category card
   });
 });

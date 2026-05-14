@@ -37,11 +37,16 @@ const SAMPLE_HUB = {
   team: { id: 101, leagueId: 20, name: "Los Doyers", owner: "James", budget: 48 },
   period: null,
   hitters: [
-    { rosterId: 1, playerId: 1, mlbId: 100, playerName: "Mookie Betts", posPrimary: "OF", posList: "OF,2B", position: "OF", assignedPosition: "OF", isPitcher: false, mlbTeam: "LAD", AVG: 0.305, HR: 30, RBI: 90, SB: 12 },
-    { rosterId: 2, playerId: 2, mlbId: 200, playerName: "Will Smith", posPrimary: "C", position: "C", assignedPosition: "C", isPitcher: false, mlbTeam: "LAD", AVG: 0.265, HR: 20, RBI: 75, SB: 1 },
+    // AB=200, H=61 → combined AVG = 61/200 = .305; HR=30+20=50; RBI=90+75=165; SB=12+1=13
+    { rosterId: 1, playerId: 1, mlbId: 100, playerName: "Mookie Betts", posPrimary: "OF", posList: "OF,2B", position: "OF", assignedPosition: "OF", isPitcher: false, mlbTeam: "LAD", AB: 100, H: 30, AVG: 0.300, HR: 30, RBI: 90, SB: 12 },
+    { rosterId: 2, playerId: 2, mlbId: 200, playerName: "Will Smith", posPrimary: "C", position: "C", assignedPosition: "C", isPitcher: false, mlbTeam: "LAD", AB: 100, H: 31, AVG: 0.310, HR: 20, RBI: 75, SB: 1 },
   ],
   pitchers: [
-    { rosterId: 10, playerId: 10, mlbId: 1000, playerName: "Tyler Glasnow", posPrimary: "SP", position: "SP", assignedPosition: "SP", isPitcher: true, mlbTeam: "LAD", W: 12, K: 200, ERA: 3.45, WHIP: 1.15 },
+    // IP=60, ER=23 → ERA=(23/60)*9=3.45; BB_H=69, WHIP=69/60=1.15; W=12; K=200
+    { rosterId: 10, playerId: 10, mlbId: 1000, playerName: "Tyler Glasnow", posPrimary: "SP", position: "SP", assignedPosition: "SP", isPitcher: true, mlbTeam: "LAD", IP: 60, ER: 23, BB_H: 69, W: 12, K: 200, ERA: 3.45, WHIP: 1.15 },
+    // IP=30, ER=9 → ERA=2.70; BB_H=33, WHIP=1.10; W=5; K=90
+    // Combined: IP=90, ER=32, ERA=3.20; BB_H=102, WHIP=1.13; W=17; K=290
+    { rosterId: 11, playerId: 11, mlbId: 1100, playerName: "Walker Buehler", posPrimary: "RP", position: "RP", assignedPosition: "RP", isPitcher: true, mlbTeam: "LAD", IP: 30, ER: 9, BB_H: 33, W: 5, K: 90, ERA: 2.70, WHIP: 1.10 },
   ],
   ilPlayers: [
     { rosterId: 20, playerId: 20, mlbId: 2000, playerName: "Clayton Kershaw", posPrimary: "SP", position: "SP", assignedPosition: "IL", isPitcher: true, mlbTeam: "LAD", W: 4, K: 60, ERA: 2.85, WHIP: 1.02 },
@@ -223,9 +228,9 @@ describe("MobileTeam (read-only)", () => {
     const ilRow = screen.getAllByTestId("mobile-team-row")[0];
     fireEvent.click(within(ilRow).getByTestId("mobile-team-move-btn"));
     expect(await screen.findByTestId("mobile-team-il-activate-sheet")).toBeInTheDocument();
-    // Drop candidates = all active hitters + pitchers (Mookie + Will + Glasnow)
+    // Drop candidates = all active hitters + pitchers (Mookie + Will + Glasnow + Buehler)
     const targets = screen.getAllByTestId("mobile-team-il-activate-drop-target");
-    expect(targets.length).toBe(3);
+    expect(targets.length).toBe(4);
   });
 
   it("calls ilActivate with the right player ids when a drop target is picked", async () => {
@@ -335,5 +340,45 @@ describe("MobileTeam (read-only)", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("mobile-team-move-sheet")).not.toBeInTheDocument();
     });
+  });
+
+  // ── Totals row ────────────────────────────────────────────────────────
+
+  it("renders a Hitter Totals row with cumulative stats from summed numerators", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts");
+    expect(screen.getByText("Hitter Totals")).toBeInTheDocument();
+    // AVG = H/AB = (30+31)/(100+100) = 61/200 = .305
+    expect(screen.getByText(".305")).toBeInTheDocument();
+    // HR = 30+20 = 50
+    expect(screen.getByText("50")).toBeInTheDocument();
+    // RBI = 90+75 = 165
+    expect(screen.getByText("165")).toBeInTheDocument();
+    // SB = 12+1 = 13
+    expect(screen.getByText("13")).toBeInTheDocument();
+  });
+
+  it("renders a Pitcher Totals row with rate stats derived from summed IP/ER/BB_H", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "Pitchers" }));
+    await screen.findByText("Tyler Glasnow");
+    expect(screen.getByText("Pitcher Totals")).toBeInTheDocument();
+    // W=17 (12+5), K=290 (200+90) — totals differ from either individual row
+    expect(screen.getByText("17")).toBeInTheDocument();
+    expect(screen.getByText("290")).toBeInTheDocument();
+    // ERA = (ER/IP)*9 = (32/90)*9 = 3.20 (summed numerators across both pitchers)
+    expect(screen.getByText("3.20")).toBeInTheDocument();
+    // WHIP = BB_H/IP = 102/90 = 1.13
+    expect(screen.getByText("1.13")).toBeInTheDocument();
+  });
+
+  it("hides the totals row on the IL tab", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    expect(screen.queryByText("Hitter Totals")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pitcher Totals")).not.toBeInTheDocument();
   });
 });

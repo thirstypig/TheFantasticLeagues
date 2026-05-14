@@ -169,28 +169,41 @@ export function MobilePlayerExpand({
         borderTop: "1px solid var(--am-border)",
       }}
     >
-      {/* Extended season-stat strip */}
+      {/* Season stat strip */}
+      <div
+        style={{
+          fontSize: 9,
+          letterSpacing: 0.6,
+          fontWeight: 700,
+          color: "var(--am-text-faint)",
+          marginBottom: 5,
+        }}
+      >
+        2026 SEASON
+      </div>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr 1fr",
-          gap: 6,
+          gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
+          gap: 5,
           marginBottom: 10,
         }}
       >
         {isPitcher ? (
           <>
-            <ExpCell label="IP" value={fmtNum(player.IP ?? null, 1)} />
-            <ExpCell label="ER" value={fmtInt(player.ER ?? null)} />
-            <ExpCell label="K/9" value={fmtNum(player.K9 ?? null, 1)} />
-            <ExpCell label="BB/9" value={fmtNum(player.BB9 ?? null, 1)} />
+            <ExpCell label="W" value={fmtInt(player.W)} />
+            <ExpCell label="SV" value={fmtInt(player.SV)} />
+            <ExpCell label="ERA" value={fmtNum(player.ERA ?? null, 2)} />
+            <ExpCell label="WHIP" value={fmtNum(player.WHIP ?? null, 2)} />
+            <ExpCell label="K" value={fmtInt(player.K)} />
           </>
         ) : (
           <>
-            <ExpCell label="G" value={fmtInt(player.G)} />
-            <ExpCell label="AB" value={fmtInt(player.AB)} />
-            <ExpCell label="OBP" value={fmtAvgString(player.OBP ?? null)} />
-            <ExpCell label="OPS" value={fmtAvgString(player.OPS ?? null)} />
+            <ExpCell label="R" value={fmtInt(player.R)} />
+            <ExpCell label="HR" value={fmtInt(player.HR)} />
+            <ExpCell label="RBI" value={fmtInt(player.RBI)} />
+            <ExpCell label="SB" value={fmtInt(player.SB)} />
+            <ExpCell label="AVG" value={fmtAvgString(player.AVG ?? null)} />
           </>
         )}
       </div>

@@ -49,10 +49,15 @@ beforeEach(() => {
         id: 50,
         leagueId: 20,
         proposerId: 5,
+        proposingTeamId: 5,
         status: "PROPOSED",
-        items: [{ senderId: 5, recipientId: 7 }, { senderId: 7, recipientId: 5 }],
+        items: [
+          { senderId: 5, recipientId: 7, player: { id: 1, name: "Mookie Betts", posPrimary: "OF" } },
+          { senderId: 7, recipientId: 5, player: { id: 2, name: "Tyler Glasnow", posPrimary: "SP" } },
+        ],
         createdAt: new Date().toISOString(),
         proposingTeam: { id: 5, name: "Skunk Dogs", code: "SKU" },
+        acceptingTeam: { id: 7, name: "Demolition Lumber Co.", code: "DLC" },
       } as any,
     ],
   });
@@ -103,10 +108,23 @@ describe("MobileHome", () => {
     expect(screen.getByText(/added Marcus Semien/)).toBeInTheDocument();
   });
 
-  it("renders ✦ For you cards from active trades and board posts", async () => {
+  it("renders the Trade Proposals section with team names and player names", async () => {
     renderHome();
-    expect(await screen.findByText(/Trade proposal from Skunk Dogs/)).toBeInTheDocument();
-    expect(screen.getByText("Trade deadline reminder")).toBeInTheDocument();
+    // Header shows both team names linked with ↔
+    expect(await screen.findByText(/Skunk Dogs.*↔.*Demolition Lumber Co\./)).toBeInTheDocument();
+    // Player names from each side of the trade
+    expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
+    expect(screen.getByText("Tyler Glasnow")).toBeInTheDocument();
+    // Review CTA
+    expect(screen.getByText(/Review →/)).toBeInTheDocument();
+  });
+
+  it("renders the League Board section with card title and metadata", async () => {
+    renderHome();
+    // Board card title
+    expect(await screen.findByText("Trade deadline reminder")).toBeInTheDocument();
+    // Author name
+    expect(screen.getByText("Commish")).toBeInTheDocument();
   });
 
   it("renders the View roster link to the user's team", async () => {

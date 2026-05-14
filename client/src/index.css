@@ -721,6 +721,15 @@ a:hover {
   height: 8px;
 }
 
+/* Utility: hide scrollbar while keeping scroll behaviour */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }

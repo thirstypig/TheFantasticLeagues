@@ -43,8 +43,8 @@ type LeagueChip = "All" | "NL" | "AL";
 const HIT_POSITIONS = ["All", "C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"] as const;
 const PITCH_POSITIONS = ["All", "P", "SP", "RP"] as const;
 
-const HIT_SORT_KEYS = ["AVG", "HR", "RBI", "SB"] as const;
-const PITCH_SORT_KEYS = ["W", "K", "ERA", "WHIP"] as const;
+const HIT_SORT_KEYS = ["R", "HR", "RBI", "SB", "AVG"] as const;
+const PITCH_SORT_KEYS = ["W", "SV", "ERA", "WHIP", "K"] as const;
 
 type HitSortKey = (typeof HIT_SORT_KEYS)[number] | "name";
 type PitchSortKey = (typeof PITCH_SORT_KEYS)[number] | "name";
@@ -156,12 +156,24 @@ export function MobilePlayers() {
   const setAvailOnly = (v: boolean) => setUrlParam("avail", v ? "1" : null, { avail: "" });
   const setQ = (s: string) => setUrlParam("q", s, { q: "" });
   const onSort = (k: SortKey) => {
-    if (sortKey === k) {
-      setUrlParam("desc", sortDir === "desc" ? "0" : "1", { desc: "1" });
-    } else {
-      setUrlParam("sort", k, { sort: isHit ? "HR" : "K" });
-      setUrlParam("desc", "1", { desc: "1" });
-    }
+    const defaultSort = isHit ? "HR" : "K";
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (sortKey === k) {
+          // Toggle direction on the same column
+          if (sortDir === "desc") next.set("desc", "0");
+          else next.delete("desc");
+        } else {
+          // Switch to a new column, reset to descending
+          if (k === defaultSort) next.delete("sort");
+          else next.set("sort", k);
+          next.delete("desc");
+        }
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   useEffect(() => {
@@ -314,9 +326,12 @@ export function MobilePlayers() {
 
   const visible = useMemo(() => sorted.slice(0, 200), [sorted]);
 
-  const cols = canWatch
-    ? "20px minmax(0,1fr) 36px 36px 40px 40px"
-    : "minmax(0,1fr) 36px 36px 40px 40px";
+  // Hitters: R HR RBI SB AVG — AVG needs wider last col
+  // Pitchers: W SV ERA WHIP K — ERA/WHIP need wider middle cols
+  const statCols = isHit
+    ? "28px 30px 32px 28px 44px"
+    : "26px 28px 38px 40px 30px";
+  const cols = canWatch ? `20px minmax(0,1fr) ${statCols}` : `minmax(0,1fr) ${statCols}`;
 
   return (
     <div data-testid="mobile-players">
@@ -384,7 +399,7 @@ export function MobilePlayers() {
       </div>
 
       {/* HITTERS / PITCHERS */}
-      <div style={{ padding: "0 14px 8px" }}>
+      <div style={{ padding: "0 14px 4px" }}>
         <MSegmented<GroupKey>
           options={["Hitters", "Pitchers"]}
           active={group}
@@ -393,19 +408,39 @@ export function MobilePlayers() {
         />
       </div>
 
-      {/* LEAGUE + AVAILABLE chips */}
-      <div style={{ padding: "0 14px 6px", display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
-        <span
+      {/* FILTER CHIPS — single scrollable row: Available · league · position */}
+      <div
+        className="no-scrollbar"
+        style={{
+          display: "flex",
+          gap: 5,
+          alignItems: "center",
+          padding: "6px 14px 8px",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setAvailOnly(!availOnly)}
+          data-testid="mobile-players-avail-filter"
           style={{
-            fontSize: 9.5,
-            letterSpacing: 0.6,
-            fontWeight: 700,
-            color: "var(--am-text-faint)",
-            marginRight: 4,
+            padding: "4px 10px",
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: "pointer",
+            background: availOnly ? "var(--am-positive, #22c55e)" : "var(--am-chip)",
+            color: availOnly ? "#fff" : "var(--am-text-muted)",
+            border: "1px solid " + (availOnly ? "transparent" : "var(--am-border)"),
+            fontFamily: "inherit",
+            minHeight: 28,
+            flexShrink: 0,
           }}
         >
-          LG
-        </span>
+          Available
+        </button>
+        <div style={{ width: 1, height: 16, background: "var(--am-border)", margin: "0 2px", flexShrink: 0 }} />
         {(["All", "NL", "AL"] as const).map((l) => {
           const on = leagueChip === l;
           return (
@@ -425,36 +460,14 @@ export function MobilePlayers() {
                 border: "1px solid " + (on ? "transparent" : "var(--am-border)"),
                 fontFamily: "inherit",
                 minHeight: 28,
+                flexShrink: 0,
               }}
             >
               {l}
             </button>
           );
         })}
-        <div style={{ width: 1, height: 16, background: "var(--am-border)", margin: "0 2px" }} />
-        <button
-          type="button"
-          onClick={() => setAvailOnly(!availOnly)}
-          data-testid="mobile-players-avail-filter"
-          style={{
-            padding: "4px 10px",
-            borderRadius: 99,
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: "pointer",
-            background: availOnly ? "var(--am-positive, #22c55e)" : "var(--am-chip)",
-            color: availOnly ? "#fff" : "var(--am-text-muted)",
-            border: "1px solid " + (availOnly ? "transparent" : "var(--am-border)"),
-            fontFamily: "inherit",
-            minHeight: 28,
-          }}
-        >
-          Available
-        </button>
-      </div>
-
-      {/* POSITION CHIPS */}
-      <div style={{ padding: "4px 14px 8px", display: "flex", gap: 5, flexWrap: "wrap" }}>
+        <div style={{ width: 1, height: 16, background: "var(--am-border)", margin: "0 2px", flexShrink: 0 }} />
         {positions.map((p) => {
           const on = pos === p;
           return (
@@ -474,6 +487,7 @@ export function MobilePlayers() {
                 border: "1px solid " + (on ? "transparent" : "var(--am-border)"),
                 fontFamily: "inherit",
                 minHeight: 28,
+                flexShrink: 0,
               }}
             >
               {p}
@@ -599,20 +613,20 @@ export function MobilePlayers() {
                     {teamAbbr(p)} · {positionFor(p)}
                   </div>
                 </div>
-                {sortKeys.map((k, idx) => {
-                  const isLast = idx === sortKeys.length - 1;
+                {sortKeys.map((k) => {
+                  const isActive = k === sortKey;
                   return (
                     <div
                       key={k}
                       style={{
                         textAlign: "right",
                         fontSize: 12.5,
-                        fontWeight: isLast ? 700 : 500,
+                        fontWeight: isActive ? 700 : 500,
                         fontVariantNumeric: "tabular-nums",
                         color: "var(--am-text)",
                       }}
                     >
-                      {isLast ? <MIridText size={13} weight={700}>{statText(p, k)}</MIridText> : statText(p, k)}
+                      {isActive ? <MIridText size={13} weight={700}>{statText(p, k)}</MIridText> : statText(p, k)}
                     </div>
                   );
                 })}
