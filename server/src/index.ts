@@ -286,8 +286,12 @@ async function main() {
   });
   logger.info({}, "Scheduled category daily snapshot at 11:00 UTC (~4 AM PT)");
 
-  // Daily player stats sync at 6:00 AM PT (13:00 UTC) — 1 hour after player roster sync
-  cron.schedule('0 13 * * *', async () => {
+  // Player stats sync — runs 4× daily to keep standings within ~4 hours of live scoring:
+  //   13:00 UTC (9 AM EDT)  — morning baseline, 1 hr after player roster sync
+  //   18:00 UTC (2 PM EDT)  — after day games have started
+  //   22:00 UTC (6 PM EDT)  — day games done, before evening games
+  //   02:00 UTC (10 PM EDT) — East Coast night games wrapping up
+  async function runStatsSyncJob() {
     logger.info({}, "Starting scheduled player stats sync");
     try {
       await syncAllActivePeriods();
@@ -295,8 +299,12 @@ async function main() {
     } catch (err) {
       logger.error({ error: String(err) }, "Scheduled player stats sync failed");
     }
-  });
-  logger.info({}, "Scheduled daily player stats sync at 13:00 UTC (~6 AM PT)");
+  }
+  cron.schedule('0 13 * * *', runStatsSyncJob);
+  cron.schedule('0 18 * * *', runStatsSyncJob);
+  cron.schedule('0 22 * * *', runStatsSyncJob);
+  cron.schedule('0 2 * * *',  runStatsSyncJob);
+  logger.info({}, "Scheduled player stats sync at 13:00, 18:00, 22:00, 02:00 UTC (4× daily)");
 
   // Daily per-day stats sync at 6:30 AM PT (13:30 UTC) — for date-aware stats attribution
   cron.schedule('30 13 * * *', async () => {
