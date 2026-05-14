@@ -133,7 +133,7 @@ describe("MobileStandings", () => {
     expect(screen.getAllByText("ERA").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("displays top-3 teams with actual stat values for each category", async () => {
+  it("displays team stat values in category leaders cards", async () => {
     renderStandings();
     await screen.findByText("Category Leaders");
     // AVG leader: Los Doyers at .282
@@ -144,11 +144,11 @@ describe("MobileStandings", () => {
     expect(screen.getByText("3.42")).toBeInTheDocument();
   });
 
-  it("shows rank numbers 1–3 inside each category card", async () => {
+  it("shows points values in each category card", async () => {
     renderStandings();
     await screen.findByText("Category Leaders");
-    // Multiple "1", "2", "3" rank cells should appear (one set per category)
-    const ones = screen.getAllByText("1");
-    expect(ones.length).toBeGreaterThanOrEqual(3); // one per category card
+    // Points values appear from row.points fields (9, 7, 4, 8, 10, 5, 10, 7, 3)
+    expect(screen.getAllByText("9").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("10").length).toBeGreaterThanOrEqual(1);
   });
 });

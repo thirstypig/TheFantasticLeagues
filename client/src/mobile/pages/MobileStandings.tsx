@@ -5,7 +5,7 @@
  *   1. getSeasonStandings(leagueId) → latest periodId + period-by-period rows
  *   2. getPeriodCategoryStandings(periodId, leagueId) → 10-cat tables
  *
- * Renders a sortable 5-cat table with Hitting / Pitching / Total / Period views.
+ * Renders a sortable 5-cat table with Hitting / Pitching / Period views.
  * Cells show roto points (1–10), color-graded per the Aurora Mobile
  * design canvas (≥ 8 positive, ≥ 5 text, < 5 muted).
  */
@@ -24,12 +24,11 @@ import { MSegmented } from "../atoms/MSegmented";
 import { MSortHeader, type SortDir } from "../atoms/MSortHeader";
 import { Glyph } from "../atoms/Glyph";
 
-type ViewKey = "Hitting" | "Pitching" | "Total" | "Period";
-type SortKey = "rank" | "team" | "total" | PeriodCategoryKey;
+type ViewKey = "Hitting" | "Pitching" | "Period";
+type SortKey = "rank" | "team" | "total" | PeriodCategoryKey | `pi-${number}`;
 
 const HIT_CATS: PeriodCategoryKey[] = ["AVG", "HR", "R", "RBI", "SB"];
 const PITCH_CATS: PeriodCategoryKey[] = ["W", "SV", "K", "ERA", "WHIP"];
-const TOTAL_DISPLAY: PeriodCategoryKey[] = ["AVG", "HR", "RBI", "SB", "K"];
 
 interface MatrixRow {
   teamId: number;
@@ -78,7 +77,7 @@ function buildMatrix(resp: PeriodCategoryStandingsResponse): MatrixRow[] {
 }
 
 function sumForView(row: MatrixRow, view: ViewKey): number {
-  if (view === "Total" || view === "Period") return row.total;
+  if (view === "Period") return row.total;
   const cats = view === "Hitting" ? HIT_CATS : PITCH_CATS;
   return cats.reduce((s, k) => s + (row.pointsByCat[k] ?? 0), 0);
 }
@@ -157,8 +156,13 @@ export function MobileStandings() {
     };
   }, [leagueId]);
 
-  const visibleCats: PeriodCategoryKey[] =
-    view === "Hitting" ? HIT_CATS : view === "Pitching" ? PITCH_CATS : TOTAL_DISPLAY;
+  // When switching views, reset sort to total/desc
+  useEffect(() => {
+    setSortKey("total");
+    setSortDir("desc");
+  }, [view]);
+
+  const visibleCats: PeriodCategoryKey[] = view === "Hitting" ? HIT_CATS : PITCH_CATS;
 
   const onSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(sortDir === "desc" ? "asc" : "desc");
@@ -187,8 +191,8 @@ export function MobileStandings() {
         av = a.teamName;
         bv = b.teamName;
       } else {
-        av = a.pointsByCat[sortKey] ?? 0;
-        bv = b.pointsByCat[sortKey] ?? 0;
+        av = a.pointsByCat[sortKey as string] ?? 0;
+        bv = b.pointsByCat[sortKey as string] ?? 0;
       }
       if (typeof av === "string" && typeof bv === "string") {
         return sortDir === "desc" ? bv.localeCompare(av) : av.localeCompare(bv);
@@ -197,6 +201,25 @@ export function MobileStandings() {
     });
   }, [matrix, view, sortKey, sortDir]);
 
+  // Sorted period rows
+  const sortedPeriodRows = useMemo(() => {
+    return [...periodRows].sort((a, b) => {
+      let av: number | string;
+      let bv: number | string;
+      if (sortKey === "total") { av = a.total; bv = b.total; }
+      else if (sortKey === "team") { av = a.teamName; bv = b.teamName; }
+      else if (typeof sortKey === "string" && sortKey.startsWith("pi-")) {
+        const idx = Number(sortKey.slice(3));
+        av = a.periodPoints[idx] ?? 0;
+        bv = b.periodPoints[idx] ?? 0;
+      } else { av = a.total; bv = b.total; }
+      if (typeof av === "string" && typeof bv === "string") {
+        return sortDir === "desc" ? bv.localeCompare(av) : av.localeCompare(bv);
+      }
+      return sortDir === "desc" ? Number(bv) - Number(av) : Number(av) - Number(bv);
+    });
+  }, [periodRows, sortKey, sortDir]);
+
   // Tuned against the longest OGBA team name ("Demolition Lumber Co.", 21
   // chars) at 390px viewport width. The prototype used 28px stat columns
   // against shorter mock names; trimming to 26px (and the total column to
@@ -204,7 +227,7 @@ export function MobileStandings() {
   const colW = 26;
   const cols = `16px minmax(0,1fr) ${visibleCats.map(() => `${colW}px`).join(" ")} 30px`;
 
-  const periodCols = `16px minmax(0,1fr) ${periodMeta.ids.map(() => "32px").join(" ")} 34px`;
+  const periodCols = `minmax(0,1fr) ${periodMeta.ids.map(() => "32px").join(" ")} 34px`;
 
   return (
     <div data-testid="mobile-standings">
@@ -217,7 +240,7 @@ export function MobileStandings() {
 
       <div style={{ padding: "0 14px 10px" }}>
         <MSegmented<ViewKey>
-          options={["Hitting", "Pitching", "Total", "Period"]}
+          options={["Hitting", "Pitching", "Period"]}
           active={view}
           onChange={setView}
           ariaLabel="Standings view"
@@ -252,53 +275,23 @@ export function MobileStandings() {
                   background: "var(--am-surface-faint)",
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "var(--am-text-muted)",
-                    textAlign: "center",
-                  }}
-                >
-                  #
-                </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "var(--am-text-muted)",
-                    paddingLeft: 6,
-                  }}
-                >
-                  TEAM
-                </div>
+                <MSortHeader<SortKey> k="team" label="TEAM" active={sortKey} dir={sortDir} onSort={onSort} align="left" />
                 {periodMeta.ids.map((_, i) => (
-                  <div
+                  <MSortHeader<SortKey>
                     key={i}
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: "var(--am-text-muted)",
-                      textAlign: "center",
-                    }}
-                  >
-                    {periodMeta.names[i] ?? `P${i + 1}`}
-                  </div>
+                    k={`pi-${i}` as SortKey}
+                    label={periodMeta.names[i] ?? `P${i + 1}`}
+                    active={sortKey}
+                    dir={sortDir}
+                    onSort={onSort}
+                    align="center"
+                  />
                 ))}
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "var(--am-text-muted)",
-                    textAlign: "right",
-                  }}
-                >
-                  TOT
-                </div>
+                <MSortHeader<SortKey> k="total" label="TOT" active={sortKey} dir={sortDir} onSort={onSort} align="right" />
               </div>
 
               {/* Period table rows */}
-              {periodRows.map((t, i) => {
+              {sortedPeriodRows.map((t, i) => {
                 const isMe = !!myTeamId && t.teamId === myTeamId;
                 return (
                   <div
@@ -316,18 +309,7 @@ export function MobileStandings() {
                       cursor: t.teamCode ? "pointer" : "default",
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--am-text-muted)",
-                        textAlign: "center",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {i + 1}
-                    </div>
-                    <div style={{ minWidth: 0, paddingLeft: 6, paddingRight: 4 }}>
+                    <div style={{ minWidth: 0, paddingRight: 4 }}>
                       <div
                         style={{
                           fontSize: 12,
@@ -520,7 +502,7 @@ export function MobileStandings() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {catTables.map((cat) => {
-              const top3 = (cat.rows ?? []).slice(0, 3);
+              const allRows = cat.rows ?? [];
               const fmt = (v: number) => {
                 if (cat.key === "AVG") return v.toFixed(3).replace(/^0/, "");
                 if (cat.key === "ERA" || cat.key === "WHIP") return v.toFixed(2);
@@ -532,7 +514,7 @@ export function MobileStandings() {
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)", letterSpacing: 0.4 }}>{cat.key}</span>
                     <span style={{ fontSize: 9, color: "var(--am-text-faint)", marginLeft: 6 }}>{cat.label}</span>
                   </div>
-                  {top3.map((row, i) => {
+                  {allRows.map((row, i) => {
                     const isMe = !!myTeamId && (sortedRows.find((r) => r.teamCode === row.teamCode)?.teamId === myTeamId);
                     return (
                       <div
@@ -540,7 +522,7 @@ export function MobileStandings() {
                         onClick={() => row.teamCode && nav(`/teams/${row.teamCode}`)}
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "16px 1fr auto",
+                          gridTemplateColumns: "1fr auto auto",
                           gap: 6,
                           alignItems: "center",
                           padding: "6px 12px",
@@ -549,14 +531,14 @@ export function MobileStandings() {
                           background: isMe ? "var(--am-chip)" : "transparent",
                         }}
                       >
-                        <span style={{ fontSize: 10, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-faint)", textAlign: "center" }}>
-                          {i + 1}
-                        </span>
                         <span style={{ fontSize: 11, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {row.teamName}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
                           {fmt(row.value)}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums", marginLeft: 6, minWidth: 20, textAlign: "right" }}>
+                          {row.points}
                         </span>
                       </div>
                     );

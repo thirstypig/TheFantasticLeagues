@@ -470,6 +470,62 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
   res.json({ period: { id: period.id, name: period.name, startDate: period.startDate, endDate: period.endDate }, roster: result });
 }));
 
+// GET /api/teams/:teamId/player-season-stats
+// Returns per-player season cumulative stats (sum of PlayerStatsPeriod across all league periods).
+// Used by mobile team cumulative view.
+router.get("/:teamId/player-season-stats", requireAuth, asyncHandler(async (req, res) => {
+  const teamId = Number(req.params.teamId);
+  if (!Number.isFinite(teamId)) return res.status(400).json({ error: "Invalid teamId" });
+
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  const [periods, roster] = await Promise.all([
+    prisma.period.findMany({ where: { leagueId: team.leagueId }, select: { id: true } }),
+    prisma.roster.findMany({ where: { teamId, releasedAt: null }, select: { playerId: true } }),
+  ]);
+
+  const periodIds = periods.map((p) => p.id);
+  const playerIds = roster.map((r) => r.playerId);
+
+  const stats = await prisma.playerStatsPeriod.findMany({
+    where: { playerId: { in: playerIds }, periodId: { in: periodIds } },
+    select: { playerId: true, AB: true, H: true, HR: true, R: true, RBI: true, SB: true, W: true, SV: true, K: true, IP: true, ER: true, BB_H: true },
+  });
+
+  const agg = new Map<number, { AB: number; H: number; HR: number; R: number; RBI: number; SB: number; W: number; SV: number; K: number; IP: number; ER: number; BB_H: number }>();
+  for (const s of stats) {
+    const prev = agg.get(s.playerId) ?? { AB: 0, H: 0, HR: 0, R: 0, RBI: 0, SB: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 };
+    agg.set(s.playerId, {
+      AB: prev.AB + s.AB,
+      H: prev.H + s.H,
+      HR: prev.HR + s.HR,
+      R: prev.R + s.R,
+      RBI: prev.RBI + s.RBI,
+      SB: prev.SB + s.SB,
+      W: prev.W + s.W,
+      SV: prev.SV + s.SV,
+      K: prev.K + s.K,
+      IP: prev.IP + Number(s.IP),
+      ER: prev.ER + s.ER,
+      BB_H: prev.BB_H + s.BB_H,
+    });
+  }
+
+  const result = playerIds.map((pid) => {
+    const s = agg.get(pid) ?? { AB: 0, H: 0, HR: 0, R: 0, RBI: 0, SB: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 };
+    return {
+      playerId: pid,
+      ...s,
+      AVG: s.AB > 0 ? s.H / s.AB : 0,
+      ERA: s.IP > 0 ? (s.ER / s.IP) * 9 : 0,
+      WHIP: s.IP > 0 ? s.BB_H / s.IP : 0,
+    };
+  });
+
+  res.json({ stats: result });
+}));
+
 // PATCH /api/teams/:teamId/roster/:rosterId
 // Update roster details (e.g. assigned position).
 //

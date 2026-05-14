@@ -20,13 +20,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
-import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
+import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, getTeamPlayerSeasonStats, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
 import type { LeagueTeam } from "../../api/types";
 import type { RosterHubRow } from "@shared/api/teams";
+import { POS_SCORE } from "../../lib/sportConfig";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridRing, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
@@ -138,6 +139,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const [periodOptions, setPeriodOptions] = useState<PeriodOption[]>([]);
   const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
   const [periodLoading, setPeriodLoading] = useState(false);
+  const [seasonStatsMap, setSeasonStatsMap] = useState<Map<number, import("../../features/teams/api").TeamPlayerSeasonStat>>(new Map());
 
   // Resolve teamCode → teamId using the league's teams list, then fan
   // out to the roster hub + standings. This is the same join the
@@ -236,6 +238,19 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       .finally(() => { if (!canceled) setPeriodLoading(false); });
     return () => { canceled = true; };
   }, [periodMode, teamId]);
+
+  // Fetch season cumulative stats when teamId resolves.
+  useEffect(() => {
+    if (teamId == null) return;
+    let canceled = false;
+    getTeamPlayerSeasonStats(teamId)
+      .then((res) => {
+        if (canceled) return;
+        setSeasonStatsMap(new Map(res.stats.map((s) => [s.playerId, s])));
+      })
+      .catch(() => {});
+    return () => { canceled = true; };
+  }, [teamId]);
 
   const isMyTeam = !!myTeamId && teamId === myTeamId;
   // Mutations are allowed only on the user's own team (or by admins).
@@ -389,18 +404,51 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   }, [hub, periodMode]);
 
   const list: RosterHubRow[] = useMemo(() => {
-    // In period mode, map the period roster to display rows
     if (periodMode !== "season" && periodRoster) {
+      // period mode: sort by position order matching cumulative
       const displayRows = periodRoster.map(periodEntryToDisplayRow);
-      if (tab === "Hitters") return displayRows.filter((r) => !r.isPitcher);
-      if (tab === "Pitchers") return displayRows.filter((r) => r.isPitcher);
-      return []; // No IL tab in period mode
+      const sorted = [...displayRows].sort((a, b) => {
+        const pa = POS_SCORE[a.assignedPosition ?? a.posPrimary ?? ""] ?? 99;
+        const pb = POS_SCORE[b.assignedPosition ?? b.posPrimary ?? ""] ?? 99;
+        if (pa !== pb) return pa - pb;
+        return (b.price ?? 0) - (a.price ?? 0);
+      });
+      if (tab === "Hitters") return sorted.filter((r) => !r.isPitcher);
+      if (tab === "Pitchers") return sorted.filter((r) => r.isPitcher);
+      return [];
     }
     if (!hub) return [];
-    if (tab === "Hitters") return hub.hitters;
-    if (tab === "Pitchers") return hub.pitchers;
-    return hub.ilPlayers;
-  }, [hub, tab, periodMode, periodRoster]);
+    let rows: RosterHubRow[];
+    if (tab === "Hitters") rows = hub.hitters;
+    else if (tab === "Pitchers") rows = hub.pitchers;
+    else rows = hub.ilPlayers;
+    // In cumulative season mode, overlay season stats on each row
+    if (seasonStatsMap.size > 0) {
+      rows = rows.map((r) => {
+        const s = seasonStatsMap.get(r.playerId);
+        if (!s) return r;
+        return {
+          ...r,
+          AB: s.AB,
+          H: s.H,
+          AVG: s.AVG,
+          HR: s.HR,
+          R: s.R,
+          RBI: s.RBI,
+          SB: s.SB,
+          IP: s.IP,
+          BB_H: s.BB_H,
+          ER: s.ER,
+          W: s.W,
+          SV: s.SV,
+          K: s.K,
+          ERA: s.ERA,
+          WHIP: s.WHIP,
+        };
+      });
+    }
+    return rows;
+  }, [hub, tab, periodMode, periodRoster, seasonStatsMap]);
 
   const isHit = tab !== "Pitchers";
   // Add a trailing 26px move-button column when the user can edit and

@@ -113,6 +113,29 @@ export async function getTeamPeriodRoster(teamId: number, periodId: number): Pro
   return fetchJsonApi(`${API_BASE}/teams/${teamId}/period-roster?periodId=${periodId}`);
 }
 
+export interface TeamPlayerSeasonStat {
+  playerId: number;
+  AB: number;
+  H: number;
+  HR: number;
+  R: number;
+  RBI: number;
+  SB: number;
+  W: number;
+  SV: number;
+  K: number;
+  IP: number;
+  ER: number;
+  BB_H: number;
+  AVG: number;
+  ERA: number;
+  WHIP: number;
+}
+
+export async function getTeamPlayerSeasonStats(teamId: number): Promise<{ stats: TeamPlayerSeasonStat[] }> {
+  return fetchJsonApi(`${API_BASE}/teams/${teamId}/player-season-stats`);
+}
+
 // --- Trade Block ---
 
 export async function getTradeBlock(teamId: number): Promise<{ playerIds: number[] }> {
