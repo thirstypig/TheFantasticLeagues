@@ -404,20 +404,20 @@ export async function computeTeamStatsFromDb(
     },
   });
 
-  // Use daily stats path ONLY when we have complete coverage (>= 80% of period days).
-  // Otherwise fall back to cumulative PlayerStatsPeriod which always has the full picture.
-  const periodDays = Math.max(1, Math.ceil((period.endDate.getTime() - period.startDate.getTime()) / 86400000));
-  const dailyStatDays = await prisma.playerStatsDaily.groupBy({
-    by: ["gameDate"],
-    where: { gameDate: { gte: period.startDate, lte: period.endDate } },
-  });
-  const coverageRatio = dailyStatDays.length / periodDays;
-
-  if (coverageRatio >= 0.8) {
-    return computeWithDailyStats(teams, rosters, period);
-  } else {
+  // Prefer PlayerStatsPeriod (populated by syncAllActivePeriods via MLB byDateRange API) —
+  // it is the accurate source and handles doubleheaders correctly. The playerStatsDaily
+  // table uses @@unique([playerId, gameDate]) which collapses doubleheaders into one row
+  // and systematically undercounts RBI, K, W, and IP.
+  //
+  // Fall back to daily stats only when PlayerStatsPeriod hasn't been synced yet
+  // (e.g., a brand-new period before the first 13:00 UTC cron run).
+  const periodStatCount = await prisma.playerStatsPeriod.count({ where: { periodId } });
+  if (periodStatCount > 0) {
     return computeWithPeriodStats(teams, rosters, periodId);
   }
+
+  // No PlayerStatsPeriod data yet — use daily stats as a best-effort fallback.
+  return computeWithDailyStats(teams, rosters, period);
 }
 
 /** Precise path: sum daily stats within each roster entry's ownership window. */

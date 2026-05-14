@@ -6,6 +6,7 @@ const mockRosterFindMany = vi.fn();
 const mockDailyFindMany = vi.fn();
 const mockDailyGroupBy = vi.fn();
 const mockPeriodStatsFindMany = vi.fn();
+const mockPeriodStatsCount = vi.fn();
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
@@ -16,7 +17,10 @@ vi.mock("../../../db/prisma.js", () => ({
       findMany: (...a: unknown[]) => mockDailyFindMany(...a),
       groupBy: (...a: unknown[]) => mockDailyGroupBy(...a),
     },
-    playerStatsPeriod: { findMany: (...a: unknown[]) => mockPeriodStatsFindMany(...a) },
+    playerStatsPeriod: {
+      findMany: (...a: unknown[]) => mockPeriodStatsFindMany(...a),
+      count: (...a: unknown[]) => mockPeriodStatsCount(...a),
+    },
   },
 }));
 
@@ -38,16 +42,16 @@ beforeEach(() => {
   mockDailyFindMany.mockReset();
   mockDailyGroupBy.mockReset();
   mockPeriodStatsFindMany.mockReset();
+  mockPeriodStatsCount.mockReset();
 });
 
 describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
-  describe("daily-stats path (high coverage)", () => {
+  describe("daily-stats path (no PlayerStatsPeriod data)", () => {
     beforeEach(() => {
       mockPeriodFindUnique.mockResolvedValue({ id: 36, startDate: PERIOD_START, endDate: PERIOD_END });
       mockTeamFindMany.mockResolvedValue([{ id: 147, name: "Los Doyers", code: "LDY" }]);
-      // Force daily-stats path: ≥80% coverage. Period spans 28 days; supply 28 distinct dates.
-      const days = Array.from({ length: 28 }, (_, i) => ({ gameDate: new Date(2026, 3, 19 + i) }));
-      mockDailyGroupBy.mockResolvedValue(days);
+      // No PlayerStatsPeriod rows → fall back to daily stats.
+      mockPeriodStatsCount.mockResolvedValue(0);
     });
 
     it("excludes IL-slotted player's stats from team totals", async () => {
@@ -131,12 +135,12 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
     });
   });
 
-  describe("period-stats fallback path (low coverage)", () => {
+  describe("period-stats path (PlayerStatsPeriod data present)", () => {
     beforeEach(() => {
       mockPeriodFindUnique.mockResolvedValue({ id: 36, startDate: PERIOD_START, endDate: PERIOD_END });
       mockTeamFindMany.mockResolvedValue([{ id: 147, name: "Los Doyers", code: "LDY" }]);
-      // Force period-stats path: <80% coverage. Empty array (zero days).
-      mockDailyGroupBy.mockResolvedValue([]);
+      // PlayerStatsPeriod rows exist → use the accurate MLB byDateRange data.
+      mockPeriodStatsCount.mockResolvedValue(2);
     });
 
     it("excludes IL-slotted player's stats from team totals", async () => {
