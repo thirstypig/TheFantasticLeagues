@@ -27,7 +27,7 @@ import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
 import type { LeagueTeam } from "../../api/types";
 import type { RosterHubRow } from "@shared/api/teams";
-import { POS_SCORE } from "../../lib/sportConfig";
+import { POS_SCORE, isPitcher as checkIsPitcher } from "../../lib/sportConfig";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridRing, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
@@ -69,8 +69,6 @@ function rosterTeamCode(t: LeagueTeam): string | null {
   return typeof t.code === "string" ? t.code : null;
 }
 
-const PITCHER_SLOTS = new Set(["P", "SP", "RP"]);
-
 function periodEntryToDisplayRow(entry: PeriodRosterEntry): RosterHubRow {
   const ps: Partial<PeriodRosterStats> = entry.periodStats ?? {};
   const ab = Number(ps.AB) || 0;
@@ -78,7 +76,7 @@ function periodEntryToDisplayRow(entry: PeriodRosterEntry): RosterHubRow {
   const ip = Number(ps.IP) || 0;
   const er = Number(ps.ER) || 0;
   const bbH = Number(ps.BB_H) || 0;
-  const isPitcher = PITCHER_SLOTS.has((entry.assignedPosition || entry.posPrimary || "").toUpperCase());
+  const isPitcher = checkIsPitcher(entry.assignedPosition || entry.posPrimary || "");
   return {
     rosterId: entry.id,
     playerId: entry.playerId,
@@ -141,9 +139,8 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   const [periodLoading, setPeriodLoading] = useState(false);
   const [seasonStatsMap, setSeasonStatsMap] = useState<Map<number, import("../../features/teams/api").TeamPlayerSeasonStat>>(new Map());
 
-  // Resolve teamCode → teamId using the league's teams list, then fan
-  // out to the roster hub + standings. This is the same join the
-  // desktop Team page does in its outer fetch.
+  // Resolve teamCode → teamId, then fan out to hub + standings.
+  // One getSeasonStandings call populates both the hero rank and the period pills.
   useEffect(() => {
     if (!leagueId || !teamCode) return;
     let canceled = false;
@@ -175,13 +172,14 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
           setError("Failed to load roster.");
         }
         if (standingsRes.status === "fulfilled") {
-          const rows = standingsRes.value.rows ?? [];
+          const s = standingsRes.value;
+          const rows = s.rows ?? [];
           const ranked = rows
             .map((row) => {
               const r = row as Record<string, unknown>;
               const pp = Array.isArray(r.periodPoints) ? (r.periodPoints as unknown[]) : [];
               const total = pp.reduce<number>(
-                (s, v) => s + (Number.isFinite(Number(v)) ? Number(v) : 0),
+                (acc, v) => acc + (Number.isFinite(Number(v)) ? Number(v) : 0),
                 0,
               );
               return {
@@ -195,6 +193,9 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
             setRank(myIdx + 1);
             setPoints(ranked[myIdx].total > 0 ? ranked[myIdx].total : null);
           }
+          const ids = (s as Record<string, unknown>).periodIds as number[] ?? [];
+          const names = (s as Record<string, unknown>).periodNames as string[] ?? [];
+          setPeriodOptions(ids.map((id, i) => ({ id, name: names[i] || `Period ${i + 1}` })));
         }
       } catch (err: unknown) {
         if (canceled) return;
@@ -208,21 +209,6 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       canceled = true;
     };
   }, [leagueId, teamCode]);
-
-  // Fetch period options once when leagueId is resolved.
-  useEffect(() => {
-    if (!leagueId) return;
-    let canceled = false;
-    getSeasonStandings(leagueId)
-      .then((s) => {
-        if (canceled) return;
-        const ids = (s as Record<string, unknown>).periodIds as number[] ?? [];
-        const names = (s as Record<string, unknown>).periodNames as string[] ?? [];
-        setPeriodOptions(ids.map((id, i) => ({ id, name: names[i] || `Period ${i + 1}` })));
-      })
-      .catch(() => {});
-    return () => { canceled = true; };
-  }, [leagueId]);
 
   // Fetch period roster when periodMode changes to a specific period.
   useEffect(() => {

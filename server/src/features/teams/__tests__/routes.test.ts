@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../../standings/services/standingsService.js";
+import { buildIlWindows, wasOnIlAtPeriodStart } from "../../../lib/ilWindows.js";
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {

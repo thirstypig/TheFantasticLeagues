@@ -8,7 +8,8 @@ import { requireAuth, requireTeamOwner, requireTeamOwnerOrCommissioner, requireL
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
-import { computeStandingsFromStats, type TeamStatRow, buildIlWindows, wasOnIlAtPeriodStart } from "../standings/services/standingsService.js";
+import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
+import { buildIlWindows, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 
 // Swap-only mutation. `effectiveDate` is advisory metadata for the
@@ -477,7 +478,7 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
     // primary position instead of "IL".
     let assignedPosition = r.assignedPosition;
     if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(r.playerId, period.startDate, ilWindowsByPlayer)) {
-      assignedPosition = r.player.posPrimary;
+      assignedPosition = r.player.posPrimary || "BN";
     }
     return {
       id: r.id,

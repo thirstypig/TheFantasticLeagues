@@ -2,6 +2,7 @@
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, PITCHER_CODES } from "../../../lib/sportConfig.js";
+import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 
 import type { PeriodStatRow } from "../../../types/stats.js";
 
@@ -433,44 +434,6 @@ export async function computeTeamStatsFromDb(
 
   // No PlayerStatsPeriod data yet — use daily stats as a best-effort fallback.
   return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
-}
-
-export type IlWindow = { start: Date; end: Date | null };
-
-export function buildIlWindows(
-  events: { playerId: number | null; transactionType: string | null; effDate: Date | null }[],
-): Map<number, IlWindow[]> {
-  const byPlayer = new Map<number, typeof events>();
-  for (const e of events) {
-    if (!e.playerId || !e.effDate) continue;
-    const list = byPlayer.get(e.playerId) ?? [];
-    list.push(e);
-    byPlayer.set(e.playerId, list);
-  }
-
-  const windows = new Map<number, IlWindow[]>();
-  for (const [playerId, playerEvents] of byPlayer) {
-    const sorted = [...playerEvents].sort((a, b) => a.effDate!.getTime() - b.effDate!.getTime());
-    const stints: IlWindow[] = [];
-    let ilStart: Date | null = null;
-    for (const e of sorted) {
-      if (e.transactionType === "IL_STASH" && ilStart === null) {
-        ilStart = e.effDate!;
-      } else if (e.transactionType === "IL_ACTIVATE" && ilStart !== null) {
-        stints.push({ start: ilStart, end: e.effDate! });
-        ilStart = null;
-      }
-    }
-    if (ilStart !== null) stints.push({ start: ilStart, end: null });
-    if (stints.length > 0) windows.set(playerId, stints);
-  }
-  return windows;
-}
-
-export function wasOnIlAtPeriodStart(playerId: number, periodStart: Date, ilWindowsByPlayer: Map<number, IlWindow[]>): boolean {
-  const stints = ilWindowsByPlayer.get(playerId);
-  if (!stints) return false;
-  return stints.some(w => w.start <= periodStart && (w.end === null || w.end > periodStart));
 }
 
 /** Precise path: sum daily stats within each roster entry's ownership window. */
