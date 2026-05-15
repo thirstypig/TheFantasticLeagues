@@ -68,7 +68,7 @@ describe("ActivityHistoryTab — backdated marker", () => {
     const row = screen.getByTestId("history-row-backdated");
     const marker = within(row).getByTestId("backdated-marker");
     expect(marker).toBeInTheDocument();
-    expect(marker.textContent).toMatch(/Effective:/);
+    expect(marker.textContent).toMatch(/Submitted:/);
     expect(marker.getAttribute("title")).toMatch(/Submitted .* effective/);
   });
 

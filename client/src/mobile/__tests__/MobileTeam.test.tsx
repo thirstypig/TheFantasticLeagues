@@ -18,6 +18,7 @@ vi.mock("../../features/teams/api", () => ({
   getTeams: vi.fn(),
   getTeamRosterHub: vi.fn(),
   updateRosterPosition: vi.fn(),
+  getTeamPlayerSeasonStats: vi.fn().mockResolvedValue({ stats: [] }),
 }));
 
 vi.mock("../../features/transactions/api", () => ({

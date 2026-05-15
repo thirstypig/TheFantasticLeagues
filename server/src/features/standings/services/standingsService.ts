@@ -391,7 +391,7 @@ export async function computeTeamStatsFromDb(
       acquiredAt: { lt: period.endDate },
       OR: [
         { releasedAt: null },
-        { releasedAt: { gt: period.startDate } },
+        { releasedAt: { gte: period.startDate } },
       ],
     },
     select: {
@@ -404,6 +404,21 @@ export async function computeTeamStatsFromDb(
     },
   });
 
+  // Build date-aware IL windows from TransactionEvent history so that a player's
+  // stats are excluded only for periods when they were actually in the IL slot —
+  // not retroactively applied to periods when they were active.
+  const rosterPlayerIds = [...new Set(rosters.map(r => r.playerId))];
+  const ilEvents = await prisma.transactionEvent.findMany({
+    where: {
+      playerId: { in: rosterPlayerIds },
+      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+      effDate: { not: null },
+    },
+    select: { playerId: true, transactionType: true, effDate: true },
+    orderBy: { effDate: "asc" },
+  });
+  const ilWindowsByPlayer = buildIlWindows(ilEvents);
+
   // Prefer PlayerStatsPeriod (populated by syncAllActivePeriods via MLB byDateRange API) —
   // it is the accurate source and handles doubleheaders correctly. The playerStatsDaily
   // table uses @@unique([playerId, gameDate]) which collapses doubleheaders into one row
@@ -413,11 +428,49 @@ export async function computeTeamStatsFromDb(
   // (e.g., a brand-new period before the first 13:00 UTC cron run).
   const periodStatCount = await prisma.playerStatsPeriod.count({ where: { periodId } });
   if (periodStatCount > 0) {
-    return computeWithPeriodStats(teams, rosters, periodId);
+    return computeWithPeriodStats(teams, rosters, period, ilWindowsByPlayer);
   }
 
   // No PlayerStatsPeriod data yet — use daily stats as a best-effort fallback.
-  return computeWithDailyStats(teams, rosters, period);
+  return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
+}
+
+export type IlWindow = { start: Date; end: Date | null };
+
+export function buildIlWindows(
+  events: { playerId: number | null; transactionType: string | null; effDate: Date | null }[],
+): Map<number, IlWindow[]> {
+  const byPlayer = new Map<number, typeof events>();
+  for (const e of events) {
+    if (!e.playerId || !e.effDate) continue;
+    const list = byPlayer.get(e.playerId) ?? [];
+    list.push(e);
+    byPlayer.set(e.playerId, list);
+  }
+
+  const windows = new Map<number, IlWindow[]>();
+  for (const [playerId, playerEvents] of byPlayer) {
+    const sorted = [...playerEvents].sort((a, b) => a.effDate!.getTime() - b.effDate!.getTime());
+    const stints: IlWindow[] = [];
+    let ilStart: Date | null = null;
+    for (const e of sorted) {
+      if (e.transactionType === "IL_STASH" && ilStart === null) {
+        ilStart = e.effDate!;
+      } else if (e.transactionType === "IL_ACTIVATE" && ilStart !== null) {
+        stints.push({ start: ilStart, end: e.effDate! });
+        ilStart = null;
+      }
+    }
+    if (ilStart !== null) stints.push({ start: ilStart, end: null });
+    if (stints.length > 0) windows.set(playerId, stints);
+  }
+  return windows;
+}
+
+export function wasOnIlAtPeriodStart(playerId: number, periodStart: Date, ilWindowsByPlayer: Map<number, IlWindow[]>): boolean {
+  const stints = ilWindowsByPlayer.get(playerId);
+  if (!stints) return false;
+  return stints.some(w => w.start <= periodStart && (w.end === null || w.end > periodStart));
 }
 
 /** Precise path: sum daily stats within each roster entry's ownership window. */
@@ -429,6 +482,7 @@ async function computeWithDailyStats(
     player: { id: number; mlbId: number | null; posPrimary: string };
   }[],
   period: { startDate: Date; endDate: Date },
+  ilWindowsByPlayer: Map<number, IlWindow[]>,
 ): Promise<TeamStatRow[]> {
   // Collect all unique playerIds for a single bulk query
   const playerIds = [...new Set(rosters.map(r => r.playerId))];
@@ -457,12 +511,10 @@ async function computeWithDailyStats(
   const teamAccum = new Map<number, { R: number; HR: number; RBI: number; SB: number; H: number; AB: number; W: number; S: number; K: number; ER: number; IP: number; BB_H: number }>();
 
   for (const roster of rosters) {
-    // Skip IL-slotted players: their stats while in the IL slot don't credit
-    // the team. See todo #155. Caveat: assignedPosition is current-state
-    // only — a player who was IL'd mid-period and later activated will
-    // have their entire window skipped here. Full historical accuracy
-    // requires stint replay from TransactionEvent (Option 2 in the todo).
-    if ((roster.assignedPosition ?? "").toUpperCase() === "IL") continue;
+    // Skip players who were on IL at the period's start date.
+    // Uses TransactionEvent effDate history so past periods are scored correctly
+    // even if the player's current assignedPosition has changed since.
+    if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
     const from = roster.acquiredAt > period.startDate ? roster.acquiredAt : period.startDate;
     const to = roster.releasedAt && roster.releasedAt < period.endDate ? roster.releasedAt : period.endDate;
@@ -520,8 +572,10 @@ async function computeWithPeriodStats(
     assignedPosition: string | null;
     player: { id: number; mlbId: number | null; posPrimary: string };
   }[],
-  periodId: number,
+  period: { id: number; startDate: Date; endDate: Date },
+  ilWindowsByPlayer: Map<number, IlWindow[]>,
 ): Promise<TeamStatRow[]> {
+  const periodId = period.id;
   const periodStats = await prisma.playerStatsPeriod.findMany({
     where: { periodId },
     select: {
@@ -564,9 +618,9 @@ async function computeWithPeriodStats(
       if (countedPlayers.has(roster.playerId)) continue;
       countedPlayers.add(roster.playerId);
 
-      // Skip IL-slotted players: see todo #155 / matching guard in
-      // computeWithDailyStats above.
-      if ((roster.assignedPosition ?? "").toUpperCase() === "IL") continue;
+      // Skip players who were on IL at this period's start date.
+      // Uses TransactionEvent effDate history — same date-aware logic as computeWithDailyStats.
+      if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
       // Skip players who were traded away — attribute their stats to their current team only
       const currentTeam = activePlayerTeam.get(roster.playerId);

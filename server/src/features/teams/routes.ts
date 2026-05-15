@@ -8,7 +8,7 @@ import { requireAuth, requireTeamOwner, requireTeamOwnerOrCommissioner, requireL
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
-import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
+import { computeStandingsFromStats, type TeamStatRow, buildIlWindows, wasOnIlAtPeriodStart } from "../standings/services/standingsService.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 
 // Swap-only mutation. `effectiveDate` is advisory metadata for the
@@ -430,42 +430,67 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
   if (!period) return res.status(404).json({ error: "Period not found" });
 
   // All roster entries that overlapped with this period
+  // `gte` is intentional: a player released at exactly period.startDate
+  // was on the roster at the period's opening moment.
   const rosters = await prisma.roster.findMany({
     where: {
       teamId,
       acquiredAt: { lt: period.endDate },
       OR: [
         { releasedAt: null },
-        { releasedAt: { gt: period.startDate } },
+        { releasedAt: { gte: period.startDate } },
       ],
     },
     include: { player: true },
     orderBy: { acquiredAt: "asc" },
   });
 
-  // Fetch period stats for these players
   const playerIds = rosters.map(r => r.playerId);
-  const periodStats = await prisma.playerStatsPeriod.findMany({
-    where: { periodId, playerId: { in: playerIds } },
-  });
-  const statsMap = new Map(periodStats.map(s => [s.playerId, s]));
 
-  const result = rosters.map(r => ({
-    id: r.id,
-    playerId: r.playerId,
-    mlbId: r.player.mlbId,
-    name: r.player.name,
-    posPrimary: r.player.posPrimary,
-    posList: r.player.posList,
-    mlbTeam: r.player.mlbTeam,
-    acquiredAt: r.acquiredAt,
-    releasedAt: r.releasedAt,
-    source: r.source,
-    price: r.price,
-    assignedPosition: r.assignedPosition,
-    isActive: r.releasedAt === null,
-    periodStats: statsMap.get(r.playerId) ?? null,
-  }));
+  // Fetch period stats and IL events in parallel
+  const [periodStats, ilEvents] = await Promise.all([
+    prisma.playerStatsPeriod.findMany({
+      where: { periodId, playerId: { in: playerIds } },
+    }),
+    prisma.transactionEvent.findMany({
+      where: {
+        playerId: { in: playerIds },
+        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+        effDate: { not: null },
+      },
+      select: { playerId: true, transactionType: true, effDate: true },
+      orderBy: { effDate: "asc" },
+    }),
+  ]);
+  const statsMap = new Map(periodStats.map(s => [s.playerId, s]));
+  const ilWindowsByPlayer = buildIlWindows(ilEvents);
+
+  const result = rosters.map(r => {
+    // Use historical IL state at period start, not the current DB snapshot.
+    // A player whose assignedPosition is currently "IL" but who was stashed
+    // AFTER this period's start was active during the period — show their
+    // primary position instead of "IL".
+    let assignedPosition = r.assignedPosition;
+    if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(r.playerId, period.startDate, ilWindowsByPlayer)) {
+      assignedPosition = r.player.posPrimary;
+    }
+    return {
+      id: r.id,
+      playerId: r.playerId,
+      mlbId: r.player.mlbId,
+      name: r.player.name,
+      posPrimary: r.player.posPrimary,
+      posList: r.player.posList,
+      mlbTeam: r.player.mlbTeam,
+      acquiredAt: r.acquiredAt,
+      releasedAt: r.releasedAt,
+      source: r.source,
+      price: r.price,
+      assignedPosition,
+      isActive: r.releasedAt === null,
+      periodStats: statsMap.get(r.playerId) ?? null,
+    };
+  });
 
   res.json({ period: { id: period.id, name: period.name, startDate: period.startDate, endDate: period.endDate }, roster: result });
 }));

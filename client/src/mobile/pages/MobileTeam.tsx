@@ -413,8 +413,8 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         if (pa !== pb) return pa - pb;
         return (b.price ?? 0) - (a.price ?? 0);
       });
-      if (tab === "Hitters") return sorted.filter((r) => !r.isPitcher);
-      if (tab === "Pitchers") return sorted.filter((r) => r.isPitcher);
+      if (tab === "Hitters") return sorted.filter((r) => !r.isPitcher && r.assignedPosition !== "IL");
+      if (tab === "Pitchers") return sorted.filter((r) => r.isPitcher && r.assignedPosition !== "IL");
       return [];
     }
     if (!hub) return [];
