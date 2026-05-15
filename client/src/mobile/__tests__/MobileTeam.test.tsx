@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileTeam } from "../pages/MobileTeam";
-import { getTeams, getTeamRosterHub, updateRosterPosition } from "../../features/teams/api";
+import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster } from "../../features/teams/api";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { getSeasonStandings } from "../../api";
 
@@ -19,6 +19,7 @@ vi.mock("../../features/teams/api", () => ({
   getTeamRosterHub: vi.fn(),
   updateRosterPosition: vi.fn(),
   getTeamPlayerSeasonStats: vi.fn().mockResolvedValue({ stats: [] }),
+  getTeamPeriodRoster: vi.fn(),
 }));
 
 vi.mock("../../features/transactions/api", () => ({
@@ -381,5 +382,102 @@ describe("MobileTeam (read-only)", () => {
     await screen.findByText("Clayton Kershaw");
     expect(screen.queryByText("Hitter Totals")).not.toBeInTheDocument();
     expect(screen.queryByText("Pitcher Totals")).not.toBeInTheDocument();
+  });
+});
+
+// ── Period mode (historical views) ────────────────────────────────────────
+// These tests guard against two regressions:
+// 1. IL players appearing in the Hitters/Pitchers tabs in period mode
+// 2. IL players' stats inflating team totals in period mode
+
+// A pitcher on IL during a period: assignedPosition="IL", so isPitcher=false
+// (PITCHER_SLOTS doesn't include "IL"). Before the fix, they leaked into the
+// Hitters tab. After the fix, they are excluded from both tabs.
+const PERIOD_ROSTER_P1 = {
+  period: { id: 35, name: "Period 1", startDate: "2026-03-25T00:00:00.000Z", endDate: "2026-04-18T00:00:00.000Z" },
+  roster: [
+    // Active hitter: counts toward Hitter Totals (HR=2, RBI=7, AB=60, H=12)
+    {
+      id: 1, playerId: 1, mlbId: 100, name: "Mookie Betts",
+      posPrimary: "SS", posList: "SS,OF", mlbTeam: "LAD",
+      assignedPosition: "SS", releasedAt: null, acquiredAt: "2026-03-01T00:00:00.000Z",
+      source: "AUCTION", price: 40, isActive: true,
+      periodStats: { AB: 60, H: 12, HR: 2, R: 7, RBI: 7, SB: 1, IP: 0, ER: 0, BB_H: 0, W: 0, SV: 0, K: 0 },
+    },
+    // Player on IL at period start (stashed before/at period start):
+    // assignedPosition="IL" → isPitcher=false → would leak into Hitters before the fix.
+    // HR=5, RBI=20 must NOT appear in Hitter Totals.
+    {
+      id: 20, playerId: 20, mlbId: 2000, name: "Clayton Kershaw",
+      posPrimary: "SP", posList: "SP", mlbTeam: "LAD",
+      assignedPosition: "IL", releasedAt: null, acquiredAt: "2026-03-01T00:00:00.000Z",
+      source: "AUCTION", price: 15, isActive: true,
+      periodStats: { AB: 10, H: 3, HR: 5, R: 4, RBI: 20, SB: 0, IP: 30, ER: 10, BB_H: 35, W: 4, SV: 0, K: 60 },
+    },
+  ],
+};
+
+describe("MobileTeam — period mode IL filtering", () => {
+  beforeEach(() => {
+    // Expose period options so the period buttons render
+    vi.mocked(getSeasonStandings).mockResolvedValue({
+      periodIds: [35, 36],
+      periodNames: ["Period 1", "Period 2"],
+      rows: [
+        { teamId: 101, teamCode: "LDY", teamName: "Los Doyers", periodPoints: [30, 28] },
+        { teamId: 202, teamCode: "DLC", teamName: "Demolition Lumber Co.", periodPoints: [35, 31] },
+      ],
+    } as any);
+    vi.mocked(getTeamPeriodRoster).mockResolvedValue(PERIOD_ROSTER_P1 as any);
+  });
+
+  it("excludes IL players from the Hitters tab in period mode", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts"); // cumulative loads first
+    fireEvent.click(await screen.findByRole("button", { name: "Period 1" }));
+    // Mookie (active SS) appears; Kershaw (IL) must not appear in Hitters
+    await waitFor(() => {
+      expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Clayton Kershaw")).not.toBeInTheDocument();
+  });
+
+  it("does not count IL player stats in Hitter Totals in period mode", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(await screen.findByRole("button", { name: "Period 1" }));
+    // Kershaw's HR=5 and RBI=20 must not appear in totals.
+    // Only Mookie's HR=2 and RBI=7 should be in totals.
+    await waitFor(() => {
+      expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
+    });
+    // HR total: only Mookie's 2, not Kershaw's 5 (which would give 7)
+    const hitterTotals = screen.getByText("Hitter Totals").closest("tr") ?? screen.getByText("Hitter Totals").parentElement!.parentElement!;
+    // HR=2, RBI=7 (Mookie only). If Kershaw leaked, HR would be 7, RBI would be 27.
+    expect(screen.queryByText("7", { selector: "[data-testid]" })).not.toBeInTheDocument(); // Kershaw's HR would make 7
+    // The easiest assertion: no "27" in the document (Kershaw RBI=20 + Mookie RBI=7)
+    expect(screen.queryByText("27")).not.toBeInTheDocument();
+  });
+
+  it("hides the IL tab in period mode (IL tab is action-only, period views are read-only)", async () => {
+    // The cumulative view has Kershaw on IL → IL tab shows in cumulative
+    renderTeam();
+    expect(await screen.findByRole("tab", { name: "IL" })).toBeInTheDocument();
+    // Switch to period mode — IL tab must disappear
+    fireEvent.click(await screen.findByRole("button", { name: "Period 1" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("tab", { name: "IL" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows active players normally in period mode Hitters tab", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(await screen.findByRole("button", { name: "Period 1" }));
+    // Mookie (active SS) must be visible; Kershaw (IL) must not appear in Hitters
+    await waitFor(() => {
+      expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Clayton Kershaw")).not.toBeInTheDocument();
   });
 });

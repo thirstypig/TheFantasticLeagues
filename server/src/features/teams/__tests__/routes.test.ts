@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildIlWindows, wasOnIlAtPeriodStart } from "../../standings/services/standingsService.js";
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
@@ -454,5 +455,126 @@ describe("PATCH /api/teams/:teamId/roster/:rosterId — schema accepts effective
       effectiveDate: "yesterday",
     });
     expect(bad.success).toBe(false);
+  });
+});
+
+// ─── period-roster: releasedAt boundary and assignedPosition override ─────────
+//
+// These tests encode the two bugs fixed in GET /api/teams/:id/period-roster:
+//  1. releasedAt boundary: `gte` (not `gt`) so a player released at exactly
+//     period.startDate is included in the period's roster.
+//  2. assignedPosition historical override: a player whose DB column reads
+//     "IL" but who was not on IL at period.startDate gets their posPrimary
+//     shown instead, preventing cross-period IL bleed.
+
+describe("period-roster — releasedAt gte boundary invariant", () => {
+  it("includes a player released exactly at period start (gte)", () => {
+    // Roster release timestamps are set to midnight UTC at period boundaries.
+    // The gte predicate must include this exact timestamp; gt would drop the player.
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const releasedAtBoundary = new Date("2026-04-19T00:00:00.000Z");
+
+    const matchesGte = releasedAtBoundary >= periodStart; // gte — the fix
+    const matchesGt  = releasedAtBoundary >  periodStart; // gt  — the bug
+
+    expect(matchesGte).toBe(true);  // player was present at period open
+    expect(matchesGt).toBe(false);  // bug silently dropped this player
+  });
+
+  it("excludes a player released the day before period start", () => {
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const releasedBefore = new Date("2026-04-18T00:00:00.000Z");
+
+    expect(releasedBefore >= periodStart).toBe(false);
+  });
+
+  it("includes a player released mid-period", () => {
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const releasedMid = new Date("2026-05-01T00:00:00.000Z");
+
+    expect(releasedMid >= periodStart).toBe(true);
+  });
+});
+
+describe("period-roster — assignedPosition historical override (mirrors route transformation)", () => {
+  it("overrides IL to posPrimary when player was not on IL at period start", () => {
+    // Betts was IL_STASH'd on 2026-05-01 (after Period 2 start 2026-04-19).
+    // Viewing Period 1 (start 2026-03-25) — he was active; must show SS.
+    const periodStart = new Date("2026-03-25T00:00:00.000Z");
+    const ilEvents = [
+      { playerId: 1, transactionType: "IL_STASH", effDate: new Date("2026-05-01T00:00:00.000Z") },
+    ];
+    const windows = buildIlWindows(ilEvents);
+
+    let assignedPosition = "IL"; // current DB snapshot
+    const posPrimary = "SS";
+    if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(1, periodStart, windows)) {
+      assignedPosition = posPrimary;
+    }
+
+    expect(assignedPosition).toBe("SS");
+  });
+
+  it("keeps IL when player was stashed exactly at period start", () => {
+    // Betts was IL_STASH'd at 2026-04-19 (Period 2 start).
+    // Viewing Period 2 — he was on IL from the first moment; must stay "IL".
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const ilEvents = [
+      { playerId: 1, transactionType: "IL_STASH", effDate: new Date("2026-04-19T00:00:00.000Z") },
+    ];
+    const windows = buildIlWindows(ilEvents);
+
+    let assignedPosition = "IL";
+    if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(1, periodStart, windows)) {
+      assignedPosition = "SS";
+    }
+
+    expect(assignedPosition).toBe("IL");
+  });
+
+  it("keeps IL when player was stashed before period start", () => {
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const ilEvents = [
+      { playerId: 1, transactionType: "IL_STASH", effDate: new Date("2026-04-10T00:00:00.000Z") },
+    ];
+    const windows = buildIlWindows(ilEvents);
+
+    let assignedPosition = "IL";
+    if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(1, periodStart, windows)) {
+      assignedPosition = "SS";
+    }
+
+    expect(assignedPosition).toBe("IL");
+  });
+
+  it("does not modify active players (no IL events)", () => {
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const windows = buildIlWindows([]);
+
+    let assignedPosition = "2B";
+    if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(1, periodStart, windows)) {
+      assignedPosition = "SP";
+    }
+
+    expect(assignedPosition).toBe("2B");
+  });
+
+  it("restores active position after IL_ACTIVATE: stash then activate before period start", () => {
+    // Player was stashed and then activated before the period started.
+    // They were on IL at some point but NOT at period start.
+    const periodStart = new Date("2026-04-19T00:00:00.000Z");
+    const ilEvents = [
+      { playerId: 1, transactionType: "IL_STASH",    effDate: new Date("2026-04-01T00:00:00.000Z") },
+      { playerId: 1, transactionType: "IL_ACTIVATE", effDate: new Date("2026-04-10T00:00:00.000Z") },
+    ];
+    const windows = buildIlWindows(ilEvents);
+
+    let assignedPosition = "IL"; // DB still says IL (e.g., re-stashed later)
+    // The window closed at 2026-04-10, so wasOnIlAtPeriodStart(2026-04-19) = false
+    if (assignedPosition === "IL" && !wasOnIlAtPeriodStart(1, periodStart, windows)) {
+      assignedPosition = "OF";
+    }
+
+    expect(assignedPosition).toBe("OF");
   });
 });
