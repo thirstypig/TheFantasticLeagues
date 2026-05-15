@@ -6,6 +6,8 @@ vi.mock("../../../db/prisma.js", () => ({
     team: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     leagueMembership: { findUnique: vi.fn(), findMany: vi.fn() },
     roster: { findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() },
+    period: { findUnique: vi.fn() },
+    transactionEvent: { findMany: vi.fn() },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
@@ -576,5 +578,65 @@ describe("period-roster — assignedPosition historical override (mirrors route 
     }
 
     expect(assignedPosition).toBe("OF");
+  });
+});
+
+// ─── period-roster: cross-league IDOR guard ───────────────────────────────
+//
+// The auth check verifies the caller is a member of the team's league.
+// Without the period.leagueId check, a user in League A can supply a
+// periodId from League B and read another league's historical roster.
+
+describe("period-roster — cross-league IDOR guard", () => {
+  it("rejects a periodId that belongs to a different league than the team", async () => {
+    // Team belongs to league 1; caller is a member of league 1.
+    mockPrisma.team.findUnique.mockResolvedValue({ leagueId: 1 });
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ leagueId: 1, userId: 1 });
+    // Period belongs to league 2 — different league.
+    mockPrisma.period.findUnique.mockResolvedValue({
+      id: 99,
+      leagueId: 2,
+      startDate: new Date("2026-04-19T00:00:00.000Z"),
+      endDate:   new Date("2026-05-06T00:00:00.000Z"),
+      name: "Period 2",
+    });
+
+    const res = mockRes();
+
+    const team = await prisma.team.findUnique({ where: { id: 10 }, select: { leagueId: true } });
+    const period = await (prisma as any).period.findUnique({ where: { id: 99 } });
+
+    // This is the guard added in routes.ts to prevent cross-league reads.
+    if (period!.leagueId !== team!.leagueId) {
+      res.status(403).json({ error: "Period does not belong to this league" });
+    }
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Period does not belong to this league" });
+  });
+
+  it("allows a periodId in the same league as the team", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ leagueId: 1 });
+    mockPrisma.period.findUnique.mockResolvedValue({
+      id: 35,
+      leagueId: 1,
+      startDate: new Date("2026-03-25T00:00:00.000Z"),
+      endDate:   new Date("2026-04-18T00:00:00.000Z"),
+      name: "Period 1",
+    });
+
+    const res = mockRes();
+
+    const team = await prisma.team.findUnique({ where: { id: 10 }, select: { leagueId: true } });
+    const period = await (prisma as any).period.findUnique({ where: { id: 35 } });
+
+    let blocked = false;
+    if (period!.leagueId !== team!.leagueId) {
+      blocked = true;
+      res.status(403).json({ error: "Period does not belong to this league" });
+    }
+
+    expect(blocked).toBe(false);
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

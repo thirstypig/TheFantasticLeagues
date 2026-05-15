@@ -416,10 +416,12 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid team or period id" });
   }
 
+  // Always fetch team — needed for IDOR check against period.leagueId below.
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
   // Verify league membership (admins bypass)
   if (!req.user!.isAdmin) {
-    const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
-    if (!team) return res.status(404).json({ error: "Team not found" });
     const membership = await prisma.leagueMembership.findUnique({
       where: { leagueId_userId: { leagueId: team.leagueId, userId: req.user!.id } },
     });
@@ -428,6 +430,8 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
 
   const period = await prisma.period.findUnique({ where: { id: periodId } });
   if (!period) return res.status(404).json({ error: "Period not found" });
+  // Prevent cross-league reads: a user in League A cannot supply a periodId from League B.
+  if (period.leagueId !== team.leagueId) return res.status(403).json({ error: "Period does not belong to this league" });
 
   // All roster entries that overlapped with this period
   // `gte` is intentional: a player released at exactly period.startDate
@@ -455,6 +459,7 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
     prisma.transactionEvent.findMany({
       where: {
         playerId: { in: playerIds },
+        leagueId: period.leagueId,
         transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
         effDate: { not: null },
       },
