@@ -1,14 +1,17 @@
 /**
- * Tests for the releasedAt >= period.startDate boundary fix.
+ * Tests for releasedAt-boundary and free-agent attribution in computeTeamStatsFromDb.
  *
- * Prior to the fix, players released at exactly period.startDate were
- * excluded from the roster query (strict `gt` comparison), so their period
- * stats counted for no team. The fix changes to `gte` so those players'
- * stats are credited to the team that held them when the period began.
+ * Design rule: computeWithPeriodStats uses cumulative period stats (no daily
+ * breakdown), so stats are attributed 100% to the team that CURRENTLY holds
+ * the player (releasedAt === null).  Released players — whether freed at
+ * period.startDate or mid-period — get NO stats credited; free agents also
+ * get nothing.  This matches FanGraphs, which computes period standings from
+ * active rosters only.
  *
- * Real-world precedent: Moreno/Bailey/Bader released from RGS on 2026-04-19
- * (period 2 start) — 5 R went uncredited, causing RGS to rank below DLC in
- * Runs despite having more per-FanGraphs.
+ * The roster query still uses `releasedAt >= period.startDate` (gte) so that
+ * same-day-acquired replacements are visible for deduplication, but the
+ * attribution logic skips any roster entry without an active (releasedAt=null)
+ * counterpart.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -68,12 +71,14 @@ beforeEach(() => {
 
 describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
   describe("period-stats path", () => {
-    it("credits stats to team that released a player AT period.startDate (gte boundary)", async () => {
-      // Player released from RGS exactly on period.startDate — was on the roster when period began.
+    it("does NOT credit stats to team that released a player AT period.startDate (free agent → no credit)", async () => {
+      // Player released from RGS exactly on period.startDate with no new active holder.
+      // computeWithPeriodStats attributes stats only to the current holder (releasedAt===null);
+      // a free agent gets no credit from any team.
       mockRosterFindMany.mockResolvedValue([
         {
           teamId: 145, playerId: 10, acquiredAt: new Date("2026-03-22"),
-          releasedAt: PERIOD_START, // exactly equal — old `gt` would exclude this
+          releasedAt: PERIOD_START,
           assignedPosition: "C",
           player: { id: 10, mlbId: 1000, posPrimary: "C" },
         },
@@ -84,8 +89,8 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      expect(rgs.R).toBe(2);
-      expect(rgs.HR).toBe(1);
+      expect(rgs.R).toBe(0);
+      expect(rgs.HR).toBe(0);
     });
 
     it("does NOT credit stats when player was released BEFORE period.startDate", async () => {

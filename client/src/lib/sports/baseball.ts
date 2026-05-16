@@ -163,7 +163,7 @@ export function fmt2(v: number): string {
 
 export function fmt3Avg(h: number, ab: number): string {
   if (!ab) return ".000";
-  const s = (h / ab).toFixed(3);
+  const s = (Math.round(h * 1000 / ab) / 1000).toFixed(3);
   return s.startsWith("0") ? s.slice(1) : s;
 }
 

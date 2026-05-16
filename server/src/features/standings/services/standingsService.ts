@@ -585,9 +585,11 @@ async function computeWithPeriodStats(
       // Uses TransactionEvent effDate history — same date-aware logic as computeWithDailyStats.
       if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
-      // Skip players who were traded away — attribute their stats to their current team only
+      // Only attribute stats to the team that currently holds the player (releasedAt === null).
+      // Free agents (currentTeam === undefined) get no credit; traded-away players
+      // (currentTeam !== t.id) also get no credit — their stats go to the new team.
       const currentTeam = activePlayerTeam.get(roster.playerId);
-      if (currentTeam !== undefined && currentTeam !== t.id) continue;
+      if (currentTeam !== t.id) continue;
 
       const stats = statsMap.get(roster.player.id);
       if (!stats) continue;

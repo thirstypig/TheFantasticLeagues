@@ -44,6 +44,11 @@ describe("fmt3Avg", () => {
   it("handles 1.000 average", () => {
     expect(fmt3Avg(100, 100)).toBe("1.000");
   });
+
+  it("rounds correctly for IEEE 754 edge cases (19/80 = .2375 → .238 not .237)", () => {
+    expect(fmt3Avg(19, 80)).toBe(".238");
+    expect(fmt3Avg(24, 83)).toBe(".289");
+  });
 });
 
 describe("fmtRate", () => {
