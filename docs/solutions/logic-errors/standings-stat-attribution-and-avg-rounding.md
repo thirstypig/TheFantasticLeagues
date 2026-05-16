@@ -190,6 +190,90 @@ it("rounds correctly for IEEE 754 edge cases (19/80 = .2375 → .238 not .237)",
 
 FanGraphs OnRoto is the authoritative external reference for OGBA period standings. Use it to verify standings correctness at any point during the scoring period. The audit should be team-by-team, stat-by-stat — not just a top-line check — because bugs like the free-agent attribution issue manifest as inflated totals on a single team, not as an overall league discrepancy.
 
+### What Makes a Team Legal
+
+A team's roster is **legal** if it passes all three checks simultaneously. Violations are flagged but do not alter standings totals while debugging — the commissioner resolves manually.
+
+#### Check 1 — Active roster count equals the league cap
+
+Active players = `releasedAt IS NULL AND assignedPosition != 'IL'`. The cap is `pitcher_count + batter_count` from `LeagueRule` (default 23 for OGBA). IL slots are extra capacity and are NOT counted toward the cap.
+
+```sql
+-- Per-team active count (should equal cap for every team)
+SELECT r."teamId", t.name, COUNT(*) AS active_count
+FROM "Roster" r
+JOIN "Team" t ON t.id = r."teamId"
+WHERE r."releasedAt" IS NULL
+  AND r."assignedPosition" != 'IL'
+  AND t."leagueId" = 20
+GROUP BY r."teamId", t.name
+ORDER BY t.name;
+```
+
+#### Check 2 — No slot exceeds its per-position limit
+
+Slot limits for OGBA: `C:2, 1B:1, 2B:1, 3B:1, SS:1, MI:1, CM:1, OF:5, DH:1, P:9`. BN (bench) holds the overflow of valid players without an active slot and has no hard cap.
+
+```sql
+-- Slot counts per team — flag any row where count exceeds the limit
+SELECT r."teamId", t.name, r."assignedPosition", COUNT(*) AS slot_count
+FROM "Roster" r
+JOIN "Team" t ON t.id = r."teamId"
+WHERE r."releasedAt" IS NULL
+  AND t."leagueId" = 20
+GROUP BY r."teamId", t.name, r."assignedPosition"
+ORDER BY t.name, r."assignedPosition";
+```
+
+Compare each `(assignedPosition, slot_count)` row against:
+
+| Slot | Limit | Slot | Limit |
+|------|-------|------|-------|
+| C | 2 | OF | 5 |
+| 1B | 1 | DH | 1 |
+| 2B | 1 | P | 9 |
+| 3B | 1 | BN | — (any) |
+| SS | 1 | IL | — (any) |
+| MI | 1 | | |
+| CM | 1 | | |
+
+#### Check 3 — Every player is in an eligible slot
+
+Position eligibility is defined by `isEligibleForSlot(player.posList, assignedPosition)` (see `server/src/features/transactions/lib/positionInherit.ts`). The mapping: a player with `posList = "2B,SS"` is eligible for `2B`, `SS`, and `MI` — but not `1B`, `CM`, or `P`.
+
+```sql
+-- Active players whose assignedPosition may not match their posList
+SELECT
+  r."teamId", t.name AS team_name,
+  p.name AS player_name,
+  p."posList",
+  r."assignedPosition"
+FROM "Roster" r
+JOIN "Team" t ON t.id = r."teamId"
+JOIN "Player" p ON p.id = r."playerId"
+WHERE r."releasedAt" IS NULL
+  AND r."assignedPosition" NOT IN ('BN', 'IL')
+  AND t."leagueId" = 20
+ORDER BY t.name, r."assignedPosition";
+```
+
+Cross-reference each row's `posList` against the slot mapping:
+
+| Player position | Eligible slots |
+|---|---|
+| C | C |
+| 1B | 1B, CM |
+| 2B | 2B, MI |
+| 3B | 3B, CM |
+| SS | SS, MI |
+| OF / LF / CF / RF | OF |
+| DH | DH |
+| P / SP / RP / CL / TWP | P |
+
+A player in a slot not listed for their position is an eligibility violation.
+
+---
+
 ### How to Navigate FanGraphs OnRoto
 
 1. Go to FanGraphs → Fantasy → MyRoto (requires OGBA login)
@@ -199,19 +283,21 @@ FanGraphs OnRoto is the authoritative external reference for OGBA period standin
 
 ### Audit Process: Team by Team
 
-For each of the 8 OGBA teams, compare FanGraphs period totals against the FBST standings row:
+For each of the 8 OGBA teams, run both the **roster legality check** and the **stats accuracy check**. Legality is the prerequisite — if the roster is illegal, the stats audit may be misleading until the roster is fixed.
 
 **Hitting categories**: R, HR, RBI, SB, AVG (and OPS, OPS+, WAR if tracked)
 **Pitching categories**: W, SV, K, ERA, WHIP (and QS, HLD, IP if tracked)
 
 | Step | Action |
 |---|---|
-| 1 | Pull FBST standings: `GET /api/standings/period?leagueId=20&periodId=<N>` |
-| 2 | Open FanGraphs team page for the same team |
-| 3 | Compare each stat — flag any delta > 2 for counting stats (R/HR/RBI/SB/W/K/SV), any delta > 0.010 for rate stats (AVG/ERA/WHIP) |
-| 4 | For any flagged delta, cross-reference the team's active roster in FBST vs FanGraphs |
-| 5 | If FBST total is higher than FanGraphs: suspect a dropped player's stats are bleeding through (this bug's pattern) |
-| 6 | If FBST total is lower: suspect a player is missing from FBST roster sync or `PlayerStatsPeriod` hasn't populated yet |
+| 1 | Run the three legality SQL queries above for all teams |
+| 2 | Flag any team with: wrong active count, over-limit slot, or ineligible slot assignment |
+| 3 | Pull FBST standings: `GET /api/standings/period?leagueId=20&periodId=<N>` |
+| 4 | Open FanGraphs team page for the same team |
+| 5 | Compare each stat — flag delta > 2 for counting stats (R/HR/RBI/SB/W/K/SV), delta > 0.010 for rate stats (AVG/ERA/WHIP) |
+| 6 | For any flagged stat delta, check the team's active roster in FBST vs FanGraphs player-by-player |
+| 7 | If FBST total is higher than FanGraphs: suspect a dropped player's stats bleeding through (this bug's pattern) |
+| 8 | If FBST total is lower: suspect a player missing from roster sync or `PlayerStatsPeriod` not yet populated |
 
 ### Audit Script Pattern
 
@@ -232,13 +318,26 @@ Compare that output player-by-player against FanGraphs before summing to team to
 
 ### Red Flags by Category
 
+#### Roster legality violations
+
 | Symptom | Likely cause |
 |---|---|
-| W or K inflated on one team vs FanGraphs | Dropped pitcher's stats credited (this bug) |
+| Active count ≠ 23 (or league cap) | Player dropped without matching add, or add without drop during IN_SEASON |
+| Slot over-limit (e.g. 6 OF instead of 5) | Auto-resolve assigned a player to a slot already at capacity; commissioner override needed |
+| Player in ineligible slot (e.g. SP in C slot) | Eligibility sync gap: player's `posList` not yet updated by daily cron, or manual slot override by commissioner |
+| IL player counted in active cap | Bug: `assertRosterAtExactCap` excludes `assignedPosition = 'IL'`; if count is wrong, check for IL rows missing that flag |
+| Player on BN who should be active | Not a legality violation, but costs the team stats since BN players aren't counted by FanGraphs |
+
+#### Stats accuracy vs FanGraphs
+
+| Symptom | Likely cause |
+|---|---|
+| W or K inflated on one team | Dropped pitcher's stats credited (this bug's pattern) |
 | AVG one digit off (e.g. .237 vs .238) | IEEE 754 rounding in `fmt3Avg` |
 | All stats slightly low on one team | `computeWithDailyStats` path chosen; doubleheader collapse dropping stats |
 | Stats missing entirely for a player | `PlayerStatsPeriod` sync gap; check sync cron ran at 13:00 UTC |
 | Same player's stats appear in two teams | Double-count from ghost roster row (see trade-reversal doc) |
+| Stats correct in DB but wrong in UI | `TeamStatsPeriod` snapshot stale; clears on next standings request |
 
 ### FanGraphs Timing Note
 
