@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
-import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
+import { requireAuth, requireLeagueMember, requireCommissionerOrAdmin } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
 import {
@@ -133,7 +133,11 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     return res.status(404).json({ error: "No active period found" });
   }
 
-  const teamStats = await computeTeamStatsFromDb(leagueId, pid);
+  const seasonData = await getSeasonStandings(leagueId);
+  const cachedStatsByPeriodId = new Map(
+    seasonData.periodIds.map((id, i) => [id, seasonData.periodData[i].teamStats])
+  );
+  const teamStats = cachedStatsByPeriodId.get(pid) ?? await computeTeamStatsFromDb(leagueId, pid);
 
   // Compute season-to-date stats
   const selectedPeriod = await prisma.period.findUnique({ where: { id: pid } });
@@ -142,11 +146,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     orderBy: { startDate: "asc" },
   });
 
-  const allPeriodStats = await Promise.all(
-    allPeriods.map(p =>
-      p.id === pid ? Promise.resolve(teamStats) : computeTeamStatsFromDb(leagueId, p.id)
-    )
-  );
+  const allPeriodStats = allPeriods.map(p => cachedStatsByPeriodId.get(p.id) ?? []);
 
   // Season totals across all periods. Counting stats accumulate directly.
   // Rate stats (AVG/ERA/WHIP) are recomputed from accumulated components
@@ -350,7 +350,7 @@ router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler
 
 // --- Settlement data: /api/standings/settlement/:leagueId ---
 
-router.get("/standings/settlement/:leagueId", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+router.get("/standings/settlement/:leagueId", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
   const leagueId = Number(req.params.leagueId);
   if (!Number.isFinite(leagueId)) return res.status(400).json({ error: "Invalid leagueId" });
 
