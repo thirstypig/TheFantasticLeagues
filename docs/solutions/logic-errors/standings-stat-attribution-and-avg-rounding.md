@@ -28,6 +28,16 @@ date_solved: "2026-05-15"
 
 Two correlated correctness bugs fixed in commit `3af5793`. Both produce wrong numbers silently — no crash, no error log — which made them easy to miss without a reference comparison (FanGraphs OnRoto was the audit tool that surfaced them).
 
+## Why It Looked Like Rosters Were Reverting
+
+The roster and activity log were **never wrong**. The 6 dropped players had correct `releasedAt` timestamps in the `Roster` table and correct `TransactionEvent` records for the drops. What broke was the standings computation: it was pulling those dropped players' stats back into the totals, making the standings *look* as if those players were still on the team.
+
+The illusion of "roster reversion" arises because standings are the most visible output — when standings show a team with a dropped player's stats included, it reads like that player is still on the roster. But the data layer (Roster + TransactionEvent) was always consistent. The bug lived entirely in the computation layer: a one-character logic error in the attribution guard that let free-agent stats fall through.
+
+**Key invariant**: Roster state and activity log are the source of truth. Standings are derived. When standings diverge from what the activity log says happened, investigate the computation path — not the roster records.
+
+---
+
 ## Bug 1: Free-Agent Stats Attribution in Period Standings
 
 ### Symptom
@@ -173,6 +183,66 @@ it("rounds correctly for IEEE 754 edge cases (19/80 = .2375 → .238 not .237)",
   expect(fmt3Avg(24, 83)).toBe(".289");
 });
 ```
+
+---
+
+## FanGraphs Audit Cadence
+
+FanGraphs OnRoto is the authoritative external reference for OGBA period standings. Use it to verify standings correctness at any point during the scoring period. The audit should be team-by-team, stat-by-stat — not just a top-line check — because bugs like the free-agent attribution issue manifest as inflated totals on a single team, not as an overall league discrepancy.
+
+### How to Navigate FanGraphs OnRoto
+
+1. Go to FanGraphs → Fantasy → MyRoto (requires OGBA login)
+2. Select the current scoring period
+3. Each team row shows period stats for **active roster players only**
+4. The "Reserved" section shows IL-stashed players (`dis` status) — their stats are NOT included in the team's period totals
+
+### Audit Process: Team by Team
+
+For each of the 8 OGBA teams, compare FanGraphs period totals against the FBST standings row:
+
+**Hitting categories**: R, HR, RBI, SB, AVG (and OPS, OPS+, WAR if tracked)
+**Pitching categories**: W, SV, K, ERA, WHIP (and QS, HLD, IP if tracked)
+
+| Step | Action |
+|---|---|
+| 1 | Pull FBST standings: `GET /api/standings/period?leagueId=20&periodId=<N>` |
+| 2 | Open FanGraphs team page for the same team |
+| 3 | Compare each stat — flag any delta > 2 for counting stats (R/HR/RBI/SB/W/K/SV), any delta > 0.010 for rate stats (AVG/ERA/WHIP) |
+| 4 | For any flagged delta, cross-reference the team's active roster in FBST vs FanGraphs |
+| 5 | If FBST total is higher than FanGraphs: suspect a dropped player's stats are bleeding through (this bug's pattern) |
+| 6 | If FBST total is lower: suspect a player is missing from FBST roster sync or `PlayerStatsPeriod` hasn't populated yet |
+
+### Audit Script Pattern
+
+The `audit-fangraphs.mjs` script (repo root, not committed to git — temp audit tool) demonstrates the query pattern. For a repeatable audit, the key query logic is:
+
+```sql
+-- Active roster for a team this period
+SELECT p.mlbId, p.playerName, p.posPrimary, psp.*
+FROM "Roster" r
+JOIN "Player" p ON r."playerId" = p.id
+JOIN "PlayerStatsPeriod" psp ON psp."playerId" = p.id AND psp."periodId" = <periodId>
+WHERE r."teamId" = <teamId>
+  AND r."releasedAt" IS NULL   -- active only — this is what FanGraphs shows
+ORDER BY p."posPrimary";
+```
+
+Compare that output player-by-player against FanGraphs before summing to team totals. This catches both attribution errors (wrong player credited) and sync gaps (player missing from `PlayerStatsPeriod`).
+
+### Red Flags by Category
+
+| Symptom | Likely cause |
+|---|---|
+| W or K inflated on one team vs FanGraphs | Dropped pitcher's stats credited (this bug) |
+| AVG one digit off (e.g. .237 vs .238) | IEEE 754 rounding in `fmt3Avg` |
+| All stats slightly low on one team | `computeWithDailyStats` path chosen; doubleheader collapse dropping stats |
+| Stats missing entirely for a player | `PlayerStatsPeriod` sync gap; check sync cron ran at 13:00 UTC |
+| Same player's stats appear in two teams | Double-count from ghost roster row (see trade-reversal doc) |
+
+### FanGraphs Timing Note
+
+FanGraphs period totals can lag by 12–24 hours during the first few days of a period (incomplete stat ingestion). Always confirm you're comparing the same date range and that both sides have ingested the same game dates before treating a small delta as a bug. The MLB box score API (`statsapi.mlb.com`) is the ground truth for per-game verification.
 
 ---
 
