@@ -557,6 +557,8 @@ model TransactionEvent {
   // affected-period lookups.
   @@index([leagueId, transactionType, effDate])
   @@index([teamId, playerId, effDate])
+  // standings query: playerId IN (...) + transactionType IN ('IL_STASH','IL_ACTIVATE') + effDate IS NOT NULL
+  @@index([playerId, transactionType, effDate])
 }
 
 model Season {
