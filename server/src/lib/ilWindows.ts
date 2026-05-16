@@ -26,6 +26,8 @@ export function buildIlWindows(
         list.push({ start, end: e.effDate });
         windows.set(pid, list);
         openStart.delete(pid);
+      } else {
+        console.warn(`[ilWindows] orphaned IL_ACTIVATE: playerId=${pid} effDate=${e.effDate?.toISOString()}`);
       }
     }
   }

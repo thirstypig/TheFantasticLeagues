@@ -282,16 +282,9 @@ export function fmt2(v: number): string {
   return v.toFixed(2);
 }
 
-export function fmt3Avg(h: number, ab: number): string {
-  if (!ab) return ".000";
-  const s = (Math.round(h * 1000 / ab) / 1000).toFixed(3);
-  return s.startsWith("0") ? s.slice(1) : s;
-}
-
-// Canonical home is `lib/sports/baseball.ts` (referenced by the stat-config
-// `formatFn: "fmtRate"` token in that file). Re-exported here for backwards
-// compatibility with `import { fmtRate } from "../api"` / `"../api/base"`.
-export { fmtRate } from "../lib/sports/baseball";
+// Canonical implementations live in `lib/sports/baseball.ts`. Re-exported here
+// for backwards compatibility with `import { fmt3Avg, fmtRate } from "../api"` / `"../api/base"`.
+export { fmt3Avg, fmtRate } from "../lib/sports/baseball";
 
 /** AVG with 4 decimal places (.2576) — matches FanGraphs display */
 export function fmtAvg4(v: number): string {
