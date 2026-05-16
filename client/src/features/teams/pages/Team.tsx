@@ -393,7 +393,7 @@ export default function Team() {
   // as the season roster — so hitters/pitchers memos work uniformly.
   const displayRoster: RosterPlayer[] = useMemo(() => {
     if (periodMode === "season" || !periodRoster) return roster;
-    return periodRoster.map(r => {
+    return periodRoster.filter(r => r.isActive).map(r => {
       // Use Partial because the row may have no period-stats yet (synthetic
       // rows, mid-period sync gap). Each Number(...) call below tolerates
       // undefined fields by falling back to 0.
