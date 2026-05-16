@@ -20,6 +20,7 @@ vi.mock("../../../lib/logger.js", () => ({
 vi.mock("../../../middleware/auth.js", () => ({
   requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   requireLeagueMember: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+  requireCommissionerOrAdmin: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/asyncHandler.js", () => ({
   asyncHandler: (fn: Function) => fn,
@@ -151,7 +152,11 @@ describe("GET /period-category-standings", () => {
 
   it("returns per-category breakdowns", async () => {
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
-    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [5],
+      periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }],
+      seasonRows: [],
+    });
     mockComputeCategoryRows.mockReturnValue([
       { teamId: 1, teamName: "Team A", teamCode: "TMA", value: 50, rank: 1, points: 2 },
       { teamId: 2, teamName: "Team B", teamCode: "TMB", value: 45, rank: 2, points: 1 },
@@ -168,14 +173,19 @@ describe("GET /period-category-standings", () => {
   });
 
   it("accepts explicit periodId param", async () => {
-    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [7],
+      periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }],
+      seasonRows: [],
+    });
     mockComputeCategoryRows.mockReturnValue([]);
 
     const res = await supertest(app).get("/period-category-standings?leagueId=1&periodId=7");
 
     expect(res.status).toBe(200);
     expect(res.body.periodId).toBe(7);
-    expect(mockComputeTeamStatsFromDb).toHaveBeenCalledWith(1, 7);
+    // getSeasonStandings was called (cache path), computeTeamStatsFromDb not needed
+    expect(mockGetSeasonStandings).toHaveBeenCalledWith(1);
   });
 
   // Todo #134 regression: GET handlers must not block on writes. Production runs
@@ -185,7 +195,11 @@ describe("GET /period-category-standings", () => {
   // without waiting for the transaction to settle.
   it("does not await prisma.$transaction on the read path (todo #134)", async () => {
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
-    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [5],
+      periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }],
+      seasonRows: [],
+    });
     mockComputeCategoryRows.mockReturnValue([]);
 
     // Force `$transaction` to hang. If the handler awaits the snapshot persist
@@ -241,9 +255,8 @@ describe("GET /period-category-standings — season-to-date weighted averaging",
   ];
 
   beforeEach(() => {
-    // Two periods covered by allPeriods; computeTeamStatsFromDb returns
-    // current period (period 5 = period 2 in this fixture). The OTHER
-    // period is fetched separately.
+    // Two periods supplied via getSeasonStandings cache.
+    // Period 4 = periodOneStats, period 5 = periodTwoStats.
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5, status: "active" });
     mockPrisma.period.findUnique.mockResolvedValue({
       id: 5,
@@ -254,14 +267,19 @@ describe("GET /period-category-standings — season-to-date weighted averaging",
       { id: 4, startDate: new Date("2026-04-01"), endDate: new Date("2026-04-14") },
       { id: 5, startDate: new Date("2026-04-15"), endDate: new Date("2026-04-30") },
     ]);
-    // Track call count to differentiate periods
-    let call = 0;
-    mockComputeTeamStatsFromDb.mockImplementation(async (_leagueId: number, pid: number) => {
-      call++;
-      // First call (the route's own current-period call) → periodTwoStats (id 5)
-      // Subsequent calls inside Promise.all are for non-current periods → periodOneStats (id 4)
-      if (pid === 5) return periodTwoStats;
-      return periodOneStats;
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [4, 5],
+      periodData: [
+        {
+          teamStats: periodOneStats,
+          standings: [{ teamId: 1, teamName: "Team A", points: 5, rank: 1, delta: 0 }],
+        },
+        {
+          teamStats: periodTwoStats,
+          standings: [{ teamId: 1, teamName: "Team A", points: 10, rank: 1, delta: 0 }],
+        },
+      ],
+      seasonRows: [],
     });
     mockComputeStandingsFromStats.mockReturnValue([
       { teamId: 1, teamName: "Team A", points: 10, rank: 1, delta: 0 },
@@ -326,8 +344,17 @@ describe("GET /period-category-standings — season-to-date weighted averaging",
         H: 0, AB: 0, ER: 0, IP: 0, BB_H: 0,
       },
     ];
-    mockComputeTeamStatsFromDb.mockReset();
-    mockComputeTeamStatsFromDb.mockResolvedValue(emptyHittingPitching);
+    mockGetSeasonStandings.mockReset();
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [5],
+      periodData: [
+        {
+          teamStats: emptyHittingPitching,
+          standings: [{ teamId: 1, teamName: "Team A", points: 0, rank: 1, delta: 0 }],
+        },
+      ],
+      seasonRows: [],
+    });
 
     const res = await supertest(app).get("/period-category-standings?leagueId=1");
     expect(res.status).toBe(200);
@@ -429,5 +456,69 @@ describe("GET /season", () => {
     expect(res.body.periodIds).toEqual([]);
     expect(res.body.rows[0].periodPoints).toEqual([]);
     expect(res.body.rows[0].totalPoints).toBe(0);
+  });
+});
+
+// ── GET /standings/settlement/:leagueId ─────────────────────────
+//
+// PII guard (todo #199): endpoint restricted to commissioners/admins via
+// requireCommissionerOrAdmin() — not requireLeagueMember. The mock passes
+// through to next() so these tests exercise the handler logic itself;
+// the middleware's own enforcement is covered by authExtended.test.ts.
+
+describe("GET /standings/settlement/:leagueId", () => {
+  const sampleTeamsWithOwners = [
+    {
+      id: 1, name: "Team A", code: "TMA",
+      ownerUser: { id: 10, name: "Alice", email: "alice@example.com", venmoHandle: "@alice", zelleHandle: null, paypalHandle: null },
+      ownerships: [],
+    },
+    {
+      id: 2, name: "Team B", code: "TMB",
+      ownerUser: null,
+      ownerships: [
+        { user: { id: 20, name: "Bob", email: "bob@example.com", venmoHandle: null, zelleHandle: "bob@bank.com", paypalHandle: "@bob" } },
+      ],
+    },
+  ];
+
+  it("returns settlement data with payment handles for commissioners", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue([
+      { key: "payout_1st", value: "50" },
+      { key: "payout_2nd", value: "30" },
+    ]);
+    mockPrisma.league.findUnique.mockResolvedValue({ entryFee: 100 });
+    mockPrisma.team.findMany.mockResolvedValue(sampleTeamsWithOwners);
+
+    const res = await supertest(app).get("/standings/settlement/1");
+
+    expect(res.status).toBe(200);
+    expect(res.body.leagueId).toBe(1);
+    expect(res.body.entryFee).toBe(100);
+    expect(res.body.totalPot).toBe(200);
+    expect(res.body.payoutPcts["1"]).toBe(50);
+    expect(res.body.payoutPcts["2"]).toBe(30);
+    expect(res.body.teams).toHaveLength(2);
+    // Verify PII is present in the response (commissioners can see it)
+    expect(res.body.teams[0].owners[0].email).toBe("alice@example.com");
+    expect(res.body.teams[0].owners[0].venmoHandle).toBe("@alice");
+    expect(res.body.teams[1].owners[0].email).toBe("bob@example.com");
+  });
+
+  it("returns 400 for invalid leagueId", async () => {
+    const res = await supertest(app).get("/standings/settlement/notanumber");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Invalid leagueId");
+  });
+
+  it("returns empty teams and zero pot when league has no entry fee", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValue([]);
+    mockPrisma.league.findUnique.mockResolvedValue({ entryFee: 0 });
+    mockPrisma.team.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/standings/settlement/1");
+    expect(res.status).toBe(200);
+    expect(res.body.totalPot).toBe(0);
+    expect(res.body.teams).toHaveLength(0);
   });
 });
