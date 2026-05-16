@@ -230,5 +230,69 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
       expect(dlc.W).toBe(0);
       expect(dlc.K).toBe(0);
     });
+
+    it("credits stats exactly once when player is released and re-acquired by same team in same period", async () => {
+      const dropDate = new Date("2026-04-25T00:00:00.000Z");
+      const readdDate = new Date("2026-04-28T00:00:00.000Z");
+
+      mockRosterFindMany.mockResolvedValue([
+        {
+          teamId: 145, playerId: 60, acquiredAt: new Date("2026-03-22"),
+          releasedAt: dropDate,
+          assignedPosition: "SS",
+          player: { id: 60, mlbId: 6000, posPrimary: "SS" },
+        },
+        {
+          teamId: 145, playerId: 60, acquiredAt: readdDate,
+          releasedAt: null,
+          assignedPosition: "SS",
+          player: { id: 60, mlbId: 6000, posPrimary: "SS" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 60, ...ZERO_STATS, R: 7, HR: 2 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      // Stats credited exactly once (active entry wins, no double-count)
+      expect(rgs.R).toBe(7);
+      expect(rgs.HR).toBe(2);
+      // Total across both teams must still be 7 (no duplication)
+      const dlc = result.find(r => r.team.code === "DLC")!;
+      expect(rgs.R + dlc.R).toBe(7);
+    });
+
+    it("credits full period stats to new team for mid-period trade (period-stats path)", async () => {
+      // Period-stats path: all period stats go to current owner (releasedAt=null),
+      // regardless of when in the period the trade occurred.
+      const tradedAt = new Date("2026-04-25T00:00:00.000Z");
+      mockRosterFindMany.mockResolvedValue([
+        {
+          teamId: 145, playerId: 70, acquiredAt: new Date("2026-03-22"),
+          releasedAt: tradedAt,
+          assignedPosition: "OF",
+          player: { id: 70, mlbId: 7000, posPrimary: "OF" },
+        },
+        {
+          teamId: 148, playerId: 70, acquiredAt: tradedAt,
+          releasedAt: null,
+          assignedPosition: "OF",
+          player: { id: 70, mlbId: 7000, posPrimary: "OF" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 70, ...ZERO_STATS, R: 15, HR: 4, RBI: 12 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      const dlc = result.find(r => r.team.code === "DLC")!;
+      // New owner (DLC) gets ALL period stats; original team (RGS) gets nothing
+      expect(dlc.R).toBe(15);
+      expect(dlc.HR).toBe(4);
+      expect(rgs.R).toBe(0);
+      expect(rgs.HR).toBe(0);
+    });
   });
 });

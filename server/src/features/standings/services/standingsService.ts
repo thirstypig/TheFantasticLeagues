@@ -409,25 +409,43 @@ export async function computeTeamStatsFromDb(
   // stats are excluded only for periods when they were actually in the IL slot —
   // not retroactively applied to periods when they were active.
   const rosterPlayerIds = [...new Set(rosters.map(r => r.playerId))];
-  const ilEvents = await prisma.transactionEvent.findMany({
-    where: {
-      playerId: { in: rosterPlayerIds },
-      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
-      effDate: { not: null },
-    },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: { effDate: "asc" },
-  });
+  const [ilEvents, periodStatCount] = await Promise.all([
+    prisma.transactionEvent.findMany({
+      where: {
+        playerId: { in: rosterPlayerIds },
+        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+        effDate: { not: null },
+      },
+      select: { playerId: true, transactionType: true, effDate: true },
+      orderBy: { effDate: "asc" },
+    }),
+    prisma.playerStatsPeriod.count({ where: { periodId } }),
+  ]);
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
-  // Prefer PlayerStatsPeriod (populated by syncAllActivePeriods via MLB byDateRange API) —
-  // it is the accurate source and handles doubleheaders correctly. The playerStatsDaily
-  // table uses @@unique([playerId, gameDate]) which collapses doubleheaders into one row
-  // and systematically undercounts RBI, K, W, and IP.
+  // --- Stats source selection ---
   //
-  // Fall back to daily stats only when PlayerStatsPeriod hasn't been synced yet
-  // (e.g., a brand-new period before the first 13:00 UTC cron run).
-  const periodStatCount = await prisma.playerStatsPeriod.count({ where: { periodId } });
+  // Two paths with DIFFERENT attribution semantics for mid-period trades:
+  //
+  // Period-stats path (preferred): attributes ALL period stats to the player's
+  //   CURRENT owner (releasedAt === null). A player traded on day 10 of 28 → the
+  //   new team gets the full period's stats.
+  //
+  // Daily-stats fallback: attributes stats within each roster ownership window
+  //   (acquiredAt → releasedAt). Same traded player's pre-trade stats stay with
+  //   the original team.
+  //
+  // ⚠ Retroactive shift: a new period starts in daily-stats mode for ~13h (until
+  //   the 13:00 UTC cron populates PlayerStatsPeriod rows). A trade in that window
+  //   is attributed under daily-stats semantics. When the cron fires, the same query
+  //   retroactively re-attributes those stats under period-stats semantics. This is
+  //   known and accepted: the daily-stats path is a best-effort fallback; period-stats
+  //   is the authoritative view. The retroactive shift is bounded to trades that happen
+  //   in the first ~13h of a new period — a narrow window.
+  //
+  // Prefer PlayerStatsPeriod (via MLB byDateRange API) — accurate, handles
+  // doubleheaders. playerStatsDaily uses @@unique([playerId, gameDate]) which
+  // collapses doubleheaders, systematically undercounting RBI, K, W, IP.
   if (periodStatCount > 0) {
     return computeWithPeriodStats(teams, rosters, period, ilWindowsByPlayer);
   }
@@ -579,7 +597,6 @@ async function computeWithPeriodStats(
 
     for (const roster of teamRosters) {
       if (countedPlayers.has(roster.playerId)) continue;
-      countedPlayers.add(roster.playerId);
 
       // Skip players who were on IL at this period's start date.
       // Uses TransactionEvent effDate history — same date-aware logic as computeWithDailyStats.
@@ -591,7 +608,12 @@ async function computeWithPeriodStats(
       const currentTeam = activePlayerTeam.get(roster.playerId);
       if (currentTeam !== t.id) continue;
 
-      const stats = statsMap.get(roster.player.id);
+      // Mark after all guards: ensures the active entry (releasedAt=null) wins the
+      // dedup slot when Prisma returns a released entry before the active entry for
+      // the same player on the same team.
+      countedPlayers.add(roster.playerId);
+
+      const stats = statsMap.get(roster.playerId);
       if (!stats) continue;
 
       const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
