@@ -167,5 +167,68 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
       expect(dlc.R).toBe(8);
       expect(rgs.R).toBe(0);
     });
+
+    it("does NOT credit pitching stats (W, K, SV) to team that released a pitcher as free agent", async () => {
+      // Regression target: the production bug surfaced as W=15 (should ~12) and K=194 (should ~152)
+      // because dropped pitchers' full-period totals were bleeding into the releasing team.
+      // This test pins the fix for pitching categories specifically.
+      mockRosterFindMany.mockResolvedValue([
+        {
+          teamId: 145, playerId: 40, acquiredAt: new Date("2026-03-22"),
+          releasedAt: new Date("2026-04-19T00:00:00.000Z"), // released = period start; free agent
+          assignedPosition: "P",
+          player: { id: 40, mlbId: 4000, posPrimary: "P" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 40, ...ZERO_STATS, W: 3, K: 42, SV: 2 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      expect(rgs.W).toBe(0);
+      expect(rgs.K).toBe(0);
+      expect(rgs.S).toBe(0);
+    });
+
+    it("does NOT credit stats from any of multiple simultaneous free agents", async () => {
+      // Production incident: Los Doyers had 6 dropped players all as free agents.
+      // Each one must contribute 0 to every team — not just the last team that held them.
+      mockRosterFindMany.mockResolvedValue([
+        // Three pitchers dropped by RGS, all free agents (releasedAt=period start, no new owner)
+        {
+          teamId: 145, playerId: 50, acquiredAt: new Date("2026-03-22"),
+          releasedAt: PERIOD_START,
+          assignedPosition: "P",
+          player: { id: 50, mlbId: 5000, posPrimary: "P" },
+        },
+        {
+          teamId: 145, playerId: 51, acquiredAt: new Date("2026-03-22"),
+          releasedAt: PERIOD_START,
+          assignedPosition: "P",
+          player: { id: 51, mlbId: 5001, posPrimary: "P" },
+        },
+        {
+          teamId: 145, playerId: 52, acquiredAt: new Date("2026-03-22"),
+          releasedAt: PERIOD_START,
+          assignedPosition: "P",
+          player: { id: 52, mlbId: 5002, posPrimary: "P" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 50, ...ZERO_STATS, W: 2, K: 30 },
+        { playerId: 51, ...ZERO_STATS, W: 1, K: 15 },
+        { playerId: 52, ...ZERO_STATS, W: 2, K: 22, SV: 3 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      const dlc = result.find(r => r.team.code === "DLC")!;
+      // No free-agent stats should appear anywhere
+      expect(rgs.W).toBe(0);
+      expect(rgs.K).toBe(0);
+      expect(dlc.W).toBe(0);
+      expect(dlc.K).toBe(0);
+    });
   });
 });
