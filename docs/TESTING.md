@@ -35,16 +35,16 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1079 server + 763 client = 1842 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1098 server + 777 client = 1875 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
 **Current reality (2026-05-04):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent /ce:review work on PRs #226–#230 was verified with full unit suite (1544 green), both typechecks clean, and a 6-step browser smoke (Home → Team V3 hub → AddDrop preview-gating regression → Place-on-IL → Activate-from-IL) at `http://localhost:3011/`.
 
-## Current coverage (2026-05-11 baseline)
+## Current coverage (2026-05-15 baseline)
 
-### Server — 1079 passing (last verified 2026-05-08)
+### Server — 1098 passing (last verified 2026-05-15)
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -55,7 +55,7 @@ Major covered areas (selected):
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)
 - `features/waivers/routes.test.ts` — 12 (submit, process, cancel)
 - `features/wire-list/routes.test.ts` + `processor.test.ts` — 24 (Zod schema validation: CreatePeriodBody / Add / Drop entry bodies, error-code enum, drop-mode enum, period-results response shape)
-- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation)
+- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation) + 6 releaseAt boundary (free-agent → 0 credit, released before period → 0, traded mid-period → new team, no double-count, dropped pitcher pitching stats → 0, multiple simultaneous free agents → 0 all teams) + IL exclusion (separate file, daily + period paths)
 - `features/seasons/` — 14 service + 5 routes
 - `features/players/mlbSyncService.test.ts` — 28 (roster sync, position eligibility, Rule 2 prior-year 20-GP fallback)
 - `features/mlb-feed/` — 28 Gap 1 boxscore stat lines (gameLogService.test.ts: 18 — extractTodayLine matches by date / gameDate prefix / officialDate / two-way splits / DNP detection / AB=0+PA=0 defensive replacement; deriveGameStatus + buildGameStateDesc TOP/BOT/F/N edge cases; myPlayersToday.test.ts: 10 — hitter line / pitcher line / DNP after FINAL / PRE skips fetch / Promise.allSettled isolates failures / cache hit avoids refetch / 60s LIVE vs 24h FINAL TTL)
@@ -69,7 +69,8 @@ Major covered areas (selected):
 
 ### Client — tracked baseline plus recent focused additions
 
-- `api/base.test.ts` — 17 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
+- `api/base.test.ts` — 18 (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays; includes IEEE 754 edge case 19/80 → .238)
+- `lib/baseball.test.ts` — 9 (fmt3Avg canonical sports/baseball.ts: happy path, zero AB, 1.000, IEEE 754 19/80→.238 edge; fmtRate: strip leading zero, ≥1 display, NaN/Infinity; fmt2: 2 dp, non-finite empty)
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
 - `lib/mlbStatus.test.ts` — 6 (isMlbIlStatus: real MLB format + legacy form + non-IL + malformed + case sensitivity; mirror of `server/src/lib/__tests__/ilSlotGuard.test.ts`)
 - `hooks/useSessionHeartbeat.test.ts` — 7

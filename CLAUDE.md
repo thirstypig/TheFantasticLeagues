@@ -363,7 +363,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (1079 server + 751 client + 67 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 1948 tests, 31 feature modules)
+### Current Test Coverage (1098 server + 777 client + 67 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 1993 tests, 31 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 
@@ -408,7 +408,8 @@ E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e`
 - `server/src/features/auction/__tests__/retrospective.test.ts` — 11 tests (league stats, bargains/overpays, position spending, team efficiency)
 
 **Client (187 tests):**
-- `client/src/api/__tests__/base.test.ts` — 17 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays)
+- `client/src/api/__tests__/base.test.ts` — 18 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays; includes IEEE 754 edge case 19/80→.238)
+- `client/src/lib/__tests__/baseball.test.ts` — 9 tests (fmt3Avg/fmtRate/fmt2 canonical sports/baseball.ts: happy path + IEEE 754 rounding + non-finite guards)
 - `client/src/lib/__tests__/baseballUtils.test.ts` — 32 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition, positionToSlots)
 - `client/src/lib/__tests__/mlbStatus.test.ts` — 6 tests (isMlbIlStatus: real MLB API format `Injured N-Day` + legacy `Injured List N-Day` + non-IL rejects + malformed cases + case sensitivity; mirror of server `ilSlotGuard.test.ts`)
 - `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)

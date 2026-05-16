@@ -4,6 +4,50 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-15 — Standing stats attribution fix + AVG rounding + FanGraphs audit cadence
+
+FanGraphs OnRoto audit surfaced two silent correctness bugs in the standings pipeline. Both fixed, tested, and documented.
+
+### Shipped — 3 commits to main
+
+| Commit | Scope |
+|---|---|
+| `3af5793` | **fix(standings):** `computeWithPeriodStats` free-agent attribution — changed `currentTeam !== undefined && currentTeam !== t.id` to `currentTeam !== t.id`. Free agents (Map.get → undefined) were falling through and crediting dropped players' full-period stats to the last team that held them. Fixes Los Doyers W (~15→12), K (~194→152). Also fixes `fmt3Avg` IEEE 754 rounding: `(h/ab).toFixed(3)` → `Math.round(h*1000/ab)/1000).toFixed(3)` in both `api/base.ts` and `lib/sports/baseball.ts`. |
+| `e588e73` | **test:** 11 new tests — `standingsService.releaseAt.test.ts` +2 (dropped pitcher W/K/SV=0, multiple simultaneous free agents=0 all teams); new `client/src/lib/__tests__/baseball.test.ts` 9 tests (fmt3Avg/fmtRate/fmt2 canonical coverage with IEEE 754 edge case). |
+| `ed81283`–`e6c7dcb` | **docs:** `docs/solutions/logic-errors/standings-stat-attribution-and-avg-rounding.md` — captures both bugs, the roster-vs-standings confusion (data layer was always correct; only computation was wrong), FanGraphs team-by-team audit cadence with SQL queries, and three-layer roster legality check (cap, per-slot limits, position eligibility). |
+
+### Key findings from this session
+
+- **Roster was NOT reverting** — the `Roster` table and `TransactionEvent` log were always correct. The standing computation was incorrectly including dropped players' stats, making standings *look* like those players were still on the team. Data layer = authoritative; standings = derived.
+- **Los Doyers drop incident** — 6 players dropped 2026-04-28 with effective date 2026-04-19. All free agents (no active holder). Fixed computation now attributes 0 stats to any free agent, matching FanGraphs.
+- **`&&` short-circuit trap** — `map.get(x) !== undefined && map.get(x) !== y` silently includes absent keys. The simple fix: `map.get(x) !== y` (undefined never equals a teamId).
+- **IEEE 754 + toFixed** — `(19/80).toFixed(3)` = "0.237" not "0.238". Root cause: 19/80 stored as 0.23749999... in binary. Fix: integer arithmetic before rounding (`Math.round(19*1000/80) = 238`).
+
+### FanGraphs audit process (new)
+
+Three-layer legality check before comparing stats:
+1. Active count = league cap (pitcher_count + batter_count, IL excluded)
+2. Per-slot limits: C≤2, 1B/2B/3B/SS/MI/CM/DH≤1, OF≤5, P≤9
+3. Position eligibility: `isEligibleForSlot(posList, assignedPosition)` for every active player
+
+SQL queries for each layer documented in `docs/solutions/logic-errors/standings-stat-attribution-and-avg-rounding.md`.
+
+### Test counts at session end
+
+- **Server:** 1098 (was 1079; +19 this session and prior sessions since last count)
+- **Client:** 777 (was 751; +26 this session and prior sessions since last count)
+- **MCP fbst-app:** 67; **MCP mlb-data:** 50; **E2E:** 1.
+- **Total:** 1993 (was 1948).
+
+Both `tsc --noEmit` clean (client). Full suite green.
+
+### Backlog status
+
+- **0 P1** open.
+- **5 P2** open (from 2026-05-15 period-roster review — see `period_roster_review_p2_remaining.md` in memory): posPrimary guard, PITCHER_SLOTS "CL", duplicate standings call, buildIlWindows single-pass, extract ilWindows to lib/. IDOR + IL display fixes already shipped.
+
+---
+
 ## Session 2026-05-11 — Wire-list owner hook extraction + MCP tool parity + mobile tab P1 fix (2 PRs)
 
 Resumed mid-session from a compacted context. Completed `/ce:review` synthesis todos 184–194, fixed the VS Code TypeScript plugin, and wrote full test coverage for all new code.
