@@ -354,6 +354,8 @@ export default function Team() {
         const names = s.periodNames ?? [];
         const opts: PeriodOption[] = ids.map((id, i) => ({ id, name: names[i] || `Period ${i + 1}` }));
         setPeriodOptions(opts);
+        // Default to most recent period — Cumulative tab removed
+        if (opts.length > 0) setPeriodMode(opts[opts.length - 1].id);
       })
       .catch(() => { /* non-fatal: period selector won't show */ });
     return () => { canceled = true; };
@@ -1394,13 +1396,13 @@ export default function Team() {
                 </button>
               </div>
 
-              {/* Period selector pills — Cumulative season + each period */}
+              {/* Period selector pills */}
               {periodOptions.length > 0 && (
                 <div style={{ marginTop: 14, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                   <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)", marginRight: 4 }}>
                     View
                   </span>
-                  {[{ key: "season" as const, label: "Cumulative" }, ...periodOptions.map(p => ({ key: p.id, label: p.name }))].map((opt) => {
+                  {periodOptions.map(p => ({ key: p.id, label: p.name })).map((opt) => {
                     const isActive = periodMode === opt.key;
                     return (
                       <button
