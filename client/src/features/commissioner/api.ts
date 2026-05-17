@@ -55,10 +55,12 @@ export interface PriorTeam {
 export interface RosterItem {
   id: number;
   teamId: number;
+  assignedPosition?: string | null;
   player: {
     id: number;
     name: string;
     posPrimary: string;
+    posList?: string;
     mlbId?: number;
   };
   price: number;

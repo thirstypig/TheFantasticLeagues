@@ -7,6 +7,7 @@ import { mapPosition } from '../../../lib/sportConfig';
 import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { slotsFor } from '../../../lib/positionEligibility';
 
 interface Team {
   id: number;
@@ -221,7 +222,13 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                            value={displayPos}
                                            onChange={(e) => handlePositionChange(r.id, r.teamId, r.player.name, e.target.value)}
                                          >
-                                           {(isPitcherPos ? ["P"] : ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"]).map(p => (
+                                           {(() => {
+                                             if (isPitcherPos) return ["P"] as string[];
+                                             const all = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"] as const;
+                                             const eligible = r.player.posList ? slotsFor(r.player.posList) : null;
+                                             if (!eligible) return [...all];
+                                             return all.filter(p => p === "DH" || p === displayPos || eligible.has(p as any));
+                                           })().map(p => (
                                              <option key={p} value={p} className="text-black">{p}</option>
                                            ))}
                                          </select>
