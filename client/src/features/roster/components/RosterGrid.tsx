@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { X, BedDouble, Activity } from 'lucide-react';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { POS_ORDER } from '../../../lib/baseballUtils';
@@ -7,7 +7,21 @@ import { mapPosition } from '../../../lib/sportConfig';
 import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { slotsFor } from '../../../lib/positionEligibility';
+import { slotsFor, isSlotCode } from '../../../lib/positionEligibility';
+
+const HITTER_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"] as const;
+
+function positionOptions(
+  isPitcherPos: boolean,
+  eligibleSlots: ReturnType<typeof slotsFor> | undefined,
+  displayPos: string,
+): string[] {
+  if (isPitcherPos) return ["P"];
+  if (!eligibleSlots) return [...HITTER_POSITIONS];
+  return HITTER_POSITIONS.filter(p =>
+    p === "DH" || p === displayPos || (isSlotCode(p) && eligibleSlots.has(p))
+  );
+}
 
 interface Team {
   id: number;
@@ -78,6 +92,14 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editPrice, setEditPrice] = useState("");
+
+  const eligibleSlotsByRosterId = useMemo(() => {
+    const m = new Map<number, ReturnType<typeof slotsFor>>();
+    for (const r of rosters) {
+      if (r.player.posList) m.set(r.id, slotsFor(r.player.posList));
+    }
+    return m;
+  }, [rosters]);
 
   useEffect(() => {
     // If props update, sync state
@@ -222,13 +244,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                            value={displayPos}
                                            onChange={(e) => handlePositionChange(r.id, r.teamId, r.player.name, e.target.value)}
                                          >
-                                           {(() => {
-                                             if (isPitcherPos) return ["P"] as string[];
-                                             const all = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"] as const;
-                                             const eligible = r.player.posList ? slotsFor(r.player.posList) : null;
-                                             if (!eligible) return [...all];
-                                             return all.filter(p => p === "DH" || p === displayPos || eligible.has(p as any));
-                                           })().map(p => (
+                                           {positionOptions(isPitcherPos, eligibleSlotsByRosterId.get(r.id), displayPos).map(p => (
                                              <option key={p} value={p} className="text-black">{p}</option>
                                            ))}
                                          </select>
