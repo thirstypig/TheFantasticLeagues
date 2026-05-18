@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-05-08
+Last updated: 2026-05-18
 
 ## What this document is
 
@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1098 server + 777 client = 1875 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1103 server + 782 client = 1885 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -44,7 +44,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 
 ## Current coverage (2026-05-15 baseline)
 
-### Server — 1098 passing (last verified 2026-05-15)
+### Server — 1103 passing (last verified 2026-05-18)
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -84,6 +84,7 @@ Major covered areas (selected):
 - `features/transactions/components/RosterMovesTab/AddDropPanel.test.tsx` — includes DROP_REQUIRED in-season + preseason inverse + FA key-uniqueness regression + submit-body contract + default-no-selection regression for free agents without `_dbPlayerId`
 - `features/transactions/lib/permissions.test.ts` — 9 (canManageRoster matrix: admin / commissioner / owner with self-serve toggle / cross-team IDOR / no-league-rules loading state)
 - `lib/positionEligibility.test.ts` — 27 (slotsFor consolidation from the triplicated Phase 4 helpers)
+- `features/roster/RosterGrid.test.tsx` — 12 (IL quick-action buttons: place/activate per-row show/hide/fire; unbounded mode drops h-96 + scroll; position dropdown eligibility filter: pitcher→["P"], no posList→all 9, posList="SS"→[SS,MI,DH], posList="2B,SS"→[2B,SS,MI,DH], grandfathered displayPos always included)
 - `features/waivers/WaiverClaimForm.test.tsx` — 6 (in-season drop-required label, position eligibility)
 - `features/wire-list/__tests__/api.test.ts` — 21 (URL/method/body shape per wrapper: period CRUD + add/drop CRUD + processor — guards against route refactor, verb change, body shape drift, and the load-bearing `createWirePeriod` rename in #264)
 - `features/wire-list/__tests__/useWireListOwner.test.ts` — 11 (parallel load: getTeams + getActivePeriod in Promise.all; 404 from getActivePeriod → period null, no error; non-404 → static error + reportError; team not found; isReadOnly logic; early-return guard when leagueId null)
@@ -127,7 +128,7 @@ Run from `mcp-servers/fbst-app/` with `npx vitest run`.
 ## What's NOT covered today (gaps worth closing)
 
 1. **Watchlist flows** — no unit or E2E tests. A regression here (Session 68's star-not-rendering bug) would ship silently. Proposed: `features/watchlist/__tests__/useMyWatchlist.test.ts` + E2E flow "owner stars a player on Players page, sees it on Add/Drop, survives reload."
-2. **Position eligibility filter** — the CM/MI/specific-position filter bug fixed this session had no test guarding it. Proposed: `features/players/__tests__/positionFilter.test.ts` with table-driven cases.
+2. ✅ **Position eligibility filter** — ~~the CM/MI/specific-position filter bug fixed this session had no test guarding it~~ Closed 2026-05-18: 5 tests in `features/roster/RosterGrid.test.tsx` cover all 3 filter branches (pitcher/no-posList/eligible-set) including the grandfathered-slot guard.
 3. **Commissioner roster tool** — no tests of the new Add/Drop Search in CommissionerRosterTool.
 4. **Home dashboard** — basic component tests now exist, but My Team Today live-stat freshness and historical weekly-insight tabs still need deeper tests.
 5. **E2E baseline** — ✅ scaffolded (Session 69). One golden-path test passing. Next expansions: auction draft, trade processing, waiver FAAB ordering, roster lock/unlock.

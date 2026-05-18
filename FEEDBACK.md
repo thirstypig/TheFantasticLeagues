@@ -4,6 +4,34 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-18 (continuation) — test coverage + knowledge capture
+
+Short session continuing from the prior context. Committed the prior session's uncommitted doc changes, added test coverage for the eligibility filter, and wrote a solution doc for the Prisma select omission class of bug.
+
+### Shipped — 3 commits to main
+
+| Commit | Scope |
+|---|---|
+| `9f89fc5` | **test(roster):** 5 new tests in `RosterGrid.test.tsx` covering all 3 branches of the position dropdown eligibility filter: pitcher→`["P"]`, no `posList`→all 9 slots (fallback), `posList`-filtered→eligible ∪ {displayPos} ∪ {DH}. Includes grandfathered-slot guard. |
+| `4b76d2b` | **docs:** `docs/solutions/logic-errors/prisma-select-omission-silent-ui-fallback.md` — captures the class of bug where an incomplete Prisma `select` + optional TypeScript field creates a silent fallback (no error thrown, wrong UI behavior). Includes browser console API inspection technique and dev-process stale-server trap. |
+| `ed3e26e` | **docs/tests:** Committed the prior session's FEEDBACK + CLAUDE.md updates + 2 test fixes for `Team.aurora-additions.test.tsx`. |
+
+### Key findings
+
+- **`tsx --watch` + duplicate Vite trap:** Two Vite processes bound to port 3010 via `SO_REUSEPORT` — old process served stale bundles after code change. Standard diagnosis: `ps aux | grep vite` before concluding a fix didn't take. Captured in the solution doc.
+- **Optional TypeScript field masks Prisma omission:** `posList?: string` made the missing-select invisible to the type checker. The client guard `r.player.posList ? slotsFor(...) : null` then silently fell back to "show all 9 slots." Resolution: always verify the Prisma select when writing client logic that reads a player field.
+
+### Test counts at session end
+
+- **Server:** 1103 (unchanged)
+- **Client:** 782 (was 777; +5 RosterGrid eligibility filter tests)
+- **MCP fbst-app:** 67; **MCP mlb-data:** 50; **E2E:** 1
+- **Total:** 2003 (was 1998)
+
+Both `tsc --noEmit` clean. Full suite green (`/test-run` verified).
+
+---
+
 ## Session 2026-05-17/18 — FanGraphs Period 2 audit, ghost-IL resolution, standings P2 fixes, commissioner position eligibility
 
 Full-season audit against FanGraphs WK column confirmed all 8 OGBA teams match exactly. Resolved 5 backlog P2s from the 2026-05-15 review, shipped the period-roster UI cleanup, and wired position eligibility filtering into the commissioner roster tool.
