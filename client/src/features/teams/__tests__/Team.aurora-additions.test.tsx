@@ -434,7 +434,7 @@ describe("Aurora Team — period-roster pill row", () => {
     expect(screen.queryByRole("button", { name: /Cumulative/i })).not.toBeInTheDocument();
   });
 
-  it("auto-selects most recent period on load; clicking another period re-fetches", async () => {
+  it("defaults to season view on load; clicking a period pill fetches that period", async () => {
     vi.mocked(getSeasonStandings).mockResolvedValue({
       periodIds: [101, 102],
       periodNames: ["April", "May"],
@@ -445,13 +445,15 @@ describe("Aurora Team — period-roster pill row", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: /^April$/ })).toBeInTheDocument());
 
-    // Most recent period (102 = May) is auto-selected on mount.
+    // Season pill is the default — no period-roster fetch on mount.
+    expect(getTeamPeriodRoster).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /^May$/ }));
     await waitFor(() => {
       expect(getTeamPeriodRoster).toHaveBeenCalledWith(10, 102);
     });
 
     fireEvent.click(screen.getByRole("button", { name: /^April$/ }));
-
     await waitFor(() => {
       expect(getTeamPeriodRoster).toHaveBeenCalledWith(10, 101);
     });
