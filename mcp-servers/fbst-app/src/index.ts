@@ -14,6 +14,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { FbstApiClient } from "./apiClient.js";
 import { registerWireListTools } from "./tools.js";
 import { registerCommissionerTools } from "./commissionerTools.js";
+import { registerStandingsTools } from "./tools/standings.js";
 
 const client = new FbstApiClient();
 
@@ -24,6 +25,7 @@ const server = new McpServer({
 
 registerWireListTools(server, client);
 registerCommissionerTools(server, client);
+registerStandingsTools(server, client);
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
