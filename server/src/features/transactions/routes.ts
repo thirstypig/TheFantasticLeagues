@@ -42,6 +42,7 @@ import {
   resolveLineup,
   type AppliedReassignment,
 } from "./lib/autoResolveLineup.js";
+import { negotiateInheritedSlot } from "./lib/positionInherit.js";
 import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
 import { clearStandingsCache } from "../standings/services/standingsService.js";
@@ -153,17 +154,6 @@ router.post(
         error: "Player is already on this team's active roster",
         code: "OWNERSHIP_CONFLICT",
       });
-    }
-
-    if (enforce) {
-      try {
-        await assertNoGhostIl(prisma, teamId);
-      } catch (err) {
-        if (isRosterRuleError(err)) {
-          return res.status(400).json({ ok: false, error: err.message, code: err.code });
-        }
-        throw err;
-      }
     }
 
     let dropRosterPreview: { id: number; assignedPosition: string | null } | null = null;
@@ -331,23 +321,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     return res.status(400).json({ error: `Player is already on this team's active roster` });
   }
 
-  // 3. Ghost-IL pre-check (plan Q12=b). A team with a player stashed in an
-  //    IL slot whose MLB status is no longer an "Injured …-Day" designation
-  //    cannot do any new roster operation until they resolve it. Fails open on
-  //    feed unavailability (listGhostIlPlayersForTeam never speculatively labels
-  //    a player ghost when the MLB status can't be read).
-  if (enforce) {
-    try {
-      await assertNoGhostIl(prisma, teamId);
-    } catch (err) {
-      if (isRosterRuleError(err)) {
-        return res.status(400).json({ error: err.message, code: err.code });
-      }
-      throw err;
-    }
-  }
-
-  // 4. Drop-target preview. The bipartite matcher (inside the transaction)
+  // 3. Drop-target preview. The bipartite matcher (inside the transaction)
   //    figures out the legal end-state and may shuffle other players to make
   //    room — those reassignments are echoed back via `appliedReassignments`.
   //    The pre-flight strict-pairwise check was removed when auto-resolve
@@ -438,6 +412,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
 
     // Process drop FIRST so matcher (when on) sees the post-drop state.
     let droppedRosterId: number | null = null;
+    let dropPlayerPosList = "";
     if (dropPlayerId) {
       const dropRoster = await tx.roster.findFirst({
         where: { teamId, playerId: dropPlayerId, releasedAt: null }
@@ -448,6 +423,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         await tx.roster.update({ where: { id: dropRoster.id }, data: { releasedAt: effective, source: "DROP" } });
 
         const dropPlayer = await tx.player.findUnique({ where: { id: dropPlayerId } });
+        dropPlayerPosList = dropPlayer?.posList ?? "";
         await tx.transactionEvent.create({
           data: {
             rowHash: `DROP-${crypto.randomUUID()}-${dropPlayerId}`,
@@ -464,15 +440,20 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       }
     }
 
-    // Position inheritance: added player takes the dropped player's exact
-    // slot. If there's no drop (pre-season or flag off), fall back to the
-    // legacy "primary position" slot mapping.
+    // Position inheritance: added player takes the dropped player's slot.
+    // If the drop player's slot isn't one the new player can fill, find the
+    // best shared slot (intersection of both players' eligible slots) so the
+    // new player is placed correctly from the start rather than relying on
+    // the bipartite matcher to fix a bad initial assignment.
     const PITCHER_POS = new Set(["P", "SP", "RP", "CL"]);
     const primaryPos = (player?.posPrimary ?? "UT").toUpperCase();
     const legacyAssignedPos = PITCHER_POS.has(primaryPos) ? "P" : primaryPos;
     const inheritedPos = dropRosterPreview?.assignedPosition ?? null;
-    const assignedPos = (enforce && inheritedPos && inheritedPos !== "IL")
-      ? inheritedPos
+    const resolvedInheritedPos = (enforce && inheritedPos && inheritedPos !== "IL" && player?.posList)
+      ? negotiateInheritedSlot(player.posList, inheritedPos, dropPlayerPosList)
+      : inheritedPos;
+    const assignedPos = (enforce && resolvedInheritedPos && resolvedInheritedPos !== "IL")
+      ? resolvedInheritedPos
       : legacyAssignedPos;
 
     const newRoster = await tx.roster.create({
@@ -497,7 +478,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     // Yahoo-style auto-resolve: run bipartite matcher to resolve position
     // conflicts. Reads a fresh in-tx view so the daily eligibility sync
     // doesn't race us.
-    if (enforce && dropPlayerId && inheritedPos && inheritedPos !== "IL") {
+    if (enforce && dropPlayerId && resolvedInheritedPos && resolvedInheritedPos !== "IL") {
       // Parallel reads inside the tx — both touch independent rows.
       // Holds the connection ~300ms→~150ms per claim under
       // connection_limit=1 (todo #139).

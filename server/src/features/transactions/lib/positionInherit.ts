@@ -12,6 +12,7 @@
 
 import { positionToSlots } from "../../../lib/sports/baseball.js";
 import { RosterRuleError } from "../../../lib/rosterRuleError.js";
+import { slotsFor } from "./slotMatcher.js";
 
 /**
  * Does any of the player's `posList` positions map to a slot that includes
@@ -30,12 +31,31 @@ export function isEligibleForSlot(posList: string, targetSlot: string): boolean 
 }
 
 /**
- * Throws if the added player isn't eligible for the dropped player's slot.
- * Use after the drop target's `assignedPosition` has been read from Roster.
+ * Returns the best slot for the new player to inherit after a drop.
  *
- * The error message calls out a concrete remedy ("pick a different drop
- * whose slot can fit the added player") because the UX mitigation in the
- * plan assumes owners see this error and adjust — they should know why.
+ * If the dropped player's current slot is in the add player's eligible slots,
+ * return it directly. Otherwise, scan the add player's eligible slots and
+ * return the first one the drop player is also eligible for — so a 2B player
+ * sitting in SS can "move" to 2B to make room for a new 2B/MI player.
+ *
+ * Falls back to `dropSlot` if no shared slot exists; the bipartite matcher
+ * will resolve any remaining conflict.
+ */
+export function negotiateInheritedSlot(
+  addPosList: string,
+  dropSlot: string,
+  dropPosList: string,
+): string {
+  if (isEligibleForSlot(addPosList, dropSlot)) return dropSlot;
+  const addEligibleSlots = slotsFor(addPosList);
+  for (const slot of addEligibleSlots) {
+    if (isEligibleForSlot(dropPosList, slot)) return slot;
+  }
+  return dropSlot;
+}
+
+/**
+ * Throws if the added player isn't eligible for the dropped player's slot.
  */
 export function assertAddEligibleForDropSlot(
   add: { name: string; posList: string },

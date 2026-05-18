@@ -497,8 +497,16 @@ export default function AddDropPanel({
     if (!selectedAdd) return [] as RosterMovesPlayer[];
     return dropCandidates
       .filter((p) => {
+        // Direct fit: player's current slot is one the new player can fill.
         const slot = assignedSlot(p);
-        return isSlotCode(slot) && addSlots.has(slot);
+        if (isSlotCode(slot) && addSlots.has(slot)) return true;
+        // Indirect fit: player is eligible (via posList) for a slot the new
+        // player can fill — they can be moved to open that slot.
+        const playerSlots = slotsFor(p.positions || p.posPrimary || "");
+        for (const addSlot of addSlots) {
+          if (playerSlots.has(addSlot)) return true;
+        }
+        return false;
       })
       .sort((a, b) => comparePlayers(a, b, dropSortKey, dropSortDir))
       .slice(0, 10);
@@ -506,9 +514,16 @@ export default function AddDropPanel({
   const faStatMode = useMemo(() => statModeForPlayers(freeAgents, selectedAdd), [freeAgents, selectedAdd]);
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
   const dropTargetSlot = assignedSlot(selectedDrop);
-  const slotCompatible = selectedDrop && addSlots.size > 0
-    ? isSlotCode(dropTargetSlot) && addSlots.has(dropTargetSlot)
-    : true;
+  const slotCompatible = (() => {
+    if (!selectedDrop || addSlots.size === 0) return true;
+    const slot = assignedSlot(selectedDrop);
+    if (isSlotCode(slot) && addSlots.has(slot)) return true;
+    const dropSlots = slotsFor(selectedDrop.positions || selectedDrop.posPrimary || "");
+    for (const addSlot of addSlots) {
+      if (dropSlots.has(addSlot)) return true;
+    }
+    return false;
+  })();
 
   const dropRequired = inSeason;
   const selectedFieldsComplete =
