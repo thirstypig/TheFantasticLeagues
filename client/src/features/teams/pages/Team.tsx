@@ -354,8 +354,6 @@ export default function Team() {
         const names = s.periodNames ?? [];
         const opts: PeriodOption[] = ids.map((id, i) => ({ id, name: names[i] || `Period ${i + 1}` }));
         setPeriodOptions(opts);
-        // Default to most recent period — Cumulative tab removed
-        if (opts.length > 0) setPeriodMode(opts[opts.length - 1].id);
       })
       .catch(() => { /* non-fatal: period selector won't show */ });
     return () => { canceled = true; };
@@ -393,7 +391,7 @@ export default function Team() {
           setSelectedPeriodStart(res.period.startDate);
         }
       })
-      .catch(() => { if (!canceled) setPeriodRoster([]); })
+      .catch(() => { if (!canceled) { setPeriodRoster([]); setSelectedPeriodStart(null); } })
       .finally(() => { if (!canceled) setPeriodLoading(false); });
     return () => { canceled = true; };
   }, [periodMode, teamMeta?.id]);
@@ -407,9 +405,21 @@ export default function Team() {
     // the DB response solely for stats computation (gte boundary) but the
     // player was released at the period's first moment and never played for
     // this team during the period.
-    return periodRoster.filter(r =>
-      r.releasedAt === null || !selectedPeriodStart || r.releasedAt > selectedPeriodStart
-    ).map(r => {
+    const filtered = periodRoster.filter(r =>
+      r.releasedAt === null || !selectedPeriodStart ||
+      new Date(r.releasedAt) > new Date(selectedPeriodStart)
+    );
+    // Deduplicate by playerId, keeping active rows (releasedAt === null) over
+    // released rows — handles the trade-away-and-back scenario where the same
+    // player appears as both a released entry and an active entry.
+    const deduped = new Map<number, typeof filtered[number]>();
+    for (const r of filtered) {
+      const existing = deduped.get(r.playerId);
+      if (!existing || r.releasedAt === null) {
+        deduped.set(r.playerId, r);
+      }
+    }
+    return Array.from(deduped.values()).map(r => {
       // Use Partial because the row may have no period-stats yet (synthetic
       // rows, mid-period sync gap). Each Number(...) call below tolerates
       // undefined fields by falling back to 0.
@@ -1402,7 +1412,7 @@ export default function Team() {
                   <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)", marginRight: 4 }}>
                     View
                   </span>
-                  {periodOptions.map(p => ({ key: p.id, label: p.name })).map((opt) => {
+                  {[{ key: "season" as const, label: "Season" }, ...periodOptions.map(p => ({ key: p.id as PeriodMode, label: p.name }))].map((opt) => {
                     const isActive = periodMode === opt.key;
                     return (
                       <button
