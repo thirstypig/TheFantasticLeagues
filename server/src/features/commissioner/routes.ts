@@ -11,7 +11,6 @@ import { writeAuditLog } from "../../lib/auditLog.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.js";
-import { enforceRosterRules } from "../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
 import { listGhostIlPlayersForTeam } from "../../lib/ilSlotGuard.js";
@@ -816,8 +815,7 @@ router.patch(
     // The "IL" slot is exempt — MLB-IL eligibility is enforced by the
     // dedicated /transactions/il-stash endpoint, not here. A null clears
     // the assignment; also allowed.
-    if (enforceRosterRules()
-        && updates.assignedPosition !== undefined
+    if (updates.assignedPosition !== undefined
         && updates.assignedPosition !== null
         && updates.assignedPosition !== "IL") {
       const targetSlot = String(updates.assignedPosition);
