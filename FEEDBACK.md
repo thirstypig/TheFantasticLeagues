@@ -4,6 +4,50 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-17/18 — FanGraphs Period 2 audit, ghost-IL resolution, standings P2 fixes, commissioner position eligibility
+
+Full-season audit against FanGraphs WK column confirmed all 8 OGBA teams match exactly. Resolved 5 backlog P2s from the 2026-05-15 review, shipped the period-roster UI cleanup, and wired position eligibility filtering into the commissioner roster tool.
+
+### Shipped — 10 commits to main
+
+| Commit | Scope |
+|---|---|
+| `4f359bd` | **fix(standings):** `countedPlayers` array now built from the same sorted keys as the stats loop (fixes rare mis-ordering). Parallelized `ilEvents` + `periodStatCount` Prisma queries. Added attribution-guard docs to `standingsService.ts`. |
+| `7b0f7b6` | **fix(standings):** Period-category standings result is now cached in-memory per period (eliminates duplicate call on the Season page). Settlement endpoint (`GET /api/standings/:leagueId/settlement`) moved behind `requireCommissionerOrAdmin()` — was world-readable, leaking per-owner payout data. |
+| `623c3e9` | **fix(client):** `fmt3Avg` in `client/src/lib/sports/baseball.ts` is now a proper re-export of the canonical implementation in `client/src/api/base.ts` (was a diverged copy). Adds a `console.warn` in `buildIlWindows` for orphaned `IL_ACTIVATE` events that have no matching `IL_STASH`. |
+| `2542182` | **perf(db):** Composite index `TransactionEvent(playerId, transactionType, effDate)` — covers the `ilEvents` query in `computeTeamStatsFromDb` precisely; eliminates post-scan filter on the two frequently queried types. |
+| `22cfe31` | **chore:** Mark todo 201 complete. |
+| `f6272b0` | **fix(team):** Period roster view now hides released players (`releasedAt IS NOT NULL` rows were leaking through). |
+| `60268b1` | **fix(team):** Period roster query uses `startDate` boundary — was using `isActive` flag which shifts mid-period. |
+| `ecfbd95` | **feat(team):** Removed "Cumulative" tab from Team page. Period tabs only; page defaults to most recent period on load. |
+| `1d8c22a` | **feat(commissioner):** Position dropdown in RosterGrid now filtered to eligible slots only via `slotsFor(r.player.posList)`. DH always shown; current assigned position always kept. Added `posList` + `assignedPosition` to `CommissionerRosterItem` type in `commissioner/api.ts`. |
+| `f8c91d6` | **fix(commissioner):** `GET /api/commissioner/:leagueId/rosters` was omitting `posList` from the Prisma player select — without it the eligibility filter had nothing to act on. |
+
+### Key findings from this session
+
+- **Ghost-IL audit:** All 4 ghost-IL players (Chourio/DDG, Vaughn/DLC, Betts/LDY, Palencia/RGS) stashed 2026-04-19. `wasOnIlAtPeriodStart` correctly gates them out of standings since `w.start <= periodStart` uses `<=`. Their stats are correctly excluded — standings already matched FanGraphs before any code change.
+- **RGS ghost-IL blocker:** Palencia's MLB status is no longer an injury designation, blocking new IL stashes. User must activate or drop Palencia first. This is working as designed — ghost-IL check is a correctness guard, not a bug.
+- **stale Vite process trap:** Two Vite processes (PIDs from different days) were both bound to port 3010 via `SO_REUSEPORT`. The Monday process served cached bundles until killed. Sign: DOM showed old code despite file changes on disk.
+- **`tsx --watch` doesn't auto-restart in background:** The server process started via `npm run dev > log &` doesn't watch for subsequent file edits when started this way. Kill and restart required.
+- **Test fix:** `Team.aurora-additions.test.tsx` — 2 tests updated to match new period-only behavior: "Cumulative" assertion removed; auto-selection-on-mount assertion added.
+
+### Test counts at session end
+
+- **Server:** 1103 (was 1098; +5 from `ilWindows` + standings parallelism tests)
+- **Client:** 777 (unchanged; 2 tests updated in place)
+- **MCP fbst-app:** 67; **MCP mlb-data:** 50; **E2E:** 1
+- **Total:** 1998 (was 1993)
+
+Both `tsc --noEmit` clean. Full suite green.
+
+### Backlog status
+
+- **0 P1** open.
+- **0 P2** open (all 5 from 2026-05-15 review shipped this session).
+- Open todos 195–207 are carry-over P2/P3 items from earlier reviews — none blocking.
+
+---
+
 ## Session 2026-05-15 — Standing stats attribution fix + AVG rounding + FanGraphs audit cadence
 
 FanGraphs OnRoto audit surfaced two silent correctness bugs in the standings pipeline. Both fixed, tested, and documented.

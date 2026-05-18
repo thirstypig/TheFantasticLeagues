@@ -409,7 +409,7 @@ describe("Aurora Team — Lineup Intelligence respects selectedWeekKey", () => {
 // 4. Period-roster pill row (shipped in PR #272)
 // ──────────────────────────────────────────────────────────────────────
 describe("Aurora Team — period-roster pill row", () => {
-  it("renders 'Cumulative' + each period name when periodOptions.length > 0", async () => {
+  it("renders each period name (no Cumulative tab) when periodOptions.length > 0", async () => {
     vi.mocked(getSeasonStandings).mockResolvedValue({
       periodIds: [101, 102],
       periodNames: ["April", "May"],
@@ -417,10 +417,10 @@ describe("Aurora Team — period-roster pill row", () => {
     renderTeam("ACES");
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Cumulative/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^April$/ })).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: /^April$/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^May$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Cumulative/i })).not.toBeInTheDocument();
   });
 
   it("does not render the pill row when periodOptions is empty", async () => {
@@ -434,7 +434,7 @@ describe("Aurora Team — period-roster pill row", () => {
     expect(screen.queryByRole("button", { name: /Cumulative/i })).not.toBeInTheDocument();
   });
 
-  it("clicking a period pill calls getTeamPeriodRoster with that periodId", async () => {
+  it("auto-selects most recent period on load; clicking another period re-fetches", async () => {
     vi.mocked(getSeasonStandings).mockResolvedValue({
       periodIds: [101, 102],
       periodNames: ["April", "May"],
@@ -443,15 +443,17 @@ describe("Aurora Team — period-roster pill row", () => {
 
     renderTeam("ACES");
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /^May$/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /^April$/ })).toBeInTheDocument());
 
-    // Sanity: nothing fetched in season mode (default).
-    expect(getTeamPeriodRoster).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: /^May$/ }));
-
+    // Most recent period (102 = May) is auto-selected on mount.
     await waitFor(() => {
       expect(getTeamPeriodRoster).toHaveBeenCalledWith(10, 102);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^April$/ }));
+
+    await waitFor(() => {
+      expect(getTeamPeriodRoster).toHaveBeenCalledWith(10, 101);
     });
   });
 });
