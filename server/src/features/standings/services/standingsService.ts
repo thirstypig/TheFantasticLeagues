@@ -367,6 +367,24 @@ export function rankPoints(
  * Compute team-level aggregated stats from PlayerStatsPeriod DB data.
  * Joins player stats with active rosters for the given league and period.
  * Returns TeamStatRow[] compatible with computeCategoryRows/computeStandingsFromStats.
+ *
+ * Attribution semantics depend on which path is active:
+ *
+ * Period-stats path (PlayerStatsPeriod rows exist for this period):
+ *   ALL period stats are attributed to the player's CURRENT owner
+ *   (releasedAt=null). A mid-period trade gives the full period's stats
+ *   to the new team regardless of when the trade occurred.
+ *
+ * Daily-stats fallback (no period stats yet — brand-new period):
+ *   Stats are split at ownership boundaries. Pre-trade stats stay with
+ *   the original team; post-trade stats go to the new team.
+ *
+ * IMPORTANT: A period starts in daily-stats mode for ~13 hours (until the
+ * 13:00 UTC cron populates PlayerStatsPeriod rows). Any trade processed in
+ * that window is initially attributed under daily-stats semantics. When the
+ * cron fires, the same standings query retroactively re-attributes stats to
+ * period-stats semantics — the original team loses credit, the new team gains.
+ * This is intentional system behavior, not a bug, but it IS time-dependent.
  */
 export async function computeTeamStatsFromDb(
   leagueId: number,

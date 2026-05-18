@@ -231,11 +231,55 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
       expect(dlc.K).toBe(0);
     });
 
-    it("credits stats exactly once when player is released and re-acquired by same team in same period", async () => {
+    it("credits stats exactly once when player is released and re-acquired by same team — active entry returned first (normal order)", async () => {
+      // Normal case: Prisma returns the active (releasedAt=null) entry before the released entry.
+      // Stats should be credited exactly once to the team that currently holds the player.
       const dropDate = new Date("2026-04-25T00:00:00.000Z");
       const readdDate = new Date("2026-04-28T00:00:00.000Z");
 
       mockRosterFindMany.mockResolvedValue([
+        // Active entry FIRST — the "normal" Prisma ordering
+        {
+          teamId: 145, playerId: 60, acquiredAt: readdDate,
+          releasedAt: null,
+          assignedPosition: "SS",
+          player: { id: 60, mlbId: 6000, posPrimary: "SS" },
+        },
+        {
+          teamId: 145, playerId: 60, acquiredAt: new Date("2026-03-22"),
+          releasedAt: dropDate,
+          assignedPosition: "SS",
+          player: { id: 60, mlbId: 6000, posPrimary: "SS" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 60, ...ZERO_STATS, R: 7, HR: 2 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      // Stats credited exactly once (active entry wins, no double-count)
+      expect(rgs.R).toBe(7);
+      expect(rgs.HR).toBe(2);
+      // Total across both teams must still be 7 (no duplication)
+      const dlc = result.find(r => r.team.code === "DLC")!;
+      expect(rgs.R + dlc.R).toBe(7);
+    });
+
+    it("credits stats exactly once when player is released and re-acquired by same team — released entry returned FIRST (ordering bug scenario)", async () => {
+      // Bug scenario: Prisma returns the released entry before the active one.
+      // Without the fix (#195), countedPlayers.add would fire on the released entry,
+      // claiming the dedup slot before the currentTeam guard could skip it —
+      // the active entry would then be blocked by countedPlayers.has(), causing
+      // the player to be skipped entirely (R=0 instead of R=7).
+      // With the fix, countedPlayers.add fires AFTER all guards, so the released
+      // entry is skipped by the currentTeam !== t.id guard first; the active entry
+      // then passes all guards and gets counted correctly.
+      const dropDate = new Date("2026-04-25T00:00:00.000Z");
+      const readdDate = new Date("2026-04-28T00:00:00.000Z");
+
+      mockRosterFindMany.mockResolvedValue([
+        // Released entry FIRST — triggers the bug if countedPlayers.add fires too early
         {
           teamId: 145, playerId: 60, acquiredAt: new Date("2026-03-22"),
           releasedAt: dropDate,
