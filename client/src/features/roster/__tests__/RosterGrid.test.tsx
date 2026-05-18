@@ -136,6 +136,76 @@ describe("RosterGrid IL shortcut buttons", () => {
   });
 });
 
+describe("RosterGrid position dropdown eligibility filter", () => {
+  // When canEditPosition is true, each non-pitcher row renders a <select> that
+  // must be filtered to the player's eligible roster slots.  These tests pin
+  // down the three branches of the IIFE inside the select:
+  //   1. Pitcher  → always ["P"]
+  //   2. No posList → all 9 hitter slots (unfiltered fallback)
+  //   3. Has posList → eligible set ∪ {displayPos} ∪ {DH}
+
+  const getOptions = (select: HTMLElement) =>
+    Array.from((select as HTMLSelectElement).options).map(o => o.value);
+
+  it("shows only 'P' for a pitcher row regardless of posList", () => {
+    const pitcher = {
+      id: 2001, teamId: 147, assignedPosition: "P",
+      player: { id: 610, name: "Gerrit Cole", posPrimary: "SP", posList: "SP" },
+      price: 25,
+    };
+    render(<RosterGrid teams={teams} rosters={[pitcher]} canEditPosition />);
+    expect(getOptions(screen.getByRole("combobox"))).toEqual(["P"]);
+  });
+
+  it("shows all 9 hitter slots when posList is absent (unfiltered fallback)", () => {
+    const noList = {
+      id: 2002, teamId: 147, assignedPosition: "OF",
+      player: { id: 611, name: "Cody Bellinger", posPrimary: "OF" }, // no posList
+      price: 18,
+    };
+    render(<RosterGrid teams={teams} rosters={[noList]} canEditPosition />);
+    expect(getOptions(screen.getByRole("combobox"))).toEqual([
+      "C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH",
+    ]);
+  });
+
+  it("filters to eligible slots for a pure SS player (SS + MI + DH only)", () => {
+    const ssPlayer = {
+      id: 2003, teamId: 147, assignedPosition: "SS",
+      player: { id: 612, name: "Francisco Lindor", posPrimary: "SS", posList: "SS" },
+      price: 30,
+    };
+    render(<RosterGrid teams={teams} rosters={[ssPlayer]} canEditPosition />);
+    expect(getOptions(screen.getByRole("combobox"))).toEqual(["SS", "MI", "DH"]);
+  });
+
+  it("includes the union of eligible slots for a multi-position player (2B,SS → 2B + SS + MI + DH)", () => {
+    const multi = {
+      id: 2004, teamId: 147, assignedPosition: "2B",
+      player: { id: 613, name: "Jazz Chisholm", posPrimary: "2B", posList: "2B,SS" },
+      price: 22,
+    };
+    render(<RosterGrid teams={teams} rosters={[multi]} canEditPosition />);
+    expect(getOptions(screen.getByRole("combobox"))).toEqual(["2B", "SS", "MI", "DH"]);
+  });
+
+  it("always includes the current assigned position even when posList doesn't cover it (grandfathered slot guard)", () => {
+    // Player is assigned to CM but this season only has OF in their posList.
+    // displayPos ("CM") must stay in the dropdown so the commissioner can
+    // keep the slot — the grandfathering logic is intentional.
+    const grandfathered = {
+      id: 2005, teamId: 147, assignedPosition: "CM",
+      player: { id: 614, name: "Garrett Cooper", posPrimary: "OF", posList: "OF" },
+      price: 5,
+    };
+    render(<RosterGrid teams={teams} rosters={[grandfathered]} canEditPosition />);
+    const options = getOptions(screen.getByRole("combobox"));
+    expect(options).toEqual(["CM", "OF", "DH"]);
+    expect(options).not.toContain("1B");
+    expect(options).not.toContain("SS");
+  });
+});
+
 describe("RosterGrid unbounded mode", () => {
   // Regression test for the Skunk Dogs "missing player" report in session 80.
   // The focused single-team view in CommissionerRosterTool inherited the
