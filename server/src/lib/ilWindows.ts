@@ -1,3 +1,5 @@
+import { logger } from "./logger.js";
+
 export type IlWindow = { start: Date; end: Date | null };
 
 /**
@@ -27,7 +29,10 @@ export function buildIlWindows(
         windows.set(pid, list);
         openStart.delete(pid);
       } else {
-        console.warn(`[ilWindows] orphaned IL_ACTIVATE: playerId=${pid} effDate=${e.effDate?.toISOString()}`);
+        logger.warn(
+          { playerId: pid, effDate: e.effDate },
+          "buildIlWindows: orphaned IL_ACTIVATE with no matching IL_STASH",
+        );
       }
     }
   }
