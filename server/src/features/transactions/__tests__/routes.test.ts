@@ -694,21 +694,28 @@ describe("POST /transactions/claim — Phase 2 enforcement (ENFORCE=true)", () =
     );
   });
 
-  it("rejects claim when team has a ghost-IL player (GHOST_IL)", async () => {
-    mockPrisma.roster.findFirst.mockResolvedValue(null);
+  it("claim proceeds when team has a ghost-IL player — ghost IL no longer blocks add/drop", async () => {
+    // Regression guard: assertNoGhostIl was previously called in the claim flow
+    // and would reject. The rule was removed — ghost IL players can stay stashed
+    // indefinitely; there is no forced-activation requirement for add/drop.
     mockAssertNoGhostIl.mockRejectedValue(
       new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
         "GHOST_IL",
-        "Team has ghost-IL player Reactivated Guy — activate before stashing.",
+        "Would have blocked before the fix.",
       ),
     );
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)  // existingRoster
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "MI" }); // drop preview
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst.mockResolvedValue({ id: 50, teamId: 10, playerId: 200 });
 
     const res = await supertest(app).post("/transactions/claim").send({
       leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200,
     });
 
-    expect(res.status).toBe(400);
-    expect(res.body.code).toBe("GHOST_IL");
+    expect(res.status).toBe(200);
+    expect(mockAssertNoGhostIl).not.toHaveBeenCalled();
   });
 
   it("rejects claim when dropPlayerId is not on team (IL_UNKNOWN_PLAYER)", async () => {

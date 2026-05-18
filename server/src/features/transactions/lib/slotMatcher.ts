@@ -66,7 +66,7 @@ export type MatchResult =
  * server. The two implementations stay in sync via shared `positionToSlots`
  * (the actual eligibility ladder) which both modules import from baseball.ts.
  */
-function slotsFor(posList: string): Set<string> {
+export function slotsFor(posList: string): Set<string> {
   const out = new Set<string>();
   for (const raw of (posList ?? "").split(/[,/| ]+/)) {
     const trimmed = raw.trim();
