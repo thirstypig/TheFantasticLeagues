@@ -31,7 +31,7 @@
 
   --am-text:           #1c1f1a;
   --am-text-muted:     #4a4d44;
-  --am-text-faint:     #7a7d72;
+  --am-text-faint:     #60635a;   /* darkened: 3.7→5.0:1 on light surfaces, WCAG AA for small text */
 
   --am-accent:         #1f5a3d;   /* outfield green — primary */
   --am-accent-2:       #1a3a5a;   /* navy — secondary, activity tags */
@@ -57,24 +57,24 @@
 .dark .aurora-theme {
   /* ── Dark mode: medium-gray page, near-black cards ── */
   --am-bg:             #3d434b;   /* medium gray page — not black */
-  --am-surface:        #1c1f24;   /* near-black for cards / tables */
-  --am-surface-alt:    #23262c;   /* zebra row, table header bg */
-  --am-surface-strong: #23262c;
-  --am-surface-faint:  #1c1f24;
+  --am-surface:        #222630;   /* lifted from #1c1f24 — reduces harsh contrast with page */
+  --am-surface-alt:    #292d35;   /* zebra row, table header bg */
+  --am-surface-strong: #292d35;
+  --am-surface-faint:  #222630;
 
   --am-border:         #4a5058;
   --am-border-strong:  #6a7079;
 
   --am-text:           #f1f2ec;
-  --am-text-muted:     #c8cac0;
-  --am-text-faint:     #9298a0;
+  --am-text-muted:     #d0d2c8;   /* brightened from #c8cac0 for cleaner hierarchy */
+  --am-text-faint:     #c0c5cb;   /* lightened: 5.8→7.5:1 on dark surfaces, legible small text */
 
   --am-accent:         #82c896;   /* softened green for dark */
   --am-accent-2:       #8ec1e6;
   --am-cardinal:       #8ec1e6;
 
-  --am-chip:           #2a2e34;
-  --am-chip-strong:    #353940;
+  --am-chip:           #303640;   /* lifted to sit on raised surface */
+  --am-chip-strong:    #3b4047;
 
   --am-positive:       #92d292;
   --am-negative:       #e89a9a;

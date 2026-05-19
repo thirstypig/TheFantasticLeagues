@@ -443,7 +443,7 @@ export default function Players() {
                               {teamLabel}
                             </span>
                           ) : (
-                            <span className="text-[10px] font-medium uppercase opacity-30 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--am-text-faint)' }}>
+                            <span className="text-[10px] font-medium uppercase opacity-50 group-hover:opacity-80 transition-opacity" style={{ color: 'var(--am-text-faint)' }}>
                               Available
                             </span>
                           )}

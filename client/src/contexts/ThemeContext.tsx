@@ -14,7 +14,7 @@ function getSystemTheme(): Theme {
 }
 
 function syncThemeColorMeta(theme: Theme) {
-  const color = theme === 'dark' ? '#0a0f1a' : '#e4e9f0';
+  const color = theme === 'dark' ? '#3d434b' : '#ebe6db';
   let meta = document.querySelector('meta[name="theme-color"]:not([media])') as HTMLMetaElement | null;
   if (!meta) {
     meta = document.createElement('meta');
