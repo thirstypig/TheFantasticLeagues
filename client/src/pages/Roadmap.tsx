@@ -38,7 +38,7 @@ import {
 
 /* ── Data ────────────────────────────────────────────────────────── */
 
-const LAST_UPDATED = "April 28, 2026 (Session 85 — Aurora rollout complete)";
+const LAST_UPDATED = "May 19, 2026 (Session 2026-05-19 — Score Sheet theme shipped)";
 
 // ─── Product Roadmap ───
 
@@ -367,6 +367,14 @@ interface CompletedGroup {
 }
 
 const completedFeatures: CompletedGroup[] = [
+  {
+    label: "Session 2026-05-19 — Score Sheet design system: flat paper aesthetic replaces Aurora iridescent palette (PR #346)",
+    items: [
+      { title: "Score Sheet theme — desktop + mobile chrome rewrite", description: "AuroraShell: 56px sticky top nav with horizontal text tabs (green underline active state), More popover for secondary routes. MobileShell: 50px top app bar + hamburger-triggered 260px left-slide drawer (always mounted in DOM for test stability). MobileTabBar converted from fixed bottom dock to column list inside drawer. Inter only — Space Grotesk removed.", session: "2026-05-19 (PR #346)" },
+      { title: "Score Sheet tokens — aurora.css full replacement", description: "Flat paper palette: warm taupe light mode (#ebe6db page / #f6f2e6 surface), medium gray dark mode (#3d434b page / #222630 surface). No gradients, no blur, no iridescence. atoms.tsx updated; AmbientBg removed. Legacy --lg-* token redirects preserved so pre-Aurora components inherit new palette without callsite changes.", session: "2026-05-19 (PR #346)" },
+      { title: "Graphic design audit — contrast + loading state fixes", description: "WCAG-AA fixes: light --am-text-faint #7a7d72 → #60635a (3.7→5:1 on 10px labels), dark surface lifted, dark --am-text-faint brightened to 7.5:1. Body background bleed fixed (index.css .dark rule was old Aurora navy gradient, bleeds outside aurora-theme scope). Loading spinners updated from blue-500 to Score Sheet green. Players.tsx 'Available' double-fade fixed.", session: "2026-05-19 (PR #346)" },
+    ],
+  },
   {
     label: "Session 85 — Aurora rollout finished: pre-auth + onboarding + live floor + final polish (PRs #155–#158)",
     items: [

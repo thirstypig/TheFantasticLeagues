@@ -35,16 +35,16 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1103 server + 782 client = 1885 tests, ~20s total) + 67 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1110 server + 798 client = 1908 tests, ~20s total) + 72 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
 **Current reality (2026-05-04):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent /ce:review work on PRs #226–#230 was verified with full unit suite (1544 green), both typechecks clean, and a 6-step browser smoke (Home → Team V3 hub → AddDrop preview-gating regression → Place-on-IL → Activate-from-IL) at `http://localhost:3011/`.
 
-## Current coverage (2026-05-15 baseline)
+## Current coverage (2026-05-19 baseline)
 
-### Server — 1103 passing (last verified 2026-05-18)
+### Server — 1110 passing (last verified 2026-05-19)
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -91,8 +91,10 @@ Major covered areas (selected):
 - `features/wire-list/__tests__/WireListRow.test.tsx` — 10 (content rendering; ▲▼× hidden when isReadOnly; ▲ disabled for isFirst, ▼ disabled for isLast; WaiverDropModeToggle shown only for drop rows; opacity 0.5 when isPending)
 - `features/wire-list/__tests__/WaiverDropModeToggle.test.tsx` — 5 (REL/IL buttons rendered; onChange fires on toggle; onChange blocked on already-active; onChange blocked when disabled; buttons disabled when disabled prop set)
 - `features/wire-list/__tests__/utils.test.ts` — 4 (formatDeadline: non-empty string, numeric day present, no [object Object]/NaN, past date doesn't throw)
+- `mobile/__tests__/MobileShell.test.tsx` — 6 (always-mounted drawer invariant: `data-testid="mobile-tab-bar"` present when drawer closed; hamburger aria-expanded starts false, flips true on click; overlay click closes drawer; Escape key closes; drawer persists on non-home paths)
 - `mobile/__tests__/MobileTabBar.commish.test.tsx` — 7 (unified 5-tab set present; AI/Commish tabs absent; My Team tab scoped to own team code, not all /teams/ paths)
 - `mobile/__tests__/MobileLayoutGate.test.tsx` — 5 (desktop renders AppShell, mobile substitutes twin page, breakpoint boundary at 767px)
+- `contexts/__tests__/ThemeContext.test.tsx` — 10 (Score Sheet meta theme-color: dark→#3d434b, light→#ebe6db; rejects old Aurora dark #0a0f1a; updates existing meta tag without duplicate; fbst-theme localStorage key; dark/light class on documentElement; toggleTheme both directions)
 - `mobile/__tests__/MobileMore.test.tsx` — 5 (manager profile strip, league section, commish items hidden for non-commish)
 - `mobile/__tests__/MobileHome.test.tsx` — 6 (hero card with rank; standings top-5 with YOU badge; activity feed with kind chips; Trade Proposals section with team names and player names; League Board section with card title and author; view-roster link to user's team)
 - `mobile/__tests__/MobileTeam.test.tsx` — 23 (roster hub fetch, tab switching, IL tab, hero strip, standings rank, move sheet, IL stash/activate flows, optimistic updates, rollback, refetch-on-success, backdrop dismiss, Hitter Totals row with summed numerators, Pitcher Totals row with rate stats derived from IP/ER/BB_H, IL tab hides totals)
@@ -114,10 +116,11 @@ Major covered areas (selected):
 - `cache.test.ts` — 8, `rateLimiter.test.ts` — 5, `tools.test.ts` — 16, `integration.test.ts` — 21.
 Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 
-### MCP (FBST App Tools) — 67 passing (not run by root `npm test`)
+### MCP (FBST App Tools) — 72 passing (not run by root `npm test`)
 
 - `tools.test.ts` — 2 (registration + uniqueness for all 16 tool names)
 - `contract.test.ts` — 53 (schema validation for 6 representative tools; HTTP shape for all 16 tools; auth flow — Bearer header + no-token clean fail; 5 error-code passthrough; 4 schema drift detectors via `WaiverDropModeSchema`, `CreateAddEntryBodySchema`, `CreateDropEntryBodySchema`, `FailOutcomeBodySchema`)
+- `standings.test.ts` — 17 (standings MCP tools: get_current_standings, get_period_standings, get_category_standings; URL construction, bearer auth, empty-period guard, category-name passthrough, invalid-league error shape)
 Run from `mcp-servers/fbst-app/` with `npx vitest run`.
 
 ### E2E (Playwright) — 1 passing, 1 file

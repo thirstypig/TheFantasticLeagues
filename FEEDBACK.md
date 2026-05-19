@@ -4,6 +4,42 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-19 — Score Sheet theme + graphic design audit (PR #346)
+
+Two-commit PR replacing the Aurora iridescent palette with the Score Sheet flat-paper design system, followed by a graphic design audit pass that fixed contrast and loading-state colors.
+
+### Shipped — PR #346 (`design/score-sheet-theme`, ready to merge)
+
+| Commit | Scope |
+|---|---|
+| `70440e1` | **design:** Score Sheet theme — AuroraShell rewrite (56px sticky top nav, horizontal text tabs, More popover), MobileShell rewrite (50px top app bar + always-mounted left-slide drawer), MobileTabBar converted from fixed bottom dock to column layout inside drawer, atoms.tsx tokens updated, aurora.css fully replaced with Score Sheet tokens (`--am-*`), index.html Inter-only fonts, AuroraShell PR #346 |
+| `325fa9e` | **design (audit):** Graphic design audit — WCAG-AA contrast fixes: `--am-text-faint` raised `#7a7d72 → #60635a` (light, 3.7→5:1), dark mode surface lifted `#1c1f24 → #222630`, dark `--am-text-faint` brightened `#9298a0 → #c0c5cb` (7.5:1). Body background bleed fixed: `.dark { --lg-bg-page }` was old navy gradient — replaced with `#3d434b`. App.tsx loading spinners switched from `border-blue-500` to Score Sheet green. Players.tsx "Available" double-fade fixed (`opacity-30 × faint token` → `opacity-50`). ThemeContext meta color corrected. |
+| `4fa8446` | **test:** 16 new tests — `MobileShell.test.tsx` (6: always-mounted drawer invariant + hamburger/overlay/Escape/navigation interactions) + `ThemeContext.test.tsx` (10: Score Sheet meta colors, no old Aurora navy, localStorage key, documentElement class, toggleTheme) |
+
+### Key design decisions
+
+- **Score Sheet aesthetic:** flat paper (no gradients, no iridescent shimmer), Inter only (Space Grotesk removed), warm taupe light mode (`#ebe6db` page / `#f6f2e6` surface), medium gray dark mode (`#3d434b` page / `#222630` surface, near-black cards, not true black)
+- **Desktop nav:** 56px sticky `<header>` with horizontal text tabs + active green underline; More popover for secondary routes; logo block left, season chip + user chip right
+- **Mobile nav:** Hamburger-triggered left-slide drawer (260px, always-mounted in DOM, CSS `transform` visibility) — no bottom dock anymore; top app bar 50px
+- **Body background scope bug:** `body { background: var(--lg-bg-page) }` is OUTSIDE `.aurora-theme`; the `.dark` rule in `index.css` must be updated separately from the `aurora.css` token remaps. The body was bleeding the old Aurora navy gradient during loading states and on short/empty pages.
+- **Port verification:** FBST Vite dev server canonical port is **3010** (per `MASTER-PORTS.md`). A separate instance on `:5174` was active during prior verification — both served same source files but `:3010` is authoritative.
+
+### Test counts at session end
+
+- **Server:** 1110 (was 1103; +7 from mlbSyncService + standings service updates during session 2026-05-17/18)
+- **Client:** 798 (was 782; +16 this session — 6 MobileShell + 10 ThemeContext)
+- **MCP fbst-app:** 72 (was 67; +5 standings tools tests from PR #345)
+- **MCP mlb-data:** 50; **E2E:** 1
+- **Total:** 2031 (was 2003)
+
+Both `tsc --noEmit` clean. Full suite green.
+
+### Pending
+- [ ] **Merge PR #346** — all work is in `design/score-sheet-theme`, ready to land
+- [ ] **Pre-auth pages** (Login, Signup, etc.) still use old Aurora tokens — they have their own `aurora-theme dark` wrapper but the CSS classes are old. Score Sheet tokens already map via `--lg-*` redirects in `aurora.css` so visually OK, but a dedicated pass would tighten them.
+
+---
+
 ## Session 2026-05-18 (continuation) — test coverage + knowledge capture
 
 Short session continuing from the prior context. Committed the prior session's uncommitted doc changes, added test coverage for the eligibility filter, and wrote a solution doc for the Prisma select omission class of bug.

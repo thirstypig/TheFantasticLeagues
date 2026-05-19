@@ -35,6 +35,29 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.70.0",
+    date: "May 19, 2026",
+    session: "Session 2026-05-19 — Score Sheet theme + design audit",
+    title: "Score Sheet design system — flat paper aesthetic replaces Aurora iridescent palette (PR #346)",
+    highlights: [
+      "Desktop nav redesigned: 56px sticky top bar with horizontal text tabs (green underline on active), More popover for secondary routes. Clean scorebook aesthetic replaces glass/gradient chrome.",
+      "Mobile nav redesigned: hamburger → 260px left-slide drawer (always-mounted for test stability). 50px top app bar with centered league name. Bottom dock removed.",
+      "Graphic design audit: WCAG-AA contrast fixes across both modes. Dark mode body background bleed fixed (body was inheriting old Aurora navy gradient outside aurora-theme scope). Loading spinners updated to Score Sheet green. 'Available' player label double-fade fixed.",
+      "Inter only: Space Grotesk removed from fonts. Score Sheet is purely Inter for both display and body.",
+    ],
+    changes: [
+      { type: "feat", description: "AuroraShell: 56px sticky header with horizontal NavLink text tabs, More popover (AI, Commissioner, Wire List, etc.), season chip + user chip right side." },
+      { type: "feat", description: "MobileShell: 50px top app bar (hamburger | title | theme toggle), left-slide drawer 260px, always mounted in DOM via CSS transform — no conditional render." },
+      { type: "feat", description: "MobileTabBar: converted from fixed bottom dock to column list inside the drawer." },
+      { type: "feat", description: "atoms.tsx: all aurora tokens updated to Score Sheet palette; AmbientBg removed (flat design has no background mesh)." },
+      { type: "fix", description: "aurora.css: light mode --am-text-faint raised from #7a7d72 → #60635a (WCAG AA on 10px labels). Dark mode surface lifted from #1c1f24 → #222630, text-faint brightened to #c0c5cb (7.5:1 contrast)." },
+      { type: "fix", description: "index.css: .dark { --lg-bg-page } was old Aurora navy gradient — replaced with flat #3d434b. Fixes loading-state and empty-page background bleed since body is outside aurora-theme scope." },
+      { type: "fix", description: "ThemeContext.tsx: syncThemeColorMeta was emitting old Aurora values (#0a0f1a / #e4e9f0). Now emits Score Sheet colors (#3d434b / #ebe6db)." },
+      { type: "fix", description: "Players.tsx: 'Available' tag was opacity-30 × --am-text-faint = near-invisible in both modes. Raised to opacity-50 / hover:opacity-80." },
+      { type: "test", description: "16 new tests: MobileShell always-mounted drawer invariant + ThemeContext Score Sheet color regression guards." },
+    ],
+  },
+  {
     version: "0.68.0",
     date: "Apr 28, 2026",
     session: "Session 85 (cont.) — final polish",
