@@ -1,18 +1,17 @@
 /*
- * Aurora atoms — React port of the design's primitives from
- * `aurora-atoms.jsx` in the handoff bundle. Tokens consumed via
- * CSS variables in `aurora.css` (scoped to `.aurora-theme`).
+ * Score Sheet atoms — React primitives for the Score Sheet design system.
  *
- * One file for simplicity during the pilot; if Aurora rolls out
- * further, atoms should split per-file.
+ * Token values come from aurora.css (scoped to .aurora-theme). The atom
+ * API surface is unchanged from the Aurora era so no callsite in the app
+ * needs to be updated — only the token values and styles in this file
+ * change to match the Score Sheet aesthetic.
  */
 import React, { CSSProperties } from "react";
 import { NavLink } from "react-router-dom";
 
 // ─── AmbientBg ───
-// Full-bleed background with three radial-glow layers + grain. Pin
-// `position: relative` on the parent so this absolutely-positioned
-// layer sits beneath your content.
+// Score Sheet is flat / paper-like — no gradient glows. This component
+// is kept as a no-op so existing callsites (AuroraShell) don't break.
 export function AmbientBg({ style }: { style?: CSSProperties }) {
   return (
     <div
@@ -24,27 +23,13 @@ export function AmbientBg({ style }: { style?: CSSProperties }) {
         pointerEvents: "none",
         ...style,
       }}
-    >
-      <div style={{ position: "absolute", inset: 0, background: "var(--am-glow-1)" }} />
-      <div style={{ position: "absolute", inset: 0, background: "var(--am-glow-2)" }} />
-      <div style={{ position: "absolute", inset: 0, background: "var(--am-glow-3)" }} />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          opacity: 0.4,
-          mixBlendMode: "overlay",
-          backgroundImage: "radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "3px 3px",
-        }}
-      />
-    </div>
+    />
   );
 }
 
 // ─── Glass ───
-// Glassmorphism surface card. `strong` uses the heavier opacity surface
-// (for hero / focus content); default is the standard surface.
+// Score Sheet card: solid surface, 1px border, 6px radius, no blur.
+// The `strong` prop uses the alt/zebra shade.
 export function Glass({
   children,
   style,
@@ -62,13 +47,10 @@ export function Glass({
     <div
       className={"am-glass " + className}
       style={{
-        background: strong ? "var(--am-surface-strong)" : "var(--am-surface)",
-        backdropFilter: "blur(28px) saturate(140%)",
-        WebkitBackdropFilter: "blur(28px) saturate(140%)",
+        background: strong ? "var(--am-surface-alt)" : "var(--am-surface)",
         border: "1px solid var(--am-border)",
-        borderRadius: 24,
-        boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 12px 40px rgba(0,0,0,0.18)",
-        padding: padded ? 20 : 0,
+        borderRadius: 6,
+        padding: padded ? 16 : 0,
         position: "relative",
         overflow: "hidden",
         ...style,
@@ -80,8 +62,7 @@ export function Glass({
 }
 
 // ─── IridescentRing ───
-// 1px iridescent border wrapping its child. Pair with `Glass` to get
-// the signature "ringed glass card" focus treatment.
+// Score Sheet: plain border wrapper (iridescent gradient removed).
 export function IridescentRing({
   children,
   style,
@@ -93,9 +74,9 @@ export function IridescentRing({
     <div
       style={{
         position: "relative",
-        borderRadius: 26,
+        borderRadius: 8,
         padding: 1,
-        background: "var(--am-ring)",
+        background: "var(--am-border)",
         ...style,
       }}
     >
@@ -138,7 +119,7 @@ export function Chip({
         alignItems: "center",
         gap: 6,
         padding: "4px 10px",
-        borderRadius: 99,
+        borderRadius: 4,
         fontSize: 11,
         fontWeight: 500,
         background: strong ? "var(--am-chip-strong)" : "var(--am-chip)",
@@ -154,7 +135,6 @@ export function Chip({
 }
 
 // ─── SectionLabel ───
-// Small uppercase eyebrow above a section.
 export function SectionLabel({
   children,
   style,
@@ -165,12 +145,12 @@ export function SectionLabel({
   return (
     <div
       style={{
-        fontSize: 10,
-        letterSpacing: 1.4,
+        fontSize: 10.5,
+        letterSpacing: 0.4,
         textTransform: "uppercase",
         color: "var(--am-text-faint)",
-        fontWeight: 600,
-        marginBottom: 10,
+        fontWeight: 700,
+        marginBottom: 8,
         ...style,
       }}
     >
@@ -180,12 +160,11 @@ export function SectionLabel({
 }
 
 // ─── IridText ───
-// Iridescent gradient text, used for hero numbers (points, etc.).
-// Falls back to a plain text fill when the browser can't background-clip.
+// Score Sheet: renders with accent color instead of iridescent gradient.
 export function IridText({
   children,
   size = 36,
-  weight = 300,
+  weight = 600,
   family = "var(--am-display)",
   style,
 }: {
@@ -202,10 +181,7 @@ export function IridText({
         fontSize: size,
         fontWeight: weight,
         lineHeight: 1,
-        background: "var(--am-irid)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        backgroundClip: "text",
+        color: "var(--am-accent)",
         fontVariantNumeric: "tabular-nums",
         ...style,
       }}
@@ -216,9 +192,6 @@ export function IridText({
 }
 
 // ─── Sparkline ───
-// 1-D series rendered with the iridescent gradient stroke. `data` is
-// numeric series; auto-scales to width × height. Returns `null` for
-// empty input rather than rendering a flat line.
 export function Sparkline({
   data,
   w = 120,
@@ -238,20 +211,11 @@ export function Sparkline({
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-  // Random suffix avoids gradient id collisions when multiple
-  // sparklines mount in the same tree.
-  const id = "am-sp-" + Math.random().toString(36).slice(2, 8);
   return (
     <svg width={w} height={h} style={{ display: "block" }}>
-      <defs>
-        <linearGradient id={id} x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stopColor="var(--am-cardinal)" />
-          <stop offset="1" stopColor="var(--am-accent)" />
-        </linearGradient>
-      </defs>
       <polyline
         fill="none"
-        stroke={"url(#" + id + ")"}
+        stroke="var(--am-accent)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -262,8 +226,6 @@ export function Sparkline({
 }
 
 // ─── AIStrip ───
-// Woven AI-suggestion strip designed to live inside a hero card. Each
-// item shows an icon, title, body, and CTA button.
 export interface AIStripItem {
   icon: string;
   title: string;
@@ -281,9 +243,9 @@ export function AIStrip({
   return (
     <div
       style={{
-        background: "var(--am-ai-strip)",
+        background: "var(--am-surface-alt)",
         border: "1px solid var(--am-border)",
-        borderRadius: 16,
+        borderRadius: 6,
         padding: 12,
       }}
     >
@@ -295,7 +257,7 @@ export function AIStrip({
           marginBottom: 10,
         }}
       >
-        <SectionLabel style={{ marginBottom: 0 }}>✦ AI suggestions</SectionLabel>
+        <SectionLabel style={{ marginBottom: 0 }}>AI suggestions</SectionLabel>
         <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>{subtitle}</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -307,8 +269,8 @@ export function AIStrip({
               gap: 10,
               alignItems: "flex-start",
               padding: 10,
-              borderRadius: 12,
-              background: "var(--am-surface-faint)",
+              borderRadius: 4,
+              background: "var(--am-surface)",
               border: "1px solid var(--am-border)",
             }}
           >
@@ -316,9 +278,9 @@ export function AIStrip({
               style={{
                 width: 22,
                 height: 22,
-                borderRadius: 7,
+                borderRadius: 4,
                 flexShrink: 0,
-                background: "var(--am-irid)",
+                background: "var(--am-accent)",
                 display: "grid",
                 placeItems: "center",
                 fontSize: 11,
@@ -337,8 +299,9 @@ export function AIStrip({
                   fontSize: 10.5,
                   fontWeight: 600,
                   padding: "4px 9px",
-                  borderRadius: 99,
+                  borderRadius: 4,
                   border: "1px solid var(--am-border-strong)",
+                  color: "var(--am-text-muted)",
                 }}
               >
                 {it.cta}
@@ -352,9 +315,8 @@ export function AIStrip({
 }
 
 // ─── Topbar ───
-// Floating top strip per the Aurora System.html spec. Iridescent square
-// logo on the left, league display name + subtitle, right-side chip slot,
-// iridescent avatar disc. Absolute-positioned over the AmbientBg.
+// Kept for backward compat; AuroraShell no longer mounts this — the new
+// sticky header is inline in AuroraShell.tsx.
 export function Topbar({
   title = "The Fantastic Leagues",
   subtitle,
@@ -371,64 +333,43 @@ export function Topbar({
   return (
     <div
       style={{
-        position: "absolute",
-        top: 16,
-        left: 18,
-        right: 18,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        zIndex: 20,
         gap: 12,
+        padding: "0 18px",
+        height: 56,
+        background: "var(--am-surface)",
+        borderBottom: "1px solid var(--am-border-strong)",
       }}
     >
       <div
-        style={{ display: "flex", alignItems: "center", gap: 12, cursor: onLogoClick ? "pointer" : "default", minWidth: 0 }}
+        style={{ display: "flex", alignItems: "center", gap: 8, cursor: onLogoClick ? "pointer" : "default" }}
         onClick={onLogoClick}
       >
         <div
           aria-hidden
           style={{
-            width: 30,
-            height: 30,
-            borderRadius: 9,
-            background: "var(--am-irid)",
-            boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+            width: 28,
+            height: 28,
+            borderRadius: 4,
+            background: "var(--am-accent)",
+            display: "grid",
+            placeItems: "center",
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#fff",
             flexShrink: 0,
           }}
-        />
+        >
+          F
+        </div>
         <div style={{ minWidth: 0 }}>
-          <div
-            style={{
-              fontFamily: "var(--am-display)",
-              fontSize: 18,
-              lineHeight: 1,
-              letterSpacing: -0.2,
-              color: "var(--am-text)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {title}
-          </div>
-          {subtitle && (
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--am-text-faint)",
-                marginTop: 2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {subtitle}
-            </div>
-          )}
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--am-text)", whiteSpace: "nowrap" }}>{title}</div>
+          {subtitle && <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>{subtitle}</div>}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         {right}
         <button
           type="button"
@@ -437,11 +378,14 @@ export function Topbar({
           style={{
             width: 28,
             height: 28,
-            borderRadius: 99,
-            background: "var(--am-irid)",
-            border: "1px solid var(--am-border-strong)",
+            borderRadius: 4,
+            background: "var(--am-chip)",
+            border: "1px solid var(--am-border)",
             cursor: "pointer",
             padding: 0,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--am-text-muted)",
           }}
         />
       </div>
@@ -450,9 +394,7 @@ export function Topbar({
 }
 
 // ─── Dock ───
-// Floating bottom-center nav per the Aurora System.html spec. Items
-// route via React Router NavLink; the optional `extra` slot lets the
-// shell add a "More" overflow trigger after the last item.
+// Kept for backward compat; AuroraShell now uses inline horizontal nav.
 export interface DockItem {
   key: string;
   label: string;
@@ -470,20 +412,11 @@ export function Dock({
   return (
     <div
       style={{
-        position: "fixed",
-        bottom: 22,
-        left: "50%",
-        transform: "translateX(-50%)",
         display: "flex",
-        gap: 6,
-        padding: 6,
-        background: "var(--am-surface-strong)",
-        backdropFilter: "blur(32px) saturate(160%)",
-        WebkitBackdropFilter: "blur(32px) saturate(160%)",
-        border: "1px solid var(--am-border-strong)",
-        borderRadius: 22,
-        boxShadow: "0 18px 50px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.08) inset",
-        zIndex: 30,
+        gap: 4,
+        padding: "0 8px",
+        alignItems: "stretch",
+        height: "100%",
       }}
     >
       {items.map((it) => (
@@ -494,32 +427,16 @@ export function Dock({
           style={({ isActive }) => ({
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            borderRadius: 16,
+            padding: "0 16px",
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 600,
             color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
-            background: isActive ? "var(--am-chip-strong)" : "transparent",
-            border: "1px solid " + (isActive ? "var(--am-border-strong)" : "transparent"),
+            borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
             textDecoration: "none",
+            whiteSpace: "nowrap",
           })}
         >
-          {({ isActive }) => (
-            <>
-              <span
-                style={{
-                  fontSize: 14,
-                  background: isActive ? "var(--am-irid)" : "transparent",
-                  WebkitBackgroundClip: isActive ? "text" : undefined,
-                  WebkitTextFillColor: isActive ? "transparent" : undefined,
-                }}
-              >
-                {it.glyph}
-              </span>
-              {it.label}
-            </>
-          )}
+          {it.label}
         </NavLink>
       ))}
       {extra}

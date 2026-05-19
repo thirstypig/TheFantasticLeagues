@@ -1,144 +1,140 @@
 /*
- * Aurora — design tokens (PR #135 single-screen pilot per the
- * Aurora System.html design handoff).
+ * Score Sheet — design tokens.
  *
- * Variables are scoped to a `.aurora-theme` wrapper so the rest of
- * the app keeps rendering with the existing Liquid Glass tokens.
- * Apply `.aurora-theme` (and `.dark` for dark mode) to a parent of
- * any Aurora content.
+ * Scorebook / scoreboard aesthetic: sans-serif (Inter only), soft taupe
+ * paper in light mode, medium-gray page + near-black card in dark mode,
+ * dark-green primary accent.
  *
- * Tokens mirror the design's `aurora` palette in
- * `ambient-theme.js`:
- *   - Display font: Space Grotesk
- *   - Iridescent gradient: teal → indigo → magenta
- *   - Glassmorphism surfaces with 28px blur + 140% saturate
- *   - Dark-mode-first; light is a paper-pale companion
+ * Tokens are scoped to `.aurora-theme` (unchanged from the Aurora era so
+ * every existing className just picks up the new values automatically).
+ *
+ * Legacy `--lg-*` token redirects are preserved at the bottom of this
+ * file so that all pre-Aurora components (ThemedTable, SortableHeader,
+ * lg-card, lg-button, etc.) inherit the Score Sheet palette without
+ * any callsite changes.
  */
 
 .aurora-theme {
-  /* Light defaults (paper-pale companion) */
-  --am-display: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --am-body: "Inter", system-ui, sans-serif;
+  /* Typeface — Inter only; no separate display face */
+  --am-display: "Inter", system-ui, sans-serif;
+  --am-body:    "Inter", system-ui, sans-serif;
 
-  --am-bg: #eef3ff;
-  --am-glow-1: radial-gradient(60% 60% at 8% 0%, rgba(0, 184, 148, 0.30), transparent 60%);
-  --am-glow-2: radial-gradient(55% 60% at 95% 14%, rgba(138, 43, 214, 0.22), transparent 60%);
-  --am-glow-3: radial-gradient(60% 70% at 70% 100%, rgba(214, 43, 155, 0.18), transparent 65%);
+  /* ── Light mode: soft taupe paper (not pure white) ── */
+  --am-bg:             #ebe6db;   /* page background */
+  --am-surface:        #f6f2e6;   /* card / table background */
+  --am-surface-alt:    #e3ddcd;   /* zebra row, table header bg */
+  --am-surface-strong: #e3ddcd;   /* alias: used by older atoms that reference surface-strong */
+  --am-surface-faint:  #f6f2e6;   /* compat alias: same as surface */
 
-  --am-surface: rgba(255, 255, 255, 0.7);
-  --am-surface-strong: rgba(255, 255, 255, 0.92);
-  --am-surface-faint: rgba(8, 12, 28, 0.03);
-  --am-border: rgba(8, 12, 28, 0.10);
-  --am-border-strong: rgba(8, 12, 28, 0.18);
+  --am-border:         #c2bbab;   /* hairline borders */
+  --am-border-strong:  #8e8775;   /* nav underline, divider above tables */
 
-  --am-text: #0b1230;
-  --am-text-muted: #3a4670;
-  --am-text-faint: #7682a8;
+  --am-text:           #1c1f1a;
+  --am-text-muted:     #4a4d44;
+  --am-text-faint:     #7a7d72;
 
-  --am-accent: #1d6df0;
-  --am-cardinal: #c41a85;
+  --am-accent:         #1f5a3d;   /* outfield green — primary */
+  --am-accent-2:       #1a3a5a;   /* navy — secondary, activity tags */
+  --am-cardinal:       #1a3a5a;   /* compat alias → accent-2 */
 
-  --am-irid: linear-gradient(135deg, #00b894 0%, #2f6df0 35%, #8a2bd6 70%, #d62b9b 100%);
-  --am-ring: linear-gradient(135deg, rgba(0, 184, 148, 0.55), rgba(138, 43, 214, 0.45));
-  --am-ai-strip: linear-gradient(90deg, rgba(0, 184, 148, 0.28), rgba(74, 140, 255, 0.20) 50%, rgba(214, 43, 155, 0.18) 100%);
+  --am-chip:           #dad3bf;   /* filter pills / chips */
+  --am-chip-strong:    #c8c0a8;
 
-  --am-chip: rgba(8, 12, 28, 0.05);
-  --am-chip-strong: rgba(8, 12, 28, 0.10);
+  --am-positive:       #2e6a2e;   /* +stat deltas */
+  --am-negative:       #9b2c2c;   /* −stat deltas */
 
-  --am-positive: #0a7a5c;
-  --am-negative: #a3148b;
+  /* Gradient tokens removed (Score Sheet is flat) — neutral fallbacks
+     so any atom that still interpolates them renders gracefully. */
+  --am-glow-1:  none;
+  --am-glow-2:  none;
+  --am-glow-3:  none;
+  --am-irid:    var(--am-accent);
+  --am-ring:    var(--am-border);
+  --am-ai-strip: var(--am-surface);
 }
 
 .aurora-theme.dark,
 .dark .aurora-theme {
-  /* Signature dark mode */
-  --am-bg: #050a14;
-  --am-glow-1: radial-gradient(55% 60% at 8% 6%, rgba(42, 240, 200, 0.20), transparent 60%);
-  --am-glow-2: radial-gradient(50% 55% at 96% 14%, rgba(177, 75, 255, 0.22), transparent 60%);
-  --am-glow-3: radial-gradient(60% 70% at 65% 100%, rgba(255, 77, 210, 0.16), transparent 65%);
+  /* ── Dark mode: medium-gray page, near-black cards ── */
+  --am-bg:             #3d434b;   /* medium gray page — not black */
+  --am-surface:        #1c1f24;   /* near-black for cards / tables */
+  --am-surface-alt:    #23262c;   /* zebra row, table header bg */
+  --am-surface-strong: #23262c;
+  --am-surface-faint:  #1c1f24;
 
-  --am-surface: rgba(14, 20, 36, 0.55);
-  --am-surface-strong: rgba(20, 28, 48, 0.72);
-  --am-surface-faint: rgba(255, 255, 255, 0.03);
-  --am-border: rgba(255, 255, 255, 0.10);
-  --am-border-strong: rgba(255, 255, 255, 0.18);
+  --am-border:         #4a5058;
+  --am-border-strong:  #6a7079;
 
-  --am-text: #eaf2ff;
-  --am-text-muted: #a7b6d6;
-  --am-text-faint: #6c7896;
+  --am-text:           #f1f2ec;
+  --am-text-muted:     #c8cac0;
+  --am-text-faint:     #9298a0;
 
-  --am-accent: #5cf0d4;
-  --am-cardinal: #ff6db5;
+  --am-accent:         #82c896;   /* softened green for dark */
+  --am-accent-2:       #8ec1e6;
+  --am-cardinal:       #8ec1e6;
 
-  --am-irid: linear-gradient(135deg, #2af0c8 0%, #4a8cff 35%, #b14bff 65%, #ff4dd2 100%);
-  --am-ring: linear-gradient(135deg, rgba(42, 240, 200, 0.5), rgba(74, 140, 255, 0.5), rgba(255, 77, 210, 0.5));
-  --am-ai-strip: linear-gradient(90deg, rgba(42, 240, 200, 0.16), rgba(74, 140, 255, 0.18) 50%, rgba(255, 77, 210, 0.20) 100%);
+  --am-chip:           #2a2e34;
+  --am-chip-strong:    #353940;
 
-  --am-chip: rgba(255, 255, 255, 0.06);
-  --am-chip-strong: rgba(255, 255, 255, 0.12);
+  --am-positive:       #92d292;
+  --am-negative:       #e89a9a;
 
-  --am-positive: #5cf0d4;
-  --am-negative: #ff6db5;
+  --am-glow-1:  none;
+  --am-glow-2:  none;
+  --am-glow-3:  none;
+  --am-irid:    var(--am-accent);
+  --am-ring:    var(--am-border);
+  --am-ai-strip: var(--am-surface);
 }
 
 /*
  * Legacy `--lg-*` token redirects.
  *
- * Once AuroraShell wraps the entire authenticated site, every legacy
- * component (ThemedTable, SortableHeader, lg-card, lg-button, etc.)
- * still references --lg-* tokens. Rather than rewrite every callsite,
- * we remap the legacy tokens to Aurora equivalents inside the
- * .aurora-theme scope. Single-point change, site-wide effect.
+ * All pre-Aurora components still reference --lg-* tokens. Rather than
+ * rewrite every callsite, remap them to Score Sheet equivalents here.
+ * The :root / .dark fallbacks in index.css remain intact for pre-auth
+ * pages (Login / Signup / etc.) that escape the aurora-theme wrapper.
  *
- * The :root / .dark fallbacks in index.css remain intact for any
- * surface that escapes the Aurora wrapper (currently: pre-auth pages
- * — Login / Signup / etc.).
- */
-/*
- * Compound .aurora-theme.dark + .dark .aurora-theme selectors give
- * specificity (0,0,2,0), beating .dark's (0,0,1,0) from index.css that
- * defines the original --lg-* values. Without the bump, .dark loads
- * after aurora.css and wins on the same-specificity tie.
+ * Compound selectors give specificity (0,0,2,0), beating .dark's
+ * (0,0,1,0) from index.css on same-specificity ties.
  */
 .aurora-theme,
 .aurora-theme.dark,
 .dark .aurora-theme {
-  /* Text colors */
-  --lg-text-primary: var(--am-text);
-  --lg-text-heading: var(--am-text);
+  --lg-text-primary:   var(--am-text);
+  --lg-text-heading:   var(--am-text);
   --lg-text-secondary: var(--am-text-muted);
-  --lg-text-muted: var(--am-text-muted);
-  --lg-text-faint: var(--am-text-faint);
+  --lg-text-muted:     var(--am-text-muted);
+  --lg-text-faint:     var(--am-text-faint);
 
-  /* Accent → Aurora's iridescent companion accent */
-  --lg-accent: var(--am-accent);
-  --lg-accent-hover: var(--am-accent);
-  --lg-accent-active: var(--am-accent);
+  --lg-accent:         var(--am-accent);
+  --lg-accent-hover:   var(--am-accent);
+  --lg-accent-active:  var(--am-accent);
 
-  /* Borders */
-  --lg-border-subtle: var(--am-border);
-  --lg-border-faint: var(--am-border);
-  --lg-border-strong: var(--am-border-strong);
+  --lg-border-subtle:  var(--am-border);
+  --lg-border-faint:   var(--am-border);
+  --lg-border-strong:  var(--am-border-strong);
 
-  /* Surfaces */
-  --lg-bg-card: var(--am-surface-faint);
-  --lg-bg-page: var(--am-bg);
-  --lg-bg-surface: var(--am-surface-faint);
-  --lg-tint: var(--am-chip);
-  --lg-tint-hover: var(--am-chip-strong);
+  --lg-bg-card:        var(--am-surface);
+  --lg-bg-page:        var(--am-bg);
+  --lg-bg-surface:     var(--am-surface);
+  --lg-tint:           var(--am-chip);
+  --lg-tint-hover:     var(--am-chip-strong);
 
-  /* Status colors — keep Aurora's iridescent positive/negative */
-  --lg-success: var(--am-positive);
-  --lg-error: var(--am-negative);
+  --lg-success:        var(--am-positive);
+  --lg-error:          var(--am-negative);
 
-  /* Tables — header / border / row hover all align to Aurora chip system */
-  --lg-table-header-bg: var(--am-chip);
-  --lg-table-header-sticky-bg: rgb(20, 28, 48);    /* opaque match for --am-surface-strong on dark bg */
-  --lg-table-sticky-col-bg: rgb(20, 28, 48);
-  --lg-table-border: var(--am-border);
-  --lg-table-row-hover: var(--am-chip);
+  --lg-table-header-bg:        var(--am-surface-alt);
+  --lg-table-header-sticky-bg: var(--am-surface-alt);
+  --lg-table-sticky-col-bg:    var(--am-surface);
+  --lg-table-border:           var(--am-border);
+  --lg-table-row-hover:        var(--am-chip);
 
-  /* Glass divider lines */
-  --lg-divide: var(--am-border);
+  --lg-divide:         var(--am-border);
 }
 
+/* Tabular numbers on all stat cells */
+.aurora-theme td,
+.aurora-theme th {
+  font-variant-numeric: tabular-nums;
+}
