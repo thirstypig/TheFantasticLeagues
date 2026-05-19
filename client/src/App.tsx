@@ -92,7 +92,7 @@ function AuthRedirect() {
   if (waiting) {
     return (
       <div className="min-h-screen bg-[var(--lg-bg-page)] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[var(--am-accent,#1f5a3d)]/20 border-t-[var(--am-accent,#1f5a3d)] rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -103,7 +103,7 @@ function AuthRedirect() {
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-3 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[var(--am-accent,#1f5a3d)]/20 border-t-[var(--am-accent,#1f5a3d)] rounded-full animate-spin" />
     </div>
   );
 }
@@ -114,7 +114,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--lg-bg-page)] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[var(--am-accent,#1f5a3d)]/20 border-t-[var(--am-accent,#1f5a3d)] rounded-full animate-spin"></div>
       </div>
     );
   }

@@ -1,27 +1,24 @@
 /*
- * AuroraShell — the Aurora design system's app chrome (replaces AppShell).
+ * AuroraShell — Score Sheet chrome for the authenticated desktop layout.
  *
- * Renders every authenticated page inside:
- *   .aurora-theme + AmbientBg + Topbar (top) + Dock (bottom-center)
+ * Replaces the Aurora floating-dock + ambient-bg pattern with:
+ *   - 56px sticky top bar: green logo block → text-tab nav → right chips
+ *   - No bottom dock
+ *   - Account popover anchored below the top bar
+ *   - More popover anchored below the "More" tab
  *
- * Per the Aurora System.html design handoff, the dock surfaces only the
- * 6 most-used routes (Home, Matchup, My Team, Standings, Players, AI).
- * Less-frequent routes live behind the dock's "More" popover. The
- * Topbar carries the league name/season, a quick chip strip, and an
- * iridescent avatar that opens an account/league/theme menu.
- *
- * The legacy AppShell (sidebar) is preserved on disk in case we need
- * to roll back, but App.tsx no longer uses it.
+ * All navigation items, route config, commissioner gating, league
+ * switching, and theme toggle are preserved exactly as they were.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import type { LeagueListItem } from "../../api";
 import { useAuth } from "../../auth/AuthProvider";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLeague } from "../../contexts/LeagueContext";
 import { useSeasonGating } from "../../hooks/useSeasonGating";
-import { AmbientBg, Chip, Dock, Dot, Glass, SectionLabel, Topbar, type DockItem } from "./atoms";
+import { Glass, SectionLabel } from "./atoms";
 import "./aurora.css";
 
 interface MoreItem {
@@ -47,7 +44,6 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
   const moreRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
 
-  // Close popovers on outside click
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (moreOpen && moreRef.current && !moreRef.current.contains(e.target as Node)) {
@@ -61,7 +57,6 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [moreOpen, accountOpen]);
 
-  // Escape closes popovers
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -79,13 +74,16 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
     return selected?.access?.type === "MEMBER" && selected?.access?.role === "COMMISSIONER";
   }, [leagues, user, leagueId]);
 
-  const dockItems: DockItem[] = useMemo(() => {
-    const items: DockItem[] = [{ key: "Home", label: "Home", glyph: "◐", to: "/" }];
-    if (gating.isH2H) items.push({ key: "Matchup", label: "Matchup", glyph: "◇", to: "/matchup" });
-    if (myTeamCode) items.push({ key: "MyTeam", label: "My Team", glyph: "◆", to: "/my-team" });
-    items.push({ key: "Standings", label: "Standings", glyph: "▤", to: "/season" });
-    items.push({ key: "Players", label: "Players", glyph: "✦", to: "/players" });
-    items.push({ key: "AI", label: "AI", glyph: "✧", to: "/ai" });
+  // Primary nav tabs — same items as the old dock
+  const navTabs = useMemo(() => {
+    const items: { key: string; label: string; to: string }[] = [
+      { key: "Home", label: "Home", to: "/" },
+    ];
+    if (gating.isH2H) items.push({ key: "Matchup", label: "Matchup", to: "/matchup" });
+    if (myTeamCode) items.push({ key: "MyTeam", label: "My Team", to: "/my-team" });
+    items.push({ key: "Standings", label: "Standings", to: "/season" });
+    items.push({ key: "Players", label: "Players", to: "/players" });
+    items.push({ key: "AI", label: "AI", to: "/ai" });
     return items;
   }, [gating.isH2H, myTeamCode]);
 
@@ -146,7 +144,6 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
 
   const currentLeague = leagues?.find((l: LeagueListItem) => l.id === leagueId);
   const leagueName = currentLeague?.name ?? "The Fantastic Leagues";
-  const subtitle = currentSeason ? `${currentSeason}` : undefined;
 
   async function handleLogout() {
     setAccountOpen(false);
@@ -159,36 +156,188 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
     nav(to);
   }
 
+  // User chip label: first 8 chars of email localpart
+  const userLabel = user?.email?.split("@")[0]?.slice(0, 10) ?? "Account";
+
   return (
-    <div className={`aurora-theme ${theme === "dark" ? "dark" : ""}`} style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}>
-      <AmbientBg />
+    <div
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
+      style={{ minHeight: "100svh", background: "var(--am-bg)" }}
+    >
+      {/* ── Sticky top nav bar ── */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+          height: 56,
+          background: "var(--am-surface)",
+          borderBottom: "1px solid var(--am-border-strong)",
+          display: "flex",
+          alignItems: "stretch",
+          padding: "0 18px",
+          gap: 0,
+        }}
+      >
+        {/* Logo block */}
+        <button
+          type="button"
+          onClick={() => nav("/")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: "0 20px 0 0",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            aria-hidden
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 4,
+              background: "var(--am-accent)",
+              display: "grid",
+              placeItems: "center",
+              fontSize: 15,
+              fontWeight: 700,
+              color: "#fff",
+              flexShrink: 0,
+            }}
+          >
+            F
+          </div>
+          <span
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: "var(--am-text)",
+              whiteSpace: "nowrap",
+              letterSpacing: -0.1,
+            }}
+          >
+            The Fantastic Leagues
+          </span>
+        </button>
 
-      <Topbar
-        title={leagueName}
-        subtitle={subtitle}
-        onLogoClick={() => nav("/")}
-        onAvatarClick={() => setAccountOpen((v) => !v)}
-        right={
-          <Chip strong>
-            <Dot color="var(--am-cardinal)" />
-            {gating.canAuction
-              ? "Draft window open"
-              : gating.seasonStatus === "IN_SEASON"
-              ? "In season"
-              : gating.seasonStatus === "COMPLETED"
-              ? "Season complete"
-              : "Pre-season"}
-          </Chip>
-        }
-      />
+        {/* Separator */}
+        <div
+          aria-hidden
+          style={{ width: 1, background: "var(--am-border)", margin: "10px 0", flexShrink: 0 }}
+        />
 
-      {/* Account popover (anchored under the avatar; absolute) */}
+        {/* Primary text-tab nav */}
+        <nav
+          aria-label="Main navigation"
+          style={{ display: "flex", alignItems: "stretch", flex: 1, overflow: "hidden" }}
+        >
+          {navTabs.map((item) => (
+            <NavLink
+              key={item.key}
+              to={item.to}
+              end={item.to === "/"}
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                padding: "0 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                borderBottom: isActive
+                  ? "2px solid var(--am-accent)"
+                  : "2px solid transparent",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                transition: "color 0.15s, border-color 0.15s",
+              })}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+
+          {/* More overflow tab */}
+          <button
+            type="button"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((v) => !v)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "0 16px",
+              fontSize: 13,
+              fontWeight: 600,
+              color: moreOpen ? "var(--am-text)" : "var(--am-text-muted)",
+              borderBottom: moreOpen
+                ? "2px solid var(--am-accent)"
+                : "2px solid transparent",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              fontFamily: "inherit",
+            }}
+          >
+            More
+          </button>
+        </nav>
+
+        {/* Right side: season label + user chip */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {currentSeason && (
+            <span
+              style={{
+                padding: "4px 10px",
+                background: "var(--am-chip)",
+                border: "1px solid var(--am-border)",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 500,
+                color: "var(--am-text-muted)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {currentSeason}
+            </span>
+          )}
+
+          <div ref={accountRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              aria-label="Account menu"
+              aria-expanded={accountOpen}
+              onClick={() => setAccountOpen((v) => !v)}
+              style={{
+                padding: "4px 10px",
+                background: "var(--am-chip)",
+                border: "1px solid var(--am-border)",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--am-text-muted)",
+                fontFamily: "inherit",
+                maxWidth: 120,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {userLabel}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Account popover */}
       {accountOpen && (
         <div
-          ref={accountRef}
           style={{
             position: "fixed",
-            top: 56,
+            top: 64,
             right: 18,
             zIndex: 50,
             width: 280,
@@ -202,11 +351,18 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
                 style={{
                   width: 36,
                   height: 36,
-                  borderRadius: 99,
-                  background: "var(--am-irid)",
+                  borderRadius: 4,
+                  background: "var(--am-chip)",
                   border: "1px solid var(--am-border-strong)",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "var(--am-accent)",
                 }}
-              />
+              >
+                {(user?.email ?? "?")[0].toUpperCase()}
+              </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {user?.email ?? "Signed in"}
@@ -231,16 +387,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
                           setLeagueId(l.id);
                           setAccountOpen(false);
                         }}
-                        style={{
-                          textAlign: "left",
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          fontSize: 12,
-                          background: isActive ? "var(--am-chip-strong)" : "transparent",
-                          color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
-                          border: "1px solid " + (isActive ? "var(--am-border-strong)" : "transparent"),
-                          cursor: "pointer",
-                        }}
+                        style={popoverRowStyle(isActive)}
                       >
                         {l.name}
                       </button>
@@ -252,13 +399,13 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
 
             <SectionLabel>Settings</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <button type="button" onClick={() => { setAccountOpen(false); nav("/profile"); }} style={menuRowStyle()}>
+              <button type="button" onClick={() => { setAccountOpen(false); nav("/profile"); }} style={popoverRowStyle(false)}>
                 Profile
               </button>
-              <button type="button" onClick={toggleTheme} style={menuRowStyle()}>
+              <button type="button" onClick={toggleTheme} style={popoverRowStyle(false)}>
                 {theme === "dark" ? "Light theme" : "Dark theme"}
               </button>
-              <button type="button" onClick={handleLogout} style={menuRowStyle()}>
+              <button type="button" onClick={handleLogout} style={popoverRowStyle(false)}>
                 Sign out
               </button>
             </div>
@@ -266,17 +413,16 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      {/* More popover (anchored above the dock; centered like the dock) */}
+      {/* More popover — anchored below top bar, right-aligned */}
       {moreOpen && (
         <div
           ref={moreRef}
           style={{
             position: "fixed",
-            bottom: 92,
-            left: "50%",
-            transform: "translateX(-50%)",
+            top: 64,
+            right: 18,
             zIndex: 40,
-            width: "min(820px, calc(100vw - 32px))",
+            width: "min(820px, calc(100vw - 36px))",
             maxHeight: "70vh",
             overflowY: "auto",
           }}
@@ -295,7 +441,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
                           key={item.to}
                           type="button"
                           onClick={() => handleNav(item.to)}
-                          style={menuRowStyle()}
+                          style={popoverRowStyle(false)}
                         >
                           {item.label}
                         </button>
@@ -309,42 +455,14 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <Dock
-        items={dockItems}
-        extra={
-          <button
-            type="button"
-            aria-label="More"
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen((v) => !v)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 14px",
-              borderRadius: 16,
-              fontSize: 13,
-              fontWeight: 500,
-              color: moreOpen ? "var(--am-text)" : "var(--am-text-muted)",
-              background: moreOpen ? "var(--am-chip-strong)" : "transparent",
-              border: "1px solid " + (moreOpen ? "var(--am-border-strong)" : "transparent"),
-              cursor: "pointer",
-            }}
-          >
-            <span style={{ fontSize: 14 }}>⋯</span>
-            More
-          </button>
-        }
-      />
-
-      {/* Main content. Top padding clears Topbar (~64px), bottom padding clears Dock (~110px). */}
+      {/* Main content — top padding clears the 56px sticky header */}
       <main
         id="main-content"
         style={{
           position: "relative",
           zIndex: 1,
-          padding: "72px 16px 120px",
-          minHeight: "100svh",
+          padding: "28px 16px 40px",
+          minHeight: "calc(100svh - 56px)",
         }}
         key={leagueId}
       >
@@ -354,16 +472,17 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
   );
 }
 
-function menuRowStyle(): React.CSSProperties {
+function popoverRowStyle(active: boolean): React.CSSProperties {
   return {
     textAlign: "left",
     padding: "8px 10px",
-    borderRadius: 10,
+    borderRadius: 4,
     fontSize: 13,
-    color: "var(--am-text)",
-    background: "transparent",
-    border: "1px solid transparent",
+    color: active ? "var(--am-text)" : "var(--am-text-muted)",
+    background: active ? "var(--am-chip)" : "transparent",
+    border: "1px solid " + (active ? "var(--am-border)" : "transparent"),
     cursor: "pointer",
     fontFamily: "inherit",
+    width: "100%",
   };
 }

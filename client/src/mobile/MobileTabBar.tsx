@@ -9,7 +9,6 @@ interface TabDef {
   label: string;
   glyph: GlyphKind;
   to: string;
-  /** When the current path startsWith one of these, this tab is active. */
   matches: (path: string) => boolean;
 }
 
@@ -67,21 +66,9 @@ export function MobileTabBar({ myTeamCode }: MobileTabBarProps) {
       aria-label="Primary"
       data-testid="mobile-tab-bar"
       style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 30,
-        paddingTop: 8,
-        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
-        background: "var(--am-surface-strong)",
-        backdropFilter: "blur(40px) saturate(200%)",
-        WebkitBackdropFilter: "blur(40px) saturate(200%)",
-        borderTop: "1px solid var(--am-border-strong)",
-        boxShadow: "0 -8px 32px rgba(0,0,0,0.25)",
         display: "flex",
-        justifyContent: "space-around",
-        alignItems: "stretch",
+        flexDirection: "column",
+        padding: "8px 0",
       }}
     >
       {tabs.map((t) => {
@@ -94,47 +81,33 @@ export function MobileTabBar({ myTeamCode }: MobileTabBarProps) {
             data-tab-key={t.k}
             onClick={() => nav(t.to)}
             style={{
-              flex: 1,
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              gap: 4,
-              padding: "6px 4px",
-              minHeight: 44,
-              position: "relative",
-              background: "transparent",
+              gap: 12,
+              padding: "12px 16px",
+              background: on ? "var(--am-chip)" : "transparent",
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
+              textAlign: "left",
+              width: "100%",
+              borderLeft: on ? "3px solid var(--am-accent)" : "3px solid transparent",
             }}
           >
-            {on && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: "30%",
-                  right: "30%",
-                  height: 3,
-                  borderRadius: 99,
-                  background: "var(--am-irid)",
-                }}
-              />
-            )}
             <span
               style={{
-                color: on ? "var(--am-text)" : "var(--am-text-muted)",
-                transform: on ? "scale(1.05)" : "scale(1)",
-                display: "block",
+                color: on ? "var(--am-accent)" : "var(--am-text-muted)",
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
               }}
             >
-              <Glyph kind={t.glyph} size={24} />
+              <Glyph kind={t.glyph} size={20} />
             </span>
             <span
               style={{
-                fontSize: 10.5,
-                fontWeight: on ? 700 : 500,
-                letterSpacing: 0.1,
+                fontSize: 13,
+                fontWeight: on ? 600 : 400,
                 color: on ? "var(--am-text)" : "var(--am-text-muted)",
               }}
             >

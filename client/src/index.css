@@ -164,14 +164,9 @@
   .dark {
     color-scheme: dark;
 
-    --lg-bg-primary: #0a0f1a;
-    --lg-bg-secondary: #0f172a;
-    --lg-bg-page: linear-gradient(
-      145deg,
-      #080c14 0%,
-      #0f172a 50%,
-      #0a1020 100%
-    );
+    --lg-bg-primary: #2d333b;
+    --lg-bg-secondary: #222630;
+    --lg-bg-page: #3d434b;
 
     /* Glass - Dark */
     --lg-glass-bg: rgba(15, 23, 42, 0.75);
