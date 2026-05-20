@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-05-08
+Last updated: 2026-05-19
 
 ## Source Of Truth
 
@@ -28,6 +28,12 @@ Roster Hub is the active roster-management direction. The UX follows the Yahoo-s
 - OGBA has no bench. Every active player must fit a legal slot.
 - OGBA pitcher slots are `P`, not `SP`/`RP`.
 - OGBA outfield slots display as `OF`, not separate `LF`/`CF`/`RF`.
+
+### Slot Rearrangement at Claim Time (shipped PR #347, 2026-05-19)
+
+Owners can pre-assign existing roster players to different eligible slots at direct add/drop submission time, before auto-resolve runs. A collapsible "Adjust slot assignments" panel appears once a drop player is selected. Those pre-assigned rows are marked owner-pinned so the bipartite matcher leaves them alone.
+
+Wire List slotChanges is deferred — `WaiverAddEntry` needs a `slotChanges Json?` column migration before the same UX can appear on wire-list add entries.
 
 ### Roster Move Tables
 

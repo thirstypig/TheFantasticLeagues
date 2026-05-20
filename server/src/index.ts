@@ -505,6 +505,7 @@ async function main() {
     NOT_TEAM_OWNER: 403,
     NO_LEGAL_ASSIGNMENT: 400,
     ELIGIBILITY_LOST_MID_OPERATION: 409,
+    INVALID_SLOT_CHANGE: 400,
   };
 
   app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {

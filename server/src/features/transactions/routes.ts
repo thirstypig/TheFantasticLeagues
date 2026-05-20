@@ -31,6 +31,7 @@ import {
   type ClaimResponse,
   type IlStashResponse,
   type IlActivateResponse,
+  type SlotChange,
 } from "../../../../shared/api/rosterMoves.js";
 import { RosterRuleError, isRosterRuleError } from "../../lib/rosterRuleError.js";
 import { enforceRosterRules } from "../../lib/featureFlags.js";
@@ -42,6 +43,7 @@ import {
   resolveLineup,
   type AppliedReassignment,
 } from "./lib/autoResolveLineup.js";
+import { slotsFor } from "./lib/slotMatcher.js";
 import { negotiateInheritedSlot } from "./lib/positionInherit.js";
 import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
@@ -263,7 +265,10 @@ router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncH
  * Claims a player for a team. Commissioner-only per league rules.
  */
 router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requireSeasonStatus(["IN_SEASON"]), requireTeamOwnerOrCommissioner(), asyncHandler(async (req, res) => {
-  const { leagueId, teamId, dropPlayerId, effectiveDate: effDateRaw } = req.body;
+  const { leagueId, teamId, dropPlayerId, effectiveDate: effDateRaw, slotChanges } = req.body as {
+    leagueId: number; teamId: number; dropPlayerId?: number; effectiveDate?: string;
+    slotChanges?: SlotChange[];
+  };
 
   let effective: Date;
   try {
@@ -475,6 +480,52 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       }
     });
 
+    // Owner-directed slot changes: pre-assign specific players to
+    // requested slots before the bipartite matcher runs. Each changed
+    // player is "owner-pinned" — the matcher won't reassign them.
+    const ownerPinnedRosterIds = new Set<number>();
+    const ownerAppliedChanges: AppliedReassignment[] = [];
+    if (enforce && slotChanges && slotChanges.length > 0) {
+      const activeRows = await tx.roster.findMany({
+        where: { teamId, releasedAt: null },
+        select: {
+          id: true, playerId: true, assignedPosition: true,
+          player: { select: { posList: true, name: true } },
+        },
+      });
+      const byPlayerId = new Map(activeRows.map((r) => [r.playerId, r]));
+      for (const change of slotChanges) {
+        const row = byPlayerId.get(change.playerId);
+        if (!row) {
+          throw new RosterRuleError(
+            "INVALID_SLOT_CHANGE",
+            `Player ${change.playerId} is not on this team's active roster`,
+            {},
+          );
+        }
+        const eligible = slotsFor(row.player.posList ?? "");
+        if (!eligible.has(change.slot)) {
+          throw new RosterRuleError(
+            "INVALID_SLOT_CHANGE",
+            `${row.player.name ?? "Player"} is not eligible for the ${change.slot} slot`,
+            {},
+          );
+        }
+        const oldSlot = row.assignedPosition ?? "";
+        if (oldSlot !== change.slot) {
+          await tx.roster.update({ where: { id: row.id }, data: { assignedPosition: change.slot } });
+          ownerAppliedChanges.push({
+            rosterId: row.id,
+            playerId: row.playerId,
+            playerName: row.player.name ?? `Player #${row.playerId}`,
+            oldSlot,
+            newSlot: change.slot,
+          });
+        }
+        ownerPinnedRosterIds.add(row.id);
+      }
+    }
+
     // Yahoo-style auto-resolve: run bipartite matcher to resolve position
     // conflicts. Reads a fresh in-tx view so the daily eligibility sync
     // doesn't race us.
@@ -484,7 +535,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       // connection_limit=1 (todo #139).
       const [slotCapacities, candidatesResult] = await Promise.all([
         loadSlotCapacities(tx, leagueId),
-        buildCandidatesForTeam(tx, teamId),
+        buildCandidatesForTeam(tx, teamId, { ownerPinnedRosterIds }),
       ]);
       const { candidates, playerNames } = candidatesResult;
 
@@ -521,13 +572,19 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       // if matcher kept it). Filter out no-op assignments where the matcher
       // picked the same slot the row already has.
       if (result.ok) {
-        appliedReassignments = await applyAssignments(
+        const matcherChanges = await applyAssignments(
           tx,
           result.assignments,
           playerNames,
           rosterRowToPlayerId,
         );
+        // Owner-directed changes come first in the echo (they're the
+        // explicit ones). Matcher changes follow for any auto-resolved rows.
+        appliedReassignments = [...ownerAppliedChanges, ...matcherChanges];
       }
+    } else {
+      // Even when the matcher doesn't run (e.g. no drop), echo owner changes.
+      appliedReassignments = ownerAppliedChanges;
     }
   }, { timeout: 30_000 });
   } catch (err: unknown) {

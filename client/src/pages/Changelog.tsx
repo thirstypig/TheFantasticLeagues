@@ -35,6 +35,26 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.71.0",
+    date: "May 19, 2026",
+    session: "Session 2026-05-19 (cont.) — slot rearrangement on direct add/drop",
+    title: "Slot rearrangement at claim submission time — pre-assign roster slots alongside add/drop (PR #347)",
+    highlights: [
+      "Owners can now expand 'Adjust slot assignments' in the Add/Drop panel (once a drop player is selected) to move existing roster players to different eligible slots before the claim lands. The bipartite matcher then only resolves the remaining un-pinned players.",
+      "Per-player dropdowns show only eligible slots (e.g. Ryan O'Hearn: 1B / CM / OF / DH; single-position pitchers show one option). Only changed rows are sent in the POST body — no noise in the wire format.",
+      "Server pre-applies slot changes inside the Prisma transaction, marks those roster rows owner-pinned, then runs auto-resolve on the rest. New INVALID_SLOT_CHANGE error code (400) covers unknown player IDs or ineligible assignments.",
+      "Wire List slotChanges deferred — WaiverAddEntry needs a migration; scoped to a follow-up PR.",
+    ],
+    changes: [
+      { type: "feat", description: "shared/api/rosterMoves.ts: SlotChangeSchema + SlotChange type; ClaimRequestSchema gains optional slotChanges array (max 25)." },
+      { type: "feat", description: "server/transactions/routes.ts: validate + pre-apply slotChanges inside Prisma transaction; ownerPinnedRosterIds passed to buildCandidatesForTeam." },
+      { type: "feat", description: "server/autoResolveLineup.ts: buildCandidatesForTeam accepts ownerPinnedRosterIds — those rows pinned: true (same mechanism as IL rows)." },
+      { type: "feat", description: "rosterRuleError.ts + index.ts: new INVALID_SLOT_CHANGE code, HTTP 400." },
+      { type: "feat", description: "AddDropPanel.tsx: SlotRearrangementSection collapsible component — player table with per-player slot dropdowns, reset button, change-count badge; only shown when rosterRulesSatisfied && dropPlayerId set; clears on add/drop change." },
+    ],
+    roadmapLink: "/roadmap#features",
+  },
+  {
     version: "0.70.0",
     date: "May 19, 2026",
     session: "Session 2026-05-19 — Score Sheet theme + design audit",

@@ -201,10 +201,27 @@ export const MlbIdSchema = z.union([
 export type MlbId = z.infer<typeof MlbIdSchema>;
 
 /**
+ * One owner-directed slot assignment bundled with a claim.
+ * `playerId` = Prisma Player.id (the `_dbPlayerId` the client carries).
+ * The server resolves to the Roster row and validates eligibility.
+ */
+export const SlotChangeSchema = z.object({
+  playerId: z.number().int().positive(),
+  slot: SlotCodeSchema,
+});
+export type SlotChange = z.infer<typeof SlotChangeSchema>;
+
+/**
  * Body: POST /api/transactions/claim
  *
  * Either `playerId` (Prisma Player.id) or `mlbId` must be set —
  * the server prefers `playerId` when both are present.
+ *
+ * `slotChanges` — optional array of owner-directed slot reassignments
+ * applied atomically with the claim. Lets the owner say "move Josh Jung
+ * from 3B to UTIL before the new player arrives." The server validates
+ * eligibility, applies the changes as owner-pinned assignments (the
+ * bipartite matcher leaves them alone), then auto-resolves the rest.
  */
 export const ClaimRequestSchema = z
   .object({
@@ -217,6 +234,7 @@ export const ClaimRequestSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
       .optional(),
+    slotChanges: z.array(SlotChangeSchema).max(25).optional(),
   })
   .refine((d: { playerId?: number; mlbId?: number }) => d.playerId || d.mlbId, {
     message: "playerId or mlbId required",

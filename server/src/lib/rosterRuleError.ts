@@ -25,7 +25,8 @@ export type RosterRuleErrorCode =
   | "NOT_AUTHORIZED"          // auth failure — not admin, not commissioner, not allowed via owner self-serve — maps to 403
   | "NOT_TEAM_OWNER"          // auth failure — league member but does not own the target team — maps to 403
   | "NO_LEGAL_ASSIGNMENT"     // Yahoo-style auto-resolve couldn't fit the proposed roster into available slots
-  | "ELIGIBILITY_LOST_MID_OPERATION"; // Player.posList changed between pre-flight read and transaction commit
+  | "ELIGIBILITY_LOST_MID_OPERATION" // Player.posList changed between pre-flight read and transaction commit
+  | "INVALID_SLOT_CHANGE";   // slotChanges entry references a non-existent roster row or ineligible slot
 
 /**
  * Typed error thrown by roster-rule guards. Route layer catches it and maps

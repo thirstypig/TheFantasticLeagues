@@ -420,6 +420,162 @@ function ComparisonTable({ add, drop }: { add: RosterMovesPlayer; drop: RosterMo
 }
 
 /**
+ * Inline slot-rearrangement editor. Shows when the owner has selected both
+ * an add and a drop. Lets them move existing players to different slots before
+ * the claim is applied — the server applies these as "owner-pinned" assignments
+ * before running the bipartite matcher on the remaining players.
+ */
+function SlotRearrangementSection({
+  teamPlayers,
+  dropPlayerId,
+  onChanges,
+}: {
+  teamPlayers: RosterMovesPlayer[];
+  dropPlayerId: number | "";
+  onChanges: (changes: Array<{ playerId: number; slot: string }>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [overrides, setOverrides] = useState<Record<number, string>>({});
+
+  const editable = useMemo(() => {
+    return teamPlayers.filter(
+      (p) =>
+        (p._dbPlayerId ?? 0) > 0 &&
+        p.assignedPosition !== "IL" &&
+        p._dbPlayerId !== dropPlayerId,
+    );
+  }, [teamPlayers, dropPlayerId]);
+
+  // Reset overrides whenever the drop player changes.
+  useEffect(() => {
+    setOverrides({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dropPlayerId]);
+
+  function handleSlotChange(playerId: number, slot: string, currentSlot: string) {
+    const next = { ...overrides };
+    if (slot === currentSlot) {
+      delete next[playerId];
+    } else {
+      next[playerId] = slot;
+    }
+    setOverrides(next);
+    onChanges(Object.entries(next).map(([pid, s]) => ({ playerId: Number(pid), slot: s })));
+  }
+
+  function resetAll() {
+    setOverrides({});
+    onChanges([]);
+  }
+
+  const changedCount = Object.keys(overrides).length;
+
+  if (editable.length === 0) return null;
+
+  return (
+    <div className="rounded border border-[var(--lg-border-faint)]">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-[var(--lg-tint)]"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+            Adjust slot assignments
+          </span>
+          {changedCount > 0 && (
+            <span className="rounded-full bg-[var(--lg-accent)]/20 px-1.5 py-0.5 text-[9px] font-bold text-[var(--lg-accent)]">
+              {changedCount} change{changedCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          <span className="text-[10px] text-[var(--lg-text-muted)]">(optional)</span>
+        </span>
+        <span className="text-[10px] text-[var(--lg-text-muted)]" aria-hidden>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="border-t border-[var(--lg-border-faint)] px-3 pb-3 pt-2">
+          <p className="mb-3 text-[10px] text-[var(--lg-text-muted)]">
+            Move existing roster players to different slots before the claim applies. Use this to free up a specific slot for the incoming player.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr className="border-b border-[var(--lg-border-faint)]">
+                  <th className="pb-1.5 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Player</th>
+                  <th className="pb-1.5 pl-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Eligible</th>
+                  <th className="pb-1.5 pl-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Current</th>
+                  <th className="pb-1.5 pl-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Move to</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editable.map((p) => {
+                  const pid = p._dbPlayerId!;
+                  const currentSlot = assignedSlot(p);
+                  const eligible = Array.from(slotsFor(p.positions || p.posPrimary || "")).sort(
+                    (a, b) => SLOT_ORDER.indexOf(a) - SLOT_ORDER.indexOf(b),
+                  );
+                  const selectedSlot = overrides[pid] ?? currentSlot;
+                  const changed = overrides[pid] != null && overrides[pid] !== currentSlot;
+                  return (
+                    <tr
+                      key={pid}
+                      className={`border-b border-[var(--lg-border-faint)] last:border-0 ${changed ? "bg-[var(--lg-accent)]/5" : ""}`}
+                    >
+                      <td className="py-1.5 pr-3 font-semibold text-[var(--lg-text-primary)]">
+                        {playerName(p)}
+                        {changed && (
+                          <span className="ml-1.5 text-[9px] font-normal text-[var(--lg-accent)]">✓ moved</span>
+                        )}
+                      </td>
+                      <td className="py-1.5 pl-2 text-[var(--lg-text-muted)]">
+                        {eligible.join(", ") || "—"}
+                      </td>
+                      <td className="py-1.5 pl-2">
+                        <span
+                          className={`rounded border px-1.5 py-0.5 text-[10px] font-mono font-semibold ${
+                            changed
+                              ? "border-[var(--lg-border-faint)] text-[var(--lg-text-muted)] line-through"
+                              : "border-[var(--lg-border-faint)] text-[var(--lg-text-primary)]"
+                          }`}
+                        >
+                          {currentSlot}
+                        </span>
+                      </td>
+                      <td className="py-1.5 pl-2">
+                        <select
+                          value={selectedSlot}
+                          onChange={(e) => handleSlotChange(pid, e.target.value, currentSlot)}
+                          className="rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-2 py-0.5 text-[11px] text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
+                        >
+                          {eligible.map((slot) => (
+                            <option key={slot} value={slot}>
+                              {slot}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {changedCount > 0 && (
+            <button
+              type="button"
+              onClick={resetAll}
+              className="mt-2 text-[10px] text-[var(--lg-text-muted)] underline hover:text-[var(--lg-text-primary)]"
+            >
+              Reset all
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Add/Drop panel — the default mode of the Roster Moves tab.
  *
  * Select a free agent first. The drop list is then limited to roster slots
@@ -454,6 +610,7 @@ export default function AddDropPanel({
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<{ ok: boolean; message?: string; error?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [slotChanges, setSlotChanges] = useState<Array<{ playerId: number; slot: string }>>([]);
 
   useEffect(() => {
     setAddMlbId(initialAddMlbId == null ? null : String(initialAddMlbId));
@@ -539,7 +696,12 @@ export default function AddDropPanel({
     setDropPlayerId("");
     setExpandedDropId(null);
     setReviewOpen(false);
+    setSlotChanges([]);
   }, [addMlbId]);
+
+  useEffect(() => {
+    setSlotChanges([]);
+  }, [dropPlayerId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -626,6 +788,7 @@ export default function AddDropPanel({
           ...(addDbId ? { playerId: addDbId } : {}),
           ...(dropPlayerId !== "" ? { dropPlayerId: Number(dropPlayerId) } : {}),
           ...(effectiveDate ? { effectiveDate } : {}),
+          ...(slotChanges.length > 0 ? { slotChanges } : {}),
         }),
       });
       const toastMsg = formatReassignmentsToast(
@@ -733,6 +896,14 @@ export default function AddDropPanel({
         />
       </section>
 
+      {rosterRulesSatisfied && dropPlayerId !== "" && (
+        <SlotRearrangementSection
+          teamPlayers={dropCandidates}
+          dropPlayerId={dropPlayerId}
+          onChanges={setSlotChanges}
+        />
+      )}
+
       <div
         className={`rounded border p-2 text-[11px] ${
           rosterRulesSatisfied
@@ -805,6 +976,11 @@ export default function AddDropPanel({
             <div className="mt-3 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 p-3 text-[11px] text-[var(--lg-text-muted)]">
               {effectiveDate && <div>Effective date: {effectiveDate}</div>}
               {selectedDrop && <div>Drop slot: {dropTargetSlot}</div>}
+              {slotChanges.length > 0 && (
+                <div className="mt-1">
+                  Slot adjustments: {slotChanges.length} player{slotChanges.length !== 1 ? "s" : ""} will be moved before the claim.
+                </div>
+              )}
               <div>{preview?.message || "Roster rules satisfied."}</div>
             </div>
 
