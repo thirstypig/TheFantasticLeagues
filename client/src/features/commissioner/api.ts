@@ -340,3 +340,15 @@ export async function postCleanupDropped(
     body: JSON.stringify({ olderThanDays }),
   });
 }
+
+export async function commissionerForceDrop(
+  leagueId: number,
+  teamId: number,
+  playerId: number,
+  effectiveDate?: string,
+): Promise<{ success: boolean; playerId: number; teamId: number }> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/teams/${teamId}/force-drop`, {
+    method: "POST",
+    body: JSON.stringify({ playerId, effectiveDate }),
+  });
+}

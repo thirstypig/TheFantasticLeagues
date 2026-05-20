@@ -255,7 +255,7 @@ function IlDesktopRow({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
-          showEligibility={false}
+          showEligibility={true}
         />
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)" }}>

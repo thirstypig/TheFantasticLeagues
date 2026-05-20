@@ -124,7 +124,7 @@ export function MobileRowV3({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
-          showEligibility={false}
+          showEligibility={true}
           ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
             isSelected ? "deselect" : "select"
           }`}

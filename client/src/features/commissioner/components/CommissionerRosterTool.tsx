@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { getCommissionerRosters } from '../api';
+import { getCommissionerRosters, commissionerForceDrop } from '../api';
 import RosterGrid from '../../roster/components/RosterGrid';
 import AddDropPanel from '../../transactions/components/RosterMovesTab/AddDropPanel';
 import CommissionerTradeTool from './CommissionerTradeTool';
@@ -59,6 +59,9 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const ilCardRef = useRef<HTMLDivElement | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [forceDropPlayerId, setForceDropPlayerId] = useState<number | ''>('');
+  const [forceDropPending, setForceDropPending] = useState(false);
+  const [forceDropError, setForceDropError] = useState<string | null>(null);
 
   const fetchRosters = async () => {
     setLoading(true);
@@ -116,6 +119,21 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     requestAnimationFrame(() => {
       ilCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+  }
+
+  async function handleForceDrop() {
+    if (!actingAsTeamId || !forceDropPlayerId) return;
+    setForceDropPending(true);
+    setForceDropError(null);
+    try {
+      await commissionerForceDrop(leagueId, actingAsTeamId, Number(forceDropPlayerId), effectiveDate || undefined);
+      setForceDropPlayerId('');
+      handleUpdate();
+    } catch (err: unknown) {
+      setForceDropError(err instanceof Error ? err.message : 'Force drop failed');
+    } finally {
+      setForceDropPending(false);
+    }
   }
 
   // Annotate each player with the fantasy-team join data the panels need.
@@ -302,6 +320,56 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                    : null
                }
              />
+           )}
+         </div>
+       </div>
+
+       {/* Force Drop — standalone in-season drop that bypasses the "every add
+           must pair with a drop" enforcement. For corrections, not routine use.
+           Creates a TransactionEvent so the action is visible in the activity log. */}
+       <div className="lg-card p-0 bg-transparent">
+         <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
+           <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Force Drop Player</h3>
+           <p className="text-xs text-[var(--lg-text-muted)] mt-1">
+             Commissioner-only. Drops a player without requiring a simultaneous add. Use the effective date from the header above. Action is logged in the activity feed.
+           </p>
+         </div>
+         <div className="p-4">
+           {!actingAsTeamId ? (
+             <p className="text-[11px] text-[var(--lg-text-muted)]">Select an Acting As team above.</p>
+           ) : (
+             <div className="flex flex-wrap items-end gap-3">
+               <div className="flex flex-col gap-1">
+                 <label className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)]">Player to Drop</label>
+                 <select
+                   value={forceDropPlayerId}
+                   onChange={(e) => setForceDropPlayerId(e.target.value === '' ? '' : Number(e.target.value))}
+                   className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all min-w-[200px]"
+                 >
+                   <option value="">— Select player —</option>
+                   {rosters
+                     .filter((r) => r.teamId === actingAsTeamId && r.assignedPosition !== 'IL')
+                     .sort((a, b) => a.player.name.localeCompare(b.player.name))
+                     .map((r) => (
+                       <option key={r.id} value={r.player.id}>
+                         {r.player.name} ({r.player.posPrimary} · {r.assignedPosition ?? 'BN'})
+                       </option>
+                     ))}
+                 </select>
+               </div>
+               <Button
+                 onClick={handleForceDrop}
+                 disabled={!forceDropPlayerId || forceDropPending}
+                 variant="destructive"
+                 size="sm"
+                 className="px-5"
+               >
+                 {forceDropPending ? 'Dropping…' : 'Force Drop'}
+               </Button>
+             </div>
+           )}
+           {forceDropError && (
+             <p className="mt-2 text-[11px] text-red-500">{forceDropError}</p>
            )}
          </div>
        </div>

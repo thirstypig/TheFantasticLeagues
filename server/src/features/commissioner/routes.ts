@@ -13,6 +13,9 @@ import { addMemberSchema } from "../../lib/schemas.js";
 import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
+import { resolveEffectiveDate } from "../../lib/rosterWindow.js";
+import { clearPlayersCache } from "../players/services/playersListCache.js";
+import { clearStandingsCache } from "../standings/services/standingsService.js";
 import { listGhostIlPlayersForTeam } from "../../lib/ilSlotGuard.js";
 import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
 import {
@@ -1342,6 +1345,104 @@ router.post(
       }
       throw err;
     }
+  }),
+);
+
+/**
+ * POST /api/commissioner/:leagueId/teams/:teamId/force-drop
+ *
+ * Commissioner-only in-season standalone drop. Bypasses the "every drop must
+ * pair with an add" enforcement that protects owner-initiated transactions.
+ * Use for corrections: wrong player on a roster, commissioner data-entry
+ * mistakes, or any case where a drop without a simultaneous add is required.
+ *
+ * Creates a TransactionEvent so the action is visible in the activity log.
+ */
+const forcedDropSchema = z.object({
+  playerId: z.number().int().positive(),
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "must be YYYY-MM-DD").optional(),
+});
+
+router.post(
+  "/commissioner/:leagueId/teams/:teamId/force-drop",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  validateBody(forcedDropSchema),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    const teamId = Number(req.params.teamId);
+    const { playerId, effectiveDate: effDateRaw } = req.body as { playerId: number; effectiveDate?: string };
+
+    if (!Number.isFinite(leagueId) || !Number.isFinite(teamId)) {
+      return res.status(400).json({ error: "Invalid leagueId or teamId" });
+    }
+
+    const currentSeason = await prisma.season.findFirst({
+      where: { leagueId, status: { not: "COMPLETED" } },
+      orderBy: { year: "desc" },
+      select: { status: true },
+    });
+    if (currentSeason?.status !== "IN_SEASON") {
+      return res.status(403).json({ error: "Force drop is only allowed during IN_SEASON." });
+    }
+
+    const rosterEntry = await prisma.roster.findFirst({
+      where: { teamId, playerId, releasedAt: null },
+      include: { player: { select: { name: true } }, team: { select: { leagueId: true } } },
+    });
+    if (!rosterEntry) {
+      return res.status(404).json({ error: "Player is not on this team's active roster." });
+    }
+    if (rosterEntry.team.leagueId !== leagueId) {
+      return res.status(403).json({ error: "Team does not belong to this league." });
+    }
+
+    let effective: Date;
+    try {
+      effective = resolveEffectiveDate(effDateRaw);
+    } catch (err) {
+      return res.status(400).json({ error: "Invalid effectiveDate" });
+    }
+    if (effective <= rosterEntry.acquiredAt) {
+      return res.status(400).json({
+        error: `effectiveDate must be after the player was acquired (${rosterEntry.acquiredAt.toISOString().slice(0, 10)})`,
+      });
+    }
+
+    const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+    const season = league?.season ?? new Date().getFullYear();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.roster.update({
+        where: { id: rosterEntry.id },
+        data: { releasedAt: effective, source: "DROP" },
+      });
+      await tx.transactionEvent.create({
+        data: {
+          rowHash: `CDROP-${crypto.randomUUID()}-${playerId}`,
+          leagueId,
+          season,
+          effDate: effective,
+          submittedAt: new Date(),
+          teamId,
+          playerId,
+          transactionRaw: `Commissioner dropped ${rosterEntry.player.name}`,
+          transactionType: "DROP",
+        },
+      });
+    }, { timeout: 30_000 });
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "COMMISSIONER_FORCE_DROP",
+      resourceType: "Roster",
+      resourceId: String(rosterEntry.id),
+      metadata: { leagueId, teamId, playerId, effectiveDate: effective.toISOString() },
+    });
+
+    clearPlayersCache(leagueId);
+    clearStandingsCache(leagueId);
+    return res.json({ success: true, playerId, teamId });
   }),
 );
 
