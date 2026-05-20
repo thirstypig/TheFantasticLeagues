@@ -16,6 +16,7 @@
 
 import React from "react";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
+import { slotsFor } from "../../../../lib/positionEligibility";
 import { type RowAction } from "./RowActionMenu";
 import {
   ActionMenuTrigger,
@@ -25,6 +26,8 @@ import {
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
+
+const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
 /**
  * Mobile-row DnD wiring. Same shape as RosterRowV3's RosterRowDnd but
@@ -124,7 +127,7 @@ export function MobileRowV3({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
-          showEligibility={true}
+          showEligibility={false}
           ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
             isSelected ? "deselect" : "select"
           }`}
@@ -135,6 +138,16 @@ export function MobileRowV3({
           <PlayerNameContent player={player} isPending={isPending} />
         </span>
         <PlayerSubtitle player={player} />
+        {(() => {
+          const secondary = [...slotsFor(player.posList)]
+            .filter((s) => s !== player.assignedSlot)
+            .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
+          return secondary.length > 0 ? (
+            <span style={{ fontSize: 10.5, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
+              {secondary.join(" · ")}
+            </span>
+          ) : null;
+        })()}
         <span style={{ fontSize: 11.5, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
           {statSummaryFor(player) || "—"}
         </span>

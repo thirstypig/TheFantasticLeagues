@@ -24,6 +24,7 @@
 import React from "react";
 import { ThemedTr, ThemedTd } from "../../../../components/ui/ThemedTable";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
+import { slotsFor } from "../../../../lib/positionEligibility";
 import { type RowAction } from "./RowActionMenu";
 import {
   ActionMenuTrigger,
@@ -33,6 +34,8 @@ import {
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
+
+const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
 /**
  * Optional DnD wiring supplied by a parent `<DndContext>`. When omitted,
@@ -137,7 +140,7 @@ export function RosterRowV3({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
-          showEligibility={true}
+          showEligibility={false}
           ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
             isSelected ? "deselect" : "select"
           }`}
@@ -182,6 +185,16 @@ export function RosterRowV3({
               <PlayerNameContent player={player} isPending={isPending} />
             </button>
             <PlayerSubtitle player={player} />
+            {(() => {
+              const secondary = [...slotsFor(player.posList)]
+                .filter((s) => s !== player.assignedSlot)
+                .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
+              return secondary.length > 0 ? (
+                <span style={{ fontSize: 10.5, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
+                  {secondary.join(" · ")}
+                </span>
+              ) : null;
+            })()}
           </div>
         </div>
       </ThemedTd>

@@ -16,10 +16,13 @@
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
+import { slotsFor } from "../../../../lib/positionEligibility";
 import { RowActionMenu, type RowAction } from "./RowActionMenu";
 import { useRef, useState, useMemo } from "react";
 import type { RosterHubPlayer } from "./types";
 import { encodeIlDndId, encodeIlEmptyDndId } from "../../hooks/useRosterHubDrag";
+
+const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
 interface IlSectionV3Props {
   players: RosterHubPlayer[];
@@ -255,7 +258,7 @@ function IlDesktopRow({
           eligible={isEligible && !isSelected}
           dimmed={isDimmed}
           onPillClick={onPillClick}
-          showEligibility={true}
+          showEligibility={false}
         />
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)" }}>
@@ -272,6 +275,16 @@ function IlDesktopRow({
           <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
             {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
           </span>
+          {(() => {
+            const secondary = [...slotsFor(player.posList)]
+              .filter((s) => s !== player.assignedSlot)
+              .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
+            return secondary.length > 0 ? (
+              <span style={{ fontSize: 10.5, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
+                {secondary.join(" · ")}
+              </span>
+            ) : null;
+          })()}
         </div>
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)", color: "var(--am-text-muted)", fontSize: 12 }}>

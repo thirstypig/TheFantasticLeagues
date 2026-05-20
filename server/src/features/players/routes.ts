@@ -530,7 +530,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         mlb_full_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",
         ogba_team_name: roster?.teamName ?? "",
-        positions: pv?.pos || p.posList || p.posPrimary || "",
+        positions: p.posList || pv?.pos || p.posPrimary || "",
         is_pitcher: isPitcher,
         G: ss?.G ?? 0,
         AB: ss?.AB ?? 0, H: ss?.H ?? 0, R: ss?.R ?? 0, HR: ss?.HR ?? 0,
