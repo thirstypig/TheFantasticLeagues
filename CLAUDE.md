@@ -728,9 +728,8 @@ fantasy baseball platform replacing legacy spreadsheets for the OGBA league
 and (eventually) public auction-keeper leagues. React/Vite client + Express
 server + Postgres (Supabase) + Prisma, deployed on Railway at
 `app.thefantasticleagues.com`. Marketing site (Astro) at the sibling
-`thefantasticleagues-www` repo. Current stage: Aurora design system
-mid-rollout across 8+ screens; roster-rules enforcement enabled in OGBA;
-Wire List v1.1 hardened. Why it matters: real money is on the line — OGBA
+`thefantasticleagues-www` repo. Current stage: Score Sheet design system fully rolled out (desktop + mobile,
+PR #346); roster-rules enforcement enabled in OGBA; Wire List v1.1 hardened. Why it matters: real money is on the line — OGBA
 has entry fees, payouts, and a commissioner who depends on this app for
 period-close and audit logging.
 
@@ -755,9 +754,11 @@ period-close and audit logging.
   freezes the live build at yesterday's image until reverted. Migrations
   warrant the same scrutiny as code changes touching production. The
   marketing site is on a separate repo and separate deploy.
-- **DESIGN.** Aurora is rolling out screen-by-screen via the `aurora-theme`
-  wrapper + atoms; legacy preserved as `*Legacy.tsx` with a
-  `/x-classic` URL fallback. Yahoo Fantasy is the reference UX for
+- **DESIGN.** Score Sheet design system (flat paper, Inter only, warm taupe /
+  medium gray, outfield-green accent). CSS class `.aurora-theme` and token
+  prefix `--am-*` are legacy Aurora names kept to avoid touching hundreds of
+  callsites — don't rename without a full codebase sweep. Reference:
+  `docs/aurora-design-system.md`. Yahoo Fantasy is the reference UX for
   roster/lineup flows — never modals when stats need to stay visible
   (sub-routes or inline expansion instead).
 - **VERIFICATION.** Browser verification is mandatory on any UI change
@@ -767,9 +768,9 @@ period-close and audit logging.
 
 **Decisions already made — do not re-litigate:**
 
-- **Aurora replaces the legacy AppShell sidebar** across the authenticated
-  site. Pre-Aurora pages are preserved on disk for rollback, accessible at
-  `/x-classic` URLs.
+- **Score Sheet replaced Aurora (PR #346, 2026-05-19)** — flat paper palette,
+  no glassmorphism, Inter only. The legacy AppShell sidebar is gone; pre-Score
+  Sheet pages on disk at `/x-classic` URLs are preservation artifacts.
 - **Stacked PRs merge sequentially, never as a rapid batch** — `for pr in
   ...; gh pr merge` auto-closes children before they rebase (precedent:
   session 88 lost 6 children).
@@ -779,7 +780,7 @@ period-close and audit logging.
   (claim / il-stash / il-activate), not modals. No exceptions —
   `feedback_yahoo_copy_no_modals.md`.
 - **Mobile twin pages are substituted via `MobileLayoutGate` route-aware
-  shell** at `(max-width: 767px)`. Desktop AuroraShell renders at ≥ 768px.
+  shell** at `(max-width: 767px)`. Desktop Score Sheet shell (AuroraShell) renders at ≥ 768px.
   Routes are NOT duplicated — same URL works in both shells. Params
   consumed via prop, not `useParams` (precedent:
   `feedback_useparams_outside_route_match.md`).
