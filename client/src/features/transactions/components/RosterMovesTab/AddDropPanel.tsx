@@ -663,10 +663,29 @@ export default function AddDropPanel({
         for (const addSlot of addSlots) {
           if (playerSlots.has(addSlot)) return true;
         }
+        // Chain fit: another roster player Q can move into p's current slot
+        // while vacating a slot the new player can fill. Handles "move Tatis
+        // from 2B to OF, then drop an OF player" scenarios. One hop only —
+        // deeper chains are rare and the bipartite matcher handles any valid
+        // arrangement the user can express.
+        const pSlot = assignedSlot(p);
+        if (isSlotCode(pSlot)) {
+          const canChain = dropCandidates.some((q) => {
+            if (q === p) return false;
+            const qSlots = slotsFor(q.positions || q.posPrimary || "");
+            if (!qSlots.has(pSlot)) return false; // Q can't slide into p's slot
+            const qCurrentSlot = assignedSlot(q);
+            if (isSlotCode(qCurrentSlot) && addSlots.has(qCurrentSlot)) return true;
+            for (const addSlot of addSlots) {
+              if (qSlots.has(addSlot)) return true;
+            }
+            return false;
+          });
+          if (canChain) return true;
+        }
         return false;
       })
-      .sort((a, b) => comparePlayers(a, b, dropSortKey, dropSortDir))
-      .slice(0, 10);
+      .sort((a, b) => comparePlayers(a, b, dropSortKey, dropSortDir));
   }, [addSlots, dropCandidates, dropSortDir, dropSortKey, selectedAdd]);
   const faStatMode = useMemo(() => statModeForPlayers(freeAgents, selectedAdd), [freeAgents, selectedAdd]);
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
@@ -812,7 +831,7 @@ export default function AddDropPanel({
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-[var(--lg-text-muted)]">
-        Select a free agent. The drop table will automatically narrow to players in roster slots that the incoming player can cover.
+        Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and one-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
       </p>
 
       {hideAddSearch ? (
@@ -877,7 +896,7 @@ export default function AddDropPanel({
           </label>
           {selectedAdd && (
             <div className="text-[10px] text-[var(--lg-text-muted)]">
-              Qualified slots: {eligibleSlotLabels.length ? eligibleSlotLabels.join(", ") : "none"}
+              New player eligible for: {eligibleSlotLabels.length ? eligibleSlotLabels.join(", ") : "none"}
             </div>
           )}
         </div>
@@ -888,7 +907,7 @@ export default function AddDropPanel({
           sortKey={dropSortKey}
           sortDir={dropSortDir}
           onSort={(key) => handleSort("drop", key)}
-          emptyText={selectedAdd ? "No rostered players qualify as the matching drop." : "Select a free agent first."}
+          emptyText={selectedAdd ? "No rostered players qualify as a drop (direct, swap, or chain)." : "Select a free agent first."}
           includeSlot
           mode={dropStatMode}
           expandedId={expandedDropId}
