@@ -13,8 +13,10 @@ import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
 import { useWireListOwner } from "../hooks/useWireListOwner";
 import { formatDeadline } from "../utils";
 import { WireListRow } from "../components/WireListRow";
+import { SlotEditor } from "../components/SlotEditor";
 import AddPicker from "../components/AddPicker";
 import DropPicker from "../components/DropPicker";
+import type { SlotChange } from "@shared/api/rosterMoves";
 import "../wireList.css";
 
 // ─── Page ────────────────────────────────────────────────────────────
@@ -44,6 +46,9 @@ export default function WireListOwnerPage() {
     removeAdd,
     removeDrop,
     setDropMode,
+    rosterPlayers,
+    saveAddSlotChanges,
+    saveDropSlotChanges,
   } = useWireListOwner(leagueId, teamCode ?? "");
 
   // ─── Render ────────────────────────────────────────────────────────
@@ -146,21 +151,33 @@ export default function WireListOwnerPage() {
                 </Empty>
               ) : (
                 adds.map((a, i) => (
-                  <WireListRow
-                    key={a.id}
-                    rank={a.priority}
-                    playerName={a.player?.name ?? `#${a.playerId}`}
-                    playerPos={a.player?.posPrimary ?? "—"}
-                    playerTeam={a.player?.mlbTeam ?? "FA"}
-                    isPending={pending.has(a.id)}
-                    isReadOnly={isReadOnly}
-                    compact={false}
-                    isFirst={i === 0}
-                    isLast={i === adds.length - 1}
-                    onMoveUp={() => swapAddPriorities(i, -1)}
-                    onMoveDown={() => swapAddPriorities(i, 1)}
-                    onRemove={() => removeAdd(a.id)}
-                  />
+                  <div key={a.id}>
+                    <WireListRow
+                      rank={a.priority}
+                      playerName={a.player?.name ?? `#${a.playerId}`}
+                      playerPos={a.player?.posPrimary ?? "—"}
+                      playerTeam={a.player?.mlbTeam ?? "FA"}
+                      isPending={pending.has(a.id)}
+                      isReadOnly={isReadOnly}
+                      compact={false}
+                      isFirst={i === 0}
+                      isLast={i === adds.length - 1}
+                      onMoveUp={() => swapAddPriorities(i, -1)}
+                      onMoveDown={() => swapAddPriorities(i, 1)}
+                      onRemove={() => removeAdd(a.id)}
+                    />
+                    <SlotEditor
+                      players={rosterPlayers.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        posList: p.posList,
+                        currentSlot: p.assignedPosition ?? "BN",
+                      }))}
+                      value={(a.slotChanges ?? []) as SlotChange[]}
+                      onChange={(changes) => saveAddSlotChanges(a.id, changes)}
+                      disabled={isReadOnly || pending.has(a.id)}
+                    />
+                  </div>
                 ))
               )}
             </div>
@@ -193,23 +210,36 @@ export default function WireListOwnerPage() {
                 </Empty>
               ) : (
                 drops.map((d, i) => (
-                  <WireListRow
-                    key={d.id}
-                    rank={d.priority}
-                    playerName={d.player?.name ?? `#${d.playerId}`}
-                    playerPos={d.player?.posPrimary ?? "—"}
-                    playerTeam={d.player?.mlbTeam ?? "—"}
-                    isPending={pending.has(d.id)}
-                    isReadOnly={isReadOnly}
-                    compact={false}
-                    isFirst={i === 0}
-                    isLast={i === drops.length - 1}
-                    onMoveUp={() => swapDropPriorities(i, -1)}
-                    onMoveDown={() => swapDropPriorities(i, 1)}
-                    onRemove={() => removeDrop(d.id)}
-                    dropMode={d.dropMode}
-                    onDropModeChange={(m) => setDropMode(d.id, m)}
-                  />
+                  <div key={d.id}>
+                    <WireListRow
+                      rank={d.priority}
+                      playerName={d.player?.name ?? `#${d.playerId}`}
+                      playerPos={d.player?.posPrimary ?? "—"}
+                      playerTeam={d.player?.mlbTeam ?? "—"}
+                      isPending={pending.has(d.id)}
+                      isReadOnly={isReadOnly}
+                      compact={false}
+                      isFirst={i === 0}
+                      isLast={i === drops.length - 1}
+                      onMoveUp={() => swapDropPriorities(i, -1)}
+                      onMoveDown={() => swapDropPriorities(i, 1)}
+                      onRemove={() => removeDrop(d.id)}
+                      dropMode={d.dropMode}
+                      onDropModeChange={(m) => setDropMode(d.id, m)}
+                    />
+                    <SlotEditor
+                      players={rosterPlayers.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        posList: p.posList,
+                        currentSlot: p.assignedPosition ?? "BN",
+                      }))}
+                      excludePlayerId={d.playerId}
+                      value={(d.slotChanges ?? []) as SlotChange[]}
+                      onChange={(changes) => saveDropSlotChanges(d.id, changes)}
+                      disabled={isReadOnly || pending.has(d.id)}
+                    />
+                  </div>
                 ))
               )}
             </div>

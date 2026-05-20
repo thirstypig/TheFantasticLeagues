@@ -985,6 +985,7 @@ model WaiverAddEntry {
   outcome             WaiverAddOutcome @default(PENDING)
   consumedDropEntryId Int?             @unique // 1:1 — each drop is consumed by at most one add
   reason              String? // free-text failure reason recorded by commissioner
+  slotChanges         Json? // owner-directed slot reassignments applied at finalize time
   processedAt         DateTime?
   createdAt           DateTime         @default(now())
 
@@ -1007,6 +1008,7 @@ model WaiverDropEntry {
   priority    Int
   dropMode    WaiverDropMode   @default(RELEASE)
   status      WaiverDropStatus @default(PENDING)
+  slotChanges Json? // owner-directed slot reassignments applied alongside this drop at finalize time
   processedAt DateTime?
   createdAt   DateTime         @default(now())
 

@@ -3,6 +3,7 @@ import {
   getActivePeriod,
   getAddEntries,
   getDropEntries,
+  updateAddEntry,
   updateDropEntry,
   deleteAddEntry,
   deleteDropEntry,
@@ -12,9 +13,10 @@ import {
   type DropEntry,
   type WaiverDropMode,
 } from "../api";
-import { getTeams } from "../../teams/api";
+import { getTeams, getTeamRosterHub } from "../../teams/api";
 import { ApiError } from "../../../api/base";
 import { reportError } from "../../../lib/errorBus";
+import type { SlotChange } from "@shared/api/rosterMoves";
 
 export interface UseWireListOwnerResult {
   teamId: number | null;
@@ -38,6 +40,14 @@ export interface UseWireListOwnerResult {
   removeAdd: (id: number) => Promise<void>;
   removeDrop: (id: number) => Promise<void>;
   setDropMode: (id: number, dropMode: WaiverDropMode) => Promise<void>;
+  rosterPlayers: Array<{
+    id: number;
+    name: string;
+    posList: string | null;
+    assignedPosition: string | null;
+  }>;
+  saveAddSlotChanges: (id: number, changes: SlotChange[]) => Promise<void>;
+  saveDropSlotChanges: (id: number, changes: SlotChange[]) => Promise<void>;
 }
 
 export function useWireListOwner(
@@ -53,6 +63,12 @@ export function useWireListOwner(
   const [pending, setPending] = useState<Set<number>>(new Set());
   const [showAddPicker, setShowAddPicker] = useState(false);
   const [showDropPicker, setShowDropPicker] = useState(false);
+  const [rosterPlayers, setRosterPlayers] = useState<Array<{
+    id: number;
+    name: string;
+    posList: string | null;
+    assignedPosition: string | null;
+  }>>([]);
 
   const addPlayerIds = useMemo(() => new Set(adds.map((a) => a.playerId)), [adds]);
   const dropPlayerIds = useMemo(() => new Set(drops.map((d) => d.playerId)), [drops]);
@@ -103,15 +119,29 @@ export function useWireListOwner(
       setPeriod(p);
 
       if (p) {
-        const [a, d] = await Promise.all([
+        const [a, d, hub] = await Promise.all([
           getAddEntries(p.id, resolvedTeamId),
           getDropEntries(p.id, resolvedTeamId),
+          getTeamRosterHub(resolvedTeamId),
         ]);
         setAdds(a.entries);
         setDrops(d.entries);
+        setRosterPlayers(
+          [
+            ...(hub.hitters ?? []),
+            ...(hub.pitchers ?? []),
+            ...(hub.ilPlayers ?? []),
+          ].map((row) => ({
+            id: row.playerId,
+            name: row.playerName,
+            posList: row.posList ?? null,
+            assignedPosition: row.assignedPosition ?? null,
+          })),
+        );
       } else {
         setAdds([]);
         setDrops([]);
+        setRosterPlayers([]);
       }
     } catch (err) {
       reportError(err, { source: "wire-list-owner" });
@@ -199,6 +229,26 @@ export function useWireListOwner(
     }
   }, [reload, withPending]);
 
+  const saveAddSlotChanges = useCallback(async (id: number, changes: SlotChange[]) => {
+    try {
+      await withPending(id, () => updateAddEntry(id, { slotChanges: changes }));
+      await reload();
+    } catch (err) {
+      reportError(err, { source: "wire-list-owner" });
+      setError("Failed to save slot changes.");
+    }
+  }, [reload, withPending]);
+
+  const saveDropSlotChanges = useCallback(async (id: number, changes: SlotChange[]) => {
+    try {
+      await withPending(id, () => updateDropEntry(id, { slotChanges: changes }));
+      await reload();
+    } catch (err) {
+      reportError(err, { source: "wire-list-owner" });
+      setError("Failed to save slot changes.");
+    }
+  }, [reload, withPending]);
+
   return {
     teamId,
     period,
@@ -221,5 +271,8 @@ export function useWireListOwner(
     removeAdd,
     removeDrop,
     setDropMode,
+    rosterPlayers,
+    saveAddSlotChanges,
+    saveDropSlotChanges,
   };
 }

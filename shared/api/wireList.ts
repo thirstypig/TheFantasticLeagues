@@ -10,6 +10,7 @@
  *   and `docs/decisions.md` ADR-012 (two-list vs paired vs polymorphic).
  */
 import { z } from "zod";
+import { SlotChangeSchema } from "./rosterMoves.js";
 
 // ─── Enums (mirror Prisma) ───────────────────────────────────────────
 
@@ -72,12 +73,18 @@ export const CreateAddEntryBodySchema = z.object({
   // priority is server-assigned (next available). The optional client-supplied
   // priority was dead code per todo #177; reorder now goes through the atomic
   // `/reorder` endpoint (PR #278). Reintroduce only if a bulk-import path needs it.
+  slotChanges: z.array(SlotChangeSchema).max(25).optional(),
 });
 export type CreateAddEntryBody = z.infer<typeof CreateAddEntryBodySchema>;
 
 export const UpdateAddEntryBodySchema = z.object({
-  priority: z.number().int().positive().max(999),
-});
+  priority: z.number().int().positive().max(999).optional(),
+  slotChanges: z.array(SlotChangeSchema).max(25).optional(),
+}).refine(
+  (v: { priority?: number; slotChanges?: unknown[] }) =>
+    v.priority !== undefined || v.slotChanges !== undefined,
+  { message: "At least one of priority or slotChanges must be provided" },
+);
 export type UpdateAddEntryBody = z.infer<typeof UpdateAddEntryBodySchema>;
 
 /**
@@ -104,6 +111,7 @@ export const AddEntryResponseSchema = z.object({
   outcome: WaiverAddOutcomeSchema,
   consumedDropEntryId: z.number().int().positive().nullable(),
   reason: z.string().nullable(),
+  slotChanges: z.array(SlotChangeSchema).nullable(),
   processedAt: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -116,6 +124,7 @@ export const CreateDropEntryBodySchema = z.object({
   playerId: z.number().int().positive(),
   // priority is server-assigned (see CreateAddEntryBody note above).
   dropMode: WaiverDropModeSchema.optional(),
+  slotChanges: z.array(SlotChangeSchema).max(25).optional(),
 });
 export type CreateDropEntryBody = z.infer<typeof CreateDropEntryBodySchema>;
 
@@ -123,11 +132,12 @@ export const UpdateDropEntryBodySchema = z
   .object({
     priority: z.number().int().positive().max(999).optional(),
     dropMode: WaiverDropModeSchema.optional(),
+    slotChanges: z.array(SlotChangeSchema).max(25).optional(),
   })
   .refine(
-    (v: { priority?: number; dropMode?: WaiverDropMode }) =>
-      v.priority !== undefined || v.dropMode !== undefined,
-    { message: "At least one of priority or dropMode must be provided" },
+    (v: { priority?: number; dropMode?: WaiverDropMode; slotChanges?: unknown }) =>
+      v.priority !== undefined || v.dropMode !== undefined || v.slotChanges !== undefined,
+    { message: "At least one of priority, dropMode, or slotChanges must be provided" },
   );
 export type UpdateDropEntryBody = z.infer<typeof UpdateDropEntryBodySchema>;
 
@@ -139,6 +149,7 @@ export const DropEntryResponseSchema = z.object({
   priority: z.number().int().positive(),
   dropMode: WaiverDropModeSchema,
   status: WaiverDropStatusSchema,
+  slotChanges: z.array(SlotChangeSchema).nullable(),
   processedAt: z.string().nullable(),
   createdAt: z.string(),
 });
