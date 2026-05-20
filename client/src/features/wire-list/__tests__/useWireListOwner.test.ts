@@ -26,6 +26,7 @@ vi.mock("../api", () => ({
 
 vi.mock("../../teams/api", () => ({
   getTeams: vi.fn(),
+  getTeamRosterHub: vi.fn(),
 }));
 
 vi.mock("../../../lib/errorBus", () => ({
@@ -45,7 +46,7 @@ import {
   getAddEntries,
   getDropEntries,
 } from "../api";
-import { getTeams } from "../../teams/api";
+import { getTeams, getTeamRosterHub } from "../../teams/api";
 import { reportError } from "../../../lib/errorBus";
 import { ApiError } from "../../../api/base";
 import { useWireListOwner } from "../hooks/useWireListOwner";
@@ -64,6 +65,7 @@ beforeEach(() => {
   vi.mocked(getActivePeriod).mockResolvedValue({ period: PERIOD } as ReturnType<typeof getActivePeriod> extends Promise<infer T> ? T : never);
   vi.mocked(getAddEntries).mockResolvedValue({ entries: [ADD_ENTRY] } as ReturnType<typeof getAddEntries> extends Promise<infer T> ? T : never);
   vi.mocked(getDropEntries).mockResolvedValue({ entries: [DROP_ENTRY] } as ReturnType<typeof getDropEntries> extends Promise<infer T> ? T : never);
+  vi.mocked(getTeamRosterHub).mockResolvedValue({ hitters: [], pitchers: [], ilPlayers: [], computedAt: null } as never);
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────

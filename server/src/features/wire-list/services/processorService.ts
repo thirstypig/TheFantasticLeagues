@@ -26,6 +26,7 @@ import { enforceRosterRules } from "../../../lib/featureFlags.js";
 import { isEligibleForSlot } from "../../transactions/lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../../lib/mlbTeams.js";
 import type { WaiverPeriodStatus } from "../../../../../shared/api/wireList.js";
+import { SlotChangeSchema, type SlotChange } from "../../../../../shared/api/rosterMoves.js";
 
 // ─── Error type ──────────────────────────────────────────────────────
 
@@ -59,6 +60,7 @@ const loadedAddEntrySelect = {
   outcome: true,
   consumedDropEntryId: true,
   reason: true,
+  slotChanges: true,
   period: { select: { id: true, leagueId: true, createdAt: true, status: true } },
 } satisfies Prisma.WaiverAddEntrySelect;
 
@@ -177,7 +179,15 @@ export async function finalizePeriod(period: {
       const succeededAdds = await tx.waiverAddEntry.findMany({
         where: { periodId: period.id, outcome: "SUCCEEDED" },
         include: {
-          consumedDrop: { include: { player: { select: { name: true } } } },
+          consumedDrop: {
+            select: {
+              id: true,
+              playerId: true,
+              dropMode: true,
+              slotChanges: true,
+              player: { select: { name: true } },
+            },
+          },
           player: { select: { id: true, name: true, posPrimary: true, posList: true } },
         },
         orderBy: [{ teamId: "asc" }, { priority: "asc" }],
@@ -272,6 +282,38 @@ export async function finalizePeriod(period: {
         if (released.count !== 1) {
           const err: FinalizeError = { code: "DROP_NOT_ON_ROSTER", addId: add.id, playerId: drop.playerId };
           throw err;
+        }
+
+        // Apply owner-directed slot rearrangements from both drop and add entries.
+        // Merged set: drop-entry changes first, then add-entry changes (add wins on conflict).
+        const rawDropChanges = drop.slotChanges;
+        const rawAddChanges = add.slotChanges;
+        const mergedChanges = new Map<number, string>(); // playerId → newSlot
+        const parseChanges = (raw: unknown): SlotChange[] => {
+          if (!Array.isArray(raw)) return [];
+          return raw.flatMap((c) => {
+            const parsed = SlotChangeSchema.safeParse(c);
+            return parsed.success ? [parsed.data] : [];
+          });
+        };
+        for (const c of parseChanges(rawDropChanges)) mergedChanges.set(c.playerId, c.slot);
+        for (const c of parseChanges(rawAddChanges)) mergedChanges.set(c.playerId, c.slot); // add wins
+
+        if (mergedChanges.size > 0) {
+          // Fetch active roster rows for the team to validate eligibility.
+          // Drop player is already released above, so they won't appear here.
+          const activeRows = await tx.roster.findMany({
+            where: { teamId: add.teamId, releasedAt: null },
+            select: { id: true, playerId: true, player: { select: { posList: true, name: true } } },
+          });
+          const byPlayerId = new Map(activeRows.map((r) => [r.playerId, r]));
+          for (const [playerId, newSlot] of mergedChanges) {
+            const row = byPlayerId.get(playerId);
+            if (!row) continue; // player may have already been dropped — skip silently
+            const eligible = isEligibleForSlot(row.player.posList, newSlot);
+            if (!eligible) continue; // skip ineligible — don't throw, finalize must be atomic
+            await tx.roster.update({ where: { id: row.id }, data: { assignedPosition: newSlot } });
+          }
         }
 
         const inherited =
@@ -470,7 +512,14 @@ export async function succeedAdd(entry: LoadedAddEntry): Promise<SucceedAddResul
         throw err;
       }
 
+      // When the owner has provided slotChanges, they've taken responsibility for
+      // the slot layout — skip the POSITION_INCOMPATIBLE check.
+      const hasSlotChanges =
+        entry.slotChanges !== null &&
+        Array.isArray(entry.slotChanges) &&
+        (entry.slotChanges as unknown[]).length > 0;
       if (
+        !hasSlotChanges &&
         enforceRosterRules() &&
         nextDrop.dropMode !== "IL_STASH" &&
         dropRoster.assignedPosition &&

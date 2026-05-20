@@ -328,7 +328,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const periodId = Number(req.params.periodId);
     const body: CreateAddEntryBody = req.body;
-    const { teamId, playerId } = body;
+    const { teamId, playerId, slotChanges } = body;
 
     // todo #161: cross-league probe-oracle guard FIRST — collapses
     // not-found, missing-team, and cross-league mismatch into one 404.
@@ -364,7 +364,14 @@ router.post(
           throw new RaceLost("PERIOD_NOT_PENDING");
         }
         return tx.waiverAddEntry.create({
-          data: { periodId, teamId, playerId, priority: finalPriority, outcome: "PENDING" },
+          data: {
+            periodId,
+            teamId,
+            playerId,
+            priority: finalPriority,
+            outcome: "PENDING",
+            slotChanges: slotChanges ? JSON.parse(JSON.stringify(slotChanges)) : undefined,
+          },
         });
       });
       writeAuditLog({
@@ -395,7 +402,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const body: UpdateAddEntryBody = req.body;
-    const { priority } = body;
+    const { priority, slotChanges } = body;
 
     const entry = await prisma.waiverAddEntry.findUnique({
       where: { id },
@@ -420,7 +427,10 @@ router.patch(
     try {
       const result = await prisma.waiverAddEntry.updateMany({
         where: { id, period: { status: "PENDING" }, outcome: "PENDING" },
-        data: { priority },
+        data: {
+          priority,
+          ...(slotChanges !== undefined ? { slotChanges: JSON.parse(JSON.stringify(slotChanges)) } : {}),
+        },
       });
       if (result.count === 0) {
         return res.status(403).json({
@@ -529,7 +539,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const periodId = Number(req.params.periodId);
     const body: CreateDropEntryBody = req.body;
-    const { teamId, playerId, dropMode } = body;
+    const { teamId, playerId, dropMode, slotChanges } = body;
 
     // todo #161: cross-league probe-oracle guard FIRST.
     const ctx = await loadPeriodForTeam(res, periodId, teamId);
@@ -571,6 +581,7 @@ router.post(
             priority: finalPriority,
             dropMode: dropMode ?? "RELEASE",
             status: "PENDING",
+            slotChanges: slotChanges ? JSON.parse(JSON.stringify(slotChanges)) : undefined,
           },
         });
       });
@@ -602,7 +613,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const body: UpdateDropEntryBody = req.body;
-    const { priority, dropMode } = body;
+    const { priority, dropMode, slotChanges } = body;
 
     const entry = await prisma.waiverDropEntry.findUnique({
       where: { id },
@@ -627,6 +638,7 @@ router.patch(
         data: {
           ...(priority !== undefined ? { priority } : {}),
           ...(dropMode !== undefined ? { dropMode } : {}),
+          ...(slotChanges !== undefined ? { slotChanges: JSON.parse(JSON.stringify(slotChanges)) } : {}),
         },
       });
       if (result.count === 0) {

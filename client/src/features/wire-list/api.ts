@@ -12,6 +12,7 @@ import type {
   AddEntryResponse,
   DropEntryResponse,
 } from "@shared/api/wireList";
+import type { SlotChange } from "@shared/api/rosterMoves";
 
 // Re-export shared types so existing callers continue to import from here.
 export type { WaiverPeriodStatus, WaiverDropMode, WaiverAddOutcome, WaiverDropStatus };
@@ -100,9 +101,19 @@ export async function updateAddPriority(id: number, priority: number): Promise<A
   });
 }
 
+export async function updateAddEntry(
+  id: number,
+  patch: { priority?: number; slotChanges?: SlotChange[] },
+): Promise<AddEntry> {
+  return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/adds/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function updateDropEntry(
   id: number,
-  patch: { priority?: number; dropMode?: WaiverDropMode },
+  patch: { priority?: number; dropMode?: WaiverDropMode; slotChanges?: SlotChange[] },
 ): Promise<DropEntry> {
   return fetchJsonApi<DropEntry>(`${API_BASE}/wire-list/drops/${id}`, {
     method: "PATCH",
@@ -124,7 +135,7 @@ export async function deleteDropEntry(id: number): Promise<{ success: boolean }>
 
 export async function createAddEntry(
   periodId: number,
-  body: { teamId: number; playerId: number },
+  body: { teamId: number; playerId: number; slotChanges?: SlotChange[] },
 ): Promise<AddEntry> {
   return fetchJsonApi<AddEntry>(`${API_BASE}/wire-list/periods/${periodId}/adds`, {
     method: "POST",
@@ -134,7 +145,7 @@ export async function createAddEntry(
 
 export async function createDropEntry(
   periodId: number,
-  body: { teamId: number; playerId: number; dropMode?: WaiverDropMode },
+  body: { teamId: number; playerId: number; dropMode?: WaiverDropMode; slotChanges?: SlotChange[] },
 ): Promise<DropEntry> {
   return fetchJsonApi<DropEntry>(`${API_BASE}/wire-list/periods/${periodId}/drops`, {
     method: "POST",
