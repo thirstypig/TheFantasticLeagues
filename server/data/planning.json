@@ -1282,7 +1282,6 @@
           "priority": "p1",
           "owner": "dev",
           "milestone": "mvp",
-          "description": "Owner can pre-assign existing roster players to different eligible slots at claim submission time. Implemented via ownerPinnedRosterIds passed to the bipartite matcher so those rows stay pinned.",
           "instructions": [
             "SlotRearrangementSection component in AddDropPanel — collapsible, per-player slot dropdowns, only changed rows sent",
             "Server: validate slotChanges (player on active roster, slot eligible), pre-apply inside Prisma transaction, mark roster row IDs owner-pinned",
@@ -1295,19 +1294,19 @@
         {
           "id": "wire-list-slot-changes",
           "title": "Wire List slotChanges — rearrange slots alongside waiver add",
-          "status": "not_started",
+          "status": "done",
           "priority": "p2",
           "owner": "dev",
           "milestone": "mvp",
-          "description": "Extend the Wire List add entry to support slotChanges JSON (same schema as the direct claim). Requires a Prisma migration adding WaiverAddEntry.slotChanges Json? and updating succeedAdd in processorService.ts to apply them at processing time.",
           "instructions": [
-            "Migration: add `slotChanges Json?` to WaiverAddEntry",
-            "Update wire-list owner UI to pass slotChanges when submitting an add entry",
-            "In processorService.ts succeedAdd: apply slotChanges before calling buildCandidatesForTeam, same pattern as /transactions/claim handler",
-            "Reuse SlotRearrangementSection component already built in AddDropPanel"
+            "Migration: add `slotChanges Json?` to WaiverAddEntry and WaiverDropEntry",
+            "SlotEditor component in WireListOwnerPage — collapsible, per-player slot dropdowns",
+            "In processorService.ts finalizePeriod: merge drop+add slotChanges with eligibility check",
+            "succeedAdd: skip POSITION_INCOMPATIBLE when slotChanges non-empty"
           ],
           "roadmapLink": "/roadmap#features",
-          "notes": "Deferred from PR #347 (2026-05-19) to avoid migration complexity in the same session."
+          "notes": "Shipped 2026-05-19 via PR #348.",
+          "updatedAt": "2026-05-19T00:00:00.000Z"
         }
       ]
     }
