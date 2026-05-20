@@ -92,6 +92,13 @@ export async function buildCandidatesForTeam(
      * apply step (we only emit assignments for non-synthetic rows).
      */
     includeNewPlayer?: { playerId: number; posList: string };
+    /**
+     * Roster row IDs that the owner has explicitly assigned to a specific
+     * slot (already applied to the DB before this call). The matcher treats
+     * them as pinned — it will not reassign them, freeing them to remain in
+     * their owner-specified slot rather than being shuffled by the optimizer.
+     */
+    ownerPinnedRosterIds?: Set<number>;
   } = {},
 ): Promise<{
   candidates: RosterCandidate[];
@@ -116,12 +123,13 @@ export async function buildCandidatesForTeam(
   for (const row of rows) {
     if (exclude.has(row.id)) continue;
     const isIl = row.assignedPosition === "IL";
+    const isOwnerPinned = options.ownerPinnedRosterIds?.has(row.id) ?? false;
     candidates.push({
       rosterId: row.id,
       playerId: row.playerId,
       posList: row.player.posList ?? "",
       currentSlot: row.assignedPosition,
-      pinned: isIl,
+      pinned: isIl || isOwnerPinned,
     });
     playerNames.set(row.id, row.player.name ?? `Player #${row.playerId}`);
   }
