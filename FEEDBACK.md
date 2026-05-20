@@ -4,6 +4,38 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-05-19 (cont.) — slot rearrangement on direct add/drop claim (PR #347)
+
+Owners can now pre-assign existing roster players to different slots at claim submission time, so a specific slot is ready for the incoming player before auto-resolve runs.
+
+### Shipped — PR #347 (`feat/claim-slot-rearrangement`)
+
+| File | Change |
+|---|---|
+| `shared/api/rosterMoves.ts` | New `SlotChangeSchema` / `SlotChange` type; `ClaimRequestSchema` gains optional `slotChanges: SlotChange[]` (max 25) |
+| `server/.../autoResolveLineup.ts` | `buildCandidatesForTeam` accepts `ownerPinnedRosterIds?: Set<number>`; those rows marked `pinned: true` alongside IL rows |
+| `server/.../routes.ts` | Claim handler validates `slotChanges` (eligibility check per player), pre-applies inside the Prisma transaction, collects owner-pinned IDs, passes them to the matcher |
+| `server/src/lib/rosterRuleError.ts` | New `INVALID_SLOT_CHANGE` error code (HTTP 400) |
+| `client/.../AddDropPanel.tsx` | New `SlotRearrangementSection` component: collapsible table with per-player slot dropdowns; only shown when `rosterRulesSatisfied && dropPlayerId !== ""`; only changed rows sent in POST body |
+
+### Architecture note
+
+The `ownerPinnedRosterIds` extension reuses the exact same `pinned: true` mechanism the IL stash flow already used in the bipartite matcher — no new matcher logic required.
+
+### Deferred
+
+- **Wire List `slotChanges`**: `WaiverAddEntry` has no `slotChanges` column — needs a Prisma migration. Scoped to a follow-up PR.
+
+### Pending
+- [ ] Tests — no new tests written for the `slotChanges` claim handler path or `SlotRearrangementSection`
+- [ ] Wire List `slotChanges` migration — add `slotChanges Json?` to `WaiverAddEntry`, update `succeedAdd` in `processorService.ts`
+
+### Test counts (unchanged from previous session)
+
+- **Total:** 2031 — no new tests this session
+
+---
+
 ## Session 2026-05-19 — Score Sheet theme + graphic design audit (PR #346)
 
 Two-commit PR replacing the Aurora iridescent palette with the Score Sheet flat-paper design system, followed by a graphic design audit pass that fixed contrast and loading-state colors.
