@@ -1365,9 +1365,9 @@ export default function Commissioner() {
             {/* Tab: Settings */}
             {/* ══════════════════════════════════════════════════ */}
             {activeTab === 'settings' && (
-              <div className="cm-fade-in" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                {/* Sidebar nav */}
-                <div className="cm-col" style={{ width: 172, flexShrink: 0, gap: 2 }}>
+              <div className="cm-col cm-fade-in">
+                {/* Tab strip — same pattern as Teams & People / Operations */}
+                <div className="cm-tabs">
                   {([
                     { key: 'league' as SettingsNavKey, label: 'League Basics' },
                     { key: 'waiver' as SettingsNavKey, label: 'Waivers' },
@@ -1376,7 +1376,7 @@ export default function Commissioner() {
                   ]).map(item => (
                     <button
                       key={item.key}
-                      className={cls("cm-side-item", settingsNav === item.key && "active")}
+                      className={cls("cm-tab", settingsNav === item.key && "active")}
                       onClick={() => setSettingsNav(item.key)}
                     >
                       {item.label}
@@ -1385,7 +1385,7 @@ export default function Commissioner() {
                 </div>
 
                 {/* Settings content */}
-                <div className="cm-col cm-grow" style={{ gap: 12 }}>
+                <div className="cm-col" style={{ gap: 12 }}>
                   {settingsNav === 'league' && (
                     <SettingsSection
                       title="League Basics"
