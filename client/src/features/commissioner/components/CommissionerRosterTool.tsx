@@ -296,272 +296,283 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
         </div>
       </div>
 
-      {/* ── Roster table ── */}
-      <div style={{ borderBottom: '1px solid var(--am-border)' }}>
-        <div className="cm-section-head" style={{ borderRadius: 0 }}>
-          <span className="cm-h2 cm-grow">
-            {loading ? 'Loading…' : `${actingTeamName} · ${teamRoster.length} players`}
-          </span>
-        </div>
-        {teamRoster.length === 0 && !loading ? (
-          <div style={{ padding: '20px 14px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster found.</div>
-        ) : (
-          <table className="cm-table">
-            <thead>
-              <tr>
-                <th>Slot</th>
-                <th>Player</th>
-                <th>Pos</th>
-                <th>Status</th>
-                <th style={{ width: 80 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {teamRoster.map(r => {
-                const mlbStatus = mlbStatusByPlayerId.get(r.player.id);
-                const isIl = r.assignedPosition === 'IL';
-                const isGhostIl = isIl && !isMlbIlStatus(mlbStatus);
-                return (
-                  <tr key={r.id}>
-                    <td><span className="cm-chip">{slotLabel(r.assignedPosition)}</span></td>
-                    <td style={{ fontWeight: 600 }}>{r.player.name}</td>
-                    <td style={{ color: 'var(--am-text-muted)', fontSize: 12 }}>{r.player.posPrimary}</td>
-                    <td>
-                      {isGhostIl
-                        ? <span className="cm-chip neg">Ghost-IL</span>
-                        : isIl
-                          ? <span className="cm-chip warn">IL</span>
-                          : isMlbIlStatus(mlbStatus)
-                            ? <span className="cm-chip warn">MLB IL</span>
-                            : <span className="cm-chip accent">Active</span>}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      {!isIl && (
-                        <button
-                          type="button"
-                          className="cm-btn ghost sm"
-                          onClick={() => { setIlStashId(r.player.id); setIlReplId(null); document.getElementById('il-panel')?.scrollIntoView({ behavior: 'smooth' }); }}
-                        >
-                          IL
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="cm-btn ghost sm"
-                        onClick={() => { setAdDropId(r.player.id); document.getElementById('add-drop-panel')?.scrollIntoView({ behavior: 'smooth' }); }}
-                      >
-                        Drop
-                      </button>
-                    </td>
+      {/* ── Two-column body: roster on left, action panels on right ── */}
+      <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 500 }}>
+
+        {/* ── LEFT: Roster table ── */}
+        <div style={{ width: '38%', minWidth: 240, borderRight: '1px solid var(--am-border)', display: 'flex', flexDirection: 'column' }}>
+          <div className="cm-section-head" style={{ borderRadius: 0 }}>
+            <span className="cm-h2 cm-grow">
+              {loading ? 'Loading…' : `${actingTeamName} · ${teamRoster.length} players`}
+            </span>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {teamRoster.length === 0 && !loading ? (
+              <div style={{ padding: '20px 14px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster found.</div>
+            ) : (
+              <table className="cm-table">
+                <thead>
+                  <tr>
+                    <th>Slot</th>
+                    <th>Player</th>
+                    <th>Pos</th>
+                    <th>Status</th>
+                    <th style={{ width: 70 }}></th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* ── Add / Drop (3 columns) ── */}
-      <div id="add-drop-panel" style={{ borderBottom: '1px solid var(--am-border)' }}>
-        <div className="cm-section-head" style={{ borderRadius: 0 }}>
-          <span className="cm-h2">Add / Drop</span>
-          {adError && <span style={{ fontSize: 11, color: 'var(--am-negative)', marginLeft: 12 }}>{adError}</span>}
+                </thead>
+                <tbody>
+                  {teamRoster.map(r => {
+                    const mlbStatus = mlbStatusByPlayerId.get(r.player.id);
+                    const isIl = r.assignedPosition === 'IL';
+                    const isGhostIl = isIl && !isMlbIlStatus(mlbStatus);
+                    return (
+                      <tr key={r.id}>
+                        <td><span className="cm-chip">{slotLabel(r.assignedPosition)}</span></td>
+                        <td style={{ fontWeight: 600 }}>{r.player.name}</td>
+                        <td style={{ color: 'var(--am-text-muted)', fontSize: 12 }}>{r.player.posPrimary}</td>
+                        <td>
+                          {isGhostIl
+                            ? <span className="cm-chip neg">Ghost-IL</span>
+                            : isIl
+                              ? <span className="cm-chip warn">IL</span>
+                              : isMlbIlStatus(mlbStatus)
+                                ? <span className="cm-chip warn">MLB IL</span>
+                                : <span className="cm-chip accent">Active</span>}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {!isIl && (
+                            <button
+                              type="button"
+                              className="cm-btn ghost sm"
+                              onClick={() => { setIlStashId(r.player.id); setIlReplId(null); }}
+                            >
+                              IL
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="cm-btn ghost sm"
+                            onClick={() => setAdDropId(r.player.id)}
+                          >
+                            Drop
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', minHeight: 200 }}>
-          {/* Col 1: Add (free agent) */}
-          <div style={colStyle}>
-            <div style={colHead}>
-              <div className="cm-row" style={{ gap: 6, marginBottom: 6 }}>
-                <input
-                  className="cm-input"
-                  style={{ flex: 1, fontSize: 11 }}
-                  placeholder="Search by name…"
-                  value={adQuery}
-                  onChange={e => setAdQuery(e.target.value)}
-                />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                {POS_FILTERS.map(f => (
-                  <button
-                    key={f}
-                    type="button"
-                    className={`cm-btn sm ${adPosFilter === f ? 'primary' : 'ghost'}`}
-                    style={{ padding: '2px 6px', fontSize: 10, minWidth: 0 }}
-                    onClick={() => setAdPosFilter(f)}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
+
+        {/* ── RIGHT: Add/Drop + IL Management stacked ── */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+
+          {/* ── Add / Drop (3 columns) ── */}
+          <div id="add-drop-panel" style={{ borderBottom: '1px solid var(--am-border)', display: 'flex', flexDirection: 'column' }}>
+            <div className="cm-section-head" style={{ borderRadius: 0 }}>
+              <span className="cm-h2">Add / Drop</span>
+              {adError && <span style={{ fontSize: 11, color: 'var(--am-negative)', marginLeft: 12 }}>{adError}</span>}
             </div>
-            <div style={colBody}>
-              {filteredFAs.length === 0 ? (
-                <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No free agents match.</div>
-              ) : filteredFAs.map((p: any) => (
-                <div
-                  key={p.id || p.mlb_id}
-                  style={rowStyle(adAddId === p.id)}
-                  onClick={() => { setAdAddId(p.id); setAdAddMlbId(p.mlb_id ?? p.mlbId ?? null); }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
-                    <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
+            <div style={{ display: 'flex', flex: 1 }}>
+              {/* Col 1: Add (free agent) */}
+              <div style={colStyle}>
+                <div style={colHead}>
+                  <div className="cm-row" style={{ gap: 6, marginBottom: 6 }}>
+                    <input
+                      className="cm-input"
+                      style={{ flex: 1, fontSize: 11 }}
+                      placeholder="Search by name…"
+                      value={adQuery}
+                      onChange={e => setAdQuery(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                    {POS_FILTERS.map(f => (
+                      <button
+                        key={f}
+                        type="button"
+                        className={`cm-btn sm ${adPosFilter === f ? 'primary' : 'ghost'}`}
+                        style={{ padding: '2px 6px', fontSize: 10, minWidth: 0 }}
+                        onClick={() => setAdPosFilter(f)}
+                      >
+                        {f}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Col 2: Drop (roster player) */}
-          <div style={colStyle}>
-            <div style={{ ...colHead, display: 'flex', alignItems: 'center' }}>Drop from roster</div>
-            <div style={colBody}>
-              {teamRoster.length === 0 ? (
-                <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster loaded.</div>
-              ) : teamRoster.filter(r => r.assignedPosition !== 'IL').map(r => (
-                <div
-                  key={r.id}
-                  style={rowStyle(Number(adDropId) === r.player.id)}
-                  onClick={() => setAdDropId(r.player.id)}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{r.player.posPrimary} · {slotLabel(r.assignedPosition)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Col 3: Confirm */}
-          <div style={colLast}>
-            <div style={colHead}>Confirm</div>
-            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 12 }}>
-                <div className="cm-cap" style={{ marginBottom: 4 }}>Adding</div>
-                {selectedAddPlayer
-                  ? <div style={{ fontWeight: 600 }}>{playerName(selectedAddPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedAddPlayer)}</span></div>
-                  : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>}
-              </div>
-              <div style={{ fontSize: 12 }}>
-                <div className="cm-cap" style={{ marginBottom: 4 }}>Dropping</div>
-                {selectedDropRosterItem
-                  ? <div style={{ fontWeight: 600 }}>{selectedDropRosterItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedDropRosterItem.player.posPrimary}</span></div>
-                  : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>}
-              </div>
-              <button
-                type="button"
-                className="cm-btn primary"
-                style={{ marginTop: 8 }}
-                disabled={adAddId === null || adDropId === '' || adSubmitting}
-                onClick={handleAddDrop}
-              >
-                {adSubmitting ? 'Executing…' : 'Execute Add'}
-              </button>
-              <div style={{ fontSize: 10, color: 'var(--am-text-faint)' }}>
-                Execute unlocks after the add/drop selection is made.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── IL Management (3 columns) ── */}
-      <div id="il-panel">
-        <div className="cm-section-head" style={{ borderRadius: 0 }}>
-          <span className="cm-h2">IL Management</span>
-          {ilError && <span style={{ fontSize: 11, color: 'var(--am-negative)', marginLeft: 12 }}>{ilError}</span>}
-        </div>
-        <div style={{ display: 'flex', minHeight: 200 }}>
-          {/* Col 1: Stash player */}
-          <div style={colStyle}>
-            <div style={colHead}>Stash a player</div>
-            <div style={colBody}>
-              {teamRoster.filter(r => r.assignedPosition !== 'IL').length === 0 ? (
-                <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No active players.</div>
-              ) : teamRoster.filter(r => r.assignedPosition !== 'IL').map(r => {
-                const mlbStatus = mlbStatusByPlayerId.get(r.player.id);
-                const eligible = isMlbIlStatus(mlbStatus);
-                return (
-                  <div
-                    key={r.id}
-                    style={{
-                      ...rowStyle(Number(ilStashId) === r.player.id),
-                      opacity: eligible ? 1 : 0.5,
-                      cursor: eligible ? 'pointer' : 'not-allowed',
-                    }}
-                    onClick={() => eligible && setIlStashId(r.player.id)}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
-                      <div style={{ fontSize: 10, color: eligible ? 'var(--am-warning)' : 'var(--am-text-faint)' }}>
-                        {eligible ? `MLB IL · ${mlbStatus}` : r.player.posPrimary}
+                <div style={colBody}>
+                  {filteredFAs.length === 0 ? (
+                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No free agents match.</div>
+                  ) : filteredFAs.map((p: any) => (
+                    <div
+                      key={p.id || p.mlb_id}
+                      style={rowStyle(adAddId === p.id)}
+                      onClick={() => { setAdAddId(p.id); setAdAddMlbId(p.mlb_id ?? p.mlbId ?? null); }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
+                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                  ))}
+                </div>
+              </div>
 
-          {/* Col 2: Add replacement */}
-          <div style={colStyle}>
-            <div style={colHead}>
-              <input
-                className="cm-input"
-                style={{ width: '100%', fontSize: 11, marginBottom: 0 }}
-                placeholder="Search replacement…"
-                value={ilReplQuery}
-                onChange={e => setIlReplQuery(e.target.value)}
-              />
-            </div>
-            <div style={colBody}>
-              {filteredIlFAs.length === 0 ? (
-                <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No free agents match.</div>
-              ) : filteredIlFAs.map((p: any) => (
-                <div
-                  key={p.id || p.mlb_id}
-                  style={rowStyle(ilReplId === p.id)}
-                  onClick={() => { setIlReplId(p.id); setIlReplMlbId(p.mlb_id ?? p.mlbId ?? null); }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
-                    <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
+              {/* Col 2: Drop (roster player) */}
+              <div style={colStyle}>
+                <div style={{ ...colHead, display: 'flex', alignItems: 'center' }}>Drop from roster</div>
+                <div style={colBody}>
+                  {teamRoster.length === 0 ? (
+                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster loaded.</div>
+                  ) : teamRoster.filter(r => r.assignedPosition !== 'IL').map(r => (
+                    <div
+                      key={r.id}
+                      style={rowStyle(Number(adDropId) === r.player.id)}
+                      onClick={() => setAdDropId(r.player.id)}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{r.player.posPrimary} · {slotLabel(r.assignedPosition)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Col 3: Confirm */}
+              <div style={colLast}>
+                <div style={colHead}>Confirm</div>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 12 }}>
+                    <div className="cm-cap" style={{ marginBottom: 4 }}>Adding</div>
+                    {selectedAddPlayer
+                      ? <div style={{ fontWeight: 600 }}>{playerName(selectedAddPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedAddPlayer)}</span></div>
+                      : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>}
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    <div className="cm-cap" style={{ marginBottom: 4 }}>Dropping</div>
+                    {selectedDropRosterItem
+                      ? <div style={{ fontWeight: 600 }}>{selectedDropRosterItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedDropRosterItem.player.posPrimary}</span></div>
+                      : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>}
+                  </div>
+                  <button
+                    type="button"
+                    className="cm-btn primary"
+                    style={{ marginTop: 8 }}
+                    disabled={adAddId === null || adDropId === '' || adSubmitting}
+                    onClick={handleAddDrop}
+                  >
+                    {adSubmitting ? 'Executing…' : 'Execute Add'}
+                  </button>
+                  <div style={{ fontSize: 10, color: 'var(--am-text-faint)' }}>
+                    Execute unlocks after the add/drop selection is made.
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
 
-          {/* Col 3: Confirm */}
-          <div style={colLast}>
-            <div style={colHead}>Confirm</div>
-            <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ fontSize: 12 }}>
-                <div className="cm-cap" style={{ marginBottom: 4 }}>Stashing</div>
-                {selectedStashItem
-                  ? <div style={{ fontWeight: 600 }}>{selectedStashItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedStashItem.player.posPrimary}</span></div>
-                  : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>}
+          {/* ── IL Management (3 columns) ── */}
+          <div id="il-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <div className="cm-section-head" style={{ borderRadius: 0 }}>
+              <span className="cm-h2">IL Management</span>
+              {ilError && <span style={{ fontSize: 11, color: 'var(--am-negative)', marginLeft: 12 }}>{ilError}</span>}
+            </div>
+            <div style={{ display: 'flex', flex: 1 }}>
+              {/* Col 1: Stash player */}
+              <div style={colStyle}>
+                <div style={colHead}>Stash a player</div>
+                <div style={colBody}>
+                  {teamRoster.filter(r => r.assignedPosition !== 'IL').length === 0 ? (
+                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No active players.</div>
+                  ) : teamRoster.filter(r => r.assignedPosition !== 'IL').map(r => {
+                    const mlbStatus = mlbStatusByPlayerId.get(r.player.id);
+                    const eligible = isMlbIlStatus(mlbStatus);
+                    return (
+                      <div
+                        key={r.id}
+                        style={{
+                          ...rowStyle(Number(ilStashId) === r.player.id),
+                          opacity: eligible ? 1 : 0.5,
+                          cursor: eligible ? 'pointer' : 'not-allowed',
+                        }}
+                        onClick={() => eligible && setIlStashId(r.player.id)}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
+                          <div style={{ fontSize: 10, color: eligible ? 'var(--am-warning)' : 'var(--am-text-faint)' }}>
+                            {eligible ? `MLB IL · ${mlbStatus}` : r.player.posPrimary}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div style={{ fontSize: 12 }}>
-                <div className="cm-cap" style={{ marginBottom: 4 }}>Replacement</div>
-                {selectedIlReplPlayer
-                  ? <div style={{ fontWeight: 600 }}>{playerName(selectedIlReplPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedIlReplPlayer)}</span></div>
-                  : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>}
+
+              {/* Col 2: Add replacement */}
+              <div style={colStyle}>
+                <div style={colHead}>
+                  <input
+                    className="cm-input"
+                    style={{ width: '100%', fontSize: 11, marginBottom: 0 }}
+                    placeholder="Search replacement…"
+                    value={ilReplQuery}
+                    onChange={e => setIlReplQuery(e.target.value)}
+                  />
+                </div>
+                <div style={colBody}>
+                  {filteredIlFAs.length === 0 ? (
+                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No free agents match.</div>
+                  ) : filteredIlFAs.map((p: any) => (
+                    <div
+                      key={p.id || p.mlb_id}
+                      style={rowStyle(ilReplId === p.id)}
+                      onClick={() => { setIlReplId(p.id); setIlReplMlbId(p.mlb_id ?? p.mlbId ?? null); }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
+                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <button
-                type="button"
-                className="cm-btn primary"
-                style={{ marginTop: 8 }}
-                disabled={ilStashId === '' || ilReplId === null || ilSubmitting}
-                onClick={handleIlStash}
-              >
-                {ilSubmitting ? 'Confirming…' : 'Confirm Stash + Add'}
-              </button>
+
+              {/* Col 3: Confirm */}
+              <div style={colLast}>
+                <div style={colHead}>Confirm</div>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 12 }}>
+                    <div className="cm-cap" style={{ marginBottom: 4 }}>Stashing</div>
+                    {selectedStashItem
+                      ? <div style={{ fontWeight: 600 }}>{selectedStashItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedStashItem.player.posPrimary}</span></div>
+                      : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>}
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    <div className="cm-cap" style={{ marginBottom: 4 }}>Replacement</div>
+                    {selectedIlReplPlayer
+                      ? <div style={{ fontWeight: 600 }}>{playerName(selectedIlReplPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedIlReplPlayer)}</span></div>
+                      : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>}
+                  </div>
+                  <button
+                    type="button"
+                    className="cm-btn primary"
+                    style={{ marginTop: 8 }}
+                    disabled={ilStashId === '' || ilReplId === null || ilSubmitting}
+                    onClick={handleIlStash}
+                  >
+                    {ilSubmitting ? 'Confirming…' : 'Confirm Stash + Add'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+
+        </div>{/* end RIGHT */}
+      </div>{/* end two-column body */}
 
     </div>
   );
