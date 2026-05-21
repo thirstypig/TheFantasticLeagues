@@ -365,6 +365,18 @@ export default function Commissioner() {
   type PeopleSubTab = 'teams' | 'members' | 'invites' | 'invite-code';
   const [peopleSubTab, setPeopleSubTab] = useState<PeopleSubTab>('teams');
 
+  // Settings left-nav section
+  type SettingsNav = 'basics' | 'scoring' | 'draft' | 'waivers' | 'trades' | 'roster';
+  const [settingsNav, setSettingsNav] = useState<SettingsNav>('basics');
+
+  // Finances sub-tab
+  type FinancesSubTab = 'entry-fees' | 'ledger' | 'payouts' | 'balances';
+  const [financesSubTab, setFinancesSubTab] = useState<FinancesSubTab>('entry-fees');
+
+  // Archive sub-tab
+  type ArchiveSubTab = 'prior-seasons' | 'champions' | 'lifecycle' | 'finalize';
+  const [archiveSubTab, setArchiveSubTab] = useState<ArchiveSubTab>('prior-seasons');
+
   // Hash listener — handles tab nav AND legacy redirects from old tab names.
   useEffect(() => {
      const raw = window.location.hash.replace('#', '');
@@ -1203,65 +1215,142 @@ export default function Commissioner() {
 
             {/* Tab: Settings */}
             {activeTab === 'settings' && (
-                <div className="space-y-5">
-                  <SettingsSection
-                    title="League Settings"
-                    league={league as any}
-                    lockedFields={lockedFields}
-                    busy={busy}
-                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
-                    fields={[
-                      { key: "draftMode", label: "Draft Mode", type: "readonly", format: (v: any) => `${v}${(league as any).draftOrder ? ` (${(league as any).draftOrder})` : ""}` },
-                      { key: "scoringFormat", label: "Scoring Format", type: "select", options: [{ value: "ROTO", label: "Roto" }, { value: "H2H_CATEGORIES", label: "H2H Categories" }, { value: "H2H_POINTS", label: "H2H Points" }] },
-                      { key: "maxTeams", label: "Max Teams", type: "number", min: 4, max: 30 },
-                      { key: "playoffWeeks", label: "Playoff Weeks", type: "number", min: 0, max: 10 },
-                      { key: "playoffTeams", label: "Playoff Teams", type: "number", min: 2, max: 16 },
-                      { key: "regularSeasonWeeks", label: "Regular Season Weeks", type: "number", min: 1, max: 30 },
-                      { key: "visibility", label: "Visibility", type: "select", options: [{ value: "PRIVATE", label: "Private" }, { value: "PUBLIC", label: "Public" }, { value: "OPEN", label: "Open" }] },
-                      { key: "description", label: "Description", type: "text" },
-                    ]}
-                  />
-                  <SettingsSection
-                    title="Waiver Configuration"
-                    league={league as any}
-                    lockedFields={lockedFields}
-                    busy={busy}
-                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
-                    fields={[
-                      { key: "waiverType", label: "Waiver Type", type: "select", options: [{ value: "FAAB", label: "FAAB" }, { value: "ROLLING_PRIORITY", label: "Rolling Priority" }, { value: "REVERSE_STANDINGS", label: "Reverse Standings" }, { value: "FREE_AGENT", label: "Free Agent" }] },
-                      { key: "faabBudget", label: "FAAB Budget ($)", type: "number", min: 50, max: 1000 },
-                      { key: "faabMinBid", label: "FAAB Min Bid ($)", type: "select", options: [{ value: 0, label: "$0" }, { value: 1, label: "$1" }] },
-                      { key: "waiverPeriodDays", label: "Waiver Period (days)", type: "number", min: 0, max: 7 },
-                      { key: "processingFreq", label: "Processing Frequency", type: "select", options: [{ value: "DAILY", label: "Daily" }, { value: "WEEKLY_MON", label: "Weekly (Mon)" }, { value: "WEEKLY_WED", label: "Weekly (Wed)" }, { value: "WEEKLY_FRI", label: "Weekly (Fri)" }, { value: "WEEKLY_SUN", label: "Weekly (Sun)" }] },
-                      { key: "faabTiebreaker", label: "FAAB Tiebreaker", type: "select", options: [{ value: "ROLLING_PRIORITY", label: "Rolling Priority" }, { value: "REVERSE_STANDINGS", label: "Reverse Standings" }, { value: "RANDOM", label: "Random" }] },
-                      { key: "acquisitionLimit", label: "Acquisition Limit", type: "number", min: 0, max: 999, nullable: true },
-                      { key: "conditionalClaims", label: "Conditional Claims", type: "toggle" },
-                    ]}
-                  />
-                  <SettingsSection
-                    title="Trade Settings"
-                    league={league as any}
-                    lockedFields={lockedFields}
-                    busy={busy}
-                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
-                    fields={[
-                      { key: "tradeReviewPolicy", label: "Trade Review", type: "select", options: [{ value: "COMMISSIONER", label: "Commissioner Review" }, { value: "LEAGUE_VOTE", label: "League Vote" }] },
-                      { key: "vetoThreshold", label: "Veto Threshold", type: "number", min: 1, max: 20 },
-                      { key: "tradeDeadline", label: "Trade Deadline", type: "date" },
-                      { key: "rosterLockTime", label: "Roster Lock Time", type: "select", options: [{ value: "", label: "None" }, { value: "GAME_TIME", label: "Game Time" }, { value: "DAILY_LOCK", label: "Daily Lock" }] },
-                    ]}
-                  />
-                  {(gating.canKeepers || gating.canAuction) && (
-                    <div className="space-y-6">
-                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                        <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Live Auction Draft</h3>
-                        <p className="text-sm text-[var(--lg-text-muted)] mb-4">Start and manage the live auction draft from the Auction page.</p>
-                        <Link to={`/leagues/${lid}/auction`} className="inline-block rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-600 transition-colors">Go to Auction Draft</Link>
-                      </div>
-                      <CommissionerControls leagueId={lid} />
+              <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+                {/* Settings left subnav */}
+                <nav style={{ width: 172, flexShrink: 0, position: "sticky", top: 80 }}>
+                  {([
+                    { key: 'basics'  as SettingsNav, label: 'League Basics' },
+                    { key: 'scoring' as SettingsNav, label: 'Scoring & Format' },
+                    { key: 'draft'   as SettingsNav, label: 'Draft' },
+                    { key: 'waivers' as SettingsNav, label: 'Waivers' },
+                    { key: 'trades'  as SettingsNav, label: 'Trade Rules' },
+                    { key: 'roster'  as SettingsNav, label: 'Roster Construction' },
+                  ]).map(item => {
+                    const isActive = settingsNav === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => setSettingsNav(item.key)}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          textAlign: "left" as const,
+                          padding: "7px 12px",
+                          borderRadius: 6,
+                          marginBottom: 2,
+                          fontSize: 13,
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                          background: isActive ? "var(--am-chip)" : "transparent",
+                          border: "none",
+                          borderLeft: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                {/* Settings right content panel */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {settingsNav === 'basics' && (
+                    <SettingsSection
+                      title="League Basics"
+                      league={league as any}
+                      lockedFields={lockedFields}
+                      busy={busy}
+                      onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                      fields={[
+                        { key: "visibility", label: "Visibility", type: "select", options: [{ value: "PRIVATE", label: "Private" }, { value: "PUBLIC", label: "Public" }, { value: "OPEN", label: "Open" }] },
+                        { key: "maxTeams", label: "Max Teams", type: "number", min: 4, max: 30 },
+                        { key: "description", label: "Description", type: "text" },
+                      ]}
+                    />
+                  )}
+                  {settingsNav === 'scoring' && (
+                    <SettingsSection
+                      title="Scoring & Format"
+                      league={league as any}
+                      lockedFields={lockedFields}
+                      busy={busy}
+                      onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                      fields={[
+                        { key: "scoringFormat", label: "Scoring Format", type: "select", options: [{ value: "ROTO", label: "Roto" }, { value: "H2H_CATEGORIES", label: "H2H Categories" }, { value: "H2H_POINTS", label: "H2H Points" }] },
+                        { key: "playoffWeeks", label: "Playoff Weeks", type: "number", min: 0, max: 10 },
+                        { key: "playoffTeams", label: "Playoff Teams", type: "number", min: 2, max: 16 },
+                        { key: "regularSeasonWeeks", label: "Regular Season Weeks", type: "number", min: 1, max: 30 },
+                      ]}
+                    />
+                  )}
+                  {settingsNav === 'draft' && (
+                    <div className="space-y-5">
+                      <SettingsSection
+                        title="Draft"
+                        league={league as any}
+                        lockedFields={lockedFields}
+                        busy={busy}
+                        onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                        fields={[
+                          { key: "draftMode", label: "Draft Mode", type: "readonly", format: (v: any) => `${v}${(league as any).draftOrder ? ` (${(league as any).draftOrder})` : ""}` },
+                        ]}
+                      />
+                      {(gating.canKeepers || gating.canAuction) && (
+                        <div className="space-y-4">
+                          <div style={{ borderRadius: 10, border: "1px solid var(--am-border)", background: "var(--am-chip)", padding: 16 }}>
+                            <h3 style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", margin: "0 0 4px" }}>Live Auction Draft</h3>
+                            <p style={{ fontSize: 12, color: "var(--am-text-muted)", margin: "0 0 12px" }}>Start and manage the live auction draft from the Auction page.</p>
+                            <Link to={`/leagues/${lid}/auction`} className="inline-block rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-600 transition-colors">Go to Auction Draft</Link>
+                          </div>
+                          <CommissionerControls leagueId={lid} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {settingsNav === 'waivers' && (
+                    <SettingsSection
+                      title="Waiver Configuration"
+                      league={league as any}
+                      lockedFields={lockedFields}
+                      busy={busy}
+                      onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                      fields={[
+                        { key: "waiverType", label: "Waiver Type", type: "select", options: [{ value: "FAAB", label: "FAAB" }, { value: "ROLLING_PRIORITY", label: "Rolling Priority" }, { value: "REVERSE_STANDINGS", label: "Reverse Standings" }, { value: "FREE_AGENT", label: "Free Agent" }] },
+                        { key: "faabBudget", label: "FAAB Budget ($)", type: "number", min: 50, max: 1000 },
+                        { key: "faabMinBid", label: "FAAB Min Bid ($)", type: "select", options: [{ value: 0, label: "$0" }, { value: 1, label: "$1" }] },
+                        { key: "waiverPeriodDays", label: "Waiver Period (days)", type: "number", min: 0, max: 7 },
+                        { key: "processingFreq", label: "Processing Frequency", type: "select", options: [{ value: "DAILY", label: "Daily" }, { value: "WEEKLY_MON", label: "Weekly (Mon)" }, { value: "WEEKLY_WED", label: "Weekly (Wed)" }, { value: "WEEKLY_FRI", label: "Weekly (Fri)" }, { value: "WEEKLY_SUN", label: "Weekly (Sun)" }] },
+                        { key: "faabTiebreaker", label: "FAAB Tiebreaker", type: "select", options: [{ value: "ROLLING_PRIORITY", label: "Rolling Priority" }, { value: "REVERSE_STANDINGS", label: "Reverse Standings" }, { value: "RANDOM", label: "Random" }] },
+                        { key: "acquisitionLimit", label: "Acquisition Limit", type: "number", min: 0, max: 999, nullable: true },
+                        { key: "conditionalClaims", label: "Conditional Claims", type: "toggle" },
+                      ]}
+                    />
+                  )}
+                  {settingsNav === 'trades' && (
+                    <SettingsSection
+                      title="Trade Rules"
+                      league={league as any}
+                      lockedFields={lockedFields}
+                      busy={busy}
+                      onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                      fields={[
+                        { key: "tradeReviewPolicy", label: "Trade Review", type: "select", options: [{ value: "COMMISSIONER", label: "Commissioner Review" }, { value: "LEAGUE_VOTE", label: "League Vote" }] },
+                        { key: "vetoThreshold", label: "Veto Threshold", type: "number", min: 1, max: 20 },
+                        { key: "tradeDeadline", label: "Trade Deadline", type: "date" },
+                        { key: "rosterLockTime", label: "Roster Lock Time", type: "select", options: [{ value: "", label: "None" }, { value: "GAME_TIME", label: "Game Time" }, { value: "DAILY_LOCK", label: "Daily Lock" }] },
+                      ]}
+                    />
+                  )}
+                  {settingsNav === 'roster' && (
+                    <div style={{ borderRadius: 10, border: "1px solid var(--am-border)", background: "var(--am-surface)", padding: 20 }}>
+                      <h3 style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", margin: "0 0 6px" }}>Roster Construction</h3>
+                      <p style={{ fontSize: 12, color: "var(--am-text-muted)", margin: 0 }}>Roster slot configuration coming soon.</p>
                     </div>
                   )}
                 </div>
+              </div>
             )}
 
             {/* Tab: Operations */}
@@ -1429,28 +1518,123 @@ export default function Commissioner() {
 
             {/* Tab: Finances */}
             {activeTab === 'finances' && (
-                <div className="space-y-5">
-                  <SettingsSection
-                    title="Entry Fees"
-                    league={league as any}
-                    lockedFields={lockedFields}
-                    busy={busy}
-                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
-                    fields={[
-                      { key: "entryFee", label: "Entry Fee ($)", type: "number", min: 0, max: 10000 },
-                      { key: "entryFeeNote", label: "Entry Fee Note", type: "text" },
-                    ]}
-                  />
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 text-center text-sm text-[var(--lg-text-muted)]">
-                    Financial ledger, payout calculator, and balance tracking — coming soon.
+                <div className="space-y-4">
+                  {/* Finances sub-tab strip */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)" }}>
+                    {([
+                      { key: 'entry-fees' as FinancesSubTab, label: 'Entry Fees' },
+                      { key: 'ledger'     as FinancesSubTab, label: 'Ledger' },
+                      { key: 'payouts'    as FinancesSubTab, label: 'Payouts' },
+                      { key: 'balances'   as FinancesSubTab, label: 'Balances' },
+                    ] as { key: FinancesSubTab; label: string }[]).map(t => {
+                      const isActive = financesSubTab === t.key;
+                      return (
+                        <button key={t.key} onClick={() => setFinancesSubTab(t.key)} style={{
+                          padding: "7px 14px", fontSize: 12,
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                          borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                          marginBottom: -1, borderRadius: 0, background: "transparent",
+                          border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                        }}>{t.label}</button>
+                      );
+                    })}
                   </div>
+
+                  {/* Sub-tab: Entry Fees */}
+                  {financesSubTab === 'entry-fees' && (
+                    <SettingsSection
+                      title="Entry Fees"
+                      league={league as any}
+                      lockedFields={lockedFields}
+                      busy={busy}
+                      onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                      fields={[
+                        { key: "entryFee", label: "Entry Fee ($)", type: "number", min: 0, max: 10000 },
+                        { key: "entryFeeNote", label: "Entry Fee Note", type: "text" },
+                      ]}
+                    />
+                  )}
+
+                  {/* Sub-tab: Ledger */}
+                  {financesSubTab === 'ledger' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-8 text-center">
+                      <div className="text-sm font-semibold text-[var(--am-text)] mb-1">Financial Ledger</div>
+                      <div className="text-xs text-[var(--am-text-faint)]">Debit / credit log for entry fees and payouts — coming soon.</div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Payouts */}
+                  {financesSubTab === 'payouts' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-8 text-center">
+                      <div className="text-sm font-semibold text-[var(--am-text)] mb-1">Payout Calculator</div>
+                      <div className="text-xs text-[var(--am-text-faint)]">Per-place prize structure with live projections — coming soon.</div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Balances */}
+                  {financesSubTab === 'balances' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-8 text-center">
+                      <div className="text-sm font-semibold text-[var(--am-text)] mb-1">Team Balances</div>
+                      <div className="text-xs text-[var(--am-text-faint)]">Outstanding balances per team — coming soon.</div>
+                    </div>
+                  )}
                 </div>
             )}
 
             {/* Tab: Archive */}
             {activeTab === 'archive' && (
-                <div className="space-y-6">
-                  <SeasonManager leagueId={lid} draftMode={overview.league?.draftMode} />
+                <div className="space-y-4">
+                  {/* Archive sub-tab strip */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)" }}>
+                    {([
+                      { key: 'prior-seasons' as ArchiveSubTab, label: 'Prior Seasons' },
+                      { key: 'champions'     as ArchiveSubTab, label: 'Champions' },
+                      { key: 'lifecycle'     as ArchiveSubTab, label: 'Lifecycle' },
+                      { key: 'finalize'      as ArchiveSubTab, label: `Finalize ${new Date().getFullYear()}` },
+                    ] as { key: ArchiveSubTab; label: string }[]).map(t => {
+                      const isActive = archiveSubTab === t.key;
+                      return (
+                        <button key={t.key} onClick={() => setArchiveSubTab(t.key)} style={{
+                          padding: "7px 14px", fontSize: 12,
+                          fontWeight: isActive ? 600 : 400,
+                          color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                          borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                          marginBottom: -1, borderRadius: 0, background: "transparent",
+                          border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                        }}>{t.label}</button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Sub-tab: Prior Seasons */}
+                  {archiveSubTab === 'prior-seasons' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-8 text-center">
+                      <div className="text-sm font-semibold text-[var(--am-text)] mb-1">Prior Seasons</div>
+                      <div className="text-xs text-[var(--am-text-faint)]">Historical season standings and stats — coming soon.</div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Champions */}
+                  {archiveSubTab === 'champions' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-8 text-center">
+                      <div className="text-sm font-semibold text-[var(--am-text)] mb-1">Champions Honor Roll</div>
+                      <div className="text-xs text-[var(--am-text-faint)]">League champions by year — coming soon.</div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Lifecycle */}
+                  {archiveSubTab === 'lifecycle' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-8 text-center">
+                      <div className="text-sm font-semibold text-[var(--am-text)] mb-1">Season Lifecycle</div>
+                      <div className="text-xs text-[var(--am-text-faint)]">Season phase history and transition log — coming soon.</div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Finalize */}
+                  {archiveSubTab === 'finalize' && (
+                    <SeasonManager leagueId={lid} draftMode={overview.league?.draftMode} />
+                  )}
                 </div>
             )}
 
