@@ -8,6 +8,7 @@ import { enrichPlayersWithRosterState } from '../lib/enrichPlayersWithRosterStat
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
 import { reportError } from '../../../lib/errorBus';
 import { extractServerError } from '../../../lib/extractServerError';
+import { slotsFor } from '../../../lib/positionEligibility';
 
 const POS_FILTERS = ['ALL', 'C', '1B', '2B', '3B', 'SS', 'MI', 'CM', 'OF', 'DH', 'P'] as const;
 
@@ -93,6 +94,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const [adDropId, setAdDropId] = useState<number | ''>('');     // DB Player.id (roster player)
   const [adSubmitting, setAdSubmitting] = useState(false);
   const [adError, setAdError] = useState<string | null>(null);
+  const [slotChanges, setSlotChanges] = useState<Array<{ playerId: number; slot: string }>>([]);
 
   // IL Stash state
   const [ilStashId, setIlStashId] = useState<number | ''>('');  // roster player to stash
@@ -183,6 +185,18 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     [teamRoster, mlbStatusByPlayerId],
   );
 
+  // Full posList string per player ID (for slot-eligibility dropdowns)
+  const posListByPlayerId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const p of playersEnriched as any[]) {
+      if (p.id) map.set(p.id, p.positions || p.posPrimary || '');
+    }
+    return map;
+  }, [playersEnriched]);
+
+  // Reset slot changes whenever the drop selection changes
+  useEffect(() => { setSlotChanges([]); }, [adDropId]);
+
   async function handleAddDrop() {
     if (!actingAsTeamId || adAddId === null || adDropId === '') return;
     setAdSubmitting(true);
@@ -196,6 +210,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
           mlbId: adAddMlbId,
           playerId: adAddId,
           dropPlayerId: Number(adDropId),
+          ...(slotChanges.length > 0 ? { slotChanges } : {}),
           ...(effectiveDate ? { effectiveDate } : {}),
         }),
       });
@@ -455,7 +470,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
               {/* Col 3: Confirm */}
               <div style={colLast}>
                 <div style={colHead}>Confirm</div>
-                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', maxHeight: 400 }}>
                   <div style={{ fontSize: 12 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Adding</div>
                     {selectedAddPlayer
@@ -468,6 +483,78 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       ? <div style={{ fontWeight: 600 }}>{selectedDropRosterItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedDropRosterItem.player.posPrimary}</span></div>
                       : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>}
                   </div>
+                  {/* Slot rearrangement — appears once a drop player is chosen */}
+                  {adDropId !== '' && (() => {
+                    const editable = teamRoster.filter(r =>
+                      r.assignedPosition !== 'IL' && r.player.id !== Number(adDropId)
+                    );
+                    if (editable.length === 0) return null;
+                    const overrides = Object.fromEntries(slotChanges.map(c => [c.playerId, c.slot]));
+                    const changedCount = slotChanges.length;
+                    return (
+                      <div style={{ borderTop: '1px solid var(--am-border)', paddingTop: 8 }}>
+                        <div className="cm-cap" style={{ marginBottom: 6 }}>
+                          Adjust slots (optional)
+                          {changedCount > 0 && (
+                            <span style={{ marginLeft: 8, background: 'color-mix(in srgb, var(--am-accent) 14%, var(--am-surface))', color: 'var(--am-accent)', border: '1px solid color-mix(in srgb, var(--am-accent) 35%, var(--am-border))', borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
+                              {changedCount} moved
+                            </span>
+                          )}
+                        </div>
+                        <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Player</th>
+                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Now</th>
+                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Move to</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {editable.map(r => {
+                              const pid = r.player.id;
+                              const currentSlot = slotLabel(r.assignedPosition);
+                              const posList = posListByPlayerId.get(pid) || r.player.posPrimary;
+                              const eligible = Array.from(slotsFor(posList)).sort(
+                                (a, b) => SLOT_ORDER.indexOf(a) - SLOT_ORDER.indexOf(b)
+                              );
+                              const selectedSlot = overrides[pid] ?? currentSlot;
+                              const changed = overrides[pid] != null && overrides[pid] !== currentSlot;
+                              return (
+                                <tr key={pid} style={{ background: changed ? 'color-mix(in srgb, var(--am-accent) 7%, transparent)' : 'transparent' }}>
+                                  <td style={{ padding: '3px 4px 3px 0', fontWeight: 600, color: 'var(--am-text)' }}>
+                                    {r.player.name}
+                                    {changed && <span style={{ marginLeft: 4, fontSize: 9, color: 'var(--am-accent)' }}>✓</span>}
+                                  </td>
+                                  <td style={{ padding: '3px 6px 3px 0', color: changed ? 'var(--am-text-faint)' : 'var(--am-text-muted)', textDecoration: changed ? 'line-through' : 'none', fontSize: 11, fontFamily: 'ui-monospace, monospace' }}>
+                                    {currentSlot}
+                                  </td>
+                                  <td style={{ padding: '3px 0' }}>
+                                    <select
+                                      className="cm-select"
+                                      style={{ fontSize: 11, padding: '2px 6px' }}
+                                      value={selectedSlot}
+                                      onChange={e => {
+                                        const next = slotChanges.filter(c => c.playerId !== pid);
+                                        if (e.target.value !== currentSlot) next.push({ playerId: pid, slot: e.target.value });
+                                        setSlotChanges(next);
+                                      }}
+                                    >
+                                      {eligible.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {changedCount > 0 && (
+                          <button type="button" style={{ marginTop: 4, fontSize: 10, color: 'var(--am-text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }} onClick={() => setSlotChanges([])}>
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <button
                     type="button"
                     className="cm-btn primary"
@@ -477,9 +564,11 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                   >
                     {adSubmitting ? 'Executing…' : 'Execute Add'}
                   </button>
-                  <div style={{ fontSize: 10, color: 'var(--am-text-faint)' }}>
-                    Execute unlocks after the add/drop selection is made.
-                  </div>
+                  {slotChanges.length > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>
+                      {slotChanges.length} slot adjustment{slotChanges.length !== 1 ? 's' : ''} will be applied before the claim.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
