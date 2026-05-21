@@ -663,10 +663,41 @@ export default function AddDropPanel({
         for (const addSlot of addSlots) {
           if (playerSlots.has(addSlot)) return true;
         }
+        // Chain fit (arbitrary depth): BFS vacancy propagation. Start with
+        // p's current slot as "vacated". Repeatedly find players Q whose
+        // eligible slots intersect the vacated set — Q can move there,
+        // freeing Q's own slot. Stop when stable. Valid drop if the vacated
+        // set eventually intersects addSlots (a slot the new player can fill).
+        // This correctly handles 2-, 3-, 4+-player chains, e.g.:
+        //   Tatis (2B→OF) → drop an OF player — vacancy hops 2B→OF→addSlots.
+        //   Or: A (2B→MI) → B (MI→3B) → C (3B→OF) → drop an OF player.
+        const pSlot = assignedSlot(p);
+        if (isSlotCode(pSlot)) {
+          const vacated = new Set<string>([pSlot]);
+          let changed = true;
+          while (changed) {
+            changed = false;
+            for (const q of dropCandidates) {
+              if (q === p) continue;
+              const qSlot = assignedSlot(q);
+              if (!isSlotCode(qSlot) || vacated.has(qSlot)) continue;
+              const qSlots = slotsFor(q.positions || q.posPrimary || "");
+              for (const v of vacated) {
+                if (isSlotCode(v) && qSlots.has(v)) {
+                  vacated.add(qSlot);
+                  changed = true;
+                  break;
+                }
+              }
+            }
+          }
+          for (const addSlot of addSlots) {
+            if (vacated.has(addSlot)) return true;
+          }
+        }
         return false;
       })
-      .sort((a, b) => comparePlayers(a, b, dropSortKey, dropSortDir))
-      .slice(0, 10);
+      .sort((a, b) => comparePlayers(a, b, dropSortKey, dropSortDir));
   }, [addSlots, dropCandidates, dropSortDir, dropSortKey, selectedAdd]);
   const faStatMode = useMemo(() => statModeForPlayers(freeAgents, selectedAdd), [freeAgents, selectedAdd]);
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
@@ -812,7 +843,7 @@ export default function AddDropPanel({
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-[var(--lg-text-muted)]">
-        Select a free agent. The drop table will automatically narrow to players in roster slots that the incoming player can cover.
+        Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and one-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
       </p>
 
       {hideAddSearch ? (
@@ -877,7 +908,7 @@ export default function AddDropPanel({
           </label>
           {selectedAdd && (
             <div className="text-[10px] text-[var(--lg-text-muted)]">
-              Qualified slots: {eligibleSlotLabels.length ? eligibleSlotLabels.join(", ") : "none"}
+              New player eligible for: {eligibleSlotLabels.length ? eligibleSlotLabels.join(", ") : "none"}
             </div>
           )}
         </div>
@@ -888,7 +919,7 @@ export default function AddDropPanel({
           sortKey={dropSortKey}
           sortDir={dropSortDir}
           onSort={(key) => handleSort("drop", key)}
-          emptyText={selectedAdd ? "No rostered players qualify as the matching drop." : "Select a free agent first."}
+          emptyText={selectedAdd ? "No rostered players qualify as a drop (direct, swap, or chain)." : "Select a free agent first."}
           includeSlot
           mode={dropStatMode}
           expandedId={expandedDropId}
