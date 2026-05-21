@@ -23,6 +23,7 @@ import {
 import type { PendingInvite } from "../api";
 import { getGhostIlSummary, type GhostIlSummary } from "../api";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
+import { getTransactions, type TransactionEvent } from "../../transactions/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
@@ -354,6 +355,7 @@ export default function Commissioner() {
   // ghost-IL summary — lazy-loaded when Operations tab is first opened
   const [ghostIl, setGhostIl] = useState<GhostIlSummary | null>(null);
   const [ghostIlExpanded, setGhostIlExpanded] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<TransactionEvent[] | null>(null);
 
   // Operations sub-tab
   type OpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
@@ -400,6 +402,17 @@ export default function Commissioner() {
       .catch(() => { if (ok) setGhostIl({ teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0 }); });
     return () => { ok = false; };
   }, [activeTab, lid, ghostIl]);
+
+  // Lazy-load recent activity when Overview tab is first opened.
+  useEffect(() => {
+    if (activeTab !== 'overview' || !lid) return;
+    if (recentActivity !== null) return;
+    let ok = true;
+    getTransactions({ leagueId: lid, take: 25 })
+      .then(res => { if (ok) setRecentActivity(res.transactions); })
+      .catch(() => { if (ok) setRecentActivity([]); });
+    return () => { ok = false; };
+  }, [activeTab, lid, recentActivity]);
 
   const leagueFromList = useMemo(() => (leagues ?? []).find((x) => x.id === lid) ?? null, [leagues, lid]);
 
@@ -909,6 +922,55 @@ export default function Commissioner() {
                   <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                     <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">League Health</h2>
                     <LeagueHealthTab leagueId={lid} />
+                  </div>
+
+                  {/* Recent Activity feed */}
+                  <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--am-text-muted)]">Recent Activity</div>
+                      <Link to={`/commissioner/${lid}/activity`} className="text-[11px] text-[var(--am-accent)] hover:underline">View all →</Link>
+                    </div>
+                    {recentActivity === null ? (
+                      <div className="text-xs text-[var(--am-text-faint)] py-2">Loading…</div>
+                    ) : recentActivity.length === 0 ? (
+                      <div className="text-xs text-[var(--am-text-faint)] py-2">No activity yet.</div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {recentActivity.map(ev => {
+                          const txType = (ev.transactionType || ev.type || "").toUpperCase();
+                          const typeColor =
+                            txType === 'ADD' || txType === 'CLAIM' || txType === 'IL_ACTIVATE' ? "var(--am-positive)" :
+                            txType === 'DROP' || txType === 'IL_STASH' ? "var(--am-warning)" :
+                            txType === 'TRADE' ? "var(--am-accent-2)" : "var(--am-text-faint)";
+                          const typeLabel =
+                            txType === 'CLAIM' ? 'ADD' :
+                            txType === 'IL_STASH' ? 'IL+' :
+                            txType === 'IL_ACTIVATE' ? 'IL−' :
+                            txType || '—';
+                          const ts = ev.submittedAt || ev.effDate || '';
+                          const relTime = ts ? (() => {
+                            const diff = Date.now() - new Date(ts).getTime();
+                            const h = Math.floor(diff / 3_600_000);
+                            const d = Math.floor(diff / 86_400_000);
+                            if (h < 1) return 'just now';
+                            if (h < 24) return `${h}h ago`;
+                            if (d < 7) return `${d}d ago`;
+                            return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                          })() : '';
+                          return (
+                            <div key={ev.id} className="flex items-center gap-2 py-1 border-b border-[var(--am-border)] last:border-0">
+                              <span style={{ color: typeColor, minWidth: 36, fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{typeLabel}</span>
+                              <span className="text-xs text-[var(--am-text)] truncate flex-1">
+                                {ev.team?.name && <span className="font-medium">{ev.team.name}</span>}
+                                {ev.player?.name && <span className="text-[var(--am-text-muted)]"> · {ev.player.name}</span>}
+                                {!ev.team?.name && !ev.player?.name && <span className="text-[var(--am-text-faint)]">{ev.transactionRaw || ev.ogbaTeamName || '—'}</span>}
+                              </span>
+                              <span className="text-[10px] text-[var(--am-text-faint)] shrink-0">{relTime}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
             )}
