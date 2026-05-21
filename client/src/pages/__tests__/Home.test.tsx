@@ -148,6 +148,75 @@ beforeEach(() => {
   vi.mocked(fetchJsonApi).mockResolvedValue({ players: [] });
 });
 
+describe("Depth Charts card", () => {
+  it("renders the Depth Charts section with LAD selected by default", async () => {
+    renderHome();
+    await screen.findByText(/My Team Today 20/);
+    expect(screen.getByText("Depth Charts")).toBeInTheDocument();
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select.value).toBe("119");
+  });
+
+  it("shows player names and position rows after data loads", async () => {
+    vi.mocked(fetchJsonApi).mockImplementation((url: string) => {
+      if (String(url).includes("depth-chart")) {
+        return Promise.resolve({
+          positions: [
+            { position: "CF", label: "Center Field", players: [
+              { name: "Mike Trout", mlbId: 545361, status: "Active", isInjured: false },
+              { name: "Jo Adell", mlbId: 668227, status: "Active", isInjured: false },
+            ]},
+            { position: "SP", label: "Starting Pitcher", players: [
+              { name: "Tyler Anderson", mlbId: 542881, status: "Injured 60-Day", isInjured: true },
+            ]},
+          ],
+          playerCount: 25,
+          cachedAt: "2026-05-21T10:00:00Z",
+        });
+      }
+      return Promise.resolve({ players: [] });
+    });
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Mike Trout")).toBeInTheDocument());
+    expect(screen.getByText("Jo Adell")).toBeInTheDocument();
+    expect(screen.getByText("MLB Stats API · 25 players")).toBeInTheDocument();
+  });
+
+  it("renders IL players with strikethrough and IL badge", async () => {
+    vi.mocked(fetchJsonApi).mockImplementation((url: string) => {
+      if (String(url).includes("depth-chart")) {
+        return Promise.resolve({
+          positions: [
+            { position: "SP", label: "Starting Pitcher", players: [
+              { name: "Tyler Anderson", mlbId: 542881, status: "Injured 60-Day", isInjured: true },
+            ]},
+          ],
+          playerCount: 10,
+          cachedAt: "2026-05-21T10:00:00Z",
+        });
+      }
+      return Promise.resolve({ players: [] });
+    });
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Tyler Anderson")).toBeInTheDocument());
+    const span = screen.getByText("Tyler Anderson");
+    expect(span).toHaveStyle("text-decoration: line-through");
+    expect(screen.getByText("IL-60")).toBeInTheDocument();
+  });
+
+  it("shows empty state when positions array is empty", async () => {
+    vi.mocked(fetchJsonApi).mockImplementation((url: string) => {
+      if (String(url).includes("depth-chart")) {
+        return Promise.resolve({ positions: [], playerCount: 0, cachedAt: null });
+      }
+      return Promise.resolve({ players: [] });
+    });
+    renderHome();
+    await screen.findByText(/My Team Today 20/);
+    await waitFor(() => expect(screen.getByText("No depth chart data")).toBeInTheDocument());
+  });
+});
+
 describe("Home dashboard", () => {
   it("renders compact league news, board summary, pending trade notice, and expanded quick links", async () => {
     renderHome();

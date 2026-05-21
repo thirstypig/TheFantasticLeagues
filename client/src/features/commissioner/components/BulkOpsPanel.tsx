@@ -25,6 +25,12 @@ import {
  * inside `succeeded`, so re-clicking "Stash all" after a partial failure is
  * safe.
  */
+const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'MI', 'CM', 'OF', 'DH', 'P', 'SP', 'RP', 'BN', 'IL'];
+function slotRank(slot: string | null | undefined): number {
+  const idx = SLOT_ORDER.indexOf((slot ?? 'BN').toUpperCase());
+  return idx === -1 ? SLOT_ORDER.length : idx;
+}
+
 export default function BulkOpsPanel({ leagueId }: { leagueId: number }) {
   const { toast, confirm } = useToast();
 
@@ -199,7 +205,7 @@ export default function BulkOpsPanel({ leagueId }: { leagueId: number }) {
                 </tr>
               </thead>
               <tbody>
-                {audit.rows.map(r => {
+                {audit.rows.slice().sort((a, b) => slotRank(a.assignedPosition) - slotRank(b.assignedPosition)).map(r => {
                   const key = rowKey(r);
                   return (
                     <tr key={key} className="border-b border-[var(--lg-border-subtle)]/60">

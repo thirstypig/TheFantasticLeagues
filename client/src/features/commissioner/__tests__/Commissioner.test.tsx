@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-// Mock commissioner API
+// ── Commissioner API mock ─────────────────────────────────────────────────────
 vi.mock("../api", () => ({
   getCommissionerOverview: vi.fn(),
   getAvailableUsers: vi.fn(),
@@ -14,15 +14,22 @@ vi.mock("../api", () => ({
   removeTeamOwner: vi.fn(),
   updateLeague: vi.fn(),
   getGhostIlSummary: vi.fn(),
+  // Required by loadAll — omitting these causes a synchronous TypeError that
+  // flushes the loading state before any assertion can see it.
+  getInvites: vi.fn().mockResolvedValue([]),
+  getLockedFields: vi.fn().mockResolvedValue({ lockedFields: [] }),
+  cancelInvite: vi.fn(),
+  changeMemberRole: vi.fn(),
+  removeMember: vi.fn(),
 }));
 
-// Mock leagues API
+// ── Leagues API mock ─────────────────────────────────────────────────────────
 vi.mock("../../leagues/api", () => ({
   getInviteCode: vi.fn().mockResolvedValue({ inviteCode: "ABC123" }),
   regenerateInviteCode: vi.fn(),
 }));
 
-// Mock top-level API
+// ── Top-level API mock ───────────────────────────────────────────────────────
 vi.mock("../../../api", () => ({
   getLeagues: vi.fn().mockResolvedValue({
     leagues: [{ id: 1, name: "Test League", access: { type: "MEMBER", role: "COMMISSIONER" } }],
@@ -32,14 +39,16 @@ vi.mock("../../../api", () => ({
   }),
 }));
 
-// Mock ToastContext
+// ── Transactions API mock ────────────────────────────────────────────────────
+vi.mock("../../transactions/api", () => ({
+  getTransactions: vi.fn().mockResolvedValue({ transactions: [] }),
+}));
+
 vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: vi.fn(), confirm: vi.fn().mockResolvedValue(true) }),
 }));
 
-// Mock useSeasonGating — mutable so each test can pick its phase.
-// Used by the hash-redirect block: legacy `#teams` resolves to
-// `#manage-rosters` in IN_SEASON, otherwise to `#season`.
+// ── useSeasonGating — mutable so tests can set phase ────────────────────────
 const mockGating = {
   value: {
     seasonStatus: "IN_SEASON" as string,
@@ -54,12 +63,13 @@ vi.mock("../../../hooks/useSeasonGating", () => ({
   useSeasonGating: () => mockGating.value,
 }));
 
-// Mock LeagueContext
 vi.mock("../../../contexts/LeagueContext", () => ({
-  useLeague: () => ({ leagueId: 1, setLeagueId: vi.fn(), leagues: [], outfieldMode: "OF", seasonStatus: "IN_SEASON" }),
+  useLeague: () => ({
+    leagueId: 1, setLeagueId: vi.fn(), leagues: [], outfieldMode: "OF", seasonStatus: "IN_SEASON",
+  }),
 }));
 
-// Mock child components
+// ── Child component mocks ────────────────────────────────────────────────────
 vi.mock("../components/CommissionerRosterTool", () => ({
   default: () => <div data-testid="roster-tool" />,
 }));
@@ -78,8 +88,18 @@ vi.mock("../../keeper-prep/components/KeeperPrepDashboard", () => ({
 vi.mock("../components/SeasonManager", () => ({
   default: () => <div data-testid="season-manager" />,
 }));
+// LeagueHealthTab fetches its own data — mock to isolate Commissioner tests.
+vi.mock("../components/LeagueHealthTab", () => ({
+  default: () => <div data-testid="league-health-tab" />,
+}));
+vi.mock("../../roster/components/RosterControls", () => ({
+  default: () => <div data-testid="roster-controls" />,
+}));
 
-import { getCommissionerOverview, getAvailableUsers, getPriorTeams, getGhostIlSummary } from "../api";
+// ── Imports ──────────────────────────────────────────────────────────────────
+import {
+  getCommissionerOverview, getAvailableUsers, getPriorTeams, getGhostIlSummary,
+} from "../api";
 import Commissioner from "../pages/Commissioner";
 import { fireEvent } from "@testing-library/react";
 
@@ -95,8 +115,6 @@ function renderWithRoute() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Reset seasonStatus + hash defaults — tests that need other values
-  // override these inline before renderWithRoute().
   mockGating.value = {
     seasonStatus: "IN_SEASON",
     isReadOnly: false,
@@ -113,22 +131,25 @@ beforeEach(() => {
   });
   vi.mocked(getAvailableUsers).mockResolvedValue([]);
   vi.mocked(getPriorTeams).mockResolvedValue([]);
-  vi.mocked(getGhostIlSummary).mockResolvedValue({ teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0 });
+  vi.mocked(getGhostIlSummary).mockResolvedValue({
+    teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0,
+  });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 describe("Commissioner", () => {
   it("renders page header", async () => {
     renderWithRoute();
     expect(screen.getByText("Commissioner")).toBeInTheDocument();
   });
 
-  it("shows loading state initially", () => {
+  it("shows loading state while data is in flight", () => {
     vi.mocked(getCommissionerOverview).mockReturnValue(new Promise(() => {}));
     renderWithRoute();
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
-  it("shows error when API fails", async () => {
+  it("shows error when overview API fails", async () => {
     vi.mocked(getCommissionerOverview).mockRejectedValue(new Error("Access denied"));
     renderWithRoute();
     await waitFor(() => {
@@ -143,35 +164,27 @@ describe("Commissioner", () => {
     });
   });
 
-  it("renders navigation tabs", async () => {
+  it("renders v2 navigation tabs — Overview / Teams & People / Settings / Operations / Finances / Archive", async () => {
     renderWithRoute();
     await waitFor(() => {
-      // Tab buttons contain label text; "Members" appears in quick stats too.
-      // Per PR #130 (6→5 restructure): "Teams" → "Manage Rosters", and the
-      // standalone "Trades" tab was folded into Manage Rosters.
-      const buttons = screen.getAllByRole("button");
-      const tabLabels = buttons.map((b) => b.textContent?.trim());
-      expect(tabLabels).toContain("League");
-      expect(tabLabels).toContain("Members");
-      expect(tabLabels).toContain("Manage Rosters");
-      expect(tabLabels).toContain("Season");
-      expect(tabLabels).not.toContain("Trades");
-    });
-  });
-
-  it("renders quick stats in league tab", async () => {
-    renderWithRoute();
-    await waitFor(() => {
-      // Quick stats show team count and member count as "1" each
-      const ones = screen.getAllByText("1");
-      expect(ones.length).toBeGreaterThanOrEqual(2);
+      const labels = screen.getAllByRole("button").map(b => b.textContent?.trim());
+      expect(labels).toContain("Overview");
+      expect(labels).toContain("Teams & People");
+      expect(labels).toContain("Settings");
+      expect(labels).toContain("Operations");
+      expect(labels).toContain("Finances");
+      expect(labels).toContain("Archive");
+      // Old tab names removed in the v2 redesign
+      expect(labels).not.toContain("League");
+      expect(labels).not.toContain("Manage Rosters");
+      expect(labels).not.toContain("Members");
+      expect(labels).not.toContain("Season");
     });
   });
 
   it("shows season phase badge", async () => {
     renderWithRoute();
     await waitFor(() => {
-      // Phase badge appears in both the guidance bar and the quick stats
       const badges = screen.getAllByText("IN SEASON");
       expect(badges.length).toBeGreaterThanOrEqual(1);
     });
@@ -185,117 +198,128 @@ describe("Commissioner", () => {
   });
 });
 
-describe("Commissioner — ghost-IL banner on Manage Rosters tab", () => {
-  async function openManageRostersTab() {
+// ─────────────────────────────────────────────────────────────────────────────
+describe("Commissioner — ghost-IL banner on Operations tab", () => {
+  async function openOpsTab() {
     renderWithRoute();
-    // Wait for overview to resolve
     await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
-    const tabBtn = screen.getAllByRole("button").find(b => b.textContent?.trim() === "Manage Rosters")!;
+    const tabBtn = screen.getAllByRole("button").find(b => b.textContent?.trim() === "Operations")!;
     fireEvent.click(tabBtn);
   }
 
-  it("does not fetch ghost-IL before the Manage Rosters tab is opened (lazy load)", async () => {
+  it("does not fetch ghost-IL before the Operations tab is opened (lazy load)", async () => {
     renderWithRoute();
     await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
-    // Give the effect a beat — even so, the ghost-IL call should not have fired.
     expect(getGhostIlSummary).not.toHaveBeenCalled();
   });
 
-  it("fetches ghost-IL once the Manage Rosters tab is opened", async () => {
-    await openManageRostersTab();
+  it("fetches ghost-IL once the Operations tab is opened", async () => {
+    await openOpsTab();
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalledWith(1));
   });
 
-  it("renders the banner when ghosts exist, with a Details button that expands the list", async () => {
+  it("renders the ghost-IL banner when ghosts exist; Fix now switches to the IL sub-tab with player list", async () => {
     vi.mocked(getGhostIlSummary).mockResolvedValue({
       totalTeamsWithGhosts: 2,
       totalGhosts: 3,
       teams: [
-        { teamId: 10, teamName: "Aces", teamCode: "ACES", ghosts: [
-          { rosterId: 1, playerId: 100, playerName: "Mike Trout", currentMlbStatus: "Active" },
-          { rosterId: 2, playerId: 101, playerName: "Mookie Betts", currentMlbStatus: "Active" },
-        ]},
-        { teamId: 20, teamName: "Titans", teamCode: "TITN", ghosts: [
-          { rosterId: 3, playerId: 200, playerName: "Aaron Judge", currentMlbStatus: "Active" },
-        ]},
+        {
+          teamId: 10, teamName: "Aces", teamCode: "ACES",
+          ghosts: [
+            { rosterId: 1, playerId: 100, playerName: "Mike Trout", currentMlbStatus: "Active" },
+            { rosterId: 2, playerId: 101, playerName: "Mookie Betts", currentMlbStatus: "Active" },
+          ],
+        },
+        {
+          teamId: 20, teamName: "Titans", teamCode: "TITN",
+          ghosts: [
+            { rosterId: 3, playerId: 200, playerName: "Aaron Judge", currentMlbStatus: "Active" },
+          ],
+        },
       ],
     });
-    await openManageRostersTab();
+    await openOpsTab();
+    // Banner appears with team count; player table is not yet shown
     await waitFor(() => expect(screen.getByText(/2 teams/i)).toBeInTheDocument());
-    // Details list is initially collapsed
     expect(screen.queryByText(/Mike Trout/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Details/i }));
-    expect(screen.getByText(/Mike Trout/)).toBeInTheDocument();
+    // "Fix now" switches to the IL & Ghost-IL sub-tab, which renders the table
+    fireEvent.click(screen.getByRole("button", { name: /Fix now/i }));
+    await waitFor(() => expect(screen.getByText(/Mike Trout/)).toBeInTheDocument());
     expect(screen.getByText(/Aaron Judge/)).toBeInTheDocument();
   });
 
-  it("hides the banner when no teams have ghost-IL players", async () => {
-    await openManageRostersTab();
+  it("hides the ghost-IL banner when no teams have ghost players", async () => {
+    await openOpsTab();
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalled());
     expect(screen.queryByText(/ghost-IL player/i)).not.toBeInTheDocument();
   });
 });
 
-describe("Commissioner — legacy hash redirects (PR #130 6→5 restructure)", () => {
-  // The 6-tab structure had `#teams` and `#trades`. After PR #130:
-  //   - `#teams` → `#manage-rosters` if IN_SEASON, else `#season`
-  //     (Teams tab split: in-season transactions live in Manage Rosters;
-  //     pre-season auction-time roster setup lives in Season)
-  //   - `#trades` → `#manage-rosters` (Trades tab folded into Manage Rosters
-  //     as a collapsible section)
-  // These redirects keep old commissioner bookmarks landing somewhere sensible.
-
-  it("redirects #teams → #manage-rosters during IN_SEASON", async () => {
-    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy hash redirects — v2 tab keys replace the old 6-tab slug names.
+// Every old slug now maps to the nearest v2 tab so stale bookmarks still land
+// somewhere sensible.
+describe("Commissioner — legacy hash redirects (v1 → v2 tab renames)", () => {
+  it("redirects #teams → #ops (roster ops live in Operations)", async () => {
     window.location.hash = "#teams";
     renderWithRoute();
-    await waitFor(() => {
-      expect(window.location.hash).toBe("#manage-rosters");
-    });
+    await waitFor(() => expect(window.location.hash).toBe("#ops"));
   });
 
-  it("redirects #teams → #season during SETUP (pre-auction)", async () => {
-    mockGating.value = { ...mockGating.value, seasonStatus: "SETUP", canAuction: true };
-    window.location.hash = "#teams";
-    renderWithRoute();
-    await waitFor(() => {
-      expect(window.location.hash).toBe("#season");
-    });
-  });
-
-  it("redirects #teams → #season during DRAFT", async () => {
-    mockGating.value = { ...mockGating.value, seasonStatus: "DRAFT", canAuction: true };
-    window.location.hash = "#teams";
-    renderWithRoute();
-    await waitFor(() => {
-      expect(window.location.hash).toBe("#season");
-    });
-  });
-
-  it("redirects #trades → #manage-rosters regardless of season phase", async () => {
-    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+  it("redirects #trades → #ops (trades live in Operations)", async () => {
     window.location.hash = "#trades";
     renderWithRoute();
-    await waitFor(() => {
-      expect(window.location.hash).toBe("#manage-rosters");
-    });
+    await waitFor(() => expect(window.location.hash).toBe("#ops"));
   });
 
-  it("does not redirect known hashes — #season passes through unchanged", async () => {
-    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+  it("redirects #manage-rosters → #ops", async () => {
+    window.location.hash = "#manage-rosters";
+    renderWithRoute();
+    await waitFor(() => expect(window.location.hash).toBe("#ops"));
+  });
+
+  it("redirects #league → #settings (league settings moved to Settings tab)", async () => {
+    window.location.hash = "#league";
+    renderWithRoute();
+    await waitFor(() => expect(window.location.hash).toBe("#settings"));
+  });
+
+  it("redirects #members → #people (members now live in Teams & People)", async () => {
+    window.location.hash = "#members";
+    renderWithRoute();
+    await waitFor(() => expect(window.location.hash).toBe("#people"));
+  });
+
+  it("redirects #season → #archive", async () => {
     window.location.hash = "#season";
     renderWithRoute();
-    // Wait for overview to settle so the effect has run.
-    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
-    expect(window.location.hash).toBe("#season");
+    await waitFor(() => expect(window.location.hash).toBe("#archive"));
   });
 
-  it("does not redirect a no-op hash that doesn't match any legacy slug", async () => {
-    mockGating.value = { ...mockGating.value, seasonStatus: "IN_SEASON" };
+  it("redirects #health → #overview", async () => {
+    window.location.hash = "#health";
+    renderWithRoute();
+    await waitFor(() => expect(window.location.hash).toBe("#overview"));
+  });
+
+  it("passes known v2 hashes through unchanged — #ops", async () => {
+    window.location.hash = "#ops";
+    renderWithRoute();
+    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
+    expect(window.location.hash).toBe("#ops");
+  });
+
+  it("passes known v2 hashes through unchanged — #people", async () => {
+    window.location.hash = "#people";
+    renderWithRoute();
+    await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
+    expect(window.location.hash).toBe("#people");
+  });
+
+  it("does not redirect an unrecognised hash slug", async () => {
     window.location.hash = "#unknown-slug";
     renderWithRoute();
     await waitFor(() => expect(screen.getByText(/Test League/)).toBeInTheDocument());
-    // Unknown hashes should be left alone — neither redirected nor scrubbed.
     expect(window.location.hash).toBe("#unknown-slug");
   });
 });

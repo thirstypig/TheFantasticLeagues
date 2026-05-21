@@ -77,6 +77,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [standingsMode, setStandingsMode] = useState<"current" | "full">("current");
 
+  // Depth chart state
+  type DepthPlayer = { name: string; mlbId: number; status: string; isInjured: boolean };
+  type DepthPos = { position: string; label: string; players: DepthPlayer[] };
+  const [depthTeamId, setDepthTeamId] = useState(119); // Default LAD
+  const [depthChart, setDepthChart] = useState<DepthPos[]>([]);
+  const [depthLoading, setDepthLoading] = useState(false);
+  const [depthPlayerCount, setDepthPlayerCount] = useState(0);
+  const [depthCachedAt, setDepthCachedAt] = useState<string | null>(null);
+
   useEffect(() => {
     if (!leagueId) return;
     let canceled = false;
@@ -165,6 +174,25 @@ export default function Home() {
 
     return () => { canceled = true; };
   }, [leagueId, myTeamId]);
+
+  // Depth chart fetch — re-runs when team picker changes
+  useEffect(() => {
+    if (!depthTeamId) return;
+    let ok = true;
+    setDepthLoading(true);
+    fetchJsonApi<{ positions: DepthPos[]; playerCount: number; cachedAt: string }>(
+      `${API_BASE}/mlb/depth-chart?teamId=${depthTeamId}`,
+    )
+      .then(res => {
+        if (!ok) return;
+        setDepthChart(res.positions ?? []);
+        setDepthPlayerCount(res.playerCount ?? 0);
+        setDepthCachedAt(res.cachedAt ?? null);
+      })
+      .catch(() => { if (ok) setDepthChart([]); })
+      .finally(() => { if (ok) setDepthLoading(false); });
+    return () => { ok = false; };
+  }, [depthTeamId]);
 
   // Derived: my team's standings row (rank, points).
   const myStanding = useMemo(() => {
@@ -571,6 +599,133 @@ export default function Home() {
     </Glass>
   ) : null;
 
+  const depthChartCard = (
+    <Glass>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <SectionLabel>Depth Charts</SectionLabel>
+        <select
+          value={depthTeamId}
+          onChange={e => setDepthTeamId(Number(e.target.value))}
+          style={{
+            background: "var(--am-surface)",
+            border: "1px solid var(--am-border)",
+            borderRadius: 6,
+            padding: "3px 8px",
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--am-text-muted)",
+            outline: "none",
+            cursor: "pointer",
+          }}
+        >
+          <optgroup label="NL West">
+            <option value={119}>LAD</option>
+            <option value={135}>SD</option>
+            <option value={137}>SF</option>
+            <option value={109}>AZ</option>
+            <option value={115}>COL</option>
+          </optgroup>
+          <optgroup label="NL East">
+            <option value={144}>ATL</option>
+            <option value={121}>NYM</option>
+            <option value={143}>PHI</option>
+            <option value={146}>MIA</option>
+            <option value={120}>WSH</option>
+          </optgroup>
+          <optgroup label="NL Central">
+            <option value={158}>MIL</option>
+            <option value={112}>CHC</option>
+            <option value={138}>STL</option>
+            <option value={113}>CIN</option>
+            <option value={134}>PIT</option>
+          </optgroup>
+          <optgroup label="AL East">
+            <option value={110}>BAL</option>
+            <option value={147}>NYY</option>
+            <option value={139}>TB</option>
+            <option value={141}>TOR</option>
+            <option value={111}>BOS</option>
+          </optgroup>
+          <optgroup label="AL Central">
+            <option value={114}>CLE</option>
+            <option value={118}>KC</option>
+            <option value={116}>DET</option>
+            <option value={142}>MIN</option>
+            <option value={145}>CWS</option>
+          </optgroup>
+          <optgroup label="AL West">
+            <option value={117}>HOU</option>
+            <option value={136}>SEA</option>
+            <option value={140}>TEX</option>
+            <option value={108}>LAA</option>
+            <option value={133}>ATH</option>
+          </optgroup>
+        </select>
+      </div>
+      {depthLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ height: 28, borderRadius: 6, background: "var(--am-surface-faint)", opacity: 0.5 }} />
+          ))}
+        </div>
+      ) : depthChart.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "24px 0", fontSize: 11, color: "var(--am-text-faint)" }}>
+          No depth chart data
+        </div>
+      ) : (
+        <div style={{ borderRadius: 10, border: "1px solid var(--am-border)", overflow: "hidden" }}>
+          <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--am-surface-alt)", borderBottom: "1px solid var(--am-border)" }}>
+                <th style={{ textAlign: "left", padding: "5px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--am-text-faint)", width: 36 }}>Pos</th>
+                <th style={{ textAlign: "left", padding: "5px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--am-text-faint)" }}>Starter</th>
+                <th style={{ textAlign: "left", padding: "5px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--am-text-faint)" }}>Backup</th>
+                <th style={{ textAlign: "left", padding: "5px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--am-text-faint)" }}>3rd</th>
+              </tr>
+            </thead>
+            <tbody>
+              {depthChart.map((pos, i) => {
+                const active = pos.players.filter(p => !p.isInjured);
+                const il = pos.players.filter(p => p.isInjured);
+                const display = [...active.slice(0, 2), ...active.slice(2), ...il].slice(0, 3);
+                return (
+                  <tr
+                    key={pos.position}
+                    style={{ borderBottom: i < depthChart.length - 1 ? "1px solid var(--am-border)" : "none" }}
+                  >
+                    <td style={{ padding: "5px 8px" }}>
+                      <span style={{ fontSize: 10, fontFamily: "ui-monospace, monospace", fontWeight: 700, color: "var(--am-accent)" }}>{pos.position}</span>
+                    </td>
+                    {[0, 1, 2].map(idx => (
+                      <td key={idx} style={{ padding: "5px 8px" }}>
+                        {display[idx] ? (
+                          <span style={{ color: display[idx].isInjured ? "var(--am-negative)" : "var(--am-text)", textDecoration: display[idx].isInjured ? "line-through" : "none", opacity: display[idx].isInjured ? 0.7 : 1 }}>
+                            {display[idx].name}
+                            {display[idx].isInjured && (
+                              <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, color: "var(--am-negative)", textDecoration: "none" }}>
+                                {display[idx].status.replace("Injured ", "IL-").replace("-Day", "")}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--am-text-faint)", opacity: 0.3 }}>—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ padding: "4px 8px", borderTop: "1px solid var(--am-border)", fontSize: 9, color: "var(--am-text-faint)", display: "flex", justifyContent: "space-between" }}>
+            <span>MLB Stats API · {depthPlayerCount} players</span>
+            {depthCachedAt && <span>{new Date(depthCachedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
+          </div>
+        </div>
+      )}
+    </Glass>
+  );
+
   return (
     <div className="aurora-theme">
       <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", color: "var(--am-text)" }}>
@@ -594,6 +749,7 @@ export default function Home() {
             <NewsFeedsPanel compact limit={5} />
             {boardCard}
             {injuredListCard}
+            {depthChartCard}
           </div>
 
           {/* CTAs — bottom row of quick links */}
