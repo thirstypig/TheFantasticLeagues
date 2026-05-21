@@ -6,7 +6,6 @@ import AddDropPanel from '../../transactions/components/RosterMovesTab/AddDropPa
 import CommissionerTradeTool from './CommissionerTradeTool';
 import PlaceOnIlPanel from '../../transactions/components/RosterMovesTab/PlaceOnIlPanel';
 import ActivateFromIlPanel from '../../transactions/components/RosterMovesTab/ActivateFromIlPanel';
-import { Button } from '../../../components/ui/button';
 import { enrichPlayersWithRosterState } from '../lib/enrichPlayersWithRosterState';
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
 
@@ -46,15 +45,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate, show
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingAsTeamId, setActingAsTeamId] = useState<number | null>(teams[0]?.id ?? null);
-  // Lifted effective-date state — one picker in the header drives the
-  // shared AddDropPanel + the IL panels (all three accept `effectiveDate`
-  // as an optional prop). Empty string = server default (tomorrow 12:00 AM PT).
   const [effectiveDate, setEffectiveDate] = useState<string>('');
   const [ilMode, setIlMode] = useState<IlMode>('place-il');
-  // Preselection nonces from the per-row IL shortcut on RosterGrid. We use
-  // a {playerId, nonce} tuple instead of a bare playerId so clicking the
-  // same player twice still triggers the panel's useEffect (otherwise React
-  // would skip the state update because the value didn't change).
   const [stashPreselect, setStashPreselect] = useState<{ playerId: number; nonce: number } | null>(null);
   const [activatePreselect, setActivatePreselect] = useState<{ playerId: number; nonce: number } | null>(null);
   const ilCardRef = useRef<HTMLDivElement | null>(null);
@@ -89,9 +81,6 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate, show
       onUpdate();
   };
 
-  // Lookup of Player.id → mlbStatus, used by RosterGrid to gate the per-row
-  // "IL" shortcut button to rows whose MLB status actually matches the IL
-  // regex (otherwise commissioners would click and hit a server rejection).
   const mlbStatusByPlayerId = useMemo(() => {
     const map = new Map<number, string | undefined>();
     for (const p of players) {
@@ -101,10 +90,6 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate, show
     return map;
   }, [players]);
 
-  // Per-row IL shortcut handlers. We jump the acting-as team to whichever
-  // team owns the clicked roster row, because the commissioner clicked
-  // *that* player — the IL panels are scoped to actingAsTeamId, so the
-  // Acting As must follow. We then preselect the player and switch ilMode.
   function handlePlaceIlShortcut(item: RosterItem) {
     setActingAsTeamId(item.teamId);
     setIlMode('place-il');
@@ -137,282 +122,249 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate, show
     }
   }
 
-  // Annotate each player with the fantasy-team join data the panels need.
-  // See `enrichPlayersWithRosterState` for the rationale and the
-  // session-80 "Acting As stale dropdown" bug it prevents.
   const playersWithRosterState = useMemo(
     () => enrichPlayersWithRosterState(players as any, rosters, teams),
     [players, rosters, teams],
   );
 
   if (error) {
-    return <div className="text-red-500 text-sm">Error loading rosters: {error}</div>;
+    return <div style={{ color: 'var(--am-negative)', fontSize: 13, padding: 16 }}>Error loading rosters: {error}</div>;
   }
 
   return (
-    <div className="space-y-6">
-       {/* Header — Acting As team + shared effective-date picker. One picker
-           drives both Add/Drop and IL actions (matches Fangraphs' always-
-           visible control at the top of the commissioner roster page). */}
-       <div className="flex items-end gap-6 flex-wrap">
-         <div className="flex flex-col gap-1">
-           <label className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)]">Acting As</label>
-           <select
-             value={actingAsTeamId ?? ''}
-             onChange={(e) => setActingAsTeamId(Number(e.target.value))}
-             className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
-           >
-             {teams.map((t) => (
-               <option key={t.id} value={t.id} className="text-black">{t.name}</option>
-             ))}
-           </select>
-         </div>
-         <div className="flex flex-col gap-1">
-           <label htmlFor="commissioner-effective-date" className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)]">
-             Effective date
-           </label>
-           <div className="flex items-center gap-2">
-             <input
-               id="commissioner-effective-date"
-               type="date"
-               value={effectiveDate}
-               onChange={(e) => setEffectiveDate(e.target.value)}
-               className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all"
-             />
-             {effectiveDate ? (
-               <button
-                 type="button"
-                 onClick={() => setEffectiveDate('')}
-                 className="text-[10px] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] underline"
-               >
-                 clear
-               </button>
-             ) : (
-               <span className="text-[10px] text-[var(--lg-text-muted)]">empty = tomorrow</span>
-             )}
-           </div>
-         </div>
-       </div>
+    <div className="cm-col" style={{ gap: 0 }}>
 
-       {/* Acting team feedback line — visual confirmation that the Acting As
-           change took effect. Bold team name only; counts/last-move chrome
-           cut per the deepened plan's simplicity review. */}
-       {actingAsTeamId && (
-         <div className="text-xs text-[var(--lg-text-muted)]">
-           Acting on roster for{' '}
-           <span className="font-semibold text-[var(--lg-text-primary)]">
-             {teams.find((t) => t.id === actingAsTeamId)?.name ?? `team ${actingAsTeamId}`}
-           </span>
-         </div>
-       )}
+      {/* ── Acting As + Effective Date header ── */}
+      <div className="cm-section-head" style={{ borderRadius: 0 }}>
+        <div className="cm-row" style={{ gap: 24, flexWrap: 'wrap', flex: 1 }}>
+          <div className="cm-col" style={{ gap: 4 }}>
+            <span className="cm-cap">Acting As</span>
+            <select
+              className="cm-select"
+              style={{ minWidth: 180 }}
+              value={actingAsTeamId ?? ''}
+              onChange={(e) => setActingAsTeamId(Number(e.target.value))}
+            >
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="cm-col" style={{ gap: 4 }}>
+            <span className="cm-cap">Effective Date</span>
+            <div className="cm-row" style={{ gap: 8 }}>
+              <input
+                type="date"
+                className="cm-input"
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                style={{ width: 150 }}
+              />
+              {effectiveDate ? (
+                <button type="button" className="cm-btn ghost sm" onClick={() => setEffectiveDate('')}>clear</button>
+              ) : (
+                <span className="cm-muted" style={{ fontSize: 11 }}>empty = tomorrow</span>
+              )}
+            </div>
+          </div>
+        </div>
+        {actingAsTeamId && (
+          <span className="cm-muted" style={{ fontSize: 12 }}>
+            Acting on roster for <strong style={{ color: 'var(--am-text)' }}>{teams.find((t) => t.id === actingAsTeamId)?.name ?? `team ${actingAsTeamId}`}</strong>
+          </span>
+        )}
+      </div>
 
-       {/* Focused single-team roster view — primary pane. Shows the acting-as
-           team's roster only (no editable price/position; those are auction
-           setup concerns now in the Season tab). Per-row IL/Activate buttons
-           from #128 still work via the same callbacks. */}
-       {actingAsTeamId && !loading && (() => {
-         const actingTeam = teams.find((t) => t.id === actingAsTeamId);
-         return actingTeam ? (
-           <RosterGrid
-             teams={[actingTeam]}
-             rosters={rosters.filter((r) => r.teamId === actingAsTeamId)}
-             canRelease
-             onRelease={handleUpdate}
-             onPlaceIl={handlePlaceIlShortcut}
-             onActivateIl={handleActivateIlShortcut}
-             mlbStatusByPlayerId={mlbStatusByPlayerId}
-             unbounded
-           />
-         ) : null;
-       })()}
+      {/* ── Live Roster (single-team view) ── */}
+      {actingAsTeamId && !loading && (() => {
+        const actingTeam = teams.find((t) => t.id === actingAsTeamId);
+        return actingTeam ? (
+          <div style={{ borderBottom: '1px solid var(--am-border)' }}>
+            <div className="cm-section-head" style={{ borderRadius: 0 }}>
+              <span className="cm-h2">Live Rosters</span>
+            </div>
+            <div style={{ padding: '8px 0' }}>
+              <RosterGrid
+                teams={[actingTeam]}
+                rosters={rosters.filter((r) => r.teamId === actingAsTeamId)}
+                canRelease
+                onRelease={handleUpdate}
+                onPlaceIl={handlePlaceIlShortcut}
+                onActivateIl={handleActivateIlShortcut}
+                mlbStatusByPlayerId={mlbStatusByPlayerId}
+                unbounded
+              />
+            </div>
+          </div>
+        ) : null;
+      })()}
 
-       {/* Add / Drop — shared AddDropPanel from RosterMovesTab. The owner-side
-           and commissioner-side now use the SAME pair-action component;
-           server-side `requireTeamOwnerOrCommissioner` middleware handles
-           cross-team commissioner authority. Server enforces DROP_REQUIRED
-           in-season so the panel disables submit until a drop is picked. */}
-       <div className="lg-card p-0 bg-transparent">
-         <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
-           <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Add / Drop</h3>
-           <p className="text-xs text-[var(--lg-text-muted)] mt-1">
-             Commissioner view — adds go to the Acting As team. In-season every add must pair with a drop. Effective date from the header above is used.
-           </p>
-         </div>
-         {loading || !actingAsTeamId ? (
-           <div className="p-6 text-xs text-[var(--lg-text-muted)]">
-             {loading ? "Loading players…" : "Select an Acting As team above."}
-           </div>
-         ) : (
-           <div className="p-4">
-             <AddDropPanel
-               key={`add-drop-${actingAsTeamId}`}
-               leagueId={leagueId}
-               teamId={actingAsTeamId}
-               players={playersWithRosterState as unknown as any}
-               onComplete={handleUpdate}
-               effectiveDate={effectiveDate || undefined}
-             />
-           </div>
-         )}
-       </div>
+      {/* ── Add / Drop ── */}
+      <div style={{ borderBottom: '1px solid var(--am-border)' }}>
+        <div className="cm-section-head" style={{ borderRadius: 0 }}>
+          <div className="cm-col" style={{ gap: 2, flex: 1 }}>
+            <span className="cm-h2">Add / Drop</span>
+            <span className="cm-muted" style={{ fontSize: 11, fontWeight: 400 }}>
+              Commissioner view — adds go to the Acting As team. In-season every add must pair with a drop. Effective date from the header above is used.
+            </span>
+          </div>
+        </div>
+        {loading || !actingAsTeamId ? (
+          <div style={{ padding: '24px 14px', fontSize: 12, color: 'var(--am-text-muted)' }}>
+            {loading ? "Loading players…" : "Select an Acting As team above."}
+          </div>
+        ) : (
+          <div style={{ padding: 14 }}>
+            <AddDropPanel
+              key={`add-drop-${actingAsTeamId}`}
+              leagueId={leagueId}
+              teamId={actingAsTeamId}
+              players={playersWithRosterState as unknown as any}
+              onComplete={handleUpdate}
+              effectiveDate={effectiveDate || undefined}
+            />
+          </div>
+        )}
+      </div>
 
-       {/* IL Management — place on IL (paired with replacement add) or
-           activate from IL (paired with drop). Both halves commit atomically
-           server-side. Uses the acting-as team + lifted effective date.
-           Panels remount on team change (via key) so their internal picker
-           state resets to avoid cross-team bleed. */}
-       <div ref={ilCardRef} className="lg-card p-0 bg-transparent">
-         <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
-           <div className="flex items-center justify-between gap-4 flex-wrap">
-             <div>
-               <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">IL Management</h3>
-               <p className="text-xs text-[var(--lg-text-muted)] mt-1">
-                 Place on IL pairs with a replacement add; Activate from IL pairs with a drop. Both commit atomically.
-               </p>
-             </div>
-             <div className="lg-card p-1 inline-flex gap-1">
-               <Button
-                 onClick={() => setIlMode('place-il')}
-                 variant={ilMode === 'place-il' ? 'default' : 'ghost'}
-                 size="sm"
-                 className="px-4"
-               >
-                 Place on IL
-               </Button>
-               <Button
-                 onClick={() => setIlMode('activate-il')}
-                 variant={ilMode === 'activate-il' ? 'default' : 'ghost'}
-                 size="sm"
-                 className="px-4"
-               >
-                 Activate from IL
-               </Button>
-             </div>
-           </div>
-         </div>
-         <div className="p-4">
-           {!actingAsTeamId ? (
-             <p className="text-[11px] text-[var(--lg-text-muted)]">Select an Acting As team above.</p>
-           ) : ilMode === 'place-il' ? (
-             <PlaceOnIlPanel
-               key={`place-${actingAsTeamId}`}
-               leagueId={leagueId}
-               teamId={actingAsTeamId}
-               players={playersWithRosterState as unknown as any}
-               onComplete={handleUpdate}
-               effectiveDate={effectiveDate || undefined}
-               initialStashPlayerId={
-                 stashPreselect && stashPreselect.nonce
-                   ? stashPreselect.playerId
-                   : null
-               }
-             />
-           ) : (
-             <ActivateFromIlPanel
-               key={`activate-${actingAsTeamId}`}
-               leagueId={leagueId}
-               teamId={actingAsTeamId}
-               players={playersWithRosterState as unknown as any}
-               onComplete={handleUpdate}
-               effectiveDate={effectiveDate || undefined}
-               initialActivatePlayerId={
-                 activatePreselect && activatePreselect.nonce
-                   ? activatePreselect.playerId
-                   : null
-               }
-             />
-           )}
-         </div>
-       </div>
+      {/* ── IL Management ── */}
+      <div ref={ilCardRef} style={{ borderBottom: '1px solid var(--am-border)' }}>
+        <div className="cm-section-head" style={{ borderRadius: 0 }}>
+          <div className="cm-col" style={{ gap: 2, flex: 1 }}>
+            <span className="cm-h2">IL Management</span>
+            <span className="cm-muted" style={{ fontSize: 11, fontWeight: 400 }}>
+              Place on IL pairs with a replacement add; Activate from IL pairs with a drop. Both commit atomically.
+            </span>
+          </div>
+          <div className="cm-row" style={{ gap: 4 }}>
+            <button
+              type="button"
+              className={`cm-btn sm ${ilMode === 'place-il' ? 'primary' : 'ghost'}`}
+              onClick={() => setIlMode('place-il')}
+            >
+              Place on IL
+            </button>
+            <button
+              type="button"
+              className={`cm-btn sm ${ilMode === 'activate-il' ? 'primary' : 'ghost'}`}
+              onClick={() => setIlMode('activate-il')}
+            >
+              Activate from IL
+            </button>
+          </div>
+        </div>
+        <div style={{ padding: 14 }}>
+          {!actingAsTeamId ? (
+            <p style={{ fontSize: 11, color: 'var(--am-text-muted)' }}>Select an Acting As team above.</p>
+          ) : ilMode === 'place-il' ? (
+            <PlaceOnIlPanel
+              key={`place-${actingAsTeamId}`}
+              leagueId={leagueId}
+              teamId={actingAsTeamId}
+              players={playersWithRosterState as unknown as any}
+              onComplete={handleUpdate}
+              effectiveDate={effectiveDate || undefined}
+              initialStashPlayerId={stashPreselect && stashPreselect.nonce ? stashPreselect.playerId : null}
+            />
+          ) : (
+            <ActivateFromIlPanel
+              key={`activate-${actingAsTeamId}`}
+              leagueId={leagueId}
+              teamId={actingAsTeamId}
+              players={playersWithRosterState as unknown as any}
+              onComplete={handleUpdate}
+              effectiveDate={effectiveDate || undefined}
+              initialActivatePlayerId={activatePreselect && activatePreselect.nonce ? activatePreselect.playerId : null}
+            />
+          )}
+        </div>
+      </div>
 
-       {/* Force Drop — standalone in-season drop that bypasses the "every add
-           must pair with a drop" enforcement. For corrections, not routine use.
-           Creates a TransactionEvent so the action is visible in the activity log. */}
-       <div className="lg-card p-0 bg-transparent">
-         <div className="px-4 py-3 border-b border-[var(--lg-border-subtle)]">
-           <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">Force Drop Player</h3>
-           <p className="text-xs text-[var(--lg-text-muted)] mt-1">
-             Commissioner-only. Drops a player without requiring a simultaneous add. Use the effective date from the header above. Action is logged in the activity feed.
-           </p>
-         </div>
-         <div className="p-4">
-           {!actingAsTeamId ? (
-             <p className="text-[11px] text-[var(--lg-text-muted)]">Select an Acting As team above.</p>
-           ) : (
-             <div className="flex flex-wrap items-end gap-3">
-               <div className="flex flex-col gap-1">
-                 <label className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)]">Player to Drop</label>
-                 <select
-                   value={forceDropPlayerId}
-                   onChange={(e) => setForceDropPlayerId(e.target.value === '' ? '' : Number(e.target.value))}
-                   className="bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)] transition-all min-w-[200px]"
-                 >
-                   <option value="">— Select player —</option>
-                   {rosters
-                     .filter((r) => r.teamId === actingAsTeamId && r.assignedPosition !== 'IL')
-                     .sort((a, b) => a.player.name.localeCompare(b.player.name))
-                     .map((r) => (
-                       <option key={r.id} value={r.player.id}>
-                         {r.player.name} ({r.player.posPrimary} · {r.assignedPosition ?? 'BN'})
-                       </option>
-                     ))}
-                 </select>
-               </div>
-               <Button
-                 onClick={handleForceDrop}
-                 disabled={!forceDropPlayerId || forceDropPending}
-                 variant="destructive"
-                 size="sm"
-                 className="px-5"
-               >
-                 {forceDropPending ? 'Dropping…' : 'Force Drop'}
-               </Button>
-             </div>
-           )}
-           {forceDropError && (
-             <p className="mt-2 text-[11px] text-red-500">{forceDropError}</p>
-           )}
-         </div>
-       </div>
+      {/* ── Force Drop ── */}
+      <div style={{ borderBottom: '1px solid var(--am-border)' }}>
+        <div className="cm-section-head" style={{ borderRadius: 0 }}>
+          <div className="cm-col" style={{ gap: 2, flex: 1 }}>
+            <span className="cm-h2">Force Drop Player</span>
+            <span className="cm-muted" style={{ fontSize: 11, fontWeight: 400 }}>
+              Commissioner-only. Drops a player without requiring a simultaneous add. Use the effective date from the header above. Action is logged in the activity feed.
+            </span>
+          </div>
+        </div>
+        <div style={{ padding: 14 }}>
+          {!actingAsTeamId ? (
+            <p style={{ fontSize: 11, color: 'var(--am-text-muted)' }}>Select an Acting As team above.</p>
+          ) : (
+            <div className="cm-row" style={{ flexWrap: 'wrap', gap: 10 }}>
+              <div className="cm-col" style={{ gap: 4 }}>
+                <span className="cm-cap">Player to Drop</span>
+                <select
+                  className="cm-select"
+                  style={{ minWidth: 220 }}
+                  value={forceDropPlayerId}
+                  onChange={(e) => setForceDropPlayerId(e.target.value === '' ? '' : Number(e.target.value))}
+                >
+                  <option value="">— Select player —</option>
+                  {rosters
+                    .filter((r) => r.teamId === actingAsTeamId && r.assignedPosition !== 'IL')
+                    .sort((a, b) => a.player.name.localeCompare(b.player.name))
+                    .map((r) => (
+                      <option key={r.id} value={r.player.id}>
+                        {r.player.name} ({r.player.posPrimary} · {r.assignedPosition ?? 'BN'})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className="cm-btn danger"
+                style={{ marginTop: 20 }}
+                onClick={handleForceDrop}
+                disabled={!forceDropPlayerId || forceDropPending}
+              >
+                {forceDropPending ? 'Dropping…' : 'Force Drop'}
+              </button>
+            </div>
+          )}
+          {forceDropError && (
+            <p style={{ marginTop: 8, fontSize: 11, color: 'var(--am-negative)' }}>{forceDropError}</p>
+          )}
+        </div>
+      </div>
 
-       {/* Retroactive Trades — suppressed when rendered inside the Trades sub-tab
-           of the Operations section (where CommissionerTradeTool has its own view). */}
-       {showTrades && <details className="lg-card p-0 bg-transparent">
-         <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-[var(--lg-text-primary)] select-none">
-           Record retroactive trade
-           <span className="ml-2 text-[10px] font-normal text-[var(--lg-text-muted)] uppercase tracking-wide">
-             (collapsible)
-           </span>
-         </summary>
-         <div className="p-4 border-t border-[var(--lg-border-subtle)]">
-           <CommissionerTradeTool leagueId={leagueId} teams={teams} />
-         </div>
-       </details>}
+      {/* ── Retroactive Trades (collapsible) ── */}
+      {showTrades && (
+        <details style={{ borderBottom: '1px solid var(--am-border)' }}>
+          <summary className="cm-section-head" style={{ cursor: 'pointer', borderRadius: 0, listStyle: 'none' }}>
+            <span className="cm-h2">Record Retroactive Trade</span>
+            <span className="cm-chip" style={{ marginLeft: 8, fontSize: 10 }}>collapsible</span>
+          </summary>
+          <div style={{ padding: 14 }}>
+            <CommissionerTradeTool leagueId={leagueId} teams={teams} />
+          </div>
+        </details>
+      )}
 
-       {/* All Teams Quick View — collapsible glance across the league.
-           Default closed; lazy-mounted (the contents only render when open)
-           so eight teams worth of roster rendering doesn't run on first paint. */}
-       <details className="lg-card p-0 bg-transparent">
-         <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-[var(--lg-text-primary)] select-none">
-           All Teams Quick View
-           <span className="ml-2 text-[10px] font-normal text-[var(--lg-text-muted)] uppercase tracking-wide">
-             (collapsible)
-           </span>
-         </summary>
-         <div className="p-4 border-t border-[var(--lg-border-subtle)]">
-           <RosterGrid
-             teams={teams}
-             rosters={rosters}
-             canRelease
-             canEditPrice
-             canEditPosition
-             onRelease={handleUpdate}
-             onPlaceIl={handlePlaceIlShortcut}
-             onActivateIl={handleActivateIlShortcut}
-             mlbStatusByPlayerId={mlbStatusByPlayerId}
-           />
-         </div>
-       </details>
+      {/* ── All Teams Quick View (collapsible) ── */}
+      <details>
+        <summary className="cm-section-head" style={{ cursor: 'pointer', borderRadius: 0, listStyle: 'none' }}>
+          <span className="cm-h2">All Teams Quick View</span>
+          <span className="cm-chip" style={{ marginLeft: 8, fontSize: 10 }}>collapsible</span>
+        </summary>
+        <div style={{ padding: '8px 0' }}>
+          <RosterGrid
+            teams={teams}
+            rosters={rosters}
+            canRelease
+            canEditPrice
+            canEditPosition
+            onRelease={handleUpdate}
+            onPlaceIl={handlePlaceIlShortcut}
+            onActivateIl={handleActivateIlShortcut}
+            mlbStatusByPlayerId={mlbStatusByPlayerId}
+          />
+        </div>
+      </details>
+
     </div>
   );
 }
