@@ -302,6 +302,7 @@ export default function Commissioner() {
   }>({ league: null, teams: [], memberships: [] });
 
   // Create team form
+  const [showCreateTeamForm, setShowCreateTeamForm] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [teamCode, setTeamCode] = useState("");
   const [teamBudget, setTeamBudget] = useState<number>(400);
@@ -452,34 +453,39 @@ export default function Commissioner() {
     setError(null);
 
     try {
-      const [meResp, leaguesResp] = await Promise.all([getMe(), getLeagues()]);
+      const [
+        meResp,
+        leaguesResp,
+        overviewResp,
+        users,
+        priorTeamsList,
+        icResult,
+        invitesResult,
+        lfResult,
+      ] = await Promise.all([
+        getMe(),
+        getLeagues(),
+        getCommissionerOverview(lid),
+        getAvailableUsers(lid),
+        getPriorTeams(lid),
+        getInviteCode(lid).catch(() => null),
+        apiGetInvites(lid).catch(() => null),
+        apiGetLockedFields(lid).catch(() => null),
+      ]);
+
       setMe(meResp.user ?? null);
       setLeagues(leaguesResp.leagues ?? []);
 
-      const resp = await getCommissionerOverview(lid);
-      const norm = normalizeOverview(resp);
-
+      const norm = normalizeOverview(overviewResp);
       setOverview({ league: norm.league, teams: norm.teams, memberships: norm.memberships });
       reconcileTeamSelections(norm.teams);
 
-      const users = await getAvailableUsers(lid);
       setAvailableUsers(users);
-
-      const priorTeamsList = await getPriorTeams(lid);
       setPriorTeams(priorTeamsList);
 
-      try {
-        const ic = await getInviteCode(lid);
-        setInviteCodeValue(ic.inviteCode);
-      } catch { /* ignore if no permission */ }
-      try {
-        const invites = await apiGetInvites(lid);
-        setPendingInvites(invites.filter(i => i.status === "PENDING"));
-      } catch { /* ignore if no permission */ }
-      try {
-        const lf = await apiGetLockedFields(lid);
-        setLockedFields(lf.lockedFields ?? []);
-      } catch { /* ignore */ }
+      if (icResult) setInviteCodeValue(icResult.inviteCode);
+      if (invitesResult) setPendingInvites((invitesResult as any[]).filter((i: any) => i.status === "PENDING"));
+      if (lfResult) setLockedFields((lfResult as any).lockedFields ?? []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load commissioner data.");
     } finally {
@@ -1118,10 +1124,9 @@ export default function Commissioner() {
                     <div className="cm-section-head">
                       <div className="cm-h2">Teams</div>
                       <div className="cm-spacer" />
-                      <button className="cm-btn primary sm" onClick={() => {
-                        // scroll to create form
-                        document.getElementById('cm-create-team-form')?.scrollIntoView({ behavior: 'smooth' });
-                      }}>+ Create team</button>
+                      <button className="cm-btn primary sm" onClick={() => setShowCreateTeamForm(v => !v)}>
+                        {showCreateTeamForm ? '✕ Cancel' : '+ Create team'}
+                      </button>
                     </div>
                     <table className="cm-table">
                       <thead>
@@ -1169,45 +1174,48 @@ export default function Commissioner() {
                       </tbody>
                     </table>
 
-                    {/* Create team form */}
-                    <div id="cm-create-team-form" style={{ padding: 14, borderTop: "1px solid var(--am-border)" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Create team</div>
-                      <form onSubmit={onCreateTeam} className="cm-col" style={{ gap: 8 }}>
-                        {priorTeams.length > 0 && (
-                          <div>
-                            <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginBottom: 4 }}>Link to prior year team (optional)</div>
-                            <select className="cm-select full" value={selectedPriorTeamId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ""; setSelectedPriorTeamId(id); if (id) { const pt = priorTeams.find((t) => t.id === id); if (pt) { setTeamName(pt.name); setTeamCode(pt.code || ""); } } }}>
-                              <option value="">Create new team…</option>
-                              {priorTeams.map((pt) => (<option key={pt.id} value={pt.id}>{pt.name} — from last year</option>))}
-                            </select>
-                          </div>
-                        )}
-                        <div className="cm-row" style={{ gap: 8 }}>
-                          <input className="cm-input cm-grow" placeholder="Team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
-                          <input className="cm-input" style={{ width: 100 }} placeholder="Code" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} />
-                          <input className="cm-input" type="number" style={{ width: 80 }} placeholder="Budget" value={teamBudget} onChange={(e) => setTeamBudget(Number(e.target.value))} />
-                          <button type="submit" className="cm-btn primary" disabled={busy}>Create</button>
+                    {/* Create team + Assign owner — collapsed by default */}
+                    {showCreateTeamForm && (
+                      <>
+                        <div style={{ padding: 14, borderTop: "1px solid var(--am-border)" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Create team</div>
+                          <form onSubmit={(e) => { onCreateTeam(e); setShowCreateTeamForm(false); }} className="cm-col" style={{ gap: 8 }}>
+                            {priorTeams.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginBottom: 4 }}>Link to prior year team (optional)</div>
+                                <select className="cm-select full" value={selectedPriorTeamId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ""; setSelectedPriorTeamId(id); if (id) { const pt = priorTeams.find((t) => t.id === id); if (pt) { setTeamName(pt.name); setTeamCode(pt.code || ""); } } }}>
+                                  <option value="">Create new team…</option>
+                                  {priorTeams.map((pt) => (<option key={pt.id} value={pt.id}>{pt.name} — from last year</option>))}
+                                </select>
+                              </div>
+                            )}
+                            <div className="cm-row" style={{ gap: 8 }}>
+                              <input className="cm-input cm-grow" placeholder="Team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
+                              <input className="cm-input" style={{ width: 100 }} placeholder="Code" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} />
+                              <input className="cm-input" type="number" style={{ width: 80 }} placeholder="Budget" value={teamBudget} onChange={(e) => setTeamBudget(Number(e.target.value))} />
+                              <button type="submit" className="cm-btn primary" disabled={busy}>Create</button>
+                            </div>
+                          </form>
                         </div>
-                      </form>
-                    </div>
 
-                    {/* Assign owner form */}
-                    <div style={{ padding: 14, borderTop: "1px solid var(--am-border)" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Assign team owner</div>
-                      <form onSubmit={onAssignOwner} className="cm-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                        <select className="cm-select" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}>
-                          <option value="">Select team…</option>
-                          {overview.teams.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
-                        </select>
-                        <select className="cm-select" value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}>
-                          <option value="">Select owner…</option>
-                          {availableUsers.map((u) => (<option key={u.id} value={u.id}>{u.name || u.email}</option>))}
-                        </select>
-                        <input className="cm-input" placeholder="Display name (optional)" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
-                        <button type="submit" className="cm-btn primary" disabled={busy}>Assign</button>
-                      </form>
-                      <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 6 }}>Teams can have up to 2 owners.</div>
-                    </div>
+                        <div style={{ padding: 14, borderTop: "1px solid var(--am-border)" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Assign team owner</div>
+                          <form onSubmit={onAssignOwner} className="cm-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                            <select className="cm-select" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}>
+                              <option value="">Select team…</option>
+                              {overview.teams.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                            </select>
+                            <select className="cm-select" value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}>
+                              <option value="">Select owner…</option>
+                              {availableUsers.map((u) => (<option key={u.id} value={u.id}>{u.name || u.email}</option>))}
+                            </select>
+                            <input className="cm-input" placeholder="Display name (optional)" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
+                            <button type="submit" className="cm-btn primary" disabled={busy}>Assign</button>
+                          </form>
+                          <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 6 }}>Teams can have up to 2 owners.</div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
