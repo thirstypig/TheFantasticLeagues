@@ -663,25 +663,37 @@ export default function AddDropPanel({
         for (const addSlot of addSlots) {
           if (playerSlots.has(addSlot)) return true;
         }
-        // Chain fit: another roster player Q can move into p's current slot
-        // while vacating a slot the new player can fill. Handles "move Tatis
-        // from 2B to OF, then drop an OF player" scenarios. One hop only —
-        // deeper chains are rare and the bipartite matcher handles any valid
-        // arrangement the user can express.
+        // Chain fit (arbitrary depth): BFS vacancy propagation. Start with
+        // p's current slot as "vacated". Repeatedly find players Q whose
+        // eligible slots intersect the vacated set — Q can move there,
+        // freeing Q's own slot. Stop when stable. Valid drop if the vacated
+        // set eventually intersects addSlots (a slot the new player can fill).
+        // This correctly handles 2-, 3-, 4+-player chains, e.g.:
+        //   Tatis (2B→OF) → drop an OF player — vacancy hops 2B→OF→addSlots.
+        //   Or: A (2B→MI) → B (MI→3B) → C (3B→OF) → drop an OF player.
         const pSlot = assignedSlot(p);
         if (isSlotCode(pSlot)) {
-          const canChain = dropCandidates.some((q) => {
-            if (q === p) return false;
-            const qSlots = slotsFor(q.positions || q.posPrimary || "");
-            if (!qSlots.has(pSlot)) return false; // Q can't slide into p's slot
-            const qCurrentSlot = assignedSlot(q);
-            if (isSlotCode(qCurrentSlot) && addSlots.has(qCurrentSlot)) return true;
-            for (const addSlot of addSlots) {
-              if (qSlots.has(addSlot)) return true;
+          const vacated = new Set<string>([pSlot]);
+          let changed = true;
+          while (changed) {
+            changed = false;
+            for (const q of dropCandidates) {
+              if (q === p) continue;
+              const qSlot = assignedSlot(q);
+              if (!isSlotCode(qSlot) || vacated.has(qSlot)) continue;
+              const qSlots = slotsFor(q.positions || q.posPrimary || "");
+              for (const v of vacated) {
+                if (isSlotCode(v) && qSlots.has(v)) {
+                  vacated.add(qSlot);
+                  changed = true;
+                  break;
+                }
+              }
             }
-            return false;
-          });
-          if (canChain) return true;
+          }
+          for (const addSlot of addSlots) {
+            if (vacated.has(addSlot)) return true;
+          }
         }
         return false;
       })
