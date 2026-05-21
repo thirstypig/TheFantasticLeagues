@@ -34,6 +34,8 @@
 .cm-table td { padding: 10px 12px; border-bottom: 1px solid var(--am-border); color: var(--am-text); }
 .cm-table tbody tr:last-child td { border-bottom: 0; }
 .cm-table tbody tr:hover { background: color-mix(in srgb, var(--am-chip) 50%, transparent); }
+.cm-table.dense th { padding: 5px 10px; }
+.cm-table.dense td { padding: 5px 10px; }
 
 .cm-row { display: flex; align-items: center; gap: 12px; }
 .cm-col { display: flex; flex-direction: column; gap: 12px; }

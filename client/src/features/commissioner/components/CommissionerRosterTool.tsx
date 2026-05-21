@@ -11,6 +11,12 @@ import { extractServerError } from '../../../lib/extractServerError';
 
 const POS_FILTERS = ['ALL', 'C', '1B', '2B', '3B', 'SS', 'MI', 'CM', 'OF', 'DH', 'P'] as const;
 
+const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'MI', 'CM', 'OF', 'DH', 'P', 'SP', 'RP', 'BN', 'IL'];
+function slotRank(slot: string | null | undefined): number {
+  const idx = SLOT_ORDER.indexOf((slot ?? 'BN').toUpperCase());
+  return idx === -1 ? SLOT_ORDER.length : idx;
+}
+
 interface Team {
   id: number;
   name: string;
@@ -121,9 +127,12 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     [players, rosters, teams],
   );
 
-  // Players on acting team's roster
+  // Players on acting team's roster, sorted by canonical slot order
   const teamRoster = useMemo(
-    () => rosters.filter(r => r.teamId === actingAsTeamId),
+    () => rosters
+      .filter(r => r.teamId === actingAsTeamId)
+      .slice()
+      .sort((a, b) => slotRank(a.assignedPosition) - slotRank(b.assignedPosition)),
     [rosters, actingAsTeamId],
   );
 
@@ -310,7 +319,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
             {teamRoster.length === 0 && !loading ? (
               <div style={{ padding: '20px 14px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster found.</div>
             ) : (
-              <table className="cm-table">
+              <table className="cm-table dense">
                 <thead>
                   <tr>
                     <th>Slot</th>
@@ -339,23 +348,25 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                                 ? <span className="cm-chip warn">MLB IL</span>
                                 : <span className="cm-chip accent">Active</span>}
                         </td>
-                        <td style={{ textAlign: 'right' }}>
-                          {!isIl && (
+                        <td>
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                            {!isIl && (
+                              <button
+                                type="button"
+                                className="cm-btn ghost sm"
+                                onClick={() => { setIlStashId(r.player.id); setIlReplId(null); }}
+                              >
+                                IL
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="cm-btn ghost sm"
-                              onClick={() => { setIlStashId(r.player.id); setIlReplId(null); }}
+                              onClick={() => setAdDropId(r.player.id)}
                             >
-                              IL
+                              Drop
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            className="cm-btn ghost sm"
-                            onClick={() => setAdDropId(r.player.id)}
-                          >
-                            Drop
-                          </button>
+                          </div>
                         </td>
                       </tr>
                     );
