@@ -165,11 +165,13 @@ Some features import from other features' services or components.
 
 **Client (component imports):**
 - `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
-- `commissioner/pages/Commissioner` imports `leagues/components/RulesEditor`
+- `commissioner/pages/Commissioner` imports `leagues/api` (getInviteCode, regenerateInviteCode — invite management)
+- `commissioner/pages/Commissioner` imports `transactions/api` (getTransactions — recent activity on Overview tab)
+- `commissioner/pages/Commissioner` imports `roster/components/RosterControls` (commissioner-level roster lock/unlock)
 - `commissioner/pages/Commissioner` imports `commissioner/components/SeasonManager`
 - `commissioner/components/SeasonManager` imports `seasons/api`
 - `periods/pages/Season` imports `seasons/api` (getCurrentSeason)
-- `commissioner/components/CommissionerRosterTool` imports `roster/components/`
+- `commissioner/components/CommissionerRosterTool` imports `transactions/api` (ilStash — direct IL stash from commissioner view)
 - `keeper-prep/pages/KeeperSelection` imports `leagues/api` (getMyRoster, saveKeepers)
 - `transactions/pages/TransactionsPage` imports `roster/components/AddDropTab`
 - `trades/pages/TradesPage` imports `teams/components/TeamRosterView`
@@ -184,6 +186,9 @@ Some features import from other features' services or components.
 - `periods/pages/Season` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `teams/pages/Team` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `pages/Home` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
+- `pages/Home` imports `transactions/api` (getTransactions — recent league activity feed)
+- `pages/Home` imports `trades/api` (getTrades, cancelTrade — pending trade proposals widget)
+- `pages/Home` imports `board/api` (getBoardCards — league board summary widget)
 - `board/pages/Board` imports `trading-block/api` (auto-synced Trade Block cards)
 - `periods/pages/Season` imports `matchups/api` (Matchups tab for H2H scoring)
 - `pages/Home` imports `chat/components/ChatPanel` (league chat slide-over)
