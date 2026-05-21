@@ -355,6 +355,10 @@ export default function Commissioner() {
   const [ghostIl, setGhostIl] = useState<GhostIlSummary | null>(null);
   const [ghostIlExpanded, setGhostIlExpanded] = useState(false);
 
+  // Operations sub-tab
+  type OpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
+  const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>('roster');
+
   // Hash listener — handles tab nav AND legacy redirects from old tab names.
   useEffect(() => {
      const raw = window.location.hash.replace('#', '');
@@ -1136,49 +1140,163 @@ export default function Commissioner() {
 
             {/* Tab: Operations */}
             {activeTab === 'ops' && (
-                <div className="space-y-5">
-                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && (
-                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
-                          {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"}{" "}
-                          — MLB has activated them but they're still in a fantasy IL slot. New IL stashes are blocked until resolved.
+                <div className="space-y-4">
+                  {/* Ghost-IL urgent alert — floats above sub-tabs so it's never missed */}
+                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && opsSubTab !== 'ghost-il' && (
+                    <div className="rounded border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200 flex items-center justify-between gap-3">
+                      <span>
+                        <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
+                        {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"} — MLB has activated them but they're still in a fantasy IL slot.
+                      </span>
+                      <button
+                        onClick={() => setOpsSubTab('ghost-il')}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                        className="text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline shrink-0"
+                      >
+                        Fix now
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Operations sub-tab strip */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)" }}>
+                    {([
+                      { key: 'roster'   as OpsSubTab, label: 'Roster' },
+                      { key: 'trades'   as OpsSubTab, label: 'Trades' },
+                      { key: 'ghost-il' as OpsSubTab, label: 'Ghost-IL', badge: ghostIl?.totalGhosts ?? null },
+                      { key: 'bulk'     as OpsSubTab, label: 'Bulk',
+                        hidden: !gating.canKeepers && !gating.canAuction && gating.isReadOnly },
+                    ] as { key: OpsSubTab; label: string; badge?: number | null; hidden?: boolean }[])
+                      .filter(t => !t.hidden)
+                      .map(t => {
+                        const isActive = opsSubTab === t.key;
+                        return (
+                          <button
+                            key={t.key}
+                            onClick={() => setOpsSubTab(t.key)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "7px 14px",
+                              fontSize: 12,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                              borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                              marginBottom: -1,
+                              borderRadius: 0,
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t.label}
+                            {t.badge != null && t.badge > 0 && (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                minWidth: 18, height: 18, padding: "0 5px",
+                                borderRadius: 9,
+                                background: isActive ? "var(--am-accent)" : "var(--am-chip)",
+                                color: isActive ? "#fff" : "var(--am-text-muted)",
+                                fontSize: 10.5, fontWeight: 700,
+                              }}>
+                                {t.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                    })}
+                  </div>
+
+                  {/* Sub-tab: Roster */}
+                  {opsSubTab === 'roster' && !gating.isReadOnly && (
+                    <CommissionerRosterTool
+                      leagueId={lid}
+                      teams={overview.teams}
+                      onUpdate={() => { /* no-op */ }}
+                      showTrades={false}
+                    />
+                  )}
+                  {opsSubTab === 'roster' && gating.isReadOnly && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                      Roster edits are not available in the current season phase.
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Trades */}
+                  {opsSubTab === 'trades' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-5">
+                      <h3 className="text-sm font-semibold text-[var(--am-text)] mb-4">Record Retroactive Trade</h3>
+                      <CommissionerTradeTool leagueId={lid} teams={overview.teams} />
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Ghost-IL */}
+                  {opsSubTab === 'ghost-il' && (
+                    <div className="space-y-3">
+                      {ghostIl === null ? (
+                        <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                          Loading ghost-IL status…
                         </div>
-                        <button onClick={() => setGhostIlExpanded(v => !v)} className="ml-3 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline">{ghostIlExpanded ? "Hide" : "Details"}</button>
-                      </div>
-                      {ghostIlExpanded && (
-                        <ul className="mt-2 ml-4 list-disc space-y-1">
-                          {ghostIl.teams.map(t => (<li key={t.teamId}><span className="font-semibold text-red-300">{t.teamName}</span>{" — "}{t.ghosts.map(g => `${g.playerName} (${g.currentMlbStatus})`).join(", ")}</li>))}
-                        </ul>
+                      ) : ghostIl.totalTeamsWithGhosts === 0 ? (
+                        <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                          No ghost-IL players detected. All IL slots look clean.
+                        </div>
+                      ) : (
+                        <div className="rounded border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-200">
+                          <div className="font-semibold text-red-300 mb-3">
+                            {ghostIl.totalGhosts} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"} across {ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}
+                          </div>
+                          <div className="mb-2 text-red-200/80">
+                            These players are in fantasy IL slots but their MLB status no longer qualifies them for IL. New IL stashes are blocked until resolved. Use the Roster tab to manually move each player back to an active slot.
+                          </div>
+                          <ul className="space-y-2 mt-3">
+                            {ghostIl.teams.map(t => (
+                              <li key={t.teamId} className="rounded border border-red-500/20 bg-red-500/5 p-3">
+                                <div className="font-semibold text-red-300 mb-1">{t.teamName}</div>
+                                <ul className="space-y-0.5">
+                                  {t.ghosts.map(g => (
+                                    <li key={g.playerId} className="flex items-center gap-2">
+                                      <span className="text-red-200">{g.playerName}</span>
+                                      <span className="text-red-200/60">— MLB status: {g.currentMlbStatus}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                                <button
+                                  onClick={() => setOpsSubTab('roster')}
+                                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                                  className="mt-2 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline"
+                                >
+                                  Fix in Roster tab →
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   )}
 
-                  {gating.canKeepers && (
-                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                      <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
-                      <KeeperPrepDashboard leagueId={lid} />
+                  {/* Sub-tab: Bulk */}
+                  {opsSubTab === 'bulk' && (
+                    <div className="space-y-5">
+                      {gating.canKeepers && (
+                        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                          <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
+                          <KeeperPrepDashboard leagueId={lid} />
+                        </div>
+                      )}
+                      {(gating.canKeepers || gating.canAuction) && (
+                        <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                          <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Roster Setup</h3>
+                          <p className="text-sm text-[var(--lg-text-muted)] mb-4">Bulk import rosters via CSV or add a single player by name.</p>
+                          <RosterControls leagueId={lid} teams={overview.teams} onUpdate={refreshOverviewOnly} />
+                        </div>
+                      )}
+                      {!gating.isReadOnly && (
+                        <BulkOpsPanel leagueId={lid} />
+                      )}
                     </div>
-                  )}
-
-                  {(gating.canKeepers || gating.canAuction) && (
-                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                      <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Roster Setup</h3>
-                      <p className="text-sm text-[var(--lg-text-muted)] mb-4">Bulk import rosters via CSV or add a single player by name.</p>
-                      <RosterControls leagueId={lid} teams={overview.teams} onUpdate={refreshOverviewOnly} />
-                    </div>
-                  )}
-
-                  {!gating.isReadOnly && (
-                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                      <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Manual Roster Management</h2>
-                      <CommissionerRosterTool leagueId={lid} teams={overview.teams} onUpdate={() => { /* no-op */ }} />
-                    </div>
-                  )}
-
-                  {!gating.isReadOnly && (
-                    <BulkOpsPanel leagueId={lid} />
                   )}
                 </div>
             )}
