@@ -253,6 +253,24 @@ export default function Admin() {
   // Best-effort fallback: errors observed on THIS client via errorBus
   const [localErrors, setLocalErrors] = useState<SurfacedError[]>([]);
 
+  type AdminTabKey = 'overview' | 'leagues' | 'users' | 'errors' | 'maintenance';
+  const ADMIN_TABS: { key: AdminTabKey; label: string }[] = [
+    { key: 'overview',     label: 'Overview'     },
+    { key: 'leagues',      label: 'Leagues'      },
+    { key: 'users',        label: 'Users'        },
+    { key: 'errors',       label: 'Errors'       },
+    { key: 'maintenance',  label: 'Maintenance'  },
+  ];
+  const [adminTab, setAdminTab] = useState<AdminTabKey>('overview');
+
+  // Hash listener for admin tabs
+  useEffect(() => {
+    const raw = window.location.hash.replace('#admin-', '').replace('#', '');
+    const tab = ADMIN_TABS.find(t => t.key === raw);
+    if (tab) setAdminTab(tab.key);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const isAdmin = Boolean(user?.isAdmin);
 
   const loadStats = useCallback(async () => {
@@ -397,270 +415,324 @@ export default function Admin() {
           </div>
         </Glass>
       ) : (
-        <div className="mt-6 space-y-3">
-          {/* ─── Row 1: 4 stat cards ─── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {stats ? (
-              <>
-                <StatCard
-                  icon={Users}
-                  iconBg="bg-sky-500/10 text-sky-400"
-                  value={stats.users.total.toLocaleString()}
-                  label="Total users"
-                />
-                <StatCard
-                  icon={Activity}
-                  iconBg="bg-emerald-500/10 text-emerald-400"
-                  value={stats.users.active30d.toLocaleString()}
-                  label="Active (30d)"
-                />
-                <StatCard
-                  icon={UserPlus}
-                  iconBg="bg-fuchsia-500/10 text-fuchsia-400"
-                  value={stats.users.newThisMonth.toLocaleString()}
-                  label="New this month"
-                />
-                <StatCard
-                  icon={DollarSign}
-                  iconBg="bg-amber-500/10 text-amber-400"
-                  value={stats.users.paid.toLocaleString()}
-                  label="Paid subscribers"
-                  hint={stats.users.paid === 0 ? "awaiting Stripe" : undefined}
-                />
-              </>
-            ) : (
-              <div className="md:col-span-2 lg:col-span-4">
-                <EmptyCard
-                  title="User metrics unavailable"
-                  message={statsError ?? "Endpoint not yet deployed. Stats will appear once /api/admin/stats is live."}
-                />
-              </div>
-            )}
+        <div className="mt-6">
+          {/* ─── Underline tab strip ─── */}
+          <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)", marginBottom: 20 }}>
+            {ADMIN_TABS.map(tab => {
+              const isActive = adminTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setAdminTab(tab.key)}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: 13,
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                    borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                    marginBottom: -1,
+                    borderRadius: 0,
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* ─── Row 2: League health + AI Insights summary ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* League health */}
-            <div className={CARD_CLASS}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                    <Trophy size={16} />
+          {/* ─── Overview ─── */}
+          {adminTab === 'overview' && (
+            <div className="space-y-3">
+              {/* Row 1: 4 stat cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {stats ? (
+                  <>
+                    <StatCard
+                      icon={Users}
+                      iconBg="bg-sky-500/10 text-sky-400"
+                      value={stats.users.total.toLocaleString()}
+                      label="Total users"
+                    />
+                    <StatCard
+                      icon={Activity}
+                      iconBg="bg-emerald-500/10 text-emerald-400"
+                      value={stats.users.active30d.toLocaleString()}
+                      label="Active (30d)"
+                    />
+                    <StatCard
+                      icon={UserPlus}
+                      iconBg="bg-fuchsia-500/10 text-fuchsia-400"
+                      value={stats.users.newThisMonth.toLocaleString()}
+                      label="New this month"
+                    />
+                    <StatCard
+                      icon={DollarSign}
+                      iconBg="bg-amber-500/10 text-amber-400"
+                      value={stats.users.paid.toLocaleString()}
+                      label="Paid subscribers"
+                      hint={stats.users.paid === 0 ? "awaiting Stripe" : undefined}
+                    />
+                  </>
+                ) : (
+                  <div className="md:col-span-2 lg:col-span-4">
+                    <EmptyCard
+                      title="User metrics unavailable"
+                      message={statsError ?? "Endpoint not yet deployed. Stats will appear once /api/admin/stats is live."}
+                    />
                   </div>
-                  <div>
-                    <div className={NUMBER_CLASS}>{stats?.leagues.total ?? "—"}</div>
-                    <div className={LABEL_CLASS}>League health</div>
-                  </div>
-                </div>
-                <a
-                  href="#leagues"
-                  className="flex items-center gap-1 text-xs text-[var(--lg-accent)] hover:underline"
-                >
-                  Manage <ArrowRight size={12} />
-                </a>
+                )}
               </div>
-              {stats ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(STATUS_PILL) as Array<keyof typeof STATUS_PILL>).map((k) => (
-                    <span
-                      key={k}
-                      className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${STATUS_PILL[k].className}`}
-                    >
-                      {STATUS_PILL[k].label}: {stats.leagues.byStatus[k]}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[var(--lg-text-muted)] italic">
-                  Status breakdown will appear once /api/admin/stats is live.
-                </p>
-              )}
-            </div>
 
-            {/* AI Insights summary */}
-            <div className={CARD_CLASS}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-md bg-fuchsia-500/10 text-fuchsia-400 flex items-center justify-center">
-                    <Sparkles size={16} />
-                  </div>
-                  <div>
-                    <div className={NUMBER_CLASS}>{stats?.aiInsights.total ?? "—"}</div>
-                    <div className={LABEL_CLASS}>AI insights</div>
-                  </div>
-                </div>
-                <Link
-                  to="/ai"
-                  className="flex items-center gap-1 text-xs text-[var(--lg-accent)] hover:underline"
-                >
-                  View <ArrowRight size={12} />
-                </Link>
-              </div>
-              {stats ? (
-                <div className="text-xs text-[var(--lg-text-muted)] space-y-0.5">
-                  <div>
-                    <span className="text-emerald-400 font-semibold tabular-nums">
-                      {stats.aiInsights.generatedThisWeek}
-                    </span>{" "}
-                    generated this week
-                  </div>
-                  {stats.aiInsights.latestWeekKey && (
-                    <div>
-                      Latest:{" "}
-                      <code className="text-[11px] text-[var(--lg-text-primary)]">
-                        {stats.aiInsights.latestWeekKey}
-                      </code>
+              {/* Row 2: League health + AI Insights summary */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* League health */}
+                <div className={CARD_CLASS}>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                        <Trophy size={16} />
+                      </div>
+                      <div>
+                        <div className={NUMBER_CLASS}>{stats?.leagues.total ?? "—"}</div>
+                        <div className={LABEL_CLASS}>League health</div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-[var(--lg-text-muted)] italic">
-                  Insight counts unavailable.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* ─── Row 3: Todo progress + Quick links ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* Todo progress */}
-            <div className={CARD_CLASS}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-md bg-amber-500/10 text-amber-400 flex items-center justify-center">
-                    <CheckSquare size={16} />
+                    <button
+                      onClick={() => setAdminTab('leagues')}
+                      className="flex items-center gap-1 text-xs text-[var(--lg-accent)] hover:underline"
+                      style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      Manage <ArrowRight size={12} />
+                    </button>
                   </div>
-                  <div>
-                    <div className={NUMBER_CLASS}>{stats?.todos.total ?? "—"}</div>
-                    <div className={LABEL_CLASS}>Todo items</div>
-                  </div>
-                </div>
-                <Link
-                  to="/todo"
-                  className="flex items-center gap-1 text-xs text-[var(--lg-accent)] hover:underline"
-                >
-                  Manage <ArrowRight size={12} />
-                </Link>
-              </div>
-
-              {stats ? (
-                <>
-                  <div className="flex items-center gap-3 text-[11px] text-[var(--lg-text-muted)] mb-3">
-                    <span className="text-emerald-400">
-                      <strong className="font-bold tabular-nums">{stats.todos.done}</strong> done
-                    </span>
-                    <span className="text-amber-400">
-                      <strong className="font-bold tabular-nums">{stats.todos.inProgress}</strong> in progress
-                    </span>
-                    <span className="text-slate-400">
-                      <strong className="font-bold tabular-nums">{stats.todos.notStarted}</strong> not started
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full bg-[var(--lg-border-faint)] rounded-full overflow-hidden mb-3">
-                    <div
-                      className="h-full bg-emerald-500 transition-all"
-                      style={{
-                        width: `${stats.todos.total > 0 ? (stats.todos.done / stats.todos.total) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
-                  {stats.todos.topActive.length > 0 ? (
-                    <ul className="space-y-1.5">
-                      {stats.todos.topActive.map((t) => (
-                        <li key={t.id} className="flex items-center gap-2 text-xs">
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_COLORS[t.priority]}`}
-                          >
-                            {t.priority.toUpperCase()}
-                          </span>
-                          <span className="text-[var(--lg-text-primary)] truncate flex-1">
-                            {t.title}
-                          </span>
-                          <span className="text-[10px] text-[var(--lg-text-muted)] opacity-70 shrink-0">
-                            {t.categoryTitle}
-                          </span>
-                        </li>
+                  {stats ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {(Object.keys(STATUS_PILL) as Array<keyof typeof STATUS_PILL>).map((k) => (
+                        <span
+                          key={k}
+                          className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${STATUS_PILL[k].className}`}
+                        >
+                          {STATUS_PILL[k].label}: {stats.leagues.byStatus[k]}
+                        </span>
                       ))}
-                    </ul>
+                    </div>
                   ) : (
-                    <p className="text-xs text-[var(--lg-text-muted)] italic">No active todos.</p>
+                    <p className="text-xs text-[var(--lg-text-muted)] italic">
+                      Status breakdown will appear once /api/admin/stats is live.
+                    </p>
                   )}
-                </>
-              ) : (
-                <p className="text-xs text-[var(--lg-text-muted)] italic">Todo progress unavailable.</p>
-              )}
-            </div>
+                </div>
 
-            {/* Quick links */}
-            <div className={CARD_CLASS}>
-              <h3 className={SECTION_TITLE_CLASS + " mb-3"}>Quick Links</h3>
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { to: "/admin/dashboard", label: "Dashboard", Icon: BarChart3 },
-                  { to: "/admin/users", label: "Users", Icon: Users },
-                  { to: "/todo", label: "Todo", Icon: CheckSquare },
-                  { to: "/analytics", label: "Analytics", Icon: BarChart3 },
-                  { to: "/status", label: "Status", Icon: Activity },
-                  { to: "/tech", label: "Under the Hood", Icon: Wrench },
-                  { to: "/docs", label: "Docs", Icon: FileText },
-                  { to: "/changelog", label: "Changelog", Icon: History },
-                  { to: "/roadmap", label: "Roadmap", Icon: Map },
-                ].map(({ to, label, Icon }) => (
-                  <Link
-                    key={to}
-                    to={to}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)] transition-colors group"
-                  >
-                    <Icon size={14} className="text-[var(--lg-text-muted)] group-hover:text-[var(--lg-accent)]" />
-                    <span className="flex-1 truncate">{label}</span>
-                    <ChevronRight
-                      size={12}
-                      className="text-[var(--lg-text-muted)] opacity-0 group-hover:opacity-100"
-                    />
-                  </Link>
-                ))}
+                {/* AI Insights summary */}
+                <div className={CARD_CLASS}>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-md bg-fuchsia-500/10 text-fuchsia-400 flex items-center justify-center">
+                        <Sparkles size={16} />
+                      </div>
+                      <div>
+                        <div className={NUMBER_CLASS}>{stats?.aiInsights.total ?? "—"}</div>
+                        <div className={LABEL_CLASS}>AI insights</div>
+                      </div>
+                    </div>
+                    <Link
+                      to="/ai"
+                      className="flex items-center gap-1 text-xs text-[var(--lg-accent)] hover:underline"
+                    >
+                      View <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                  {stats ? (
+                    <div className="text-xs text-[var(--lg-text-muted)] space-y-0.5">
+                      <div>
+                        <span className="text-emerald-400 font-semibold tabular-nums">
+                          {stats.aiInsights.generatedThisWeek}
+                        </span>{" "}
+                        generated this week
+                      </div>
+                      {stats.aiInsights.latestWeekKey && (
+                        <div>
+                          Latest:{" "}
+                          <code className="text-[11px] text-[var(--lg-text-primary)]">
+                            {stats.aiInsights.latestWeekKey}
+                          </code>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[var(--lg-text-muted)] italic">
+                      Insight counts unavailable.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: Todo progress + Quick links */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* Todo progress */}
+                <div className={CARD_CLASS}>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-md bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                        <CheckSquare size={16} />
+                      </div>
+                      <div>
+                        <div className={NUMBER_CLASS}>{stats?.todos.total ?? "—"}</div>
+                        <div className={LABEL_CLASS}>Todo items</div>
+                      </div>
+                    </div>
+                    <Link
+                      to="/todo"
+                      className="flex items-center gap-1 text-xs text-[var(--lg-accent)] hover:underline"
+                    >
+                      Manage <ArrowRight size={12} />
+                    </Link>
+                  </div>
+
+                  {stats ? (
+                    <>
+                      <div className="flex items-center gap-3 text-[11px] text-[var(--lg-text-muted)] mb-3">
+                        <span className="text-emerald-400">
+                          <strong className="font-bold tabular-nums">{stats.todos.done}</strong> done
+                        </span>
+                        <span className="text-amber-400">
+                          <strong className="font-bold tabular-nums">{stats.todos.inProgress}</strong> in progress
+                        </span>
+                        <span className="text-slate-400">
+                          <strong className="font-bold tabular-nums">{stats.todos.notStarted}</strong> not started
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-[var(--lg-border-faint)] rounded-full overflow-hidden mb-3">
+                        <div
+                          className="h-full bg-emerald-500 transition-all"
+                          style={{
+                            width: `${stats.todos.total > 0 ? (stats.todos.done / stats.todos.total) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                      {stats.todos.topActive.length > 0 ? (
+                        <ul className="space-y-1.5">
+                          {stats.todos.topActive.map((t) => (
+                            <li key={t.id} className="flex items-center gap-2 text-xs">
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_COLORS[t.priority]}`}
+                              >
+                                {t.priority.toUpperCase()}
+                              </span>
+                              <span className="text-[var(--lg-text-primary)] truncate flex-1">
+                                {t.title}
+                              </span>
+                              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-70 shrink-0">
+                                {t.categoryTitle}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-[var(--lg-text-muted)] italic">No active todos.</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-[var(--lg-text-muted)] italic">Todo progress unavailable.</p>
+                  )}
+                </div>
+
+                {/* Quick links */}
+                <div className={CARD_CLASS}>
+                  <h3 className={SECTION_TITLE_CLASS + " mb-3"}>Quick Links</h3>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[
+                      { to: "/admin/dashboard", label: "Dashboard", Icon: BarChart3 },
+                      { to: "/admin/users", label: "Users", Icon: Users },
+                      { to: "/todo", label: "Todo", Icon: CheckSquare },
+                      { to: "/analytics", label: "Analytics", Icon: BarChart3 },
+                      { to: "/status", label: "Status", Icon: Activity },
+                      { to: "/tech", label: "Under the Hood", Icon: Wrench },
+                      { to: "/docs", label: "Docs", Icon: FileText },
+                      { to: "/changelog", label: "Changelog", Icon: History },
+                      { to: "/roadmap", label: "Roadmap", Icon: Map },
+                    ].map(({ to, label, Icon }) => (
+                      <Link
+                        key={to}
+                        to={to}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)] transition-colors group"
+                      >
+                        <Icon size={14} className="text-[var(--lg-text-muted)] group-hover:text-[var(--lg-accent)]" />
+                        <span className="flex-1 truncate">{label}</span>
+                        <ChevronRight
+                          size={12}
+                          className="text-[var(--lg-text-muted)] opacity-0 group-hover:opacity-100"
+                        />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className={CARD_CLASS}>
+                <h3 className={SECTION_TITLE_CLASS + " mb-3"}>Recent Activity</h3>
+                {stats && stats.recentActivity.length > 0 ? (
+                  <ul className="space-y-1 max-h-96 overflow-y-auto">
+                    {stats.recentActivity.map((row) => {
+                      const Icon = actionIcon(row.action);
+                      return (
+                        <li
+                          key={row.id}
+                          className="flex items-start gap-2 px-2 py-1.5 rounded hover:bg-[var(--lg-tint)] transition-colors"
+                        >
+                          <Icon size={14} className="text-[var(--lg-text-muted)] mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs text-[var(--lg-text-primary)] truncate">
+                              <code className="text-[10px] font-mono opacity-80">{row.action}</code>
+                              {row.resourceId && (
+                                <span className="text-[var(--lg-text-muted)] opacity-70"> · {row.resourceType}#{row.resourceId}</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-[var(--lg-text-muted)] truncate">
+                              {row.userEmail ?? row.userName ?? `user#${row.userId}`} · {relativeTime(row.createdAt)}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-[var(--lg-text-muted)] italic">
+                    {statsError ? "Unavailable." : "No recent activity."}
+                  </p>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* ─── Row 4: Recent Activity + Recent Errors ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* Recent Activity */}
+          {/* ─── Leagues ─── */}
+          {adminTab === 'leagues' && (
+            <AdminLeagueTools />
+          )}
+
+          {/* ─── Users ─── */}
+          {adminTab === 'users' && (
             <div className={CARD_CLASS}>
-              <h3 className={SECTION_TITLE_CLASS + " mb-3"}>Recent Activity</h3>
-              {stats && stats.recentActivity.length > 0 ? (
-                <ul className="space-y-1 max-h-96 overflow-y-auto">
-                  {stats.recentActivity.map((row) => {
-                    const Icon = actionIcon(row.action);
-                    return (
-                      <li
-                        key={row.id}
-                        className="flex items-start gap-2 px-2 py-1.5 rounded hover:bg-[var(--lg-tint)] transition-colors"
-                      >
-                        <Icon size={14} className="text-[var(--lg-text-muted)] mt-0.5 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs text-[var(--lg-text-primary)] truncate">
-                            <code className="text-[10px] font-mono opacity-80">{row.action}</code>
-                            {row.resourceId && (
-                              <span className="text-[var(--lg-text-muted)] opacity-70"> · {row.resourceType}#{row.resourceId}</span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-[var(--lg-text-muted)] truncate">
-                            {row.userEmail ?? row.userName ?? `user#${row.userId}`} · {relativeTime(row.createdAt)}
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="text-xs text-[var(--lg-text-muted)] italic">
-                  {statsError ? "Unavailable." : "No recent activity."}
-                </p>
-              )}
+              <h3 className={SECTION_TITLE_CLASS + " mb-3"}>Users</h3>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-2 px-3 py-2 rounded text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)] transition-colors group w-fit"
+              >
+                <Users size={14} className="text-[var(--lg-text-muted)] group-hover:text-[var(--lg-accent)]" />
+                <span>Open User Management</span>
+                <ChevronRight size={14} className="text-[var(--lg-text-muted)] group-hover:opacity-100" />
+              </Link>
             </div>
+          )}
 
-            {/* Recent Errors */}
+          {/* ─── Errors ─── */}
+          {adminTab === 'errors' && (
             <div className={CARD_CLASS}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className={SECTION_TITLE_CLASS}>Recent Errors</h3>
@@ -671,8 +743,8 @@ export default function Admin() {
                 )}
               </div>
               {errors && errors.errors.length > 0 ? (
-                <div className="space-y-0.5 max-h-96 overflow-y-auto">
-                  {errors.errors.slice(0, 5).map((err) => (
+                <div className="space-y-0.5">
+                  {errors.errors.map((err) => (
                     <ErrorRow key={err.ref} err={err} />
                   ))}
                 </div>
@@ -708,27 +780,15 @@ export default function Admin() {
                 </p>
               )}
             </div>
-          </div>
+          )}
 
-          {/* ─── Row 5: League Tools (collapsible) ─── */}
-          <details id="leagues" className={CARD_CLASS + " group"}>
-            <summary className="flex items-center justify-between cursor-pointer list-none">
-              <div className="flex items-center gap-2">
-                <Wrench size={16} className="text-[var(--lg-text-muted)]" />
-                <h3 className="text-sm font-semibold text-[var(--lg-text-heading)]">League Tools</h3>
-                <span className="text-[10px] text-[var(--lg-text-muted)]">
-                  expand to manage seasons, rosters, CSV import
-                </span>
-              </div>
-              <ChevronRight
-                size={16}
-                className="text-[var(--lg-text-muted)] transition-transform group-open:rotate-90"
-              />
-            </summary>
-            <div className="mt-4 pt-4 border-t border-[var(--lg-border-faint)]">
-              <AdminLeagueTools />
+          {/* ─── Maintenance ─── */}
+          {adminTab === 'maintenance' && (
+            <div className={CARD_CLASS}>
+              <h3 className={SECTION_TITLE_CLASS + " mb-2"}>Maintenance</h3>
+              <p className="text-xs text-[var(--lg-text-muted)] italic">Maintenance tooling coming soon.</p>
             </div>
-          </details>
+          )}
         </div>
       )}
     </div>
