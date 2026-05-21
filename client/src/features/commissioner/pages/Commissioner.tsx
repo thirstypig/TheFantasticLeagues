@@ -359,6 +359,10 @@ export default function Commissioner() {
   type OpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
   const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>('roster');
 
+  // Teams & People sub-tab
+  type PeopleSubTab = 'teams' | 'members' | 'invites' | 'invite-code';
+  const [peopleSubTab, setPeopleSubTab] = useState<PeopleSubTab>('teams');
+
   // Hash listener — handles tab nav AND legacy redirects from old tab names.
   useEffect(() => {
      const raw = window.location.hash.replace('#', '');
@@ -911,165 +915,225 @@ export default function Commissioner() {
 
             {/* Tab: Teams & People */}
             {activeTab === 'people' && (
-                <div className="space-y-5">
-                  {/* Team List + create + assign */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Teams</div>
-                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.teams.length} total</div>
-                    </div>
-                    <div className="space-y-2">
-                      {overview.teams.map((t) => (
-                        <div key={t.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-bold text-[var(--lg-text-heading)]">
-                              {t.name}{" "}
-                              <span className="text-[var(--lg-text-muted)] font-normal">{t.budget != null ? `$${t.budget}` : ""}</span>
-                            </div>
-                            <div className="mt-1 space-y-1">
-                              {t.ownerships && t.ownerships.length > 0 ? (
-                                t.ownerships.map((o: any) => (
-                                  <div key={o.id} className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)] group/owner">
-                                    <span className="truncate max-w-[150px]">{o.user?.email || `User ${o.userId}`}</span>
-                                    <button onClick={() => onRemoveOwner(t.id, o.userId)} className="text-red-400 hover:text-red-300 opacity-0 group-hover/owner:opacity-100 transition-opacity" title="Remove Owner" disabled={busy}>(Remove)</button>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-xs text-[var(--lg-text-muted)] italic">No owners assigned</div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-xs text-[var(--lg-text-muted)]">id: {t.id}</div>
-                            <button onClick={() => onDeleteTeam(t.id)} className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Team" disabled={busy}>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Create team</div>
-                      <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
-                        {priorTeams.length > 0 && (
-                          <div className="md:col-span-3 mb-2">
-                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Link to prior year team (optional)</label>
-                            <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={selectedPriorTeamId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ""; setSelectedPriorTeamId(id); if (id) { const pt = priorTeams.find((t) => t.id === id); if (pt) { setTeamName(pt.name); setTeamCode(pt.code || ""); } } }}>
-                              <option value="">Create new team…</option>
-                              {priorTeams.map((pt) => (<option key={pt.id} value={pt.id}>{pt.name} — from last year</option>))}
-                            </select>
-                          </div>
-                        )}
-                        <input className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
-                        <input className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Code (OGBA)" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} />
-                        <div className="md:col-span-2">
-                          <label className="block text-xs text-[var(--lg-text-muted)]">Budget</label>
-                          <input className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" type="number" value={teamBudget} onChange={(e) => setTeamBudget(Number(e.target.value))} />
-                        </div>
-                        <div className="md:col-span-1 flex items-end justify-end">
-                          <button type="submit" className={cls("w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Create</button>
-                        </div>
-                      </form>
-                    </div>
-
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Assign team owner</div>
-                      <form onSubmit={onAssignOwner} className="grid gap-2 md:grid-cols-3">
-                        <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}>
-                          <option value="">Select team…</option>
-                          {overview.teams.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
-                        </select>
-                        <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}>
-                          <option value="">Select owner…</option>
-                          {availableUsers.map((u) => (<option key={u.id} value={u.id}>{u.name || u.email} ({u.email})</option>))}
-                        </select>
-                        <input className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Owner display name (optional)" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
-                        <div className="md:col-span-3 flex justify-end">
-                          <button type="submit" className={cls("rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Add owner (max 2)</button>
-                        </div>
-                      </form>
-                      <div className="mt-2 text-xs text-[var(--lg-text-muted)]">Teams can have up to 2 owners. Select registered users from the dropdown.</div>
-                    </div>
-                  </div>
-
-                  {/* Invite Code */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 text-lg font-semibold text-[var(--lg-text-heading)]">Invite Code</div>
-                    {inviteCodeValue ? (
-                      <div className="flex items-center gap-3">
-                        <code className="flex-1 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-2.5 text-sm font-mono tracking-widest text-[var(--lg-text-primary)]">{inviteCodeValue}</code>
-                        <button onClick={() => { navigator.clipboard.writeText(inviteCodeValue); toast("Invite code copied!", "success"); }} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-bg-surface)] transition-all">Copy</button>
-                        <button onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code regenerated", "success"); } catch { toast("Failed to regenerate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/20 transition-all disabled:opacity-50">{inviteCodeLoading ? "..." : "Regenerate"}</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-[var(--lg-text-muted)]">No invite code set.</span>
-                        <button onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code generated!", "success"); } catch { toast("Failed to generate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-all disabled:opacity-50">{inviteCodeLoading ? "Generating..." : "Generate Code"}</button>
-                      </div>
-                    )}
-                    <p className="mt-2 text-xs text-[var(--lg-text-muted)]">Share this code with users so they can join your league.</p>
-                  </div>
-
-                  {/* Members */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Members</div>
-                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
-                    </div>
-                    <div className="space-y-2">
-                      {overview.memberships.map((m) => {
-                        const isMe = m.userId === me?.id;
-                        const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
+                <div className="space-y-4">
+                  {/* People sub-tab strip */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)" }}>
+                    {([
+                      { key: 'teams'       as PeopleSubTab, label: 'Teams',       badge: overview.teams.length },
+                      { key: 'members'     as PeopleSubTab, label: 'Members',     badge: overview.memberships.length },
+                      { key: 'invites'     as PeopleSubTab, label: 'Invites',     badge: pendingInvites.length, hidden: pendingInvites.length === 0 },
+                      { key: 'invite-code' as PeopleSubTab, label: 'Invite Code' },
+                    ] as { key: PeopleSubTab; label: string; badge?: number; hidden?: boolean }[])
+                      .filter(t => !t.hidden)
+                      .map(t => {
+                        const isActive = peopleSubTab === t.key;
                         return (
-                          <div key={m.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm text-[var(--lg-text-primary)]">{memberName}</div>
-                              <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
-                              {userTeamMap.get(m.userId)?.map((tName) => (
-                                <span key={tName} className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]">{tName}</span>
-                              ))}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button onClick={() => onChangeMemberRole(m.id, m.role)} className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors" title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`} disabled={busy || isMe}>{m.role}</button>
-                              {!isMe && (<button onClick={() => onRemoveMember(m.id, memberName)} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs" title="Remove member" disabled={busy}>Remove</button>)}
-                            </div>
-                          </div>
+                          <button
+                            key={t.key}
+                            onClick={() => setPeopleSubTab(t.key)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "7px 14px",
+                              fontSize: 12,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                              borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                              marginBottom: -1,
+                              borderRadius: 0,
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t.label}
+                            {t.badge != null && t.badge > 0 && (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                minWidth: 18, height: 18, padding: "0 5px",
+                                borderRadius: 9,
+                                background: isActive ? "var(--am-accent)" : "var(--am-chip)",
+                                color: isActive ? "#fff" : "var(--am-text-muted)",
+                                fontSize: 10.5, fontWeight: 700,
+                              }}>
+                                {t.badge}
+                              </span>
+                            )}
+                          </button>
                         );
                       })}
-                    </div>
                   </div>
 
-                  {/* Add Member */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
-                    <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
-                      <input className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="owner@email.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
-                      <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)} title="Select role">
-                        <option value="OWNER">OWNER</option>
-                        <option value="COMMISSIONER">COMMISSIONER</option>
-                      </select>
-                      <div className="md:col-span-3 flex justify-end">
-                        <button type="submit" className={cls("rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Add</button>
-                      </div>
-                    </form>
-                    <div className="mt-2 text-xs text-[var(--lg-text-muted)]">If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.</div>
-                  </div>
-
-                  {pendingInvites.length > 0 && (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Pending Invites <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span></div>
+                  {/* Sub-tab: Teams */}
+                  {peopleSubTab === 'teams' && (
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                       <div className="space-y-2">
-                        {pendingInvites.map((inv) => (
-                          <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2">
+                        {overview.teams.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group">
                             <div className="min-w-0">
-                              <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
-                              <div className="text-xs text-[var(--lg-text-muted)]">{inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}{inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}</div>
+                              <div className="truncate text-sm font-bold text-[var(--lg-text-heading)]">
+                                {t.name}{" "}
+                                <span className="text-[var(--lg-text-muted)] font-normal">{t.budget != null ? `$${t.budget}` : ""}</span>
+                              </div>
+                              <div className="mt-1 space-y-1">
+                                {t.ownerships && t.ownerships.length > 0 ? (
+                                  t.ownerships.map((o: any) => (
+                                    <div key={o.id} className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)] group/owner">
+                                      <span className="truncate max-w-[150px]">{o.user?.email || `User ${o.userId}`}</span>
+                                      <button onClick={() => onRemoveOwner(t.id, o.userId)} className="text-red-400 hover:text-red-300 opacity-0 group-hover/owner:opacity-100 transition-opacity" title="Remove Owner" disabled={busy}>(Remove)</button>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-xs text-[var(--lg-text-muted)] italic">No owners assigned</div>
+                                )}
+                              </div>
                             </div>
-                            <button onClick={() => onCancelInvite(inv.id)} className="shrink-0 text-xs text-red-400 hover:text-red-300" disabled={busy}>Cancel</button>
+                            <div className="flex items-center gap-3">
+                              <div className="text-xs text-[var(--lg-text-muted)]">id: {t.id}</div>
+                              <button onClick={() => onDeleteTeam(t.id)} className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Team" disabled={busy}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
+
+                      <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Create team</div>
+                        <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
+                          {priorTeams.length > 0 && (
+                            <div className="md:col-span-3 mb-2">
+                              <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Link to prior year team (optional)</label>
+                              <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={selectedPriorTeamId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ""; setSelectedPriorTeamId(id); if (id) { const pt = priorTeams.find((t) => t.id === id); if (pt) { setTeamName(pt.name); setTeamCode(pt.code || ""); } } }}>
+                                <option value="">Create new team…</option>
+                                {priorTeams.map((pt) => (<option key={pt.id} value={pt.id}>{pt.name} — from last year</option>))}
+                              </select>
+                            </div>
+                          )}
+                          <input className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
+                          <input className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Code (OGBA)" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} />
+                          <div className="md:col-span-2">
+                            <label className="block text-xs text-[var(--lg-text-muted)]">Budget</label>
+                            <input className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" type="number" value={teamBudget} onChange={(e) => setTeamBudget(Number(e.target.value))} />
+                          </div>
+                          <div className="md:col-span-1 flex items-end justify-end">
+                            <button type="submit" className={cls("w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Create</button>
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Assign team owner</div>
+                        <form onSubmit={onAssignOwner} className="grid gap-2 md:grid-cols-3">
+                          <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}>
+                            <option value="">Select team…</option>
+                            {overview.teams.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                          </select>
+                          <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}>
+                            <option value="">Select owner…</option>
+                            {availableUsers.map((u) => (<option key={u.id} value={u.id}>{u.name || u.email} ({u.email})</option>))}
+                          </select>
+                          <input className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Owner display name (optional)" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
+                          <div className="md:col-span-3 flex justify-end">
+                            <button type="submit" className={cls("rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Add owner (max 2)</button>
+                          </div>
+                        </form>
+                        <div className="mt-2 text-xs text-[var(--lg-text-muted)]">Teams can have up to 2 owners. Select registered users from the dropdown.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Members */}
+                  {peopleSubTab === 'members' && (
+                    <div className="space-y-5">
+                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="text-sm font-semibold text-[var(--lg-text-heading)]">Members</div>
+                          <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
+                        </div>
+                        <div className="space-y-2">
+                          {overview.memberships.map((m) => {
+                            const isMe = m.userId === me?.id;
+                            const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
+                            return (
+                              <div key={m.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm text-[var(--lg-text-primary)]">{memberName}</div>
+                                  <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
+                                  {userTeamMap.get(m.userId)?.map((tName) => (
+                                    <span key={tName} className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]">{tName}</span>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button onClick={() => onChangeMemberRole(m.id, m.role)} className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors" title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`} disabled={busy || isMe}>{m.role}</button>
+                                  {!isMe && (<button onClick={() => onRemoveMember(m.id, memberName)} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs" title="Remove member" disabled={busy}>Remove</button>)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
+                        <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
+                          <input className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="owner@email.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+                          <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)} title="Select role">
+                            <option value="OWNER">OWNER</option>
+                            <option value="COMMISSIONER">COMMISSIONER</option>
+                          </select>
+                          <div className="md:col-span-3 flex justify-end">
+                            <button type="submit" className={cls("rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Add</button>
+                          </div>
+                        </form>
+                        <div className="mt-2 text-xs text-[var(--lg-text-muted)]">If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Invites */}
+                  {peopleSubTab === 'invites' && (
+                    pendingInvites.length === 0 ? (
+                      <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                        No pending invites.
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
+                          Pending Invites <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {pendingInvites.map((inv) => (
+                            <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
+                                <div className="text-xs text-[var(--lg-text-muted)]">{inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}{inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}</div>
+                              </div>
+                              <button onClick={() => onCancelInvite(inv.id)} className="shrink-0 text-xs text-red-400 hover:text-red-300" disabled={busy}>Cancel</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* Sub-tab: Invite Code */}
+                  {peopleSubTab === 'invite-code' && (
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                      <div className="mb-3 text-sm font-semibold text-[var(--lg-text-heading)]">Invite Code</div>
+                      {inviteCodeValue ? (
+                        <div className="flex items-center gap-3">
+                          <code className="flex-1 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-2.5 text-sm font-mono tracking-widest text-[var(--lg-text-primary)]">{inviteCodeValue}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(inviteCodeValue); toast("Invite code copied!", "success"); }} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-bg-surface)] transition-all">Copy</button>
+                          <button onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code regenerated", "success"); } catch { toast("Failed to regenerate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/20 transition-all disabled:opacity-50">{inviteCodeLoading ? "..." : "Regenerate"}</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-[var(--lg-text-muted)]">No invite code set.</span>
+                          <button onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code generated!", "success"); } catch { toast("Failed to generate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-all disabled:opacity-50">{inviteCodeLoading ? "Generating..." : "Generate Code"}</button>
+                        </div>
+                      )}
+                      <p className="mt-2 text-xs text-[var(--lg-text-muted)]">Share this code with users so they can join your league.</p>
                     </div>
                   )}
                 </div>
