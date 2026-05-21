@@ -23,6 +23,7 @@ import {
 import type { PendingInvite } from "../api";
 import { getGhostIlSummary, type GhostIlSummary } from "../api";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
+import { getTransactions, type TransactionEvent } from "../../transactions/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
@@ -338,43 +339,46 @@ export default function Commissioner() {
   // Season gating
   const gating = useSeasonGating();
 
-  // Tab definitions — restructured 6 → 5 tabs for coherent purposes:
-  //   League (config + team CRUD), Members, Season (lifecycle + auction
-  //   setup including bulk roster import / price + position edits),
-  //   Manage Rosters (in-season transactions: add/drop, IL, retroactive
-  //   trades), Health. Old "Teams" tab + "Trades" tab folded into the
-  //   above. Hash redirects below preserve old bookmarks.
-  type TabKey = 'league' | 'members' | 'season' | 'manage-rosters' | 'health';
+  type TabKey = 'overview' | 'people' | 'settings' | 'ops' | 'finances' | 'archive';
   const TABS: { key: TabKey; label: string; icon: string; enabled: boolean; reason?: string }[] = [
-    { key: 'league',         label: 'League',         icon: 'building', enabled: true },
-    { key: 'members',        label: 'Members',        icon: 'users', enabled: true },
-    { key: 'season',         label: 'Season',         icon: 'calendar', enabled: true },
-    { key: 'manage-rosters', label: 'Manage Rosters', icon: 'trophy', enabled: true },
-    { key: 'health',         label: 'Health',         icon: 'activity', enabled: true },
+    { key: 'overview',  label: 'Overview',       icon: 'activity', enabled: true },
+    { key: 'people',    label: 'Teams & People', icon: 'users',    enabled: true },
+    { key: 'settings',  label: 'Settings',       icon: 'gear',     enabled: true },
+    { key: 'ops',       label: 'Operations',     icon: 'wrench',   enabled: true },
+    { key: 'finances',  label: 'Finances',       icon: 'dollar',   enabled: true },
+    { key: 'archive',   label: 'Archive',        icon: 'archive',  enabled: true },
   ];
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<TabKey>('league');
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
-  // Phase 4: ghost-IL summary (surfaced as a banner on the Teams tab)
+  // ghost-IL summary — lazy-loaded when Operations tab is first opened
   const [ghostIl, setGhostIl] = useState<GhostIlSummary | null>(null);
   const [ghostIlExpanded, setGhostIlExpanded] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<TransactionEvent[] | null>(null);
 
-  // Hash listener — handles tab nav AND legacy redirects from the old
-  // 6-tab structure (#teams → #manage-rosters per phase, #trades →
-  // #manage-rosters). Old bookmarks land on a sane page.
+  // Operations sub-tab
+  type OpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
+  const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>('roster');
+
+  // Teams & People sub-tab
+  type PeopleSubTab = 'teams' | 'members' | 'invites' | 'invite-code';
+  const [peopleSubTab, setPeopleSubTab] = useState<PeopleSubTab>('teams');
+
+  // Hash listener — handles tab nav AND legacy redirects from old tab names.
   useEffect(() => {
      const raw = window.location.hash.replace('#', '');
-     // Legacy hash redirects from the 6-tab structure (PR #130).
-     // The Teams tab split: in-season transactions live in Manage Rosters;
-     // pre-season auction setup lives in Season. Trades folds into
-     // Manage Rosters as a collapsible section.
-     const LEGACY_REDIRECTS: Record<string, () => TabKey> = {
-       teams: () => (gating.seasonStatus === 'IN_SEASON' ? 'manage-rosters' : 'season'),
-       trades: () => 'manage-rosters',
+     const LEGACY_REDIRECTS: Record<string, TabKey> = {
+       league:            'settings',
+       members:           'people',
+       season:            'archive',
+       'manage-rosters':  'ops',
+       health:            'overview',
+       teams:             'ops',
+       trades:            'ops',
      };
      if (raw in LEGACY_REDIRECTS) {
-       const target = LEGACY_REDIRECTS[raw]();
+       const target = LEGACY_REDIRECTS[raw];
        window.history.replaceState(null, '', `#${target}`);
        setActiveTab(target);
        return;
@@ -390,7 +394,7 @@ export default function Commissioner() {
   // Load ghost-IL summary when Manage Rosters is first opened. Lazy fetch —
   // the endpoint fans out to MLB roster lookups per team, costly on first paint.
   useEffect(() => {
-    if (activeTab !== 'manage-rosters' || !lid) return;
+    if (activeTab !== 'ops' || !lid) return;
     if (ghostIl !== null) return;
     let ok = true;
     getGhostIlSummary(lid)
@@ -398,6 +402,17 @@ export default function Commissioner() {
       .catch(() => { if (ok) setGhostIl({ teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0 }); });
     return () => { ok = false; };
   }, [activeTab, lid, ghostIl]);
+
+  // Lazy-load recent activity when Overview tab is first opened.
+  useEffect(() => {
+    if (activeTab !== 'overview' || !lid) return;
+    if (recentActivity !== null) return;
+    let ok = true;
+    getTransactions({ leagueId: lid, take: 25 })
+      .then(res => { if (ok) setRecentActivity(res.transactions); })
+      .catch(() => { if (ok) setRecentActivity([]); });
+    return () => { ok = false; };
+  }, [activeTab, lid, recentActivity]);
 
   const leagueFromList = useMemo(() => (leagues ?? []).find((x) => x.id === lid) ?? null, [leagues, lid]);
 
@@ -825,8 +840,8 @@ export default function Commissioner() {
               <span className="text-sm text-[var(--lg-text-secondary)]">{gating.phaseGuidance}</span>
             </div>
 
-            {/* Aurora pill tabs */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            {/* Section tabs — underline style */}
+            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--am-border)", marginBottom: 16 }}>
                 {TABS.map((tab) => {
                     const isActive = activeTab === tab.key && tab.enabled;
                     return (
@@ -839,11 +854,14 @@ export default function Commissioner() {
                         }}
                         style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "8px 14px", borderRadius: 99,
+                            padding: "8px 14px",
+                            borderRadius: 0,
                             fontSize: 12, fontWeight: 600, letterSpacing: 0.2,
-                            background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
+                            background: "transparent",
                             color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
-                            border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
+                            border: "none",
+                            borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                            marginBottom: -1,
                             opacity: tab.enabled ? 1 : 0.4,
                             cursor: tab.enabled ? "pointer" : "not-allowed",
                             fontFamily: "inherit",
@@ -851,23 +869,23 @@ export default function Commissioner() {
                         title={tab.enabled ? undefined : tab.reason}
                         disabled={!tab.enabled}
                     >
-                        {tab.icon === 'building' && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></svg>
+                        {tab.icon === 'activity' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
                         )}
                         {tab.icon === 'users' && (
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         )}
-                        {tab.icon === 'trophy' && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                        {tab.icon === 'gear' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                         )}
-                        {tab.icon === 'calendar' && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+                        {tab.icon === 'wrench' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
                         )}
-                        {tab.icon === 'arrows' && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+                        {tab.icon === 'dollar' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         )}
-                        {tab.icon === 'activity' && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+                        {tab.icon === 'archive' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
                         )}
                         {tab.label}
                     </button>
@@ -875,10 +893,9 @@ export default function Commissioner() {
                 })}
             </div>
 
-            {/* Tab: League */}
-            {activeTab === 'league' && (
+            {/* Tab: Overview */}
+            {activeTab === 'overview' && (
                 <div className="space-y-5">
-                  {/* Quick Stats */}
                   <div className="grid gap-4 grid-cols-3">
                     <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
                       <div className="text-2xl font-semibold text-[var(--lg-text-heading)]">{overview.teams.length}</div>
@@ -902,622 +919,541 @@ export default function Commissioner() {
                       <div className="text-xs text-[var(--lg-text-muted)] mt-1">Season Status</div>
                     </div>
                   </div>
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                    <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">League Health</h2>
+                    <LeagueHealthTab leagueId={lid} />
+                  </div>
 
-                  {/* League Settings */}
+                  {/* Recent Activity feed */}
+                  <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--am-text-muted)]">Recent Activity</div>
+                      <Link to={`/commissioner/${lid}/activity`} className="text-[11px] text-[var(--am-accent)] hover:underline">View all →</Link>
+                    </div>
+                    {recentActivity === null ? (
+                      <div className="text-xs text-[var(--am-text-faint)] py-2">Loading…</div>
+                    ) : recentActivity.length === 0 ? (
+                      <div className="text-xs text-[var(--am-text-faint)] py-2">No activity yet.</div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {recentActivity.map(ev => {
+                          const txType = (ev.transactionType || ev.type || "").toUpperCase();
+                          const typeColor =
+                            txType === 'ADD' || txType === 'CLAIM' || txType === 'IL_ACTIVATE' ? "var(--am-positive)" :
+                            txType === 'DROP' || txType === 'IL_STASH' ? "var(--am-warning)" :
+                            txType === 'TRADE' ? "var(--am-accent-2)" : "var(--am-text-faint)";
+                          const typeLabel =
+                            txType === 'CLAIM' ? 'ADD' :
+                            txType === 'IL_STASH' ? 'IL+' :
+                            txType === 'IL_ACTIVATE' ? 'IL−' :
+                            txType || '—';
+                          const ts = ev.submittedAt || ev.effDate || '';
+                          const relTime = ts ? (() => {
+                            const diff = Date.now() - new Date(ts).getTime();
+                            const h = Math.floor(diff / 3_600_000);
+                            const d = Math.floor(diff / 86_400_000);
+                            if (h < 1) return 'just now';
+                            if (h < 24) return `${h}h ago`;
+                            if (d < 7) return `${d}d ago`;
+                            return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                          })() : '';
+                          return (
+                            <div key={ev.id} className="flex items-center gap-2 py-1 border-b border-[var(--am-border)] last:border-0">
+                              <span style={{ color: typeColor, minWidth: 36, fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{typeLabel}</span>
+                              <span className="text-xs text-[var(--am-text)] truncate flex-1">
+                                {ev.team?.name && <span className="font-medium">{ev.team.name}</span>}
+                                {ev.player?.name && <span className="text-[var(--am-text-muted)]"> · {ev.player.name}</span>}
+                                {!ev.team?.name && !ev.player?.name && <span className="text-[var(--am-text-faint)]">{ev.transactionRaw || ev.ogbaTeamName || '—'}</span>}
+                              </span>
+                              <span className="text-[10px] text-[var(--am-text-faint)] shrink-0">{relTime}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+            )}
+
+            {/* Tab: Teams & People */}
+            {activeTab === 'people' && (
+                <div className="space-y-4">
+                  {/* People sub-tab strip */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)" }}>
+                    {([
+                      { key: 'teams'       as PeopleSubTab, label: 'Teams',       badge: overview.teams.length },
+                      { key: 'members'     as PeopleSubTab, label: 'Members',     badge: overview.memberships.length },
+                      { key: 'invites'     as PeopleSubTab, label: 'Invites',     badge: pendingInvites.length, hidden: pendingInvites.length === 0 },
+                      { key: 'invite-code' as PeopleSubTab, label: 'Invite Code' },
+                    ] as { key: PeopleSubTab; label: string; badge?: number; hidden?: boolean }[])
+                      .filter(t => !t.hidden)
+                      .map(t => {
+                        const isActive = peopleSubTab === t.key;
+                        return (
+                          <button
+                            key={t.key}
+                            onClick={() => setPeopleSubTab(t.key)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "7px 14px",
+                              fontSize: 12,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                              borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                              marginBottom: -1,
+                              borderRadius: 0,
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t.label}
+                            {t.badge != null && t.badge > 0 && (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                minWidth: 18, height: 18, padding: "0 5px",
+                                borderRadius: 9,
+                                background: isActive ? "var(--am-accent)" : "var(--am-chip)",
+                                color: isActive ? "#fff" : "var(--am-text-muted)",
+                                fontSize: 10.5, fontWeight: 700,
+                              }}>
+                                {t.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  {/* Sub-tab: Teams */}
+                  {peopleSubTab === 'teams' && (
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                      <div className="space-y-2">
+                        {overview.teams.map((t) => (
+                          <div key={t.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-bold text-[var(--lg-text-heading)]">
+                                {t.name}{" "}
+                                <span className="text-[var(--lg-text-muted)] font-normal">{t.budget != null ? `$${t.budget}` : ""}</span>
+                              </div>
+                              <div className="mt-1 space-y-1">
+                                {t.ownerships && t.ownerships.length > 0 ? (
+                                  t.ownerships.map((o: any) => (
+                                    <div key={o.id} className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)] group/owner">
+                                      <span className="truncate max-w-[150px]">{o.user?.email || `User ${o.userId}`}</span>
+                                      <button onClick={() => onRemoveOwner(t.id, o.userId)} className="text-red-400 hover:text-red-300 opacity-0 group-hover/owner:opacity-100 transition-opacity" title="Remove Owner" disabled={busy}>(Remove)</button>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-xs text-[var(--lg-text-muted)] italic">No owners assigned</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-xs text-[var(--lg-text-muted)]">id: {t.id}</div>
+                              <button onClick={() => onDeleteTeam(t.id)} className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Team" disabled={busy}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Create team</div>
+                        <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
+                          {priorTeams.length > 0 && (
+                            <div className="md:col-span-3 mb-2">
+                              <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Link to prior year team (optional)</label>
+                              <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={selectedPriorTeamId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ""; setSelectedPriorTeamId(id); if (id) { const pt = priorTeams.find((t) => t.id === id); if (pt) { setTeamName(pt.name); setTeamCode(pt.code || ""); } } }}>
+                                <option value="">Create new team…</option>
+                                {priorTeams.map((pt) => (<option key={pt.id} value={pt.id}>{pt.name} — from last year</option>))}
+                              </select>
+                            </div>
+                          )}
+                          <input className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
+                          <input className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Code (OGBA)" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} />
+                          <div className="md:col-span-2">
+                            <label className="block text-xs text-[var(--lg-text-muted)]">Budget</label>
+                            <input className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" type="number" value={teamBudget} onChange={(e) => setTeamBudget(Number(e.target.value))} />
+                          </div>
+                          <div className="md:col-span-1 flex items-end justify-end">
+                            <button type="submit" className={cls("w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Create</button>
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Assign team owner</div>
+                        <form onSubmit={onAssignOwner} className="grid gap-2 md:grid-cols-3">
+                          <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}>
+                            <option value="">Select team…</option>
+                            {overview.teams.map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                          </select>
+                          <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={ownerUserId} onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}>
+                            <option value="">Select owner…</option>
+                            {availableUsers.map((u) => (<option key={u.id} value={u.id}>{u.name || u.email} ({u.email})</option>))}
+                          </select>
+                          <input className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="Owner display name (optional)" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
+                          <div className="md:col-span-3 flex justify-end">
+                            <button type="submit" className={cls("rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Add owner (max 2)</button>
+                          </div>
+                        </form>
+                        <div className="mt-2 text-xs text-[var(--lg-text-muted)]">Teams can have up to 2 owners. Select registered users from the dropdown.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Members */}
+                  {peopleSubTab === 'members' && (
+                    <div className="space-y-5">
+                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="text-sm font-semibold text-[var(--lg-text-heading)]">Members</div>
+                          <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
+                        </div>
+                        <div className="space-y-2">
+                          {overview.memberships.map((m) => {
+                            const isMe = m.userId === me?.id;
+                            const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
+                            return (
+                              <div key={m.id} className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm text-[var(--lg-text-primary)]">{memberName}</div>
+                                  <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
+                                  {userTeamMap.get(m.userId)?.map((tName) => (
+                                    <span key={tName} className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]">{tName}</span>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <button onClick={() => onChangeMemberRole(m.id, m.role)} className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors" title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`} disabled={busy || isMe}>{m.role}</button>
+                                  {!isMe && (<button onClick={() => onRemoveMember(m.id, memberName)} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs" title="Remove member" disabled={busy}>Remove</button>)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
+                        <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
+                          <input className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" placeholder="owner@email.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+                          <select className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)} title="Select role">
+                            <option value="OWNER">OWNER</option>
+                            <option value="COMMISSIONER">COMMISSIONER</option>
+                          </select>
+                          <div className="md:col-span-3 flex justify-end">
+                            <button type="submit" className={cls("rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)]", busy && "opacity-60 cursor-not-allowed")} disabled={busy}>Add</button>
+                          </div>
+                        </form>
+                        <div className="mt-2 text-xs text-[var(--lg-text-muted)]">If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Invites */}
+                  {peopleSubTab === 'invites' && (
+                    pendingInvites.length === 0 ? (
+                      <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                        No pending invites.
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                        <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
+                          Pending Invites <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {pendingInvites.map((inv) => (
+                            <div key={inv.id} className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2">
+                              <div className="min-w-0">
+                                <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
+                                <div className="text-xs text-[var(--lg-text-muted)]">{inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}{inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}</div>
+                              </div>
+                              <button onClick={() => onCancelInvite(inv.id)} className="shrink-0 text-xs text-red-400 hover:text-red-300" disabled={busy}>Cancel</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {/* Sub-tab: Invite Code */}
+                  {peopleSubTab === 'invite-code' && (
+                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                      <div className="mb-3 text-sm font-semibold text-[var(--lg-text-heading)]">Invite Code</div>
+                      {inviteCodeValue ? (
+                        <div className="flex items-center gap-3">
+                          <code className="flex-1 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-2.5 text-sm font-mono tracking-widest text-[var(--lg-text-primary)]">{inviteCodeValue}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(inviteCodeValue); toast("Invite code copied!", "success"); }} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-bg-surface)] transition-all">Copy</button>
+                          <button onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code regenerated", "success"); } catch { toast("Failed to regenerate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/20 transition-all disabled:opacity-50">{inviteCodeLoading ? "..." : "Regenerate"}</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-[var(--lg-text-muted)]">No invite code set.</span>
+                          <button onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code generated!", "success"); } catch { toast("Failed to generate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading} className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-all disabled:opacity-50">{inviteCodeLoading ? "Generating..." : "Generate Code"}</button>
+                        </div>
+                      )}
+                      <p className="mt-2 text-xs text-[var(--lg-text-muted)]">Share this code with users so they can join your league.</p>
+                    </div>
+                  )}
+                </div>
+            )}
+
+            {/* Tab: Settings */}
+            {activeTab === 'settings' && (
+                <div className="space-y-5">
                   <SettingsSection
                     title="League Settings"
                     league={league as any}
                     lockedFields={lockedFields}
                     busy={busy}
-                    onUpdate={async (field, value) => {
-                      try {
-                        await apiUpdateLeague(lid, { [field]: value });
-                        toast(`${field} updated.`, "success");
-                        await refreshOverviewOnly();
-                      } catch (err: any) {
-                        toast(err?.message || `Failed to update ${field}`, "error");
-                      }
-                    }}
+                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
                     fields={[
                       { key: "draftMode", label: "Draft Mode", type: "readonly", format: (v: any) => `${v}${(league as any).draftOrder ? ` (${(league as any).draftOrder})` : ""}` },
-                      { key: "scoringFormat", label: "Scoring Format", type: "select", options: [
-                        { value: "ROTO", label: "Roto" },
-                        { value: "H2H_CATEGORIES", label: "H2H Categories" },
-                        { value: "H2H_POINTS", label: "H2H Points" },
-                      ]},
+                      { key: "scoringFormat", label: "Scoring Format", type: "select", options: [{ value: "ROTO", label: "Roto" }, { value: "H2H_CATEGORIES", label: "H2H Categories" }, { value: "H2H_POINTS", label: "H2H Points" }] },
                       { key: "maxTeams", label: "Max Teams", type: "number", min: 4, max: 30 },
                       { key: "playoffWeeks", label: "Playoff Weeks", type: "number", min: 0, max: 10 },
                       { key: "playoffTeams", label: "Playoff Teams", type: "number", min: 2, max: 16 },
                       { key: "regularSeasonWeeks", label: "Regular Season Weeks", type: "number", min: 1, max: 30 },
-                      { key: "visibility", label: "Visibility", type: "select", options: [
-                        { value: "PRIVATE", label: "Private" },
-                        { value: "PUBLIC", label: "Public" },
-                        { value: "OPEN", label: "Open" },
-                      ]},
+                      { key: "visibility", label: "Visibility", type: "select", options: [{ value: "PRIVATE", label: "Private" }, { value: "PUBLIC", label: "Public" }, { value: "OPEN", label: "Open" }] },
                       { key: "description", label: "Description", type: "text" },
-                      { key: "entryFee", label: "Entry Fee ($)", type: "number", min: 0, max: 10000 },
-                      { key: "entryFeeNote", label: "Entry Fee Note", type: "text" },
                     ]}
                   />
-
-                  {/* Waiver Configuration */}
                   <SettingsSection
                     title="Waiver Configuration"
                     league={league as any}
                     lockedFields={lockedFields}
                     busy={busy}
-                    onUpdate={async (field, value) => {
-                      try {
-                        await apiUpdateLeague(lid, { [field]: value });
-                        toast(`${field} updated.`, "success");
-                        await refreshOverviewOnly();
-                      } catch (err: any) {
-                        toast(err?.message || `Failed to update ${field}`, "error");
-                      }
-                    }}
+                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
                     fields={[
-                      { key: "waiverType", label: "Waiver Type", type: "select", options: [
-                        { value: "FAAB", label: "FAAB" },
-                        { value: "ROLLING_PRIORITY", label: "Rolling Priority" },
-                        { value: "REVERSE_STANDINGS", label: "Reverse Standings" },
-                        { value: "FREE_AGENT", label: "Free Agent" },
-                      ]},
+                      { key: "waiverType", label: "Waiver Type", type: "select", options: [{ value: "FAAB", label: "FAAB" }, { value: "ROLLING_PRIORITY", label: "Rolling Priority" }, { value: "REVERSE_STANDINGS", label: "Reverse Standings" }, { value: "FREE_AGENT", label: "Free Agent" }] },
                       { key: "faabBudget", label: "FAAB Budget ($)", type: "number", min: 50, max: 1000 },
-                      { key: "faabMinBid", label: "FAAB Min Bid ($)", type: "select", options: [
-                        { value: 0, label: "$0" },
-                        { value: 1, label: "$1" },
-                      ]},
+                      { key: "faabMinBid", label: "FAAB Min Bid ($)", type: "select", options: [{ value: 0, label: "$0" }, { value: 1, label: "$1" }] },
                       { key: "waiverPeriodDays", label: "Waiver Period (days)", type: "number", min: 0, max: 7 },
-                      { key: "processingFreq", label: "Processing Frequency", type: "select", options: [
-                        { value: "DAILY", label: "Daily" },
-                        { value: "WEEKLY_MON", label: "Weekly (Mon)" },
-                        { value: "WEEKLY_WED", label: "Weekly (Wed)" },
-                        { value: "WEEKLY_FRI", label: "Weekly (Fri)" },
-                        { value: "WEEKLY_SUN", label: "Weekly (Sun)" },
-                      ]},
-                      { key: "faabTiebreaker", label: "FAAB Tiebreaker", type: "select", options: [
-                        { value: "ROLLING_PRIORITY", label: "Rolling Priority" },
-                        { value: "REVERSE_STANDINGS", label: "Reverse Standings" },
-                        { value: "RANDOM", label: "Random" },
-                      ]},
+                      { key: "processingFreq", label: "Processing Frequency", type: "select", options: [{ value: "DAILY", label: "Daily" }, { value: "WEEKLY_MON", label: "Weekly (Mon)" }, { value: "WEEKLY_WED", label: "Weekly (Wed)" }, { value: "WEEKLY_FRI", label: "Weekly (Fri)" }, { value: "WEEKLY_SUN", label: "Weekly (Sun)" }] },
+                      { key: "faabTiebreaker", label: "FAAB Tiebreaker", type: "select", options: [{ value: "ROLLING_PRIORITY", label: "Rolling Priority" }, { value: "REVERSE_STANDINGS", label: "Reverse Standings" }, { value: "RANDOM", label: "Random" }] },
                       { key: "acquisitionLimit", label: "Acquisition Limit", type: "number", min: 0, max: 999, nullable: true },
                       { key: "conditionalClaims", label: "Conditional Claims", type: "toggle" },
                     ]}
                   />
-
-                  {/* Trade Settings */}
                   <SettingsSection
                     title="Trade Settings"
                     league={league as any}
                     lockedFields={lockedFields}
                     busy={busy}
-                    onUpdate={async (field, value) => {
-                      try {
-                        await apiUpdateLeague(lid, { [field]: value });
-                        toast(`${field} updated.`, "success");
-                        await refreshOverviewOnly();
-                      } catch (err: any) {
-                        toast(err?.message || `Failed to update ${field}`, "error");
-                      }
-                    }}
+                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
                     fields={[
-                      { key: "tradeReviewPolicy", label: "Trade Review", type: "select", options: [
-                        { value: "COMMISSIONER", label: "Commissioner Review" },
-                        { value: "LEAGUE_VOTE", label: "League Vote" },
-                      ]},
+                      { key: "tradeReviewPolicy", label: "Trade Review", type: "select", options: [{ value: "COMMISSIONER", label: "Commissioner Review" }, { value: "LEAGUE_VOTE", label: "League Vote" }] },
                       { key: "vetoThreshold", label: "Veto Threshold", type: "number", min: 1, max: 20 },
                       { key: "tradeDeadline", label: "Trade Deadline", type: "date" },
-                      { key: "rosterLockTime", label: "Roster Lock Time", type: "select", options: [
-                        { value: "", label: "None" },
-                        { value: "GAME_TIME", label: "Game Time" },
-                        { value: "DAILY_LOCK", label: "Daily Lock" },
-                      ]},
+                      { key: "rosterLockTime", label: "Roster Lock Time", type: "select", options: [{ value: "", label: "None" }, { value: "GAME_TIME", label: "Game Time" }, { value: "DAILY_LOCK", label: "Daily Lock" }] },
                     ]}
                   />
-
-                  {/* Invite Code */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Invite Code</div>
-                    </div>
-                    {inviteCodeValue ? (
-                      <div className="flex items-center gap-3">
-                        <code className="flex-1 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-4 py-2.5 text-sm font-mono tracking-widest text-[var(--lg-text-primary)]">
-                          {inviteCodeValue}
-                        </code>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(inviteCodeValue);
-                            toast("Invite code copied!", "success");
-                          }}
-                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-secondary)] hover:bg-[var(--lg-bg-surface)] transition-all"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={async () => {
-                            setInviteCodeLoading(true);
-                            try {
-                              const res = await regenerateInviteCode(lid);
-                              setInviteCodeValue(res.inviteCode);
-                              toast("Invite code regenerated", "success");
-                            } catch {
-                              toast("Failed to regenerate code", "error");
-                            } finally {
-                              setInviteCodeLoading(false);
-                            }
-                          }}
-                          disabled={inviteCodeLoading}
-                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)]/10 border border-[var(--lg-accent)]/20 text-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/20 transition-all disabled:opacity-50"
-                        >
-                          {inviteCodeLoading ? "..." : "Regenerate"}
-                        </button>
+                  {(gating.canKeepers || gating.canAuction) && (
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
+                        <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Live Auction Draft</h3>
+                        <p className="text-sm text-[var(--lg-text-muted)] mb-4">Start and manage the live auction draft from the Auction page.</p>
+                        <Link to={`/leagues/${lid}/auction`} className="inline-block rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-600 transition-colors">Go to Auction Draft</Link>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-[var(--lg-text-muted)]">No invite code set.</span>
-                        <button
-                          onClick={async () => {
-                            setInviteCodeLoading(true);
-                            try {
-                              const res = await regenerateInviteCode(lid);
-                              setInviteCodeValue(res.inviteCode);
-                              toast("Invite code generated!", "success");
-                            } catch {
-                              toast("Failed to generate code", "error");
-                            } finally {
-                              setInviteCodeLoading(false);
-                            }
-                          }}
-                          disabled={inviteCodeLoading}
-                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-all disabled:opacity-50"
-                        >
-                          {inviteCodeLoading ? "Generating..." : "Generate Code"}
-                        </button>
-                      </div>
-                    )}
-                    <p className="mt-2 text-xs text-[var(--lg-text-muted)]">
-                      Share this code with users so they can join your league.
-                    </p>
-                  </div>
-
-                  {/* Team List */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Teams</div>
-                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.teams.length} total</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {overview.teams.map((t) => (
-                        <div
-                          key={t.id}
-                          className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group"
-                        >
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-bold text-[var(--lg-text-heading)]">
-                              {t.name}{" "}
-                              <span className="text-[var(--lg-text-muted)] font-normal">
-                                {t.budget != null ? `$${t.budget}` : ""}
-                              </span>
-                            </div>
-                            <div className="mt-1 space-y-1">
-                              {t.ownerships && t.ownerships.length > 0 ? (
-                                t.ownerships.map((o: any) => (
-                                  <div key={o.id} className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)] group/owner">
-                                    <span className="truncate max-w-[150px]">{o.user?.email || `User ${o.userId}`}</span>
-                                    <button
-                                      onClick={() => onRemoveOwner(t.id, o.userId)}
-                                      className="text-red-400 hover:text-red-300 opacity-0 group-hover/owner:opacity-100 transition-opacity"
-                                      title="Remove Owner"
-                                      disabled={busy}
-                                    >
-                                      (Remove)
-                                    </button>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-xs text-[var(--lg-text-muted)] italic">No owners assigned</div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-xs text-[var(--lg-text-muted)]">id: {t.id}</div>
-                            <button
-                              onClick={() => onDeleteTeam(t.id)}
-                              className="rounded-lg bg-red-500/10 p-1.5 text-red-500 hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Delete Team"
-                              disabled={busy}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Create Team */}
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Create team</div>
-                      <form onSubmit={onCreateTeam} className="grid gap-2 md:grid-cols-3">
-                        {priorTeams.length > 0 && (
-                          <div className="md:col-span-3 mb-2">
-                            <label className="block text-xs text-[var(--lg-text-muted)] mb-1">Link to prior year team (optional)</label>
-                            <select
-                              className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                              value={selectedPriorTeamId}
-                              onChange={(e) => {
-                                const id = e.target.value ? Number(e.target.value) : "";
-                                setSelectedPriorTeamId(id);
-                                if (id) {
-                                  const pt = priorTeams.find((t) => t.id === id);
-                                  if (pt) {
-                                    setTeamName(pt.name);
-                                    setTeamCode(pt.code || "");
-                                  }
-                                }
-                              }}
-                            >
-                              <option value="">Create new team…</option>
-                              {priorTeams.map((pt) => (
-                                <option key={pt.id} value={pt.id}>
-                                  {pt.name} — from last year
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        <input
-                          className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          placeholder="Team name"
-                          value={teamName}
-                          onChange={(e) => setTeamName(e.target.value)}
-                        />
-                        <input
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          placeholder="Code (OGBA)"
-                          value={teamCode}
-                          onChange={(e) => setTeamCode(e.target.value)}
-                        />
-
-                        <div className="md:col-span-2">
-                          <label className="block text-xs text-[var(--lg-text-muted)]">Budget</label>
-                          <input
-                            className="mt-1 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                            type="number"
-                            value={teamBudget}
-                            onChange={(e) => setTeamBudget(Number(e.target.value))}
-                          />
-                        </div>
-
-                        <div className="md:col-span-1 flex items-end justify-end">
-                          <button
-                            type="submit"
-                            className={cls(
-                              "w-full rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
-                              busy && "opacity-60 cursor-not-allowed"
-                            )}
-                            disabled={busy}
-                          >
-                            Create
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-
-                    {/* Assign Owner */}
-                    <div className="mt-4 rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] p-4">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Assign team owner</div>
-
-                      <form onSubmit={onAssignOwner} className="grid gap-2 md:grid-cols-3">
-                        <select
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          value={ownerTeamId}
-                          onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}
-                        >
-                          <option value="">Select team…</option>
-                          {overview.teams.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-
-                        <select
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          value={ownerUserId}
-                          onChange={(e) => setOwnerUserId(e.target.value ? Number(e.target.value) : "")}
-                        >
-                          <option value="">Select owner…</option>
-                          {availableUsers.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name || u.email} ({u.email})
-                            </option>
-                          ))}
-                        </select>
-
-                        <input
-                          className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                          placeholder="Owner display name (optional)"
-                          value={ownerName}
-                          onChange={(e) => setOwnerName(e.target.value)}
-                        />
-
-                        <div className="md:col-span-3 flex justify-end">
-                          <button
-                            type="submit"
-                            className={cls(
-                              "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
-                              busy && "opacity-60 cursor-not-allowed"
-                            )}
-                            disabled={busy}
-                          >
-                            Add owner (max 2)
-                          </button>
-                        </div>
-                      </form>
-
-                      <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
-                        Teams can have up to 2 owners. Select registered users from the dropdown.
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-            )}
-
-            {/* Tab: Members */}
-            {activeTab === 'members' && (
-                <div className="space-y-5">
-                  {/* Member List */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="text-lg font-semibold text-[var(--lg-text-heading)]">Members</div>
-                      <div className="text-xs text-[var(--lg-text-muted)]">{overview.memberships.length} total</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {overview.memberships.map((m) => {
-                        const isMe = m.userId === me?.id;
-                        const memberName = m.user?.name || m.user?.email || `User ${m.userId}`;
-                        return (
-                          <div
-                            key={m.id}
-                            className="flex items-center justify-between rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 group"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm text-[var(--lg-text-primary)]">
-                                {memberName}
-                              </div>
-                              <div className="truncate text-xs text-[var(--lg-text-muted)]">{m.user?.email}</div>
-                              {userTeamMap.get(m.userId)?.map((tName) => (
-                                <span
-                                  key={tName}
-                                  className="inline-block mt-1 mr-1 rounded-full bg-[var(--lg-accent)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--lg-accent)]"
-                                >
-                                  {tName}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                onClick={() => onChangeMemberRole(m.id, m.role)}
-                                className="rounded-full bg-[var(--lg-tint-hover)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)]/15 hover:text-[var(--lg-accent)] transition-colors"
-                                title={`Change to ${m.role === "COMMISSIONER" ? "OWNER" : "COMMISSIONER"}`}
-                                disabled={busy || isMe}
-                              >
-                                {m.role}
-                              </button>
-                              {!isMe && (
-                                <button
-                                  onClick={() => onRemoveMember(m.id, memberName)}
-                                  className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                  title="Remove member"
-                                  disabled={busy}
-                                >
-                                  Remove
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Add Member */}
-                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                    <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">Add member (by email)</div>
-                    <form onSubmit={onInvite} className="grid gap-2 md:grid-cols-3">
-                      <input
-                        className="md:col-span-2 w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                        placeholder="owner@email.com"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                      />
-                      <select
-                        className="w-full rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2 text-sm text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-border-subtle)]"
-                        value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as any)}
-                        title="Select role"
-                      >
-                        <option value="OWNER">OWNER</option>
-                        <option value="COMMISSIONER">COMMISSIONER</option>
-                      </select>
-
-                      <div className="md:col-span-3 flex justify-end">
-                        <button
-                          type="submit"
-                          className={cls(
-                            "rounded-xl bg-[var(--lg-tint-hover)] px-4 py-2 text-sm text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint-hover)]",
-                            busy && "opacity-60 cursor-not-allowed"
-                          )}
-                          disabled={busy}
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </form>
-
-                    <div className="mt-2 text-xs text-[var(--lg-text-muted)]">
-                      If the user hasn't signed up yet, they'll receive a pending invite and be added automatically when they create an account.
-                    </div>
-                  </div>
-
-                  {/* Pending Invites */}
-                  {pendingInvites.length > 0 && (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-                      <div className="mb-2 text-sm font-semibold text-[var(--lg-text-heading)]">
-                        Pending Invites
-                        <span className="ml-2 text-xs font-normal text-[var(--lg-text-muted)]">{pendingInvites.length}</span>
-                      </div>
-                      <div className="space-y-2">
-                        {pendingInvites.map((inv) => (
-                          <div
-                            key={inv.id}
-                            className="flex items-center justify-between rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-surface)] px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm text-[var(--lg-text-primary)]">{inv.email}</div>
-                              <div className="text-xs text-[var(--lg-text-muted)]">
-                                {inv.role} · Invited {new Date(inv.createdAt).toLocaleDateString()}
-                                {inv.expiresAt && ` · Expires ${new Date(inv.expiresAt).toLocaleDateString()}`}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => onCancelInvite(inv.id)}
-                              className="shrink-0 text-xs text-red-400 hover:text-red-300"
-                              disabled={busy}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                      <CommissionerControls leagueId={lid} />
                     </div>
                   )}
                 </div>
             )}
 
-            {/* Tab: Manage Rosters (was 'teams' pre-PR #130). In-season focus —
-                ghost-IL banner + the unified CommissionerRosterTool which owns
-                Acting As + Effective date + focused single-team view +
-                Add/Drop + IL Management + retroactive trades + collapsible
-                all-teams quick view. Team CRUD has moved to the League tab. */}
-            {activeTab === 'manage-rosters' && (
-                <div className="space-y-5">
-                  {/* Ghost-IL banner */}
-                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && (
-                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
-                          {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"}{" "}
-                          — MLB has activated them but they're still in a fantasy IL slot. New IL stashes are blocked until resolved.
+            {/* Tab: Operations */}
+            {activeTab === 'ops' && (
+                <div className="space-y-4">
+                  {/* Ghost-IL urgent alert — floats above sub-tabs so it's never missed */}
+                  {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && opsSubTab !== 'ghost-il' && (
+                    <div className="rounded border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200 flex items-center justify-between gap-3">
+                      <span>
+                        <strong className="text-red-300">{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
+                        {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"} — MLB has activated them but they're still in a fantasy IL slot.
+                      </span>
+                      <button
+                        onClick={() => setOpsSubTab('ghost-il')}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                        className="text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline shrink-0"
+                      >
+                        Fix now
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Operations sub-tab strip */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--am-border)" }}>
+                    {([
+                      { key: 'roster'   as OpsSubTab, label: 'Roster' },
+                      { key: 'trades'   as OpsSubTab, label: 'Trades' },
+                      { key: 'ghost-il' as OpsSubTab, label: 'Ghost-IL', badge: ghostIl?.totalGhosts ?? null },
+                      { key: 'bulk'     as OpsSubTab, label: 'Bulk',
+                        hidden: !gating.canKeepers && !gating.canAuction && gating.isReadOnly },
+                    ] as { key: OpsSubTab; label: string; badge?: number | null; hidden?: boolean }[])
+                      .filter(t => !t.hidden)
+                      .map(t => {
+                        const isActive = opsSubTab === t.key;
+                        return (
+                          <button
+                            key={t.key}
+                            onClick={() => setOpsSubTab(t.key)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "7px 14px",
+                              fontSize: 12,
+                              fontWeight: isActive ? 600 : 400,
+                              color: isActive ? "var(--am-accent)" : "var(--am-text-muted)",
+                              borderBottom: isActive ? "2px solid var(--am-accent)" : "2px solid transparent",
+                              marginBottom: -1,
+                              borderRadius: 0,
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              fontFamily: "inherit",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t.label}
+                            {t.badge != null && t.badge > 0 && (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                minWidth: 18, height: 18, padding: "0 5px",
+                                borderRadius: 9,
+                                background: isActive ? "var(--am-accent)" : "var(--am-chip)",
+                                color: isActive ? "#fff" : "var(--am-text-muted)",
+                                fontSize: 10.5, fontWeight: 700,
+                              }}>
+                                {t.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                    })}
+                  </div>
+
+                  {/* Sub-tab: Roster */}
+                  {opsSubTab === 'roster' && !gating.isReadOnly && (
+                    <CommissionerRosterTool
+                      leagueId={lid}
+                      teams={overview.teams}
+                      onUpdate={() => { /* no-op */ }}
+                      showTrades={false}
+                    />
+                  )}
+                  {opsSubTab === 'roster' && gating.isReadOnly && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                      Roster edits are not available in the current season phase.
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Trades */}
+                  {opsSubTab === 'trades' && (
+                    <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-5">
+                      <h3 className="text-sm font-semibold text-[var(--am-text)] mb-4">Record Retroactive Trade</h3>
+                      <CommissionerTradeTool leagueId={lid} teams={overview.teams} />
+                    </div>
+                  )}
+
+                  {/* Sub-tab: Ghost-IL */}
+                  {opsSubTab === 'ghost-il' && (
+                    <div className="space-y-3">
+                      {ghostIl === null ? (
+                        <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                          Loading ghost-IL status…
                         </div>
-                        <button
-                          onClick={() => setGhostIlExpanded(v => !v)}
-                          className="ml-3 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline"
-                        >
-                          {ghostIlExpanded ? "Hide" : "Details"}
-                        </button>
-                      </div>
-                      {ghostIlExpanded && (
-                        <ul className="mt-2 ml-4 list-disc space-y-1">
-                          {ghostIl.teams.map(t => (
-                            <li key={t.teamId}>
-                              <span className="font-semibold text-red-300">{t.teamName}</span>
-                              {" — "}
-                              {t.ghosts.map(g => `${g.playerName} (${g.currentMlbStatus})`).join(", ")}
-                            </li>
-                          ))}
-                        </ul>
+                      ) : ghostIl.totalTeamsWithGhosts === 0 ? (
+                        <div className="rounded border border-[var(--am-border)] bg-[var(--am-surface)] p-6 text-center text-sm text-[var(--am-text-muted)]">
+                          No ghost-IL players detected. All IL slots look clean.
+                        </div>
+                      ) : (
+                        <div className="rounded border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-200">
+                          <div className="font-semibold text-red-300 mb-3">
+                            {ghostIl.totalGhosts} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"} across {ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}
+                          </div>
+                          <div className="mb-2 text-red-200/80">
+                            These players are in fantasy IL slots but their MLB status no longer qualifies them for IL. New IL stashes are blocked until resolved. Use the Roster tab to manually move each player back to an active slot.
+                          </div>
+                          <ul className="space-y-2 mt-3">
+                            {ghostIl.teams.map(t => (
+                              <li key={t.teamId} className="rounded border border-red-500/20 bg-red-500/5 p-3">
+                                <div className="font-semibold text-red-300 mb-1">{t.teamName}</div>
+                                <ul className="space-y-0.5">
+                                  {t.ghosts.map(g => (
+                                    <li key={g.playerId} className="flex items-center gap-2">
+                                      <span className="text-red-200">{g.playerName}</span>
+                                      <span className="text-red-200/60">— MLB status: {g.currentMlbStatus}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                                <button
+                                  onClick={() => setOpsSubTab('roster')}
+                                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                                  className="mt-2 text-[11px] font-semibold uppercase text-red-300 hover:text-red-200 underline"
+                                >
+                                  Fix in Roster tab →
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   )}
 
-
-                  {/* Roster Tool */}
-                  {!gating.isReadOnly && (
-                    <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                       <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Manual Roster Management</h2>
-                       <CommissionerRosterTool
-                          leagueId={lid}
-                          teams={overview.teams}
-                          onUpdate={() => { /* no-op or refresh */ }}
-                        />
-                    </div>
-                  )}
-
-                  {/* Bulk operations: League IL audit + Roster cleanup
-                      (feat/commissioner-bulk-ops). Read-only feature for
-                      pre-IN_SEASON phases — server endpoint requires
-                      commissioner/admin and the panel still renders the audit
-                      table when there are no in-flight rosters. */}
-                  {!gating.isReadOnly && (
-                    <BulkOpsPanel leagueId={lid} />
-                  )}
-                </div>
-            )}
-
-            {/* Tab: Season */}
-            {activeTab === 'season' && (
-                <div className="space-y-6">
-                    <SeasonManager leagueId={lid} draftMode={overview.league?.draftMode} />
-
-                    {/* Keepers — only when canKeepers */}
-                    {gating.canKeepers && (
-                      <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                           <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
-                           <KeeperPrepDashboard leagueId={lid} />
-                      </div>
-                    )}
-
-                    {/* Auction Controls — only when canAuction or canKeepers (Setup/Draft) */}
-                    {(gating.canKeepers || gating.canAuction) && (
-                      <div className="space-y-6">
+                  {/* Sub-tab: Bulk */}
+                  {opsSubTab === 'bulk' && (
+                    <div className="space-y-5">
+                      {gating.canKeepers && (
                         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
-                          <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Live Auction Draft</h3>
-                          <p className="text-sm text-[var(--lg-text-muted)] mb-4">Start and manage the live auction draft from the Auction page.</p>
-                          <Link
-                            to={`/leagues/${lid}/auction`}
-                            className="inline-block rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-600 transition-colors"
-                          >
-                            Go to Auction Draft
-                          </Link>
+                          <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">Keeper Selection Agent</h2>
+                          <KeeperPrepDashboard leagueId={lid} />
                         </div>
-                        <CommissionerControls leagueId={lid} />
-
-                        {/* Roster setup — single-player typeahead + bulk CSV
-                            import. Moved here from the old Teams tab in PR #130
-                            because these are auction-time setup operations,
-                            not in-season transactions. Only shown during
-                            SETUP/DRAFT (gated by canKeepers || canAuction). */}
+                      )}
+                      {(gating.canKeepers || gating.canAuction) && (
                         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5">
                           <h3 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-2">Roster Setup</h3>
-                          <p className="text-sm text-[var(--lg-text-muted)] mb-4">
-                            Bulk import rosters via CSV or add a single player by name. In-season add/drop happens in the <strong>Manage Rosters</strong> tab.
-                          </p>
+                          <p className="text-sm text-[var(--lg-text-muted)] mb-4">Bulk import rosters via CSV or add a single player by name.</p>
                           <RosterControls leagueId={lid} teams={overview.teams} onUpdate={refreshOverviewOnly} />
                         </div>
-                      </div>
-                    )}
+                      )}
+                      {!gating.isReadOnly && (
+                        <BulkOpsPanel leagueId={lid} />
+                      )}
+                    </div>
+                  )}
                 </div>
             )}
 
-            {/* Tab: Trades — REMOVED per PR #130 (6 → 5 tabs).
-                CommissionerTradeTool now lives inside Manage Rosters tab as a
-                collapsible section, embedded inside CommissionerRosterTool.
-                Old #trades hash links auto-redirect to Manage Rosters. */}
-
-            {activeTab === 'health' && (
-                <div className="space-y-4">
-                    <h2 className="text-xl font-semibold mb-4 text-[var(--lg-text-heading)]">League Health</h2>
-                    <LeagueHealthTab leagueId={lid} />
+            {/* Tab: Finances */}
+            {activeTab === 'finances' && (
+                <div className="space-y-5">
+                  <SettingsSection
+                    title="Entry Fees"
+                    league={league as any}
+                    lockedFields={lockedFields}
+                    busy={busy}
+                    onUpdate={async (field, value) => { try { await apiUpdateLeague(lid, { [field]: value }); toast(`${field} updated.`, "success"); await refreshOverviewOnly(); } catch (err: any) { toast(err?.message || `Failed to update ${field}`, "error"); } }}
+                    fields={[
+                      { key: "entryFee", label: "Entry Fee ($)", type: "number", min: 0, max: 10000 },
+                      { key: "entryFeeNote", label: "Entry Fee Note", type: "text" },
+                    ]}
+                  />
+                  <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 text-center text-sm text-[var(--lg-text-muted)]">
+                    Financial ledger, payout calculator, and balance tracking — coming soon.
+                  </div>
                 </div>
             )}
+
+            {/* Tab: Archive */}
+            {activeTab === 'archive' && (
+                <div className="space-y-6">
+                  <SeasonManager leagueId={lid} draftMode={overview.league?.draftMode} />
+                </div>
+            )}
+
 
           </>
         )}

@@ -42,6 +42,7 @@
 
   --am-positive:       #2e6a2e;   /* +stat deltas */
   --am-negative:       #9b2c2c;   /* −stat deltas */
+  --am-warning:        #8a5a00;   /* lock icons, warn chips, ghost-IL */
 
   /* Gradient tokens removed (Score Sheet is flat) — neutral fallbacks
      so any atom that still interpolates them renders gracefully. */
@@ -78,6 +79,7 @@
 
   --am-positive:       #92d292;
   --am-negative:       #e89a9a;
+  --am-warning:        #e8c98a;   /* lock icons, warn chips, ghost-IL (dark) */
 
   --am-glow-1:  none;
   --am-glow-2:  none;

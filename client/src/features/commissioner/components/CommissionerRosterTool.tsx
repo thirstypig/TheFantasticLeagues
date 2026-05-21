@@ -37,9 +37,10 @@ interface CommissionerRosterToolProps {
   leagueId: number;
   teams: Team[];
   onUpdate: () => void;
+  showTrades?: boolean;
 }
 
-export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: CommissionerRosterToolProps) {
+export default function CommissionerRosterTool({ leagueId, teams, onUpdate, showTrades = true }: CommissionerRosterToolProps) {
   const [rosters, setRosters] = useState<RosterItem[]>([]);
   const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
   const [loading, setLoading] = useState(false);
@@ -374,9 +375,9 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
          </div>
        </div>
 
-       {/* Retroactive Trades — collapsible. Folded in from the deleted Trades
-           tab (PR #130). Commissioner can record trades that already happened. */}
-       <details className="lg-card p-0 bg-transparent">
+       {/* Retroactive Trades — suppressed when rendered inside the Trades sub-tab
+           of the Operations section (where CommissionerTradeTool has its own view). */}
+       {showTrades && <details className="lg-card p-0 bg-transparent">
          <summary className="px-4 py-3 cursor-pointer text-sm font-semibold text-[var(--lg-text-primary)] select-none">
            Record retroactive trade
            <span className="ml-2 text-[10px] font-normal text-[var(--lg-text-muted)] uppercase tracking-wide">
@@ -386,7 +387,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
          <div className="p-4 border-t border-[var(--lg-border-subtle)]">
            <CommissionerTradeTool leagueId={leagueId} teams={teams} />
          </div>
-       </details>
+       </details>}
 
        {/* All Teams Quick View — collapsible glance across the league.
            Default closed; lazy-mounted (the contents only render when open)
