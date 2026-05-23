@@ -5,12 +5,11 @@ import { useToast } from "../../../../contexts/ToastContext";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
 import { extractServerError } from "../../../../lib/extractServerError";
-import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
+import { isSlotCode, slotsFor, type SlotCode } from "../../../../lib/positionEligibility";
 import { isPitcher, fmtRate } from "../../../../lib/sports/baseball";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
 import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
 import { formatReassignmentsToast, previewClaim, type AppliedReassignment } from "../../api";
-import type { SlotCode } from "@shared/api/rosterMoves";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -673,7 +672,7 @@ export default function AddDropPanel({
         //   Or: A (2B→MI) → B (MI→3B) → C (3B→OF) → drop an OF player.
         const pSlot = assignedSlot(p);
         if (isSlotCode(pSlot)) {
-          const vacated = new Set<string>([pSlot]);
+          const vacated = new Set<SlotCode>([pSlot]);
           let changed = true;
           while (changed) {
             changed = false;
@@ -683,7 +682,7 @@ export default function AddDropPanel({
               if (!isSlotCode(qSlot) || vacated.has(qSlot)) continue;
               const qSlots = slotsFor(q.positions || q.posPrimary || "");
               for (const v of vacated) {
-                if (isSlotCode(v) && qSlots.has(v)) {
+                if (qSlots.has(v)) {
                   vacated.add(qSlot);
                   changed = true;
                   break;
@@ -702,16 +701,8 @@ export default function AddDropPanel({
   const faStatMode = useMemo(() => statModeForPlayers(freeAgents, selectedAdd), [freeAgents, selectedAdd]);
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
   const dropTargetSlot = assignedSlot(selectedDrop);
-  const slotCompatible = (() => {
-    if (!selectedDrop || addSlots.size === 0) return true;
-    const slot = assignedSlot(selectedDrop);
-    if (isSlotCode(slot) && addSlots.has(slot)) return true;
-    const dropSlots = slotsFor(selectedDrop.positions || selectedDrop.posPrimary || "");
-    for (const addSlot of addSlots) {
-      if (dropSlots.has(addSlot)) return true;
-    }
-    return false;
-  })();
+  const slotCompatible =
+    !selectedDrop || !selectedAdd || filteredDropCandidates.some((p) => p._dbPlayerId === dropPlayerId);
 
   const dropRequired = inSeason;
   const selectedFieldsComplete =
@@ -843,7 +834,7 @@ export default function AddDropPanel({
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-[var(--lg-text-muted)]">
-        Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and one-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
+        Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and multi-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
       </p>
 
       {hideAddSearch ? (
