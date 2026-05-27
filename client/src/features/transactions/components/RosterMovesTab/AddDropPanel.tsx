@@ -632,9 +632,14 @@ export default function AddDropPanel({
     });
   }, [players, teamId]);
 
+  // Keyed directly off `players` (not `allFreeAgents`) so that typing in the
+  // FA search box doesn't invalidate addSlots → filteredDropCandidates chain.
   const selectedAdd = useMemo(
-    () => allFreeAgents.find((p) => String(p.mlb_id ?? "") === addMlbId) ?? null,
-    [allFreeAgents, addMlbId],
+    () =>
+      players.find(
+        (p) => !(p.ogba_team_code || p.team || p._dbTeamId) && String(p.mlb_id ?? "") === addMlbId,
+      ) ?? null,
+    [players, addMlbId],
   );
   const selectedDrop = useMemo(
     () => dropCandidates.find((p) => p._dbPlayerId === dropPlayerId) ?? null,
@@ -670,17 +675,24 @@ export default function AddDropPanel({
         // This correctly handles 2-, 3-, 4+-player chains, e.g.:
         //   Tatis (2B→OF) → drop an OF player — vacancy hops 2B→OF→addSlots.
         //   Or: A (2B→MI) → B (MI→3B) → C (3B→OF) → drop an OF player.
+        //
+        // Note: benched players (assignedPosition = "BN") are valid drops via
+        // Tier 2 above, but are invisible as chain intermediaries — "BN" is not
+        // a SlotCode, so they never contribute a vacancy to the propagation.
         const pSlot = assignedSlot(p);
         if (isSlotCode(pSlot)) {
+          const others = dropCandidates.filter((q) => q !== p);
+          const qSlotsMap = new Map(
+            others.map((q) => [q, slotsFor(q.positions || q.posPrimary || "")]),
+          );
           const vacated = new Set<SlotCode>([pSlot]);
           let changed = true;
           while (changed) {
             changed = false;
-            for (const q of dropCandidates) {
-              if (q === p) continue;
+            for (const q of others) {
               const qSlot = assignedSlot(q);
               if (!isSlotCode(qSlot) || vacated.has(qSlot)) continue;
-              const qSlots = slotsFor(q.positions || q.posPrimary || "");
+              const qSlots = qSlotsMap.get(q)!;
               for (const v of vacated) {
                 if (qSlots.has(v)) {
                   vacated.add(qSlot);
@@ -701,7 +713,9 @@ export default function AddDropPanel({
   const faStatMode = useMemo(() => statModeForPlayers(freeAgents, selectedAdd), [freeAgents, selectedAdd]);
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
   const dropTargetSlot = assignedSlot(selectedDrop);
-  const slotCompatible =
+  // True when the selected drop is in the filtered drop list (direct, indirect,
+  // or chain-fit). Used to gate the Execute button and the ineligible-slot warning.
+  const selectedDropIsValidCandidate =
     !selectedDrop || !selectedAdd || filteredDropCandidates.some((p) => p._dbPlayerId === dropPlayerId);
 
   const dropRequired = inSeason;
@@ -711,7 +725,7 @@ export default function AddDropPanel({
   const needsServerPreview = inSeason && selectedFieldsComplete;
   const rosterRulesSatisfied =
     selectedFieldsComplete &&
-    (needsServerPreview ? preview?.ok === true : (!selectedAdd || !selectedDrop || slotCompatible));
+    (needsServerPreview ? preview?.ok === true : (!selectedAdd || !selectedDrop || selectedDropIsValidCandidate));
   const canSubmit = rosterRulesSatisfied && !previewing && !submitting;
 
   useEffect(() => {
@@ -945,7 +959,7 @@ export default function AddDropPanel({
           In-season adds require a matching drop. The drop table only includes players in eligible roster slots.
         </div>
       )}
-      {selectedAdd && selectedDrop && !slotCompatible && !needsServerPreview && (
+      {selectedAdd && selectedDrop && !selectedDropIsValidCandidate && !needsServerPreview && (
         <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
           {playerName(selectedAdd)} is not eligible for the {dropTargetSlot} slot. Pick a different drop.
         </div>

@@ -15,6 +15,7 @@ import { FbstApiClient } from "./apiClient.js";
 import { registerWireListTools } from "./tools.js";
 import { registerCommissionerTools } from "./commissionerTools.js";
 import { registerStandingsTools } from "./tools/standings.js";
+import { registerTransactionTools } from "./tools/transactionTools.js";
 
 const client = new FbstApiClient();
 
@@ -26,6 +27,7 @@ const server = new McpServer({
 registerWireListTools(server, client);
 registerCommissionerTools(server, client);
 registerStandingsTools(server, client);
+registerTransactionTools(server, client);
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
