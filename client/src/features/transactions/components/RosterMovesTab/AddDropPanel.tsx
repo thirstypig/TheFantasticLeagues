@@ -615,10 +615,12 @@ export default function AddDropPanel({
     setAddMlbId(initialAddMlbId == null ? null : String(initialAddMlbId));
   }, [initialAddMlbId]);
 
+  const isFreeAgent = (p: RosterMovesPlayer) => !(p.ogba_team_code || p.team || p._dbTeamId);
+
   const allFreeAgents = useMemo(() => {
     const q = query.trim().toLowerCase();
     return players
-      .filter((p) => !(p.ogba_team_code || p.team || p._dbTeamId))
+      .filter(isFreeAgent)
       .filter((p) => !q || playerName(p).toLowerCase().includes(q))
       .filter((p) => matchesPositionFilter(p, positionFilter))
       .sort((a, b) => comparePlayers(a, b, faSortKey, faSortDir));
@@ -637,7 +639,7 @@ export default function AddDropPanel({
   const selectedAdd = useMemo(
     () =>
       players.find(
-        (p) => !(p.ogba_team_code || p.team || p._dbTeamId) && String(p.mlb_id ?? "") === addMlbId,
+        (p) => isFreeAgent(p) && String(p.mlb_id ?? p.mlbId ?? "") === addMlbId,
       ) ?? null,
     [players, addMlbId],
   );
@@ -692,8 +694,9 @@ export default function AddDropPanel({
             for (const q of others) {
               const qSlot = assignedSlot(q);
               if (!isSlotCode(qSlot) || vacated.has(qSlot)) continue;
-              const qSlots = qSlotsMap.get(q)!;
-              for (const v of vacated) {
+              const qSlots = qSlotsMap.get(q) ?? new Set<SlotCode>();
+              const vacatedSnapshot = Array.from(vacated);
+              for (const v of vacatedSnapshot) {
                 if (qSlots.has(v)) {
                   vacated.add(qSlot);
                   changed = true;
@@ -716,7 +719,7 @@ export default function AddDropPanel({
   // True when the selected drop is in the filtered drop list (direct, indirect,
   // or chain-fit). Used to gate the Execute button and the ineligible-slot warning.
   const selectedDropIsValidCandidate =
-    !selectedDrop || !selectedAdd || filteredDropCandidates.some((p) => p._dbPlayerId === dropPlayerId);
+    !selectedDrop || !selectedAdd || filteredDropCandidates.some((p) => p === selectedDrop);
 
   const dropRequired = inSeason;
   const selectedFieldsComplete =
@@ -891,7 +894,7 @@ export default function AddDropPanel({
           <PlayerStatsTable
             players={freeAgents}
             selectedId={addMlbId}
-            onSelect={(p) => setAddMlbId(String(p.mlb_id ?? ""))}
+            onSelect={(p) => setAddMlbId(String(p.mlb_id ?? p.mlbId ?? ""))}
             sortKey={faSortKey}
             sortDir={faSortDir}
             onSort={(key) => handleSort("fa", key)}
