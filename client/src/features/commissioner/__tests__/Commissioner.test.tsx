@@ -248,10 +248,10 @@ describe("Commissioner — ghost-IL banner on Operations tab", () => {
     expect(screen.getByText(/Aaron Judge/)).toBeInTheDocument();
   });
 
-  it("hides the ghost-IL banner when no teams have ghost players", async () => {
+  it("hides the activation-needed banner when no teams have flagged players", async () => {
     await openOpsTab();
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalled());
-    expect(screen.queryByText(/ghost-IL player/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/needing activation/i)).not.toBeInTheDocument();
   });
 });
 

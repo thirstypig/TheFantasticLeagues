@@ -946,7 +946,7 @@ export default function Commissioner() {
                         {ghostIl?.totalGhosts ?? "—"}
                       </div>
                       <div className={cls("cm-stat-delta", (ghostIl?.totalGhosts ?? 0) > 0 ? "neg" : "")}>
-                        {ghostIl === null ? "load ops tab" : (ghostIl.totalGhosts > 0 ? "ghost-IL players" : "clean")}
+                        {ghostIl === null ? "load ops tab" : (ghostIl.totalGhosts > 0 ? "need activation" : "clean")}
                       </div>
                     </div>
                   </div>
@@ -985,7 +985,7 @@ export default function Commissioner() {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--am-negative)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                               </div>
                               <div className="cm-grow">
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{ghostIl!.totalGhosts} ghost-IL player{ghostIl!.totalGhosts !== 1 ? "s" : ""}</div>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{ghostIl!.totalGhosts} player{ghostIl!.totalGhosts !== 1 ? "s" : ""} need activation</div>
                                 <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>MLB activated — still in fantasy IL slot</div>
                               </div>
                               <button className="cm-btn sm danger" onClick={() => { setActiveTab("ops"); setOpsSubTab("ghost-il"); }}>Fix</button>
@@ -1477,7 +1477,7 @@ export default function Commissioner() {
                   <div className="cm-alert warn cm-row" style={{ justifyContent: "space-between" }}>
                     <span style={{ fontSize: 12 }}>
                       <strong>{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
-                      {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"} — MLB has activated them but they're still in a fantasy IL slot.
+                      {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} player{ghostIl.totalGhosts === 1 ? "" : "s"} needing activation — MLB has activated them but they're still in a fantasy IL slot.
                     </span>
                     <button className="cm-btn sm danger" onClick={() => setOpsSubTab('ghost-il')}>Fix now</button>
                   </div>
@@ -1488,7 +1488,7 @@ export default function Commissioner() {
                   {([
                     { key: 'roster'   as OpsSubTab, label: 'Manual Roster' },
                     { key: 'trades'   as OpsSubTab, label: 'Trade Review' },
-                    { key: 'ghost-il' as OpsSubTab, label: 'IL & Ghost-IL', badge: ghostIl?.totalGhosts ?? 0 },
+                    { key: 'ghost-il' as OpsSubTab, label: 'Activate Needed', badge: ghostIl?.totalGhosts ?? 0 },
                     { key: 'bulk'     as OpsSubTab, label: 'Bulk',
                       hidden: !gating.canKeepers && !gating.canAuction && gating.isReadOnly },
                   ] as { key: OpsSubTab; label: string; badge?: number; hidden?: boolean }[])
@@ -1538,17 +1538,17 @@ export default function Commissioner() {
                   <div className="cm-col">
                     {ghostIl === null ? (
                       <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
-                        Loading ghost-IL status…
+                        Loading IL status…
                       </div>
                     ) : ghostIl.totalTeamsWithGhosts === 0 ? (
                       <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
-                        No ghost-IL players detected. All IL slots look clean.
+                        No players need activation. All IL slots look clean.
                       </div>
                     ) : (
                       <div className="cm-card flush">
                         <div className="cm-section-head">
                           <div className="cm-h2" style={{ color: "var(--am-negative)" }}>
-                            {ghostIl.totalGhosts} ghost-IL player{ghostIl.totalGhosts === 1 ? "" : "s"} across {ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}
+                            {ghostIl.totalGhosts} player{ghostIl.totalGhosts === 1 ? "" : "s"} need activation across {ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}
                           </div>
                           <div className="cm-spacer" />
                           <button className="cm-btn sm" onClick={() => setOpsSubTab('roster')}>Fix in Roster tab →</button>
