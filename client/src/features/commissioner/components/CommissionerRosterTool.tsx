@@ -2,13 +2,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getCommissionerRosters, commissionerForceDrop } from '../api';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
-import { ilStash } from '../../transactions/api';
+import { ilStash, ilActivate } from '../../transactions/api';
 import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { enrichPlayersWithRosterState } from '../lib/enrichPlayersWithRosterState';
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
 import { reportError } from '../../../lib/errorBus';
 import { extractServerError } from '../../../lib/extractServerError';
-import { slotsFor } from '../../../lib/positionEligibility';
+import { slotsFor, isSlotCode } from '../../../lib/positionEligibility';
 
 const POS_FILTERS = ['ALL', 'C', '1B', '2B', '3B', 'SS', 'MI', 'CM', 'OF', 'DH', 'P'] as const;
 
@@ -103,6 +103,16 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const [ilReplMlbId, setIlReplMlbId] = useState<number | null>(null);
   const [ilSubmitting, setIlSubmitting] = useState(false);
   const [ilError, setIlError] = useState<string | null>(null);
+
+  // ── Activate-from-IL state (mirror of stash, but inverted) ──
+  // ilMode toggles the right-side IL Management drawer between two flows:
+  //   'stash'    — place an active-roster player on IL + add a FA replacement
+  //   'activate' — bring an IL-slotted player back + drop an active player
+  const [ilMode, setIlMode] = useState<'stash' | 'activate'>('stash');
+  const [ilActId, setIlActId] = useState<number | ''>('');  // IL-slotted player to bring back
+  const [ilActDropId, setIlActDropId] = useState<number | ''>('');  // active player to drop
+  const [ilActSubmitting, setIlActSubmitting] = useState(false);
+  const [ilActError, setIlActError] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -224,6 +234,29 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
       reportError(err, { source: 'commissioner-add-drop' });
     } finally {
       setAdSubmitting(false);
+    }
+  }
+
+  async function handleIlActivate() {
+    if (!actingAsTeamId || ilActId === '' || ilActDropId === '') return;
+    setIlActSubmitting(true);
+    setIlActError(null);
+    try {
+      await ilActivate({
+        leagueId,
+        teamId: actingAsTeamId,
+        activatePlayerId: Number(ilActId),
+        dropPlayerId: Number(ilActDropId),
+        ...(effectiveDate ? { effectiveDate } : {}),
+      });
+      setIlActId('');
+      setIlActDropId('');
+      handleUpdate();
+    } catch (err: unknown) {
+      setIlActError(extractServerError(err, 'IL activate failed'));
+      reportError(err, { source: 'commissioner-il-activate' });
+    } finally {
+      setIlActSubmitting(false);
     }
   }
 
@@ -356,7 +389,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         <td style={{ color: 'var(--am-text-muted)', fontSize: 12 }}>{r.player.posPrimary}</td>
                         <td>
                           {isGhostIl
-                            ? <span className="cm-chip neg">Ghost-IL</span>
+                            ? <span className="cm-chip neg">Activate Needed</span>
                             : isIl
                               ? <span className="cm-chip warn">IL</span>
                               : isMlbIlStatus(mlbStatus)
@@ -365,11 +398,19 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            {!isIl && (
+                            {isIl ? (
                               <button
                                 type="button"
                                 className="cm-btn ghost sm"
-                                onClick={() => { setIlStashId(r.player.id); setIlReplId(null); }}
+                                onClick={() => { setIlMode('activate'); setIlActId(r.player.id); setIlActDropId(''); }}
+                              >
+                                Activate
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="cm-btn ghost sm"
+                                onClick={() => { setIlMode('stash'); setIlStashId(r.player.id); setIlReplId(null); }}
                               >
                                 IL
                               </button>
@@ -574,13 +615,34 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
             </div>
           </div>
 
-          {/* ── IL Management (3 columns) ── */}
+          {/* ── IL Management (3 columns) ──
+              Two modes: 'stash' places a player on IL + brings up a FA;
+              'activate' brings an IL player back + drops an active player.
+              The mode toggle mirrors what was on chain-drop-candidates'
+              ActivateFromIlPanel — adapted to main's cm-table design. */}
           <div id="il-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-            <div className="cm-section-head" style={{ borderRadius: 0 }}>
+            <div className="cm-section-head" style={{ borderRadius: 0, gap: 12 }}>
               <span className="cm-h2">IL Management</span>
-              {ilError && <span style={{ fontSize: 11, color: 'var(--am-negative)', marginLeft: 12 }}>{ilError}</span>}
+              <div className="cm-row" style={{ gap: 4, marginLeft: 'auto' }}>
+                <button
+                  type="button"
+                  className={`cm-btn sm ${ilMode === 'stash' ? 'primary' : 'ghost'}`}
+                  onClick={() => setIlMode('stash')}
+                >
+                  Place on IL
+                </button>
+                <button
+                  type="button"
+                  className={`cm-btn sm ${ilMode === 'activate' ? 'primary' : 'ghost'}`}
+                  onClick={() => setIlMode('activate')}
+                >
+                  Activate from IL
+                </button>
+              </div>
+              {ilMode === 'stash' && ilError && <span style={{ fontSize: 11, color: 'var(--am-negative)' }}>{ilError}</span>}
+              {ilMode === 'activate' && ilActError && <span style={{ fontSize: 11, color: 'var(--am-negative)' }}>{ilActError}</span>}
             </div>
-            <div style={{ display: 'flex', flex: 1 }}>
+            <div style={{ display: ilMode === 'stash' ? 'flex' : 'none', flex: 1 }}>
               {/* Col 1: Stash player */}
               <div style={colStyle}>
                 <div style={colHead}>Stash a player</div>
@@ -665,6 +727,122 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                     onClick={handleIlStash}
                   >
                     {ilSubmitting ? 'Confirming…' : 'Confirm Stash + Add'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Activate-from-IL drawer (mode === 'activate') ──
+                Mirror of the Stash drawer above: pick an IL-slotted player,
+                pick an active player to drop (filtered to slots the activated
+                player can fill), confirm. Server (POST /transactions/il-activate)
+                handles the slot inheritance and chain rearrangement. */}
+            <div style={{ display: ilMode === 'activate' ? 'flex' : 'none', flex: 1 }}>
+              {/* Col 1: IL-slotted player to activate */}
+              <div style={colStyle}>
+                <div style={colHead}>Bring back from IL</div>
+                <div style={colBody}>
+                  {teamRoster.filter(r => r.assignedPosition === 'IL').length === 0 ? (
+                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No players currently on IL.</div>
+                  ) : teamRoster.filter(r => r.assignedPosition === 'IL').map(r => (
+                    <div
+                      key={r.id}
+                      style={rowStyle(Number(ilActId) === r.player.id)}
+                      onClick={() => { setIlActId(r.player.id); setIlActDropId(''); }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
+                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>
+                          Eligible: {posListByPlayerId.get(r.player.id) || r.player.posPrimary}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Col 2: Active player to drop — eligibility-filtered.
+                  Direct-fit slots (the activated player's eligible positions)
+                  are shown without a "reshuffle" hint; non-direct slots are
+                  flagged so the commissioner knows the chain will need to
+                  rearrange. */}
+              <div style={colStyle}>
+                <div style={colHead}>Drop an active player</div>
+                <div style={colBody}>
+                  {(() => {
+                    if (ilActId === '') {
+                      return <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>Pick an IL player first.</div>;
+                    }
+                    const activatedPosList = posListByPlayerId.get(Number(ilActId)) || '';
+                    const activatedSlots = slotsFor(activatedPosList);
+                    const actives = teamRoster.filter(r => r.assignedPosition !== 'IL');
+                    if (actives.length === 0) {
+                      return <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No active players to drop.</div>;
+                    }
+                    // Sort by direct-fit first so the simplest path surfaces.
+                    // `activatedSlots` is keyed on the narrow eligibility SlotCode
+                    // (no SP/RP/BN/IL); guard with isSlotCode before .has().
+                    const fits = (slot: string) =>
+                      isSlotCode(slot) && activatedSlots.has(slot);
+                    const sorted = actives.slice().sort((a, b) => {
+                      const aSlot = a.assignedPosition ?? 'BN';
+                      const bSlot = b.assignedPosition ?? 'BN';
+                      const aFit = fits(aSlot) ? 0 : 1;
+                      const bFit = fits(bSlot) ? 0 : 1;
+                      return aFit - bFit || slotRank(aSlot) - slotRank(bSlot);
+                    });
+                    return sorted.map(r => {
+                      const slot = r.assignedPosition ?? 'BN';
+                      const direct = fits(slot);
+                      return (
+                        <div
+                          key={r.id}
+                          style={rowStyle(Number(ilActDropId) === r.player.id)}
+                          onClick={() => setIlActDropId(r.player.id)}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
+                            <div style={{ fontSize: 10, color: direct ? 'var(--am-accent)' : 'var(--am-text-muted)' }}>
+                              {slot}{direct ? ' · direct fit' : ' · reshuffle'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Col 3: Confirm */}
+              <div style={colLast}>
+                <div style={colHead}>Confirm</div>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 12 }}>
+                    <div className="cm-cap" style={{ marginBottom: 4 }}>Activating</div>
+                    {(() => {
+                      const ilRow = ilActId !== '' ? teamRoster.find(r => r.player.id === Number(ilActId)) : null;
+                      return ilRow
+                        ? <div style={{ fontWeight: 600 }}>{ilRow.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{posListByPlayerId.get(ilRow.player.id) || ilRow.player.posPrimary}</span></div>
+                        : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>;
+                    })()}
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    <div className="cm-cap" style={{ marginBottom: 4 }}>Dropping</div>
+                    {(() => {
+                      const dropRow = ilActDropId !== '' ? teamRoster.find(r => r.player.id === Number(ilActDropId)) : null;
+                      return dropRow
+                        ? <div style={{ fontWeight: 600 }}>{dropRow.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{dropRow.assignedPosition}</span></div>
+                        : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>;
+                    })()}
+                  </div>
+                  <button
+                    type="button"
+                    className="cm-btn primary"
+                    style={{ marginTop: 8 }}
+                    disabled={ilActId === '' || ilActDropId === '' || ilActSubmitting}
+                    onClick={handleIlActivate}
+                  >
+                    {ilActSubmitting ? 'Confirming…' : 'Confirm Activate + Drop'}
                   </button>
                 </div>
               </div>
