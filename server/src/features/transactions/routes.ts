@@ -586,6 +586,25 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       // Even when the matcher doesn't run (e.g. no drop), echo owner changes.
       appliedReassignments = ownerAppliedChanges;
     }
+
+    // Emit a SLOT_CHANGE event per cascade reassignment (whether owner-
+    // directed or auto-resolved) so the activity log shows the full
+    // story of the move — not just the headline claim. The claimed
+    // player's own slot is captured by the ADD event above; skip if
+    // the reassignment is for the claimed player.
+    for (const r of appliedReassignments) {
+      if (r.playerId === playerId) continue;
+      await tx.transactionEvent.create({
+        data: {
+          rowHash: `SLOT_CHANGE-${crypto.randomUUID()}-${r.playerId}`,
+          leagueId, season, effDate: effective, submittedAt: new Date(),
+          teamId, playerId: r.playerId,
+          transactionRaw: `${r.playerName}: ${r.oldSlot} → ${r.newSlot} (auto-resolve from claim)`,
+          transactionType: "SLOT_CHANGE",
+          toPosition: r.newSlot,
+        },
+      });
+    }
   }, { timeout: 30_000 });
   } catch (err: unknown) {
     // Typed guard errors from Phase 1 libs (roster cap, overlap, ghost-IL,
@@ -1147,6 +1166,24 @@ router.post(
             },
           });
         }
+
+        // SLOT_CHANGE event per cascade reassignment so the activity
+        // log captures any auto-resolve shuffling. Excludes the stashed
+        // player (their IL move is the IL_STASH event) and the added
+        // player (their slot is the ADD event).
+        for (const r of stashAppliedReassignments) {
+          if (r.playerId === stashPlayerId || (addPlayerId && r.playerId === addPlayerId)) continue;
+          await tx.transactionEvent.create({
+            data: {
+              rowHash: `SLOT_CHANGE-${crypto.randomUUID()}-${r.playerId}`,
+              leagueId, season, effDate: effective, submittedAt: new Date(),
+              teamId, playerId: r.playerId,
+              transactionRaw: `${r.playerName}: ${r.oldSlot} → ${r.newSlot} (auto-resolve from IL stash)`,
+              transactionType: "SLOT_CHANGE",
+              toPosition: r.newSlot,
+            },
+          });
+        }
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {
@@ -1493,13 +1530,24 @@ router.post(
           },
         });
 
+        // Activity-log accuracy fix: if auto-resolve reshuffled the
+        // activated player to a slot other than `targetSlot`, log the
+        // ACTUAL post-resolve slot. Without this, the activity history
+        // misreports the landing position (e.g. "returned Vaughn to OF"
+        // when he actually ended up at CM/1B). #356 follow-up.
+        const activatedReassignment = activateAppliedReassignments.find(
+          (r) => r.playerId === activatePlayerId,
+        );
+        const finalActivatedSlot = activatedReassignment?.newSlot ?? targetSlot;
+
         await tx.transactionEvent.create({
           data: {
             rowHash: `IL_ACTIVATE-${crypto.randomUUID()}-${activatePlayerId}`,
             leagueId, season, effDate: effective, submittedAt: new Date(),
             teamId, playerId: activatePlayerId,
-            transactionRaw: `IL activate — returned ${activatePlayer.name} to ${targetSlot}`,
+            transactionRaw: `IL activate — returned ${activatePlayer.name} to ${finalActivatedSlot}`,
             transactionType: "IL_ACTIVATE",
+            toPosition: finalActivatedSlot,
           },
         });
         await tx.transactionEvent.create({
@@ -1511,6 +1559,25 @@ router.post(
             transactionType: "DROP",
           },
         });
+
+        // Emit a SLOT_CHANGE event per cascade reassignment so the
+        // activity log shows what actually moved (e.g. "Troy Johnston:
+        // CM → OF (auto-resolve from IL activate)"). Excludes the
+        // activated player — his move is already captured by the
+        // IL_ACTIVATE event above.
+        for (const r of activateAppliedReassignments) {
+          if (r.playerId === activatePlayerId) continue;
+          await tx.transactionEvent.create({
+            data: {
+              rowHash: `SLOT_CHANGE-${crypto.randomUUID()}-${r.playerId}`,
+              leagueId, season, effDate: effective, submittedAt: new Date(),
+              teamId, playerId: r.playerId,
+              transactionRaw: `${r.playerName}: ${r.oldSlot} → ${r.newSlot} (auto-resolve from IL activate)`,
+              transactionType: "SLOT_CHANGE",
+              toPosition: r.newSlot,
+            },
+          });
+        }
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {
