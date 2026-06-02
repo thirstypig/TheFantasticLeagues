@@ -5,12 +5,11 @@ import { useToast } from "../../../../contexts/ToastContext";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
 import { extractServerError } from "../../../../lib/extractServerError";
-import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
+import { isSlotCode, slotsFor, type SlotCode } from "../../../../lib/positionEligibility";
 import { isPitcher, fmtRate } from "../../../../lib/sports/baseball";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
 import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
 import { formatReassignmentsToast, previewClaim, type AppliedReassignment } from "../../api";
-import type { SlotCode } from "@shared/api/rosterMoves";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -616,10 +615,12 @@ export default function AddDropPanel({
     setAddMlbId(initialAddMlbId == null ? null : String(initialAddMlbId));
   }, [initialAddMlbId]);
 
+  const isFreeAgent = (p: RosterMovesPlayer) => !(p.ogba_team_code || p.team || p._dbTeamId);
+
   const allFreeAgents = useMemo(() => {
     const q = query.trim().toLowerCase();
     return players
-      .filter((p) => !(p.ogba_team_code || p.team || p._dbTeamId))
+      .filter(isFreeAgent)
       .filter((p) => !q || playerName(p).toLowerCase().includes(q))
       .filter((p) => matchesPositionFilter(p, positionFilter))
       .sort((a, b) => comparePlayers(a, b, faSortKey, faSortDir));
@@ -633,9 +634,14 @@ export default function AddDropPanel({
     });
   }, [players, teamId]);
 
+  // Keyed directly off `players` (not `allFreeAgents`) so that typing in the
+  // FA search box doesn't invalidate addSlots → filteredDropCandidates chain.
   const selectedAdd = useMemo(
-    () => allFreeAgents.find((p) => String(p.mlb_id ?? "") === addMlbId) ?? null,
-    [allFreeAgents, addMlbId],
+    () =>
+      players.find(
+        (p) => isFreeAgent(p) && String(p.mlb_id ?? p.mlbId ?? "") === addMlbId,
+      ) ?? null,
+    [players, addMlbId],
   );
   const selectedDrop = useMemo(
     () => dropCandidates.find((p) => p._dbPlayerId === dropPlayerId) ?? null,
@@ -671,19 +677,27 @@ export default function AddDropPanel({
         // This correctly handles 2-, 3-, 4+-player chains, e.g.:
         //   Tatis (2B→OF) → drop an OF player — vacancy hops 2B→OF→addSlots.
         //   Or: A (2B→MI) → B (MI→3B) → C (3B→OF) → drop an OF player.
+        //
+        // Note: benched players (assignedPosition = "BN") are valid drops via
+        // Tier 2 above, but are invisible as chain intermediaries — "BN" is not
+        // a SlotCode, so they never contribute a vacancy to the propagation.
         const pSlot = assignedSlot(p);
         if (isSlotCode(pSlot)) {
-          const vacated = new Set<string>([pSlot]);
+          const others = dropCandidates.filter((q) => q !== p);
+          const qSlotsMap = new Map(
+            others.map((q) => [q, slotsFor(q.positions || q.posPrimary || "")]),
+          );
+          const vacated = new Set<SlotCode>([pSlot]);
           let changed = true;
           while (changed) {
             changed = false;
-            for (const q of dropCandidates) {
-              if (q === p) continue;
+            for (const q of others) {
               const qSlot = assignedSlot(q);
               if (!isSlotCode(qSlot) || vacated.has(qSlot)) continue;
-              const qSlots = slotsFor(q.positions || q.posPrimary || "");
-              for (const v of vacated) {
-                if (isSlotCode(v) && qSlots.has(v)) {
+              const qSlots = qSlotsMap.get(q) ?? new Set<SlotCode>();
+              const vacatedSnapshot = Array.from(vacated);
+              for (const v of vacatedSnapshot) {
+                if (qSlots.has(v)) {
                   vacated.add(qSlot);
                   changed = true;
                   break;
@@ -702,16 +716,10 @@ export default function AddDropPanel({
   const faStatMode = useMemo(() => statModeForPlayers(freeAgents, selectedAdd), [freeAgents, selectedAdd]);
   const dropStatMode = useMemo(() => statModeForPlayers(filteredDropCandidates, selectedAdd), [filteredDropCandidates, selectedAdd]);
   const dropTargetSlot = assignedSlot(selectedDrop);
-  const slotCompatible = (() => {
-    if (!selectedDrop || addSlots.size === 0) return true;
-    const slot = assignedSlot(selectedDrop);
-    if (isSlotCode(slot) && addSlots.has(slot)) return true;
-    const dropSlots = slotsFor(selectedDrop.positions || selectedDrop.posPrimary || "");
-    for (const addSlot of addSlots) {
-      if (dropSlots.has(addSlot)) return true;
-    }
-    return false;
-  })();
+  // True when the selected drop is in the filtered drop list (direct, indirect,
+  // or chain-fit). Used to gate the Execute button and the ineligible-slot warning.
+  const selectedDropIsValidCandidate =
+    !selectedDrop || !selectedAdd || filteredDropCandidates.some((p) => p === selectedDrop);
 
   const dropRequired = inSeason;
   const selectedFieldsComplete =
@@ -720,7 +728,7 @@ export default function AddDropPanel({
   const needsServerPreview = inSeason && selectedFieldsComplete;
   const rosterRulesSatisfied =
     selectedFieldsComplete &&
-    (needsServerPreview ? preview?.ok === true : (!selectedAdd || !selectedDrop || slotCompatible));
+    (needsServerPreview ? preview?.ok === true : (!selectedAdd || !selectedDrop || selectedDropIsValidCandidate));
   const canSubmit = rosterRulesSatisfied && !previewing && !submitting;
 
   useEffect(() => {
@@ -843,7 +851,7 @@ export default function AddDropPanel({
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-[var(--lg-text-muted)]">
-        Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and one-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
+        Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and multi-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
       </p>
 
       {hideAddSearch ? (
@@ -886,7 +894,7 @@ export default function AddDropPanel({
           <PlayerStatsTable
             players={freeAgents}
             selectedId={addMlbId}
-            onSelect={(p) => setAddMlbId(String(p.mlb_id ?? ""))}
+            onSelect={(p) => setAddMlbId(String(p.mlb_id ?? p.mlbId ?? ""))}
             sortKey={faSortKey}
             sortDir={faSortDir}
             onSort={(key) => handleSort("fa", key)}
@@ -954,7 +962,7 @@ export default function AddDropPanel({
           In-season adds require a matching drop. The drop table only includes players in eligible roster slots.
         </div>
       )}
-      {selectedAdd && selectedDrop && !slotCompatible && !needsServerPreview && (
+      {selectedAdd && selectedDrop && !selectedDropIsValidCandidate && !needsServerPreview && (
         <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
           {playerName(selectedAdd)} is not eligible for the {dropTargetSlot} slot. Pick a different drop.
         </div>

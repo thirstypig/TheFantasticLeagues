@@ -368,7 +368,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (1110 server + 798 client + 72 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2031 tests, 31 feature modules)
+### Current Test Coverage (1112 server + 834 client + 78 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2075 tests, 31 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 
@@ -579,7 +579,7 @@ the live Express API, so agents can drive the same flows a human owner or
 commissioner would. Lands the agent-native promise of "every user action is
 also a tool" for the wire-list module (todo #176).
 
-**Tools (16):**
+**Tools (19):**
 
 | Category | Tool | Endpoint |
 |----------|------|---------|
@@ -599,6 +599,9 @@ also a tool" for the wire-list module (todo #176).
 | Commissioner | `wire_list_skip_add` | `POST /api/wire-list/adds/:id/skip` |
 | Commissioner | `wire_list_revert_add` | `POST /api/wire-list/adds/:id/revert` |
 | Commissioner | `wire_list_finalize_period` | `POST /api/wire-list/periods/:periodId/finalize` |
+| Transactions | `players_get_eligible_slots` | `GET /api/players/:mlbId/eligible-slots` |
+| Transactions | `transactions_preview_claim` | `POST /api/transactions/claim/preview` |
+| Transactions | `transactions_execute_claim` | `POST /api/transactions/claim` |
 
 **Architecture:**
 - Input validators reuse `shared/api/wireList.ts` Zod schemas (one schema → client + server + MCP)

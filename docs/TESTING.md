@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-05-18
+Last updated: 2026-05-22
 
 ## What this document is
 
@@ -35,7 +35,7 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1110 server + 798 client = 1908 tests, ~20s total) + 72 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1110 server + 811 client = 1921 tests, ~20s total) + 72 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -81,7 +81,7 @@ Major covered areas (selected):
 - `features/teams/Teams.test.tsx` + `Team.test.tsx` — 17
 - `features/teams/Team.IL.test.tsx` — 4 (Your IL Slots subsection, Ghost-IL badge, stashed-dedup in MLB IL Candidates)
 - `features/transactions/components/RosterMovesTab/RosterMovesTab.test.tsx` — 11 (mode default / URL sync / IL count pill / shortcut banner / panel switching; PR #123 re-homing of PlaceOnIlModal + ActivateFromIlModal + standalone add/drop into a single tab)
-- `features/transactions/components/RosterMovesTab/AddDropPanel.test.tsx` — includes DROP_REQUIRED in-season + preseason inverse + FA key-uniqueness regression + submit-body contract + default-no-selection regression for free agents without `_dbPlayerId`
+- `features/transactions/components/RosterMovesTab/AddDropPanel.test.tsx` — includes DROP_REQUIRED in-season + preseason inverse + FA key-uniqueness regression + submit-body contract + default-no-selection regression for free agents without `_dbPlayerId` + SlotRearrangementSection (PR #347): visibility gating, slot dropdown options (slotsFor contract), N-changes badge/revert, slotChanges included/omitted from claim body + chain-drop-candidates (PR #349): 1-hop chain fit appears, direct fit not regressed, no-chain player excluded, updated label text, updated empty-state text, 10-player cap removed (11 players visible), Execute enabled for chain-fit drop in SETUP mode
 - `features/transactions/lib/permissions.test.ts` — 9 (canManageRoster matrix: admin / commissioner / owner with self-serve toggle / cross-team IDOR / no-league-rules loading state)
 - `lib/positionEligibility.test.ts` — 27 (slotsFor consolidation from the triplicated Phase 4 helpers)
 - `features/roster/RosterGrid.test.tsx` — 12 (IL quick-action buttons: place/activate per-row show/hide/fire; unbounded mode drops h-96 + scroll; position dropdown eligibility filter: pitcher→["P"], no posList→all 9, posList="SS"→[SS,MI,DH], posList="2B,SS"→[2B,SS,MI,DH], grandfathered displayPos always included)

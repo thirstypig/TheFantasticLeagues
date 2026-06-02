@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ButtonHTMLAttributes } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AddDropPanel from "../AddDropPanel";
 import { fetchJsonApi } from "../../../../../api/base";
 import type { RosterMovesPlayer } from "../types";
+import type { ClaimResponse } from "@shared/api/rosterMoves";
+import type { RosterMovePreviewResult } from "../../../api";
 
 // Critical fixture: seasonStatus controls DROP_REQUIRED. The test below
 // verifies the inline enforcement that keeps users from hitting a server
@@ -31,7 +34,7 @@ vi.mock("../../../../../lib/errorBus", () => ({
 }));
 
 vi.mock("../../../../../components/ui/button", () => ({
-  Button: ({ children, onClick, disabled, ...props }: any) => (
+  Button: ({ children, onClick, disabled, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
   ),
 }));
@@ -389,7 +392,7 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
   it("renders a toast with reassignments when server returns appliedReassignments", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
-    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } as any);
+    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } satisfies RosterMovePreviewResult);
     mockFetch.mockResolvedValueOnce({
       success: true,
       playerId: 100,
@@ -409,7 +412,7 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
           newSlot: "CM",
         },
       ],
-    } as any);
+    } satisfies ClaimResponse);
     const user = userEvent.setup();
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
@@ -429,12 +432,12 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
   it("does NOT render a toast when appliedReassignments is empty (clean add+drop)", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
-    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } as any);
+    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } satisfies RosterMovePreviewResult);
     mockFetch.mockResolvedValueOnce({
       success: true,
       playerId: 100,
       appliedReassignments: [],
-    } as any);
+    } satisfies ClaimResponse);
     const user = userEvent.setup();
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
@@ -451,8 +454,8 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     // `appliedReassignments` field at all. Panel must tolerate this.
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
-    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } as any);
-    mockFetch.mockResolvedValueOnce({ success: true, playerId: 100 } as any);
+    mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } satisfies RosterMovePreviewResult);
+    mockFetch.mockResolvedValueOnce({ success: true, playerId: 100 } satisfies ClaimResponse);
     const user = userEvent.setup();
     render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer]} />);
 
@@ -462,5 +465,253 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
     expect(mockToast).not.toHaveBeenCalled();
+  });
+});
+
+describe("AddDropPanel — SlotRearrangementSection (PR #347)", () => {
+  const multiSlotPlayer: RosterMovesPlayer = {
+    _dbPlayerId: 700,
+    _dbTeamId: 147,
+    player_name: "Fernando Tatis Jr.",
+    assignedPosition: "2B",
+    positions: "2B,OF",
+  } as RosterMovesPlayer;
+
+  it("does not appear before a drop player is selected", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer, multiSlotPlayer]} />);
+    await user.click(screen.getByText("Jake Bauers"));
+    expect(screen.queryByText(/adjust slot assignments/i)).not.toBeInTheDocument();
+  });
+
+  it("appears after add + drop are both selected", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer, multiSlotPlayer]} />);
+    await user.click(screen.getByText("Jake Bauers"));
+    await selectDrop(user);
+    expect(screen.getByText(/adjust slot assignments/i)).toBeInTheDocument();
+  });
+
+  it("shows eligible slot options in the dropdown when the section is opened", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer, multiSlotPlayer]} />);
+    await user.click(screen.getByText("Jake Bauers"));
+    await selectDrop(user);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    await user.click(screen.getByText(/adjust slot assignments/i));
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const options = Array.from(select.options).map((o) => o.value);
+    expect(options).toEqual(expect.arrayContaining(["2B", "MI", "OF"]));
+    expect(select.value).toBe("2B");
+  });
+
+  it("shows N-changes badge when a slot is moved and clears it on revert", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer, multiSlotPlayer]} />);
+    await user.click(screen.getByText("Jake Bauers"));
+    await selectDrop(user);
+    expect(screen.queryByText(/1 change/i)).not.toBeInTheDocument();
+    await user.click(screen.getByText(/adjust slot assignments/i));
+    await user.selectOptions(screen.getByRole("combobox"), "OF");
+    expect(screen.getByText("1 change")).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox"), "2B");
+    expect(screen.queryByText(/1 change/i)).not.toBeInTheDocument();
+  });
+
+  it("includes slotChanges in the claim body when a slot is adjusted", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer, multiSlotPlayer]} />);
+    await user.click(screen.getByText("Jake Bauers"));
+    await selectDrop(user);
+    await user.click(screen.getByText(/adjust slot assignments/i));
+    await user.selectOptions(screen.getByRole("combobox"), "OF");
+    await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).toMatchObject({
+      slotChanges: [{ playerId: 700, slot: "OF" }],
+    });
+  });
+
+  it("omits slotChanges from the body when no slot is adjusted", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const mockFetch = vi.mocked(fetchJsonApi);
+    mockFetch.mockClear();
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[freeAgent, ownRosterPlayer, multiSlotPlayer]} />);
+    await user.click(screen.getByText("Jake Bauers"));
+    await selectDrop(user);
+    await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body).not.toHaveProperty("slotChanges");
+  });
+});
+
+describe("AddDropPanel — chain-drop-candidates (PR #349)", () => {
+  // Free agent that plays 2B — addSlots = {2B, MI}
+  const fa2B: RosterMovesPlayer = {
+    mlb_id: "800001",
+    player_name: "Rennie Lile",
+    positions: "2B",
+  } as RosterMovesPlayer;
+
+  // Tatis-like: assigned 2B, eligible for 2B and OF — direct fit for 2B FA
+  const tatisFake: RosterMovesPlayer = {
+    _dbPlayerId: 801,
+    _dbTeamId: 147,
+    player_name: "Tatis Fake",
+    assignedPosition: "2B",
+    positions: "2B,OF",
+  } as RosterMovesPlayer;
+
+  // Pure OF: NOT a direct or indirect fit — only reachable via chain (Tatis 2B→OF frees 2B)
+  const pureOf: RosterMovesPlayer = {
+    _dbPlayerId: 802,
+    _dbTeamId: 147,
+    player_name: "Pure OF Guy",
+    assignedPosition: "OF",
+    positions: "OF",
+  } as RosterMovesPlayer;
+
+  // Pure 1B: no chain path to 2B or MI — should never appear for a 2B FA
+  const pureFirstBase: RosterMovesPlayer = {
+    _dbPlayerId: 803,
+    _dbTeamId: 147,
+    player_name: "First Base Only",
+    assignedPosition: "1B",
+    positions: "1B",
+  } as RosterMovesPlayer;
+
+  it("chain-fit player appears when a moveable 2B+OF player creates a vacancy path", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[fa2B, tatisFake, pureOf, pureFirstBase]} />);
+    await user.click(screen.getByText("Rennie Lile"));
+    expect(await screen.findByRole("row", { name: /Pure OF Guy/ })).toBeInTheDocument();
+  });
+
+  it("direct-fit player still appears alongside the chain-fit player", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[fa2B, tatisFake, pureOf, pureFirstBase]} />);
+    await user.click(screen.getByText("Rennie Lile"));
+    expect(await screen.findByRole("row", { name: /Tatis Fake/ })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Pure OF Guy/ })).toBeInTheDocument();
+  });
+
+  it("player with no chain path does not appear in the drop list", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[fa2B, tatisFake, pureOf, pureFirstBase]} />);
+    await user.click(screen.getByText("Rennie Lile"));
+    await screen.findByRole("row", { name: /Tatis Fake/ }); // wait for drop table to render
+    expect(screen.queryByRole("row", { name: /First Base Only/ })).not.toBeInTheDocument();
+  });
+
+  it("shows updated 'New player eligible for' label after free agent is selected", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[fa2B, tatisFake, pureOf]} />);
+    await user.click(screen.getByText("Rennie Lile"));
+    expect(await screen.findByText(/New player eligible for:/)).toBeInTheDocument();
+  });
+
+  it("shows updated empty-state text when no drops qualify", async () => {
+    const pitcherFa: RosterMovesPlayer = { mlb_id: "800005", player_name: "Pitcher Paul", positions: "P" } as RosterMovesPlayer;
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[pitcherFa, pureFirstBase]} />);
+    await user.click(screen.getByText("Pitcher Paul"));
+    expect(await screen.findByText(/No rostered players qualify as a drop/)).toBeInTheDocument();
+  });
+
+  it("removes the 10-player cap — all 11 chain-fit players appear", async () => {
+    const players: RosterMovesPlayer[] = [fa2B, tatisFake];
+    for (let i = 1; i <= 11; i++) {
+      players.push({
+        _dbPlayerId: 900 + i,
+        _dbTeamId: 147,
+        player_name: `OF Player ${i}`,
+        assignedPosition: "OF",
+        positions: "OF",
+      } as RosterMovesPlayer);
+    }
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={players} />);
+    await user.click(screen.getByText("Rennie Lile"));
+    await screen.findByText("OF Player 1"); // wait for drop table
+    for (let i = 1; i <= 11; i++) {
+      expect(screen.getByText(`OF Player ${i}`)).toBeInTheDocument();
+    }
+  });
+
+  it("Execute button is enabled when a chain-fit drop is selected in SETUP mode", async () => {
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[fa2B, tatisFake, pureOf, pureFirstBase]} />);
+    await user.click(screen.getByText("Rennie Lile"));
+    await screen.findByRole("row", { name: /Pure OF Guy/ }); // wait for drop table
+    await user.click(screen.getByRole("row", { name: /Pure OF Guy/ }));
+    expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled();
+  });
+
+  it("3-hop chain: drop candidate only reachable through two intermediate moves is surfaced", async () => {
+    // FA plays 3B → addSlots = {3B, CM}
+    // catcherOnly (slot C): slotsFor("C") = {C} — no intersection with {3B, CM}: Tier 1/2 fail
+    // BFS when catcherOnly is dropped:
+    //   vacated={C} → catcherDh (C,DH eligible) moves to C → vacated adds DH
+    //   vacated={C,DH} → cornerInfield (1B,DH eligible) moves to DH → vacated adds CM
+    //   CM is in addSlots → chain-fit ✓ (3 hops: C→DH→CM)
+    const fa3B: RosterMovesPlayer = {
+      mlb_id: "900002",
+      player_name: "Hitter McThird",
+      positions: "3B",
+    } as RosterMovesPlayer;
+    const catcherOnly: RosterMovesPlayer = {
+      _dbPlayerId: 904,
+      _dbTeamId: 147,
+      player_name: "Catcher Drop",
+      assignedPosition: "C",
+      positions: "C",
+    } as RosterMovesPlayer;
+    const catcherDh: RosterMovesPlayer = {
+      _dbPlayerId: 905,
+      _dbTeamId: 147,
+      player_name: "Catcher DH Combo",
+      assignedPosition: "DH",
+      positions: "C,DH",
+    } as RosterMovesPlayer;
+    const cornerInfield: RosterMovesPlayer = {
+      _dbPlayerId: 906,
+      _dbTeamId: 147,
+      player_name: "Corner Infield Guy",
+      assignedPosition: "CM",
+      positions: "1B,DH",
+    } as RosterMovesPlayer;
+    const pitcherNoPath: RosterMovesPlayer = {
+      _dbPlayerId: 907,
+      _dbTeamId: 147,
+      player_name: "Pitcher No Path",
+      assignedPosition: "P",
+      positions: "SP",
+    } as RosterMovesPlayer;
+
+    mockSeasonStatus.value = "SETUP";
+    const user = userEvent.setup();
+    render(<AddDropPanel {...BASE_PROPS} players={[fa3B, catcherOnly, catcherDh, cornerInfield, pitcherNoPath]} />);
+    await user.click(screen.getByText("Hitter McThird"));
+    await screen.findByRole("row", { name: /Catcher Drop/ }); // wait for drop table
+    expect(screen.getByRole("row", { name: /Catcher Drop/ })).toBeInTheDocument();
+    // Pitcher has no chain path to 3B/CM and must not appear
+    expect(screen.queryByRole("row", { name: /Pitcher No Path/ })).not.toBeInTheDocument();
   });
 });
