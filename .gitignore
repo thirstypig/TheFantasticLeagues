@@ -55,6 +55,12 @@ test-results/
 /*-snapshot.yml
 /auction-network.txt
 
+# Ad-hoc audit / one-off DB scripts. These tend to hardcode DATABASE_URL
+# for convenience, which makes them a credential-leak risk if committed.
+# Keep them out of git; use env vars or move into scripts/ if reusable.
+/audit-*.mjs
+/audit-*.ts
+
 # Compound Engineering local config (plugin reads this; git doesn't need to track)
 compound-engineering.local.md
 
