@@ -17,14 +17,14 @@ function makeServer(): { server: McpServer; registered: Set<string> } {
 }
 
 describe("transaction tool registration", () => {
-  it("registers all 3 documented tool names", () => {
+  it("registers all 8 documented tool names", () => {
     const { server, registered } = makeServer();
     const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
     registerTransactionTools(server, client);
     for (const name of TRANSACTION_TOOL_NAMES) {
       expect(registered.has(name)).toBe(true);
     }
-    expect(TRANSACTION_TOOL_NAMES.length).toBe(3);
+    expect(TRANSACTION_TOOL_NAMES.length).toBe(8);
   });
 
   it("tool name list is unique", () => {
@@ -104,5 +104,121 @@ describe("transaction tool registration", () => {
     expect(body).not.toHaveProperty("dropPlayerId");
     expect(body).not.toHaveProperty("effectiveDate");
     expect(body).not.toHaveProperty("slotChanges");
+  });
+
+  it("transactions_preview_il_stash calls POST /api/transactions/il-stash/preview with body", async () => {
+    const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
+    const requestSpy = vi.spyOn(client, "request").mockResolvedValueOnce({ ok: true });
+
+    const server = new McpServer({ name: "test", version: "0.0.0" });
+    let capturedHandler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+    // @ts-expect-error — overriding for spy
+    server.tool = (name: string, _desc: string, _schema: unknown, handler: typeof capturedHandler) => {
+      if (name === "transactions_preview_il_stash") capturedHandler = handler;
+    };
+    registerTransactionTools(server, client);
+
+    expect(capturedHandler).toBeDefined();
+    await capturedHandler!({ leagueId: 20, teamId: 147, stashPlayerId: 555 });
+    expect(requestSpy).toHaveBeenCalledWith("POST", "/api/transactions/il-stash/preview", {
+      body: { leagueId: 20, teamId: 147, stashPlayerId: 555 },
+    });
+  });
+
+  it("transactions_execute_il_stash forwards optional addPlayerId and reason in body", async () => {
+    const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
+    const requestSpy = vi
+      .spyOn(client, "request")
+      .mockResolvedValueOnce({ success: true, stashPlayerId: 555, addPlayerId: 999, stashOnly: false });
+
+    const server = new McpServer({ name: "test", version: "0.0.0" });
+    let capturedHandler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+    // @ts-expect-error — overriding for spy
+    server.tool = (name: string, _desc: string, _schema: unknown, handler: typeof capturedHandler) => {
+      if (name === "transactions_execute_il_stash") capturedHandler = handler;
+    };
+    registerTransactionTools(server, client);
+
+    expect(capturedHandler).toBeDefined();
+    await capturedHandler!({
+      leagueId: 20,
+      teamId: 147,
+      stashPlayerId: 555,
+      addPlayerId: 999,
+      reason: "MLB IL 10-Day",
+    });
+    expect(requestSpy).toHaveBeenCalledWith("POST", "/api/transactions/il-stash", {
+      body: { leagueId: 20, teamId: 147, stashPlayerId: 555, addPlayerId: 999, reason: "MLB IL 10-Day" },
+    });
+  });
+
+  it("transactions_preview_il_activate calls POST /api/transactions/il-activate/preview with body", async () => {
+    const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
+    const requestSpy = vi.spyOn(client, "request").mockResolvedValueOnce({ ok: true });
+
+    const server = new McpServer({ name: "test", version: "0.0.0" });
+    let capturedHandler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+    // @ts-expect-error — overriding for spy
+    server.tool = (name: string, _desc: string, _schema: unknown, handler: typeof capturedHandler) => {
+      if (name === "transactions_preview_il_activate") capturedHandler = handler;
+    };
+    registerTransactionTools(server, client);
+
+    expect(capturedHandler).toBeDefined();
+    await capturedHandler!({ leagueId: 20, teamId: 147, activatePlayerId: 555, dropPlayerId: 600 });
+    expect(requestSpy).toHaveBeenCalledWith("POST", "/api/transactions/il-activate/preview", {
+      body: { leagueId: 20, teamId: 147, activatePlayerId: 555, dropPlayerId: 600 },
+    });
+  });
+
+  it("transactions_execute_il_activate calls POST /api/transactions/il-activate with body", async () => {
+    const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
+    const requestSpy = vi.spyOn(client, "request").mockResolvedValueOnce({
+      success: true,
+      activatePlayerId: 555,
+      dropPlayerId: 600,
+    });
+
+    const server = new McpServer({ name: "test", version: "0.0.0" });
+    let capturedHandler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+    // @ts-expect-error — overriding for spy
+    server.tool = (name: string, _desc: string, _schema: unknown, handler: typeof capturedHandler) => {
+      if (name === "transactions_execute_il_activate") capturedHandler = handler;
+    };
+    registerTransactionTools(server, client);
+
+    expect(capturedHandler).toBeDefined();
+    await capturedHandler!({
+      leagueId: 20,
+      teamId: 147,
+      activatePlayerId: 555,
+      dropPlayerId: 600,
+      effectiveDate: "2026-06-01",
+    });
+    expect(requestSpy).toHaveBeenCalledWith("POST", "/api/transactions/il-activate", {
+      body: { leagueId: 20, teamId: 147, activatePlayerId: 555, dropPlayerId: 600, effectiveDate: "2026-06-01" },
+    });
+  });
+
+  it("transactions_execute_drop calls POST /api/transactions/drop with body and omits undefined effectiveDate", async () => {
+    const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
+    const requestSpy = vi.spyOn(client, "request").mockResolvedValueOnce({ success: true, playerId: 600 });
+
+    const server = new McpServer({ name: "test", version: "0.0.0" });
+    let capturedHandler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+    // @ts-expect-error — overriding for spy
+    server.tool = (name: string, _desc: string, _schema: unknown, handler: typeof capturedHandler) => {
+      if (name === "transactions_execute_drop") capturedHandler = handler;
+    };
+    registerTransactionTools(server, client);
+
+    expect(capturedHandler).toBeDefined();
+    await capturedHandler!({ leagueId: 20, teamId: 147, playerId: 600 });
+    const [, , callArgs] = requestSpy.mock.calls[0];
+    expect(requestSpy).toHaveBeenCalledWith("POST", "/api/transactions/drop", {
+      body: { leagueId: 20, teamId: 147, playerId: 600 },
+    });
+    const body = (callArgs as { body: Record<string, unknown> }).body;
+    expect(body).not.toHaveProperty("effectiveDate");
   });
 });

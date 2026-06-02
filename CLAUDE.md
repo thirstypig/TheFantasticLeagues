@@ -579,7 +579,7 @@ the live Express API, so agents can drive the same flows a human owner or
 commissioner would. Lands the agent-native promise of "every user action is
 also a tool" for the wire-list module (todo #176).
 
-**Tools (19):**
+**Tools (24):**
 
 | Category | Tool | Endpoint |
 |----------|------|---------|
@@ -602,6 +602,11 @@ also a tool" for the wire-list module (todo #176).
 | Transactions | `players_get_eligible_slots` | `GET /api/players/:mlbId/eligible-slots` |
 | Transactions | `transactions_preview_claim` | `POST /api/transactions/claim/preview` |
 | Transactions | `transactions_execute_claim` | `POST /api/transactions/claim` |
+| Transactions | `transactions_preview_il_stash` | `POST /api/transactions/il-stash/preview` |
+| Transactions | `transactions_execute_il_stash` | `POST /api/transactions/il-stash` |
+| Transactions | `transactions_preview_il_activate` | `POST /api/transactions/il-activate/preview` |
+| Transactions | `transactions_execute_il_activate` | `POST /api/transactions/il-activate` |
+| Transactions | `transactions_execute_drop` | `POST /api/transactions/drop` |
 
 **Architecture:**
 - Input validators reuse `shared/api/wireList.ts` Zod schemas (one schema → client + server + MCP)
