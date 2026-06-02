@@ -11,7 +11,6 @@ import type { RosterMovesPlayer } from "../types";
 vi.mock("../../../../transactions/api", () => ({
   ilStash: vi.fn().mockResolvedValue({ success: true }),
   previewIlStash: vi.fn().mockResolvedValue({ ok: true, message: "Roster rules satisfied." }),
-  formatReassignmentsToast: vi.fn().mockReturnValue(null),
 }));
 
 const mockToast = vi.fn();

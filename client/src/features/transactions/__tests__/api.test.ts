@@ -20,7 +20,7 @@ vi.mock("../../../api/base", async () => {
 });
 
 import { fetchJsonApi, fetchJsonPublic } from "../../../api/base";
-import { ilStash, ilActivate, formatReassignmentsToast } from "../api";
+import { ilStash, ilActivate } from "../api";
 import { getPlayerCareerStats, _resetCareerStatsCache } from "../../players/api";
 
 beforeEach(() => {
@@ -164,82 +164,6 @@ describe("ilActivate", () => {
         dropPlayerId: 1633,
       }),
     ).rejects.toBe(serverError);
-  });
-});
-
-describe("formatReassignmentsToast", () => {
-  it("returns null when reassignments is undefined (no auto-resolve happened)", () => {
-    expect(formatReassignmentsToast(undefined, "Claimed Mookie Betts.")).toBeNull();
-  });
-
-  it("returns null when reassignments is an empty array (no shuffle needed)", () => {
-    expect(formatReassignmentsToast([], "Claimed Mookie Betts.")).toBeNull();
-  });
-
-  it("formats a single reassignment with the canonical → arrow", () => {
-    const result = formatReassignmentsToast(
-      [{ rosterId: 1, playerId: 10, playerName: "Trea Turner", oldSlot: "2B", newSlot: "SS" }],
-      "Claimed Mookie Betts.",
-    );
-    expect(result).toBe("Claimed Mookie Betts. Also moved: Trea Turner 2B → SS.");
-  });
-
-  it("uses U+2192 RIGHTWARDS ARROW (not ASCII ->) — protects emoji/font compatibility", () => {
-    const result = formatReassignmentsToast(
-      [{ rosterId: 1, playerId: 10, playerName: "X", oldSlot: "2B", newSlot: "SS" }],
-      "Claimed.",
-    );
-    expect(result).toContain("→"); // not "->"
-    expect(result).not.toContain("->");
-  });
-
-  it("joins multiple reassignments with ', ' and ends with a single period", () => {
-    const result = formatReassignmentsToast(
-      [
-        { rosterId: 1, playerId: 10, playerName: "Trea Turner", oldSlot: "2B", newSlot: "SS" },
-        { rosterId: 2, playerId: 20, playerName: "Alec Bohm", oldSlot: "SS", newSlot: "MI" },
-      ],
-      "Claimed Mookie Betts.",
-    );
-    expect(result).toBe(
-      "Claimed Mookie Betts. Also moved: Trea Turner 2B → SS, Alec Bohm SS → MI.",
-    );
-  });
-
-  it("preserves the primary action label verbatim (caller controls punctuation)", () => {
-    // No automatic punctuation insertion — if the caller passes a label without
-    // a period, the output reflects that. Documents the caller contract.
-    const result = formatReassignmentsToast(
-      [{ rosterId: 1, playerId: 10, playerName: "P", oldSlot: "2B", newSlot: "SS" }],
-      "Claimed Mookie Betts", // no trailing period
-    );
-    expect(result).toBe("Claimed Mookie Betts Also moved: P 2B → SS.");
-  });
-
-  it("flows player names with apostrophes / unicode through unchanged", () => {
-    // Regression guard: the formatter must not URL-encode, HTML-escape, or
-    // strip special characters. Real MLB names hit this (O'Hearn, Acuña).
-    const result = formatReassignmentsToast(
-      [
-        { rosterId: 1, playerId: 10, playerName: "Ronald Acuña Jr.", oldSlot: "OF", newSlot: "DH" },
-        { rosterId: 2, playerId: 20, playerName: "Ryan O'Hearn", oldSlot: "1B", newSlot: "CM" },
-      ],
-      "Claimed.",
-    );
-    expect(result).toContain("Ronald Acuña Jr. OF → DH");
-    expect(result).toContain("Ryan O'Hearn 1B → CM");
-  });
-
-  it("flows slot codes through unchanged — no normalization or aliasing", () => {
-    // Regression guard against future "helpfulness" — the formatter is dumb,
-    // it does not translate "DH" → "Util" or "CM" → "Corner Infielder". Slot
-    // codes must match SLOT_CODES from sports/baseball.ts exactly so the
-    // toast wording matches what the table shows.
-    const result = formatReassignmentsToast(
-      [{ rosterId: 1, playerId: 10, playerName: "X", oldSlot: "CM", newSlot: "DH" }],
-      "Claimed.",
-    );
-    expect(result).toContain("X CM → DH");
   });
 });
 

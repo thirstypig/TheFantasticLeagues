@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { getCommissionerRosters, commissionerForceDrop } from '../api';
-import { fetchJsonApi, API_BASE } from '../../../api/base';
-import { ilStash, ilActivate } from '../../transactions/api';
+import { claim, ilStash, ilActivate } from '../../transactions/api';
+import type { ClaimRequest } from '@shared/api/rosterMoves';
 import TransactionResultModal, { type TransactionResult } from '../../transactions/components/TransactionResultModal';
 import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { enrichPlayersWithRosterState } from '../lib/enrichPlayersWithRosterState';
@@ -217,19 +217,20 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     setAdSubmitting(true);
     setAdError(null);
     try {
-      const claimResp = await fetchJsonApi<{ appliedReassignments?: Array<{ playerId: number; playerName: string; oldSlot: string; newSlot: string }> }>(`${API_BASE}/transactions/claim`, {
-        method: 'POST',
-        body: JSON.stringify({
-          leagueId,
-          teamId: actingAsTeamId,
-          mlbId: adAddMlbId,
-          playerId: adAddId,
-          dropPlayerId: Number(adDropId),
-          ...(slotChanges.length > 0 ? { slotChanges } : {}),
-          ...(effectiveDate ? { effectiveDate } : {}),
-        }),
+      const claimResp = await claim({
+        leagueId,
+        teamId: actingAsTeamId,
+        mlbId: adAddMlbId ?? undefined,
+        playerId: adAddId,
+        dropPlayerId: Number(adDropId),
+        // Local slotChanges state is typed loosely (`slot: string`) because the
+        // setter reads from a <select> value. The dropdown options come from
+        // `slotsFor()` so they're always real SlotCodes at runtime — narrow
+        // here so the typed claim() wrapper accepts the body.
+        ...(slotChanges.length > 0 ? { slotChanges: slotChanges as ClaimRequest['slotChanges'] } : {}),
+        ...(effectiveDate ? { effectiveDate } : {}),
       });
-      const addedName = playerName((playersEnriched as any[]).find(p => p.id === adAddId)) || 'player';
+      const addedName = playerName(playersEnriched.find(p => p.id === adAddId)) || 'player';
       const droppedName = teamRoster.find(r => r.player.id === Number(adDropId))?.player.name || 'player';
       setTxResult({
         title: 'Claim succeeded',
@@ -297,7 +298,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
         ...(effectiveDate ? { effectiveDate } : {}),
       });
       const stashedName = teamRoster.find(r => r.player.id === Number(ilStashId))?.player.name || 'player';
-      const addedName = playerName((playersEnriched as any[]).find(p => p.id === ilReplId)) || 'player';
+      const addedName = playerName(playersEnriched.find(p => p.id === ilReplId)) || 'player';
       const cascade = (stashResp.appliedReassignments ?? []).filter(
         r => r.playerId !== Number(ilStashId) && r.playerId !== ilReplId,
       );

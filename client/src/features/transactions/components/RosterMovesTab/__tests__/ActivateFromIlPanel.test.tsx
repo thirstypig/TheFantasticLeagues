@@ -8,7 +8,6 @@ import type { RosterMovesPlayer } from "../types";
 vi.mock("../../../../transactions/api", () => ({
   ilActivate: vi.fn().mockResolvedValue({ success: true }),
   previewIlActivate: vi.fn().mockResolvedValue({ ok: true, message: "Roster rules satisfied." }),
-  formatReassignmentsToast: vi.fn().mockReturnValue(null),
 }));
 
 const mockToast = vi.fn();

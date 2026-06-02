@@ -97,6 +97,14 @@ export async function previewClaim(params: SharedClaimRequest): Promise<RosterMo
     });
 }
 
+export async function claim(params: SharedClaimRequest): Promise<ClaimResponse> {
+    const body = ClaimRequestSchema.parse(params);
+    return fetchJsonApi<ClaimResponse>(`${API_BASE}/transactions/claim`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+}
+
 /**
  * Yahoo-style auto-resolve reassignment. Re-exported from
  * `@shared/api/rosterMoves` so client and server share one definition.
@@ -195,20 +203,3 @@ export async function syncIlStatus(params: {
     return parseJsonResponse(SyncIlStatusResponseSchema, raw, 'syncIlStatus');
 }
 
-/**
- * Format a list of auto-resolve reassignments as a single-line toast.
- * Returns null when there are no reassignments (caller suppresses toast).
- *
- * Format: "{primary action}. Also moved: {Player A} {oldSlot} → {newSlot}, ..."
- * Spec: plan #166, AddDropPanel/PlaceOnIlPanel/ActivateFromIlPanel toast wiring.
- */
-export function formatReassignmentsToast(
-    reassignments: AppliedReassignment[] | undefined,
-    primaryActionLabel: string,
-): string | null {
-    if (!reassignments || reassignments.length === 0) return null;
-    const moves = reassignments
-        .map((r) => `${r.playerName} ${r.oldSlot} → ${r.newSlot}`)
-        .join(", ");
-    return `${primaryActionLabel} Also moved: ${moves}.`;
-}
