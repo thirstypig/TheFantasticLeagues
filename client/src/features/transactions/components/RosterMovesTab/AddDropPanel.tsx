@@ -973,7 +973,23 @@ export default function AddDropPanel({
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={submitting}
+          onClick={() => {
+            setAddMlbId(null);
+            setDropPlayerId("");
+            setQuery("");
+            setSlotChanges([]);
+            setExpandedAddId(null);
+            setExpandedDropId(null);
+            setError(null);
+          }}
+        >
+          Reset
+        </Button>
         <Button size="sm" onClick={() => setReviewOpen(true)} disabled={!canSubmit}>
           {submitting ? "Submitting..." : dropPlayerId !== "" ? "Execute Add + Drop" : "Execute Add"}
         </Button>
