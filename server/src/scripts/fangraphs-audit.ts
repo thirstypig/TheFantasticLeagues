@@ -30,6 +30,7 @@
 import { prisma } from "../db/prisma.js";
 import { computeCategoryRows, computeStandingsFromStats } from "../features/standings/services/standingsService.js";
 import { TWO_WAY_PLAYERS } from "../lib/sportConfig.js";
+import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
 
 const PITCHER_CODES = ["P", "SP", "RP", "CL"];
 
@@ -84,6 +85,22 @@ async function main() {
     },
   });
 
+  // Historical IL windows — same approach the production standings route uses
+  // (`standingsService.ts:442`). Reconstructs each player's IL stints from
+  // IL_STASH/IL_ACTIVATE TransactionEvent rows so closed-period attribution
+  // doesn't depend on the CURRENT `assignedPosition` value.
+  const rosterPlayerIds = [...new Set(rosters.map((r) => r.playerId))];
+  const ilEvents = await prisma.transactionEvent.findMany({
+    where: {
+      playerId: { in: rosterPlayerIds },
+      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+      effDate: { not: null },
+    },
+    select: { playerId: true, transactionType: true, effDate: true },
+    orderBy: { effDate: "asc" },
+  });
+  const ilWindowsByPlayer = buildIlWindows(ilEvents);
+
   type Accum = {
     R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
     W: number; S: number; K: number; ER: number; IP: number; BB_H: number;
@@ -102,11 +119,11 @@ async function main() {
       // Overlap test for THIS period only.
       if (roster.acquiredAt > period.endDate) continue;
       if (roster.releasedAt && roster.releasedAt <= period.startDate) continue;
-      // Players slotted on IL at end-of-period don't get production credit.
-      // Best-effort using current assignedPosition (the Roster model doesn't
-      // store historical slot transitions). For closed periods this can over-
-      // or under-include — same simplification the standings UI lives with.
-      if ((roster.assignedPosition ?? "").toUpperCase() === "IL") continue;
+      // Match production logic exactly: skip if the player was on IL at the
+      // start of THIS period (reconstructed from TransactionEvent history,
+      // not from current `assignedPosition`). Same call shape the standings
+      // route uses at `standingsService.ts:516,621`.
+      if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
       const ps = pspByPlayer.get(roster.playerId);
       if (!ps) continue;
