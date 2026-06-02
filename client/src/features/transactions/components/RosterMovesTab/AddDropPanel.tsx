@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { fetchJsonApi, API_BASE } from "../../../../api/base";
 import { useLeague } from "../../../../contexts/LeagueContext";
-import { useToast } from "../../../../contexts/ToastContext";
+import TransactionResultModal, { type TransactionResult } from "../TransactionResultModal";
 import { Button } from "../../../../components/ui/button";
 import { reportError } from "../../../../lib/errorBus";
 import { extractServerError } from "../../../../lib/extractServerError";
@@ -9,7 +9,7 @@ import { isSlotCode, slotsFor, type SlotCode } from "../../../../lib/positionEli
 import { isPitcher, fmtRate } from "../../../../lib/sports/baseball";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
 import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
-import { formatReassignmentsToast, previewClaim, type AppliedReassignment } from "../../api";
+import { previewClaim, type AppliedReassignment } from "../../api";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -591,7 +591,7 @@ export default function AddDropPanel({
   effectiveDate,
 }: Props) {
   const { seasonStatus } = useLeague();
-  const { toast } = useToast();
+  const [txResult, setTxResult] = useState<TransactionResult | null>(null);
   const inSeason = seasonStatus === "IN_SEASON";
 
   const [query, setQuery] = useState("");
@@ -830,16 +830,21 @@ export default function AddDropPanel({
           ...(slotChanges.length > 0 ? { slotChanges } : {}),
         }),
       });
-      const toastMsg = formatReassignmentsToast(
-        response.appliedReassignments,
-        `Claimed ${playerName(selectedAdd)}.`,
-      );
-      if (toastMsg) toast(toastMsg, "success");
+      const addedName = playerName(selectedAdd);
+      const droppedRow = dropCandidates.find(p => p._dbPlayerId === Number(dropPlayerId));
+      const droppedName = droppedRow ? playerName(droppedRow) : null;
+      const claimedPlayerId = selectedAdd._dbPlayerId ?? response.playerId;
+      const cascade = (response.appliedReassignments ?? []).filter(r => r.playerId !== claimedPlayerId);
+      setTxResult({
+        title: "Claim succeeded",
+        primaryLine: droppedName ? `Added ${addedName}, dropped ${droppedName}.` : `Added ${addedName}.`,
+        cascadeMoves: cascade,
+      });
       setAddMlbId(null);
       setDropPlayerId("");
       setQuery("");
       setReviewOpen(false);
-      onComplete();
+      // onComplete deferred to modal dismiss.
     } catch (err: unknown) {
       setError(extractServerError(err, "Add/Drop failed"));
       reportError(err, { source: "roster-moves-add-drop" });
@@ -1050,6 +1055,14 @@ export default function AddDropPanel({
           </div>
         </div>
       )}
+
+      <TransactionResultModal
+        result={txResult}
+        onClose={() => {
+          setTxResult(null);
+          onComplete();
+        }}
+      />
     </div>
   );
 }

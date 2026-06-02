@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { ilActivate, previewIlActivate, formatReassignmentsToast } from "../../../transactions/api";
+import { ilActivate, previewIlActivate } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
-import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
 import { extractServerError } from "../../../../lib/extractServerError";
 import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
+import TransactionResultModal, { type TransactionResult } from "../TransactionResultModal";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -37,7 +37,6 @@ interface Props {
  * different direction.
  */
 export default function ActivateFromIlPanel({ leagueId, teamId, players, onComplete, effectiveDate, initialActivatePlayerId }: Props) {
-  const { toast } = useToast();
   const [activatePlayerId, setActivatePlayerId] = useState<number | null>(initialActivatePlayerId ?? null);
   const [targetSlot, setTargetSlot] = useState<string | null>(null);
   const [dropPlayerId, setDropPlayerId] = useState<number | null>(null);
@@ -45,6 +44,9 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<{ ok: boolean; message?: string; error?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Result modal: populated on success; onComplete deferred until dismiss
+  // so the user can read the cascade before navigation.
+  const [txResult, setTxResult] = useState<TransactionResult | null>(null);
 
   useEffect(() => {
     if (initialActivatePlayerId != null) {
@@ -166,14 +168,20 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
         ...(effectiveDate ? { effectiveDate } : {}),
       });
       const activateName = activatePlayer?.player_name || activatePlayer?.name || "player";
-      const toastMsg = formatReassignmentsToast(
-        response.appliedReassignments,
-        `Activated ${activateName}.`,
-      );
-      if (toastMsg) toast(toastMsg, "success");
+      const dropName = selectedDrop?.player_name || selectedDrop?.name || "player";
+      const reassignments = response.appliedReassignments ?? [];
+      const activatedSlot = reassignments.find(r => r.playerId === Number(activatePlayerId))?.newSlot ?? targetSlot;
+      const cascade = reassignments.filter(r => r.playerId !== Number(activatePlayerId));
+      setTxResult({
+        title: "IL activation complete",
+        primaryLine: activatedSlot
+          ? `Activated ${activateName} to ${activatedSlot}, dropped ${dropName}.`
+          : `Activated ${activateName}, dropped ${dropName}.`,
+        cascadeMoves: cascade,
+      });
       setActivatePlayerId(null);
       setDropPlayerId(null);
-      onComplete();
+      // onComplete intentionally deferred to modal dismiss.
     } catch (err: unknown) {
       setError(extractServerError(err, "Activate failed"));
       reportError(err, { source: "roster-moves-activate-il" });
@@ -362,6 +370,14 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
           {submitting ? "Activating…" : "Confirm Activate + Drop"}
         </Button>
       </div>
+
+      <TransactionResultModal
+        result={txResult}
+        onClose={() => {
+          setTxResult(null);
+          onComplete();
+        }}
+      />
     </div>
   );
 }

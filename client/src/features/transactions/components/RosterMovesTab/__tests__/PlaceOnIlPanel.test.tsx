@@ -216,12 +216,8 @@ describe("PlaceOnIlPanel effectiveDate forwarding", () => {
   });
 });
 
-describe("PlaceOnIlPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", () => {
-  it("calls toast() when server returns appliedReassignments", async () => {
-    // Override the formatter to return a non-null string so we can assert
-    // the toast call without needing to keep the real format in lockstep.
-    const { formatReassignmentsToast } = await import("../../../../transactions/api");
-    vi.mocked(formatReassignmentsToast).mockReturnValueOnce("Stashed Buxton. Also moved: X 2B → SS.");
+describe("PlaceOnIlPanel — post-commit modal with auto-resolve cascade (PR #359)", () => {
+  it("renders TransactionResultModal with cascade list when server returns appliedReassignments", async () => {
     vi.mocked(ilStash).mockResolvedValueOnce({
       success: true,
       stashPlayerId: 500,
@@ -231,9 +227,11 @@ describe("PlaceOnIlPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)",
       ],
     });
     await setUpAndSubmit(undefined);
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.stringContaining("Also moved"),
-      "success",
-    );
+    const modal = await screen.findByTestId("transaction-result-modal");
+    expect(modal).toBeInTheDocument();
+    const cascade = await screen.findByTestId("transaction-result-cascade");
+    expect(cascade.textContent).toContain("X");
+    expect(cascade.textContent).toContain("2B");
+    expect(cascade.textContent).toContain("SS");
   });
 });

@@ -148,10 +148,8 @@ describe("ActivateFromIlPanel effectiveDate forwarding", () => {
   });
 });
 
-describe("ActivateFromIlPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", () => {
-  it("calls toast() when server returns appliedReassignments", async () => {
-    const { formatReassignmentsToast } = await import("../../../../transactions/api");
-    vi.mocked(formatReassignmentsToast).mockReturnValueOnce("Activated Buxton. Also moved: X 2B → SS.");
+describe("ActivateFromIlPanel — post-commit modal with auto-resolve cascade (PR #359)", () => {
+  it("renders TransactionResultModal with cascade list when server returns appliedReassignments", async () => {
     vi.mocked(ilActivate).mockResolvedValueOnce({
       success: true,
       activatePlayerId: 500,
@@ -161,9 +159,11 @@ describe("ActivateFromIlPanel — Yahoo-style auto-resolve toast (PR1 of plan #1
       ],
     });
     await setUpAndSubmit(undefined);
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.stringContaining("Also moved"),
-      "success",
-    );
+    const modal = await screen.findByTestId("transaction-result-modal");
+    expect(modal).toBeInTheDocument();
+    const cascade = await screen.findByTestId("transaction-result-cascade");
+    expect(cascade.textContent).toContain("X");
+    expect(cascade.textContent).toContain("2B");
+    expect(cascade.textContent).toContain("SS");
   });
 });
