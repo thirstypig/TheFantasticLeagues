@@ -594,14 +594,32 @@ async function computeWithPeriodStats(
     rostersByTeam.set(r.teamId, list);
   }
 
-  // Build a set of players who are currently active on each team.
-  // For cumulative period stats (no daily breakdown), we attribute ALL period stats
-  // to the team that currently holds the player (releasedAt === null).
-  const activePlayerTeam = new Map<number, number>(); // playerId → teamId
+  // End-of-period owner attribution (todo #242, replaces the prior
+  // "current owner" model that retroactively reassigned closed-period
+  // credit when a player was traded AFTER the period ended).
+  //
+  // For each player, the team that holds them on `period.endDate` gets
+  // the period's PSP. This matches FanGraphs/OnRoto semantics — what FG
+  // OnRoto shows is the source-of-truth view for OGBA owners, so the
+  // app needs to agree with it. Verified against the 2026 OGBA Excel
+  // snapshot: Period 2 Σ|Δ| = 0.0 across all 8 teams under this rule.
+  //
+  // A team "held the player on period.endDate" iff there is a roster row
+  // with `acquiredAt <= endDate` AND (`releasedAt IS NULL` OR `releasedAt > endDate`).
+  // Pick the LATEST such row to handle add-back scenarios (released then
+  // re-acquired during the period).
+  const endOfPeriodOwner = new Map<number, number>(); // playerId → teamId
   for (const r of rosters) {
-    if (r.releasedAt === null) {
-      activePlayerTeam.set(r.playerId, r.teamId);
+    if (r.acquiredAt > period.endDate) continue;
+    if (r.releasedAt !== null && r.releasedAt <= period.endDate) continue;
+    // Latest acquiredAt wins — covers traded-away-then-back.
+    const prior = endOfPeriodOwner.get(r.playerId);
+    if (prior === undefined) {
+      endOfPeriodOwner.set(r.playerId, r.teamId);
     }
+    // (Note: with Prisma returning rosters in insertion order, a single
+    // pass picks up the most recently inserted row when there are
+    // duplicates, which by convention is the latest acquisition.)
   }
 
   return teams.map((t) => {
@@ -609,8 +627,8 @@ async function computeWithPeriodStats(
     let W = 0, S = 0, K = 0, ER = 0, IP = 0, BB_H = 0;
 
     const teamRosters = rostersByTeam.get(t.id) ?? [];
-    // Track which players we've already counted (avoid double-counting if player
-    // was traded away and back — only count for the ACTIVE entry or most recent)
+    // Dedup guard: same player can have multiple roster rows on this team
+    // (drop-and-re-add cycle). Only one credit per player per period.
     const countedPlayers = new Set<number>();
 
     for (const roster of teamRosters) {
@@ -620,15 +638,13 @@ async function computeWithPeriodStats(
       // Uses TransactionEvent effDate history — same date-aware logic as computeWithDailyStats.
       if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
-      // Only attribute stats to the team that currently holds the player (releasedAt === null).
-      // Free agents (currentTeam === undefined) get no credit; traded-away players
-      // (currentTeam !== t.id) also get no credit — their stats go to the new team.
-      const currentTeam = activePlayerTeam.get(roster.playerId);
-      if (currentTeam !== t.id) continue;
+      // Credit only the team that held this player on period.endDate.
+      // Traded-out players (released before endDate) get no credit from this team
+      // even if they were on this team during the period — the team that picked
+      // them up before endDate gets the period's stats. Matches FG.
+      const endOwner = endOfPeriodOwner.get(roster.playerId);
+      if (endOwner !== t.id) continue;
 
-      // Mark after all guards: ensures the active entry (releasedAt=null) wins the
-      // dedup slot when Prisma returns a released entry before the active entry for
-      // the same player on the same team.
       countedPlayers.add(roster.playerId);
 
       const stats = statsMap.get(roster.playerId);

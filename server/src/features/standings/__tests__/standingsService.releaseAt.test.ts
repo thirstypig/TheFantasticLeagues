@@ -1,17 +1,22 @@
 /**
- * Tests for releasedAt-boundary and free-agent attribution in computeTeamStatsFromDb.
+ * Tests for releasedAt-boundary and trade attribution in computeTeamStatsFromDb.
  *
- * Design rule: computeWithPeriodStats uses cumulative period stats (no daily
- * breakdown), so stats are attributed 100% to the team that CURRENTLY holds
- * the player (releasedAt === null).  Released players — whether freed at
- * period.startDate or mid-period — get NO stats credited; free agents also
- * get nothing.  This matches FanGraphs, which computes period standings from
- * active rosters only.
+ * Design rule (post-#242): computeWithPeriodStats attributes each period's PSP
+ * to the team that owned the player on `period.endDate`. Players released
+ * BEFORE endDate get no credit from the releasing team (the receiving team
+ * gets credit if they held the player on endDate). Players released AT or
+ * AFTER endDate stay credited to the releasing team — the trade happened
+ * after the period closed, so the closed-period attribution doesn't shift.
  *
- * The roster query still uses `releasedAt >= period.startDate` (gte) so that
- * same-day-acquired replacements are visible for deduplication, but the
- * attribution logic skips any roster entry without an active (releasedAt=null)
- * counterpart.
+ * This matches FanGraphs/OnRoto semantics — what owners see on FG is the
+ * source-of-truth view for the league, and FBST production needs to agree.
+ *
+ * Prior to #242 the attribution was "current owner" (`releasedAt === null`),
+ * which retroactively reassigned closed-period credit when a player was
+ * traded after the period ended — a silent bug that diverged FBST from FG.
+ *
+ * The roster query uses `releasedAt >= period.startDate` (gte) so that
+ * same-day-acquired replacements are visible for deduplication.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -104,6 +109,54 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       expect(rgs.R).toBe(0); // no roster entry → no credit
+    });
+
+    it("credits CLOSED-period stats to END-of-period owner, not current owner (todo #242)", async () => {
+      // Regression test: Bryson Stott / Skunk Dogs P1 scenario from 2026-06-02 audit.
+      // Player held by RGS for ALL of Period 1 (3/25 - 4/18); released the day after
+      // P1 closes (4/19) and acquired by DLC on 4/19. The OLD `computeWithPeriodStats`
+      // attributed P1's PSP to the CURRENT owner (DLC), retroactively reassigning
+      // closed-period credit. With the end-of-period-owner fix, RGS keeps P1 credit
+      // because they still held the player on 4/18.
+      //
+      // Without this fix, owners see their standings shift after every post-period
+      // trade — a silent bug that diverges FBST from FanGraphs/OnRoto.
+      const P1_END = new Date("2026-04-18T23:59:59.999Z");
+      const dayAfterP1 = new Date("2026-04-19T00:00:00.000Z");
+      mockPeriodFindUnique.mockResolvedValue({
+        id: 35,
+        startDate: new Date("2026-03-25T00:00:00.000Z"),
+        endDate: P1_END,
+      });
+      mockRosterFindMany.mockResolvedValue([
+        {
+          teamId: 145, playerId: 50, acquiredAt: new Date("2026-03-22"),
+          releasedAt: dayAfterP1, // released the day after P1 closes
+          assignedPosition: "2B",
+          player: { id: 50, mlbId: 5000, posPrimary: "2B" },
+        },
+        {
+          teamId: 148, playerId: 50, acquiredAt: dayAfterP1, // picked up the day after P1 closes
+          releasedAt: null,
+          assignedPosition: "2B",
+          player: { id: 50, mlbId: 5000, posPrimary: "2B" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 50, ...ZERO_STATS, R: 12, HR: 4, RBI: 9 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 35);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      const dlc = result.find(r => r.team.code === "DLC")!;
+      // End-of-period (4/18) owner is RGS — they get P1 credit.
+      expect(rgs.R).toBe(12);
+      expect(rgs.HR).toBe(4);
+      expect(rgs.RBI).toBe(9);
+      // DLC acquired the player AFTER P1 ended; gets 0 P1 credit.
+      expect(dlc.R).toBe(0);
+      expect(dlc.HR).toBe(0);
+      expect(dlc.RBI).toBe(0);
     });
 
     it("credits stats to new team when player moved mid-period (releasedAt > startDate)", async () => {
