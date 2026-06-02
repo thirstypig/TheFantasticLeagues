@@ -109,8 +109,18 @@ async function main() {
   const teamAccum = new Map<number, Accum>(teams.map((t) => [t.id, zero()]));
 
   // Sum each player's PSP row into the team that owned them during that
-  // period. A player can appear on different teams across periods (mid-season
-  // trades/drops); ownership-window overlap selects the correct team per period.
+  // period (ownership-window overlap). Mirrors what FanGraphs/OnRoto and
+  // most fantasy leagues compute for closed periods — stats attributed to
+  // who owned the player WHEN they earned them, not who owns them now.
+  //
+  // NB: production `computeWithPeriodStats` instead attributes to the
+  // CURRENT owner (`standingsService.ts:597-664`). For mid-period trades
+  // and post-period roster movements, the two methods diverge — current-
+  // owner over-credits the receiving team for stats earned under prior
+  // ownership. The audit prefers the ownership-overlap semantic because
+  // it matches the OGBA Excel snapshot and FG exactly (Period 2: Σ|Δ| = 0
+  // points across all 8 teams), surfacing the production attribution bug
+  // as a separate finding rather than masking it.
   for (const period of periods) {
     const psp = await prisma.playerStatsPeriod.findMany({ where: { periodId: period.id } });
     const pspByPlayer = new Map(psp.map((p) => [p.playerId, p]));
@@ -119,10 +129,7 @@ async function main() {
       // Overlap test for THIS period only.
       if (roster.acquiredAt > period.endDate) continue;
       if (roster.releasedAt && roster.releasedAt <= period.startDate) continue;
-      // Match production logic exactly: skip if the player was on IL at the
-      // start of THIS period (reconstructed from TransactionEvent history,
-      // not from current `assignedPosition`). Same call shape the standings
-      // route uses at `standingsService.ts:516,621`.
+      // IL window check — same as production (lib/ilWindows.ts).
       if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
       const ps = pspByPlayer.get(roster.playerId);
