@@ -344,7 +344,20 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={submitting}
+          onClick={() => {
+            setActivatePlayerId(null);
+            setTargetSlot(null);
+            setDropPlayerId(null);
+            setError(null);
+          }}
+        >
+          Reset
+        </Button>
         <Button size="sm" onClick={handleSubmit} disabled={!canSubmit}>
           {submitting ? "Activating…" : "Confirm Activate + Drop"}
         </Button>

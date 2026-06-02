@@ -596,15 +596,32 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       </div>
                     );
                   })()}
-                  <button
-                    type="button"
-                    className="cm-btn primary"
-                    style={{ marginTop: 8 }}
-                    disabled={adAddId === null || adDropId === '' || adSubmitting}
-                    onClick={handleAddDrop}
-                  >
-                    {adSubmitting ? 'Executing…' : 'Execute Add'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      type="button"
+                      className="cm-btn primary"
+                      style={{ flex: 1 }}
+                      disabled={adAddId === null || adDropId === '' || adSubmitting}
+                      onClick={handleAddDrop}
+                    >
+                      {adSubmitting ? 'Executing…' : 'Execute Add'}
+                    </button>
+                    <button
+                      type="button"
+                      className="cm-btn ghost"
+                      disabled={adSubmitting}
+                      onClick={() => {
+                        setAdAddId(null);
+                        setAdAddMlbId(null);
+                        setAdDropId('');
+                        setAdQuery('');
+                        setSlotChanges([]);
+                        setAdError(null);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                   {slotChanges.length > 0 && (
                     <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>
                       {slotChanges.length} slot adjustment{slotChanges.length !== 1 ? 's' : ''} will be applied before the claim.
@@ -719,15 +736,31 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       ? <div style={{ fontWeight: 600 }}>{playerName(selectedIlReplPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedIlReplPlayer)}</span></div>
                       : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>}
                   </div>
-                  <button
-                    type="button"
-                    className="cm-btn primary"
-                    style={{ marginTop: 8 }}
-                    disabled={ilStashId === '' || ilReplId === null || ilSubmitting}
-                    onClick={handleIlStash}
-                  >
-                    {ilSubmitting ? 'Confirming…' : 'Confirm Stash + Add'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      type="button"
+                      className="cm-btn primary"
+                      style={{ flex: 1 }}
+                      disabled={ilStashId === '' || ilReplId === null || ilSubmitting}
+                      onClick={handleIlStash}
+                    >
+                      {ilSubmitting ? 'Confirming…' : 'Confirm Stash + Add'}
+                    </button>
+                    <button
+                      type="button"
+                      className="cm-btn ghost"
+                      disabled={ilSubmitting}
+                      onClick={() => {
+                        setIlStashId('');
+                        setIlReplId(null);
+                        setIlReplMlbId(null);
+                        setIlReplQuery('');
+                        setIlError(null);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -835,15 +868,29 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         : <div style={{ color: 'var(--am-text-faint)' }}>— select from middle</div>;
                     })()}
                   </div>
-                  <button
-                    type="button"
-                    className="cm-btn primary"
-                    style={{ marginTop: 8 }}
-                    disabled={ilActId === '' || ilActDropId === '' || ilActSubmitting}
-                    onClick={handleIlActivate}
-                  >
-                    {ilActSubmitting ? 'Confirming…' : 'Confirm Activate + Drop'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      type="button"
+                      className="cm-btn primary"
+                      style={{ flex: 1 }}
+                      disabled={ilActId === '' || ilActDropId === '' || ilActSubmitting}
+                      onClick={handleIlActivate}
+                    >
+                      {ilActSubmitting ? 'Confirming…' : 'Confirm Activate + Drop'}
+                    </button>
+                    <button
+                      type="button"
+                      className="cm-btn ghost"
+                      disabled={ilActSubmitting}
+                      onClick={() => {
+                        setIlActId('');
+                        setIlActDropId('');
+                        setIlActError(null);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

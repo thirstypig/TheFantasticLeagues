@@ -291,7 +291,20 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={submitting}
+          onClick={() => {
+            setStashPlayerId(null);
+            setAddMlbId(null);
+            setQuery("");
+            setError(null);
+          }}
+        >
+          Reset
+        </Button>
         <Button size="sm" onClick={handleSubmit} disabled={!canSubmit}>
           {submitting ? "Stashing…" : "Confirm Stash + Add"}
         </Button>
