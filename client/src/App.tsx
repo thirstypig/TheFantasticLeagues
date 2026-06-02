@@ -67,6 +67,7 @@ const ProductBoard = React.lazy(() => import("./pages/ProductBoard"));
 const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"));
 const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Preview"));
 const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRosterHubDeferred"));
+const ManualSlotAssignmentPreview = React.lazy(() => import("./pages/design/ManualSlotAssignmentPreview"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -243,6 +244,11 @@ export default function App() {
                         docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md
                         §5B + §8. Ships components that PR2 will reuse. */}
                     <Route path="/design/swap-mode" element={<SwapModePreview />} />
+                    {/* Manual slot assignment preview — replaces silent
+                        auto-resolve with an explicit cascade picker. UX
+                        validation before backend work on IL Activate.
+                        See docs/solutions issue from PR #357 followup. */}
+                    <Route path="/design/manual-slot-assignment" element={<ManualSlotAssignmentPreview />} />
                     {/* Legacy v2 roster-hub preview retired after v3 shipped
                         to the live Team page. Keep the URL as a bookmark-safe
                         redirect to the maintained v3 preview. */}
