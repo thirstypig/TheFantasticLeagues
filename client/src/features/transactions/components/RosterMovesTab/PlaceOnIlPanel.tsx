@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ilStash, previewIlStash, formatReassignmentsToast } from "../../../transactions/api";
+import { ilStash, previewIlStash } from "../../../transactions/api";
 import { Button } from "../../../../components/ui/button";
-import { useToast } from "../../../../contexts/ToastContext";
 import { reportError } from "../../../../lib/errorBus";
 import { extractServerError } from "../../../../lib/extractServerError";
 import { isSlotCode, slotsFor } from "../../../../lib/positionEligibility";
 import { isMlbIlStatus } from "../../../../lib/mlbStatus";
+import TransactionResultModal, { type TransactionResult } from "../TransactionResultModal";
 import type { RosterMovesPlayer } from "./types";
 
 interface Props {
@@ -43,8 +43,8 @@ interface Props {
  * submits, so they don't hit a 400 and have to re-read the error.
  */
 export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, effectiveDate, initialStashPlayerId }: Props) {
-  const { toast } = useToast();
   const [stashPlayerId, setStashPlayerId] = useState<number | null>(initialStashPlayerId ?? null);
+  const [txResult, setTxResult] = useState<TransactionResult | null>(null);
   const [query, setQuery] = useState("");
   const [addMlbId, setAddMlbId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -159,17 +159,21 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
         addMlbId,
         ...(effectiveDate ? { effectiveDate } : {}),
       });
-      // Yahoo-style auto-resolve: surface any reshuffles as a toast.
       const addName = selectedAdd?.player_name || selectedAdd?.name || "player";
-      const toastMsg = formatReassignmentsToast(
-        response.appliedReassignments,
-        `Stashed ${stashPlayer?.player_name || stashPlayer?.name || "player"}, added ${addName}.`,
+      const stashedName = stashPlayer?.player_name || stashPlayer?.name || "player";
+      const reassignments = response.appliedReassignments ?? [];
+      const cascade = reassignments.filter(r =>
+        r.playerId !== Number(stashPlayerId) && r.playerId !== Number(selectedAdd?._dbPlayerId ?? -1)
       );
-      if (toastMsg) toast(toastMsg, "success");
+      setTxResult({
+        title: "IL stash complete",
+        primaryLine: `Placed ${stashedName} on IL, added ${addName}.`,
+        cascadeMoves: cascade,
+      });
       setStashPlayerId(null);
       setAddMlbId(null);
       setQuery("");
-      onComplete();
+      // onComplete deferred to modal dismiss.
     } catch (err: unknown) {
       setError(extractServerError(err, "IL stash failed"));
       reportError(err, { source: "roster-moves-place-il" });
@@ -309,6 +313,14 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
           {submitting ? "Stashing…" : "Confirm Stash + Add"}
         </Button>
       </div>
+
+      <TransactionResultModal
+        result={txResult}
+        onClose={() => {
+          setTxResult(null);
+          onComplete();
+        }}
+      />
     </div>
   );
 }

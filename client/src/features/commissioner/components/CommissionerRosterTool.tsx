@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getCommissionerRosters, commissionerForceDrop } from '../api';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { ilStash, ilActivate } from '../../transactions/api';
+import TransactionResultModal, { type TransactionResult } from '../../transactions/components/TransactionResultModal';
 import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { enrichPlayersWithRosterState } from '../lib/enrichPlayersWithRosterState';
 import { getPlayerSeasonStats, PlayerSeasonStat } from '../../../api';
@@ -103,6 +104,10 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
   const [ilReplMlbId, setIlReplMlbId] = useState<number | null>(null);
   const [ilSubmitting, setIlSubmitting] = useState(false);
   const [ilError, setIlError] = useState<string | null>(null);
+
+  // Post-commit confirmation modal — shared across all three drawers.
+  // null = closed; populated by handlers after a successful submit.
+  const [txResult, setTxResult] = useState<TransactionResult | null>(null);
 
   // ── Activate-from-IL state (mirror of stash, but inverted) ──
   // ilMode toggles the right-side IL Management drawer between two flows:
@@ -212,7 +217,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     setAdSubmitting(true);
     setAdError(null);
     try {
-      await fetchJsonApi(`${API_BASE}/transactions/claim`, {
+      const claimResp = await fetchJsonApi<{ appliedReassignments?: Array<{ playerId: number; playerName: string; oldSlot: string; newSlot: string }> }>(`${API_BASE}/transactions/claim`, {
         method: 'POST',
         body: JSON.stringify({
           leagueId,
@@ -223,6 +228,13 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
           ...(slotChanges.length > 0 ? { slotChanges } : {}),
           ...(effectiveDate ? { effectiveDate } : {}),
         }),
+      });
+      const addedName = playerName((playersEnriched as any[]).find(p => p.id === adAddId)) || 'player';
+      const droppedName = teamRoster.find(r => r.player.id === Number(adDropId))?.player.name || 'player';
+      setTxResult({
+        title: 'Claim succeeded',
+        primaryLine: `Added ${addedName}, dropped ${droppedName}.`,
+        cascadeMoves: (claimResp.appliedReassignments ?? []).filter(r => r.playerId !== adAddId),
       });
       setAdAddId(null);
       setAdAddMlbId(null);
@@ -242,12 +254,23 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     setIlActSubmitting(true);
     setIlActError(null);
     try {
-      await ilActivate({
+      const activateResp = await ilActivate({
         leagueId,
         teamId: actingAsTeamId,
         activatePlayerId: Number(ilActId),
         dropPlayerId: Number(ilActDropId),
         ...(effectiveDate ? { effectiveDate } : {}),
+      });
+      const activatedName = teamRoster.find(r => r.player.id === Number(ilActId))?.player.name || 'player';
+      const droppedName = teamRoster.find(r => r.player.id === Number(ilActDropId))?.player.name || 'player';
+      const cascade = (activateResp.appliedReassignments ?? []).filter(r => r.playerId !== Number(ilActId));
+      const activatedSlot = activateResp.appliedReassignments?.find(r => r.playerId === Number(ilActId))?.newSlot;
+      setTxResult({
+        title: 'IL activation complete',
+        primaryLine: activatedSlot
+          ? `Activated ${activatedName} to ${activatedSlot}, dropped ${droppedName}.`
+          : `Activated ${activatedName}, dropped ${droppedName}.`,
+        cascadeMoves: cascade,
       });
       setIlActId('');
       setIlActDropId('');
@@ -265,13 +288,23 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     setIlSubmitting(true);
     setIlError(null);
     try {
-      await ilStash({
+      const stashResp = await ilStash({
         leagueId,
         teamId: actingAsTeamId,
         stashPlayerId: Number(ilStashId),
         addPlayerId: ilReplId,
         addMlbId: ilReplMlbId ?? undefined,
         ...(effectiveDate ? { effectiveDate } : {}),
+      });
+      const stashedName = teamRoster.find(r => r.player.id === Number(ilStashId))?.player.name || 'player';
+      const addedName = playerName((playersEnriched as any[]).find(p => p.id === ilReplId)) || 'player';
+      const cascade = (stashResp.appliedReassignments ?? []).filter(
+        r => r.playerId !== Number(ilStashId) && r.playerId !== ilReplId,
+      );
+      setTxResult({
+        title: 'IL stash complete',
+        primaryLine: `Placed ${stashedName} on IL, added ${addedName}.`,
+        cascadeMoves: cascade,
       });
       setIlStashId('');
       setIlReplId(null);
@@ -899,6 +932,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
         </div>{/* end RIGHT */}
       </div>{/* end two-column body */}
 
+      <TransactionResultModal result={txResult} onClose={() => setTxResult(null)} />
     </div>
   );
 }

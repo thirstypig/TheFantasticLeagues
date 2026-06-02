@@ -380,16 +380,13 @@ describe("AddDropPanel — effectiveDate forwarding (commissioner backdate)", ()
   });
 });
 
-describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", () => {
+describe("AddDropPanel — post-commit modal with auto-resolve cascade (PR #359)", () => {
   // The server returns `appliedReassignments: [...]` when auto_resolve_slots
   // is on AND the matcher reshuffled other roster rows to fit the new player.
-  // The panel surfaces those moves as a single-line success toast.
+  // The panel surfaces those moves as a cascade list inside the post-commit
+  // TransactionResultModal (replaces the earlier toast pattern).
 
-  beforeEach(() => {
-    mockToast.mockClear();
-  });
-
-  it("renders a toast with reassignments when server returns appliedReassignments", async () => {
+  it("renders cascade list in the result modal when server returns appliedReassignments", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
     mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } satisfies RosterMovePreviewResult);
@@ -397,20 +394,8 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
       success: true,
       playerId: 100,
       appliedReassignments: [
-        {
-          rosterId: 7,
-          playerId: 5,
-          playerName: "Trea Turner",
-          oldSlot: "2B",
-          newSlot: "SS",
-        },
-        {
-          rosterId: 8,
-          playerId: 6,
-          playerName: "Alec Bohm",
-          oldSlot: "SS",
-          newSlot: "CM",
-        },
+        { rosterId: 7, playerId: 5, playerName: "Trea Turner", oldSlot: "2B", newSlot: "SS" },
+        { rosterId: 8, playerId: 6, playerName: "Alec Bohm", oldSlot: "SS", newSlot: "CM" },
       ],
     } satisfies ClaimResponse);
     const user = userEvent.setup();
@@ -421,15 +406,17 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
     await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
-    expect(mockToast).toHaveBeenCalledTimes(1);
-    const [msg, variant] = mockToast.mock.calls[0];
-    expect(msg).toContain("Jake Bauers");
-    expect(msg).toContain("Trea Turner 2B → SS");
-    expect(msg).toContain("Alec Bohm SS → CM");
-    expect(variant).toBe("success");
+    const modal = await screen.findByTestId("transaction-result-modal");
+    expect(modal.textContent).toContain("Jake Bauers");
+    const cascade = await screen.findByTestId("transaction-result-cascade");
+    expect(cascade.textContent).toContain("Trea Turner");
+    expect(cascade.textContent).toContain("2B");
+    expect(cascade.textContent).toContain("SS");
+    expect(cascade.textContent).toContain("Alec Bohm");
+    expect(cascade.textContent).toContain("CM");
   });
 
-  it("does NOT render a toast when appliedReassignments is empty (clean add+drop)", async () => {
+  it("renders modal WITHOUT cascade list when appliedReassignments is empty", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
     mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } satisfies RosterMovePreviewResult);
@@ -446,12 +433,11 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
     await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
-    expect(mockToast).not.toHaveBeenCalled();
+    expect(await screen.findByTestId("transaction-result-modal")).toBeInTheDocument();
+    expect(screen.queryByTestId("transaction-result-cascade")).not.toBeInTheDocument();
   });
 
-  it("does NOT render a toast when appliedReassignments is missing (legacy server)", async () => {
-    // Older server build without the auto-resolve patch — response has no
-    // `appliedReassignments` field at all. Panel must tolerate this.
+  it("renders modal WITHOUT cascade list when appliedReassignments missing (legacy server)", async () => {
     mockSeasonStatus.value = "IN_SEASON";
     const mockFetch = vi.mocked(fetchJsonApi);
     mockFetch.mockResolvedValueOnce({ ok: true, message: "Roster rules satisfied." } satisfies RosterMovePreviewResult);
@@ -464,7 +450,8 @@ describe("AddDropPanel — Yahoo-style auto-resolve toast (PR1 of plan #166)", (
     await waitFor(() => expect(screen.getByRole("button", { name: /Execute Add \+ Drop/ })).not.toBeDisabled());
     await executeAndConfirm(user, /Execute Add \+ Drop/, /Confirm Add \+ Drop/);
 
-    expect(mockToast).not.toHaveBeenCalled();
+    expect(await screen.findByTestId("transaction-result-modal")).toBeInTheDocument();
+    expect(screen.queryByTestId("transaction-result-cascade")).not.toBeInTheDocument();
   });
 });
 
