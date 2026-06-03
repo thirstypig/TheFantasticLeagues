@@ -314,9 +314,16 @@ export async function syncDailyStats(dateStr: string): Promise<{
 
         const stats = parsePlayerStats(person);
 
-        // Skip if all zeros (off-day / no game)
-        const hasStats = stats.AB > 0 || stats.H > 0 || stats.R > 0 || stats.HR > 0 ||
-          stats.W > 0 || stats.SV > 0 || stats.K > 0 || stats.IP > 0;
+        // Skip if all zeros (off-day / no game). Include every batting AND
+        // pitching counter — historically this list was incomplete and dropped
+        // 0-out blown appearances where the only non-zero fields were `ER` /
+        // `BB_H` (audit precedent: Matt Gage 2026-05-19 — pitched to 1 batter,
+        // gave up a hit and a run, 0 outs → game was silently dropped).
+        const hasStats =
+          stats.AB > 0 || stats.H > 0 || stats.R > 0 || stats.HR > 0 ||
+          stats.RBI > 0 || stats.SB > 0 || stats.BB > 0 ||
+          stats.W > 0 || stats.SV > 0 || stats.K > 0 || stats.IP > 0 ||
+          stats.ER > 0 || stats.BB_H > 0;
         if (!hasStats) { skipped++; continue; }
 
         await prisma.playerStatsDaily.upsert({
