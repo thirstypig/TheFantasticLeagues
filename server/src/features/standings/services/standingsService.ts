@@ -407,7 +407,7 @@ export async function computeTeamStatsFromDb(
   const rosters = await prisma.roster.findMany({
     where: {
       team: { leagueId },
-      acquiredAt: { lt: period.endDate },
+      acquiredAt: { lte: period.endDate },
       OR: [
         { releasedAt: null },
         { releasedAt: { gte: period.startDate } },
@@ -421,6 +421,13 @@ export async function computeTeamStatsFromDb(
       assignedPosition: true,
       player: { select: { id: true, mlbId: true, posPrimary: true } },
     },
+    // DESC by acquiredAt so the "first row wins" idiom in `endOfPeriodOwner`
+    // picks the LATEST acquisition for a player — correct for the
+    // drop-and-re-add-during-period case. Without this orderBy, Prisma
+    // returns rows in undefined order, and an earlier roster row could
+    // silently win the attribution over a later one (kieran-typescript
+    // and code-simplicity reviews on PR #365 caught this).
+    orderBy: [{ acquiredAt: "desc" }],
   });
 
   // Build date-aware IL windows from TransactionEvent history so that a player's
@@ -594,13 +601,19 @@ async function computeWithPeriodStats(
     rostersByTeam.set(r.teamId, list);
   }
 
-  // Build a set of players who are currently active on each team.
-  // For cumulative period stats (no daily breakdown), we attribute ALL period stats
-  // to the team that currently holds the player (releasedAt === null).
-  const activePlayerTeam = new Map<number, number>(); // playerId → teamId
+  // End-of-period owner attribution (todo #242). For each player, the team
+  // that holds them on `period.endDate` gets the period's PSP credit.
+  // "Held" iff `acquiredAt <= endDate` AND (`releasedAt IS NULL` OR
+  // `releasedAt > endDate`). Latest acquisition wins via the rosters query's
+  // `orderBy: acquiredAt desc` + first-wins idiom below — covers the
+  // drop-and-re-add-during-period case.
+  // See docs/solutions/logic-errors/closed-period-stat-attribution-uses-current-owner.md
+  const endOfPeriodOwner = new Map<number, number>(); // playerId → teamId
   for (const r of rosters) {
-    if (r.releasedAt === null) {
-      activePlayerTeam.set(r.playerId, r.teamId);
+    if (r.acquiredAt > period.endDate) continue;
+    if (r.releasedAt !== null && r.releasedAt <= period.endDate) continue;
+    if (!endOfPeriodOwner.has(r.playerId)) {
+      endOfPeriodOwner.set(r.playerId, r.teamId);
     }
   }
 
@@ -609,8 +622,8 @@ async function computeWithPeriodStats(
     let W = 0, S = 0, K = 0, ER = 0, IP = 0, BB_H = 0;
 
     const teamRosters = rostersByTeam.get(t.id) ?? [];
-    // Track which players we've already counted (avoid double-counting if player
-    // was traded away and back — only count for the ACTIVE entry or most recent)
+    // Dedup guard: same player can have multiple roster rows on this team
+    // (drop-and-re-add cycle). Only one credit per player per period.
     const countedPlayers = new Set<number>();
 
     for (const roster of teamRosters) {
@@ -620,15 +633,13 @@ async function computeWithPeriodStats(
       // Uses TransactionEvent effDate history — same date-aware logic as computeWithDailyStats.
       if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
-      // Only attribute stats to the team that currently holds the player (releasedAt === null).
-      // Free agents (currentTeam === undefined) get no credit; traded-away players
-      // (currentTeam !== t.id) also get no credit — their stats go to the new team.
-      const currentTeam = activePlayerTeam.get(roster.playerId);
-      if (currentTeam !== t.id) continue;
+      // Credit only the team that held this player on period.endDate.
+      // Traded-out players (released before endDate) get no credit from this team
+      // even if they were on this team during the period — the team that picked
+      // them up before endDate gets the period's stats. Matches FG.
+      const endOwner = endOfPeriodOwner.get(roster.playerId);
+      if (endOwner !== t.id) continue;
 
-      // Mark after all guards: ensures the active entry (releasedAt=null) wins the
-      // dedup slot when Prisma returns a released entry before the active entry for
-      // the same player on the same team.
       countedPlayers.add(roster.playerId);
 
       const stats = statsMap.get(roster.playerId);
