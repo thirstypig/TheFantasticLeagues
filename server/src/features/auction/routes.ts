@@ -11,6 +11,7 @@ import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
 import { positionToSlots, PITCHER_CODES as SPORT_PITCHER_CODES, isPitcher as isPitcherPos } from "../../lib/sportConfig.js";
 import { broadcastState } from "./services/auctionWsService.js";
 import { saveState, loadState, clearState } from "./services/auctionPersistence.js";
+import { getAuctionDaySnapshot } from "./lib/auctionDaySnapshot.js";
 
 const nominateSchema = z.object({
   leagueId: z.number().int().positive(),
@@ -658,62 +659,38 @@ router.get("/results", requireAuth, requireLeagueMember("leagueId"), asyncHandle
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
   const state = await getState(leagueId);
+  // Snapshot query + cutoff derivation live in lib/auctionDaySnapshot.ts so
+  // the Draft Report Card can reuse the exact inclusion semantics (task #54).
+  const snapshot = await getAuctionDaySnapshot(leagueId);
 
-  // Derive auction cutoff from the season's first period.
-  const firstPeriod = await prisma.period.findFirst({
-    where: { season: { leagueId } },
-    orderBy: { startDate: "asc" },
-    select: { startDate: true },
-  });
-  const cutoff = firstPeriod
-    ? new Date(firstPeriod.startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-    : new Date(`${new Date().getFullYear()}-04-01T00:00:00Z`);
-
-  const teams = await prisma.team.findMany({
-    where: { leagueId },
-    include: {
-      rosters: {
-        where: {
-          source: { in: ["auction_2026", "prior_season", "DROP", "SEASON_IMPORT"] },
-          acquiredAt: { lt: cutoff },
-          OR: [{ releasedAt: null }, { releasedAt: { gte: cutoff } }],
-        },
-        include: { player: { select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true, mlbTeam: true } } },
-      },
-    },
-    orderBy: { id: "asc" },
-  });
-
-  // Build the same wire shape /state returns, but with the auction-day roster
-  // slice. AuctionComplete consumes teams[].roster, totalSpent/keeperSpend/
-  // auctionSpend derivations, and log unchanged.
   const PRIOR_SEASON = "prior_season";
-  const snapshotTeams = teams.map(t => {
-    const totalSpent = t.rosters.reduce((s, r) => s + (Number(r.price) || 0), 0);
-    const keeperSpend = t.rosters.filter(r => r.source === PRIOR_SEASON).reduce((s, r) => s + (Number(r.price) || 0), 0);
+  const snapshotTeams = snapshot.teams.map((t) => {
+    const totalSpent = t.rosters.reduce((s, r) => s + r.price, 0);
+    const keeperSpend = t.rosters
+      .filter((r) => r.source === PRIOR_SEASON)
+      .reduce((s, r) => s + r.price, 0);
     const auctionSpend = totalSpent - keeperSpend;
+    const dbBudget = t.budget ?? state.config.budgetCap;
     return {
-      id: t.id,
-      name: t.name,
-      code: t.code || "UNK",
-      budget: (t.budget ?? state.config.budgetCap) - totalSpent,
-      dbBudget: t.budget ?? state.config.budgetCap,
+      id: t.teamId,
+      name: t.teamName,
+      code: t.teamCode,
+      budget: dbBudget - totalSpent,
+      dbBudget,
       keeperSpend,
       auctionSpend,
       rosterCount: t.rosters.length,
-      roster: t.rosters.map(r => ({
-        id: r.id,
+      roster: t.rosters.map((r) => ({
+        id: r.rosterId,
         playerId: r.playerId,
-        mlbId: r.player?.mlbId ?? null,
-        playerName: r.player?.name ?? null,
-        posPrimary: r.player?.posPrimary ?? null,
-        posList: r.player?.posList ?? r.player?.posPrimary ?? null,
-        mlbTeam: r.player?.mlbTeam ?? null,
-        price: Number(r.price),
+        mlbId: r.mlbId,
+        playerName: r.playerName,
+        posPrimary: r.posPrimary,
+        posList: r.posList,
+        mlbTeam: r.mlbTeam,
+        price: r.price,
         assignedPosition: r.assignedPosition,
-        // Normalize mis-labeled draft-time sources to auction_2026 so the
-        // keeper/auction badge in the UI doesn't mislead.
-        source: r.source === "DROP" || r.source === "SEASON_IMPORT" ? "auction_2026" : r.source,
+        source: r.source,
       })),
     };
   });
@@ -724,7 +701,7 @@ router.get("/results", requireAuth, requireLeagueMember("leagueId"), asyncHandle
     config: state.config,
     teams: snapshotTeams,
     log: state.log ?? [],
-    auctionCutoff: cutoff.toISOString(),
+    auctionCutoff: snapshot.auctionCutoff.toISOString(),
     computedAt: new Date().toISOString(),
   });
 }));
