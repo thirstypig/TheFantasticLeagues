@@ -4,6 +4,93 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-06-02 — `/ce:review` of PR #359 grew into a stats-pipeline audit + 6 open PRs
+
+Started as a multi-agent code review of PR #359 (`TransactionResultModal`). Ended up discovering a production standings-attribution bug and three audit-tool bugs while comparing FBST to FanGraphs OnRoto.
+
+### Shipped — 6 PRs (all open against `main`)
+
+| # | Branch | What |
+|---|---|---|
+| **#360** | `feat/mcp-il-and-drop-transaction-tools` | MCP fbst-app server: 5 new tools (`il-stash` / `il-activate` / `drop` preview + execute) closing the agent-native gap on roster-move surfaces |
+| **#361** | `chore/pr-359-cleanup-typing` | PR #359 cleanup — drop `CascadeMove` duplication (use shared `AppliedReassignment`), delete dead `formatReassignmentsToast` + tests + mocks, drop YAGNI `activityHistoryUrl`; closes todos #232/#233/#234 |
+| **#362** | `fix/zero-ip-stat-skip-mlbstatsync` | `hasStats` filter in `syncDailyStats` expanded to include `ER`, `BB_H`, `RBI`, `SB`, `BB`. Was dropping pitcher blown appearances (0 IP / 1 ER) and hitter sac flies (0 AB / 1 RBI). 1 game out of ~600 swept; backfilled Matt Gage 5/19 + TJ Rumfield 6/1 |
+| **#363** | `feat/transaction-result-modal-a11y` | A11y rewrite of `TransactionResultModal`: `createPortal` + focus trap + return-focus + scoped ESC; 12 new unit tests; closes todos #235/#237 (stacked on #361) |
+| **#364** | `fix/fangraphs-audit-use-psp` | `fangraphs-audit.ts` now reads `PlayerStatsPeriod` (matches production) + uses shared `buildIlWindows`. Adds compound doc with 4-layer trust hierarchy (`MLB statsapi > PSP > PSD > FG`), FG cutoff convention finding |
+| **#365** | `fix/standings-closed-period-attribution-ownership-window` | **Production bug fix.** `computeWithPeriodStats` was attributing closed-period PSP to *current* owner instead of end-of-period owner — silently reassigning credit on post-period trades. Adds regression test + compound doc; closes todo #242 |
+
+### Investigation arc — how 4 layers of trust got established
+
+1. **FanGraphs season audit** showed Σ|Δ| = 28 points vs FG.
+2. **First-blame instinct** said FBST sync. Cross-checked against MLB statsapi for all 75 league-20 pitchers × 17 days. **599/600 player-games matched** — the audit script was wrong, not the data.
+3. **The 1 mismatch (Matt Gage 5/19)** led to the `hasStats` filter bug in PR #362.
+4. **Production standings (PSP) ≠ audit-script source (PSD)** — the legacy script aggregated PSD, which has an Opening Day cold-start gap (3/25–3/28 unsynced, 187 missing rows). Production uses PSP. The "28-point delta" was 17 points of audit-tool artifact + 11 points of real production delta.
+5. **PR #364 switched the audit script to PSP**. Σ|Δ| dropped from 28 → 11.
+6. **Per-period vs OGBA Excel snapshot**: P2 matched at **Σ|Δ| = 0.0** under PSP+IL-window attribution. P1 had a 13-point residual.
+7. **P1 drill**: rosters match Excel 23=23, MLB API confirms every PSP value. The residual is a calendar-convention difference (FG `04.18` filter = "through morning of 04.18, excluding games played that day"; FBST `Period.endDate = 04.18` is inclusive). Documented in the compound doc and accepted as bounded.
+8. **Inverted the audit logic to mirror production's `currentTeam !== t.id` predicate** — Σ|Δ| jumped from 11 to 29. That was the smoking gun for PR #365's bug: production was attributing closed-period PSP to whoever currently holds the player.
+
+### `/ce:review` of PR #365 caught a real P1
+
+After shipping PR #365, ran `/ce:review` against it. Both `kieran-typescript-reviewer` and `code-simplicity-reviewer` independently flagged a comment/code contradiction in `endOfPeriodOwner`:
+
+- Comment said "Latest acquiredAt wins"
+- Code was `if (prior === undefined) set` — actually **first row wins**
+- Prisma rosters query had no `orderBy` — undefined row order
+
+Fixed in same PR (commit `d5b9de5`): added `orderBy: [{ acquiredAt: "desc" }]`, aligned `lt`→`lte` boundary, added regression test for drop-and-re-add scenario. **85/85 standings tests pass** (was 84).
+
+### Compound docs added (`docs/solutions/`)
+
+| File | Captures |
+|---|---|
+| `integration-issues/mlb-statsapi-sync-hasstats-filter-drops-er-rbi.md` | hasStats bug + 4-layer trust hierarchy (`MLB statsapi > PSP > PSD > FG`) + FG cutoff convention + verification recipe |
+| `logic-errors/closed-period-stat-attribution-uses-current-owner.md` | Production attribution bug + naming convention for time-aware predicates + PSP/PSD divergence rules + property "zero-sum invariant doesn't mean correct" |
+
+### Tools the session relied on
+
+- **Playwright MCP** to scrape FG OnRoto's date-filtered team_stats pages (the date selector is JS-rendered, not URL-parameterized).
+- **MLB statsapi `gameLog`** for per-pitcher per-date verification (`https://statsapi.mlb.com/api/v1/people/{mlbId}/stats?stats=gameLog&season=2026&group=pitching`).
+- **xlsx** for parsing the OGBA Excel snapshot.
+- 15+ gitignored `audit-*.mjs` scripts on disk as reusable templates per `feedback_worktree_node_modules_leak.md`.
+
+### Findings filed as todos
+
+- **#242 (P2, closed)** — production closed-period attribution bug → fixed in PR #365
+- **#243 (P2)** — Extract `rosterWindow.ts` helpers (3 sites do roster-vs-period predicate math with different semantics)
+- **#244 (P2)** — Add PSD↔PSP differential test (paths now have intentionally different attribution semantics)
+- **#245 (P2)** — Add CLAUDE.md convention for time-aware predicates
+- **#239 (P2, closed)** — hasStats filter bug → fixed in PR #362
+- **#240 (P3, closed)** — hitter MLB-API sweep → done; TJ Rumfield 6/1 backfilled
+
+### Pending (next session)
+
+- [ ] **Merge the 6 PRs.** Order: #360 (off main) → #361 (off main) → #362 (off main) → retarget #363 base to `main` after #361 merges → merge #363 → #364 → #365. Per memory `feedback_stacked_pr_squash_merge.md`: retarget #363 base BEFORE clicking merge or it auto-closes.
+- [ ] After PR #365 merges, production standings will silently recompute closed-period numbers on next cache refresh. Visible-to-owners impact: small (single-digit point shifts per team, only on teams involved in post-period trades).
+- [ ] **#236 (P3)** — `useTransactionResultFlow` hook refactor from the original PR #359 review queue.
+- [ ] Sweep `.claude/worktrees/` after locked agent worktrees release.
+
+### Excel reconciliation — accepted residual
+
+Period 1 vs OGBA Excel snapshot stays at Σ|Δ| = 13.0 after all fixes. Root cause investigated thoroughly:
+- Rosters match exactly (23 = 23 all 8 teams, no missing/extra players).
+- MLB statsapi confirms every PSP value for verified samples.
+- Excel was not a direct FG copy (some divergence vs FG's own filtered numbers).
+- Cosmetic 13-point distribution drift across 720 total season points; no actionable FBST-side bug remains.
+
+The FG cutoff convention (date filter = "morning of" the listed date, excluding games played that day) was confirmed via Playwright + MLB API per-team triangulation but doesn't fully reconcile Excel either.
+
+### Tests / build
+
+- Affected suites green across all branches at commit time.
+- Branch test counts (when merged):
+  - PR #362: +3 mlbStatsSyncService.test.ts
+  - PR #363: +12 TransactionResultModal.test.tsx
+  - PR #365: +2 standingsService.releaseAt.test.ts (post-period-trade + drop-and-re-add)
+- CLAUDE.md test count (`2104`) is still accurate for main; will need update after merges.
+
+---
+
 ## Session 2026-05-19 (cont.) — slot rearrangement on direct add/drop claim (PR #347)
 
 Owners can now pre-assign existing roster players to different slots at claim submission time, so a specific slot is ready for the incoming player before auto-resolve runs.
