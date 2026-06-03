@@ -85,7 +85,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `waivers` | routes | (minimal) | Legacy paired-row waiver-claim auto-engine (FAAB-style) — kept running; new owners use `wire-list` |
 | `wire-list` | routes, processor | 2 pages, 2 picker components, api | Two-list waiver model: ranked Add list + ranked Drop list per period. Commissioner-driven consume/free reducer (succeed/fail/skip/revert), atomic finalize, auto-lock at deadline, push notifications on outcomes. Owner UI at `/teams/:code/wire-list`, commissioner UI at `/commissioner/:leagueId/wire-list`. See `docs/decisions.md` ADR-012 |
 | `transactions` | routes | 1 page, api | Transaction history (`GET /api/transactions`), claim/drop (`POST /transactions/{claim,drop}` + `/preview`), atomic IL stash and activate (`POST /transactions/{il-stash,il-activate}` + `/preview`), MLB status sync (`POST /transactions/sync-il-status`). All writes: requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
-| `auction` | routes, auctionImport | 2 pages, 14 components, 5 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace, settings, timer, sold visual) |
+| `auction` | routes, auctionImport | 2 pages, 14 components, 5 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace, settings, timer, sold visual). `GET /api/auction/state` = live/current rosters; `GET /api/auction/results` = auction-day frozen snapshot (PR #370, 2026-06-02) used by `/auction-results` so totals don't drift with in-season churn — source=`auction_2026`/`prior_season`/`DROP`/`SEASON_IMPORT`, `acquiredAt < firstPeriod.startDate + 7d`, `releasedAt IS NULL OR releasedAt >= cutoff` |
 | `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
 | `commissioner` | routes, CommissionerService | 1 page, 5 components | Commissioner admin tools |
 | `franchises` | routes | — | Franchise (org) CRUD, org-level settings |
@@ -95,7 +95,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `periods` | routes | 1 page (Season) | Season/period standings with toggle |
 | `mlb-feed` | routes, digestService | — | Live MLB scores, transactions, my-players-today, weekly league digest, depth charts, news feeds (MLB.com, ESPN, Yahoo, Reddit, Trade Rumors) |
 | `awards` | routes, awardsService | — | Fantasy MVP / Cy Young rankings via z-score composite (`GET /api/leagues/:leagueId/awards`); persisted snapshots round-trip from league digest |
-| `ai` | — | 3 pages | AI Insights hub, Draft Report (`/draft-report`), league digest on Home page |
+| `ai` | routes, draftReportCardService, aiInsightService, checkpoints lib | 4 pages, 1 component, api | AI Insights hub, Draft Report (`/draft-report`), Draft Report Card (`/draft-report-card`, PR #371 2026-06-03 — per-team auction-day values + busts at 1/3, 2/3, EOS checkpoints by `surplus = composite_z − price_z`; reuses `auction/lib/auctionDaySnapshot`; keepers excluded), league digest on Home page |
 | `watchlist` | routes | 1 component, api | Private per-team player watchlist (notes, tags) |
 | `trading-block` | routes | 1 page, 1 component, api | Public league-wide trading block ("asking for" field) |
 | `board` | routes | 1 page, 3 components, api | League Board: Commissioner/Trade Block/Banter cards with threads |
@@ -152,6 +152,7 @@ Some features import from other features' services or components.
 - `mlb-feed/services/digestService` imports `standings/services/standingsService` (dynamic, for digest context)
 - `mlb-feed/services/digestService` imports `lib/sportConfig` (dynamic, `isKeeperRoster`)
 - `mlb-feed/services/digestService` imports `awards/services/awardsService` (static, for Fantasy MVP / Cy Young rankings embedded in the digest payload)
+- `ai/services/draftReportCardService` imports `auction/lib/auctionDaySnapshot` (single source for "what each team had on auction day" — also consumed by `/api/auction/results`)
 - `mlb-feed/digestRoutes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
 - `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
@@ -368,7 +369,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (1112 server + 834 client + 78 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2075 tests, 31 feature modules)
+### Current Test Coverage (1171 server + 845 client + 78 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2145 tests, 32 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 

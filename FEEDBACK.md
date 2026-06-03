@@ -4,6 +4,54 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-06-03 — Auction Results semantics fix + Draft Report Card feature
+
+User reported `/auction-results` showing players they "did not win in the auction" — picked up via waiver mid-season but counted as auction wins. Discovery cascaded into three layers of wrong, each shipped as its own PR. Then opened the Draft Report Card (`/draft-report-card`) as a follow-up.
+
+### Shipped to main
+
+| # | What | Resolves |
+|---|---|---|
+| **#369** | League-wide "Total Spent" / "Total Lots" on `/auction-results` were summing `AuctionSession.state.log` (WIN events only), which excludes keeper carryovers. Switched to summing `teamResults.roster` so league total = sum of per-team totals shown below. Added "incl. $X in keeper salaries" sub-line | Wrong total at the top tile ($2,245 → $2,920 for OGBA) |
+| **#370** | Even after #369, current-roster totals drifted from Excel because the page was reading **current** rosters (in-season waiver pickups appear; post-auction drops vanish). Added `GET /api/auction/results` returning an **auction-day frozen snapshot**. Source filter includes `auction_2026`/`prior_season`/`DROP`/`SEASON_IMPORT` (last two are known mis-labeled rows: Busch, Vaughn, Palencia, Priester); date filter is `acquiredAt < firstPeriod.startDate + 7d` AND `releasedAt IS NULL OR releasedAt >= cutoff`. AuctionResults.tsx swapped fetch URL | `/auction-results` showing waiver pickups + losing post-auction drops |
+
+For OGBA the snapshot now reconciles exactly: $3,200 / 184 rows / every team at cap, matching Excel + commissioner `Team.budget`.
+
+### In flight — PR #371: Draft Report Card
+
+New `/ai`-section feature at `/draft-report-card`. Per team: top 3 values + bottom 3 busts ranked by **surplus = composite_z − price_z** where composite_z = sum of 5 category z-scores (hitters: R/HR/RBI/SB/AVG; pitchers: W/SV/K/ERA/WHIP with ERA/WHIP signs flipped), and price_z = standardize(log(auction_price + 1)) league-wide.
+
+Three checkpoints: **1/3 Season** (end of Period 3, today previews until 2026-06-06), **2/3 Season** (Aug 1), **Final** (Sep 30). Locked checkpoints return 409 + UI shows unlock date.
+
+Filters: only players still on current roster (drops excluded — they're no longer this owner's value/bust). Min-sample floor: hitters ≥30 AB, pitchers ≥10 IP. **Keepers excluded** (`source === "prior_season"`) — report grades the auction itself, not carry-over salaries.
+
+UI: header badge "Auction wins only — keepers excluded" + expandable "Show methodology" panel with the full surplus formula derivation.
+
+Architecture:
+- Extracted auction-day snapshot query into `server/src/features/auction/lib/auctionDaySnapshot.ts`. `/api/auction/results` route refactored to use it.
+- New `server/src/features/ai/` module with `services/draftReportCardService.ts`, `lib/checkpoints.ts`, `routes.ts`.
+- Route: `GET /api/ai/leagues/:leagueId/draft-report-card?checkpoint=one_third|two_thirds|end`.
+- 24 new tests (8 service + 11 checkpoint + 5 misc) all green.
+
+Browser-verified at 1/3 preview: 8 teams × 6 picks each, PREVIEW banner active, locked-state UI for 2/3 + Final.
+
+**Pending follow-up (task #61)**: per-pick AI commentary via Gemini. Deferred so the computed picks could ship first.
+
+### Memory / project state
+
+- Auction-day snapshot is now the canonical "what happened at the auction" anchor — both `/auction-results` and `/draft-report-card` read from the same lib. Future auction-anchored features should also import `auctionDaySnapshot.ts` instead of re-deriving the source/date filters.
+- 4 OGBA Roster rows have mis-labeled `source` values ("DROP" or "SEASON_IMPORT" instead of "auction_2026"): Michael Busch, Andrew Vaughn, Daniel Palencia, Quinn Priester. Snapshot lib treats them as auction wins. Not blocking but worth a data-cleanup pass at some point.
+- Several keepers in OGBA also have `source = "auction_2026"` instead of `"prior_season"` (e.g. Konnor Griffin $150 for LDY). The Draft Report Card filter relies on `source === "prior_season"`, so mis-labeled keepers will still appear in the ranking pool. Not blocking but limits the keeper-exclusion guarantee.
+
+### Pending
+
+- [ ] Merge PR #371 once the user reviews
+- [ ] Task #61 (P3 follow-up) — Gemini commentary per pick
+- [ ] Worktree at `.claude/worktrees/agent-a3b09568ad05540c6/` — sweep after merge
+- [ ] 22 untracked `server/audit-*.mjs` scripts from session 2026-06-02 — clean up or move to `_scratch/`
+
+---
+
 ## Session 2026-06-02 — `/ce:review` of PR #359 grew into a stats-pipeline audit + 6 open PRs
 
 Started as a multi-agent code review of PR #359 (`TransactionResultModal`). Ended up discovering a production standings-attribution bug and three audit-tool bugs while comparing FBST to FanGraphs OnRoto.
