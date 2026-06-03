@@ -2,7 +2,7 @@
 // anchored to auction-day prices. Read-only computation surface; no AI
 // commentary yet (follow-up task #61).
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, TrendingUp, TrendingDown, Sparkles, Lock } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Sparkles, Lock, Info } from "lucide-react";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
 import {
@@ -150,6 +150,7 @@ export default function DraftReportCard() {
 
   const locked = data && isLocked(data) ? data : null;
   const card = data && !isLocked(data) ? data : null;
+  const [showMethodology, setShowMethodology] = useState(false);
 
   const unlockLabel = useMemo(() => {
     if (!locked?.unlocksAt) return null;
@@ -172,10 +173,63 @@ export default function DraftReportCard() {
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
           Auction-day prices anchored to today's stats. Per team: three values (best surplus) and three busts (worst surplus), ranked by z-score performance minus z-score price.
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, fontSize: 11, color: "var(--am-text-faint)" }}>
-          <Sparkles size={12} />
-          Surplus = composite z-score across 5 roto cats minus standardized log(price). Higher = bigger value vs. cost.
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 11, color: "var(--am-text-faint)", flexWrap: "wrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Sparkles size={12} />
+            Auction wins only — keepers excluded
+          </span>
+          <button
+            onClick={() => setShowMethodology((s) => !s)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "4px 8px", borderRadius: 4,
+              background: "transparent", color: "var(--am-text-muted)",
+              border: "1px solid var(--am-border)", fontSize: 11, cursor: "pointer",
+            }}
+          >
+            <Info size={11} />
+            {showMethodology ? "Hide" : "Show"} methodology
+          </button>
         </div>
+        {showMethodology && (
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 6, background: "var(--am-surface-faint, rgba(0,0,0,0.03))", border: "1px solid var(--am-border)", fontSize: 12, color: "var(--am-text-muted)", lineHeight: 1.55 }}>
+            <div style={{ fontWeight: 700, color: "var(--am-text)", marginBottom: 6 }}>
+              How surplus is computed
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <strong style={{ color: "var(--am-text)" }}>Performance z-score (composite_z).</strong>{" "}
+              For each of the 5 roto categories (hitters: R, HR, RBI, SB, AVG; pitchers: W, SV, K, ERA, WHIP),
+              compute <code>z = (value − league_mean) / league_stddev</code> within the player's pool
+              (hitters z'd against hitters, pitchers against pitchers). ERA and WHIP signs are flipped
+              (lower = better). The composite is the sum of the 5 category z's.
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <strong style={{ color: "var(--am-text)" }}>Price z-score (price_z).</strong>{" "}
+              Take <code>log(auction_price + 1)</code> for every player league-wide, then standardize
+              the same way: <code>z = (val − mean) / stddev</code>. The log keeps a $1 player and a
+              $50 player from being separated by an unreadable distance — fantasy price elasticity is
+              roughly logarithmic.
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <strong style={{ color: "var(--am-text)" }}>Surplus = composite_z − price_z.</strong>{" "}
+              High composite_z plus low price_z = big positive surplus = bargain. Low composite_z plus
+              high price_z = big negative surplus = bust.
+            </div>
+            <div style={{ marginBottom: 6 }}>
+              <strong style={{ color: "var(--am-text)" }}>Pool filters.</strong>{" "}
+              Only players still on the team are scored (dropped/traded picks are gone — they're not
+              this owner's value or bust anymore). Keepers (source = prior_season) are excluded so
+              the report grades the auction itself, not carry-over salaries. Hitters need ≥ 30 AB and
+              pitchers ≥ 10 IP to qualify; below-threshold players are dropped to keep small-sample
+              noise out of the bust list.
+            </div>
+            <div>
+              <strong style={{ color: "var(--am-text)" }}>Units.</strong>{" "}
+              Surplus is in standard-deviation units (σ). A +2σ value is ~98th percentile vs. expected
+              for that price; −2σ is ~2nd percentile.
+            </div>
+          </div>
+        )}
       </Glass>
 
       {/* Checkpoint selector */}

@@ -251,6 +251,38 @@ describe("computeDraftReportCard — surplus calculation", () => {
     expect(card.teams.map((t) => t.teamName)).toEqual(["Alpha", "Mid", "Zebra"]);
   });
 
+  it("excludes keeper rows (source=prior_season) from the ranking pool", async () => {
+    // 4 hitters: 3 with source=auction_2026, 1 with source=prior_season.
+    // Even though the keeper has elite stats, he must not appear in values.
+    const keeper = { ...snapshotRoster({ playerId: 99, playerName: "Keeper Star", price: 50 }), source: "prior_season" };
+    mockSnapshot.mockResolvedValueOnce({
+      leagueId: 1,
+      auctionCutoff: new Date("2026-04-07"),
+      teams: [
+        { teamId: 200, teamName: "Solo", teamCode: "SOL", rosters: [
+          keeper,
+          snapshotRoster({ playerId: 1, playerName: "Cheap A", price: 1 }),
+          snapshotRoster({ playerId: 2, playerName: "Cheap B", price: 1 }),
+          snapshotRoster({ playerId: 3, playerName: "Cheap C", price: 1 }),
+        ] },
+      ],
+    });
+    mockPrisma.team.findMany.mockResolvedValueOnce([
+      { id: 200, rosters: [{ playerId: 99 }, { playerId: 1 }, { playerId: 2 }, { playerId: 3 }] },
+    ]);
+    mockPrisma.playerStatsPeriod.groupBy.mockResolvedValueOnce([
+      // Keeper has the best stats — would dominate without the filter.
+      { playerId: 99, _sum: { AB: 200, H: 70, R: 50, HR: 20, RBI: 60, SB: 10, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 } },
+      { playerId: 1, _sum: { AB: 100, H: 25, R: 12, HR: 3, RBI: 15, SB: 1, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 } },
+      { playerId: 2, _sum: { AB: 100, H: 28, R: 14, HR: 4, RBI: 16, SB: 2, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 } },
+      { playerId: 3, _sum: { AB: 100, H: 30, R: 16, HR: 5, RBI: 18, SB: 3, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 } },
+    ]);
+
+    const card = await computeDraftReportCard(1, "one_third");
+    const names = [...card.teams[0].values, ...card.teams[0].busts].map((p) => p.name);
+    expect(names).not.toContain("Keeper Star");
+  });
+
   it("sets isPreview=true when last period is active", async () => {
     mockPrisma.period.findMany.mockReset();
     mockPrisma.period.findMany.mockResolvedValueOnce([

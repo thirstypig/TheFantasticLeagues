@@ -6,7 +6,13 @@
 //   price_z     = standardize(log(auction_price + 1)) league-wide
 //   surplus     = composite_z − price_z
 //
-// Candidate pool per team = auction-day roster ∩ current active roster.
+// Keepers (source === "prior_season") are excluded from the pool. The report
+// grades the auction itself — keeper salaries are carry-overs from prior
+// seasons, not auction-day decisions, so they don't belong in a "best/worst
+// pick" ranking.
+//
+// Candidate pool per team = auction-day roster ∩ current active roster
+// MINUS keepers.
 // We split the league-wide pool into hitter / pitcher buckets and z-score
 // within each (so the AVG of a 1B is normalized against other hitters,
 // not pitchers). Hitters and pitchers then compete head-to-head for the
@@ -157,6 +163,8 @@ export async function computeDraftReportCard(
     const current = currentByTeam.get(t.teamId) ?? new Set<number>();
     for (const r of t.rosters) {
       if (!current.has(r.playerId)) continue;
+      // Skip keepers — see file header. Auction-results-only ranking.
+      if (r.source === "prior_season") continue;
       candidates.push({ teamId: t.teamId, snapshot: r });
     }
   }
