@@ -158,3 +158,60 @@ For DK and RGS in this session, the first instinct was "what's wrong with FBST?"
 2. Check PSP (production source).
 3. Check PSD (audit-tool source) only if step 2 confirms a real gap.
 4. Assume FG is correct only after the prior three agree against it.
+
+### Period boundary convention divergence (FG vs FBST)
+
+The 2026-06-02 P1 audit closed out by discovering a **calendar convention
+mismatch** between FG OnRoto and FBST that explains ~13 points of P1
+distribution drift across the league — and is not a bug in either system.
+
+**FG OnRoto's "Last Game Date in Desired Period: 04.18" filter means
+"data current through MORNING of 04.18"** — it EXCLUDES games played
+on 04.18 itself. FBST's `Period.endDate = 04.18` is INCLUSIVE — it counts
+all 04.18 games as part of Period 1.
+
+Evidence from FG P1 vs FBST P1 (Playwright scrape of `display_team_stats.pl`
+after submitting the 04.18 filter at `team_run_old_roto.pl`):
+
+| Stat | DDG FG | DDG FBST | SKD FG | SKD FBST | RGS FG | RGS FBST |
+|---|--:|--:|--:|--:|--:|--:|
+| AB | 903 | 950 | 971 | 1022 | 990 | 1028 |
+| IP | 151.0 | 162.0 | 153.7 | 164.3 | 181.7 | 196.0 |
+| K | 155 | 167 | 164 | 174 | 145 | 161 |
+| W | 10 | 11 | 8 | 9 | 11 | 12 |
+
+Pattern: **FG is uniformly ~1 game per player lower than FBST on every
+counting stat**. ~47 AB / ~11 IP / ~12 K / 1 W per team — exactly one MLB
+game day per player slot.
+
+#### Conclusion
+
+The 13-point P1 audit residual after PR #364 / #365 fixes is **entirely
+explained by this convention difference**, not by a code bug. FBST's
+PSP totals are internally consistent with MLB statsapi (verified 599 of
+600 pitcher-games across Period 3); FG just sums to a different cutoff
+boundary.
+
+Decision (2026-06-02): accept the residual as a documented convention
+difference rather than shift FBST's period endDates back by 1 day in
+production. The blast radius of moving every historical period boundary
+retroactively to gain a cosmetic FG-match is high; the actual standings
+movement is small and bounded.
+
+#### How to recreate the FG P1 view
+
+The FG date filter is a JavaScript-rendered `<select>` — not a URL
+parameter. To reproduce the comparison:
+
+1. Navigate to `team_run_old_roto.pl?OGBA+6&session_id=<sid>`.
+2. Select `04.18` from the "Last Game Date in Desired Period" combobox.
+3. Click Submit. The form POSTs and the session_id changes — that new
+   session has the date filter applied for all subsequent stat pages.
+4. Navigate to `display_team_stats.pl?OGBA+6+<N>` with the new session_id
+   to see team N's stats through the selected date.
+
+Team index N (0-7) in this session-filtered view differs from the current-
+week view. Confirm by reading the team-name header on each page.
+
+The combobox options observed: `04.18`, `05.16`, `06.01`, `Refresh All`
+— corresponds to FBST's `period.endDate` values.
