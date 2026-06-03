@@ -18,7 +18,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trophy, Download, Sparkles, Loader2, Save, Check, Rewind } from 'lucide-react';
 import AuctionReplay from './AuctionReplay';
-import type { ClientAuctionState, AuctionLogEvent } from '../hooks/useAuctionState';
+import type { ClientAuctionState } from '../hooks/useAuctionState';
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { useLeague } from '../../../contexts/LeagueContext';
@@ -215,11 +215,11 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     }
   }, [myTeamId, tradeBlockSelections]);
 
-  const { teamResults, totalLots, totalSpent } = useMemo(() => {
-    const wins = (auctionState.log || []).filter((e: AuctionLogEvent) => e.type === 'WIN');
-    const totalLots = wins.length;
-    const totalSpent = wins.reduce((sum, e) => sum + (e.amount || 0), 0);
-
+  const { teamResults, totalLots, totalSpent, totalKeeperSpend } = useMemo(() => {
+    // NOTE: We derive league-wide totals from teams.roster (not auctionState.log).
+    // The log only records WIN events from on-the-block bidding; keepers carry over
+    // from prior_season at their existing salary and never hit the log. Counting
+    // roster rows ensures league totals = sum of per-team totals shown below.
     const teamResults: TeamResult[] = (auctionState.teams || []).map(team => {
       const teamDbBudget = (team as any).dbBudget || auctionState.config?.budgetCap || 400;
       const PITCHER_POS = new Set(['P', 'SP', 'RP', 'CL', 'TWP']);
@@ -258,7 +258,12 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     });
 
     teamResults.sort((a, b) => b.totalSpent - a.totalSpent);
-    return { teamResults, totalLots, totalSpent };
+
+    const totalLots = teamResults.reduce((sum, t) => sum + t.roster.length, 0);
+    const totalSpent = teamResults.reduce((sum, t) => sum + t.totalSpent, 0);
+    const totalKeeperSpend = teamResults.reduce((sum, t) => sum + t.keeperSpend, 0);
+
+    return { teamResults, totalLots, totalSpent, totalKeeperSpend };
   }, [auctionState]);
 
   const handleExportExcel = async () => {
@@ -355,6 +360,11 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
         <Glass>
           <SectionLabel style={{ marginBottom: 6 }}>Total Spent</SectionLabel>
           <IridText size={28}>${totalSpent}</IridText>
+          {totalKeeperSpend > 0 && (
+            <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 4 }}>
+              incl. ${totalKeeperSpend} in keeper salaries
+            </div>
+          )}
         </Glass>
         <Glass>
           <SectionLabel style={{ marginBottom: 6 }}>Teams</SectionLabel>
