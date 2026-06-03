@@ -81,6 +81,14 @@ export async function resolveCheckpoint(
   if (first.startDate.getTime() > now.getTime()) {
     return { unlocksAt: first.startDate };
   }
+  // Last period not yet started → checkpoint is LOCKED. Stats for the
+  // unstarted periods would all be zero, so the resulting "report" would
+  // just duplicate the previous checkpoint with misleading PREVIEW
+  // framing. Per design: 1/3 previews while period 3 is in flight; 2/3
+  // and end stay locked until their last period actually begins.
+  if (last.startDate.getTime() > now.getTime()) {
+    return { unlocksAt: last.startDate };
+  }
 
   const lastActive =
     last.status === "active" ||

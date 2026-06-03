@@ -62,6 +62,19 @@ describe("resolveCheckpoint", () => {
     expect(result).toEqual({ unlocksAt: new Date("2026-05-31") });
   });
 
+  it("returns unlocksAt-only when the last period in the span hasn't started yet", async () => {
+    // First period started, but period 3 is still in the future — checkpoint
+    // is LOCKED (not preview) so we don't return a duplicate of the previous
+    // checkpoint's data with misleading preview framing.
+    mockPrisma.period.findMany.mockResolvedValueOnce([
+      period(1, "2026-04-01", "2026-04-30", "completed"),
+      period(2, "2026-05-01", "2026-05-31", "completed"),
+      period(3, "2026-07-01", "2026-07-30", "upcoming"),
+    ]);
+    const result = await resolveCheckpoint(1, "one_third", new Date("2026-06-02"));
+    expect(result).toEqual({ unlocksAt: new Date("2026-07-01") });
+  });
+
   it("returns unlocksAt-only when the first period hasn't started yet", async () => {
     mockPrisma.period.findMany.mockResolvedValueOnce([
       period(1, "2027-04-01", "2027-04-30"),
