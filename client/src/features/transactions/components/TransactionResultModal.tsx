@@ -11,8 +11,18 @@
 //
 // NOT used by trade execution or wire-list processing — those have
 // different result UX (async lifecycle / batch results screen).
+//
+// A11y contract (per todo #235): the modal declares aria-modal="true"
+// and honors it via (1) createPortal to document.body so an ancestor's
+// stacking context can never sandwich the dialog under sibling content,
+// (2) focus trap — Tab and Shift+Tab cycle between the first and last
+// focusable inside the dialog, (3) return-focus to whichever element
+// opened the modal on dismiss, (4) scoped ESC handler attached to the
+// dialog element (not window) so nested ESC-aware surfaces are not
+// double-fired.
 
-import { useEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { AppliedReassignment } from "@shared/api/rosterMoves";
 
 export interface TransactionResult {
@@ -31,25 +41,70 @@ interface Props {
   onClose: () => void;
 }
 
+// All elements that count as "tab-stoppable" within the dialog. Kept narrow
+// — the only built-in focusable in this modal is the OK button, but the
+// selector is here so future additions (a Link, an Input) "just work".
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export default function TransactionResultModal({ result, onClose }: Props) {
-  // ESC closes the modal. Mirrors the SaveDiffPreviewModal a11y pattern.
-  useEffect(() => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  // Capture the element that had focus when we opened, then move focus to
+  // the OK button. Restore on close. Both steps run synchronously in a
+  // single layout effect so we don't race React's built-in `autoFocus`
+  // (which would otherwise have already moved focus before our capture).
+  useLayoutEffect(() => {
     if (!result) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    previouslyFocusedRef.current = (document.activeElement as HTMLElement) ?? null;
+    // Find OK button (or first focusable) and focus it.
+    const root = dialogRef.current;
+    const firstFocusable = root?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    firstFocusable?.focus();
+    return () => {
+      previouslyFocusedRef.current?.focus?.();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [result, onClose]);
+  }, [result]);
 
   if (!result) return null;
 
-  return (
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+      return;
+    }
+    if (e.key !== "Tab") return;
+    const root = dialogRef.current;
+    if (!root) return;
+    const focusables = Array.from(
+      root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+    ).filter((el) => !el.hasAttribute("data-focus-sentinel"));
+    if (focusables.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (active === first || !root.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  const modal = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="transaction-result-title"
       data-testid="transaction-result-modal"
+      onKeyDown={handleKeyDown}
       style={{
         position: "fixed",
         inset: 0,
@@ -67,6 +122,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
       }}
     >
       <div
+        ref={dialogRef}
         style={{
           background: "var(--am-surface-strong)",
           border: "1px solid var(--am-border-strong)",
@@ -139,7 +195,6 @@ export default function TransactionResultModal({ result, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            autoFocus
             data-testid="transaction-result-close"
             style={{
               padding: "8px 20px",
@@ -158,4 +213,9 @@ export default function TransactionResultModal({ result, onClose }: Props) {
       </div>
     </div>
   );
+
+  // Portal escapes ancestor stacking contexts (CSS transform/filter/
+  // will-change/etc.) that could otherwise scope `zIndex: 1000` and
+  // sandwich the dialog under sibling content.
+  return createPortal(modal, document.body);
 }
