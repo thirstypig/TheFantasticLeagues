@@ -629,6 +629,106 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
   res.json({ ...sanitized, computedAt: new Date().toISOString() });
 }));
 
+// GET /api/auction/results?leagueId=N
+//
+// Returns an AUCTION-DAY SNAPSHOT of every team's roster — the frozen view of
+// the auction outcome, independent of in-season churn. Used by the /auction-
+// results page so its totals match Excel and the commissioner Team budget caps.
+//
+// Distinction from /state:
+// - /state.teams[].roster = CURRENT active rosters (drops removed, waivers added).
+//   Right for live auction + post-auction "where do we stand today".
+// - /results.teams[].roster = AUCTION-DAY rosters (post-auction snapshot, before
+//   any in-season churn). Right for "what was the auction outcome".
+//
+// Auction-day inclusion rules:
+// - source IN (auction_2026, prior_season) — clean auction-time rows
+// - source IN (DROP, SEASON_IMPORT) — known mis-labeled auction-time rows from
+//   early import code paths (4 rows in OGBA 2026: Busch, Vaughn, Palencia,
+//   Priester). Surface as auction wins.
+// - acquiredAt < AUCTION_CUTOFF — drafted/kept before the auction window closed
+// - releasedAt IS NULL OR releasedAt >= AUCTION_CUTOFF — exclude pre-auction
+//   keeper cuts (mass release on the cut deadline), include in-season drops
+//
+// AUCTION_CUTOFF derivation: first Period.startDate of the season + 7d safety
+// buffer to include any post-acquisition data backfills (e.g., Ohtani two-way
+// synthetic rows added a few days after the auction closes).
+router.get("/results", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+
+  const state = await getState(leagueId);
+
+  // Derive auction cutoff from the season's first period.
+  const firstPeriod = await prisma.period.findFirst({
+    where: { season: { leagueId } },
+    orderBy: { startDate: "asc" },
+    select: { startDate: true },
+  });
+  const cutoff = firstPeriod
+    ? new Date(firstPeriod.startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+    : new Date(`${new Date().getFullYear()}-04-01T00:00:00Z`);
+
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    include: {
+      rosters: {
+        where: {
+          source: { in: ["auction_2026", "prior_season", "DROP", "SEASON_IMPORT"] },
+          acquiredAt: { lt: cutoff },
+          OR: [{ releasedAt: null }, { releasedAt: { gte: cutoff } }],
+        },
+        include: { player: { select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true, mlbTeam: true } } },
+      },
+    },
+    orderBy: { id: "asc" },
+  });
+
+  // Build the same wire shape /state returns, but with the auction-day roster
+  // slice. AuctionComplete consumes teams[].roster, totalSpent/keeperSpend/
+  // auctionSpend derivations, and log unchanged.
+  const PRIOR_SEASON = "prior_season";
+  const snapshotTeams = teams.map(t => {
+    const totalSpent = t.rosters.reduce((s, r) => s + (Number(r.price) || 0), 0);
+    const keeperSpend = t.rosters.filter(r => r.source === PRIOR_SEASON).reduce((s, r) => s + (Number(r.price) || 0), 0);
+    const auctionSpend = totalSpent - keeperSpend;
+    return {
+      id: t.id,
+      name: t.name,
+      code: t.code || "UNK",
+      budget: (t.budget ?? state.config.budgetCap) - totalSpent,
+      dbBudget: t.budget ?? state.config.budgetCap,
+      keeperSpend,
+      auctionSpend,
+      rosterCount: t.rosters.length,
+      roster: t.rosters.map(r => ({
+        id: r.id,
+        playerId: r.playerId,
+        mlbId: r.player?.mlbId ?? null,
+        playerName: r.player?.name ?? null,
+        posPrimary: r.player?.posPrimary ?? null,
+        posList: r.player?.posList ?? r.player?.posPrimary ?? null,
+        mlbTeam: r.player?.mlbTeam ?? null,
+        price: Number(r.price),
+        assignedPosition: r.assignedPosition,
+        // Normalize mis-labeled draft-time sources to auction_2026 so the
+        // keeper/auction badge in the UI doesn't mislead.
+        source: r.source === "DROP" || r.source === "SEASON_IMPORT" ? "auction_2026" : r.source,
+      })),
+    };
+  });
+
+  res.json({
+    leagueId,
+    status: state.status,
+    config: state.config,
+    teams: snapshotTeams,
+    log: state.log ?? [],
+    auctionCutoff: cutoff.toISOString(),
+    computedAt: new Date().toISOString(),
+  });
+}));
+
 // POST /api/auction/init
 router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);

@@ -34,7 +34,7 @@ export default function AuctionResults() {
   const refetchState = React.useCallback(async () => {
     if (!leagueId) return;
     try {
-      const state = await fetchJsonApi<ClientAuctionState & { computedAt?: string }>(`${API_BASE}/auction/state?leagueId=${leagueId}`);
+      const state = await fetchJsonApi<ClientAuctionState & { computedAt?: string }>(`${API_BASE}/auction/results?leagueId=${leagueId}`);
       setAuctionState(state);
       setComputedAt(state?.computedAt ?? null);
     } catch { /* non-critical — optimistic UI already shows the change */ }
@@ -50,7 +50,7 @@ export default function AuctionResults() {
         setError(null);
 
         const [state, meRes] = await Promise.all([
-          fetchJsonApi<ClientAuctionState & { computedAt?: string }>(`${API_BASE}/auction/state?leagueId=${leagueId}`),
+          fetchJsonApi<ClientAuctionState & { computedAt?: string }>(`${API_BASE}/auction/results?leagueId=${leagueId}`),
           getMe(),
         ]);
 
