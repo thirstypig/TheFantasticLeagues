@@ -407,7 +407,7 @@ export async function computeTeamStatsFromDb(
   const rosters = await prisma.roster.findMany({
     where: {
       team: { leagueId },
-      acquiredAt: { lt: period.endDate },
+      acquiredAt: { lte: period.endDate },
       OR: [
         { releasedAt: null },
         { releasedAt: { gte: period.startDate } },
@@ -421,6 +421,13 @@ export async function computeTeamStatsFromDb(
       assignedPosition: true,
       player: { select: { id: true, mlbId: true, posPrimary: true } },
     },
+    // DESC by acquiredAt so the "first row wins" idiom in `endOfPeriodOwner`
+    // picks the LATEST acquisition for a player — correct for the
+    // drop-and-re-add-during-period case. Without this orderBy, Prisma
+    // returns rows in undefined order, and an earlier roster row could
+    // silently win the attribution over a later one (kieran-typescript
+    // and code-simplicity reviews on PR #365 caught this).
+    orderBy: [{ acquiredAt: "desc" }],
   });
 
   // Build date-aware IL windows from TransactionEvent history so that a player's
@@ -594,32 +601,20 @@ async function computeWithPeriodStats(
     rostersByTeam.set(r.teamId, list);
   }
 
-  // End-of-period owner attribution (todo #242, replaces the prior
-  // "current owner" model that retroactively reassigned closed-period
-  // credit when a player was traded AFTER the period ended).
-  //
-  // For each player, the team that holds them on `period.endDate` gets
-  // the period's PSP. This matches FanGraphs/OnRoto semantics — what FG
-  // OnRoto shows is the source-of-truth view for OGBA owners, so the
-  // app needs to agree with it. Verified against the 2026 OGBA Excel
-  // snapshot: Period 2 Σ|Δ| = 0.0 across all 8 teams under this rule.
-  //
-  // A team "held the player on period.endDate" iff there is a roster row
-  // with `acquiredAt <= endDate` AND (`releasedAt IS NULL` OR `releasedAt > endDate`).
-  // Pick the LATEST such row to handle add-back scenarios (released then
-  // re-acquired during the period).
+  // End-of-period owner attribution (todo #242). For each player, the team
+  // that holds them on `period.endDate` gets the period's PSP credit.
+  // "Held" iff `acquiredAt <= endDate` AND (`releasedAt IS NULL` OR
+  // `releasedAt > endDate`). Latest acquisition wins via the rosters query's
+  // `orderBy: acquiredAt desc` + first-wins idiom below — covers the
+  // drop-and-re-add-during-period case.
+  // See docs/solutions/logic-errors/closed-period-stat-attribution-uses-current-owner.md
   const endOfPeriodOwner = new Map<number, number>(); // playerId → teamId
   for (const r of rosters) {
     if (r.acquiredAt > period.endDate) continue;
     if (r.releasedAt !== null && r.releasedAt <= period.endDate) continue;
-    // Latest acquiredAt wins — covers traded-away-then-back.
-    const prior = endOfPeriodOwner.get(r.playerId);
-    if (prior === undefined) {
+    if (!endOfPeriodOwner.has(r.playerId)) {
       endOfPeriodOwner.set(r.playerId, r.teamId);
     }
-    // (Note: with Prisma returning rosters in insertion order, a single
-    // pass picks up the most recently inserted row when there are
-    // duplicates, which by convention is the latest acquisition.)
   }
 
   return teams.map((t) => {

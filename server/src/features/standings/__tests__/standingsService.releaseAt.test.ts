@@ -2,11 +2,10 @@
  * Tests for releasedAt-boundary and trade attribution in computeTeamStatsFromDb.
  *
  * Design rule (post-#242): computeWithPeriodStats attributes each period's PSP
- * to the team that owned the player on `period.endDate`. Players released
- * BEFORE endDate get no credit from the releasing team (the receiving team
- * gets credit if they held the player on endDate). Players released AT or
- * AFTER endDate stay credited to the releasing team — the trade happened
- * after the period closed, so the closed-period attribution doesn't shift.
+ * to the team that owned the player on `period.endDate`. A player is "owned
+ * on endDate" iff there is a roster row with `acquiredAt <= endDate` AND
+ * (`releasedAt IS NULL` OR `releasedAt > endDate`). The releasing team keeps
+ * credit only when the trade happened STRICTLY AFTER the period closed.
  *
  * This matches FanGraphs/OnRoto semantics — what owners see on FG is the
  * source-of-truth view for the league, and FBST production needs to agree.
@@ -15,8 +14,10 @@
  * which retroactively reassigned closed-period credit when a player was
  * traded after the period ended — a silent bug that diverged FBST from FG.
  *
- * The roster query uses `releasedAt >= period.startDate` (gte) so that
- * same-day-acquired replacements are visible for deduplication.
+ * Add-back ordering: the rosters query in standingsService now uses
+ * `orderBy: { acquiredAt: "desc" }` so the "first row wins" idiom in the
+ * end-of-period owner builder always picks the LATEST acquisition. The
+ * add-back-during-period test below pins this contract.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -74,7 +75,7 @@ beforeEach(() => {
   mockPeriodStatsCount.mockResolvedValue(1);
 });
 
-describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
+describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
   describe("period-stats path", () => {
     it("does NOT credit stats to team that released a player AT period.startDate (free agent → no credit)", async () => {
       // Player released from RGS exactly on period.startDate with no new active holder.
@@ -161,18 +162,22 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
 
     it("credits stats to new team when player moved mid-period (releasedAt > startDate)", async () => {
       // Player traded mid-period: released from RGS on Apr 25, acquired by DLC on Apr 25.
-      // computeWithPeriodStats attributes full-period stats to the player's current team (DLC).
+      // End-of-period owner is DLC (still holds through PERIOD_END 5/16), so DLC
+      // gets the full-period PSP. RGS's row was released before endDate → no credit.
       const tradedAt = new Date("2026-04-25T00:00:00.000Z");
+      // Per the orderBy: { acquiredAt: "desc" } contract on the rosters query,
+      // the DLC row (acquiredAt 4/25) comes before the RGS row (acquiredAt 3/22)
+      // in the iteration order. First-wins idiom in endOfPeriodOwner picks DLC.
       mockRosterFindMany.mockResolvedValue([
         {
-          teamId: 145, playerId: 20, acquiredAt: new Date("2026-03-22"),
-          releasedAt: tradedAt,
+          teamId: 148, playerId: 20, acquiredAt: tradedAt,
+          releasedAt: null,
           assignedPosition: "SS",
           player: { id: 20, mlbId: 2000, posPrimary: "SS" },
         },
         {
-          teamId: 148, playerId: 20, acquiredAt: tradedAt,
-          releasedAt: null,
+          teamId: 145, playerId: 20, acquiredAt: new Date("2026-03-22"),
+          releasedAt: tradedAt,
           assignedPosition: "SS",
           player: { id: 20, mlbId: 2000, posPrimary: "SS" },
         },
@@ -184,9 +189,48 @@ describe("computeTeamStatsFromDb — releasedAt boundary (gte fix)", () => {
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
-      // Stats go to current owner (DLC); RGS gets nothing for traded player
+      // End-of-period owner (DLC) gets credit; RGS released player mid-period.
       expect(dlc.R).toBe(10);
       expect(rgs.R).toBe(0);
+    });
+
+    it("picks LATEST acquisition on drop-and-re-add within a period (orderBy contract)", async () => {
+      // Regression for code-review finding on PR #365: comment claimed
+      // "latest acquiredAt wins" but the build loop is "first row wins."
+      // The fix added `orderBy: { acquiredAt: "desc" }` to the rosters query
+      // so the first row encountered IS the latest acquisition.
+      //
+      // Scenario: RGS held player day 1, dropped them on day 5, re-acquired
+      // them on day 20. Both roster rows pass the end-of-period predicate
+      // (both have releasedAt > endDate or null), so without correct ordering
+      // an earlier row could win.
+      mockRosterFindMany.mockResolvedValue([
+        // DESC by acquiredAt → re-acquisition row appears first
+        {
+          teamId: 145, playerId: 60, acquiredAt: new Date("2026-05-08T00:00:00.000Z"),
+          releasedAt: null,
+          assignedPosition: "OF",
+          player: { id: 60, mlbId: 6000, posPrimary: "OF" },
+        },
+        // Earlier ownership stint (released day 5 of period)
+        {
+          teamId: 145, playerId: 60, acquiredAt: new Date("2026-03-22T00:00:00.000Z"),
+          releasedAt: new Date("2026-04-23T00:00:00.000Z"),
+          assignedPosition: "OF",
+          player: { id: 60, mlbId: 6000, posPrimary: "OF" },
+        },
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 60, ...ZERO_STATS, R: 15, HR: 4, RBI: 11 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      const rgs = result.find(r => r.team.code === "RGS")!;
+      // RGS is end-of-period owner via the LATE re-acquisition row.
+      // Stats counted exactly once.
+      expect(rgs.R).toBe(15);
+      expect(rgs.HR).toBe(4);
+      expect(rgs.RBI).toBe(11);
     });
 
     it("does not double-count stats when both releasing and acquiring team entries exist at period start", async () => {
