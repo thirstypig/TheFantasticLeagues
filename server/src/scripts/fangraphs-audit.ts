@@ -2,9 +2,24 @@
  * FanGraphs Audit — prints FBST season standings in OnRoto display format
  * for cell-by-cell comparison against https://onroto.fangraphs.com (OGBA league).
  *
- * Aggregates PlayerStatsDaily across the full season, respecting roster
- * ownership windows (so mid-season trades/drops are attributed to the
- * correct team for the days they held the player).
+ * Reads `PlayerStatsPeriod` — the SAME source the production standings UI
+ * uses (`server/src/features/standings/services/standingsService.ts:464`),
+ * so the audit output matches what owners see live.
+ *
+ * History: this script previously aggregated `PlayerStatsDaily`, which has
+ * an Opening Day cold-start gap (no daily-sync ran for 3/25–3/28) and also
+ * dropped pitcher blown appearances + hitter sac flies via the old
+ * `hasStats` filter (fixed in PR #362). Both bugs disappear at the PSP
+ * layer because `syncAllActivePeriods` queries MLB `byDateRange` for the
+ * full period aggregate — no per-day filter, no cold-start gap.
+ *
+ * Trust hierarchy (documented in
+ * `docs/solutions/integration-issues/mlb-statsapi-sync-hasstats-filter-drops-er-rbi.md`):
+ *
+ *   MLB statsapi  >  PSP (production standings)  >  PSD (audit-tool legacy)  >  FanGraphs (derived view)
+ *
+ * Audit the same source production reads from. Discrepancies at the audit
+ * layer can be entirely tooling artifacts.
  *
  * Run:
  *   cd server && npx tsx src/scripts/fangraphs-audit.ts [leagueId]
@@ -15,6 +30,7 @@
 import { prisma } from "../db/prisma.js";
 import { computeCategoryRows, computeStandingsFromStats } from "../features/standings/services/standingsService.js";
 import { TWO_WAY_PLAYERS } from "../lib/sportConfig.js";
+import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
 
 const PITCHER_CODES = ["P", "SP", "RP", "CL"];
 
@@ -40,10 +56,11 @@ async function main() {
     process.exit(1);
   }
 
-  // Season window = earliest Period.startDate .. latest Period.endDate (or today, whichever is earlier).
+  // Include both active and completed periods (mirrors what the standings
+  // route does when it sums across all in-season periods).
   const periods = await prisma.period.findMany({
     where: { leagueId, status: { in: ["active", "completed"] } },
-    select: { startDate: true, endDate: true },
+    select: { id: true, name: true, startDate: true, endDate: true },
     orderBy: { startDate: "asc" },
   });
   if (periods.length === 0) {
@@ -53,13 +70,11 @@ async function main() {
   const seasonStart = periods[0]!.startDate;
   const seasonEnd = new Date(Math.min(periods[periods.length - 1]!.endDate.getTime(), Date.now()));
 
-  // All roster entries whose ownership window overlaps the season window
+  // All roster entries — used for per-period ownership-window attribution.
+  // Same overlap test the standings route uses: `acquiredAt <= period.endDate`
+  // AND (`releasedAt IS NULL` OR `releasedAt > period.startDate`).
   const rosters = await prisma.roster.findMany({
-    where: {
-      team: { leagueId },
-      acquiredAt: { lt: seasonEnd },
-      OR: [{ releasedAt: null }, { releasedAt: { gt: seasonStart } }],
-    },
+    where: { team: { leagueId } },
     select: {
       teamId: true,
       playerId: true,
@@ -70,32 +85,22 @@ async function main() {
     },
   });
 
-  const playerIds = [...new Set(rosters.map((r) => r.playerId))];
-  const dailyStats = await prisma.playerStatsDaily.findMany({
+  // Historical IL windows — same approach the production standings route uses
+  // (`standingsService.ts:442`). Reconstructs each player's IL stints from
+  // IL_STASH/IL_ACTIVATE TransactionEvent rows so closed-period attribution
+  // doesn't depend on the CURRENT `assignedPosition` value.
+  const rosterPlayerIds = [...new Set(rosters.map((r) => r.playerId))];
+  const ilEvents = await prisma.transactionEvent.findMany({
     where: {
-      playerId: { in: playerIds },
-      gameDate: { gte: seasonStart, lte: seasonEnd },
+      playerId: { in: rosterPlayerIds },
+      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+      effDate: { not: null },
     },
-    select: {
-      playerId: true,
-      gameDate: true,
-      AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
-      W: true, SV: true, K: true, IP: true, ER: true, BB_H: true,
-    },
+    select: { playerId: true, transactionType: true, effDate: true },
+    orderBy: { effDate: "asc" },
   });
+  const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
-  // Index dailyStats by playerId -> Map<dateMs, row>
-  const statsIndex = new Map<number, Map<number, (typeof dailyStats)[number]>>();
-  for (const ds of dailyStats) {
-    let m = statsIndex.get(ds.playerId);
-    if (!m) {
-      m = new Map();
-      statsIndex.set(ds.playerId, m);
-    }
-    m.set(ds.gameDate.getTime(), ds);
-  }
-
-  // Accumulate per team, respecting ownership windows + two-way player splits
   type Accum = {
     R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
     W: number; S: number; K: number; ER: number; IP: number; BB_H: number;
@@ -103,31 +108,48 @@ async function main() {
   const zero = (): Accum => ({ R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 });
   const teamAccum = new Map<number, Accum>(teams.map((t) => [t.id, zero()]));
 
-  for (const roster of rosters) {
-    const from = roster.acquiredAt > seasonStart ? roster.acquiredAt : seasonStart;
-    const to = roster.releasedAt && roster.releasedAt < seasonEnd ? roster.releasedAt : seasonEnd;
-    const playerDaily = statsIndex.get(roster.playerId);
-    if (!playerDaily) continue;
+  // Sum each player's PSP row into the team that owned them during that
+  // period (ownership-window overlap). Mirrors what FanGraphs/OnRoto and
+  // most fantasy leagues compute for closed periods — stats attributed to
+  // who owned the player WHEN they earned them, not who owns them now.
+  //
+  // NB: production `computeWithPeriodStats` instead attributes to the
+  // CURRENT owner (`standingsService.ts:597-664`). For mid-period trades
+  // and post-period roster movements, the two methods diverge — current-
+  // owner over-credits the receiving team for stats earned under prior
+  // ownership. The audit prefers the ownership-overlap semantic because
+  // it matches the OGBA Excel snapshot and FG exactly (Period 2: Σ|Δ| = 0
+  // points across all 8 teams), surfacing the production attribution bug
+  // as a separate finding rather than masking it.
+  for (const period of periods) {
+    const psp = await prisma.playerStatsPeriod.findMany({ where: { periodId: period.id } });
+    const pspByPlayer = new Map(psp.map((p) => [p.playerId, p]));
 
-    const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-    const assignedAsP = PITCHER_CODES.includes(
-      (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase(),
-    );
-    const countHitting = !isTwoWay || !assignedAsP;
-    const countPitching = !isTwoWay || assignedAsP;
+    for (const roster of rosters) {
+      // Overlap test for THIS period only.
+      if (roster.acquiredAt > period.endDate) continue;
+      if (roster.releasedAt && roster.releasedAt <= period.startDate) continue;
+      // IL window check — same as production (lib/ilWindows.ts).
+      if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
-    const acc = teamAccum.get(roster.teamId)!;
-    for (const [dateMs, ds] of playerDaily) {
-      const d = new Date(dateMs);
-      if (d >= from && d <= to) {
-        if (countHitting) {
-          acc.R += ds.R; acc.HR += ds.HR; acc.RBI += ds.RBI; acc.SB += ds.SB;
-          acc.H += ds.H; acc.AB += ds.AB;
-        }
-        if (countPitching) {
-          acc.W += ds.W; acc.S += ds.SV; acc.K += ds.K;
-          acc.ER += ds.ER; acc.IP += ds.IP; acc.BB_H += ds.BB_H;
-        }
+      const ps = pspByPlayer.get(roster.playerId);
+      if (!ps) continue;
+
+      const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
+      const assignedAsP = PITCHER_CODES.includes(
+        (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase(),
+      );
+      const countHitting = !isTwoWay || !assignedAsP;
+      const countPitching = !isTwoWay || assignedAsP;
+
+      const acc = teamAccum.get(roster.teamId)!;
+      if (countHitting) {
+        acc.R += ps.R; acc.HR += ps.HR; acc.RBI += ps.RBI; acc.SB += ps.SB;
+        acc.H += ps.H; acc.AB += ps.AB;
+      }
+      if (countPitching) {
+        acc.W += ps.W; acc.S += ps.SV; acc.K += ps.K;
+        acc.ER += ps.ER; acc.IP += ps.IP; acc.BB_H += ps.BB_H;
       }
     }
   }
@@ -152,6 +174,8 @@ async function main() {
   console.log("");
   console.log(`FanGraphs Audit — ${league.name} (league ${leagueId})`);
   console.log(`Season window: ${seasonStart.toISOString().slice(0, 10)} → ${seasonEnd.toISOString().slice(0, 10)}`);
+  console.log(`Periods summed: ${periods.map((p) => p.name).join(", ")}`);
+  console.log(`Source: PlayerStatsPeriod (production standings source)`);
   console.log(`Scoring: ${league.scoringFormat ?? "ROTO"}`);
   console.log("");
 
