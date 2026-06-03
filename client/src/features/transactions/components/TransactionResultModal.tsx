@@ -13,23 +13,16 @@
 // different result UX (async lifecycle / batch results screen).
 
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
-
-export interface CascadeMove {
-  playerName: string;
-  oldSlot: string;
-  newSlot: string;
-}
+import type { AppliedReassignment } from "@shared/api/rosterMoves";
 
 export interface TransactionResult {
   /** Modal headline. e.g. "Claim succeeded", "IL activation complete". */
   title: string;
   /** Primary outcome line. e.g. "Andrew Vaughn returned to CM, Felix Reyes dropped". */
   primaryLine: string;
-  /** Auto-resolve reassignments triggered by the headline move. Empty/undefined when none. */
-  cascadeMoves?: ReadonlyArray<CascadeMove>;
-  /** Optional link target for "View Activity History". When omitted, link is hidden. */
-  activityHistoryUrl?: string;
+  /** Auto-resolve reassignments triggered by the headline move. Empty/undefined when none.
+   *  Re-uses the canonical wire shape so the modal stays in lockstep with the server. */
+  cascadeMoves?: ReadonlyArray<AppliedReassignment>;
 }
 
 interface Props {
@@ -127,8 +120,8 @@ export default function TransactionResultModal({ result, onClose }: Props) {
               Auto-resolve also moved
             </div>
             <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5, lineHeight: 1.6 }}>
-              {result.cascadeMoves.map((m, i) => (
-                <li key={i}>
+              {result.cascadeMoves.map((m) => (
+                <li key={m.playerId}>
                   <strong>{m.playerName}</strong>: <code>{m.oldSlot}</code> → <code>{m.newSlot}</code>
                 </li>
               ))}
@@ -140,26 +133,9 @@ export default function TransactionResultModal({ result, onClose }: Props) {
           style={{
             marginTop: 20,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
+            justifyContent: "flex-end",
           }}
         >
-          {result.activityHistoryUrl ? (
-            <Link
-              to={result.activityHistoryUrl}
-              onClick={onClose}
-              style={{
-                fontSize: 12,
-                color: "var(--am-accent)",
-                textDecoration: "none",
-              }}
-            >
-              View Activity History →
-            </Link>
-          ) : (
-            <span />
-          )}
           <button
             type="button"
             onClick={onClose}
