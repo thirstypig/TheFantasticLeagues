@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseEffectiveDate, resolveEffectiveDate, assertNoOwnershipConflict } from "../rosterWindow.js";
+import {
+  parseEffectiveDate,
+  resolveEffectiveDate,
+  assertNoOwnershipConflict,
+  overlapsPeriod,
+  ownedOn,
+  clampToPeriod,
+} from "../rosterWindow.js";
 
 // We stub nextDayEffective via the utils module so resolveEffectiveDate's
 // fallback is deterministic.
@@ -148,5 +155,104 @@ describe("assertNoOwnershipConflict", () => {
     const call = mockTx.roster.findMany.mock.calls[0][0];
     expect(call.where.AND).toHaveLength(2);
     expect(call.where.AND[1]).toEqual({ acquiredAt: { lt: releasedAt } });
+  });
+});
+
+// ─── Stats-attribution predicate tests ────────────────────────────────────
+
+const PERIOD = {
+  startDate: new Date("2026-04-19T00:00:00.000Z"),
+  endDate:   new Date("2026-05-16T23:59:59.999Z"),
+};
+
+describe("overlapsPeriod", () => {
+  it("returns true when player is active through the whole period", () => {
+    expect(overlapsPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt: null }, PERIOD)).toBe(true);
+  });
+
+  it("returns true when acquired on the last day of the period", () => {
+    expect(overlapsPeriod({ acquiredAt: PERIOD.endDate, releasedAt: null }, PERIOD)).toBe(true);
+  });
+
+  it("returns true when released on the first day of the period (inclusive)", () => {
+    expect(overlapsPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt: PERIOD.startDate }, PERIOD)).toBe(true);
+  });
+
+  it("returns true for a mid-period tenure", () => {
+    expect(overlapsPeriod({
+      acquiredAt: new Date("2026-04-26"),
+      releasedAt: new Date("2026-05-05"),
+    }, PERIOD)).toBe(true);
+  });
+
+  it("returns false when acquired after the period ends", () => {
+    expect(overlapsPeriod({ acquiredAt: new Date("2026-05-17"), releasedAt: null }, PERIOD)).toBe(false);
+  });
+
+  it("returns false when released before the period starts", () => {
+    expect(overlapsPeriod({
+      acquiredAt: new Date("2026-03-01"),
+      releasedAt: new Date("2026-04-10"),
+    }, PERIOD)).toBe(false);
+  });
+});
+
+describe("ownedOn", () => {
+  const END = PERIOD.endDate;
+
+  it("returns true when player is still active on the date", () => {
+    expect(ownedOn({ acquiredAt: new Date("2026-03-22"), releasedAt: null }, END)).toBe(true);
+  });
+
+  it("returns true when released the day AFTER the date", () => {
+    const dayAfter = new Date(END.getTime() + 24 * 60 * 60 * 1000);
+    expect(ownedOn({ acquiredAt: new Date("2026-03-22"), releasedAt: dayAfter }, END)).toBe(true);
+  });
+
+  it("returns false when released exactly ON the date (strict upper bound)", () => {
+    expect(ownedOn({ acquiredAt: new Date("2026-03-22"), releasedAt: END }, END)).toBe(false);
+  });
+
+  it("returns false when released before the date", () => {
+    expect(ownedOn({ acquiredAt: new Date("2026-03-22"), releasedAt: new Date("2026-05-01") }, END)).toBe(false);
+  });
+
+  it("returns false when acquired after the date", () => {
+    expect(ownedOn({ acquiredAt: new Date("2026-05-17"), releasedAt: null }, END)).toBe(false);
+  });
+});
+
+describe("clampToPeriod", () => {
+  it("returns period boundaries when roster spans the whole period", () => {
+    const { from, to } = clampToPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt: null }, PERIOD);
+    expect(from).toEqual(PERIOD.startDate);
+    expect(to).toEqual(PERIOD.endDate);
+  });
+
+  it("clamps from to acquiredAt when acquired after period start", () => {
+    const acquiredAt = new Date("2026-04-26T00:00:00.000Z");
+    const { from, to } = clampToPeriod({ acquiredAt, releasedAt: null }, PERIOD);
+    expect(from).toEqual(acquiredAt);
+    expect(to).toEqual(PERIOD.endDate);
+  });
+
+  it("clamps to to releasedAt when released before period end", () => {
+    const releasedAt = new Date("2026-05-05T00:00:00.000Z");
+    const { from, to } = clampToPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt }, PERIOD);
+    expect(from).toEqual(PERIOD.startDate);
+    expect(to).toEqual(releasedAt);
+  });
+
+  it("clamps both ends for a mid-period tenure", () => {
+    const acquiredAt = new Date("2026-04-26T00:00:00.000Z");
+    const releasedAt = new Date("2026-05-05T00:00:00.000Z");
+    const { from, to } = clampToPeriod({ acquiredAt, releasedAt }, PERIOD);
+    expect(from).toEqual(acquiredAt);
+    expect(to).toEqual(releasedAt);
+  });
+
+  it("uses period.endDate when releasedAt equals period.endDate (not strictly less)", () => {
+    const { from, to } = clampToPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt: PERIOD.endDate }, PERIOD);
+    expect(to).toEqual(PERIOD.endDate);
   });
 });

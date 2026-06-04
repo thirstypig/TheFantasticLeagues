@@ -127,3 +127,76 @@ export async function assertNoOwnershipConflict(
       `Release from ${team} first (or include a drop in the same request).`,
   );
 }
+
+// ─── Stats-attribution predicates ──────────────────────────────────────────
+//
+// Three "was the player on this roster at this time?" questions arise in the
+// standings pipeline. Each has subtly different boundary semantics — naming
+// them prevents silent divergence as the code evolves.
+//
+// Companion: lib/ilWindows.ts (IL-stash exclusion predicate)
+// Reference: docs/solutions/logic-errors/closed-period-stat-attribution-uses-current-owner.md
+
+export interface PeriodWindow {
+  startDate: Date;
+  endDate: Date;
+}
+
+/**
+ * True if this roster entry's tenure overlapped the period at all.
+ *
+ * SQL equivalent (used in the standingsService Prisma roster.findMany):
+ *   acquiredAt <= endDate
+ *   AND (releasedAt IS NULL OR releasedAt >= startDate)
+ *
+ * Inclusive on both sides — a player acquired on the last day of a period
+ * or released on the first day both count as overlapping.
+ */
+export function overlapsPeriod(
+  roster: { acquiredAt: Date; releasedAt: Date | null },
+  period: PeriodWindow,
+): boolean {
+  return (
+    roster.acquiredAt <= period.endDate &&
+    (roster.releasedAt === null || roster.releasedAt >= period.startDate)
+  );
+}
+
+/**
+ * True if this roster entry owned the player on `date`.
+ *
+ *   acquiredAt <= date AND (releasedAt IS NULL OR releasedAt > date)
+ *
+ * Strict upper bound: a player released exactly on `date` is NOT counted as
+ * owned on that date. This is the end-of-period attribution rule used by
+ * `computeWithPeriodStats` to assign a full-period PSP row to one team.
+ */
+export function ownedOn(
+  roster: { acquiredAt: Date; releasedAt: Date | null },
+  date: Date,
+): boolean {
+  return (
+    roster.acquiredAt <= date &&
+    (roster.releasedAt === null || roster.releasedAt > date)
+  );
+}
+
+/**
+ * Returns the [from, to] date window clamped to the period boundaries.
+ * Used by `computeWithDailyStats` to decide which daily-stat rows belong to
+ * this roster entry's stint.
+ *
+ *   from = max(acquiredAt, period.startDate)
+ *   to   = min(releasedAt ?? period.endDate, period.endDate)
+ */
+export function clampToPeriod(
+  roster: { acquiredAt: Date; releasedAt: Date | null },
+  period: PeriodWindow,
+): { from: Date; to: Date } {
+  const from = roster.acquiredAt > period.startDate ? roster.acquiredAt : period.startDate;
+  const to =
+    roster.releasedAt !== null && roster.releasedAt < period.endDate
+      ? roster.releasedAt
+      : period.endDate;
+  return { from, to };
+}

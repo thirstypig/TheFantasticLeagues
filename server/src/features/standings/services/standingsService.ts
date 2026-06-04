@@ -3,6 +3,7 @@ import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, PITCHER_CODES } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
+import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 
 import type { PeriodStatRow } from "../../../types/stats.js";
 
@@ -402,8 +403,8 @@ export async function computeTeamStatsFromDb(
 
   if (!period) return [];
 
-  // Get ALL roster entries that overlapped with this period (not just active ones)
-  // This enables date-aware stats attribution for mid-period trades/drops
+  // SQL equivalent of `overlapsPeriod(r, period)` from lib/rosterWindow.ts —
+  // acquiredAt <= endDate AND (releasedAt IS NULL OR releasedAt >= startDate).
   const rosters = await prisma.roster.findMany({
     where: {
       team: { leagueId },
@@ -522,8 +523,7 @@ async function computeWithDailyStats(
     // even if the player's current assignedPosition has changed since.
     if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
-    const from = roster.acquiredAt > period.startDate ? roster.acquiredAt : period.startDate;
-    const to = roster.releasedAt && roster.releasedAt < period.endDate ? roster.releasedAt : period.endDate;
+    const { from, to } = clampToPeriod(roster, period);
 
     const playerDailyStats = statsIndex.get(roster.playerId);
     if (!playerDailyStats) continue;
@@ -610,8 +610,7 @@ async function computeWithPeriodStats(
   // See docs/solutions/logic-errors/closed-period-stat-attribution-uses-current-owner.md
   const endOfPeriodOwner = new Map<number, number>(); // playerId → teamId
   for (const r of rosters) {
-    if (r.acquiredAt > period.endDate) continue;
-    if (r.releasedAt !== null && r.releasedAt <= period.endDate) continue;
+    if (!ownedOn(r, period.endDate)) continue;
     if (!endOfPeriodOwner.has(r.playerId)) {
       endOfPeriodOwner.set(r.playerId, r.teamId);
     }
