@@ -4,7 +4,6 @@ const mockPeriodFindUnique = vi.fn();
 const mockTeamFindMany = vi.fn();
 const mockRosterFindMany = vi.fn();
 const mockDailyFindMany = vi.fn();
-const mockDailyGroupBy = vi.fn();
 const mockPeriodStatsFindMany = vi.fn();
 const mockPeriodStatsCount = vi.fn();
 const mockTransactionEventFindMany = vi.fn();
@@ -16,7 +15,7 @@ vi.mock("../../../db/prisma.js", () => ({
     roster: { findMany: (...a: unknown[]) => mockRosterFindMany(...a) },
     playerStatsDaily: {
       findMany: (...a: unknown[]) => mockDailyFindMany(...a),
-      groupBy: (...a: unknown[]) => mockDailyGroupBy(...a),
+      groupBy: vi.fn(),
     },
     playerStatsPeriod: {
       findMany: (...a: unknown[]) => mockPeriodStatsFindMany(...a),
@@ -50,7 +49,6 @@ beforeEach(() => {
   mockTeamFindMany.mockReset();
   mockRosterFindMany.mockReset();
   mockDailyFindMany.mockReset();
-  mockDailyGroupBy.mockReset();
   mockPeriodStatsFindMany.mockReset();
   mockPeriodStatsCount.mockReset();
   mockTransactionEventFindMany.mockReset();
