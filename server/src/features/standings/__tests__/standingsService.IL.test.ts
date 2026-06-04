@@ -30,7 +30,8 @@ vi.mock("../../../db/prisma.js", () => ({
 import { computeTeamStatsFromDb } from "../services/standingsService.js";
 
 const PERIOD_START = new Date("2026-04-19T00:00:00.000Z");
-const PERIOD_END = new Date("2026-05-16T23:59:59.999Z");
+// noon UTC — matches periods/routes.ts storage convention (new Date(date + "T12:00:00Z"))
+const PERIOD_END = new Date("2026-05-16T12:00:00.000Z");
 const IL_STASH_BEFORE_PERIOD = new Date("2026-04-19T00:00:00.000Z"); // exactly at period start
 const IL_STASH_AFTER_PERIOD_START = new Date("2026-04-25T00:00:00.000Z"); // mid-period
 
