@@ -177,8 +177,8 @@ export function MobileHome() {
   return (
     <div data-testid="mobile-home">
       <MobileTopbar
-        title={currentLeagueName || "Home"}
-        subtitle={currentSeason ? `${currentSeason} · ${me?.user?.name ?? "Welcome"}` : me?.user?.name ?? "Welcome"}
+        title="The Fantastic Leagues"
+        subtitle={[currentLeagueName, currentSeason, me?.user?.name].filter(Boolean).join(" · ")}
       />
 
       {/* Hero card */}
@@ -371,9 +371,9 @@ export function MobileHome() {
                     </span>
                   </div>
                   <div style={{ textAlign: "right", minWidth: 36 }}>
-                    <MIridText size={13} weight={700}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                       {t.totalPoints.toFixed(1)}
-                    </MIridText>
+                    </span>
                   </div>
                 </div>
               );

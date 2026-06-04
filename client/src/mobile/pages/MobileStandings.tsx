@@ -280,7 +280,7 @@ export function MobileStandings() {
                   <MSortHeader<SortKey>
                     key={i}
                     k={`pi-${i}` as SortKey}
-                    label={periodMeta.names[i] ?? `P${i + 1}`}
+                    label={`P${i + 1}`}
                     active={sortKey}
                     dir={sortDir}
                     onSort={onSort}
@@ -343,8 +343,8 @@ export function MobileStandings() {
                         key={pi}
                         style={{
                           textAlign: "center",
-                          fontSize: 13,
-                          fontWeight: 700,
+                          fontSize: 14,
+                          fontWeight: 600,
                           fontVariantNumeric: "tabular-nums",
                           color: "var(--am-text)",
                         }}
@@ -353,9 +353,9 @@ export function MobileStandings() {
                       </div>
                     ))}
                     <div style={{ textAlign: "right", paddingLeft: 4 }}>
-                      <MIridText size={14} weight={700}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                         {t.total}
-                      </MIridText>
+                      </span>
                     </div>
                   </div>
                 );
@@ -470,9 +470,9 @@ export function MobileStandings() {
                     );
                   })}
                   <div style={{ textAlign: "right", paddingLeft: 4 }}>
-                    <MIridText size={14} weight={700}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                       {totalForView.toFixed(1)}
-                    </MIridText>
+                    </span>
                   </div>
                 </div>
               );

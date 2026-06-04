@@ -125,7 +125,7 @@ export function MobileShell({ children }: MobileShellProps) {
               textOverflow: "ellipsis",
             }}
           >
-            {leagueName}
+            The Fantastic Leagues
           </div>
         </div>
 
