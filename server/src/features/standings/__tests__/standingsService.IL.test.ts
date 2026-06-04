@@ -275,5 +275,57 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
       expect(result[0].HR).toBe(0);
       expect(result[0].R).toBe(0);
     });
+
+    it("PSP path: pitcher stashed mid-period with W > 0 — pitching stats count (pre-stash stats locked in)", async () => {
+      // Real-world precedent: Edwin Díaz stashed IL mid-Period 1 after pitching W=1, IP=6.
+      // The PSP is a full-period aggregate from MLB's byDateRange API — it includes stats
+      // earned before the stash. Since wasOnIlAtPeriodStart is false (stash was mid-period),
+      // those stats must be counted. A blunt `pos === "IL"` guard would wrongly zero them out.
+      // Do NOT add such a guard — see 2026-06-03 session notes.
+      mockRosterFindMany.mockResolvedValue([
+        {
+          teamId: 147, playerId: 500, acquiredAt: new Date("2026-03-22"), releasedAt: null,
+          assignedPosition: "IL", // currently in IL slot
+          player: { id: 500, mlbId: 99999, posPrimary: "P" },
+        },
+      ]);
+      mockTransactionEventFindMany.mockResolvedValue([
+        ilStashEvent(500, IL_STASH_AFTER_PERIOD_START), // stashed on 2026-04-25, not at period start
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 500, AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, W: 1, SV: 0, K: 10, IP: 6, ER: 1, BB_H: 5 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      // Mid-period stash → wasOnIlAtPeriodStart = false → stats count
+      expect(result[0].W).toBe(1);
+      expect(result[0].K).toBe(10);
+      expect(result[0].IP).toBe(6);
+    });
+
+    it("PSP path: pitcher IL'd at period start — pitching stats excluded", async () => {
+      // Complement to the above: pitcher in IL slot whose stash was AT or BEFORE period start
+      // → wasOnIlAtPeriodStart is true → the entire period's PSP is excluded.
+      mockRosterFindMany.mockResolvedValue([
+        {
+          teamId: 147, playerId: 501, acquiredAt: new Date("2026-03-22"), releasedAt: null,
+          assignedPosition: "IL",
+          player: { id: 501, mlbId: 88888, posPrimary: "P" },
+        },
+      ]);
+      mockTransactionEventFindMany.mockResolvedValue([
+        ilStashEvent(501, IL_STASH_BEFORE_PERIOD), // stashed exactly at period start
+      ]);
+      mockPeriodStatsFindMany.mockResolvedValue([
+        { playerId: 501, AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, W: 3, SV: 2, K: 25, IP: 18, ER: 5, BB_H: 20 },
+      ]);
+
+      const result = await computeTeamStatsFromDb(20, 36);
+      // Period-start IL → excluded entirely
+      expect(result[0].W).toBe(0);
+      expect(result[0].K).toBe(0);
+      expect(result[0].IP).toBe(0);
+      expect(result[0].ERA).toBe(0);
+    });
   });
 });
