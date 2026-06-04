@@ -4,6 +4,36 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-06-04 — FanGraphs audit, IL-slot rule investigation, CI fixes
+
+### Completed
+- **FanGraphs standings audit** — ran `fangraphs-audit.ts` against live OnRoto OGBA standings. Found 5 categories matching exactly (R, HR, RBI, AVG, WHIP); identified W/SV/K/ERA ranking gaps. Primary driver: 1-day timing lag (FG through 06/02, FBST synced through same date) plus attribution model difference (FG uses per-day ownership windows, FBST uses end-of-period-owner on PSP).
+- **IL-slot bug found and investigated** — Edwin Díaz (Diamond Kings) and Emilio Pagán (The Show) had pitching stats (W=1 and W=3 respectively) credited despite sitting in IL roster slots. Root cause: `countPitching = !isTwoWay || assignedAsP` is always `true` for non-two-way players, so IL-slot pitchers' stats were counted. User confirmed OnRoto rule: IL players' stats should NOT count.
+- **IL-slot fix attempted and reverted** — Added `pos === "IL"` guard to both `computeWithPeriodStats` and `computeWithDailyStats`. The fix broke 2 existing tests (`standingsService.IL.test.ts`) that correctly assert mid-period IL stashes and historical-period queries should still count pre-stash stats. The `assignedPosition` field is current state, not period-scoped; using it breaks historical period queries. Reverted. Correct mechanism is `wasOnIlAtPeriodStart` (transaction-event-based). Implementing the OnRoto rule precisely requires per-day attribution (PSD) for IL-affected players — deferred until OnRoto period snapshots are available.
+- **Vitest critical CVE fixed** — Upgraded vitest `4.0.18 → 4.1.8` + `@vitest/coverage-v8` same, clearing GHSA-5xrq-8626-4rwp (arbitrary file read via Vitest UI server). CI/audit unblocked.
+- **IL test suite hardened** — Added 2 tests to `standingsService.IL.test.ts` (PSP path): pitcher stashed mid-period with W > 0 → stats count; pitcher IL'd at period start → stats excluded. Documents the Edwin Díaz non-obvious behavior and prevents the `pos === "IL"` regression from being re-introduced. Suite: 8 → 10 tests.
+- **AdSense / GDPR todo added** — Todo #246 (pending P2): Google AdSense + GDPR/US-state consent. Blocked on domain approval. Captures placement plan (Home, Season, Team pages + www), privacy-messaging config (dashboard-only, no custom CMP library needed), and CSP/SRI guidance.
+- **OnRoto period snapshot request** — Reached out to OnRoto for period-end snapshots to enable accurate period-by-period FBST vs FG audit. Saved to memory.
+
+### Pending / Next Steps
+- [ ] Wait for OnRoto period snapshot response before re-investigating IL/W attribution
+- [ ] Wait for Google AdSense domain approval, then implement todo #246
+- [ ] PR #368 (standings PSD↔PSP differential test) still open — check CI status
+- [ ] Todos #243 (extract `rosterWindow.ts` helpers) and #245 (CLAUDE.md time-aware-predicate convention) remain P2
+
+### Concerns / Tech Debt
+- **IL-slot overcounting is still live** — Díaz/Pagán situation not fully resolved. The `wasOnIlAtPeriodStart` mechanism only excludes players on IL from period START; it does not exclude players who were stashed mid-period. Proper fix requires daily-stats attribution for IL periods, which needs OnRoto snapshot data to validate. Not a correctness crisis (players can't earn stats while on IL), but causes overcounting on period aggregate if MLB API includes garbage-time games.
+- **Remaining FG audit gaps** — W/SV/K/ERA category rankings still diverge. Can't fully investigate without OnRoto period snapshots.
+
+### Test Results
+- Server: 1173 passing (88 files), 7 skipped — green
+- Client: 845 passing (68 files) — green
+- MCP fbst-app: 83 passing — green
+- MCP mlb-data: 50 passing — green
+- tsc: clean (client + server)
+
+---
+
 ## Session 2026-06-03 — Auction Results semantics fix + Draft Report Card feature
 
 User reported `/auction-results` showing players they "did not win in the auction" — picked up via waiver mid-season but counted as auction wins. Discovery cascaded into three layers of wrong, each shipped as its own PR. Then opened the Draft Report Card (`/draft-report-card`) as a follow-up.

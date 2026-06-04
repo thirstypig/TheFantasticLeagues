@@ -369,7 +369,7 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (1171 server + 845 client + 78 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2145 tests, 32 feature modules)
+### Current Test Coverage (1173 server + 845 client + 83 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2152 tests, 32 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
 

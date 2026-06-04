@@ -35,16 +35,16 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1110 server + 811 client = 1921 tests, ~20s total) + 72 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1173 server + 845 client = 2018 tests, ~20s total) + 83 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
 **Current reality (2026-05-04):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent /ce:review work on PRs #226–#230 was verified with full unit suite (1544 green), both typechecks clean, and a 6-step browser smoke (Home → Team V3 hub → AddDrop preview-gating regression → Place-on-IL → Activate-from-IL) at `http://localhost:3011/`.
 
-## Current coverage (2026-05-19 baseline)
+## Current coverage (2026-06-03 baseline)
 
-### Server — 1110 passing (last verified 2026-05-19)
+### Server — 1173 passing (last verified 2026-06-03)
 
 Major covered areas (selected):
 - `middleware/` — auth (6), extended auth (45: adds requireTeamOwnerOrCommissioner matrix — admin / IDOR / commissioner / toggle / legacy owner / co-owner / fail-closed rule value matrix), async handler (4), validate (7), season guard (10)
@@ -55,7 +55,7 @@ Major covered areas (selected):
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)
 - `features/waivers/routes.test.ts` — 12 (submit, process, cancel)
 - `features/wire-list/routes.test.ts` + `processor.test.ts` — 24 (Zod schema validation: CreatePeriodBody / Add / Drop entry bodies, error-code enum, drop-mode enum, period-results response shape)
-- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation) + 6 releaseAt boundary (free-agent → 0 credit, released before period → 0, traded mid-period → new team, no double-count, dropped pitcher pitching stats → 0, multiple simultaneous free agents → 0 all teams) + IL exclusion (separate file, daily + period paths)
+- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation) + 6 releaseAt boundary (free-agent → 0 credit, released before period → 0, traded mid-period → new team, no double-count, dropped pitcher pitching stats → 0, multiple simultaneous free agents → 0 all teams) + 10 IL exclusion (standingsService.IL.test.ts — daily + period paths; includes mid-period pitcher-in-IL-slot scenario where pre-stash W/K/IP count, and period-start-IL pitcher where all pitching stats are zeroed)
 - `features/seasons/` — 14 service + 5 routes
 - `features/players/mlbSyncService.test.ts` — 28 (roster sync, position eligibility, Rule 2 prior-year 20-GP fallback)
 - `features/mlb-feed/` — 28 Gap 1 boxscore stat lines (gameLogService.test.ts: 18 — extractTodayLine matches by date / gameDate prefix / officialDate / two-way splits / DNP detection / AB=0+PA=0 defensive replacement; deriveGameStatus + buildGameStateDesc TOP/BOT/F/N edge cases; myPlayersToday.test.ts: 10 — hitter line / pitcher line / DNP after FINAL / PRE skips fetch / Promise.allSettled isolates failures / cache hit avoids refetch / 60s LIVE vs 24h FINAL TTL)
@@ -116,7 +116,7 @@ Major covered areas (selected):
 - `cache.test.ts` — 8, `rateLimiter.test.ts` — 5, `tools.test.ts` — 16, `integration.test.ts` — 21.
 Run from `mcp-servers/mlb-data/` with `npx vitest run`.
 
-### MCP (FBST App Tools) — 72 passing (not run by root `npm test`)
+### MCP (FBST App Tools) — 83 passing (not run by root `npm test`)
 
 - `tools.test.ts` — 2 (registration + uniqueness for all 16 tool names)
 - `contract.test.ts` — 53 (schema validation for 6 representative tools; HTTP shape for all 16 tools; auth flow — Bearer header + no-token clean fail; 5 error-code passthrough; 4 schema drift detectors via `WaiverDropModeSchema`, `CreateAddEntryBodySchema`, `CreateDropEntryBodySchema`, `FailOutcomeBodySchema`)
