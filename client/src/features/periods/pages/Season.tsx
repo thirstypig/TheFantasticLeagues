@@ -338,7 +338,7 @@ export default function Season() {
 
           {/* Ad unit — below standings matrix */}
           <div style={{ gridColumn: "span 12" }}>
-            <AdUnit slot="0000000004" />
+            <AdUnit slot="5685126423" />
           </div>
 
         </div>

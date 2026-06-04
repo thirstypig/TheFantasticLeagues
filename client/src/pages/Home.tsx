@@ -746,7 +746,7 @@ export default function Home() {
             {wirePeriodCard}
             {standingsCard}
             {activityCard}
-            <AdUnit slot="0000000003" style={{ margin: "4px 0 8px" }} />
+            <AdUnit slot="8629489586" style={{ margin: "4px 0 8px" }} />
             {tradeProposalCard}
             <NewsFeedsPanel compact limit={5} />
             {boardCard}
