@@ -167,3 +167,34 @@ The legacy `WaiverClaim` model (paired-claim style, drives the existing `/api/wa
 - The "execution outcome" of a waiver run lives entirely in `WaiverAddEntry.outcome` + `WaiverAddEntry.consumedDropEntryId` + `WaiverDropEntry.status`. No separate `WaiverRun` event-log model required for MVP — the post-run results report renders directly from these tables.
 - Hardcoded OGBA rules (NL-only filter, no add cap, no drop cap, drop after add prohibition) live in the API layer; structuring for a future per-league override is a server-side concern, not a schema concern.
 - Schema and migration shipped in PR #256 with empty tables — no risk to legacy `WaiverClaim`. CI guardrail in PR #251 enforces the migration policy that protects this and future waiver-related schema work.
+
+---
+
+## ADR-013: Stat Attribution is Ownership-Window; Scoring is Period-by-Period Roto Accumulated (2026-06-04)
+
+**Context**: An audit comparing FBST standings against OnRoto (FanGraphs-powered) revealed systematic stat gaps that required root-cause explanation. OnRoto credits each team with their current-roster members' full-season YTD stats (drop a player → stats vanish; pick someone up → get their entire season instantly). FBST attributed stats using end-of-period owner semantics in `computeWithPeriodStats` (whoever holds the player at period end gets the full PSP row). The audit surfaced concrete examples: Tanner Scott (The Show acquired him May 17, OnRoto credited all pre-acquisition saves to The Show; FBST correctly didn't), Zac Gallen (dropped by RGing after Period 2 — FBST kept his P1+P2 K, OnRoto wiped them). Both systems diverged from what the league intended.
+
+The audit also confirmed OGBA's scoring model: scoring periods are discrete windows (Period 1: Mar 25–Apr 18; Period 2: Apr 19–May 16; Period 3: May 17–Jun 6; …), each scored as an independent roto contest. Points from each period accumulate into the season total. This is NOT pure YTD roto (which OnRoto uses as its display format).
+
+**Decision**:
+
+1. **Stat attribution is ownership-window.** A player's stats count for your team only on the days the player was actually on your roster.
+   - Pre-acquisition stats → do not count for the acquiring team
+   - Post-drop stats → do not count for the dropping team
+   - Player dropped mid-period with no pickup → stats for that period go to nobody (correct; neither team earned them)
+
+2. **`computeWithDailyStats` (via `clampToPeriod`) is the authoritative path** for correct attribution. It splits daily stat rows (`PlayerStatsDaily`) by exact ownership window.
+
+3. **`computeWithPeriodStats` (end-of-period owner + full PSP row) is permitted only as a performance optimization** when all transactions in the period are confirmed to be boundary-aligned (i.e., `releasedAt` and `acquiredAt` values fall exactly on `period.startDate` or `period.endDate`). If any mid-period add+pickup occurs, `computeWithPeriodStats` MUST NOT be used for that period — it would over-credit the acquiring team with pre-acquisition production.
+
+4. **OnRoto is a display reference, not the scoring authority.** Expected divergence between FBST and OnRoto is intentional. The learnable heuristic: if FBST > OnRoto for a team, that team dropped a contributing player. If FBST < OnRoto, that team picked up a player with pre-acquisition production. Neither is wrong; they answer different questions.
+
+5. **Scoring is period-by-period roto accumulated.** OGBA season points = Σ(period N points) across all periods. Each period is scored independently as a roto contest (10 categories × 8 teams, 1–8 points per category per period). Max per period = 80 pts; season totals are in the 100–200+ range, not 0–80.
+
+**Consequences**:
+
+- `computeWithPeriodStats` carries a code comment warning against use if mid-period transactions have occurred. Any code touching stat computation must check whether mid-period pickups exist before choosing the path.
+- `computeWithDailyStats` is the correct default for any period with transactions; `computeWithPeriodStats` is a cache-friendly optimization only for clean boundary-aligned periods.
+- The three audit scripts added in `server/src/scripts/` (`audit_period.ts`, `find_mid_period_trades.ts`, `spot_check_team.ts`) are the standard tooling for detecting attribution anomalies.
+- A pending todo (#260, below) tracks fixing `computeTeamStatsFromDb` to route through `computeWithDailyStats` automatically whenever a mid-period transaction is detected.
+- Documented in `docs/solutions/logic-errors/onroto-vs-fbst-stat-attribution-semantics.md`.

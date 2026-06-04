@@ -293,7 +293,7 @@ Until then: every new server emission of a Prisma row id MUST use `_dbPlayerId` 
   2. **Rule 2** — prior season ≥20 GP at a position → eligible (additive with Rule 1; PR #124). Fail-closed on prior-season MLB API error; prior fetch uses 30-day TTL. Derived-IDs (≥1M) filtered to avoid 404s on Ohtani's synthetic pitcher row.
   3. **Rule 3** — rookies / minors → primary position only (falls out of the empty-fielding skip).
   Global threshold; per-league future.
-- **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods
+- **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods. Populates `PlayerStatsPeriod` (PSP). Once PSP rows exist, `computeTeamStatsFromDb` switches to `computeWithPeriodStats` (end-of-period owner gets full PSP row). This is correct only while all transactions are period-boundary-aligned. **If a mid-period waiver pickup occurs, switch to `computeWithDailyStats`** to avoid over-crediting the acquiring team. See ADR-013.
 - **Every 5 min**: Wire List auto-lock — flips PENDING `WaiverPeriod` rows past their `deadlineAt` to LOCKED so owners can no longer mutate Add/Drop entries. Advisory-locked (`pg_try_advisory_lock(0x57495245)`) for multi-instance safety. Commissioner still finalizes manually.
 
 **CRITICAL**: `syncAllPlayers()` updates `Player.posPrimary` and `Player.mlbTeam` but **preserves enriched `Player.posList`** — it only overwrites `posList` if the existing value is just the primary position (not enriched by current or prior-season fielding stats). This prevents the daily sync from wiping multi-position eligibility data produced by `syncPositionEligibility`.
@@ -781,6 +781,9 @@ period-close and audit logging.
   tested in-browser, say so explicitly rather than claiming success.
 
 **Decisions already made — do not re-litigate:**
+
+- **Stat attribution is ownership-window, not current-roster YTD (ADR-013, 2026-06-04).** Stats count only for the days a player is on your roster. Pre-acquisition stats don't count for the acquiring team; post-drop stats don't count for the dropper. OnRoto's display uses a different model (current-roster full-season YTD) — it is a *display convenience*, not the scoring authority. FBST's ownership-window model is correct. Implementation: `computeWithDailyStats` (via `clampToPeriod`) is always correct; `computeWithPeriodStats` (end-of-period owner gets full PSP row) is only correct when all transactions fall exactly on period boundaries. **Do not use `computeWithPeriodStats` if a mid-period waiver pickup has occurred** — it silently over-credits the acquiring team with pre-acquisition stats. See `docs/solutions/logic-errors/onroto-vs-fbst-stat-attribution-semantics.md`.
+- **Scoring is period-by-period roto, accumulated (ADR-013).** OGBA scores each lineup window (period) as a standalone roto contest (10 categories × 8 teams, 1–8 pts per category). Period points add up across all periods. This is NOT pure YTD roto. OnRoto's standings use YTD roto — they diverge from FBST totals by design. FBST's period totals (168, 164, 148…) are correct; OnRoto's season points (61, 55.5…) are on a different scale.
 
 - **Score Sheet replaced Aurora (PR #346, 2026-05-19)** — flat paper palette,
   no glassmorphism, Inter only. The legacy AppShell sidebar is gone; pre-Score
