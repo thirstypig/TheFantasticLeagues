@@ -2,56 +2,126 @@
 status: pending
 priority: p2
 issue_id: "246"
-tags: [monetization, gdpr, privacy, adsense, marketing-site]
+tags: [monetization, gdpr, privacy, adsense, ga4, gsc, analytics, marketing-site]
 dependencies: []
 ---
 
-# Google AdSense + GDPR/US-state consent messaging
+# Google AdSense + GA4 + GSC — both sites
 
-## Blocker
-AdSense account exists but domain not yet approved. Cannot implement until Publisher ID (ca-pub-XXXXXXXX) and ad unit IDs are available from the AdSense dashboard.
+## Current state
 
-## What to do when approved
+| Service | www (Astro) | app (React/Vite) |
+|---------|-------------|------------------|
+| GA4     | ✅ live — `G-5FS3SKCH55` + cross-domain linker | ✅ live — `G-5FS3SKCH55` + cross-domain linker |
+| GSC     | ❓ need verification meta tag | ❓ need verification meta tag |
+| AdSense | ✅ publisher script live (`ca-pub-7103672049879516`) — need ad unit IDs | ✅ publisher script live — need ad unit IDs |
 
-### 1. Privacy & consent (zero code — AdSense dashboard only)
-- In AdSense → Privacy & messaging → GDPR, create a consent message for EU/EEA users
-- In AdSense → Privacy & messaging → CCPA, enable US state (California) opt-out message
-- Google's CMP (Funding Choices) handles the consent banner automatically once the AdSense script is on the page — no custom cookie-consent library needed
+---
 
-### 2. App (thefantasticleagues-app — React/Vite)
-Add AdSense publisher script to `client/index.html`:
+## 1. GA4 — Google Analytics 4
+
+### www (already done)
+`Base.astro` lines 52–58 have the gtag.js snippet. No action needed.
+
+### app — add to `client/index.html`
+Add the same property ID (`G-5FS3SKCH55`) so marketing-site → app user journeys are connected. Use `linker` to enable cross-domain attribution.
+
 ```html
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX" crossorigin="anonymous"></script>
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-5FS3SKCH55"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-5FS3SKCH55', {
+    linker: {
+      domains: ['thefantasticleagues.com', 'app.thefantasticleagues.com']
+    }
+  });
+</script>
 ```
 
-Create `client/src/components/AdUnit.tsx` — thin wrapper around the `<ins class="adsbygoogle">` tag with `useEffect` to push the ad slot after mount.
+**Also configure in GA4 dashboard:**
+- Admin → Data Streams → app stream → Cross-domain tracking → add `thefantasticleagues.com`
 
-**Planned placements:**
-- **Home page** — below the league-activity feed widget
-- **Standings / Season page** — below the standings table (leaderboard format, 728×90 or responsive)
-- **Team / Roster page** — below the roster grid (before the tab content)
+### AdUnit.tsx (when AdSense lands)
+The `gtag('event', ...)` call can be used to fire ad-related events alongside impressions — no extra setup needed if the same property ID is used.
 
-Keep ads out of commissioner-only views and the auction draft flow.
+---
 
-### 3. Marketing site (thefantasticleagues-www — Astro)
-Add script to `src/layouts/BaseLayout.astro` (or equivalent root layout).
+## 2. GSC — Google Search Console
+
+GSC verification is a one-time step per domain. No ongoing code maintenance.
+
+### www — `thefantasticleagues.com`
+1. Go to [Google Search Console](https://search.google.com/search-console) → Add property → URL prefix: `https://thefantasticleagues.com`
+2. Choose **HTML tag** verification. Copy the meta tag:
+   ```html
+   <meta name="google-site-verification" content="XXXXXXXXXXXXXXXXXXXX" />
+   ```
+3. Add to `Base.astro` inside `<head>`, below the canonical tag.
+4. Click Verify in GSC.
+5. Submit sitemap: `https://thefantasticleagues.com/sitemap.xml` (confirm Astro generates one — check `astro.config.mjs` for sitemap plugin).
+
+### app — `app.thefantasticleagues.com`
+The web app is a SPA with auth — most pages are behind login, so GSC crawlability is limited. However, verifying the domain is still useful for:
+- Monitoring any public pages (`/login`, `/signup`) for indexing issues
+- Domain-level coverage if using a domain property
+- Confirming `noindex` is being respected for private pages
+
+1. Add property for `https://app.thefantasticleagues.com`
+2. HTML tag verification — add meta tag to `client/index.html` inside `<head>`:
+   ```html
+   <meta name="google-site-verification" content="XXXXXXXXXXXXXXXXXXXX" />
+   ```
+3. Optionally add `<meta name="robots" content="noindex" />` to prevent the app shell from indexing (since most content is behind auth anyway).
+
+### Alternative: Domain property (covers both at once)
+Instead of two URL-prefix properties, add a single **Domain property** (`thefantasticleagues.com`) which covers `www.`, `app.`, and all subdomains. Requires DNS TXT record verification — no code changes to either site.
+
+---
+
+## 3. AdSense — BLOCKED on publisher ID
+
+**Blocker:** AdSense account exists but domain not yet approved. Cannot implement until Publisher ID (`ca-pub-7103672049879516`) and ad unit IDs are available from the AdSense dashboard.
+
+### When approved — www (`Base.astro`)
+Add publisher script to `Base.astro` `<head>`, after the GA4 snippet:
+```html
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7103672049879516" crossorigin="anonymous"></script>
+```
 Add one responsive ad unit below the hero section on the home page.
 
-### 4. Verification
-- Confirm consent banner fires for EU IP (use VPN or BrowserStack)
-- Confirm ads render on Home, Season, Team pages
-- Confirm no ad appears inside the auction draft flow or commissioner panels
+### When approved — app (`client/index.html` + `AdUnit.tsx`)
+Add publisher script to `client/index.html` `<head>`.
 
-## Notes
-- AdSense auto-ads is an option (Google places ads automatically) but manual units give more layout control — prefer manual
-- `xlsx` vuln (no fix available) is unrelated; don't conflate
-- The www site is Astro — check `src/layouts/` for the root layout file before adding the script
+Create `client/src/components/AdUnit.tsx` — thin wrapper around `<ins class="adsbygoogle">` with `useEffect` to push the ad slot after mount.
 
-## Security — why NO `integrity=` on the AdSense script
-SRI (`integrity="sha384-..."`) is intentionally omitted. Google updates `adsbygoogle.js` continuously and server-side without version pinning; a hash would be stale within hours and cause the script to be blocked by the browser, silently killing all ad revenue. This is Google's documented design — they do not publish SRI hashes for this script.
+**Planned placements:**
+- Home page — below the league-activity feed widget
+- Standings / Season page — below the standings table (leaderboard 728×90 or responsive)
+- Team / Roster page — below the roster grid (before tab content)
+- **Exclude:** commissioner-only views, auction draft flow
 
-Mitigations that DO apply instead:
-- `crossorigin="anonymous"` is already present (limits credential leakage on redirect)
-- `async` prevents the script from blocking page render
-- Google's CMP (Funding Choices) is served from the same Google CDN and is covered by their security posture
-- CSP `script-src` should allowlist `https://pagead2.googlesyndication.com` explicitly rather than using `unsafe-inline` or a wildcard
+### GDPR/CCPA consent (zero code — AdSense dashboard only)
+- AdSense → Privacy & messaging → GDPR: create consent message for EU/EEA users
+- AdSense → Privacy & messaging → CCPA: enable US state opt-out message
+- Google's CMP (Funding Choices) handles the consent banner automatically once the AdSense script is on the page
+
+### Why no `integrity=` on the AdSense script
+SRI hashes are intentionally omitted — Google updates `adsbygoogle.js` continuously server-side without version pinning; a hash would be stale within hours and silently kill ad revenue. Use `crossorigin="anonymous"` + CSP `script-src` allowlist for `https://pagead2.googlesyndication.com` instead.
+
+---
+
+## Acceptance criteria
+
+- [ ] GA4 snippet added to `client/index.html` with cross-domain linker config
+- [ ] GA4 cross-domain configured in dashboard (Admin → Data Streams)
+- [ ] GSC www property verified (HTML meta tag or DNS)
+- [ ] GSC app property verified
+- [ ] Sitemaps submitted to GSC for www
+- [ ] AdSense publisher script added to both sites (unblocked when pub ID available)
+- [ ] AdSense ad units rendering on Home, Standings, Team pages in the app
+- [ ] AdSense ad unit rendering below hero on www home page
+- [ ] GDPR/CCPA consent banners configured in AdSense dashboard
+- [ ] No ad appears inside auction draft flow or commissioner panels

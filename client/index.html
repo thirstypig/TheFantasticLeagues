@@ -40,6 +40,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
+    <!-- Google Analytics 4 — same property as www; linker stitches cross-domain sessions -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5FS3SKCH55"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-5FS3SKCH55', {
+        linker: { domains: ['thefantasticleagues.com', 'app.thefantasticleagues.com'] }
+      });
+    </script>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7103672049879516" crossorigin="anonymous"></script>
+
     <!-- Google Identity Services (GIS) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
