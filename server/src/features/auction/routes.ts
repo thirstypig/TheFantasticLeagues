@@ -8,7 +8,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { assertPlayerAvailable } from "../../lib/rosterGuard.js";
-import { positionToSlots, PITCHER_CODES as SPORT_PITCHER_CODES, isPitcher as isPitcherPos } from "../../lib/sportConfig.js";
+import { positionToSlots, PITCHER_CODES_SET as PITCHER_CODES, isPitcher as isPitcherPos } from "../../lib/sportConfig.js";
 import { broadcastState } from "./services/auctionWsService.js";
 import { saveState, loadState, clearState } from "./services/auctionPersistence.js";
 import { getAuctionDaySnapshot } from "./lib/auctionDaySnapshot.js";
@@ -272,7 +272,6 @@ async function loadPositionLimits(leagueId: number): Promise<Record<string, numb
   try { return JSON.parse(rule.value); } catch { return null; }
 }
 
-const PITCHER_CODES = new Set<string>(SPORT_PITCHER_CODES);
 
 /**
  * Check if a team can roster another player at the given position.

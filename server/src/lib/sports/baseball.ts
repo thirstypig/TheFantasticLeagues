@@ -10,6 +10,7 @@ import type { SportConfig, PositionConfig, CategoryConfig } from "./types.js";
 export const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "P", "DH"] as const;
 
 export const PITCHER_CODES = ["P", "SP", "RP", "CL", "TWP"] as const;
+export const PITCHER_CODES_SET: ReadonlySet<string> = new Set(PITCHER_CODES);
 
 export const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "BN", "IL"] as const;
 

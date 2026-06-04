@@ -51,7 +51,8 @@ vi.mock("../../../db/prisma.js", () => ({
 import { computeTeamStatsFromDb } from "../services/standingsService.js";
 
 const PERIOD_START = new Date("2026-04-19T00:00:00.000Z");
-const PERIOD_END = new Date("2026-05-16T23:59:59.999Z");
+// noon UTC — matches periods/routes.ts storage convention (new Date(date + "T12:00:00Z"))
+const PERIOD_END = new Date("2026-05-16T12:00:00.000Z");
 const ZERO_STATS = { AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 };
 
 function dailyRow(playerId: number, date: string, stats: Partial<typeof ZERO_STATS>) {

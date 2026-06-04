@@ -1,6 +1,6 @@
 import { logger } from "./logger.js";
 
-export type IlWindow = { start: Date; end: Date | null };
+export type IlWindow = { startDate: Date; endDate: Date | null };
 
 /**
  * Builds per-player IL windows from a pre-sorted (by effDate asc) event list.
@@ -25,7 +25,7 @@ export function buildIlWindows(
       const start = openStart.get(pid);
       if (start != null) {
         const list = windows.get(pid) ?? [];
-        list.push({ start, end: e.effDate });
+        list.push({ startDate: start, endDate: e.effDate });
         windows.set(pid, list);
         openStart.delete(pid);
       } else {
@@ -39,7 +39,7 @@ export function buildIlWindows(
 
   for (const [pid, start] of openStart) {
     const list = windows.get(pid) ?? [];
-    list.push({ start, end: null });
+    list.push({ startDate: start, endDate: null });
     windows.set(pid, list);
   }
 
@@ -53,5 +53,5 @@ export function wasOnIlAtPeriodStart(
 ): boolean {
   const stints = ilWindowsByPlayer.get(playerId);
   if (!stints) return false;
-  return stints.some(w => w.start <= periodStart && (w.end === null || w.end > periodStart));
+  return stints.some(w => w.startDate <= periodStart && (w.endDate === null || w.endDate > periodStart));
 }

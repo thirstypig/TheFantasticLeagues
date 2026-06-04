@@ -15,9 +15,7 @@
 //
 // AUCTION_CUTOFF = first Period.startDate + 7d safety buffer.
 import { prisma } from "../../../db/prisma.js";
-import { PITCHER_CODES as SPORT_PITCHER_CODES } from "../../../lib/sportConfig.js";
-
-const PITCHER_CODES = new Set<string>(SPORT_PITCHER_CODES);
+import { PITCHER_CODES_SET as PITCHER_CODES } from "../../../lib/sportConfig.js";
 
 export interface AuctionSnapshotRoster {
   rosterId: number;

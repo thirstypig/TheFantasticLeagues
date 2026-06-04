@@ -1,7 +1,7 @@
 
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
-import { TWO_WAY_PLAYERS, PITCHER_CODES } from "../../../lib/sportConfig.js";
+import { TWO_WAY_PLAYERS, PITCHER_CODES_SET as PITCHER_CODES } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 
@@ -531,7 +531,7 @@ async function computeWithDailyStats(
     // Two-way player check
     const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
     const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
-    const assignedAsP = PITCHER_CODES.some(code => code === pos);
+    const assignedAsP = PITCHER_CODES.has(pos);
     const countHitting = !isTwoWay || !assignedAsP;
     const countPitching = !isTwoWay || assignedAsP;
 
@@ -646,7 +646,7 @@ async function computeWithPeriodStats(
 
       const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
       const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
-      const assignedAsP = PITCHER_CODES.some(code => code === pos);
+      const assignedAsP = PITCHER_CODES.has(pos);
 
       const countHitting = !isTwoWay || !assignedAsP;
       const countPitching = !isTwoWay || assignedAsP;

@@ -7,6 +7,7 @@
 export {
   POS_ORDER,
   PITCHER_CODES,
+  PITCHER_CODES_SET,
   POSITIONS,
   positionToSlots,
   CATEGORY_CONFIG,

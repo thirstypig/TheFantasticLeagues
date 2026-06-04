@@ -160,9 +160,10 @@ describe("assertNoOwnershipConflict", () => {
 
 // ─── Stats-attribution predicate tests ────────────────────────────────────
 
+// noon UTC — matches periods/routes.ts storage convention (new Date(date + "T12:00:00Z"))
 const PERIOD = {
   startDate: new Date("2026-04-19T00:00:00.000Z"),
-  endDate:   new Date("2026-05-16T23:59:59.999Z"),
+  endDate:   new Date("2026-05-16T12:00:00.000Z"),
 };
 
 describe("overlapsPeriod", () => {
@@ -220,6 +221,10 @@ describe("ownedOn", () => {
   it("returns false when acquired after the date", () => {
     expect(ownedOn({ acquiredAt: new Date("2026-05-17"), releasedAt: null }, END)).toBe(false);
   });
+
+  it("returns true when acquiredAt equals the date (inclusive lower bound)", () => {
+    expect(ownedOn({ acquiredAt: END, releasedAt: null }, END)).toBe(true);
+  });
 });
 
 describe("clampToPeriod", () => {
@@ -254,5 +259,11 @@ describe("clampToPeriod", () => {
   it("uses period.endDate when releasedAt equals period.endDate (not strictly less)", () => {
     const { from, to } = clampToPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt: PERIOD.endDate }, PERIOD);
     expect(to).toEqual(PERIOD.endDate);
+  });
+
+  it("produces from === to when releasedAt equals period.startDate (one-day tenure)", () => {
+    const { from, to } = clampToPeriod({ acquiredAt: new Date("2026-03-22"), releasedAt: PERIOD.startDate }, PERIOD);
+    expect(from).toEqual(PERIOD.startDate);
+    expect(to).toEqual(PERIOD.startDate);
   });
 });

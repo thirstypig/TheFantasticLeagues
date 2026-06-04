@@ -143,14 +143,17 @@ export interface PeriodWindow {
 }
 
 /**
- * True if this roster entry's tenure overlapped the period at all.
+ * Reference spec for the `roster.findMany` WHERE clause in standingsService.ts.
+ * Do NOT use for JS-side filtering of already-hydrated rows — push the filter to Prisma instead.
  *
- * SQL equivalent (used in the standingsService Prisma roster.findMany):
+ * SQL equivalent:
  *   acquiredAt <= endDate
  *   AND (releasedAt IS NULL OR releasedAt >= startDate)
  *
  * Inclusive on both sides — a player acquired on the last day of a period
  * or released on the first day both count as overlapping.
+ *
+ * @internal
  */
 export function overlapsPeriod(
   roster: { acquiredAt: Date; releasedAt: Date | null },
