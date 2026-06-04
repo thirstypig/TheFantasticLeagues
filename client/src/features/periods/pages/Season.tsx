@@ -27,6 +27,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import { getSeasonStandings } from "../../../api";
 import CategoryStandingsView from "../components/CategoryStandingsView";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
+import AdUnit from "../../../components/AdUnit";
 
 interface MatrixRow {
   teamId: number;
@@ -334,6 +335,11 @@ export default function Season() {
             </Glass>
           </div>
           )}
+
+          {/* Ad unit — below standings matrix */}
+          <div style={{ gridColumn: "span 12" }}>
+            <AdUnit slot="0000000004" />
+          </div>
 
         </div>
       </div>

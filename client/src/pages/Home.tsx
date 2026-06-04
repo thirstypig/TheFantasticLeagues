@@ -43,6 +43,7 @@ import type { RosterAlertPlayer } from "./home/types";
 import HistoricalInsightsTab from "./components/HistoricalInsightsTab";
 import NewsFeedsPanel from "./components/NewsFeedsPanel";
 import MyTeamTodayPanel from "./components/MyTeamTodayPanel";
+import AdUnit from "../components/AdUnit";
 
 interface StandingsRow {
   teamId: number;
@@ -745,6 +746,7 @@ export default function Home() {
             {wirePeriodCard}
             {standingsCard}
             {activityCard}
+            <AdUnit slot="0000000003" style={{ margin: "4px 0 8px" }} />
             {tradeProposalCard}
             <NewsFeedsPanel compact limit={5} />
             {boardCard}
