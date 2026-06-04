@@ -136,9 +136,9 @@ async function main() {
       if (!ps) continue;
 
       const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-      const assignedAsP = PITCHER_CODES.includes(
-        (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase(),
-      );
+      const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
+      if (pos === "IL") continue; // IL-slotted players' stats don't count (OnRoto rule)
+      const assignedAsP = PITCHER_CODES.includes(pos);
       const countHitting = !isTwoWay || !assignedAsP;
       const countPitching = !isTwoWay || assignedAsP;
 
