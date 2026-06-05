@@ -70,6 +70,7 @@ describe("AdUnit", () => {
     const { container } = render(<AdUnit slot="1234567890" style={{ marginTop: 8 }} />);
     const ins = container.querySelector<HTMLElement>("ins");
     expect(ins?.style.display).toBe("block");
+    expect(ins?.style.overflow).toBe("hidden");
     expect(ins?.style.marginTop).toBe("8px");
   });
 });

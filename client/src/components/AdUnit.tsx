@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 
 interface AdUnitProps {
-  // TODO: replace with real 10-digit slot ID from AdSense dashboard
-  // (AdSense → Ads → By ad unit → create Display ad → copy data-ad-slot)
   slot: string;
   format?: "auto" | "rectangle" | "horizontal";
   style?: React.CSSProperties;

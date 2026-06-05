@@ -2,7 +2,8 @@
 // Effective-date handling + ownership-window overlap guard for commissioner
 // backdated roster moves.
 //
-// Convention — windows are half-open `[acquiredAt, releasedAt)` at UTC midnight:
+// Convention for mutation helpers (`assertNoOwnershipConflict` etc.):
+// windows are half-open `[acquiredAt, releasedAt)` at UTC midnight:
 //   - `acquiredAt`: first day the team owns the player (inclusive)
 //   - `releasedAt`: first day the team no longer owns the player (exclusive),
 //                   or null if still active
@@ -10,6 +11,11 @@
 // `nextDayEffective()` produces UTC midnight the day after PT-today, which
 // matches this convention (today's stats stay with current owner, new owner
 // starts tomorrow).
+//
+// NOTE: The stats-attribution predicates below (`overlapsPeriod`, `ownedOn`,
+// `clampToPeriod`) have DIFFERENT boundary semantics from each other — each
+// documents its own `releasedAt` behavior in its JSDoc. Do not assume the
+// half-open convention above applies to them.
 
 import { nextDayEffective } from "./utils.js";
 

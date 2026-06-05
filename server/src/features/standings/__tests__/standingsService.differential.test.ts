@@ -70,11 +70,37 @@ beforeEach(() => {
   mockTransactionEventFindMany.mockResolvedValue([]);
 
   mockPeriodFindUnique.mockResolvedValue({ id: 36, startDate: PERIOD_START, endDate: PERIOD_END });
+  // Synthetic IDs and names — avoid anchoring tests to production team records
   mockTeamFindMany.mockResolvedValue([
-    { id: 145, name: "RGing Sluggers", code: "RGS" },
-    { id: 148, name: "Demolition Lumber Co.", code: "DLC" },
+    { id: 1001, name: "Alpha", code: "AAA" },
+    { id: 1002, name: "Bravo", code: "BBB" },
   ]);
 });
+
+// period/team mocks are persistent (mockResolvedValue); roster/stats mocks are
+// Once-queued and order-sensitive. This helper centralises path-guard assertions
+// so they can't drift out of sync between test cases.
+async function runBothPaths(
+  rosters: unknown[],
+  dailies: unknown[],
+  psp: unknown[],
+) {
+  mockRosterFindMany.mockResolvedValueOnce(rosters);
+  mockPeriodStatsCount.mockResolvedValueOnce(0);
+  mockDailyFindMany.mockResolvedValueOnce(dailies);
+  const psdResult = await computeTeamStatsFromDb(20, 36);
+  expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+  expect(mockPeriodStatsFindMany).not.toHaveBeenCalled();
+
+  mockRosterFindMany.mockResolvedValueOnce(rosters);
+  mockPeriodStatsCount.mockResolvedValueOnce(1);
+  mockPeriodStatsFindMany.mockResolvedValueOnce(psp);
+  const pspResult = await computeTeamStatsFromDb(20, 36);
+  expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
+  expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+
+  return { psdResult, pspResult };
+}
 
 describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
   describe("static ownership (no in-period trade)", () => {
@@ -83,7 +109,7 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       // same per-team totals.
       const rosters = [
         {
-          teamId: 145, playerId: 1, acquiredAt: new Date("2026-03-22"),
+          teamId: 1001, playerId: 1, acquiredAt: new Date("2026-03-22"),
           releasedAt: null,
           assignedPosition: "OF",
           player: { id: 1, mlbId: 1000, posPrimary: "OF" },
@@ -99,26 +125,10 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       // PSP path: same totals as the per-day sum
       const psp = [{ playerId: 1, ...ZERO_STATS, R: 12, HR: 4, RBI: 8, AB: 12, H: 7 }];
 
-      // Run PSD path (no PSP rows).
-      mockRosterFindMany.mockResolvedValueOnce(rosters);
-      mockPeriodStatsCount.mockResolvedValueOnce(0);
-      mockDailyFindMany.mockResolvedValueOnce(dailies);
-      const psdResult = await computeTeamStatsFromDb(20, 36);
-      // Path guard: confirm PSD branch was taken, not PSP.
-      expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
-      expect(mockPeriodStatsFindMany).not.toHaveBeenCalled();
+      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp);
 
-      // Run PSP path (PSP rows exist).
-      mockRosterFindMany.mockResolvedValueOnce(rosters);
-      mockPeriodStatsCount.mockResolvedValueOnce(1);
-      mockPeriodStatsFindMany.mockResolvedValueOnce(psp);
-      const pspResult = await computeTeamStatsFromDb(20, 36);
-      // Path guard: confirm PSP branch was taken; PSD was not called again.
-      expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
-      expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
-
-      const psdRgs = psdResult.find(r => r.team.code === "RGS");
-      const pspRgs = pspResult.find(r => r.team.code === "RGS");
+      const psdRgs = psdResult.find(r => r.team.code === "AAA");
+      const pspRgs = pspResult.find(r => r.team.code === "AAA");
       expect(psdRgs, "PSD: RGS not found in result").toBeDefined();
       expect(pspRgs, "PSP: RGS not found in result").toBeDefined();
       if (!psdRgs || !pspRgs) return;
@@ -136,7 +146,7 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       // Player 2 on RGS but on IL since before the period. Both paths skip.
       const rosters = [
         {
-          teamId: 145, playerId: 2, acquiredAt: new Date("2026-03-22"),
+          teamId: 1001, playerId: 2, acquiredAt: new Date("2026-03-22"),
           releasedAt: null,
           assignedPosition: "IL",
           player: { id: 2, mlbId: 2000, posPrimary: "P" },
@@ -167,8 +177,8 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
       expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
 
-      const psdRgs = psdResult.find(r => r.team.code === "RGS");
-      const pspRgs = pspResult.find(r => r.team.code === "RGS");
+      const psdRgs = psdResult.find(r => r.team.code === "AAA");
+      const pspRgs = pspResult.find(r => r.team.code === "AAA");
       expect(psdRgs, "PSD: RGS not found in result").toBeDefined();
       expect(pspRgs, "PSP: RGS not found in result").toBeDefined();
       if (!psdRgs || !pspRgs) return;
@@ -189,13 +199,13 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       const rosters = [
         // DESC by acquiredAt — matches the production query orderBy
         {
-          teamId: 148, playerId: 3, acquiredAt: TRADE_AT,
+          teamId: 1002, playerId: 3, acquiredAt: TRADE_AT,
           releasedAt: null,
           assignedPosition: "SS",
           player: { id: 3, mlbId: 3000, posPrimary: "SS" },
         },
         {
-          teamId: 145, playerId: 3, acquiredAt: new Date("2026-03-22"),
+          teamId: 1001, playerId: 3, acquiredAt: new Date("2026-03-22"),
           releasedAt: TRADE_AT,
           assignedPosition: "SS",
           player: { id: 3, mlbId: 3000, posPrimary: "SS" },
@@ -210,26 +220,12 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       // PSP path: same totals aggregated for the full period (no split).
       const psp = [{ playerId: 3, ...ZERO_STATS, R: 6, HR: 2, RBI: 7, AB: 11, H: 5 }];
 
-      // PSD path
-      mockRosterFindMany.mockResolvedValueOnce(rosters);
-      mockPeriodStatsCount.mockResolvedValueOnce(0);
-      mockDailyFindMany.mockResolvedValueOnce(dailies);
-      const psdResult = await computeTeamStatsFromDb(20, 36);
-      expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
-      expect(mockPeriodStatsFindMany).not.toHaveBeenCalled();
+      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp);
 
-      // PSP path
-      mockRosterFindMany.mockResolvedValueOnce(rosters);
-      mockPeriodStatsCount.mockResolvedValueOnce(1);
-      mockPeriodStatsFindMany.mockResolvedValueOnce(psp);
-      const pspResult = await computeTeamStatsFromDb(20, 36);
-      expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
-      expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
-
-      const psdRgs = psdResult.find(r => r.team.code === "RGS");
-      const psdDlc = psdResult.find(r => r.team.code === "DLC");
-      const pspRgs = pspResult.find(r => r.team.code === "RGS");
-      const pspDlc = pspResult.find(r => r.team.code === "DLC");
+      const psdRgs = psdResult.find(r => r.team.code === "AAA");
+      const psdDlc = psdResult.find(r => r.team.code === "BBB");
+      const pspRgs = pspResult.find(r => r.team.code === "AAA");
+      const pspDlc = pspResult.find(r => r.team.code === "BBB");
       expect(psdRgs, "PSD: RGS not found").toBeDefined();
       expect(psdDlc, "PSD: DLC not found").toBeDefined();
       expect(pspRgs, "PSP: RGS not found").toBeDefined();
@@ -268,10 +264,10 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       const TRADE_1 = new Date("2026-04-22T00:00:00.000Z");
       const TRADE_2 = new Date("2026-05-05T00:00:00.000Z");
       const rosters = [
-        { teamId: 148, playerId: 4, acquiredAt: TRADE_1, releasedAt: null, assignedPosition: "OF", player: { id: 4, mlbId: 4000, posPrimary: "OF" } },
-        { teamId: 145, playerId: 4, acquiredAt: new Date("2026-03-22"), releasedAt: TRADE_1, assignedPosition: "OF", player: { id: 4, mlbId: 4000, posPrimary: "OF" } },
-        { teamId: 145, playerId: 5, acquiredAt: TRADE_2, releasedAt: null, assignedPosition: "P", player: { id: 5, mlbId: 5000, posPrimary: "P" } },
-        { teamId: 148, playerId: 5, acquiredAt: new Date("2026-03-22"), releasedAt: TRADE_2, assignedPosition: "P", player: { id: 5, mlbId: 5000, posPrimary: "P" } },
+        { teamId: 1002, playerId: 4, acquiredAt: TRADE_1, releasedAt: null, assignedPosition: "OF", player: { id: 4, mlbId: 4000, posPrimary: "OF" } },
+        { teamId: 1001, playerId: 4, acquiredAt: new Date("2026-03-22"), releasedAt: TRADE_1, assignedPosition: "OF", player: { id: 4, mlbId: 4000, posPrimary: "OF" } },
+        { teamId: 1001, playerId: 5, acquiredAt: TRADE_2, releasedAt: null, assignedPosition: "P", player: { id: 5, mlbId: 5000, posPrimary: "P" } },
+        { teamId: 1002, playerId: 5, acquiredAt: new Date("2026-03-22"), releasedAt: TRADE_2, assignedPosition: "P", player: { id: 5, mlbId: 5000, posPrimary: "P" } },
       ];
       const dailies = [
         dailyRow(4, "2026-04-20", { R: 1, AB: 4, H: 1 }),
@@ -286,19 +282,7 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
         { playerId: 5, ...ZERO_STATS, K: 18, IP: 17, ER: 6 },
       ];
 
-      mockRosterFindMany.mockResolvedValueOnce(rosters);
-      mockPeriodStatsCount.mockResolvedValueOnce(0);
-      mockDailyFindMany.mockResolvedValueOnce(dailies);
-      const psdResult = await computeTeamStatsFromDb(20, 36);
-      expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
-      expect(mockPeriodStatsFindMany).not.toHaveBeenCalled();
-
-      mockRosterFindMany.mockResolvedValueOnce(rosters);
-      mockPeriodStatsCount.mockResolvedValueOnce(1);
-      mockPeriodStatsFindMany.mockResolvedValueOnce(psp);
-      const pspResult = await computeTeamStatsFromDb(20, 36);
-      expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
-      expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp);
 
       // League total must match between paths for every counting stat.
       // TeamStatRow uses S (not SV) for saves; rate stats AVG/ERA/WHIP are excluded.

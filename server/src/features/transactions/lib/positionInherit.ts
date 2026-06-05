@@ -21,7 +21,7 @@ import { slotsFor } from "./slotMatcher.js";
  * positionToSlots("SS") = ["SS","MI"]).
  */
 export function isEligibleForSlot(posList: string, targetSlot: string): boolean {
-  if (!targetSlot) return false;
+  if (!targetSlot || targetSlot.length > 5) return false;
   const target = targetSlot.trim().toUpperCase();
   const positions = posList
     .split(",")
