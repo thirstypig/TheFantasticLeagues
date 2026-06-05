@@ -8,6 +8,7 @@ import { isMlbIlStatus } from '../../../lib/mlbStatus';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { slotsFor, isSlotCode } from '../../../lib/positionEligibility';
+import { RosterItem } from '../../commissioner/api';
 
 const HITTER_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH"] as const;
 
@@ -28,20 +29,6 @@ interface Team {
   name: string;
   code?: string | null;
   budget?: number | null;
-}
-
-interface RosterItem {
-    id: number;
-    teamId: number;
-    assignedPosition?: string | null;
-    player: {
-        id: number;
-        name: string;
-        posPrimary: string;
-        posList?: string;
-        mlbId?: number;
-    };
-    price: number;
 }
 
 interface RosterGridProps {
