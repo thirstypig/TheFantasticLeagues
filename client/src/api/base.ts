@@ -184,14 +184,15 @@ export function parseJsonResponse<S extends ZodTypeAny>(
   return result.data;
 }
 
-export async function fetchJsonPublic<T>(url: string): Promise<T> {
+export async function fetchJsonPublic<T>(url: string, init?: RequestInit): Promise<T> {
   // Mirror fetchJsonApi's 30s timeout — public fetches (MLB stats API,
   // RSS aggregators) can stall on a flaky upstream and never reject without
-  // an AbortController.
+  // an AbortController. Callers may pass { signal } via `init` for abort control.
   const res = await fetch(url, {
-    headers: { Accept: "application/json" },
+    ...init,
+    headers: { Accept: "application/json", ...init?.headers },
     credentials: "omit",
-    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+    signal: init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   const requestId = res.headers.get("x-request-id");
