@@ -360,7 +360,7 @@ export async function syncPositionEligibility(
   // Fetch all players with MLB IDs
   const players = await prisma.player.findMany({
     where: { mlbId: { not: null } },
-    select: { id: true, mlbId: true, posPrimary: true, posList: true },
+    select: { id: true, mlbId: true, posPrimary: true, posList: true, posGames: true },
   });
 
   logger.info(
@@ -469,14 +469,22 @@ export async function syncPositionEligibility(
       const sorted = [primary, ...[...eligible].filter((p) => p !== primary).sort()];
       const newPosList = sorted.join(",");
 
-      if (newPosList === player.posList) {
+      // Persist per-position GP from the fielding map so the hub can display
+      // real GP suffixes instead of the synthetic 60/40 split.
+      const posGamesValue = fielding ? Object.fromEntries(fielding) : undefined;
+      const posListChanged = newPosList !== player.posList;
+
+      if (!posListChanged && !posGamesValue) {
         unchanged++;
         continue;
       }
 
       await prisma.player.update({
         where: { id: player.id },
-        data: { posList: newPosList },
+        data: {
+          ...(posListChanged && { posList: newPosList }),
+          ...(posGamesValue && { posGames: posGamesValue }),
+        },
       });
 
       if (newPosList !== player.posPrimary) {

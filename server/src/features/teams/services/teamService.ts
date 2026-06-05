@@ -41,7 +41,15 @@ export class TeamService {
   /**
    * Calculate games by position for a player
    */
-  static buildGamesByPos(posPrimary: string, posList: string | null) {
+  static buildGamesByPos(
+    posPrimary: string,
+    posList: string | null,
+    posGames?: Record<string, number> | null,
+  ) {
+    // Use real per-position GP from the MLB Stats API when available.
+    if (posGames && Object.keys(posGames).length > 0) return posGames;
+
+    // Synthetic fallback — used until the daily cron populates posGames.
     const positionsRaw = (posList || posPrimary || "")
       .split(",")
       .map((p) => p.trim())
@@ -195,7 +203,7 @@ export class TeamService {
       price: r.price,
       assignedPosition: r.assignedPosition,
       isKeeper: r.isKeeper,
-      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList),
+      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, r.player.posGames as Record<string, number> | null),
       periodStats: playerPeriodStatsMap.get(r.playerId) ?? null,
     }));
 
@@ -208,7 +216,7 @@ export class TeamService {
       acquiredAt: r.acquiredAt,
       releasedAt: r.releasedAt!,
       price: r.price,
-      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList),
+      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, r.player.posGames as Record<string, number> | null),
     }));
 
     return {
