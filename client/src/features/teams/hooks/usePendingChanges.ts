@@ -231,6 +231,7 @@ type Action =
   | { type: "add"; change: PendingChange }
   | { type: "revertItem"; ids: string[] }
   | { type: "revertAll" }
+  | { type: "commitItem"; id: string }
   | { type: "saveStart" }
   | { type: "saveSuccess"; at: number }
   | {
@@ -265,6 +266,12 @@ function reducer(state: PendingChangesState, action: Action): PendingChangesStat
     }
     case "revertAll":
       return { ...state, changes: [], error: null, failures: [] };
+    case "commitItem":
+      // Remove a single change that has been successfully committed to the
+      // server. Called during a save to progressively shrink the queue as
+      // each mutation lands — so on partial failure only the uncommitted
+      // changes remain visible in the bar.
+      return { ...state, changes: state.changes.filter((c) => c.id !== action.id) };
     case "saveStart":
       return { ...state, saving: true, error: null, failures: [] };
     case "saveSuccess":
@@ -617,6 +624,12 @@ export interface UsePendingChangesOptions {
   saveFn: (
     changes: PendingChange[],
     ctx: { effectiveDate: string | null },
+    /** Call after each mutation succeeds to remove it from the pending queue
+     *  immediately. On partial save failure, only the uncommitted changes
+     *  remain in the bar — no phantom "still pending" items from success.
+     *  Optional for backward compatibility; callers that don't need
+     *  progressive commit can ignore this parameter. */
+    commitChange?: (id: string) => void,
   ) => Promise<void>;
 
   /**
@@ -655,6 +668,13 @@ export interface UsePendingChangesApi {
   save: () => Promise<void>;
   /** Clear the error banner + per-change failures without dropping changes. */
   clearError: () => void;
+  /**
+   * Mark a single change as committed (removed from the pending queue).
+   * Intended for use inside saveFn: call after each individual mutation
+   * succeeds so the bar shrinks progressively. On partial failure the
+   * remaining uncommitted changes stay visible without manual bookkeeping.
+   */
+  commitChange: (id: string) => void;
   /**
    * Computed dependency edges for the current queue. Recomputed any
    * time `state.changes` changes. Read by `PendingChangeBar` to render
@@ -749,22 +769,28 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
     dispatch({ type: "setEffectiveDate", effectiveDate });
   }, []);
 
+  const commitChange = useCallback((id: string) => {
+    dispatch({ type: "commitItem", id });
+  }, []);
+
   const save = useCallback(async () => {
     if (state.changes.length === 0) return;
     dispatch({ type: "saveStart" });
     try {
-      await saveFnRef.current(state.changes, {
-        effectiveDate: state.effectiveDate,
-      });
+      await saveFnRef.current(
+        state.changes,
+        { effectiveDate: state.effectiveDate },
+        // Pass commitChange so saveFn can shrink the queue as each
+        // mutation lands, giving accurate partial-success visibility.
+        (id: string) => dispatch({ type: "commitItem", id }),
+      );
       dispatch({ type: "saveSuccess", at: Date.now() });
       if (teamId != null) clearPersistedChanges(teamId, userId);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save failed";
-      // Atomic rollback per Complex-#4: the queue is preserved (the
-      // reducer doesn't drop the changes on saveError). When the saveFn
-      // surfaces a structured `PendingChangeBatchError`, capture the
-      // per-row failure list so the diff preview modal can render
-      // inline error banners (Complex-#6).
+      // Queue preserved on error (reducer keeps changes). When saveFn
+      // surfaces a structured PendingChangeBatchError, per-row failure
+      // list surfaces inline banners in the diff preview modal.
       const failures =
         err instanceof PendingChangeBatchError ? err.failures : [];
       dispatch({ type: "saveError", message, failures });
@@ -777,6 +803,7 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
       addChange,
       revertChange,
       revertAll,
+      commitChange,
       save,
       clearError,
       dependencies,
