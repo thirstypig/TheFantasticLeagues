@@ -479,9 +479,19 @@ export async function syncPositionEligibility(
       const posListChanged = newPosList !== player.posList;
       // Only write posGames when it actually differs from the stored value to avoid
       // ~1000 daily no-op writes for players whose fielding GP hasn't changed.
-      const storedPosGames = player.posGames as Record<string, number> | null;
+      // Use a runtime guard instead of `as` cast — Prisma.JsonValue could be anything.
+      // Normalize key order before comparing: Postgres JSONB stores keys alphabetically,
+      // but Object.fromEntries(Map) preserves insertion order, so a naive JSON.stringify
+      // would always mismatch even when the data is identical (#272).
+      const storedRaw = player.posGames;
+      const storedPosGames: Record<string, number> | null =
+        storedRaw && typeof storedRaw === "object" && !Array.isArray(storedRaw)
+          ? storedRaw as Record<string, number>
+          : null;
+      const sortedJson = (o: Record<string, number> | null | undefined): string =>
+        o ? JSON.stringify(Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)))) : "null";
       const posGamesChanged = posGamesValue !== undefined &&
-        JSON.stringify(posGamesValue) !== JSON.stringify(storedPosGames);
+        sortedJson(posGamesValue) !== sortedJson(storedPosGames);
 
       if (!posListChanged && !posGamesChanged) {
         unchanged++;
