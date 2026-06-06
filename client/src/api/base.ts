@@ -190,9 +190,12 @@ export async function fetchJsonPublic<T>(url: string, init?: RequestInit): Promi
   // an AbortController. Callers may pass { signal } via `init` for abort control.
   const res = await fetch(url, {
     ...init,
-    headers: { Accept: "application/json", ...init?.headers },
+    method: "GET",
     credentials: "omit",
-    signal: init?.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+    headers: { Accept: "application/json", ...init?.headers },
+    signal: init?.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)])
+      : AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 
   const requestId = res.headers.get("x-request-id");
