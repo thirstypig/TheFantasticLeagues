@@ -471,10 +471,19 @@ export async function syncPositionEligibility(
 
       // Persist per-position GP from the fielding map so the hub can display
       // real GP suffixes instead of the synthetic 60/40 split.
-      const posGamesValue = fielding ? Object.fromEntries(fielding) : undefined;
+      // Guard `size > 0`: an empty fielding Map produces {} which is truthy,
+      // causing unnecessary DB writes and corrupting posGames IS NOT NULL semantics.
+      const posGamesValue = fielding && fielding.size > 0
+        ? Object.fromEntries(fielding)
+        : undefined;
       const posListChanged = newPosList !== player.posList;
+      // Only write posGames when it actually differs from the stored value to avoid
+      // ~1000 daily no-op writes for players whose fielding GP hasn't changed.
+      const storedPosGames = player.posGames as Record<string, number> | null;
+      const posGamesChanged = posGamesValue !== undefined &&
+        JSON.stringify(posGamesValue) !== JSON.stringify(storedPosGames);
 
-      if (!posListChanged && !posGamesValue) {
+      if (!posListChanged && !posGamesChanged) {
         unchanged++;
         continue;
       }
@@ -483,7 +492,7 @@ export async function syncPositionEligibility(
         where: { id: player.id },
         data: {
           ...(posListChanged && { posList: newPosList }),
-          ...(posGamesValue && { posGames: posGamesValue }),
+          ...(posGamesChanged && { posGames: posGamesValue }),
         },
       });
 

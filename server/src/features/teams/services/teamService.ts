@@ -6,6 +6,15 @@ import type { RosterHubResponse } from "@shared/api/teams.js";
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
 
+/** Runtime guard: Prisma returns posGames as Prisma.JsonValue (wide union).
+ *  Validates it's actually an object with finite-number values before use. */
+function isPosGamesRecord(v: unknown): v is Record<string, number> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  return Object.values(v as Record<string, unknown>).every(
+    (val) => typeof val === "number" && Number.isFinite(val),
+  );
+}
+
 function posScore(pos?: string | null): number {
   if (!pos) return 99;
   const idx = POS_ORDER.indexOf(pos);
@@ -203,7 +212,7 @@ export class TeamService {
       price: r.price,
       assignedPosition: r.assignedPosition,
       isKeeper: r.isKeeper,
-      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, r.player.posGames as Record<string, number> | null),
+      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, isPosGamesRecord(r.player.posGames) ? r.player.posGames : null),
       periodStats: playerPeriodStatsMap.get(r.playerId) ?? null,
     }));
 
@@ -216,7 +225,7 @@ export class TeamService {
       acquiredAt: r.acquiredAt,
       releasedAt: r.releasedAt!,
       price: r.price,
-      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, r.player.posGames as Record<string, number> | null),
+      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, isPosGamesRecord(r.player.posGames) ? r.player.posGames : null),
     }));
 
     return {
