@@ -360,7 +360,7 @@ export async function syncPositionEligibility(
   // Fetch all players with MLB IDs
   const players = await prisma.player.findMany({
     where: { mlbId: { not: null } },
-    select: { id: true, mlbId: true, posPrimary: true, posList: true },
+    select: { id: true, mlbId: true, posPrimary: true, posList: true, posGames: true },
   });
 
   logger.info(
@@ -469,14 +469,41 @@ export async function syncPositionEligibility(
       const sorted = [primary, ...[...eligible].filter((p) => p !== primary).sort()];
       const newPosList = sorted.join(",");
 
-      if (newPosList === player.posList) {
+      // Persist per-position GP from the fielding map so the hub can display
+      // real GP suffixes instead of the synthetic 60/40 split.
+      // Guard `size > 0`: an empty fielding Map produces {} which is truthy,
+      // causing unnecessary DB writes and corrupting posGames IS NOT NULL semantics.
+      const posGamesValue = fielding && fielding.size > 0
+        ? Object.fromEntries(fielding)
+        : undefined;
+      const posListChanged = newPosList !== player.posList;
+      // Only write posGames when it actually differs from the stored value to avoid
+      // ~1000 daily no-op writes for players whose fielding GP hasn't changed.
+      // Use a runtime guard instead of `as` cast — Prisma.JsonValue could be anything.
+      // Normalize key order before comparing: Postgres JSONB stores keys alphabetically,
+      // but Object.fromEntries(Map) preserves insertion order, so a naive JSON.stringify
+      // would always mismatch even when the data is identical (#272).
+      const storedRaw = player.posGames;
+      const storedPosGames: Record<string, number> | null =
+        storedRaw && typeof storedRaw === "object" && !Array.isArray(storedRaw)
+          ? storedRaw as Record<string, number>
+          : null;
+      const sortedJson = (o: Record<string, number> | null | undefined): string =>
+        o ? JSON.stringify(Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)))) : "null";
+      const posGamesChanged = posGamesValue !== undefined &&
+        sortedJson(posGamesValue) !== sortedJson(storedPosGames);
+
+      if (!posListChanged && !posGamesChanged) {
         unchanged++;
         continue;
       }
 
       await prisma.player.update({
         where: { id: player.id },
-        data: { posList: newPosList },
+        data: {
+          ...(posListChanged && { posList: newPosList }),
+          ...(posGamesChanged && { posGames: posGamesValue }),
+        },
       });
 
       if (newPosList !== player.posPrimary) {

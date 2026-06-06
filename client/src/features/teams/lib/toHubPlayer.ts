@@ -29,7 +29,7 @@ export interface RosterPlayerInput {
   isPitcher?: boolean;
   mlbTeam?: string;
   isKeeper?: boolean;
-  /** Per-position GP — synthetic today, real when Player.posGames lands. See todos/180-pending-p3-real-per-position-gp-via-player-posgames.md */
+  /** Per-position GP from Player.posGames (real MLB fielding data); synthetic 60/40 fallback until cron populates it. */
   gamesByPos?: Record<string, number>;
   /** Raw MLB statsapi status string ("Injured 10-Day", "Active", …).
    *  Verbatim per direction-lock IL #1 — never normalized. */

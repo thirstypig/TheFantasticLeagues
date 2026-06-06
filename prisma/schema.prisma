@@ -470,6 +470,11 @@ model Player {
   /// `syncAllPlayers` cron from each team's 40-man roster `status.description`.
   mlbStatus String?
 
+  /// Per-position games-played map populated by the daily syncPositionEligibility
+  /// cron from the MLB Stats API fielding group. Keys are position abbreviations
+  /// ("OF", "2B", "SS", …). Null until the cron first runs for a player.
+  posGames  Json?
+
   createdAt DateTime @default(now())
 
   rosters               Roster[]
