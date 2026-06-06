@@ -476,7 +476,8 @@ export async function computeTeamStatsFromDb(
   // acquiring team with pre-acquisition stats. Fall back to daily-stats (ownership
   // windows) for those periods so attribution is correct per ADR-013.
   const hasMidPeriodPickup = rosters.some(
-    r => r.acquiredAt > period.startDate && r.acquiredAt < period.endDate
+    r => r.acquiredAt.getTime() > period.startDate.getTime() &&
+         r.acquiredAt.getTime() < period.endDate.getTime()
   );
 
   if (periodStatCount > 0 && !hasMidPeriodPickup) {
