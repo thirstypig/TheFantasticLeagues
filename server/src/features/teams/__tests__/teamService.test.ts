@@ -273,3 +273,44 @@ describe("TeamService.getTeamRosterHub", () => {
     });
   });
 });
+
+// ── TeamService.buildGamesByPos — real posGames vs synthetic fallback ──
+//
+// Pinning the posGames integration: when real MLB fielding data is present
+// it must take precedence; when absent or invalid the synthetic 60/40 split
+// must kick in.
+
+describe("TeamService.buildGamesByPos", () => {
+  it("returns real posGames when provided and non-empty", () => {
+    const realData = { OF: 45, "1B": 12 };
+    const result = TeamService.buildGamesByPos("OF", "OF,1B", realData);
+    expect(result).toEqual({ OF: 45, "1B": 12 });
+  });
+
+  it("returns synthetic 60/40 split when posGames is null", () => {
+    const result = TeamService.buildGamesByPos("OF", "OF,1B", null);
+    // Synthetic: OF gets Math.round(20 * 0.6) = 12, 1B gets Math.round(20 * 0.4 / 1) = 8
+    expect(result["OF"]).toBe(12);
+    expect(result["1B"]).toBe(8);
+  });
+
+  it("falls back to synthetic when posGames is an empty object", () => {
+    const result = TeamService.buildGamesByPos("SS", "SS", {});
+    expect(result["SS"]).toBe(20);
+  });
+
+  it("falls back to synthetic when posGames is undefined", () => {
+    const result = TeamService.buildGamesByPos("3B", "3B");
+    expect(result["3B"]).toBe(20);
+  });
+
+  it("single-position synthetic gives full 20 GP", () => {
+    const result = TeamService.buildGamesByPos("C", "C", null);
+    expect(result).toEqual({ C: 20 });
+  });
+
+  it("real posGames with a single position is returned verbatim", () => {
+    const result = TeamService.buildGamesByPos("C", "C", { C: 58 });
+    expect(result).toEqual({ C: 58 });
+  });
+});
