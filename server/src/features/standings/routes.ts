@@ -140,7 +140,11 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
   const teamStats = cachedStatsByPeriodId.get(pid) ?? await computeTeamStatsFromDb(leagueId, pid);
 
   // Compute season-to-date stats
-  const selectedPeriod = await prisma.period.findUnique({ where: { id: pid } });
+  // Use findFirst scoped to leagueId to prevent cross-league period probing (IDOR).
+  const selectedPeriod = await prisma.period.findFirst({ where: { id: pid, leagueId } });
+  if (periodId && !selectedPeriod) {
+    return res.status(403).json({ error: "Period not found in this league" });
+  }
   const allPeriods = await prisma.period.findMany({
     where: { leagueId, status: { in: ["active", "completed"] }, startDate: { lte: selectedPeriod?.endDate ?? new Date() } },
     orderBy: { startDate: "asc" },
