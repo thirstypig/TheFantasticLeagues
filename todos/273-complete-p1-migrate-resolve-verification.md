@@ -58,3 +58,18 @@ Option A — run both queries before merge, check results. This is a 2-minute ve
 ## Work Log
 
 ### 2026-06-05 — Flagged by data-migration-expert (PR #378 review)
+
+### 2026-06-06 — Browser verification found column MISSING despite migrate resolve row
+
+During browser verify (`/verify` skill), the hub endpoint returned 500 after running
+`prisma generate` — error: "The column `Player.posGames` does not exist in the current
+database." The `migrate resolve --applied` had inserted the `_prisma_migrations` row
+without executing the DDL. Column was manually created via:
+
+  `prisma db execute --stdin`: `ALTER TABLE "Player" ADD COLUMN IF NOT EXISTS "posGames" JSONB`
+
+Post-fix verification:
+- syncPositionEligibility: 1183 updated, 1402 unchanged (first run)
+- Second run: 4 updated, 2581 unchanged — sortedJson key-order fix confirmed working
+- Hub endpoint: 200, real MLB GP data flowing (totals 50–77 games, not synthetic 20)
+- Carson Kelly gained DH eligibility from real posGames (3 actual DH games)
