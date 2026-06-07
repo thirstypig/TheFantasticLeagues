@@ -3841,3 +3841,53 @@ Massive session with 19 PRs merged (#46 through #64), completing 10 of 12 auctio
 - Server TypeScript: 319 pre-existing errors (0 from refactoring)
 - Client TypeScript: 0 errors
 - Client Vite build: Passes
+
+---
+
+## Session 2026-06-05/06
+
+### Completed
+
+**P1/P2 code-review fixes (8 todos, 3 PRs):**
+- PR #374: `.getTime()` for `hasMidPeriodPickup` date comparison — prevents silent lexicographic comparison if a mock passes a plain string (#261)
+- PR #377: `fetchJsonPublic` hardened — `method: 'GET'`, `credentials: 'omit'`, `AbortSignal.any()` compose caller + timeout (#264)
+- PR #378: `posGames` unsafe cast → `isPosGamesRecord` runtime guard; migration `IF NOT EXISTS` + rollback docs; empty `fielding` Map guard; `sortedJson` key-order fix for cron change-detection (#262 #265 #266 #268)
+- PR #380: IDOR fix (`findUnique` → `findFirst` with `leagueId` scope on `/period-category-standings`); `mlbId` added to `AppliedReassignmentSchema` (#263 #267)
+
+**Player.posGames feature (PR #378 → merged):**
+- `Player.posGames Json?` column (migration `20260605000000_add_player_posgames`)
+- `syncPositionEligibility` writes real MLB fielding GP alongside `posList`; key-order-normalized `sortedJson` diff guard prevents ~1000 daily no-op writes
+- `TeamService.buildGamesByPos` accepts real data with 60/40 synthetic fallback
+- Browser verify: Carson Kelly gained DH eligibility from 3 real DH games
+- **gotcha found in verify**: `migrate resolve --applied` had marked both `posGames` and `rosterVersion` migrations as applied without running the DDL; columns were absent from prod; column had to be manually applied before the hub would load. Now documented in CLAUDE.md migrations section.
+
+**Team.rosterVersion feature (committed to main):**
+- `Team.rosterVersion Int @default(0)` — incremented on all roster mutations
+- `rosterVersionGuard.ts`: `checkRosterVersion` (optional `If-Match` header, 409 on stale write) + `incrementRosterVersion` (atomic, inside transaction)
+- Wired to slot PATCH, claim, drop, IL stash/activate routes
+- Client `updateRosterPosition` passes `If-Match: rosterVersion` header
+
+**Tests (+44 new):**
+- 12 posGames write-path tests (mlbSyncService + teamService) — closes todo #277 fixture drift
+- Transaction mock updated (`mockTx.team.update`, `mockPrisma.team.findUnique`) to support rosterVersion guard
+- Full suite: 1207 server + 855 client = 2062 green, 7 skipped
+
+### Pending / Next Steps
+- [ ] todo #274 — `storedPosGames` unsafe cast in mlbSyncService (replace with isPosGamesRecord, depends on #279)
+- [ ] todo #275 — migration rollback comment references nonexistent `ENABLE_POS_GAMES_SYNC` flag
+- [ ] todo #276 — missing rollback runbook at `docs/runbooks/` for posGames migration
+- [ ] todo #278 — `buildGamesByPos` missing explicit return type
+- [ ] todo #279 — extract `isPosGamesRecord` to `server/src/lib/jsonGuards.ts`
+- [ ] todo #282 — add `team_get_roster_hub` MCP tool (agent-native gap)
+- [ ] Open PRs #372–#377, #379, #380 still need merge
+- [ ] OnRoto period-end snapshots still pending (contacted 2026-06-03)
+- [ ] AdSense GDPR banners still need dashboard config (todo #246)
+
+### Concerns / Tech Debt
+- `migrate resolve --applied` must ALWAYS be paired with manual DDL verification — `prisma migrate status` says "up to date" even when the column is physically absent. Document pre-deploy SQL check in PR test plan.
+- `rosterVersion` hub client-side tracking not wired yet (client reads the value from roster-hub response but the `Team.tsx` pending-bar doesn't pass it to `updateRosterPosition` in all flows yet).
+
+### Test Results
+- Server: 1207 passing, 7 skipped (89 test files)
+- Client: 855 passing (69 test files)
+- Total: 2062 green
