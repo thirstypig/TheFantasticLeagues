@@ -49,6 +49,7 @@ import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
 import { clearStandingsCache } from "../standings/services/standingsService.js";
 import { clearAwardsCache } from "../awards/services/awardsService.js";
+import { incrementRosterVersion } from "../teams/lib/rosterVersionGuard.js";
 
 /**
  * Invalidate every cache keyed on (leagueId, ...) after a successful roster
@@ -605,6 +606,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         },
       });
     }
+    await incrementRosterVersion(teamId, tx); // todo #181
   }, { timeout: 30_000 });
   } catch (err: unknown) {
     // Typed guard errors from Phase 1 libs (roster cap, overlap, ghost-IL,
@@ -723,6 +725,7 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
         transactionType: 'DROP'
       }
     });
+    await incrementRosterVersion(teamId, tx); // todo #181
   }, { timeout: 30_000 });
 
   writeAuditLog({
@@ -1184,6 +1187,7 @@ router.post(
             },
           });
         }
+        await incrementRosterVersion(teamId, tx); // todo #181
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {
@@ -1578,6 +1582,7 @@ router.post(
             },
           });
         }
+        await incrementRosterVersion(teamId, tx); // todo #181
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {

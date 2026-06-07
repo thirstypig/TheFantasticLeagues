@@ -11,6 +11,7 @@ import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
 import { buildIlWindows, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
+import { checkRosterVersion, incrementRosterVersion } from "./lib/rosterVersionGuard.js";
 
 // Swap-only mutation. `effectiveDate` is advisory metadata for the
 // commissioner-mode backdate flow — the swap itself doesn't write a
@@ -631,6 +632,16 @@ router.patch(
       });
     }
 
+    // Optimistic-concurrency guard (todo #181): reject stale writes.
+    // The If-Match header is optional during rollout — absent callers pass through.
+    const guard = await checkRosterVersion(teamId, req.headers["if-match"] as string | undefined);
+    if (guard.stale) {
+      return res.status(409).json({
+        error: "Roster changed since you last loaded it",
+        rosterVersion: guard.current,
+      });
+    }
+
     // effectiveDate is advisory metadata for the commissioner-mode
     // backdate flow. Today the swap doesn't update Roster.acquiredAt
     // (slot reassignment is not an audit-log transaction) — so a
@@ -653,12 +664,17 @@ router.patch(
       );
     }
 
-    const updated = await prisma.roster.update({
-      where: { id: rosterId },
-      data: { assignedPosition },
+    let newRosterVersion = 0;
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.roster.update({
+        where: { id: rosterId },
+        data: { assignedPosition },
+      });
+      newRosterVersion = await incrementRosterVersion(teamId, tx);
+      return row;
     });
 
-    res.json({ roster: updated });
+    res.json({ roster: updated, rosterVersion: newRosterVersion });
   }),
 );
 

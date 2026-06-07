@@ -20,6 +20,8 @@ const mockTx = {
     findMany: vi.fn().mockResolvedValue([]),
     findFirst: vi.fn().mockResolvedValue(null),
   },
+  // incrementRosterVersion (rosterVersionGuard) increments inside the transaction
+  team: { update: vi.fn().mockResolvedValue({ rosterVersion: 1 }) },
 };
 
 vi.mock("../../../db/prisma.js", () => ({
@@ -33,6 +35,8 @@ vi.mock("../../../db/prisma.js", () => ({
       findMany: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    // checkRosterVersion reads Team.rosterVersion outside the transaction
+    team: { findUnique: vi.fn().mockResolvedValue({ rosterVersion: 0 }) },
     $transaction: vi.fn(async (fn: any) => fn(mockTx)),
   },
 }));

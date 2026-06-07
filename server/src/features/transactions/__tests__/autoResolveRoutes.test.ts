@@ -29,6 +29,7 @@ const mockTx: any = {
     findMany: vi.fn().mockResolvedValue([]),
     findFirst: vi.fn().mockResolvedValue(null),
   },
+  team: { update: vi.fn().mockResolvedValue({ rosterVersion: 1 }) },
 };
 
 vi.mock("../../../db/prisma.js", () => ({
@@ -41,6 +42,7 @@ vi.mock("../../../db/prisma.js", () => ({
       findMany: vi.fn().mockResolvedValue([]),
       findFirst: vi.fn().mockResolvedValue(null),
     },
+    team: { findUnique: vi.fn().mockResolvedValue({ rosterVersion: 0 }) },
     $transaction: vi.fn(async (fn: any) => fn(mockTx)),
   },
 }));

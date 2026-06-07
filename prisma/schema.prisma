@@ -415,6 +415,10 @@ model Team {
   transactions TransactionEvent[]
   auctionBids  AuctionBid[]
 
+  // Optimistic-concurrency guard for roster hub (todo #181).
+  // Incremented on every roster mutation so the hub client can detect stale writes.
+  rosterVersion Int @default(0)
+
   // Waiver priority override (commissioner-set; overrides computed standings-based rank)
   waiverPriorityOverride Int?
 

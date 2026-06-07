@@ -30,7 +30,7 @@ import "../../../components/aurora/aurora.css";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamAiInsights, getTeamRosterHub, getSeasonStandings } from "../../../api";
-import { fetchJsonApi, API_BASE } from "../../../api/base";
+import { fetchJsonApi, API_BASE, ApiError } from "../../../api/base";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
@@ -197,6 +197,9 @@ export default function Team() {
     ownerName?: string | null;
   } | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  // Optimistic-concurrency token (todo #181). Loaded from hub GET response,
+  // sent as `If-Match` on PATCH mutations. Reset on each hub reload.
+  const [rosterVersion, setRosterVersion] = useState<number>(0);
   // Full league player pool — fed to the transactions panels as `players`,
   // enriched by `loadRosterMovePlayers` so own-team rows carry the
   // `_dbPlayerId` / `_dbTeamId` / `assignedPosition` the panel filters
@@ -285,6 +288,7 @@ export default function Team() {
         if (hubRes.status === "fulfilled") {
           const hub = hubRes.value;
           setComputedAt(hub.computedAt);
+          setRosterVersion(hub.rosterVersion ?? 0);
           // Cache the enriched player pool for the transactions panels.
           setPlayers(
             panelPlayersRes.status === "fulfilled" ? panelPlayersRes.value : [],
@@ -585,6 +589,10 @@ export default function Team() {
 
   /* ── Pending changes (Hub scenario: swap only) ────────────────────── */
 
+  // Ref for queuing a toast from saveFn before showToast is defined in the
+  // component body. Drained after showToast is available (see below).
+  const pendingToastRef = useRef<string | null>(null);
+
   // Save fn: serialize pending swaps to PATCH /api/teams/:teamId/roster/:rosterId
   // calls. Atomicity per direction-lock #4: if any single mutation fails,
   // we fail the whole batch and keep the queue in place so the user can
@@ -604,6 +612,8 @@ export default function Team() {
     // swap mutation accepts the date as advisory only (no period
     // recompute) — claim/il-stash/il-activate use it for real.
     const effectiveDate = ctx.effectiveDate ?? undefined;
+    // Snapshot rosterVersion at batch-start so all swap calls send the same token.
+    const currentRosterVersion = rosterVersion;
     // Atomic-on-failure (FA-#4 inherits from Hub-#4): each entry runs
     // sequentially; first failure throws and aborts the rest. Earlier
     // successful mutations are NOT rolled back — server matcher reads
@@ -611,9 +621,15 @@ export default function Team() {
     for (const change of changes) {
       if (change.kind === "swap") {
         try {
-          await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate);
-          await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate);
+          await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate, currentRosterVersion);
+          await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate, currentRosterVersion);
         } catch (err) {
+          // 409 Conflict — roster mutated in another tab or by commissioner.
+          if (err instanceof ApiError && err.status === 409) {
+            pendingToastRef.current = "Roster changed by another tab — refreshed";
+            setReloadKey(k => k + 1);
+            return;
+          }
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
         }
@@ -692,7 +708,7 @@ export default function Team() {
     // Refresh the roster on success so the UI snaps to the canonical
     // server state (and any matcher-driven cascades show up).
     setReloadKey(k => k + 1);
-  }, [teamMeta?.id, leagueId]);
+  }, [teamMeta?.id, leagueId, rosterVersion]);
 
   const pending = usePendingChanges({
     teamId: teamMeta?.id ?? null,
@@ -796,6 +812,13 @@ export default function Team() {
   useEffect(() => () => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
   }, []);
+  // Drain any toast queued by saveFn (409 conflict path). saveFn is defined
+  // before showToast so it uses pendingToastRef to avoid a TDZ reference error.
+  if (pendingToastRef.current) {
+    const msg = pendingToastRef.current;
+    pendingToastRef.current = null;
+    showToast(msg);
+  }
 
   /* ── FA panel (FA scenario) ────────────────────────────────────── */
 

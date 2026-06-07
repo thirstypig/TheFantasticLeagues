@@ -130,5 +130,7 @@ export const RosterHubResponseSchema = z.object({
   pitchers: z.array(RosterHubRowSchema),
   ilPlayers: z.array(RosterHubRowSchema),
   droppedPlayers: z.array(RosterHubDroppedPlayerSchema),
+  /** Monotonic counter incremented on every roster mutation. Client sends as `If-Match` header. */
+  rosterVersion: z.number().int(),
 });
 export type RosterHubResponse = z.infer<typeof RosterHubResponseSchema>;

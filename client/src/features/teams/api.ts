@@ -57,13 +57,25 @@ export async function updateRosterPosition(
    * recompute period stats). Pass YYYY-MM-DD or full ISO datetime.
    */
   effectiveDate?: string,
-): Promise<UpdateRosterPositionResponse> {
+  /**
+   * Optimistic-concurrency token (todo #181). When provided, sent as the
+   * `If-Match` header. Server returns 409 when the roster has changed since
+   * the client last fetched it.
+   */
+  rosterVersion?: number,
+): Promise<UpdateRosterPositionResponse & { rosterVersion?: number }> {
   const body: Record<string, unknown> = { assignedPosition: position };
   if (effectiveDate) body.effectiveDate = effectiveDate;
-  return fetchJsonApi<UpdateRosterPositionResponse>(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  const extraHeaders: Record<string, string> = {};
+  if (rosterVersion != null) extraHeaders["If-Match"] = String(rosterVersion);
+  return fetchJsonApi<UpdateRosterPositionResponse & { rosterVersion?: number }>(
+    `${API_BASE}/teams/${teamId}/roster/${rosterId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+      headers: extraHeaders,
+    },
+  );
 }
 
 // --- Period Roster ---
