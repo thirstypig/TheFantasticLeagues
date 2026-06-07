@@ -20,7 +20,7 @@ vi.mock("../../../api/base", async () => {
 });
 
 import { fetchJsonApi, fetchJsonPublic } from "../../../api/base";
-import { ilStash, ilActivate } from "../api";
+import { ilStash, ilActivate, drop } from "../api";
 import { getPlayerCareerStats, _resetCareerStatsCache } from "../../players/api";
 
 beforeEach(() => {
@@ -222,5 +222,43 @@ describe("getPlayerCareerStats — client-side cache", () => {
     // Retry should hit the network again, not surface the cached failure.
     vi.mocked(fetchJsonPublic).mockResolvedValue({ stats: [{ splits: [] }] } as any);
     await expect(getPlayerCareerStats("789", "hitting")).resolves.toBeDefined();
+  });
+});
+
+describe("drop", () => {
+  it("POSTs to /api/transactions/drop with validated body", async () => {
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      success: true,
+      playerId: 42,
+    });
+
+    await drop({ leagueId: 1, teamId: 2, playerId: 42 });
+
+    expect(fetchJsonApi).toHaveBeenCalledTimes(1);
+    expect(fetchJsonApi).toHaveBeenCalledWith(
+      "/api/transactions/drop",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ leagueId: 1, teamId: 2, playerId: 42 }),
+      }),
+    );
+  });
+
+  it("includes effectiveDate when provided", async () => {
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      success: true,
+      playerId: 42,
+    });
+
+    await drop({ leagueId: 1, teamId: 2, playerId: 42, effectiveDate: "2026-06-01" });
+
+    const [, init] = vi.mocked(fetchJsonApi).mock.calls[0];
+    const body = JSON.parse(String(init?.body));
+    expect(body).toMatchObject({
+      leagueId: 1,
+      teamId: 2,
+      playerId: 42,
+      effectiveDate: "2026-06-01",
+    });
   });
 });
