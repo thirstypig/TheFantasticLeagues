@@ -164,12 +164,9 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
 
     it("credits stats to new team when player moved mid-period (releasedAt > startDate)", async () => {
       // Player traded mid-period: released from RGS on Apr 25, acquired by DLC on Apr 25.
-      // End-of-period owner is DLC (still holds through PERIOD_END 5/16), so DLC
-      // gets the full-period PSP. RGS's row was released before endDate → no credit.
+      // PR #374: hasMidPeriodPickup=true → routes to computeWithDailyStats.
+      // DLC holds from Apr 25 onward; the game on Apr 27 falls in DLC's window.
       const tradedAt = new Date("2026-04-25T00:00:00.000Z");
-      // Per the orderBy: { acquiredAt: "desc" } contract on the rosters query,
-      // the DLC row (acquiredAt 4/25) comes before the RGS row (acquiredAt 3/22)
-      // in the iteration order. First-wins idiom in endOfPeriodOwner picks DLC.
       mockRosterFindMany.mockResolvedValue([
         {
           teamId: 148, playerId: 20, acquiredAt: tradedAt,
@@ -184,14 +181,15 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
           player: { id: 20, mlbId: 2000, posPrimary: "SS" },
         },
       ]);
-      mockPeriodStatsFindMany.mockResolvedValue([
-        { playerId: 20, ...ZERO_STATS, R: 10, HR: 3 },
+      // Daily stats: all 10 R occurred after the trade (Apr 27 = DLC window)
+      mockDailyFindMany.mockResolvedValueOnce([
+        { playerId: 20, gameDate: new Date("2026-04-27"), ...ZERO_STATS, R: 10, HR: 3 },
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
-      // End-of-period owner (DLC) gets credit; RGS released player mid-period.
+      // DLC holds on game date → gets credit; RGS window ended before the game.
       expect(dlc.R).toBe(10);
       expect(rgs.R).toBe(0);
     });
@@ -199,22 +197,18 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
     it("picks LATEST acquisition on drop-and-re-add within a period (orderBy contract)", async () => {
       // Regression for code-review finding on PR #365: comment claimed
       // "latest acquiredAt wins" but the build loop is "first row wins."
-      // The fix added `orderBy: { acquiredAt: "desc" }` to the rosters query
-      // so the first row encountered IS the latest acquisition.
+      // The fix added `orderBy: { acquiredAt: "desc" }` to the rosters query.
       //
-      // Scenario: RGS held player day 1, dropped them on day 5, re-acquired
-      // them on day 20. Both roster rows pass the end-of-period predicate
-      // (both have releasedAt > endDate or null), so without correct ordering
-      // an earlier row could win.
+      // Scenario: RGS held player day 1, dropped on Apr 23, re-acquired May 8.
+      // PR #374: re-acquisition on May 8 is mid-period → hasMidPeriodPickup=true
+      // → routes to computeWithDailyStats. Stats after May 8 go to RGS.
       mockRosterFindMany.mockResolvedValue([
-        // DESC by acquiredAt → re-acquisition row appears first
         {
           teamId: 145, playerId: 60, acquiredAt: new Date("2026-05-08T00:00:00.000Z"),
           releasedAt: null,
           assignedPosition: "OF",
           player: { id: 60, mlbId: 6000, posPrimary: "OF" },
         },
-        // Earlier ownership stint (released day 5 of period)
         {
           teamId: 145, playerId: 60, acquiredAt: new Date("2026-03-22T00:00:00.000Z"),
           releasedAt: new Date("2026-04-23T00:00:00.000Z"),
@@ -222,14 +216,14 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
           player: { id: 60, mlbId: 6000, posPrimary: "OF" },
         },
       ]);
-      mockPeriodStatsFindMany.mockResolvedValue([
-        { playerId: 60, ...ZERO_STATS, R: 15, HR: 4, RBI: 11 },
+      // Daily stats after re-acquisition (May 10 falls in RGS's window)
+      mockDailyFindMany.mockResolvedValueOnce([
+        { playerId: 60, gameDate: new Date("2026-05-10"), ...ZERO_STATS, R: 15, HR: 4, RBI: 11 },
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      // RGS is end-of-period owner via the LATE re-acquisition row.
-      // Stats counted exactly once.
+      // RGS gets credit for the game in their re-acquisition window.
       expect(rgs.R).toBe(15);
       expect(rgs.HR).toBe(4);
       expect(rgs.RBI).toBe(11);
@@ -331,13 +325,13 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
     });
 
     it("credits stats exactly once when player is released and re-acquired by same team — active entry returned first (normal order)", async () => {
-      // Normal case: Prisma returns the active (releasedAt=null) entry before the released entry.
-      // Stats should be credited exactly once to the team that currently holds the player.
+      // Normal case: RGS dropped the player Apr 25 and re-added Apr 28.
+      // PR #374: re-acquisition on Apr 28 is mid-period → hasMidPeriodPickup=true
+      // → routes to computeWithDailyStats. Stat on May 1 is in RGS's window after re-add.
       const dropDate = new Date("2026-04-25T00:00:00.000Z");
       const readdDate = new Date("2026-04-28T00:00:00.000Z");
 
       mockRosterFindMany.mockResolvedValue([
-        // Active entry FIRST — the "normal" Prisma ordering
         {
           teamId: 145, playerId: 60, acquiredAt: readdDate,
           releasedAt: null,
@@ -351,34 +345,29 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
           player: { id: 60, mlbId: 6000, posPrimary: "SS" },
         },
       ]);
-      mockPeriodStatsFindMany.mockResolvedValue([
-        { playerId: 60, ...ZERO_STATS, R: 7, HR: 2 },
+      // Daily stat after re-add: falls in RGS's window after Apr 28
+      mockDailyFindMany.mockResolvedValueOnce([
+        { playerId: 60, gameDate: new Date("2026-05-01"), ...ZERO_STATS, R: 7, HR: 2 },
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      // Stats credited exactly once (active entry wins, no double-count)
+      // Stats credited exactly once — no double-count across the two roster rows
       expect(rgs.R).toBe(7);
       expect(rgs.HR).toBe(2);
-      // Total across both teams must still be 7 (no duplication)
       const dlc = result.find(r => r.team.code === "DLC")!;
       expect(rgs.R + dlc.R).toBe(7);
     });
 
     it("credits stats exactly once when player is released and re-acquired by same team — released entry returned FIRST (ordering bug scenario)", async () => {
-      // Bug scenario: Prisma returns the released entry before the active one.
-      // Without the fix (#195), countedPlayers.add would fire on the released entry,
-      // claiming the dedup slot before the currentTeam guard could skip it —
-      // the active entry would then be blocked by countedPlayers.has(), causing
-      // the player to be skipped entirely (R=0 instead of R=7).
-      // With the fix, countedPlayers.add fires AFTER all guards, so the released
-      // entry is skipped by the currentTeam !== t.id guard first; the active entry
-      // then passes all guards and gets counted correctly.
+      // Same drop/re-add scenario as above but Prisma returns the released entry first.
+      // PR #374: hasMidPeriodPickup=true → computeWithDailyStats. The daily path
+      // splits by ownership window and avoids the old dedup-slot bug entirely.
       const dropDate = new Date("2026-04-25T00:00:00.000Z");
       const readdDate = new Date("2026-04-28T00:00:00.000Z");
 
       mockRosterFindMany.mockResolvedValue([
-        // Released entry FIRST — triggers the bug if countedPlayers.add fires too early
+        // Released entry FIRST
         {
           teamId: 145, playerId: 60, acquiredAt: new Date("2026-03-22"),
           releasedAt: dropDate,
@@ -392,23 +381,23 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
           player: { id: 60, mlbId: 6000, posPrimary: "SS" },
         },
       ]);
-      mockPeriodStatsFindMany.mockResolvedValue([
-        { playerId: 60, ...ZERO_STATS, R: 7, HR: 2 },
+      mockDailyFindMany.mockResolvedValueOnce([
+        { playerId: 60, gameDate: new Date("2026-05-01"), ...ZERO_STATS, R: 7, HR: 2 },
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      // Stats credited exactly once (active entry wins, no double-count)
+      // Stats credited exactly once — no double-count regardless of row ordering
       expect(rgs.R).toBe(7);
       expect(rgs.HR).toBe(2);
-      // Total across both teams must still be 7 (no duplication)
       const dlc = result.find(r => r.team.code === "DLC")!;
       expect(rgs.R + dlc.R).toBe(7);
     });
 
-    it("credits full period stats to new team for mid-period trade (period-stats path)", async () => {
-      // Period-stats path: all period stats go to current owner (releasedAt=null),
-      // regardless of when in the period the trade occurred.
+    it("splits stats by ownership window for mid-period trade (daily-stats path, PR #374)", async () => {
+      // PR #374 changed this: mid-period trades now route to computeWithDailyStats,
+      // NOT the PSP end-of-period owner path. Stats are split by the trade date.
+      // RGS held Apr 19–25 (pre-trade games); DLC held Apr 25–May 16 (post-trade games).
       const tradedAt = new Date("2026-04-25T00:00:00.000Z");
       mockRosterFindMany.mockResolvedValue([
         {
@@ -424,18 +413,23 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
           player: { id: 70, mlbId: 7000, posPrimary: "OF" },
         },
       ]);
-      mockPeriodStatsFindMany.mockResolvedValue([
-        { playerId: 70, ...ZERO_STATS, R: 15, HR: 4, RBI: 12 },
+      // Pre-trade: game on Apr 22 → RGS window; post-trade: games on Apr 27 + May 5 → DLC window
+      mockDailyFindMany.mockResolvedValueOnce([
+        { playerId: 70, gameDate: new Date("2026-04-22"), ...ZERO_STATS, R: 5, HR: 2, RBI: 4 },
+        { playerId: 70, gameDate: new Date("2026-04-27"), ...ZERO_STATS, R: 6, HR: 1, RBI: 5 },
+        { playerId: 70, gameDate: new Date("2026-05-05"), ...ZERO_STATS, R: 4, HR: 1, RBI: 3 },
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
-      // New owner (DLC) gets ALL period stats; original team (RGS) gets nothing
-      expect(dlc.R).toBe(15);
-      expect(dlc.HR).toBe(4);
-      expect(rgs.R).toBe(0);
-      expect(rgs.HR).toBe(0);
+      // RGS gets pre-trade game; DLC gets both post-trade games
+      expect(rgs.R).toBe(5);
+      expect(rgs.HR).toBe(2);
+      expect(dlc.R).toBe(10);
+      expect(dlc.HR).toBe(2);
+      // Zero-sum: combined totals match raw
+      expect(rgs.R + dlc.R).toBe(15);
     });
   });
 });

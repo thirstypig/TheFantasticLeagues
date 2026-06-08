@@ -472,11 +472,20 @@ export async function computeTeamStatsFromDb(
   // Prefer PlayerStatsPeriod (via MLB byDateRange API) — accurate, handles
   // doubleheaders. playerStatsDaily uses @@unique([playerId, gameDate]) which
   // collapses doubleheaders, systematically undercounting RBI, K, W, IP.
-  if (periodStatCount > 0) {
+  // If any player was acquired strictly mid-period, PSP would over-credit the
+  // acquiring team with pre-acquisition stats. Fall back to daily-stats (ownership
+  // windows) for those periods so attribution is correct per ADR-013.
+  const hasMidPeriodPickup = rosters.some(
+    r => r.acquiredAt.getTime() > period.startDate.getTime() &&
+         r.acquiredAt.getTime() < period.endDate.getTime()
+  );
+
+  if (periodStatCount > 0 && !hasMidPeriodPickup) {
     return computeWithPeriodStats(teams, rosters, period, ilWindowsByPlayer);
   }
 
-  // No PlayerStatsPeriod data yet — use daily stats as a best-effort fallback.
+  // No PlayerStatsPeriod data yet (new period), or mid-period pickup detected —
+  // use daily stats as the correct ownership-window fallback.
   return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
 }
 
