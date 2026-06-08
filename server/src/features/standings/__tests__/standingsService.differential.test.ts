@@ -80,10 +80,16 @@ beforeEach(() => {
 // period/team mocks are persistent (mockResolvedValue); roster/stats mocks are
 // Once-queued and order-sensitive. This helper centralises path-guard assertions
 // so they can't drift out of sync between test cases.
+//
+// opts.pspUsesDailyFallback — set true for mid-period-pickup rosters. Since
+// PR #374 the service falls back to computeWithDailyStats when hasMidPeriodPickup
+// is true even when periodStatCount > 0, so the PSP run must get a daily mock
+// instead of a period-stats mock.
 async function runBothPaths(
   rosters: unknown[],
   dailies: unknown[],
   psp: unknown[],
+  opts: { pspUsesDailyFallback?: boolean } = {},
 ) {
   mockRosterFindMany.mockResolvedValueOnce(rosters);
   mockPeriodStatsCount.mockResolvedValueOnce(0);
@@ -94,10 +100,21 @@ async function runBothPaths(
 
   mockRosterFindMany.mockResolvedValueOnce(rosters);
   mockPeriodStatsCount.mockResolvedValueOnce(1);
-  mockPeriodStatsFindMany.mockResolvedValueOnce(psp);
+  if (opts.pspUsesDailyFallback) {
+    mockDailyFindMany.mockResolvedValueOnce(dailies);
+  } else {
+    mockPeriodStatsFindMany.mockResolvedValueOnce(psp);
+  }
   const pspResult = await computeTeamStatsFromDb(20, 36);
-  expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
-  expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+  if (opts.pspUsesDailyFallback) {
+    // Mid-period pickup: PSP fell back to daily stats; period-stats path never reached
+    expect(mockDailyFindMany).toHaveBeenCalledTimes(2);
+    expect(mockPeriodStatsFindMany).not.toHaveBeenCalled();
+  } else {
+    // Static ownership: PSP used period stats
+    expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
+    expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+  }
 
   return { psdResult, pspResult };
 }
@@ -188,13 +205,13 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
     });
   });
 
-  describe("mid-period trade (paths INTENTIONALLY diverge)", () => {
-    it("PSD splits per-day; PSP credits the end-of-period owner for the full PSP row", async () => {
+  describe("mid-period pickup — PSP falls back to daily stats (paths CONVERGE)", () => {
+    it("both paths split stats by ownership window when a player is acquired mid-period", async () => {
       // Player 3: held by RGS Apr 19–25 (period days 1–7), traded to DLC on
       // Apr 26 (period day 8), held by DLC through period end. Three sample
       // games: Apr 22 (RGS ownership window), May 1 and May 10 (DLC window).
-      // PSD splits credit by window; PSP credits DLC (end-of-period owner)
-      // with the full-period PSP row.
+      // PR #374: when hasMidPeriodPickup=true the service falls back to
+      // computeWithDailyStats for both paths, so PSD and PSP now CONVERGE.
       const TRADE_AT = new Date("2026-04-26T00:00:00.000Z");
       const rosters = [
         // DESC by acquiredAt — matches the production query orderBy
@@ -217,10 +234,10 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
         dailyRow(3, "2026-05-01", { R: 3, HR: 1, RBI: 4, AB: 4, H: 2 }), // DLC window
         dailyRow(3, "2026-05-10", { R: 1, HR: 0, RBI: 1, AB: 3, H: 1 }), // DLC window
       ];
-      // PSP path: same totals aggregated for the full period (no split).
+      // PSP path: full-period totals (unused — PSP falls back to daily for mid-period pickups)
       const psp = [{ playerId: 3, ...ZERO_STATS, R: 6, HR: 2, RBI: 7, AB: 11, H: 5 }];
 
-      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp);
+      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp, { pspUsesDailyFallback: true });
 
       const psdRgs = psdResult.find(r => r.team.code === "AAA");
       const psdDlc = psdResult.find(r => r.team.code === "BBB");
@@ -241,18 +258,15 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       expect(psdDlc.HR).toBe(1);
       expect(psdDlc.RBI).toBe(5);
 
-      // PSP: DLC (end-of-period owner) gets the full PSP row
-      expect(pspDlc.R).toBe(6);
-      expect(pspDlc.HR).toBe(2);
-      expect(pspDlc.RBI).toBe(7);
-      // PSP: RGS released the player before endDate; gets nothing
-      expect(pspRgs.R).toBe(0);
-      expect(pspRgs.HR).toBe(0);
-      expect(pspRgs.RBI).toBe(0);
+      // PSP: falls back to daily stats — same split as PSD (not end-of-period owner)
+      expect(pspRgs.R).toBe(2);
+      expect(pspRgs.HR).toBe(1);
+      expect(pspRgs.RBI).toBe(2);
+      expect(pspDlc.R).toBe(4);
+      expect(pspDlc.HR).toBe(1);
+      expect(pspDlc.RBI).toBe(5);
 
-      // Convergence-of-totals invariant: across both teams, both paths
-      // credit the same league-wide totals. Documented divergence is in
-      // per-team attribution, not in league totals.
+      // Both paths now fully agree on per-team attribution for mid-period pickups.
       expect(psdRgs.R + psdDlc.R).toBe(pspRgs.R + pspDlc.R); // 6 = 6
       expect(psdRgs.HR + psdDlc.HR).toBe(pspRgs.HR + pspDlc.HR); // 2 = 2
       expect(psdRgs.RBI + psdDlc.RBI).toBe(pspRgs.RBI + pspDlc.RBI); // 7 = 7
@@ -282,7 +296,7 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
         { playerId: 5, ...ZERO_STATS, K: 18, IP: 17, ER: 6 },
       ];
 
-      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp);
+      const { psdResult, pspResult } = await runBothPaths(rosters, dailies, psp, { pspUsesDailyFallback: true });
 
       // League total must match between paths for every counting stat.
       // TeamStatRow uses S (not SV) for saves; rate stats AVG/ERA/WHIP are excluded.
