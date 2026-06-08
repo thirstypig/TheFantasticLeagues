@@ -25,6 +25,7 @@ import { getLeagueRules } from "../../../lib/leagueRuleCache.js";
 export interface AppliedReassignment {
   rosterId: number;
   playerId: number;
+  mlbId: number | null;
   playerName: string;
   oldSlot: string;
   newSlot: string;
@@ -104,6 +105,8 @@ export async function buildCandidatesForTeam(
   candidates: RosterCandidate[];
   /** Map rosterId → playerName (for echoing toasts). 0 = the new player. */
   playerNames: Map<number, string>;
+  /** Map rosterId → mlbId (for agent-native responses). 0 = the new player. */
+  playerMlbIds: Map<number, number | null>;
 }> {
   const exclude = new Set(options.excludeRosterIds ?? []);
 
@@ -113,12 +116,13 @@ export async function buildCandidatesForTeam(
       id: true,
       playerId: true,
       assignedPosition: true,
-      player: { select: { name: true, posList: true } },
+      player: { select: { name: true, posList: true, mlbId: true } },
     },
   });
 
   const candidates: RosterCandidate[] = [];
   const playerNames = new Map<number, string>();
+  const playerMlbIds = new Map<number, number | null>();
 
   for (const row of rows) {
     if (exclude.has(row.id)) continue;
@@ -132,6 +136,7 @@ export async function buildCandidatesForTeam(
       pinned: isIl || isOwnerPinned,
     });
     playerNames.set(row.id, row.player.name ?? `Player #${row.playerId}`);
+    playerMlbIds.set(row.id, row.player.mlbId ?? null);
   }
 
   if (options.includeNewPlayer) {
@@ -142,10 +147,10 @@ export async function buildCandidatesForTeam(
       currentSlot: null,
       pinned: false,
     });
-    // Name will be filled in by the caller (which already has the Player row).
+    // Name and mlbId will be filled in by the caller (which already has the Player row).
   }
 
-  return { candidates, playerNames };
+  return { candidates, playerNames, playerMlbIds };
 }
 
 /**
@@ -196,6 +201,7 @@ export async function applyAssignments(
   assignments: SlotAssignment[],
   playerNames: Map<number, string>,
   rosterRowToPlayerId: Map<number, number>,
+  playerMlbIds?: Map<number, number | null>,
 ): Promise<AppliedReassignment[]> {
   const out: AppliedReassignment[] = [];
   for (const a of assignments) {
@@ -208,6 +214,7 @@ export async function applyAssignments(
     out.push({
       rosterId: a.rosterId,
       playerId,
+      mlbId: playerMlbIds?.get(a.rosterId) ?? null,
       playerName: playerNames.get(a.rosterId) ?? `Player #${playerId}`,
       oldSlot: a.oldSlot ?? "",
       newSlot: a.newSlot,

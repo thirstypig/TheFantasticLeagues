@@ -283,6 +283,10 @@ router.get("/:mlbId", requireAuth, asyncHandler(async (req, res) => {
  * variations (outfield mode, dh games threshold, etc.) — not consulted yet.
  *
  * Plan: docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md §0
+ *
+ * TODO: when wiring per-league policy variations (e.g. outfield mode, DH
+ * threshold) call `requireLeagueMember("leagueId")` before using the param
+ * so the endpoint can't be probed across league boundaries.
  */
 router.get("/:mlbId/eligible-slots", requireAuth, rateLimitPerUser({ capacity: 60, windowMs: 60_000, bucketName: "eligible-slots" }), asyncHandler(async (req, res) => {
   const rawMlbId = Number(req.params.mlbId);

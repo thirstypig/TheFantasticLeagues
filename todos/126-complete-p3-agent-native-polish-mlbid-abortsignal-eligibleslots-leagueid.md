@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "126"
 tags: [code-review, agent-native, hardening]
@@ -59,9 +59,9 @@ Option 1.
 
 ## Acceptance Criteria
 
-- [ ] `AppliedReassignment` has `mlbId` populated from existing tx
-- [ ] `fetchJsonPublic` accepts `init?: RequestInit`; signal merge tested
-- [ ] eligible-slots route has a TODO marker (or doc-line removed) at the unused `leagueId` read
+- [x] `AppliedReassignment` has `mlbId` populated from existing tx
+- [x] `fetchJsonPublic` accepts `init?: RequestInit`; signal merge tested
+- [x] eligible-slots route has a TODO marker at the unused `leagueId` param
 
 ## Resources
 
@@ -71,3 +71,13 @@ Option 1.
 
 ### 2026-04-30 — Initial Discovery
 - **By:** /ce:review (3 reviewers, 3 small items)
+
+### 2026-06-05 — Implementation
+- Added `mlbId: number | null` to `AppliedReassignment` interface
+- Extended `buildCandidatesForTeam` to return `playerMlbIds: Map<number, number | null>`
+- Updated `applyAssignments` to accept optional `playerMlbIds` param and include in output
+- Updated all 3 mutation routes (claim, il-stash, il-activate) to populate `playerMlbIds`
+- Updated `ownerAppliedChanges.push` in claim route (slotChanges path) with `mlbId`
+- Added `mlbId: true` to Prisma selects feeding `addPlayer` and `activatePlayer`
+- Added `init?: RequestInit` to `fetchJsonPublic` with signal merge (`init?.signal ?? AbortSignal.timeout(30000)`)
+- Added `TODO: requireLeagueMember("leagueId")` comment in eligible-slots JSDoc

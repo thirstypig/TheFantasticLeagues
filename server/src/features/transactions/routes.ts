@@ -491,7 +491,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         where: { teamId, releasedAt: null },
         select: {
           id: true, playerId: true, assignedPosition: true,
-          player: { select: { posList: true, name: true } },
+          player: { select: { posList: true, name: true, mlbId: true } },
         },
       });
       const byPlayerId = new Map(activeRows.map((r) => [r.playerId, r]));
@@ -518,6 +518,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
           ownerAppliedChanges.push({
             rosterId: row.id,
             playerId: row.playerId,
+            mlbId: row.player.mlbId ?? null,
             playerName: row.player.name ?? `Player #${row.playerId}`,
             oldSlot,
             newSlot: change.slot,
@@ -538,13 +539,14 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         loadSlotCapacities(tx, leagueId),
         buildCandidatesForTeam(tx, teamId, { ownerPinnedRosterIds }),
       ]);
-      const { candidates, playerNames } = candidatesResult;
+      const { candidates, playerNames, playerMlbIds } = candidatesResult;
 
       // Build rosterRowToPlayerId for echo (newRoster id → playerId).
       const rosterRowToPlayerId = new Map<number, number>();
       for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
-      // Augment names map with the new player for the toast.
+      // Augment names and mlbIds maps with the new player for the toast.
       if (player?.name) playerNames.set(newRoster.id, player.name);
+      if (player?.mlbId != null) playerMlbIds.set(newRoster.id, player.mlbId);
 
       let result = resolveLineup(candidates, slotCapacities);
 
@@ -578,6 +580,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
           result.assignments,
           playerNames,
           rosterRowToPlayerId,
+          playerMlbIds,
         );
         // Owner-directed changes come first in the echo (they're the
         // explicit ones). Matcher changes follow for any auto-resolved rows.
@@ -820,7 +823,7 @@ router.post(
       ? null
       : await prisma.player.findUnique({
           where: { id: addPlayerId! },
-          select: { id: true, name: true, posList: true },
+          select: { id: true, name: true, posList: true, mlbId: true },
         });
     if (!stashOnly && !addPlayer) {
       return res.status(404).json({
@@ -1100,11 +1103,14 @@ router.post(
             loadSlotCapacities(tx, leagueId),
             buildCandidatesForTeam(tx, teamId),
           ]);
-          const { candidates, playerNames } = candidatesResult;
+          const { candidates, playerNames, playerMlbIds: stashPlayerMlbIds } = candidatesResult;
           const rosterRowToPlayerId = new Map<number, number>();
           for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
           if (addPlayer && newStashRoster && addPlayer.name) {
             playerNames.set(newStashRoster.id, addPlayer.name);
+          }
+          if (addPlayer && newStashRoster && addPlayer.mlbId != null) {
+            stashPlayerMlbIds.set(newStashRoster.id, addPlayer.mlbId);
           }
 
           let result = resolveLineup(candidates, slotCapacities);
@@ -1133,6 +1139,7 @@ router.post(
               result.assignments,
               playerNames,
               rosterRowToPlayerId,
+              stashPlayerMlbIds,
             );
           }
         }
@@ -1314,7 +1321,7 @@ router.post(
 
     const activatePlayer = await prisma.player.findUnique({
       where: { id: activatePlayerId },
-      select: { id: true, name: true, posList: true },
+      select: { id: true, name: true, posList: true, mlbId: true },
     });
     if (!activatePlayer) {
       return res.status(404).json({
@@ -1492,7 +1499,7 @@ router.post(
             loadSlotCapacities(tx, leagueId),
             buildCandidatesForTeam(tx, teamId),
           ]);
-          const { candidates, playerNames } = candidatesResult;
+          const { candidates, playerNames, playerMlbIds: activatePlayerMlbIds } = candidatesResult;
           const rosterRowToPlayerId = new Map<number, number>();
           for (const c of candidates) rosterRowToPlayerId.set(c.rosterId, c.playerId);
 
@@ -1522,6 +1529,7 @@ router.post(
               result.assignments,
               playerNames,
               rosterRowToPlayerId,
+              activatePlayerMlbIds,
             );
           }
         }
