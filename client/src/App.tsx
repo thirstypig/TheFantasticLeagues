@@ -27,6 +27,7 @@ const Commissioner = React.lazy(() => import("./features/commissioner/pages/Comm
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
+const AdminReports = React.lazy(() => import("./features/admin/pages/AdminReports"));
 const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
 const Auction = React.lazy(() => import("./features/auction/pages/Auction"));
@@ -203,6 +204,8 @@ export default function App() {
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     <Route path="/admin/users" element={<AdminUsers />} />
+                    <Route path="/admin/reports" element={<AdminReports />} />
+                    <Route path="/admin/reports/:slug" element={<AdminReports />} />
                     <Route path="/todo" element={<TodoPage />} />
                     <Route path="/guide" element={<GuidePage />} />
                     <Route path="/guide/account" element={<GuideAccount />} />

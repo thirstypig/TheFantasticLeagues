@@ -16,3 +16,9 @@ declare module "*.svg" {
   const content: string;
   export default content;
 }
+
+// Vite ?raw suffix — imports any file as a plain string
+declare module "*?raw" {
+  const content: string;
+  export default content;
+}
