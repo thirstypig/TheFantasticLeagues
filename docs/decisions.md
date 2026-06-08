@@ -45,17 +45,25 @@ Documents the "why" behind key architectural choices. For reference docs, see `C
 
 ---
 
-## ADR-004: CSV-Based Standings Computation
+## ADR-004: DB-Backed Standings via PlayerStatsPeriod + Ownership-Window Attribution
 
-**Context**: Period and season standings need to be computed from player statistics. Two options: (1) pre-compute and store in DB tables, (2) compute on-the-fly from source data.
+> **Updated 2026-06-08.** The original ADR described CSV-based computation. That was replaced in 2026 when the stats pipeline migrated to the MLB Stats API and `PlayerStatsPeriod` became the authoritative source. See ADR-013 for the attribution model built on top of this decision.
 
-**Decision**: Compute standings on-the-fly from CSV data (`ogba_player_period_totals_2025.csv`). `TeamStatsPeriod` and `TeamStatsSeason` DB tables exist but are seeded with zeros — not used for display.
+**Context**: Period standings need to be computed from per-player statistics. The original CSV approach (`ogba_player_period_totals_2025.csv`) could not support mid-period attribution (who owned a player on which day) because CSVs store totals, not game-by-game rows.
+
+**Decision**: Stats are stored in two complementary tables:
+- `PlayerStatsPeriod` — full-period aggregate per player per period, sourced from the MLB Stats API nightly cron. 218 rows for a completed 8-team period. Used when no mid-period transactions exist for that period (performance path).
+- `PlayerStatsDaily` — one row per player per game date, also from the MLB Stats API. Used when any player was acquired or dropped mid-period (accuracy path via `computeWithDailyStats`).
+
+`TeamStatsPeriod` is a **derived cache** populated by the standings cron — it is NOT the live computation source. The standings API (`computeTeamStatsFromDb`) recomputes from `PlayerStatsPeriod` / `PlayerStatsDaily` on every request, routed through:
+- `computeWithPeriodStats` — credits the player's full PSP row to whoever holds them at `period.endDate`. Fast; only correct for boundary-aligned periods.
+- `computeWithDailyStats` — splits daily rows by exact ownership window. Authoritative; required whenever any mid-period add/drop occurred (enforced by `hasMidPeriodPickup` guard, PR #374).
 
 **Consequences**:
-- Always accurate — no stale cache issues
-- CSV is the single source of truth for stats
-- Slightly slower on each request, but acceptable for current scale (8 teams, 6 periods, ~840 player rows)
-- Future: may migrate to DB-backed computation if performance becomes an issue
+- Stats are always as fresh as the last nightly MLB API sync (typically 9–10 AM PT)
+- `PlayerStatsPeriod` and `PlayerStatsDaily` are the sources of truth for standings — never the CSV files
+- `TeamStatsPeriod` can be regenerated from PSP/PSD at any time; it is only a read-through cache for the team-detail page
+- Mid-period transaction detection is automatic — `computeTeamStatsFromDb` checks `hasMidPeriodPickup` and routes to the correct path without caller intervention
 
 ---
 

@@ -235,3 +235,68 @@ NEW SEASON (COMPLETED)
 3. For tables, use `ThemedTable`, `ThemedThead`, `ThemedTh`, `ThemedTr`, `ThemedTd` from `components/ui/ThemedTable`.
 4. For themed cards, use the `lg-card` class.
 5. Support both light and dark mode — test both before committing.
+
+---
+
+## Display Conventions
+
+### Fantasy Team Names
+Fantasy team codes (e.g. `DLC`, `SKD`) are backend identifiers only. They appear in routes, API payloads, admin tooling, and audit scripts — never as user-facing labels in the UI. User-facing views must show the full team name (e.g. "Demolition Lumber Co.").
+
+MLB team abbreviations are allowed in player tables because they identify the real MLB club, not the fantasy team.
+
+### OGBA Position Labels
+Display league slot labels, not raw MLB defensive roles:
+- Pitchers: `P` — do **not** split into `SP` / `RP`
+- Outfielders: `OF` — do **not** split into `LF` / `CF` / `RF`
+- Corner-man: `CM` (not `CI`)
+- Middle infield: `MI`
+- Designated hitter: `DH`
+
+### Planning Labels
+Use `todo` for micro/actionable tasks and `roadmap` for macro product direction. Both live in `server/data/planning.json`. Do not create separate planning label systems.
+
+---
+
+## Prisma Conventions
+
+Run Prisma commands from the repo root:
+
+```bash
+cd ~/Projects/thefantasticleagues/thefantasticleagues-app
+npx prisma format
+npx prisma migrate dev --name <migration_name>
+npx prisma generate
+```
+
+If you get `P1000 Authentication failed`, it is a database credentials / URL problem (Supabase/Railway), not a Prisma schema problem.
+
+**Never write `CREATE INDEX CONCURRENTLY` in a Prisma migration.** Prisma wraps each migration in a transaction; `CONCURRENTLY` fails with PG error 25001, marks the migration failed, and blocks all future Railway boots via P3009. (Precedent: Railway froze prod for 21h in 2026-05-05.)
+
+---
+
+## Python Stats Worker
+
+The stats worker lives at `scripts/stats-worker/` and requires an activated venv:
+
+```bash
+cd ~/Projects/thefantasticleagues/thefantasticleagues-app/scripts/stats-worker
+source .venv/bin/activate
+python --version   # confirm python is available
+```
+
+### Import historical transactions
+
+```bash
+python parse_onroto_transactions_html.py --season 2025 \
+  --infile data/onroto_transactions_2025.html \
+  --outcsv ogba_transactions_2025.csv \
+  --outjson ogba_transactions_2025.json
+```
+
+```bash
+cd ../../server
+LEAGUE_NAME="OGBA" SEASON=2025 \
+  INFILE="../scripts/stats-worker/ogba_transactions_2025.json" \
+  npx tsx src/scripts/import_onroto_transactions.ts
+```
