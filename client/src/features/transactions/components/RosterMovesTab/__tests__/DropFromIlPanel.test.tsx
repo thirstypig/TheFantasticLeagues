@@ -15,7 +15,6 @@ const IL_PLAYER: RosterMovesPlayer = {
   _dbTeamId: 5,
   assignedPosition: "IL",
   posList: "CF,OF",
-  assignedSlot: "IL",
   posPrimary: "CF",
   isFreeAgent: () => false,
 };
@@ -26,7 +25,6 @@ const ACTIVE_PLAYER: RosterMovesPlayer = {
   _dbTeamId: 5,
   assignedPosition: "C",
   posList: "C",
-  assignedSlot: "C",
   posPrimary: "C",
   isFreeAgent: () => false,
 };
