@@ -405,16 +405,17 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       const { psdResult, pspResult } = await runBothPaths(ghostRosters, ghostDailies, ghostPsp);
 
       const COUNTING_STATS = ["R", "HR", "RBI", "SB", "W", "S", "K", "H", "AB", "ER", "IP", "BB_H"] as const;
+      // TeamStatRow uses "S" for saves; PSP/daily DB data uses "SV". Map before
+      // looking up the upper bound in ghostPsp (which mirrors the DB shape).
+      const TEAMROW_TO_PSP: Partial<Record<string, keyof typeof ZERO_STATS>> = { S: "SV" };
       for (const key of COUNTING_STATS) {
         const psdTotal = psdResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
         const pspTotal = pspResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
+        const rawKey = (TEAMROW_TO_PSP[key] ?? key) as keyof typeof ZERO_STATS;
+        const rawMax = ghostPsp.reduce((s, p) => s + (p[rawKey] || 0), 0);
         // Neither path should inflate league totals beyond the raw player stats.
-        expect(psdTotal, `PSD double-counted ${key}`).toBeLessThanOrEqual(
-          ghostPsp.reduce((s, p) => s + (p[key as keyof typeof ZERO_STATS] || 0), 0)
-        );
-        expect(pspTotal, `PSP double-counted ${key}`).toBeLessThanOrEqual(
-          ghostPsp.reduce((s, p) => s + (p[key as keyof typeof ZERO_STATS] || 0), 0)
-        );
+        expect(psdTotal, `PSD double-counted ${key}`).toBeLessThanOrEqual(rawMax);
+        expect(pspTotal, `PSP double-counted ${key}`).toBeLessThanOrEqual(rawMax);
         // Both paths must agree on the league-wide total (no path-specific inflation).
         expect(psdTotal, `paths disagree on ${key}`).toBe(pspTotal);
       }
