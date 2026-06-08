@@ -50,6 +50,15 @@ vi.mock("../../../../transactions/components/RosterMovesTab/ActivateFromIlPanel"
     />
   ),
 }));
+vi.mock("../../../../transactions/components/RosterMovesTab/DropFromIlPanel", () => ({
+  default: (props: any) => (
+    <div
+      data-testid="drop-from-il-panel"
+      data-initial-release={String(props.initialReleasePlayerId)}
+      data-effective={String(props.effectiveDate)}
+    />
+  ),
+}));
 
 // SubrouteContainer is a thin chrome wrapper — pass children through so we
 // can introspect the panel directly. Title/blurb assertions verify the
@@ -114,6 +123,12 @@ describe("ManagePanel", () => {
     renderManageRoute("il-activate", { initialManagePlayerId: 777 });
     const panel = screen.getByTestId("activate-from-il-panel");
     expect(panel.dataset.initialActivate).toBe("777");
+  });
+
+  it("renders DropFromIlPanel for /manage/il-release and forwards initialReleasePlayerId", () => {
+    renderManageRoute("il-release", { initialManagePlayerId: 888 });
+    const panel = screen.getByTestId("drop-from-il-panel");
+    expect(panel.dataset.initialRelease).toBe("888");
   });
 
   // ── Defensive rendering ──────────────────────────────────────────
