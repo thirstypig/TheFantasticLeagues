@@ -241,7 +241,10 @@ export class TeamService {
   }
 
   async getTeamRosterHub(teamId: number): Promise<RosterHubResponse> {
-    const summary = await this.getTeamSummary(teamId);
+    const [summary, teamMeta] = await Promise.all([
+      this.getTeamSummary(teamId),
+      prisma.team.findUnique({ where: { id: teamId }, select: { rosterVersion: true } }),
+    ]);
 
     const rows = summary.currentRoster.map((row) => {
       const assignedPosition = row.assignedPosition ?? row.posPrimary;
@@ -310,6 +313,7 @@ export class TeamService {
       pitchers,
       ilPlayers: rows.filter((row) => row.assignedPosition === "IL"),
       droppedPlayers: summary.droppedPlayers,
+      rosterVersion: teamMeta?.rosterVersion ?? 0,
     };
   }
 }
