@@ -649,6 +649,7 @@ export default function Admin() {
                     {[
                       { to: "/admin/dashboard", label: "Dashboard", Icon: BarChart3 },
                       { to: "/admin/users", label: "Users", Icon: Users },
+                      { to: "/admin/reports", label: "Reports", Icon: FileText },
                       { to: "/todo", label: "Todo", Icon: CheckSquare },
                       { to: "/analytics", label: "Analytics", Icon: BarChart3 },
                       { to: "/status", label: "Status", Icon: Activity },
