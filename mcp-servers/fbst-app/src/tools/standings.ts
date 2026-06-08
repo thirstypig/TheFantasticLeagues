@@ -39,11 +39,13 @@ export function registerStandingsTools(server: McpServer, client: FbstApiClient)
 
   server.tool(
     "standings_get_period",
-    "Get current period standings for a league. Returns per-team stats for the current scoring period.",
-    LeagueIdInput,
-    async ({ leagueId }) => {
+    "Get period standings for a league. When periodId is omitted, returns current period stats. When periodId is provided, returns per-category stats for that historical period.",
+    { ...LeagueIdInput, periodId: z.number().int().positive().optional().describe("Period ID for historical lookup; omit for current period") },
+    async ({ leagueId, periodId }) => {
       try {
-        const data = await client.request("GET", "/api/standings/period/current", { query: { leagueId } });
+        const data = periodId
+          ? await client.request("GET", "/api/standings/period-category-standings", { query: { leagueId, periodId } })
+          : await client.request("GET", "/api/standings/period/current", { query: { leagueId } });
         return ok(data);
       } catch (err) {
         return fail(err);
