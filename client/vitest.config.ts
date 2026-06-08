@@ -18,6 +18,12 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test/setup.ts"],
+    server: {
+      fs: {
+        // Allow ?raw imports of files outside client/ (docs/, shared/)
+        allow: [".", "../docs", "../shared"],
+      },
+    },
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
