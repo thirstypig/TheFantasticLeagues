@@ -63,7 +63,7 @@ const docs: DocEntry[] = [
   { name: "Auth Setup", filename: "docs/AUTH_SETUP.md", content: authSetup, category: "docs", icon: Shield, description: "OAuth provider configuration" },
   { name: "Historical Team Mapping", filename: "docs/HistoricalTeamMapping.md", content: historicalMapping, category: "docs", icon: History, description: "Automated player-to-team mapping logic for archive imports" },
   // reports/ — audit and analysis
-  { name: "OnRoto Audit (Jun 2026)", filename: "docs/reports/onroto-audit-2026-06-08.md", content: onrotoAudit, category: "report", icon: ClipboardList, description: "Period 3 FBST vs FanGraphs standings gap analysis — root cause, pitcher breakdown, transaction audit" },
+  { name: "FG/OnRoto vs TFL Audit (Jun 2026)", filename: "docs/reports/onroto-audit-2026-06-08.md", content: onrotoAudit, category: "report", icon: ClipboardList, description: "P1–P3 FanGraphs on Roto vs The Fantastic Leagues standings gap analysis — rosters, raw stats, rank deltas" },
 ];
 
 /* ── Simple markdown renderer ───────────────────────────────────── */

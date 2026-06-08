@@ -15,7 +15,7 @@ import onrotoAudit from "../../../../../docs/reports/onroto-audit-2026-06-08.md?
 
 const REPORTS: Record<string, { title: string; raw: string; date: string }> = {
   "onroto-audit-2026-06-08": {
-    title: "OnRoto/FanGraphs vs FBST Standings Audit",
+    title: "FanGraphs on Roto vs TFL Standings Audit",
     date: "June 8, 2026",
     raw: onrotoAudit,
   },
