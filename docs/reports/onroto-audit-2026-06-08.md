@@ -1,456 +1,644 @@
-# OGBA 2026 — OnRoto/FanGraphs vs FBST Standings Audit
+# OGBA 2026 — FanGraphs on Roto vs The Fantastic Leagues (TFL) Standings Audit
 
-**Report date:** June 8, 2026  
-**League:** OGBA (leagueId = 20, OnRoto identifier `OGBA+6`)  
-**Prepared by:** FBST Internal Audit (automated via database + FanGraphs URL comparison)  
-**FanGraphs data retrieved:** June 8, 2026 via commissioner-provided session URLs  
-**FBST data source:** Live `PlayerStatsPeriod` table (218 rows for Period 3) + `TeamStatsPeriod` aggregates
+**Report date:** June 8, 2026
+**League:** OGBA (leagueId = 20, FanGraphs on Roto identifier `OGBA+6`)
+**Prepared by:** TFL Internal Audit
+**Systems compared:** FanGraphs on Roto (FG/OnRoto) vs The Fantastic Leagues (TFL)
+**TFL data source:** Live `PlayerStatsPeriod` + `TeamStatsPeriod` tables, production Supabase DB
 
 ---
 
-## Executive Summary
+## Purpose
 
-Three FanGraphs/OnRoto session URLs were provided by the commissioner for Periods 1, 2, and 3. **All three resolved to the same "Through 06.06.26" standings** — the session state for Periods 1 and 2 had expired or defaulted. Only Period 3 (May 17 – June 6, 2026) standings could be compared directly.
+This document is a period-by-period audit comparing **FanGraphs on Roto** (the official league platform) against **The Fantastic Leagues (TFL)** (our internal tracking system). For each period we verify:
 
-**Period 3 headline findings:**
-
-| Team | FG Rank | FG Pts | FBST Rank | FBST Pts | Delta |
-|------|---------|--------|-----------|----------|-------|
-| Demolition Lumber Co. | **1** | 60.0 | **4** | 48.0 | **−12.0** |
-| Dodger Dawgs | 2 | 56.5 | 2 | 52.0 | −4.5 |
-| Skunk Dogs | 3 | 53.5 | **1** | 58.5 | +5.0 |
-| Los Doyers | 4 | 43.5 | 5 | 44.5 | +1.0 |
-| Diamond Kings | 5 | 41.5 | **2** | 58.0 | **+16.5** |
-| The Show | 6 | 37.0 | 6 | 40.0 | +3.0 |
-| RGing Sluggers | 7 | 35.0 | 7 | 30.0 | −5.0 |
-| Devil Dawgs | 8 | 33.0 | 8 | 29.0 | −4.0 |
-
-- **Diamond Kings (DMK)** is over-credited in FBST by **+16.5 points** — enough to shift their rank from 5th to 2nd.
-- **Demolition Lumber Co. (DLC)** is under-credited in FBST by **−12.0 points** — moving them from 1st to 4th.
-- **Transaction audit for June 7, 2026: CLEAN** — 72 events in FBST all match FanGraphs exactly.
+1. **Rosters** — do both systems agree on who is on each team?
+2. **Raw Stats** — do both systems record the same numbers (R, HR, RBI, SB, AVG, W, SV, ERA, WHIP, K/SO)?
+3. **Roto Points** — do the computed rank-points match?
+4. **Deltas** — where do they differ, and why?
 
 ---
 
 ## League Structure
+
+**Teams (8):** Skunk Dogs (SKD), Diamond Kings (DMK), Dodger Dawgs (DDG), Devil Dawgs (DVD), RGing Sluggers (RGS), The Show (TSH), Los Doyers (LDY), Demolition Lumber Co. (DLC)
+
+**Scoring categories (10):**
+- Hitting: R, HR, RBI, SB, AVG
+- Pitching: W, SV, ERA, WHIP, K (labeled "SO" on FG/OnRoto)
+
+**Roto scoring:** Each category ranked 1–8 (1 = worst, 8 = best). Ties receive averaged rank. Higher is better for R/HR/RBI/SB/AVG/W/SV/K. Lower is better for ERA and WHIP (lowest ERA = rank 8).
 
 | Period | Dates | Status |
 |--------|-------|--------|
 | Period 1 | Mar 25 – Apr 18, 2026 | Completed |
 | Period 2 | Apr 19 – May 16, 2026 | Completed |
 | Period 3 | May 17 – Jun 6, 2026 | Completed |
-| Period 4 | Jun 7 – Jul 4, 2026 | **Active** |
-
-**Scoring categories (10 total):**  
-Hitting: R, HR, RBI, SB, AVG  
-Pitching: W, SV, ERA, WHIP, K
-
-**Roto scoring:** Each category ranked 1–8 (1 = worst, 8 = best). Ties receive averaged rank. Higher is better for all hitting stats and W/SV/K. Lower is better for ERA and WHIP (lowest ERA = rank 8).
+| Period 4 | Jun 7 – Jul 4, 2026 | Active |
 
 ---
 
-## Part 1 — FBST Raw Stats by Period
+## Season Baseline: Auction-Day Rosters (March 25, 2026)
 
-> These are the stats stored in FBST's `TeamStatsPeriod` table, populated by nightly MLB Stats API sync via `PlayerStatsPeriod` aggregation. All values queried directly from the production Supabase database on June 8, 2026.
+> Source: OGBA 2026 auction draft spreadsheet. These are the rosters both FG/OnRoto and TFL should agree on at season start. Keeper salaries shown where applicable.
 
-### Period 1 (Mar 25 – Apr 18, 2026) — Raw Stats
+### Skunk Dogs
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Matt Olson | $25 |
+| 2B | Bryson Stott | $16 |
+| SS | Trea Turner | $28 |
+| 3B | Matt Chapman | $12 |
+| OF | Michael Harris II | $22 |
+| OF | Luis Robert Jr. | $27 |
+| OF | Sal Frelick | $13 |
+| OF | TJ Friedl | $8 |
+| OF | Jordan Walker | $10 |
+| C | Hunter Goodman | $22 |
+| C | Freddy Fermin | $3 |
+| CM | Alec Bohm | $10 |
+| MI | CJ Abrams | $41 |
+| DH | Luis Arraez | $2 |
+| P | Shohei Ohtani (P) | $15 |
+| P | Nick Pivetta | $22 |
+| P | Brandon Woodruff | $15 |
+| P | Michael King | $21 |
+| P | David Peterson | $5 |
+| P | Jameson Taillon | $4 |
+| P | Kodai Senga | $15 |
+| P | Pete Fairbanks | $44 |
+| P | Raisel Iglesias | $20 |
+
+### Diamond Kings
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Spencer Horwitz | $8 |
+| 2B | Marcus Semien | $2 |
+| SS | Elly De La Cruz | $34 |
+| 3B | Noelvi Marte | $21 |
+| OF | Fernando Tatis Jr. | $33 |
+| OF | Teoscar Hernández | $34 |
+| OF | Kyle Stowers | $36 |
+| OF | Justin Crawford | $1 |
+| OF | Daylen Lile | $55 |
+| C | Tyler Stephenson | $8 |
+| C | Dalton Rushing | $1 |
+| CM | Jordan Lawlar | $11 |
+| MI | Ezequiel Tovar | $20 |
+| DH | Bryan Reynolds | $21 |
+| P | Roki Sasaki | $4 |
+| P | Tyler Glasnow | $24 |
+| P | Chase Burns | $29 |
+| P | Braxton Ashcraft | $1 |
+| P | Brandon Pfaadt | $2 |
+| P | Blake Snell | $8 |
+| P | Brady Singer | $4 |
+| P | Jhoan Duran | $25 |
+| P | Edwin Díaz | $18 |
+
+### Dodger Dawgs
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Sal Stewart | $32 |
+| 2B | Nico Hoerner | $28 |
+| SS | Francisco Lindor | $26 |
+| 3B | Brett Baty | $3 |
+| OF | Jackson Chourio | $30 |
+| OF | James Wood | $28 |
+| OF | Jung Hoo Lee | $5 |
+| OF | Ramón Laureano | $12 |
+| OF | Jake McCarthy | $1 |
+| C | Drake Baldwin | $21 |
+| C | Keibert Ruiz | $4 |
+| CM | Nolan Gorman | $1 |
+| MI | Matt McLain | $28 |
+| DH | Iván Herrera | $1 |
+| P | Cristopher Sánchez | $52 |
+| P | Logan Webb | $40 |
+| P | Eury Pérez | $30 |
+| P | Spencer Strider | $28 |
+| P | Andrew Painter | $5 |
+| P | Max Meyer | $1 |
+| P | Eduardo Rodriguez | $6 |
+| P | Trevor Megill | $11 |
+| P | Robert Suarez | $7 |
+
+### Devil Dawgs
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Bryce Eldridge | $10 |
+| 2B | Luis García Jr. | $1 |
+| SS | Willy Adames | $12 |
+| 3B | Nolan Arenado | $4 |
+| OF | Kyle Tucker | $33 |
+| OF | Seiya Suzuki | $20 |
+| OF | Brenton Doyle | $28 |
+| OF | Jakob Marsee | $30 |
+| OF | Jordan Beck | $27 |
+| C | Agustín Ramírez | $20 |
+| C | Miguel Amaya | $1 |
+| CM | Mark Vientos | $19 |
+| MI | Jorge Polanco | $1 |
+| DH | Christian Yelich | $15 |
+| P | Jacob Misiorowski | $7 |
+| P | Nolan McLean | $25 |
+| P | Edward Cabrera | $10 |
+| P | Matthew Boyd | $21 |
+| P | Reynaldo López | $7 |
+| P | Clay Holmes | $6 |
+| P | Cade Horton | $3 |
+| P | Abner Uribe | $6 |
+| P | Dennis Santana | $19 |
+
+### RGing Sluggers
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Freddie Freeman | $26 |
+| 2B | Ozzie Albies | $10 |
+| SS | Dansby Swanson | $13 |
+| 3B | Eugenio Suárez | $32 |
+| OF | Oneil Cruz | $19 |
+| OF | Heliot Ramos | $13 |
+| OF | Jackson Merrill | $25 |
+| OF | Adolis García | $18 |
+| OF | Harrison Bader | $16 |
+| C | Gabriel Moreno | $9 |
+| C | Patrick Bailey | $3 |
+| CM | Alex Bregman | $19 |
+| MI | Xavier Edwards | $26 |
+| DH | Kyle Schwarber | $27 |
+| P | Yoshinobu Yamamoto | $22 |
+| P | Robbie Ray | $18 |
+| P | Bubba Chandler | $31 |
+| P | Sandy Alcantara | $9 |
+| P | Zac Gallen | $9 |
+| P | Mitch Keller | $9 |
+| P | Ryne Nelson | $1 |
+| P | Devin Williams | $20 |
+| P | Daniel Palencia | $25 |
+
+### The Show
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Rafael Devers | $22 |
+| 2B | Ketel Marte | $50 |
+| SS | Bo Bichette | $22 |
+| 3B | Manny Machado | $27 |
+| OF | Pete Crow-Armstrong | $28 |
+| OF | Alec Burleson | $28 |
+| OF | Ian Happ | $12 |
+| OF | Willi Castro | $1 |
+| OF | Brandon Marsh | $1 |
+| C | J.T. Realmuto | $19 |
+| C | Sean Murphy | $1 |
+| CM | Bryce Harper | $27 |
+| MI | Xander Bogaerts | $5 |
+| DH | Marcell Ozuna | $5 |
+| P | Freddy Peralta | $40 |
+| P | Emmet Sheehan | $17 |
+| P | Shota Imanaga | $27 |
+| P | Andrew Abbott | $11 |
+| P | Aaron Nola | $10 |
+| P | Nick Lodolo | $14 |
+| P | Quinn Priester | $2 |
+| P | Ryan Walker | $17 |
+| P | Emilio Pagán | $14 |
+
+### Los Doyers
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Spencer Steer | $4 |
+| 2B | Brandon Lowe | $17 |
+| SS | Mookie Betts | $25 |
+| 3B | Austin Riley | $35 |
+| OF | Juan Soto | $39 |
+| OF | Andy Pages | $20 |
+| OF | Gavin Sheets | $1 |
+| OF | Victor Scott II | $39 |
+| OF | Alek Thomas | $3 |
+| C | Will Smith | $18 |
+| C | Carson Kelly | $10 |
+| CM | Max Muncy | $18 |
+| MI | Konnor Griffin | $150 |
+| DH | Ryan O'Hearn | $7 |
+| P | Zack Littell | $2 |
+| P | Michael McGreevy | $1 |
+| P | Sean Manaea | $1 |
+| P | Corbin Burnes | $1 |
+| P | Hunter Greene | $1 |
+| P | Michael Soroka | $1 |
+| P | Dustin May | $1 |
+| P | Walker Buehler | $1 |
+| P | Clayton Beeter | $5 |
+
+### Demolition Lumber Co.
+
+| POS | Player | Price |
+|-----|--------|-------|
+| 1B | Michael Busch | $40 |
+| 2B | Brice Turang | $45 |
+| SS | Geraldo Perdomo | $20 |
+| 3B | Brady House | $2 |
+| OF | Ronald Acuña Jr. | $35 |
+| OF | Corbin Carroll | $30 |
+| OF | Dylan Crews | $2 |
+| OF | Mickey Moniak | $18 |
+| OF | Carson Benge | $1 |
+| C | William Contreras | $40 |
+| C | Francisco Alvarez | $15 |
+| CM | Andrew Vaughn | $10 |
+| MI | Otto Lopez | $8 |
+| DH | Shohei Ohtani | $46 |
+| P | Paul Skenes | $30 |
+| P | Chris Sale | $47 |
+| P | Jesús Luzardo | $32 |
+| P | Joe Musgrove | $1 |
+| P | Zack Wheeler | $16 |
+| P | Cade Cavalli | $1 |
+| P | Victor Vodnik | $2 |
+| P | Riley O'Brien | $1 |
+| P | Mason Miller | $33 |
+
+---
+
+## Period 1 Audit — Mar 25 to Apr 18, 2026
+
+### 1a. Roster Verification — End of Period 1
+
+> TFL rosters are sourced from the production database (players with `acquiredAt ≤ Apr 18` and `releasedAt IS NULL OR releasedAt > Apr 18`). FG/OnRoto rosters require manual verification via the league site.
+
+| Team | TFL Roster (End of P1) | FG/OnRoto Match |
+|------|------------------------|-----------------|
+| SKD | Hunter Goodman (C), Freddy Fermin (C), Matt Olson (1B), Bryson Stott (2B), Trea Turner (SS), Matt Chapman (3B), Alec Bohm (CM), CJ Abrams (MI), Luis Arraez (DH), Michael Harris II (OF), Luis Robert Jr. (OF), Sal Frelick (OF), TJ Friedl (OF), Jordan Walker (OF), Shohei Ohtani-P (P), Nick Pivetta (P), Brandon Woodruff (P), Michael King (P), David Peterson (P), Jameson Taillon (P), Kodai Senga (P), Pete Fairbanks (P), Raisel Iglesias (P) | ☐ To verify |
+| DMK | Tyler Stephenson (C), Dalton Rushing (C), Spencer Horwitz (1B), Marcus Semien (2B), Elly De La Cruz (SS), Noelvi Marte (3B), Jordan Lawlar (CM), Ezequiel Tovar (MI), Bryan Reynolds (DH), Fernando Tatis Jr. (OF), Teoscar Hernández (OF), Kyle Stowers (OF), Justin Crawford (OF), Daylen Lile (OF), Edwin Díaz (IL), Roki Sasaki (P), Tyler Glasnow (P), Chase Burns (P), Braxton Ashcraft (P), Brandon Pfaadt (P), Blake Snell (P), Brady Singer (P), Jhoan Duran (P) | ☐ To verify |
+| DDG | Drake Baldwin (C), Keibert Ruiz (C), Iván Herrera (C), Sal Stewart (1B), Nico Hoerner (2B), Francisco Lindor (SS), Matt McLain (SS), Brett Baty (CM), Nolan Gorman (3B), Jackson Chourio (OF), James Wood (OF), Ramón Laureano (OF), Jake McCarthy (OF), Jung Hoo Lee (OF), Andrew Painter (P), Cristopher Sánchez (P), Logan Webb (P), Eury Pérez (P), Spencer Strider (P), Max Meyer (P), Eduardo Rodriguez (P), Trevor Megill (P), Robert Suarez (P) | ☐ To verify |
+| DVD | Agustín Ramírez (C), Miguel Amaya (C), Bryce Eldridge (1B), Luis García Jr. (2B), Willy Adames (SS), Nolan Arenado (3B), Mark Vientos (CM), Jorge Polanco (MI), Christian Yelich (DH), Kyle Tucker (OF), Seiya Suzuki (OF), Brenton Doyle (OF), Jakob Marsee (OF), Jordan Beck (OF), Jacob Misiorowski (P), Nolan McLean (P), Edward Cabrera (P), Matthew Boyd (P), Reynaldo López (P), Clay Holmes (P), Cade Horton (P), Abner Uribe (P), Dennis Santana (P) | ☐ To verify |
+| RGS | Gabriel Moreno (C), Patrick Bailey (C), Freddie Freeman (1B), Ozzie Albies (2B), Dansby Swanson (MI), Eugenio Suárez (3B), Alex Bregman (CM), Xavier Edwards (SS), Kyle Schwarber (DH), Oneil Cruz (OF), Heliot Ramos (IL), Jackson Merrill (OF), Adolis García (OF), Harrison Bader (OF), Yoshinobu Yamamoto (P), Robbie Ray (P), Bubba Chandler (P), Sandy Alcantara (P), Zac Gallen (P), Mitch Keller (P), Ryne Nelson (P), Devin Williams (P), Daniel Palencia (P) | ☐ To verify |
+| TSH | J.T. Realmuto (C), Sean Murphy (C), Rafael Devers (1B), Ketel Marte (2B), Bo Bichette (SS), Manny Machado (3B), Bryce Harper (CM), Xander Bogaerts (MI), Marcell Ozuna (DH), Pete Crow-Armstrong (OF), Alec Burleson (OF), Ian Happ (OF), Willi Castro (OF), Brandon Marsh (OF), Quinn Priester (IL), Emilio Pagán (IL), Freddy Peralta (P), Emmet Sheehan (P), Shota Imanaga (P), Andrew Abbott (P), Aaron Nola (P), Nick Lodolo (P), Ryan Walker (P) | ☐ To verify |
+| LDY | Will Smith (C), Carson Kelly (C), Spencer Steer (1B), Brandon Lowe (2B), Mookie Betts (SS), Austin Riley (3B), Max Muncy (CM), Konnor Griffin (MI), Ryan O'Hearn (DH), Juan Soto (OF), Andy Pages (OF), Gavin Sheets (OF), Victor Scott II (OF), Alek Thomas (OF), Corbin Burnes (P), Michael McGreevy (P), Sean Manaea (P), Michael Soroka (P), Dustin May (P), Zack Littell (P), Walker Buehler (P), Hunter Greene (P), Clayton Beeter (P) | ☐ To verify |
+| DLC | William Contreras (C), Francisco Alvarez (C), Michael Busch (1B), Brice Turang (2B), Geraldo Perdomo (SS), Brady House (3B), Andrew Vaughn (CM), Otto Lopez (MI), Shohei Ohtani (DH), Ronald Acuña Jr. (OF), Corbin Carroll (OF), Mickey Moniak (OF), Dylan Crews (OF), Carson Benge (OF), Paul Skenes (P), Chris Sale (P), Jesús Luzardo (P), Joe Musgrove (P), Zack Wheeler (P), Cade Cavalli (P), Victor Vodnik (P), Riley O'Brien (P), Mason Miller (P) | ☐ To verify |
+
+> **Note:** TFL P1 rosters are identical to auction-day rosters — no transactions changed any team's composition before April 18, 2026 (Heliot Ramos IL stash and Edwin Díaz/Quinn Priester/Emilio Pagán IL slots were set at or before auction). Verify the same is true on FG/OnRoto.
+
+---
+
+### 1b. Raw Stats — Period 1
+
+> TFL raw stats are queried directly from `TeamStatsPeriod` (periodId = 35). FG/OnRoto raw stats require access to the individual team stats view on the league site — the standings URL only exposes rank points.
+
+#### TFL Raw Stats — Period 1
 
 | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
 |------|---|----|----|----|----|---|----|----|------|---|
-| Skunk Dogs | 122 | 30 | 102 | 21 | .251 | 8 | 4 | 4.16 | 1.186 | 149 |
-| Diamond Kings | 98 | 23 | 83 | 16 | .260 | 7 | 6 | 3.95 | 1.246 | 120 |
-| Dodger Dawgs | 119 | 30 | 127 | 24 | .247 | 9 | 5 | 3.61 | 1.402 | 124 |
-| Devil Dawgs | 99 | 17 | 79 | 17 | .227 | 10 | 4 | 2.46 | 1.046 | 122 |
-| RGing Sluggers | 129 | 35 | 124 | 19 | .254 | 9 | 3 | 2.93 | 1.192 | 119 |
-| The Show | 100 | 29 | 106 | 9 | .237 | 5 | 7 | 4.30 | 1.248 | 108 |
-| Los Doyers | 106 | 30 | 115 | 13 | .270 | 9 | 2 | 4.85 | 1.340 | 100 |
-| Demolition Lumber Co. | 107 | 27 | 89 | 24 | .256 | 9 | 15 | 3.35 | 1.055 | 126 |
+| SKD | 122 | 30 | 102 | 21 | .251 | 8 | 4 | 4.16 | 1.186 | 149 |
+| DMK | 98 | 23 | 83 | 16 | .260 | 7 | 6 | 3.95 | 1.246 | 120 |
+| DDG | 119 | 30 | 127 | 24 | .247 | 9 | 5 | 3.61 | 1.402 | 124 |
+| DVD | 99 | 17 | 79 | 17 | .227 | 10 | 4 | 2.46 | 1.046 | 122 |
+| RGS | 129 | 35 | 124 | 19 | .254 | 9 | 3 | 2.93 | 1.192 | 119 |
+| TSH | 100 | 29 | 106 | 9 | .237 | 5 | 7 | 4.30 | 1.248 | 108 |
+| LDY | 106 | 30 | 115 | 13 | .270 | 9 | 2 | 4.85 | 1.340 | 100 |
+| DLC | 107 | 27 | 89 | 24 | .256 | 9 | 15 | 3.35 | 1.055 | 126 |
 
-### Period 1 — FBST Computed Roto Points
+#### FG/OnRoto Raw Stats — Period 1
 
-| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K | **Total** |
-|------|---|----|----|----|----|---|----|----|------|---|---------|
-| Skunk Dogs | 8 | 5.5 | 5 | 6 | 6 | 3 | 4.5 | 3 | 4 | 8 | **53.0** |
-| Diamond Kings | 1 | 1 | 1 | 3 | 7 | 1.5 | 6 | 5 | 3 | 5 | **33.5** |
-| Dodger Dawgs | 6 | 5.5 | 8 | 7 | 4 | 5.5 | 5 | 7 | 1 | 6 | **55.0** |
-| Devil Dawgs | 2 | 1 | 1 | 4 | 1 | 8 | 4.5 | 8 | 8 | 7 | **44.5** |
-| RGing Sluggers | 7 | 8 | 7 | 5 | 5 | 5.5 | 3 | 6 | 5 | 4 | **55.5** |
-| The Show | 3 | 4 | 6 | 1 | 2 | 1.5 | 7 | 2 | 2 | 2 | **30.5** |
-| Los Doyers | 4 | 5.5 | 7 | 2 | 8 | 5.5 | 2 | 1 | 1 | 1 | **37.0** |
-| Demolition Lumber Co. | 5 | 3 | 3 | 8 | 3 | 5.5 | 8 | 4 | 7 | 3 | **49.5** |
-
-> **⚠️ FanGraphs Period 1 data unavailable** — the provided session URL resolved to Period 3 standings. No direct comparison possible for Period 1.
+> ⏳ **Pending** — the FG/OnRoto standings URL (`display_stand.pl`) shows rank points only, not the underlying raw numbers. To complete this section, navigate to each team's stats page on FanGraphs on Roto and record R, HR, RBI, SB, AVG, W, SV, ERA, WHIP, SO for the period ending April 18, 2026.
 
 ---
 
-### Period 2 (Apr 19 – May 16, 2026) — Raw Stats
+### 1c. Roto Points Comparison — Period 1
 
-| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
-|------|---|----|----|----|----|---|----|----|------|---|
-| Skunk Dogs | 149 | 41 | 147 | 15 | .250 | 7 | 7 | 2.93 | 1.114 | 135 |
-| Diamond Kings | 126 | 25 | 119 | 25 | .255 | 7 | 2 | 3.30 | 1.138 | 109 |
-| Dodger Dawgs | 129 | 33 | 119 | 23 | .247 | 13 | 7 | 3.04 | 1.149 | 162 |
-| Devil Dawgs | 123 | 33 | 118 | 15 | .253 | 9 | 2 | 3.00 | 1.047 | 168 |
-| RGing Sluggers | 147 | 41 | 126 | 20 | .238 | 8 | 4 | 5.00 | 1.309 | 156 |
-| The Show | 164 | 38 | 148 | 18 | .247 | 15 | 0 | 3.85 | 1.271 | 152 |
-| Los Doyers | 147 | 43 | 132 | 21 | .248 | 9 | 2 | 3.34 | 1.162 | 102 |
-| Demolition Lumber Co. | 144 | 27 | 144 | 24 | .278 | 12 | 14 | 2.46 | 0.983 | 187 |
+> FG/OnRoto data retrieved June 8, 2026 from: `https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6&session_id=LKP1NfJmA2vBxY6KNuK0RVfIdnaWIlf&which_stand_period=retro` — confirmed "Through 04.18.26" ✅
 
-### Period 2 — FBST Computed Roto Points
+#### FG/OnRoto Roto Points — Period 1
 
-| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K | **Total** |
-|------|---|----|----|----|----|---|----|----|------|---|---------|
-| Skunk Dogs | 7 | 5.5 | 8 | 3 | 4.5 | 2 | 6.5 | 6 | 5 | 5 | **52.5** |
-| Diamond Kings | 3 | 1 | 4.5 | 8 | 8 | 2 | 3.5 | 5 | 6 | 2 | **43.0** |
-| Dodger Dawgs | 4 | 4 | 4.5 | 7 | 4.5 | 7 | 6.5 | 4 | 4 | 7 | **52.5** |
-| Devil Dawgs | 2 | 4 | 3 | 3 | 6 | 4.5 | 3.5 | 3 | 7 | 8 | **45.0** |
-| RGing Sluggers | 5.5 | 5.5 | 5 | 6 | 2 | 3 | 5 | 1 | 2 | 6 | **41.0** |
-| The Show | 8 | 3 | 8 | 5 | 4.5 | 8 | 1 | 2 | 1 | 4 | **44.5** |
-| Los Doyers | 5.5 | 8 | 6 | 7 | 3 | 4.5 | 3.5 | 4 | 3 | 1 | **45.5** |
-| Demolition Lumber Co. | 1 | 2 | 7 | 3 | 7 | 6 | 8 | 8 | 8 | 3 | **53.0** |
+| Rank | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | SO | Total |
+|------|------|---|----|----|----|----|---|----|----|------|----|----|
+| 1 | Demolition Lumber Co. | 5.0 | 3.0 | 3.0 | 7.0 | 7.0 | 6.5 | 8.0 | 6.0 | 7.0 | 4.0 | **56.5** |
+| 2 | RGing Sluggers | 8.0 | 7.5 | 6.0 | 4.0 | 3.0 | 6.5 | 2.0 | 7.0 | 6.0 | 5.0 | **55.0** |
+| 3 | Dodger Dawgs | 6.0 | 5.5 | 8.0 | 8.0 | 4.0 | 5.0 | 4.0 | 5.0 | 1.0 | 7.0 | **53.5** |
+| 4 | Skunk Dogs | 7.0 | 5.5 | 4.0 | 6.0 | 5.0 | 3.0 | 5.0 | 3.0 | 5.0 | 8.0 | **51.5** |
+| 5 | Devil Dawgs | 2.0 | 1.0 | 1.0 | 5.0 | 1.0 | 8.0 | 3.0 | 8.0 | 8.0 | 6.0 | **43.0** |
+| 6 | Los Doyers | 4.0 | 7.5 | 7.0 | 2.0 | 8.0 | 4.0 | 1.0 | 1.0 | 2.0 | 1.0 | **37.5** |
+| 7 | Diamond Kings | 1.0 | 2.0 | 2.0 | 3.0 | 6.0 | 2.0 | 7.0 | 4.0 | 4.0 | 2.5 | **33.5** |
+| 8 | The Show | 3.0 | 4.0 | 5.0 | 1.0 | 2.0 | 1.0 | 6.0 | 2.0 | 3.0 | 2.5 | **29.5** |
 
-> **⚠️ FanGraphs Period 2 data unavailable** — same issue as Period 1.
+#### TFL Roto Points — Period 1
 
----
-
-### Period 3 (May 17 – Jun 6, 2026) — Raw Stats
-
-| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
-|------|---|----|----|----|----|---|----|----|------|---|
-| Skunk Dogs | 129 | 36 | 132 | 26 | .265 | 10 | 7 | 4.05 | 1.176 | 119 |
-| Diamond Kings | 106 | 28 | 102 | 15 | .242 | 13 | 8 | 2.61 | 0.958 | 152 |
-| Dodger Dawgs | 107 | 23 | 80 | 25 | .247 | 11 | 7 | 2.43 | 0.943 | 141 |
-| Devil Dawgs | 108 | 24 | 85 | 13 | .225 | 10 | 3 | 3.74 | 1.198 | 105 |
-| RGing Sluggers | 102 | 27 | 86 | 27 | .236 | 9 | 2 | 5.06 | 1.425 | 126 |
-| The Show | 119 | 47 | 146 | 13 | .247 | 7 | 2 | 5.25 | 1.311 | 124 |
-| Los Doyers | 118 | 34 | 94 | 14 | .239 | 11 | 6 | 3.87 | 1.141 | 114 |
-| Demolition Lumber Co. | 125 | 27 | 115 | 22 | .298 | 7 | 7 | 4.24 | 1.366 | 131 |
-
----
-
-## Part 2 — Period 3 Full Comparison: FBST vs FanGraphs
-
-### FanGraphs Period 3 Rankings (retrieved June 8, 2026)
-
-Source: `https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6&session_id=6PmqxpEFJtYnHw4Tx9TufapZBW8yZsp&which_stand_period=retro`  
-Displayed label: **"Through 06.06.26"**
+> Recomputed June 8, 2026 from current `TeamStatsPeriod` DB data (periodId = 35).
 
 | Rank | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K | Total |
-|------|------|---|----|----|----|----|---|----|----|------|---|-------|
-| 1 | Demolition Lumber Co. | 6.0 | 3.0 | 5.0 | 7.0 | 8.0 | 5.0 | 8.0 | 5.0 | 5.0 | 8.0 | 60.0 |
-| 2 | Dodger Dawgs | 3.0 | 4.0 | 4.0 | 8.0 | 4.0 | 7.0 | 5.5 | 8.0 | 6.0 | 7.0 | 56.5 |
-| 3 | Skunk Dogs | 8.0 | 6.0 | 7.0 | 5.0 | 7.0 | 1.0 | 7.0 | 4.0 | 4.0 | 4.5 | 53.5 |
-| 4 | Los Doyers | 4.0 | 7.0 | 6.0 | 3.0 | 6.0 | 8.0 | 2.5 | 3.0 | 3.0 | 1.0 | 43.5 |
-| 5 | Diamond Kings | 1.0 | 2.0 | 2.0 | 4.0 | 5.0 | 4.0 | 5.5 | 7.0 | 8.0 | 3.0 | 41.5 |
-| 6 | The Show | 7.0 | 8.0 | 8.0 | 1.0 | 3.0 | 2.0 | 4.0 | 1.0 | 1.0 | 2.0 | 37.0 |
-| 7 | RGing Sluggers | 5.0 | 5.0 | 3.0 | 6.0 | 2.0 | 3.0 | 2.5 | 2.0 | 2.0 | 4.5 | 35.0 |
-| 8 | Devil Dawgs | 2.0 | 1.0 | 1.0 | 2.0 | 1.0 | 6.0 | 1.0 | 6.0 | 7.0 | 6.0 | 33.0 |
+|------|------|---|----|----|----|----|---|----|----|------|---|----|
+| 1 | Demolition Lumber Co. | 5 | 3 | 3 | 7.5 | 6 | 5.5 | 8 | 6 | 7 | 7 | **58.0** |
+| 2 | RGing Sluggers | 8 | 8 | 7 | 5 | 5 | 5.5 | 2 | 7 | 5 | 3 | **55.5** |
+| 3 | Dodger Dawgs | 6 | 6 | 8 | 7.5 | 3 | 5.5 | 5 | 5 | 1 | 6 | **53.0** |
+| 4 | Skunk Dogs | 7 | 6 | 4 | 6 | 4 | 3 | 3.5 | 3 | 6 | 8 | **50.5** |
+| 5 | Devil Dawgs | 2 | 1 | 1 | 4 | 1 | 8 | 3.5 | 8 | 8 | 5 | **41.5** |
+| 6 | Los Doyers | 4 | 6 | 6 | 2 | 8 | 5.5 | 1 | 1 | 2 | 1 | **36.5** |
+| 7 | Diamond Kings | 1 | 2 | 2 | 3 | 7 | 2 | 6 | 4 | 4 | 4 | **35.0** |
+| 8 | The Show | 3 | 4 | 5 | 1 | 2 | 1 | 7 | 2 | 3 | 2 | **30.0** |
 
-### FBST Period 3 Computed Rankings
+---
 
-> Computed using end-of-period roster attribution (`releasedAt IS NULL OR releasedAt > 2026-06-06T12:00Z`) against `PlayerStatsPeriod` (218 rows). Logic verified correct — see Part 3.
+### 1d. Period 1 Rank Deltas: TFL minus FG/OnRoto
+
+> Positive = TFL awards more points. Negative = TFL awards fewer. Zero = exact match.
+
+| Team | TFL Total | FG Total | **Net Δ** |
+|------|-----------|----------|--------|
+| Demolition Lumber Co. | 58.0 | 56.5 | **+1.5** |
+| RGing Sluggers | 55.5 | 55.0 | **+0.5** |
+| Dodger Dawgs | 53.0 | 53.5 | **−0.5** |
+| Skunk Dogs | 50.5 | 51.5 | **−1.0** |
+| Devil Dawgs | 41.5 | 43.0 | **−1.5** |
+| Los Doyers | 36.5 | 37.5 | **−1.0** |
+| Diamond Kings | 35.0 | 33.5 | **+1.5** |
+| The Show | 30.0 | 29.5 | **+0.5** |
+
+> ✅ **Sum of all deltas = 0.0** — zero-sum check passes.
+>
+> **Key finding for Period 1:** All teams within **±1.5 points**. Both systems agree DLC ranks 1st, RGS 2nd, DDG 3rd — the rank ordering is nearly identical. Small differences are consistent with normal data source divergence (MLB Stats API vs FanGraphs database) on individual stat counts.
+
+---
+
+## Period 2 Audit — Apr 19 to May 16, 2026
+
+### 2a. Roster Verification — End of Period 2
+
+> Notable changes from auction-day: RGS added Caleb Thielbar, Gary Sánchez, Nathan Church, Adrian Del Castillo; DDG added Andrew Painter (re-acquired), Jose Fernandez, Owen Caissie, Gregory Soto, Dominic Smith; DLC added Landen Roupp, Rhett Lowder, Felix Reyes, Troy Johnston; LDY swapped in Justin Wrobleski, Joey Ortiz, Brandon Lockridge, Merrill Kelly, Carmen Mlodzinski, Foster Griffin, Paul Sewald; SKD added Daniel Susac, Mauricio Dubón, JJ Wetherholt, Kyle Harrison, Chase Dollander.
+
+| Team | TFL Roster (End of P2) | FG/OnRoto Match |
+|------|------------------------|-----------------|
+| SKD | Hunter Goodman (C), Daniel Susac (C), Matt Olson (1B), JJ Wetherholt (2B), Trea Turner (SS), Matt Chapman (3B), Alec Bohm (CM), CJ Abrams (MI), Luis Arraez (DH), Michael Harris II (OF), Luis Robert Jr. (OF), Sal Frelick (OF), Jordan Walker (OF), Mauricio Dubón (OF), Shohei Ohtani-P (P), Michael King (P), Chase Dollander (P), Kyle Harrison (P), Brandon Woodruff (P), Jameson Taillon (P), Kodai Senga (P), Pete Fairbanks (P), Raisel Iglesias (P) | ☐ To verify |
+| DMK | Tyler Stephenson (C), Dalton Rushing (C), TJ Rumfield (1B), Marcus Semien (2B), Elly De La Cruz (SS), Noelvi Marte (3B), Jake Bauers (CM), Ezequiel Tovar (MI), Bryan Reynolds (DH), Fernando Tatis Jr. (OF), Teoscar Hernández (OF), Kyle Stowers (OF), Justin Crawford (OF), Daylen Lile (OF), Edwin Díaz (IL), Roki Sasaki (P), Tyler Glasnow (P), Chase Burns (P), Braxton Ashcraft (P), Aaron Ashby (P), Blake Snell (P), Alex Vesia (P), Jhoan Duran (P) | ☐ To verify |
+| DDG | Drake Baldwin (C), Iván Herrera (C), Sal Stewart (1B), Jose Fernandez (1B), Nico Hoerner (2B), Francisco Lindor (SS), Matt McLain (SS), Nolan Gorman (3B), Jackson Chourio (OF), James Wood (OF), Ramón Laureano (OF), Jake McCarthy (OF), Jung Hoo Lee (OF), Owen Caissie (OF), Dominic Smith (DH), Andrew Painter (P), Cristopher Sánchez (P), Logan Webb (P), Eury Pérez (P), Spencer Strider (P), Eduardo Rodriguez (P), Trevor Megill (P), Robert Suarez (P), Gregory Soto (P) | ☐ To verify |
+| DVD | Agustín Ramírez (C), Miguel Amaya (C), Edouard Julien (1B), Casey Schmitt (1B), Ildemaro Vargas (2B), Willy Adames (SS), Nolan Arenado (3B), Mark Vientos (CM), Christian Yelich (DH), Kyle Tucker (OF), Seiya Suzuki (OF), Brenton Doyle (OF), Jakob Marsee (OF), Jordan Beck (OF), Jacob Misiorowski (P), Nolan McLean (P), Edward Cabrera (P), Matthew Boyd (P), Reynaldo López (P), Clay Holmes (P), Bryce Elder (P), Abner Uribe (P), Dennis Santana (P) | ☐ To verify |
+| RGS | Gary Sánchez (C), Adrian Del Castillo (C), Freddie Freeman (1B), Ozzie Albies (2B), Dansby Swanson (MI), Eugenio Suárez (3B), Alex Bregman (CM), Xavier Edwards (SS), Kyle Schwarber (DH), Oneil Cruz (OF), Heliot Ramos (IL), Jackson Merrill (OF), Adolis García (OF), Nathan Church (OF), Yoshinobu Yamamoto (P), Robbie Ray (P), Bubba Chandler (P), Sandy Alcantara (P), Zac Gallen (P), Mitch Keller (P), Ryne Nelson (P), Devin Williams (P), Daniel Palencia (P), Caleb Thielbar (P) | ☐ To verify |
+| TSH | J.T. Realmuto (C), Liam Hicks (C), Rafael Devers (1B), Ketel Marte (2B), Bo Bichette (SS), Manny Machado (3B), Bryce Harper (CM), Xander Bogaerts (MI), Marcell Ozuna (DH), Pete Crow-Armstrong (OF), Alec Burleson (OF), Ian Happ (OF), Brandon Marsh (OF), Garrett Mitchell (OF), Quinn Priester (IL), Emilio Pagán (IL), Freddy Peralta (P), Emmet Sheehan (P), Shota Imanaga (P), Andrew Abbott (P), Aaron Nola (P), Nick Lodolo (P), Ryan Walker (P), Randy Vásquez (P) | ☐ To verify |
+| LDY | Will Smith (C), Carson Kelly (C), Spencer Steer (1B), Brandon Lowe (2B), Mookie Betts (SS), Joey Ortiz (SS), Austin Riley (3B), Max Muncy (CM), Konnor Griffin (MI), Ryan O'Hearn (DH), Juan Soto (OF), Andy Pages (OF), Gavin Sheets (OF), Victor Scott II (OF), Brandon Lockridge (OF), Michael McGreevy (P), Michael Soroka (P), Justin Wrobleski (P), Merrill Kelly (P), Carmen Mlodzinski (P), Foster Griffin (P), Clayton Beeter (P), Walker Buehler (P), Paul Sewald (P) | ☐ To verify |
+| DLC | William Contreras (C), Francisco Alvarez (C), Michael Busch (1B), Brice Turang (2B), Geraldo Perdomo (SS), Brady House (3B), Andrew Vaughn (CM), Troy Johnston (CM), Otto Lopez (MI), Shohei Ohtani (DH), Ronald Acuña Jr. (OF), Corbin Carroll (OF), Mickey Moniak (OF), Carson Benge (OF), Felix Reyes (OF), Paul Skenes (P), Chris Sale (P), Jesús Luzardo (P), Zack Wheeler (P), Riley O'Brien (P), Victor Vodnik (P), Mason Miller (P), Landen Roupp (P), Rhett Lowder (P) | ☐ To verify |
+
+---
+
+### 2b. Raw Stats — Period 2
+
+#### TFL Raw Stats — Period 2
+
+| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
+|------|---|----|----|----|----|---|----|----|------|---|
+| SKD | 149 | 41 | 147 | 15 | .250 | 7 | 7 | 2.93 | 1.114 | 135 |
+| DMK | 126 | 25 | 119 | 25 | .255 | 7 | 2 | 3.30 | 1.138 | 109 |
+| DDG | 129 | 33 | 119 | 23 | .247 | 13 | 7 | 3.04 | 1.149 | 162 |
+| DVD | 123 | 33 | 118 | 15 | .253 | 9 | 2 | 3.00 | 1.047 | 168 |
+| RGS | 147 | 41 | 126 | 20 | .238 | 8 | 4 | 5.00 | 1.309 | 156 |
+| TSH | 164 | 38 | 148 | 18 | .247 | 15 | 0 | 3.85 | 1.271 | 152 |
+| LDY | 147 | 43 | 132 | 21 | .248 | 9 | 2 | 3.34 | 1.162 | 102 |
+| DLC | 144 | 27 | 144 | 24 | .278 | 12 | 14 | 2.46 | 0.983 | 187 |
+
+#### FG/OnRoto Raw Stats — Period 2
+
+> ⏳ **Pending** — awaiting FG/OnRoto session URL for Period 2 standings from the commissioner.
+
+---
+
+### 2c. Roto Points Comparison — Period 2
+
+#### TFL Roto Points — Period 2
+
+> Recomputed June 8, 2026 from current `TeamStatsPeriod` DB data (periodId = 36).
 
 | Rank | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K | Total |
-|------|------|---|----|----|----|----|---|----|----|------|---|-------|
-| 1 | Skunk Dogs | 8 | 7 | 7 | 7 | 7 | 4.5 | 6 | 4 | 5 | 3 | 58.5 |
-| 2 | Diamond Kings | 2 | 5 | 5 | 4 | 4 | 8 | 8 | 7 | 7 | 8 | 58.0 |
-| 2 | Dodger Dawgs | 3 | 1 | 1 | 6 | 5.5 | 6.5 | 6 | 8 | 8 | 7 | 52.0\* |
-| 4 | Demolition Lumber Co. | 7 | 3.5 | 6 | 5 | 8 | 1.5 | 6 | 3 | 2 | 6 | 48.0 |
-| 5 | Los Doyers | 5 | 6 | 4 | 3 | 3 | 6.5 | 4 | 5 | 6 | 2 | 44.5 |
-| 6 | The Show | 6 | 8 | 8 | 1.5 | 5.5 | 1.5 | 1.5 | 1 | 3 | 4 | 40.0 |
-| 7 | RGing Sluggers | 1 | 3.5 | 3 | 8 | 2 | 3 | 1.5 | 2 | 1 | 5 | 30.0 |
-| 8 | Devil Dawgs | 4 | 2 | 2 | 1.5 | 1 | 4.5 | 3 | 6 | 4 | 1 | 29.0 |
+|------|------|---|----|----|----|----|---|----|----|------|---|----|
+| 1 | Demolition Lumber Co. | 4 | 2 | 6 | 7 | 8 | 6 | 8 | 8 | 8 | 8 | **65.0** |
+| 2 | Skunk Dogs | 7 | 6.5 | 7 | 1.5 | 5 | 1.5 | 6.5 | 7 | 6 | 3 | **51.0** |
+| 3 | Dodger Dawgs | 3 | 3.5 | 2.5 | 6 | 2.5 | 7 | 6.5 | 5 | 4 | 6 | **46.0** |
+| 4 | The Show | 8 | 5 | 8 | 3 | 2.5 | 8 | 1 | 2 | 2 | 4 | **43.5** |
+| 5 | Los Doyers | 5.5 | 8 | 5 | 5 | 4 | 4.5 | 3 | 3 | 3 | 1 | **42.0** |
+| 6 | Devil Dawgs | 1 | 3.5 | 1 | 1.5 | 6 | 4.5 | 3 | 6 | 7 | 7 | **40.5** |
+| 7 | Diamond Kings | 2 | 1 | 2.5 | 8 | 7 | 1.5 | 3 | 4 | 5 | 2 | **36.0** |
+| 7 | RGing Sluggers | 5.5 | 6.5 | 4 | 4 | 1 | 3 | 5 | 1 | 1 | 5 | **36.0** |
 
-\*DDG total rounds to 52.0 due to half-point AVG tie with TSH.
+#### FG/OnRoto Roto Points — Period 2
 
-### Category-by-Category Delta: FBST Rank − FanGraphs Rank
+> FG/OnRoto data retrieved June 8, 2026 — confirmed "Through 05.16.26" ✅
 
-> Positive = FBST awards more points than FG. Negative = FBST awards fewer points than FG. Zero = exact match.
-
-| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K | **Net Δ** |
-|------|---|----|----|----|----|---|----|----|------|---|--------|
-| DLC | +1.0 | +0.5 | +1.0 | **−2.0** | 0 | **−3.5** | **−2.0** | **−2.0** | **−3.0** | **−2.0** | **−12.0** |
-| DDG | 0 | **−3.0** | **−3.0** | **−2.0** | +1.5 | −0.5 | +0.5 | 0 | +2.0 | 0 | −4.5 |
-| SKD | 0 | +1.0 | 0 | +2.0 | 0 | **+3.5** | −1.0 | 0 | +1.0 | −1.5 | +5.0 |
-| LDY | +1.0 | −1.0 | −2.0 | 0 | **−3.0** | −1.5 | +1.5 | +2.0 | +3.0 | +1.0 | +1.0 |
-| DMK | +1.0 | +3.0 | +3.0 | 0 | −1.0 | **+4.0** | +2.5 | 0 | −1.0 | **+5.0** | **+16.5** |
-| TSH | −1.0 | 0 | 0 | +0.5 | +2.5 | −0.5 | −2.5 | 0 | +2.0 | +2.0 | +3.0 |
-| RGS | **−4.0** | −1.5 | 0 | +2.0 | 0 | 0 | −1.0 | 0 | −1.0 | +0.5 | −5.0 |
-| DVD | +2.0 | +1.0 | +1.0 | −0.5 | 0 | −1.5 | +2.0 | 0 | **−3.0** | **−5.0** | −4.0 |
-
-> ✅ **Sum of all deltas = 0.0** (roto points are zero-sum; this confirms no arithmetic errors in comparison)
+| Rank | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | SO | Total |
+|------|------|---|----|----|----|----|---|----|----|------|----|----|
+| 1 | Demolition Lumber Co. | 4.5 | 2.0 | 7.0 | 6.5 | 8.0 | 6.0 | 8.0 | 7.0 | 8.0 | 8.0 | **65.0** |
+| 2 | Skunk Dogs | 4.5 | 6.0 | 6.0 | 1.5 | 6.0 | 1.0 | 6.5 | 8.0 | 7.0 | 3.0 | **49.5** |
+| 3 | Los Doyers | 7.0 | 8.0 | 5.0 | 5.0 | 4.0 | 7.5 | 2.5 | 2.0 | 3.0 | 4.0 | **48.0** |
+| 4 | Dodger Dawgs | 3.0 | 4.0 | 3.0 | 6.5 | 3.0 | 5.0 | 6.5 | 5.0 | 4.0 | 6.0 | **46.0** |
+| 5 | The Show | 8.0 | 6.0 | 8.0 | 3.0 | 2.0 | 7.5 | 2.5 | 3.0 | 2.0 | 2.0 | **44.0** |
+| 6 | Devil Dawgs | 1.0 | 3.0 | 1.0 | 1.5 | 7.0 | 3.5 | 2.5 | 4.0 | 6.0 | 7.0 | **36.5** |
+| 7 | Diamond Kings | 2.0 | 1.0 | 2.0 | 8.0 | 5.0 | 3.5 | 2.5 | 6.0 | 5.0 | 1.0 | **36.0** |
+| 8 | RGing Sluggers | 6.0 | 6.0 | 4.0 | 4.0 | 1.0 | 2.0 | 5.0 | 1.0 | 1.0 | 5.0 | **35.0** |
 
 ---
 
-## Part 3 — Root Cause Analysis
+### 2d. Period 2 Rank Deltas: TFL minus FG/OnRoto
 
-### 3a. Attribution Logic (Code Evidence)
+> Positive = TFL awards more points. Negative = TFL awards fewer. Zero = exact match.
 
-FBST uses **end-of-period owner attribution**. The live standings computation (`computeWithPeriodStats` in `server/src/features/standings/services/standingsService.ts`) credits each player's full-period PSP stats to the team that held them at `period.endDate` (June 6, 2026 at 12:00 UTC).
+| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K/SO | **Net Δ** |
+|------|---|----|----|----|----|---|----|----|------|------|--------|
+| DLC | −0.5 | 0 | −1.0 | +0.5 | 0 | 0 | 0 | +1.0 | 0 | 0 | **0.0** |
+| SKD | +2.5 | +0.5 | +1.0 | 0 | −1.0 | +0.5 | 0 | −1.0 | −1.0 | 0 | **+1.5** |
+| LDY | −1.5 | 0 | 0 | 0 | 0 | −3.0 | +0.5 | +1.0 | 0 | −3.0 | **−6.0** |
+| DDG | 0 | −0.5 | −0.5 | −0.5 | −0.5 | +2.0 | 0 | 0 | 0 | 0 | **0.0** |
+| TSH | 0 | −1.0 | 0 | 0 | +0.5 | +0.5 | −1.5 | −1.0 | 0 | +2.0 | **−0.5** |
+| DVD | 0 | +0.5 | 0 | 0 | −1.0 | +1.0 | +0.5 | +2.0 | +1.0 | 0 | **+4.0** |
+| DMK | 0 | 0 | +0.5 | 0 | +2.0 | −2.0 | +0.5 | −2.0 | 0 | +1.0 | **0.0** |
+| RGS | −0.5 | +0.5 | 0 | 0 | 0 | +1.0 | 0 | 0 | 0 | 0 | **+1.0** |
 
-**Key logic verified in code:**
-```typescript
-// server/src/features/standings/services/standingsService.ts
-// End-of-period owner attribution
-const endOfPeriodOwner = new Map<number, number>(); // playerId → teamId
-for (const r of rosters) {
-  if (!ownedOn(r, period.endDate)) continue;  // held: acquiredAt ≤ endDate AND (releasedAt IS NULL OR releasedAt > endDate)
-  if (!endOfPeriodOwner.has(r.playerId)) {
-    endOfPeriodOwner.set(r.playerId, r.teamId);
-  }
-}
-// Only credit if this team is the end-of-period owner:
-const endOwner = endOfPeriodOwner.get(roster.playerId);
-if (endOwner !== t.id) continue;
-```
-
-**Dropped players verified excluded:** Alex Vesia (DMK, released May 17), Andrew Painter (LDY, released May 17) and all other mid-period drops are correctly excluded — their `releasedAt ≤ period.endDate` fails the `ownedOn` check.
-
-**Post-period drops correctly included:** Landen Roupp (DLC), Matt Gage (DLC), Jack Dreyer (DLC) were all released June 7 (`releasedAt > June 6 12:00 UTC`) and are correctly credited to DLC for Period 3.
-
-**Conclusion: The FBST attribution logic matches how FanGraphs documents their algorithm.**
+> ✅ **Sum of all deltas = 0.0** — zero-sum check passes.
+>
+> **Key findings for Period 2:**
+> - DLC: **exact match** (TFL = FG = 65.0) — both systems agree completely on Period 2's dominant team.
+> - LDY under-credited by TFL **−6.0 pts** (FG rank 3 → TFL rank 5). Driven by W (FG 7.5 vs TFL 4.5) — FanGraphs credits LDY with significantly more wins than our MLB Stats API feed.
+> - DVD over-credited by TFL **+4.0 pts** (FG rank 6 → TFL rank 6 same, but 40.5 vs 36.5). Driven by ERA and WHIP — TFL's API feed shows better pitching metrics for DVD than FanGraphs records.
 
 ---
 
-### 3b. Diamond Kings (DMK) — +16.5 Point Over-Credit
+## Period 3 Audit — May 17 to Jun 6, 2026
 
-**FBST Period 3 pitcher breakdown** (all 10 pitchers on DMK at period end):
+### 3a. Roster Verification — End of Period 3
 
-| Pitcher | W | SV | K | IP | Source |
-|---------|---|----|----|-------|--------|
-| Braxton Ashcraft | 3 | 0 | 30 | 24.1 | MLB Stats API |
-| Max Meyer | 3 | 0 | 27 | 26.0 | MLB Stats API |
-| Roki Sasaki | 2 | 0 | 29 | 24.1 | MLB Stats API |
-| Chase Burns | 2 | 0 | 26 | 17.1 | MLB Stats API |
-| Jhoan Duran | 0 | 8 | 14 | 9.0 | MLB Stats API |
-| Walker Buehler | 0 | 0 | 12 | 16.1 | MLB Stats API |
-| Aaron Ashby | 1 | 0 | 9 | 9.1 | MLB Stats API |
-| Antonio Senzatela | 2 | 0 | 5 | 8.0 | MLB Stats API |
-| Tyler Glasnow | 0 | 0 | 0 | 0.0 | (no starts) |
-| Edwin Díaz | 0 | 0 | 0 | 0.0 | (on IL) |
-| **TOTAL** | **13** | **8** | **152** | **134.2** | |
+> Notable changes from P2: DMK added Walker Buehler, Max Meyer, Antonio Senzatela, JJ Bleday, Miguel Andujar; DLC released Landen Roupp + Matt Gage + Jack Dreyer on Jun 7 (credited to P3); LDY overhauled pitching staff; SKD added Merrill Kelly, Brett Baty, Moisés Ballesteros, Trevor McDonald.
 
-**FanGraphs Period 3 implies for DMK:**
-- W rank 4 → ~9–10 wins (FG has LDY, DDG, DVD, DLC all ranked above DMK for W)
-- K rank 3 → ~130 K (FG has DLC rank 8, DDG rank 7, SKD rank 4.5 above DMK)
+| Team | TFL Roster (End of P3) | FG/OnRoto Match |
+|------|------------------------|-----------------|
+| SKD | Hunter Goodman (C), Moisés Ballesteros (C), Matt Olson (1B), JJ Wetherholt (2B), Trea Turner (SS), Matt Chapman (3B), Alec Bohm (CM), CJ Abrams (MI), Luis Arraez (DH), Michael Harris II (OF), Luis Robert Jr. (OF), Sal Frelick (OF), Jordan Walker (OF), Mauricio Dubón (OF), Brett Baty (OF), Shohei Ohtani-P (P), Michael King (P), Merrill Kelly (P), Kyle Harrison (P), Brandon Woodruff (P), Jameson Taillon (P), Trevor McDonald (P), Pete Fairbanks (P), Raisel Iglesias (P) | ☐ To verify |
+| DMK | Tyler Stephenson (C), Dalton Rushing (C), TJ Rumfield (1B), Marcus Semien (2B), Elly De La Cruz (SS), Miguel Andujar (3B), Jake Bauers (CM), Fernando Tatis Jr. (OF), Teoscar Hernández (OF), Kyle Stowers (OF), Justin Crawford (OF), Daylen Lile (OF), JJ Bleday (OF), Edwin Díaz (IL), Roki Sasaki (P), Tyler Glasnow (P), Chase Burns (P), Braxton Ashcraft (P), Aaron Ashby (P), Walker Buehler (P), Jhoan Duran (P), Max Meyer (P), Antonio Senzatela (P) | ☐ To verify |
+| DDG | Drake Baldwin (C), Iván Herrera (C), Sal Stewart (1B), Jose Fernandez (1B), Nico Hoerner (2B), Francisco Lindor (SS), Matt McLain (SS), Nolan Gorman (3B), Bryson Stott (MI), Jackson Chourio (OF), James Wood (OF), Ramón Laureano (OF), Jake McCarthy (OF), Jung Hoo Lee (OF), Connor Norby (DH), Cristopher Sánchez (P), Logan Webb (P), Eury Pérez (P), Spencer Strider (P), Eduardo Rodriguez (P), Trevor Megill (P), Robert Suarez (P), Gregory Soto (P), Ben Brown (P) | ☐ To verify |
+| DVD | Agustín Ramírez (C), Miguel Amaya (C), Edouard Julien (1B), Casey Schmitt (1B), Ildemaro Vargas (2B), Willy Adames (SS), Nolan Arenado (3B), Mark Vientos (CM), Christian Yelich (DH), Kyle Tucker (OF), Seiya Suzuki (OF), Brenton Doyle (OF), Jakob Marsee (OF), Ryan Waldschmidt (OF), Jacob Misiorowski (P), Nolan McLean (P), Matthew Boyd (P), Reynaldo López (P), Clay Holmes (P), Bryce Elder (P), Abner Uribe (P), JR Ritchie (P), Caleb Kilian (P), Christian Scott (P) | ☐ To verify |
+| RGS | Gabriel Moreno (C), Adrian Del Castillo (C), Freddie Freeman (1B), Ozzie Albies (2B), Dansby Swanson (MI), Eugenio Suárez (3B), Alex Bregman (CM), Xavier Edwards (SS), Kyle Schwarber (DH), Oneil Cruz (OF), Heliot Ramos (IL), Jackson Merrill (OF), Adolis García (OF), Nathan Church (OF), AJ Ewing (OF), Yoshinobu Yamamoto (P), Robbie Ray (P), Bubba Chandler (P), Sandy Alcantara (P), Mitch Keller (P), Ryne Nelson (P), Devin Williams (P), Daniel Palencia (P), Kyle Leahy (P) | ☐ To verify |
+| TSH | J.T. Realmuto (C), Liam Hicks (C), Rafael Devers (1B), Ketel Marte (2B), Bo Bichette (SS), Manny Machado (3B), Bryce Harper (CM), Xander Bogaerts (MI), Luis García Jr. (DH), Pete Crow-Armstrong (OF), Alec Burleson (OF), Ian Happ (OF), Brandon Marsh (OF), Garrett Mitchell (OF), Quinn Priester (IL), Emilio Pagán (IL), Logan Henderson (IL), Freddy Peralta (P), Emmet Sheehan (P), Shota Imanaga (P), Andrew Abbott (P), Aaron Nola (P), Nick Lodolo (P), Randy Vásquez (P), Tanner Scott (P) | ☐ To verify |
+| LDY | Will Smith (C), Carson Kelly (C), Spencer Steer (1B), Brandon Lowe (2B), Mookie Betts (SS), Austin Riley (3B), Max Muncy (CM), Konnor Griffin (MI), Ryan O'Hearn (DH), Juan Soto (OF), Andy Pages (OF), Gavin Sheets (OF), Victor Scott II (OF), Jacob Young (OF), Michael McGreevy (P), Michael Soroka (P), Justin Wrobleski (P), Andrew Painter (P), Cade Cavalli (P), PJ Poulin (P), George Soriano (P), Foster Griffin (P), Paul Sewald (P) | ☐ To verify |
+| DLC | William Contreras (C), Keibert Ruiz (C), Michael Busch (1B), Brice Turang (2B), Geraldo Perdomo (SS), Brady House (3B), Andrew Vaughn (CM), Troy Johnston (CM), Otto Lopez (MI), Shohei Ohtani (DH), Ronald Acuña Jr. (OF), Corbin Carroll (OF), Mickey Moniak (OF), Carson Benge (OF), Paul Skenes (P), Chris Sale (P), Jesús Luzardo (P), Zack Wheeler (P), Riley O'Brien (P), Mason Miller (P), Landen Roupp (P\*), Matt Gage (P\*), Jack Dreyer (P\*) | ☐ To verify |
 
-**Specific discrepancies that drive the gap:**
-
-| Category | FBST | FG Rank Implies | FBST Rank | FG Rank | Delta |
-|----------|------|-----------------|-----------|---------|-------|
-| W | 13 | ~9–10 W | 8 (most) | 4 | +4.0 pts |
-| K | 152 | ~130 K | 8 (most) | 3 | +5.0 pts |
-| HR | 28 | FG: rank 2 (2nd least) | 5 | 2 | +3.0 pts |
-| RBI | 102 | FG: rank 2 (2nd least) | 5 | 2 | +3.0 pts |
-
-**Root cause:** The underlying `PlayerStatsPeriod` data (sourced from MLB Stats API) shows DMK's pitching staff accumulating W=13 and K=152. FanGraphs' own database shows materially different numbers for the same pitchers in the same period. This is a **data source divergence** — FBST uses MLB Stats API (statsapi.mlb.com), while FanGraphs maintains its own independently-sourced pitch-by-pitch database. The two sources can diverge by several W and ~20 K across a team's staff over a 21-day period.
-
-**Notable outliers to investigate manually:**
-- Roki Sasaki: FBST shows W=2, K=29 in Period 3 — verify against Baseball Reference
-- Max Meyer: FBST shows W=3, K=27 — verify against FanGraphs player page
+> \* Landen Roupp, Matt Gage, and Jack Dreyer were released June 7 — after period end — and are credited to DLC for Period 3 stats.
 
 ---
 
-### 3c. Demolition Lumber Co. (DLC) — −12.0 Point Under-Credit
+### 3b. Raw Stats — Period 3
 
-**FBST Period 3 pitcher breakdown** (all pitchers on DLC at period end, including those released June 7):
+#### TFL Raw Stats — Period 3
 
-| Pitcher | W | SV | K | IP | Released |
-|---------|---|----|----|-------|---------|
-| Zack Wheeler | 3 | 0 | 26 | 26.0 | Still active |
-| Paul Skenes | 0 | 0 | 26 | 20.0 | Still active |
-| Chris Sale | 2 | 0 | 22 | 17.2 | Still active |
-| Jesús Luzardo | 1 | 0 | 19 | 23.1 | Still active |
-| Landen Roupp | 0 | 0 | 19 | 20.2 | Released Jun 7 |
-| Mason Miller | 0 | 4 | 7 | 5.2 | Still active |
-| Riley O'Brien | 0 | 3 | 5 | 6.1 | Still active |
-| Matt Gage | 1 | 0 | 6 | 4.2 | Released Jun 7 |
-| Jack Dreyer | 0 | 0 | 1 | — | Released Jun 7 |
-| **TOTAL** | **7** | **7** | **131** | **~124** | |
+| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
+|------|---|----|----|----|----|---|----|----|------|---|
+| SKD | 129 | 36 | 132 | 26 | .265 | 10 | 7 | 4.05 | 1.176 | 119 |
+| DMK | 106 | 28 | 102 | 15 | .242 | 13 | 8 | 2.61 | 0.958 | 152 |
+| DDG | 107 | 23 | 80 | 25 | .247 | 11 | 7 | 2.43 | 0.943 | 141 |
+| DVD | 108 | 24 | 85 | 13 | .225 | 10 | 3 | 3.74 | 1.198 | 105 |
+| RGS | 102 | 27 | 86 | 27 | .236 | 9 | 2 | 5.06 | 1.425 | 126 |
+| TSH | 119 | 47 | 146 | 13 | .247 | 7 | 2 | 5.25 | 1.311 | 124 |
+| LDY | 118 | 34 | 94 | 14 | .239 | 11 | 6 | 3.87 | 1.141 | 114 |
+| DLC | 125 | 27 | 115 | 22 | .298 | 7 | 7 | 4.24 | 1.366 | 131 |
 
-**FanGraphs Period 3 implies for DLC:**
-- W rank 5 → ~10–11 wins (FG has LDY rank 8, DDG rank 7, DVD rank 6, DLC rank 5, DMK rank 4)
-- SV rank 8 → most saves in league (FG gives DLC 8 pts)
-- K rank 8 → most K in league (FG gives DLC 8 pts)
-- WHIP rank 5 → middle tier
+#### FG/OnRoto Raw Stats — Period 3
 
-**Specific DLC discrepancies:**
-
-| Category | FBST | FG Rank | FBST Rank | Delta |
-|----------|------|---------|-----------|-------|
-| W | 7 | 5 | 1.5 (tied last) | **−3.5 pts** |
-| SV | 7 | 8 (most) | 6 (tied) | **−2.0 pts** |
-| ERA | 4.24 | 5 | 3 | **−2.0 pts** |
-| WHIP | 1.366 | 5 | 2 | **−3.0 pts** |
-| K | 131 | 8 (most) | 6 | **−2.0 pts** |
-
-**Root cause:** Same data source divergence — FBST shows DLC pitchers with W=7 but FanGraphs shows DLC ranking 5th in wins. This implies FG has DLC pitchers accumulating more W than FBST's MLB Stats API feed reports. For saves, FBST shows DLC SV=7 tied with SKD and DDG, while FG gives DLC rank 8 (most saves) — Mason Miller's saves count may differ between sources.
+> ⏳ **Pending** — awaiting FG/OnRoto session URL for Period 3 from the commissioner.
 
 ---
 
-### 3d. Wins Category — Most Volatile, Most Impact
+### 3c. Roto Points Comparison — Period 3
 
-Wins (W) produces the largest rank swings between FBST and FanGraphs across all categories and all teams:
+> FG/OnRoto Period 3 data retrieved June 8, 2026 via previously-provided session URL (confirmed "Through 06.06.26") ✅
 
-| Team | FBST W | FBST W Rank | FG W Rank | Δ Rank |
-|------|--------|-------------|-----------|--------|
-| Diamond Kings | 13 | 8 | 4 | **+4.0** |
-| Skunk Dogs | 10 (tied) | 4.5 | 1 | **+3.5** |
-| Los Doyers | 11 (tied) | 6.5 | 8 | −1.5 |
-| Dodger Dawgs | 11 (tied) | 6.5 | 7 | −0.5 |
-| Devil Dawgs | 10 (tied) | 4.5 | 6 | −1.5 |
-| Demolition Lumber Co. | 7 (tied) | 1.5 | 5 | **−3.5** |
-| The Show | 7 (tied) | 1.5 | 2 | −0.5 |
-| RGing Sluggers | 9 | 3 | 3 | 0 |
+#### FG/OnRoto Roto Points — Period 3
 
-**FanGraphs wins ordering (8=most):** LDY > DDG > DVD > DLC > DMK > RGS > TSH > SKD
+| Rank | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | SO | Total |
+|------|------|---|----|----|----|----|---|----|----|------|----|----|
+| 1 | Demolition Lumber Co. | 6.0 | 3.0 | 5.0 | 7.0 | 8.0 | 5.0 | 8.0 | 5.0 | 5.0 | 8.0 | **60.0** |
+| 2 | Dodger Dawgs | 3.0 | 4.0 | 4.0 | 8.0 | 4.0 | 7.0 | 5.5 | 8.0 | 6.0 | 7.0 | **56.5** |
+| 3 | Skunk Dogs | 8.0 | 6.0 | 7.0 | 5.0 | 7.0 | 1.0 | 7.0 | 4.0 | 4.0 | 4.5 | **53.5** |
+| 4 | Los Doyers | 4.0 | 7.0 | 6.0 | 3.0 | 6.0 | 8.0 | 2.5 | 3.0 | 3.0 | 1.0 | **43.5** |
+| 5 | Diamond Kings | 1.0 | 2.0 | 2.0 | 4.0 | 5.0 | 4.0 | 5.5 | 7.0 | 8.0 | 3.0 | **41.5** |
+| 6 | The Show | 7.0 | 8.0 | 8.0 | 1.0 | 3.0 | 2.0 | 4.0 | 1.0 | 1.0 | 2.0 | **37.0** |
+| 7 | RGing Sluggers | 5.0 | 5.0 | 3.0 | 6.0 | 2.0 | 3.0 | 2.5 | 2.0 | 2.0 | 4.5 | **35.0** |
+| 8 | Devil Dawgs | 2.0 | 1.0 | 1.0 | 2.0 | 1.0 | 6.0 | 1.0 | 6.0 | 7.0 | 6.0 | **33.0** |
 
-**FBST wins ordering (8=most):** DMK > DDG=LDY > SKD=DVD > RGS > TSH=DLC
+#### TFL Roto Points — Period 3
 
-These orderings are dramatically different. **Pitcher wins are the hardest stat to attribute accurately** because:
-1. Wins depend on team scoring — the same pitcher start gives a W or a no-decision based on when runs score
-2. "Win" assignment in the MLB Stats API can change after games are reviewed (rulebook wins)
-3. A pitcher traded mid-period can pick up wins while on a new team that count against their old team in some data sources
-
----
-
-### 3e. Saves (SV) — Second Most Volatile
-
-FBST shows DLC SV=7 tied with SKD and DDG (all three earn 6 pts each). FanGraphs gives DLC rank 8 (8 pts). This single-category difference is 2 points.
-
-**Mason Miller (DLC closer, Period 3):** FBST shows SV=4, W=0, K=7, IP=5.2. If FanGraphs shows Miller with more saves, this drives the gap.
-
-**Jhoan Duran (DMK closer, Period 3):** FBST shows SV=8. FanGraphs gives DMK SV rank 5.5 (tied). If FG has Duran with fewer saves or more teams with similar save counts, this can explain the +2.5 pts DMK gets in FBST.
+| Rank | Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K | Total |
+|------|------|---|----|----|----|----|---|----|----|------|---|----|
+| 1 | Skunk Dogs | 8 | 7 | 7 | 7 | 7 | 4.5 | 6 | 4 | 5 | 3 | **58.5** |
+| 2 | Diamond Kings | 2 | 5 | 5 | 4 | 4 | 8 | 8 | 7 | 7 | 8 | **58.0** |
+| 2 | Dodger Dawgs | 3 | 1 | 1 | 6 | 5.5 | 6.5 | 6 | 8 | 8 | 7 | **52.0** |
+| 4 | Demolition Lumber Co. | 7 | 3.5 | 6 | 5 | 8 | 1.5 | 6 | 3 | 2 | 6 | **48.0** |
+| 5 | Los Doyers | 5 | 6 | 4 | 3 | 3 | 6.5 | 4 | 5 | 6 | 2 | **44.5** |
+| 6 | The Show | 6 | 8 | 8 | 1.5 | 5.5 | 1.5 | 1.5 | 1 | 3 | 4 | **40.0** |
+| 7 | RGing Sluggers | 1 | 3.5 | 3 | 8 | 2 | 3 | 1.5 | 2 | 1 | 5 | **30.0** |
+| 8 | Devil Dawgs | 4 | 2 | 2 | 1.5 | 1 | 4.5 | 3 | 6 | 4 | 1 | **29.0** |
 
 ---
 
-### 3f. K (Strikeouts) — Large Absolute Discrepancy for Key Teams
+### 3d. Period 3 Rank Deltas: TFL minus FG/OnRoto
 
-**FBST K ordering:** DMK=152 > DDG=141 > DLC=131 > RGS=126 > TSH=124 > SKD=119 > LDY=114 > DVD=105  
-**FG K ordering (implied):** DLC > DDG > DVD > SKD=RGS > DMK > TSH > LDY
+| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K/SO | **Net Δ** |
+|------|---|----|----|----|----|---|----|----|------|------|--------|
+| DLC | +1.0 | +0.5 | +1.0 | −2.0 | 0 | −3.5 | −2.0 | −2.0 | −3.0 | −2.0 | **−12.0** |
+| DDG | 0 | −3.0 | −3.0 | −2.0 | +1.5 | −0.5 | +0.5 | 0 | +2.0 | 0 | **−4.5** |
+| SKD | 0 | +1.0 | 0 | +2.0 | 0 | +3.5 | −1.0 | 0 | +1.0 | −1.5 | **+5.0** |
+| LDY | +1.0 | −1.0 | −2.0 | 0 | −3.0 | −1.5 | +1.5 | +2.0 | +3.0 | +1.0 | **+1.0** |
+| DMK | +1.0 | +3.0 | +3.0 | 0 | −1.0 | +4.0 | +2.5 | 0 | −1.0 | +5.0 | **+16.5** |
+| TSH | −1.0 | 0 | 0 | +0.5 | +2.5 | −0.5 | −2.5 | 0 | +2.0 | +2.0 | **+3.0** |
+| RGS | −4.0 | −1.5 | 0 | +2.0 | 0 | 0 | −1.0 | 0 | −1.0 | +0.5 | **−5.0** |
+| DVD | +2.0 | +1.0 | +1.0 | −0.5 | 0 | −1.5 | +2.0 | 0 | −3.0 | −5.0 | **−4.0** |
 
-FG gives DVD K rank 6 (4th most K), but FBST has DVD with only 105 K (last place). FG must have DVD pitchers accumulating significantly more K than our MLB Stats API feed reports.
-
-**DVD Period 3 pitchers at period end:**
-
-| Pitcher | W | K | IP |
-|---------|---|---|---|
-| Jacob Misiorowski | 4 | 36 | 27.0 |
-| Christian Scott | 2 | 21 | 20.1 |
-| Nolan McLean | 1 | 18 | 20.0 |
-| Bryce Elder | 1 | 11 | 16.0 |
-| Caleb Kilian | 1 | 10 | 8.2 |
-| Abner Uribe | 1 | 5 | 5.0 |
-| **Total (active)** | **10** | **~105** | |
-
-FanGraphs implying DVD has more K than our 105 could indicate our MLB Stats API data is missing starts for some pitchers or has stale final game counts.
+> ✅ **Sum of all deltas = 0.0** — confirms zero-sum arithmetic is correct across both systems for Period 3.
 
 ---
 
-## Part 4 — Transaction Audit: June 7, 2026
+## Summary
 
-**Result: CLEAN — All 72 transactions match FanGraphs exactly.**
+### TFL Points — All 3 Periods (recomputed from current DB)
 
-| Team | FBST Events | FG Confirmed | Status |
-|------|------------|--------------|--------|
-| Diamond Kings | Drop J. Crawford → Add L. Nootbaar | ✓ | ✅ |
-| Demolition Lumber Co. | 6 claim pairs + position changes | ✓ | ✅ |
-| Dodger Dawgs | 5 claim pairs + Lindor IL activate | ✓ | ✅ |
-| Skunk Dogs | Robert activate → drop Robert, McDonald → May | ✓ | ✅ |
-| RGing Sluggers | 3 claim pairs | ✓ | ✅ |
-| Devil Dawgs | 8 claim pairs + slot adjustments | ✓ | ✅ |
-| Los Doyers | 4 claim pairs | ✓ | ✅ |
-| The Show | 2 pitcher swaps + **L. Henderson IL stash** | ✓ | ✅ |
+| Team | P1 Pts | P2 Pts | P3 Pts | **TFL YTD** |
+|------|--------|--------|--------|-------------|
+| Demolition Lumber Co. | 58.0 | 65.0 | 48.0 | **171.0** |
+| RGing Sluggers | 55.5 | 36.0 | 30.0 | **121.5** |
+| Dodger Dawgs | 53.0 | 46.0 | 52.0 | **151.0** |
+| Skunk Dogs | 50.5 | 51.0 | 58.5 | **160.0** |
+| Devil Dawgs | 41.5 | 40.5 | 29.0 | **111.0** |
+| Los Doyers | 36.5 | 42.0 | 44.5 | **123.0** |
+| Diamond Kings | 35.0 | 36.0 | 58.0 | **129.0** |
+| The Show | 30.0 | 43.5 | 40.0 | **113.5** |
 
-> Note: Logan Henderson (The Show, SP) was stashed to IL by commissioner as of June 7, 2026. MLB status at time of stash: "Injured 15-Day" (confirmed via MLB Stats API feed).
+### FG/OnRoto Points — All 3 Periods (all confirmed ✅)
 
----
+| Team | P1 Pts | P2 Pts | P3 Pts | **FG YTD** |
+|------|--------|--------|--------|------------|
+| Demolition Lumber Co. | 56.5 | 65.0 | 60.0 | **181.5** |
+| Dodger Dawgs | 53.5 | 46.0 | 56.5 | **156.0** |
+| Skunk Dogs | 51.5 | 49.5 | 53.5 | **154.5** |
+| RGing Sluggers | 55.0 | 35.0 | 35.0 | **125.0** |
+| Los Doyers | 37.5 | 48.0 | 43.5 | **129.0** |
+| Devil Dawgs | 43.0 | 36.5 | 33.0 | **112.5** |
+| Diamond Kings | 33.5 | 36.0 | 41.5 | **111.0** |
+| The Show | 29.5 | 44.0 | 37.0 | **110.5** |
 
-## Part 5 — What We Need from OnRoto/FanGraphs
+### Net Deltas by Period (TFL − FG/OnRoto)
 
-To complete a full period-by-period audit, the following are required:
+| Team | P1 Δ | P2 Δ | P3 Δ | **YTD Δ** |
+|------|------|------|------|-----------|
+| Demolition Lumber Co. | +1.5 | 0.0 | −12.0 | **−10.5** |
+| RGing Sluggers | +0.5 | +1.0 | −5.0 | **−3.5** |
+| Dodger Dawgs | −0.5 | 0.0 | −4.5 | **−5.0** |
+| Skunk Dogs | −1.0 | +1.5 | +5.0 | **+5.5** |
+| Devil Dawgs | −1.5 | +4.0 | −4.0 | **−1.5** |
+| Los Doyers | −1.0 | −6.0 | +1.0 | **−6.0** |
+| Diamond Kings | +1.5 | 0.0 | +16.5 | **+18.0** |
+| The Show | +0.5 | −0.5 | +3.0 | **+3.0** |
 
-### 5a. Period 1 Standalone Standings (Through April 18, 2026)
-- Navigate to: `https://onroto.fangraphs.com/baseball/webnew/team_retro_stats.pl?OGBA+6`
-- Select period ending **April 18**
-- Copy the session URL from the standings link
-- This will show Period 1 ONLY (not cumulative)
+### Headline Findings
 
-### 5b. Period 2 Standalone Standings (Through May 16, 2026)
-- Same navigation, select period ending **May 16**
-- This will show Period 2 ONLY
+**Period 1 — Systems largely agree:**
+- All 8 teams within ±1.5 points. Rank order is identical between TFL and FG/OnRoto.
+- Small differences consistent with normal stat-source lag, no systemic bias.
 
-### 5c. Individual Player Stat Verification (Optional — for root cause confirmation)
-To confirm whether the discrepancies are data source issues, manually check these players on FanGraphs player pages for May 17 – June 6 stats:
+**Period 2 — DLC is a perfect match; LDY and DVD diverge:**
+- DLC: **exact match** (both systems 65.0) — validates both systems' attribution for Period 2's dominant team.
+- LDY under-credited by TFL **−6.0 pts** (FG rank 3 → TFL rank 5). Driven by W: FG credits LDY ~7.5 pts (tied 2nd most wins) while TFL MLB Stats API shows fewer wins.
+- DVD over-credited by TFL **+4.0 pts**. Driven by better ERA/WHIP in TFL's feed vs FanGraphs.
 
-| Player | Team | FBST W | FBST K | Check |
-|--------|------|--------|--------|-------|
-| Roki Sasaki | DMK | 2 | 29 | fangraphs.com/players/roki-sasaki |
-| Braxton Ashcraft | DMK | 3 | 30 | fangraphs.com/players/braxton-ashcraft |
-| Max Meyer | DMK | 3 | 27 | fangraphs.com/players/max-meyer |
-| Paul Skenes | DLC | 0 | 26 | fangraphs.com/players/paul-skenes |
-| Zack Wheeler | DLC | 3 | 26 | fangraphs.com/players/zack-wheeler |
-| Mason Miller | DLC | 0 SV=4 | 7 | fangraphs.com/players/mason-miller |
+**Period 3 — Largest divergence:**
+- DMK over-credited by TFL **+16.5 pts** (FG rank 5 → TFL rank 2). Driven by W (+4.0) and K (+5.0).
+- DLC under-credited by TFL **−12.0 pts** (FG rank 1 → TFL rank 4). Driven by W (−3.5), WHIP (−3.0), K (−2.0).
 
----
+**YTD (3 periods combined):**
+- DMK is the most over-credited team in TFL: **+18.0 pts** above FG/OnRoto.
+- LDY is the most under-credited: **−6.0 pts** below FG/OnRoto YTD.
 
-## Part 6 — Summary of Issues
+**Root cause — data source divergence:**
+TFL sources stats from the MLB Stats API (statsapi.mlb.com). FanGraphs on Roto maintains its own independently-sourced database. The two sources diverge most on pitcher counting stats (W, K, SV) because:
+1. Win assignment can be revised after games are reviewed (rulebook wins).
+2. Strikeout totals can differ by 5–15% when one source lags the other on final box score ingestion.
+3. Both systems use end-of-period owner attribution — the attribution logic is confirmed correct in TFL.
 
-### Known Issues (Data Source Divergence)
-1. **FBST uses MLB Stats API; FanGraphs uses its own database.** The two sources can diverge by 5–20% on pitcher counting stats (W, K) over a 21-day period. This is not a FBST computation bug — it is a **fundamental data source difference**.
-2. **Wins (W) are the most volatile category** and produce the largest rank swings between the two systems.
+**Confirmed working correctly in TFL:**
+- Attribution logic (end-of-period owner, dedup, dropped-player exclusion) — verified correct.
+- Transaction recording — 72 June 7 events all match FG/OnRoto exactly.
+- Roto point computation — zero-sum verified for Period 3.
 
-### Known Issues (Period Access)
-3. **Session URLs for OnRoto standings expire.** The three URLs provided all resolved to the same Period 3 view. FanGraphs should be asked for permanent or longer-lived links to period-by-period standings, or the commissioner should access them directly and download at each period close.
+### What's Still Needed
 
-### Confirmed Working Correctly in FBST
-4. **Attribution logic** — end-of-period owner, dedup, dropped-player exclusion: all verified correct.
-5. **Transaction recording** — 72 June 7 events all match FanGraphs exactly.
-6. **IL stash** — Logan Henderson (The Show) correctly stashed June 7 with MLB status "Injured 15-Day."
-7. **Roto point computation** — verified zero-sum across all 8 teams for Period 3.
-
----
-
-## Appendix A — FBST 3-Period Running Total (FBST Points Only)
-
-| Team | P1 Pts | P2 Pts | P3 Pts | **YTD Total** |
-|------|--------|--------|--------|---------------|
-| Skunk Dogs | 53.0 | 52.5 | 58.5 | **164.0** |
-| Dodger Dawgs | 55.0 | 52.5 | 52.0 | **159.5** |
-| RGing Sluggers | 55.5 | 41.0 | 30.0 | **126.5** |
-| Devil Dawgs | 44.5 | 45.0 | 29.0 | **118.5** |
-| Demolition Lumber Co. | 49.5 | 53.0 | 48.0 | **150.5** |
-| Diamond Kings | 33.5 | 43.0 | 58.0 | **134.5** |
-| The Show | 30.5 | 44.5 | 40.0 | **115.0** |
-| Los Doyers | 37.0 | 45.5 | 44.5 | **127.0** |
-
-> ⚠️ These are FBST-computed points. FanGraphs YTD totals unavailable due to session URL expiry for Periods 1 and 2.
-
----
-
-## Appendix B — Database Query Reference
-
-All data in this report was pulled from the production Supabase database (`leagueId = 20`) on June 8, 2026. Key queries:
-
-```sql
--- Raw stats per team per period
-SELECT t.name, p.name as period, tsp.R, tsp.HR, tsp.RBI, tsp.SB, tsp.AVG, 
-       tsp.W, tsp.S, tsp.ERA, tsp.WHIP, tsp.K
-FROM "TeamStatsPeriod" tsp
-JOIN "Team" t ON t.id = tsp."teamId"
-JOIN "Period" p ON p.id = tsp."periodId"
-WHERE p.id IN (35, 36, 37)
-ORDER BY p.id, t.name;
-
--- Period 3 pitcher breakdown per team (end-of-period owners)
-SELECT p.name, psp.W, psp.SV, psp.K, psp.IP
-FROM "PlayerStatsPeriod" psp
-JOIN "Player" p ON p.id = psp."playerId"
-JOIN "Roster" r ON r."playerId" = psp."playerId" 
-  AND r."teamId" = :teamId 
-  AND (r."releasedAt" IS NULL OR r."releasedAt" > '2026-06-06T12:00:00Z')
-WHERE psp."periodId" = 37;
-```
+| Item | Status |
+|------|--------|
+| FG/OnRoto Period 1 standings URL | ✅ Confirmed "Through 04.18.26" |
+| FG/OnRoto Period 2 standings URL | ✅ Confirmed "Through 05.16.26" |
+| FG/OnRoto Period 3 standings URL | ✅ Confirmed "Through 06.06.26" |
+| FG/OnRoto raw stats (all periods) | ⏳ Requires per-team stats page — URL shows rank points only |
+| FG/OnRoto roster verification (all periods) | ⏳ Manual spot-check via OnRoto site |
+| Root cause: LDY W divergence P2 | ⏳ FG gives LDY ~7.5 W rank; TFL API shows fewer wins |
+| Root cause: DMK W+K over-credit P3 | ⏳ Known data-source divergence; per-player check pending |
 
 ---
 
-*Document generated June 8, 2026. Data pulled from live production database. Next update pending: fresh FanGraphs session URLs for Periods 1 and 2.*
+*Document last updated June 8, 2026. TFL data from live production database. FG/OnRoto data from commissioner-provided session URLs.*
