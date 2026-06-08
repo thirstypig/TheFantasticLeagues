@@ -309,6 +309,7 @@ export const AppliedReassignmentSchema = z.object({
   playerName: z.string(),
   oldSlot: z.string(),
   newSlot: z.string(),
+  mlbId: z.number().nullable().optional(),
 });
 export type AppliedReassignment = z.infer<typeof AppliedReassignmentSchema>;
 
