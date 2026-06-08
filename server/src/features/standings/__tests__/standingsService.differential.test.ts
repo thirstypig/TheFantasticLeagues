@@ -308,4 +308,131 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       }
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Ghost-roster scenario (todo #248)
+  //
+  // A trade reversal can leave two overlapping roster rows for the same player:
+  //   - The original active row (releasedAt: null) — the real current owner
+  //   - A TRADE_IN ghost row (releasedAt set, but still > period.startDate) — the
+  //     reversed trade that was NOT hard-deleted, only soft-released
+  //
+  // Both rows match the period overlap query:
+  //   acquiredAt < endDate AND (releasedAt IS NULL OR releasedAt > startDate)
+  //
+  // The bug (commit b4a02bd): computeWithPeriodStats was counting the ghost team
+  // as an additional "owner" even though its releasedAt < period.endDate. Fixed
+  // via the `endOfPeriodOwner` dedup (ownedOn guard). This describe block pins
+  // that fix so any regression is caught immediately.
+  //
+  // Production incident documented in:
+  //   docs/solutions/logic-errors/trade-reversal-ghost-roster-double-counting.md
+  // ---------------------------------------------------------------------------
+  describe("ghost-roster (reversed trade leaves overlapping rows)", () => {
+    // Scenario: Player 6 was on Alpha (1001) → traded to Bravo (1002) on Apr 24 →
+    // trade reversed on Apr 25. After reversal:
+    //   - Alpha row: acquiredAt=Mar 22, releasedAt=null   (active, the real owner)
+    //   - Bravo ghost row: acquiredAt=Apr 24, releasedAt=Apr 25 07:45  (overlaps period, not deleted)
+    // Stats: SV=2 on Apr 27 (after reversal — firmly in Alpha's window, not Bravo's).
+    const TRADE_AT = new Date("2026-04-24T10:00:00.000Z");
+    const REVERSAL_AT = new Date("2026-04-25T07:45:00.000Z");
+
+    // Ordered DESC by acquiredAt to mirror the production query orderBy
+    const ghostRosters = [
+      // Bravo ghost: acquiredAt=Apr 24, releasedAt=Apr 25 (overlaps period but released before endDate)
+      {
+        teamId: 1002, playerId: 6, acquiredAt: TRADE_AT,
+        releasedAt: REVERSAL_AT,
+        assignedPosition: "SP",
+        player: { id: 6, mlbId: 6000, posPrimary: "SP" },
+      },
+      // Alpha active: acquiredAt=Mar 22, releasedAt=null (real current owner)
+      {
+        teamId: 1001, playerId: 6, acquiredAt: new Date("2026-03-22"),
+        releasedAt: null,
+        assignedPosition: "SP",
+        player: { id: 6, mlbId: 6000, posPrimary: "SP" },
+      },
+    ];
+
+    // Stats on Apr 27 — after the reversal, well within Alpha's ownership window.
+    // SV=2, K=5, IP=4 — all should land on Alpha only.
+    const ghostDailies = [
+      dailyRow(6, "2026-04-27", { SV: 2, K: 5, IP: 4, ER: 1, BB_H: 2 }),
+    ];
+
+    // PSP: full-period accumulation for player 6
+    const ghostPsp = [
+      { playerId: 6, ...ZERO_STATS, SV: 2, K: 5, IP: 4, ER: 1, BB_H: 2 },
+    ];
+
+    it("PSP path: ghost-team (Bravo) gets zero credit; active team (Alpha) gets full credit", async () => {
+      // Run ONLY the PSP path (periodStatCount=1).
+      mockRosterFindMany.mockResolvedValueOnce(ghostRosters);
+      mockPeriodStatsCount.mockResolvedValueOnce(1);
+      mockPeriodStatsFindMany.mockResolvedValueOnce(ghostPsp);
+      const pspResult = await computeTeamStatsFromDb(20, 36);
+
+      const pspAlpha = pspResult.find(r => r.team.code === "AAA");
+      const pspBravo = pspResult.find(r => r.team.code === "BBB");
+      expect(pspAlpha, "PSP: Alpha not found").toBeDefined();
+      expect(pspBravo, "PSP: Bravo not found").toBeDefined();
+      if (!pspAlpha || !pspBravo) return;
+
+      // Alpha (active owner) gets the stats
+      expect(pspAlpha.S).toBe(2);
+      expect(pspAlpha.K).toBe(5);
+      // Bravo (ghost) gets nothing — it did not hold the player at period.endDate
+      expect(pspBravo.S).toBe(0);
+      expect(pspBravo.K).toBe(0);
+      // Zero-sum: league total equals the player's actual stats, not double
+      expect(pspAlpha.S + pspBravo.S).toBe(2);
+      expect(pspAlpha.K + pspBravo.K).toBe(5);
+    });
+
+    it("PSD path: ghost-team (Bravo) gets zero credit; active team (Alpha) gets full credit", async () => {
+      // Run ONLY the PSD path (periodStatCount=0).
+      mockRosterFindMany.mockResolvedValueOnce(ghostRosters);
+      mockPeriodStatsCount.mockResolvedValueOnce(0);
+      mockDailyFindMany.mockResolvedValueOnce(ghostDailies);
+      const psdResult = await computeTeamStatsFromDb(20, 36);
+
+      const psdAlpha = psdResult.find(r => r.team.code === "AAA");
+      const psdBravo = psdResult.find(r => r.team.code === "BBB");
+      expect(psdAlpha, "PSD: Alpha not found").toBeDefined();
+      expect(psdBravo, "PSD: Bravo not found").toBeDefined();
+      if (!psdAlpha || !psdBravo) return;
+
+      // Alpha's ownership window covers Apr 27 (after reversal); Alpha gets the stats.
+      expect(psdAlpha.S).toBe(2);
+      expect(psdAlpha.K).toBe(5);
+      // Bravo's ghost window ended at REVERSAL_AT (Apr 25); Apr 27 is outside it.
+      expect(psdBravo.S).toBe(0);
+      expect(psdBravo.K).toBe(0);
+      // Zero-sum: total across both teams equals the player's stats exactly once
+      expect(psdAlpha.S + psdBravo.S).toBe(2);
+      expect(psdAlpha.K + psdBravo.K).toBe(5);
+    });
+
+    it("both paths agree: player stats credited exactly once, zero double-counting", async () => {
+      // runBothPaths resets mocks between PSD and PSP runs.
+      const { psdResult, pspResult } = await runBothPaths(ghostRosters, ghostDailies, ghostPsp);
+
+      const COUNTING_STATS = ["R", "HR", "RBI", "SB", "W", "S", "K", "H", "AB", "ER", "IP", "BB_H"] as const;
+      // TeamStatRow uses "S" for saves; PSP/daily DB data uses "SV". Map before
+      // looking up the upper bound in ghostPsp (which mirrors the DB shape).
+      const TEAMROW_TO_PSP: Partial<Record<string, keyof typeof ZERO_STATS>> = { S: "SV" };
+      for (const key of COUNTING_STATS) {
+        const psdTotal = psdResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
+        const pspTotal = pspResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
+        const rawKey = (TEAMROW_TO_PSP[key] ?? key) as keyof typeof ZERO_STATS;
+        const rawMax = ghostPsp.reduce((s, p) => s + (p[rawKey] || 0), 0);
+        // Neither path should inflate league totals beyond the raw player stats.
+        expect(psdTotal, `PSD double-counted ${key}`).toBeLessThanOrEqual(rawMax);
+        expect(pspTotal, `PSP double-counted ${key}`).toBeLessThanOrEqual(rawMax);
+        // Both paths must agree on the league-wide total (no path-specific inflation).
+        expect(psdTotal, `paths disagree on ${key}`).toBe(pspTotal);
+      }
+    });
+  });
 });
