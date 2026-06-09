@@ -236,20 +236,52 @@ Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nol
 | Skunk Dogs | 122 | 30 | 102 | 21 | .251 | 8 | 4 | 4.16 | 1.186 | 149 |
 | The Show | 100 | 29 | 106 | 9 | .237 | 5 | 7 | 4.30 | 1.248 | 108 |
 
+#### FanGraphs on Roto — Raw Stats
+
+> Source: individual team stats pages (`display_team_stats.pl?OGBA+6+{id}&which_stand_period=retro`), retrieved June 8, 2026. Ranks computed from these numbers match the FanGraphs Period 1 standings URL exactly — confirming this is the correct Period 1 data.
+
+| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
+|------|---|----|----|----|----|---|----|----|------|---|
+| Demolition Lumber Co. | 126 | 31 | 100 | 27 | .257 | 11 | 16 | 3.49 | 1.116 | 142 |
+| Devil Dawgs | 111 | 18 | 87 | 23 | .226 | 12 | 4 | 2.67 | 1.038 | 150 |
+| Diamond Kings | 105 | 25 | 91 | 17 | .254 | 7 | 9 | 3.95 | 1.238 | 136 |
+| Dodger Dawgs | 135 | 34 | 144 | 29 | .248 | 10 | 5 | 3.75 | 1.371 | 155 |
+| Los Doyers | 121 | 37 | 136 | 16 | .267 | 9 | 2 | 4.58 | 1.297 | 106 |
+| RGing Sluggers | 140 | 37 | 132 | 19 | .247 | 11 | 3 | 2.92 | 1.145 | 145 |
+| Skunk Dogs | 139 | 34 | 118 | 24 | .251 | 8 | 6 | 4.22 | 1.230 | 164 |
+| The Show | 112 | 32 | 121 | 12 | .236 | 6 | 7 | 4.40 | 1.274 | 136 |
+
+#### Raw Stats Delta: FanGraphs minus The Fantastic Leagues
+
+> Positive = FanGraphs records more than The Fantastic Leagues. Negative = fewer.
+
+| Team | R | HR | RBI | SB | AVG | W | SV | ERA | WHIP | K |
+|------|---|----|----|----|----|---|----|----|------|---|
+| Demolition Lumber Co. | **+19** | +4 | +11 | +3 | +.001 | +2 | +1 | +0.14 | +0.061 | **+16** |
+| Devil Dawgs | **+12** | +1 | +8 | +6 | −.001 | +2 | 0 | +0.21 | −0.008 | **+28** |
+| Diamond Kings | +7 | +2 | +8 | +1 | −.006 | 0 | +3 | 0.00 | −0.008 | **+16** |
+| Dodger Dawgs | **+16** | +4 | **+17** | +5 | +.001 | +1 | 0 | +0.14 | −0.031 | **+31** |
+| Los Doyers | **+15** | +7 | **+21** | +3 | −.003 | 0 | 0 | −0.27 | −0.043 | +6 |
+| RGing Sluggers | **+11** | +2 | +8 | 0 | −.007 | +2 | 0 | −0.01 | −0.047 | **+26** |
+| Skunk Dogs | **+17** | +4 | **+16** | +3 | 0.000 | 0 | +2 | +0.06 | +0.044 | **+15** |
+| The Show | **+12** | +3 | **+15** | +3 | −.001 | +1 | 0 | +0.10 | +0.026 | **+28** |
+
+> **Key finding:** FanGraphs records more R, HR, RBI, and K for every team. The divergence is **systematic** — this is not random noise. K (strikeouts) shows the largest gaps: +6 to +31 per team. Because no team made any roster transactions in Period 1 (rosters were identical all period on both systems), this difference is entirely a data-source issue: The Fantastic Leagues uses the MLB Stats API; FanGraphs uses its own independently-maintained database. These two sources record different final numbers for the same games.
+
 #### Rank Points Comparison — Period 1
 
-| Team | TFL R | FG R | TFL HR | FG HR | TFL RBI | FG RBI | TFL SB | FG SB | TFL AVG | FG AVG | TFL W | FG W | TFL SV | FG SV | TFL ERA | FG ERA | TFL WHIP | FG WHIP | TFL K | FG K | **TFL Total** | **FG Total** | **Delta** |
-|------|-------|------|--------|-------|---------|--------|--------|-------|---------|--------|-------|------|--------|-------|---------|--------|----------|---------|-------|------|--------------|-------------|---------|
-| Demolition Lumber Co. | 5 | 5.0 | 3 | 3.0 | 3 | 3.0 | 7.5 | 7.0 | 6 | 7.0 | 5.5 | 6.5 | 8 | 8.0 | 6 | 6.0 | 7 | 7.0 | 7 | 4.0 | **58.0** | **56.5** | **+1.5** |
-| Devil Dawgs | 2 | 2.0 | 1 | 1.0 | 1 | 1.0 | 4 | 5.0 | 1 | 1.0 | 8 | 8.0 | 3.5 | 3.0 | 8 | 8.0 | 8 | 8.0 | 5 | 6.0 | **41.5** | **43.0** | **−1.5** |
-| Diamond Kings | 1 | 1.0 | 2 | 2.0 | 2 | 2.0 | 3 | 3.0 | 7 | 6.0 | 2 | 2.0 | 6 | 7.0 | 4 | 4.0 | 4 | 4.0 | 4 | 2.5 | **35.0** | **33.5** | **+1.5** |
-| Dodger Dawgs | 6 | 6.0 | 6 | 5.5 | 8 | 8.0 | 7.5 | 8.0 | 3 | 4.0 | 5.5 | 5.0 | 5 | 4.0 | 5 | 5.0 | 1 | 1.0 | 6 | 7.0 | **53.0** | **53.5** | **−0.5** |
-| Los Doyers | 4 | 4.0 | 6 | 7.5 | 6 | 7.0 | 2 | 2.0 | 8 | 8.0 | 5.5 | 4.0 | 1 | 1.0 | 1 | 1.0 | 2 | 2.0 | 1 | 1.0 | **36.5** | **37.5** | **−1.0** |
-| RGing Sluggers | 8 | 8.0 | 8 | 7.5 | 7 | 6.0 | 5 | 4.0 | 5 | 3.0 | 5.5 | 6.5 | 2 | 2.0 | 7 | 7.0 | 5 | 6.0 | 3 | 5.0 | **55.5** | **55.0** | **+0.5** |
-| Skunk Dogs | 7 | 7.0 | 6 | 5.5 | 4 | 4.0 | 6 | 6.0 | 4 | 5.0 | 3 | 3.0 | 3.5 | 5.0 | 3 | 3.0 | 6 | 5.0 | 8 | 8.0 | **50.5** | **51.5** | **−1.0** |
-| The Show | 3 | 3.0 | 4 | 4.0 | 5 | 5.0 | 1 | 1.0 | 2 | 2.0 | 1 | 1.0 | 7 | 6.0 | 2 | 2.0 | 3 | 3.0 | 2 | 2.5 | **30.0** | **29.5** | **+0.5** |
+| Team | TFL Total | FG Total | **Delta** |
+|------|-----------|----------|---------|
+| Demolition Lumber Co. | **58.0** | **56.5** | **+1.5** |
+| RGing Sluggers | **55.5** | **55.0** | **+0.5** |
+| Dodger Dawgs | **53.0** | **53.5** | **−0.5** |
+| Skunk Dogs | **50.5** | **51.5** | **−1.0** |
+| Devil Dawgs | **41.5** | **43.0** | **−1.5** |
+| Los Doyers | **36.5** | **37.5** | **−1.0** |
+| Diamond Kings | **35.0** | **33.5** | **+1.5** |
+| The Show | **30.0** | **29.5** | **+0.5** |
 
-> ✅ Sum of all deltas = 0.0. All teams within ±1.5 pts. Rank order is identical between both systems.
+> ✅ Sum of all deltas = 0.0. All teams within ±1.5 pts. Rank order is identical — both systems agree on the Period 1 standings.
 
 ---
 
