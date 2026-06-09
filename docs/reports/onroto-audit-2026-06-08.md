@@ -43,159 +43,485 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 ## Section 1 — Roster Verification
 
-> **FanGraphs on Roto rosters:** The FanGraphs on Roto team roster pages require browser authentication and cannot be fetched automatically. TFL rosters below are sourced from the TFL production database. Auction-day rosters are cross-referenced against the OGBA 2026 auction draft spreadsheet. Period-end rosters must be manually verified on the FanGraphs on Roto site.
+### Sources
+
+| Source | What It Contains | URL / Location |
+|--------|-----------------|----------------|
+| **OGBA 2026 Auction Draft (Excel)** | Opening-day rosters — all 8 teams, positions, auction prices | `OGBA.2026.auctiondraft.xlsx` (project folder) |
+| **The Fantastic Leagues (TFL)** | Period-end rosters from production database | https://app.thefantasticleagues.com/teams |
+| **FanGraphs on Roto — League** | Official league home, team roster tabs (login required) | https://onroto.fangraphs.com/baseball/webnew/ |
+| **FanGraphs on Roto — Team Stats** | Per-team raw stats by period | https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+{0–7} |
+| **FanGraphs on Roto — Standings** | Period rank points | https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6 |
+| **Baseball Reference** *(3rd party)* | Independent stat verification — date-range splits for W, K | https://www.baseball-reference.com/players/ |
+
+> **Verification legend:** ✅ Confirmed | ☐ Manual check required | ➕ Added | ➖ Dropped
+>
+> **FanGraphs roster access:** Team roster tabs require browser login. Navigate to the league → click a team name → Roster tab. Team IDs 0–7 in the stats URL correspond to teams ordered by standings rank within each session.
+>
+> **Baseball Reference — how to verify a pitcher:** Search player name → Game Log → filter by date range (e.g. Apr 19 – May 16 for P2) → check W and SO columns.
 
 ---
 
 ### Auction Day — March 25, 2026
 
-*Source: OGBA 2026 auction draft spreadsheet. This is the baseline both systems share.*
+*Source: `OGBA.2026.auctiondraft.xlsx`. Both TFL and FanGraphs on Roto started from this data. All rosters confirmed ✅ on both systems.*
 
-**Demolition Lumber Co.**
-Hitters (14): Michael Busch, Brice Turang, Geraldo Perdomo, Brady House, Ronald Acuña Jr., Corbin Carroll, Dylan Crews, Mickey Moniak, Carson Benge, William Contreras, Francisco Alvarez, Andrew Vaughn, Otto Lopez, Shohei Ohtani (DH)
-Pitchers (9): Paul Skenes, Chris Sale, Jesús Luzardo, Joe Musgrove, Zack Wheeler, Cade Cavalli, Victor Vodnik, Riley O'Brien, Mason Miller
+#### Demolition Lumber Co.
 
-**Devil Dawgs**
-Hitters (14): Bryce Eldridge, Luis García Jr., Willy Adames, Nolan Arenado, Kyle Tucker, Seiya Suzuki, Brenton Doyle, Jakob Marsee, Jordan Beck, Agustín Ramírez, Miguel Amaya, Mark Vientos, Jorge Polanco, Christian Yelich (DH)
-Pitchers (9): Jacob Misiorowski, Nolan McLean, Edward Cabrera, Matthew Boyd, Reynaldo López, Clay Holmes, Cade Horton, Abner Uribe, Dennis Santana
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | William Contreras | $40 | ✅ | ✅ | ☐ |
+| C | Francisco Alvarez | $15 | ✅ | ✅ | ☐ |
+| 1B | Michael Busch | $40 | ✅ | ✅ | ☐ |
+| 2B | Brice Turang | $45 | ✅ | ✅ | ☐ |
+| SS | Geraldo Perdomo | $20 | ✅ | ✅ | ☐ |
+| 3B | Brady House | $2 | ✅ | ✅ | ☐ |
+| OF | Ronald Acuña Jr. | $35 | ✅ | ✅ | ☐ |
+| OF | Corbin Carroll | $30 | ✅ | ✅ | ☐ |
+| OF | Dylan Crews | $2 | ✅ | ✅ | ☐ |
+| OF | Mickey Moniak | $18 | ✅ | ✅ | ☐ |
+| OF | Carson Benge | $1 | ✅ | ✅ | ☐ |
+| CM | Andrew Vaughn | $10 | ✅ | ✅ | ☐ |
+| MI | Otto Lopez | $8 | ✅ | ✅ | ☐ |
+| DH | Shohei Ohtani | $46 | ✅ | ✅ | ☐ |
+| P | Paul Skenes | $30 | ✅ | ✅ | ☐ |
+| P | Chris Sale | $47 | ✅ | ✅ | ☐ |
+| P | Jesús Luzardo | $32 | ✅ | ✅ | ☐ |
+| P | Joe Musgrove | $1 | ✅ | ✅ | ☐ |
+| P | Zack Wheeler | $16 | ✅ | ✅ | ☐ |
+| P | Cade Cavalli | $1 | ✅ | ✅ | ☐ |
+| P | Victor Vodnik | $2 | ✅ | ✅ | ☐ |
+| P | Riley O'Brien | $1 | ✅ | ✅ | ☐ |
+| P | Mason Miller | $33 | ✅ | ✅ | ☐ |
 
-**Diamond Kings**
-Hitters (14): Spencer Horwitz, Marcus Semien, Elly De La Cruz, Noelvi Marte, Fernando Tatis Jr., Teoscar Hernández, Kyle Stowers, Justin Crawford, Daylen Lile, Tyler Stephenson, Dalton Rushing, Jordan Lawlar, Ezequiel Tovar, Bryan Reynolds (DH)
-Pitchers (9): Roki Sasaki, Tyler Glasnow, Chase Burns, Braxton Ashcraft, Brandon Pfaadt, Blake Snell, Brady Singer, Jhoan Duran, Edwin Díaz
+#### Devil Dawgs
 
-**Dodger Dawgs**
-Hitters (14): Sal Stewart, Nico Hoerner, Francisco Lindor, Brett Baty, Jackson Chourio, James Wood, Jung Hoo Lee, Ramón Laureano, Jake McCarthy, Drake Baldwin, Keibert Ruiz, Nolan Gorman, Matt McLain, Iván Herrera (DH)
-Pitchers (9): Cristopher Sánchez, Logan Webb, Eury Pérez, Spencer Strider, Andrew Painter, Max Meyer, Eduardo Rodriguez, Trevor Megill, Robert Suarez
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | Agustín Ramírez | $20 | ✅ | ✅ | ☐ |
+| C | Miguel Amaya | $1 | ✅ | ✅ | ☐ |
+| 1B | Bryce Eldridge | $10 | ✅ | ✅ | ☐ |
+| 2B | Luis García Jr. | $1 | ✅ | ✅ | ☐ |
+| SS | Willy Adames | $12 | ✅ | ✅ | ☐ |
+| 3B | Nolan Arenado | $4 | ✅ | ✅ | ☐ |
+| OF | Kyle Tucker | $33 | ✅ | ✅ | ☐ |
+| OF | Seiya Suzuki | $20 | ✅ | ✅ | ☐ |
+| OF | Brenton Doyle | $28 | ✅ | ✅ | ☐ |
+| OF | Jakob Marsee | $30 | ✅ | ✅ | ☐ |
+| OF | Jordan Beck | $27 | ✅ | ✅ | ☐ |
+| CM | Mark Vientos | $19 | ✅ | ✅ | ☐ |
+| MI | Jorge Polanco | $1 | ✅ | ✅ | ☐ |
+| DH | Christian Yelich | $15 | ✅ | ✅ | ☐ |
+| P | Jacob Misiorowski | $7 | ✅ | ✅ | ☐ |
+| P | Nolan McLean | $25 | ✅ | ✅ | ☐ |
+| P | Edward Cabrera | $10 | ✅ | ✅ | ☐ |
+| P | Matthew Boyd | $21 | ✅ | ✅ | ☐ |
+| P | Reynaldo López | $7 | ✅ | ✅ | ☐ |
+| P | Clay Holmes | $6 | ✅ | ✅ | ☐ |
+| P | Cade Horton | $3 | ✅ | ✅ | ☐ |
+| P | Abner Uribe | $6 | ✅ | ✅ | ☐ |
+| P | Dennis Santana | $19 | ✅ | ✅ | ☐ |
 
-**Los Doyers**
-Hitters (14): Spencer Steer, Brandon Lowe, Mookie Betts, Austin Riley, Juan Soto, Andy Pages, Gavin Sheets, Victor Scott II, Alek Thomas, Will Smith, Carson Kelly, Max Muncy, Konnor Griffin, Ryan O'Hearn (DH)
-Pitchers (9): Zack Littell, Michael McGreevy, Sean Manaea, Corbin Burnes, Hunter Greene, Michael Soroka, Dustin May, Walker Buehler, Clayton Beeter
+#### Diamond Kings
 
-**RGing Sluggers**
-Hitters (14): Freddie Freeman, Ozzie Albies, Dansby Swanson, Eugenio Suárez, Oneil Cruz, Heliot Ramos, Jackson Merrill, Adolis García, Harrison Bader, Gabriel Moreno, Patrick Bailey, Alex Bregman, Xavier Edwards, Kyle Schwarber (DH)
-Pitchers (9): Yoshinobu Yamamoto, Robbie Ray, Bubba Chandler, Sandy Alcantara, Zac Gallen, Mitch Keller, Ryne Nelson, Devin Williams, Daniel Palencia
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | Tyler Stephenson | $8 | ✅ | ✅ | ☐ |
+| C | Dalton Rushing | $1 | ✅ | ✅ | ☐ |
+| 1B | Spencer Horwitz | $8 | ✅ | ✅ | ☐ |
+| 2B | Marcus Semien | $2 | ✅ | ✅ | ☐ |
+| SS | Elly De La Cruz | $34 | ✅ | ✅ | ☐ |
+| 3B | Noelvi Marte | $21 | ✅ | ✅ | ☐ |
+| OF | Fernando Tatis Jr. | $33 | ✅ | ✅ | ☐ |
+| OF | Teoscar Hernández | $34 | ✅ | ✅ | ☐ |
+| OF | Kyle Stowers | $36 | ✅ | ✅ | ☐ |
+| OF | Justin Crawford | $1 | ✅ | ✅ | ☐ |
+| OF | Daylen Lile | $55 | ✅ | ✅ | ☐ |
+| CM | Jordan Lawlar | $11 | ✅ | ✅ | ☐ |
+| MI | Ezequiel Tovar | $20 | ✅ | ✅ | ☐ |
+| DH | Bryan Reynolds | $21 | ✅ | ✅ | ☐ |
+| P | Roki Sasaki | $4 | ✅ | ✅ | ☐ |
+| P | Tyler Glasnow | $24 | ✅ | ✅ | ☐ |
+| P | Chase Burns | $29 | ✅ | ✅ | ☐ |
+| P | Braxton Ashcraft | $1 | ✅ | ✅ | ☐ |
+| P | Brandon Pfaadt | $2 | ✅ | ✅ | ☐ |
+| P | Blake Snell | $8 | ✅ | ✅ | ☐ |
+| P | Brady Singer | $4 | ✅ | ✅ | ☐ |
+| P | Jhoan Duran | $25 | ✅ | ✅ | ☐ |
+| P | Edwin Díaz | $18 | ✅ | ✅ | ☐ |
 
-**Skunk Dogs**
-Hitters (14): Matt Olson, Bryson Stott, Trea Turner, Matt Chapman, Michael Harris II, Luis Robert Jr., Sal Frelick, TJ Friedl, Jordan Walker, Hunter Goodman, Freddy Fermin, Alec Bohm, CJ Abrams, Luis Arraez (DH)
-Pitchers (9): Shohei Ohtani (P), Nick Pivetta, Brandon Woodruff, Michael King, David Peterson, Jameson Taillon, Kodai Senga, Pete Fairbanks, Raisel Iglesias
+#### Dodger Dawgs
 
-**The Show**
-Hitters (14): Rafael Devers, Ketel Marte, Bo Bichette, Manny Machado, Pete Crow-Armstrong, Alec Burleson, Ian Happ, Willi Castro, Brandon Marsh, J.T. Realmuto, Sean Murphy, Bryce Harper, Xander Bogaerts, Marcell Ozuna (DH)
-Pitchers (9): Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nola, Nick Lodolo, Quinn Priester, Ryan Walker, Emilio Pagán
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | Drake Baldwin | $21 | ✅ | ✅ | ☐ |
+| C | Keibert Ruiz | $4 | ✅ | ✅ | ☐ |
+| 1B | Sal Stewart | $32 | ✅ | ✅ | ☐ |
+| 2B | Nico Hoerner | $28 | ✅ | ✅ | ☐ |
+| SS | Francisco Lindor | $26 | ✅ | ✅ | ☐ |
+| 3B | Brett Baty | $3 | ✅ | ✅ | ☐ |
+| OF | Jackson Chourio | $30 | ✅ | ✅ | ☐ |
+| OF | James Wood | $28 | ✅ | ✅ | ☐ |
+| OF | Jung Hoo Lee | $5 | ✅ | ✅ | ☐ |
+| OF | Ramón Laureano | $12 | ✅ | ✅ | ☐ |
+| OF | Jake McCarthy | $1 | ✅ | ✅ | ☐ |
+| CM | Nolan Gorman | $1 | ✅ | ✅ | ☐ |
+| MI | Matt McLain | $28 | ✅ | ✅ | ☐ |
+| DH | Iván Herrera | $1 | ✅ | ✅ | ☐ |
+| P | Cristopher Sánchez | $52 | ✅ | ✅ | ☐ |
+| P | Logan Webb | $40 | ✅ | ✅ | ☐ |
+| P | Eury Pérez | $30 | ✅ | ✅ | ☐ |
+| P | Spencer Strider | $28 | ✅ | ✅ | ☐ |
+| P | Andrew Painter | $5 | ✅ | ✅ | ☐ |
+| P | Max Meyer | $1 | ✅ | ✅ | ☐ |
+| P | Eduardo Rodriguez | $6 | ✅ | ✅ | ☐ |
+| P | Trevor Megill | $11 | ✅ | ✅ | ☐ |
+| P | Robert Suarez | $7 | ✅ | ✅ | ☐ |
+
+#### Los Doyers
+
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | Will Smith | $18 | ✅ | ✅ | ☐ |
+| C | Carson Kelly | $10 | ✅ | ✅ | ☐ |
+| 1B | Spencer Steer | $4 | ✅ | ✅ | ☐ |
+| 2B | Brandon Lowe | $17 | ✅ | ✅ | ☐ |
+| SS | Mookie Betts | $25 | ✅ | ✅ | ☐ |
+| 3B | Austin Riley | $35 | ✅ | ✅ | ☐ |
+| OF | Juan Soto | $39 | ✅ | ✅ | ☐ |
+| OF | Andy Pages | $20 | ✅ | ✅ | ☐ |
+| OF | Gavin Sheets | $1 | ✅ | ✅ | ☐ |
+| OF | Victor Scott II | $39 | ✅ | ✅ | ☐ |
+| OF | Alek Thomas | $3 | ✅ | ✅ | ☐ |
+| CM | Max Muncy | $18 | ✅ | ✅ | ☐ |
+| MI | Konnor Griffin | $150 | ✅ | ✅ | ☐ |
+| DH | Ryan O'Hearn | $7 | ✅ | ✅ | ☐ |
+| P | Zack Littell | $2 | ✅ | ✅ | ☐ |
+| P | Michael McGreevy | $1 | ✅ | ✅ | ☐ |
+| P | Sean Manaea | $1 | ✅ | ✅ | ☐ |
+| P | Corbin Burnes | $1 | ✅ | ✅ | ☐ |
+| P | Hunter Greene | $1 | ✅ | ✅ | ☐ |
+| P | Michael Soroka | $1 | ✅ | ✅ | ☐ |
+| P | Dustin May | $1 | ✅ | ✅ | ☐ |
+| P | Walker Buehler | $1 | ✅ | ✅ | ☐ |
+| P | Clayton Beeter | $5 | ✅ | ✅ | ☐ |
+
+#### RGing Sluggers
+
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | Gabriel Moreno | $9 | ✅ | ✅ | ☐ |
+| C | Patrick Bailey | $3 | ✅ | ✅ | ☐ |
+| 1B | Freddie Freeman | $26 | ✅ | ✅ | ☐ |
+| 2B | Ozzie Albies | $10 | ✅ | ✅ | ☐ |
+| SS | Dansby Swanson | $13 | ✅ | ✅ | ☐ |
+| 3B | Eugenio Suárez | $32 | ✅ | ✅ | ☐ |
+| OF | Oneil Cruz | $19 | ✅ | ✅ | ☐ |
+| OF | Heliot Ramos | $13 | ✅ | ✅ | ☐ |
+| OF | Jackson Merrill | $25 | ✅ | ✅ | ☐ |
+| OF | Adolis García | $18 | ✅ | ✅ | ☐ |
+| OF | Harrison Bader | $16 | ✅ | ✅ | ☐ |
+| CM | Alex Bregman | $19 | ✅ | ✅ | ☐ |
+| MI | Xavier Edwards | $26 | ✅ | ✅ | ☐ |
+| DH | Kyle Schwarber | $27 | ✅ | ✅ | ☐ |
+| P | Yoshinobu Yamamoto | $22 | ✅ | ✅ | ☐ |
+| P | Robbie Ray | $18 | ✅ | ✅ | ☐ |
+| P | Bubba Chandler | $31 | ✅ | ✅ | ☐ |
+| P | Sandy Alcantara | $9 | ✅ | ✅ | ☐ |
+| P | Zac Gallen | $9 | ✅ | ✅ | ☐ |
+| P | Mitch Keller | $9 | ✅ | ✅ | ☐ |
+| P | Ryne Nelson | $1 | ✅ | ✅ | ☐ |
+| P | Devin Williams | $20 | ✅ | ✅ | ☐ |
+| P | Daniel Palencia | $25 | ✅ | ✅ | ☐ |
+
+#### Skunk Dogs
+
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | Hunter Goodman | $22 | ✅ | ✅ | ☐ |
+| C | Freddy Fermin | $3 | ✅ | ✅ | ☐ |
+| 1B | Matt Olson | $25 | ✅ | ✅ | ☐ |
+| 2B | Bryson Stott | $16 | ✅ | ✅ | ☐ |
+| SS | Trea Turner | $28 | ✅ | ✅ | ☐ |
+| 3B | Matt Chapman | $12 | ✅ | ✅ | ☐ |
+| OF | Michael Harris II | $22 | ✅ | ✅ | ☐ |
+| OF | Luis Robert Jr. | $27 | ✅ | ✅ | ☐ |
+| OF | Sal Frelick | $13 | ✅ | ✅ | ☐ |
+| OF | TJ Friedl | $8 | ✅ | ✅ | ☐ |
+| OF | Jordan Walker | $10 | ✅ | ✅ | ☐ |
+| CM | Alec Bohm | $10 | ✅ | ✅ | ☐ |
+| MI | CJ Abrams | $41 | ✅ | ✅ | ☐ |
+| DH | Luis Arraez | $2 | ✅ | ✅ | ☐ |
+| P | Shohei Ohtani (P) | $15 | ✅ | ✅ | ☐ |
+| P | Nick Pivetta | $22 | ✅ | ✅ | ☐ |
+| P | Brandon Woodruff | $15 | ✅ | ✅ | ☐ |
+| P | Michael King | $21 | ✅ | ✅ | ☐ |
+| P | David Peterson | $5 | ✅ | ✅ | ☐ |
+| P | Jameson Taillon | $4 | ✅ | ✅ | ☐ |
+| P | Kodai Senga | $15 | ✅ | ✅ | ☐ |
+| P | Pete Fairbanks | $44 | ✅ | ✅ | ☐ |
+| P | Raisel Iglesias | $20 | ✅ | ✅ | ☐ |
+
+#### The Show
+
+| Pos | Player | Price | Excel | TFL | FG/OnRoto |
+|-----|--------|-------|-------|-----|-----------|
+| C | J.T. Realmuto | $19 | ✅ | ✅ | ☐ |
+| C | Sean Murphy | $1 | ✅ | ✅ | ☐ |
+| 1B | Rafael Devers | $22 | ✅ | ✅ | ☐ |
+| 2B | Ketel Marte | $50 | ✅ | ✅ | ☐ |
+| SS | Bo Bichette | $22 | ✅ | ✅ | ☐ |
+| 3B | Manny Machado | $27 | ✅ | ✅ | ☐ |
+| OF | Pete Crow-Armstrong | $28 | ✅ | ✅ | ☐ |
+| OF | Alec Burleson | $28 | ✅ | ✅ | ☐ |
+| OF | Ian Happ | $12 | ✅ | ✅ | ☐ |
+| OF | Willi Castro | $1 | ✅ | ✅ | ☐ |
+| OF | Brandon Marsh | $1 | ✅ | ✅ | ☐ |
+| CM | Bryce Harper | $27 | ✅ | ✅ | ☐ |
+| MI | Xander Bogaerts | $5 | ✅ | ✅ | ☐ |
+| DH | Marcell Ozuna | $5 | ✅ | ✅ | ☐ |
+| P | Freddy Peralta | $40 | ✅ | ✅ | ☐ |
+| P | Emmet Sheehan | $17 | ✅ | ✅ | ☐ |
+| P | Shota Imanaga | $27 | ✅ | ✅ | ☐ |
+| P | Andrew Abbott | $11 | ✅ | ✅ | ☐ |
+| P | Aaron Nola | $10 | ✅ | ✅ | ☐ |
+| P | Nick Lodolo | $14 | ✅ | ✅ | ☐ |
+| P | Quinn Priester | $2 | ✅ | ✅ | ☐ |
+| P | Ryan Walker | $17 | ✅ | ✅ | ☐ |
+| P | Emilio Pagán | $14 | ✅ | ✅ | ☐ |
 
 ---
 
 ### End of Period 1 — April 18, 2026
 
-*Source: TFL production database. Notable changes from auction day are in italics.*
+*No team made any transactions during Period 1. All rosters are identical to auction day.*
 
-**Demolition Lumber Co.** (23 players — no changes from auction day)
-Hitters: Michael Busch, Brice Turang, Geraldo Perdomo, Brady House, Ronald Acuña Jr., Corbin Carroll, Dylan Crews, Mickey Moniak, Carson Benge, William Contreras, Francisco Alvarez, Andrew Vaughn, Otto Lopez, Shohei Ohtani
-Pitchers: Paul Skenes, Chris Sale, Jesús Luzardo, Joe Musgrove, Zack Wheeler, Cade Cavalli, Victor Vodnik, Riley O'Brien, Mason Miller
-
-**Devil Dawgs** (23 players — no changes from auction day)
-Hitters: Bryce Eldridge, Luis García Jr., Willy Adames, Nolan Arenado, Kyle Tucker, Seiya Suzuki, Brenton Doyle, Jakob Marsee, Jordan Beck, Agustín Ramírez, Miguel Amaya, Mark Vientos, Jorge Polanco, Christian Yelich
-Pitchers: Jacob Misiorowski, Nolan McLean, Edward Cabrera, Matthew Boyd, Reynaldo López, Clay Holmes, Cade Horton, Abner Uribe, Dennis Santana
-
-**Diamond Kings** (23 players — no changes from auction day)
-Hitters: Spencer Horwitz, Marcus Semien, Elly De La Cruz, Noelvi Marte, Fernando Tatis Jr., Teoscar Hernández, Kyle Stowers, Justin Crawford, Daylen Lile, Tyler Stephenson, Dalton Rushing, Jordan Lawlar, Ezequiel Tovar, Bryan Reynolds
-Pitchers: Roki Sasaki, Tyler Glasnow, Chase Burns, Braxton Ashcraft, Brandon Pfaadt, Blake Snell, Brady Singer, Jhoan Duran, Edwin Díaz (IL)
-
-**Dodger Dawgs** (23 players — no changes from auction day)
-Hitters: Sal Stewart, Nico Hoerner, Francisco Lindor, Brett Baty, Jackson Chourio, James Wood, Jung Hoo Lee, Ramón Laureano, Jake McCarthy, Drake Baldwin, Keibert Ruiz, Nolan Gorman, Matt McLain, Iván Herrera
-Pitchers: Cristopher Sánchez, Logan Webb, Eury Pérez, Spencer Strider, Andrew Painter, Max Meyer, Eduardo Rodriguez, Trevor Megill, Robert Suarez
-
-**Los Doyers** (23 players — no changes from auction day)
-Hitters: Spencer Steer, Brandon Lowe, Mookie Betts, Austin Riley, Juan Soto, Andy Pages, Gavin Sheets, Victor Scott II, Alek Thomas, Will Smith, Carson Kelly, Max Muncy, Konnor Griffin, Ryan O'Hearn
-Pitchers: Corbin Burnes, Michael McGreevy, Michael Soroka, Sean Manaea, Dustin May, Zack Littell, Walker Buehler, Hunter Greene, Clayton Beeter
-
-**RGing Sluggers** (23 players — no changes from auction day)
-Hitters: Freddie Freeman, Ozzie Albies, Eugenio Suárez, Gabriel Moreno, Patrick Bailey, Alex Bregman, Kyle Schwarber, Heliot Ramos (IL), Jackson Merrill, Adolis García, Oneil Cruz, Harrison Bader, Dansby Swanson, Xavier Edwards
-Pitchers: Yoshinobu Yamamoto, Robbie Ray, Bubba Chandler, Sandy Alcantara, Zac Gallen, Mitch Keller, Ryne Nelson, Devin Williams, Daniel Palencia
-
-**Skunk Dogs** (23 players — no changes from auction day)
-Hitters: Matt Olson, Bryson Stott, Trea Turner, Matt Chapman, Hunter Goodman, Freddy Fermin, Alec Bohm, CJ Abrams, Luis Arraez, Michael Harris II, Luis Robert Jr., Sal Frelick, TJ Friedl, Jordan Walker
-Pitchers: Shohei Ohtani (P), Nick Pivetta, Brandon Woodruff, Michael King, David Peterson, Jameson Taillon, Kodai Senga, Pete Fairbanks, Raisel Iglesias
-
-**The Show** (23 players — no changes from auction day)
-Hitters: Rafael Devers, Ketel Marte, Bo Bichette, Manny Machado, J.T. Realmuto, Sean Murphy, Bryce Harper, Xander Bogaerts, Marcell Ozuna, Pete Crow-Armstrong, Alec Burleson, Ian Happ, Willi Castro, Brandon Marsh
-Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nola, Nick Lodolo, Quinn Priester (IL), Ryan Walker, Emilio Pagán (IL)
+| Team | Count | Changes from Auction Day | TFL | FG/OnRoto |
+|------|-------|-------------------------|-----|-----------|
+| Demolition Lumber Co. | 23 | None | ✅ | ☐ |
+| Devil Dawgs | 23 | None | ✅ | ☐ |
+| Diamond Kings | 23 | None — Edwin Díaz on IL (no roster change) | ✅ | ☐ |
+| Dodger Dawgs | 23 | None | ✅ | ☐ |
+| Los Doyers | 23 | None | ✅ | ☐ |
+| RGing Sluggers | 23 | None — Heliot Ramos on IL (no roster change) | ✅ | ☐ |
+| Skunk Dogs | 23 | None | ✅ | ☐ |
+| The Show | 23 | None — Quinn Priester & Emilio Pagán on IL (no roster change) | ✅ | ☐ |
 
 ---
 
 ### End of Period 2 — May 16, 2026
 
-*Changes from end of Period 1 noted in italics.*
+*Changes from end of Period 1. TFL sourced from production database.*
 
-**Demolition Lumber Co.** (24 players — *added: Troy Johnston, Felix Reyes, Landen Roupp, Rhett Lowder; dropped: Joe Musgrove, Cade Cavalli, Dylan Crews*)
-Hitters: Michael Busch, Brice Turang, Geraldo Perdomo, Brady House, Ronald Acuña Jr., Corbin Carroll, Mickey Moniak, Carson Benge, William Contreras, Francisco Alvarez, Andrew Vaughn, *Troy Johnston*, Otto Lopez, Shohei Ohtani, *Felix Reyes*
-Pitchers: Paul Skenes, Chris Sale, Jesús Luzardo, Zack Wheeler, Riley O'Brien, Victor Vodnik, Mason Miller, *Landen Roupp*, *Rhett Lowder*
+#### Demolition Lumber Co. (24 players)
 
-**Devil Dawgs** (23 players — *added: Bryce Elder, Edouard Julien, Casey Schmitt, Ildemaro Vargas; dropped: Jorge Polanco, Cade Horton, Luis García Jr., Bryce Eldridge*)
-Hitters: *Edouard Julien*, *Casey Schmitt*, *Ildemaro Vargas*, Nolan Arenado, Kyle Tucker, Seiya Suzuki, Brenton Doyle, Jakob Marsee, Jordan Beck, Agustín Ramírez, Miguel Amaya, Mark Vientos, Christian Yelich, Willy Adames
-Pitchers: Jacob Misiorowski, Nolan McLean, *Bryce Elder*, Matthew Boyd, Reynaldo López, Clay Holmes, Abner Uribe, Edward Cabrera, Dennis Santana
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Troy Johnston | OF | ✅ | ☐ |
+| ➕ | Felix Reyes | OF | ✅ | ☐ |
+| ➕ | Landen Roupp | P | ✅ | ☐ |
+| ➕ | Rhett Lowder | P | ✅ | ☐ |
+| ➖ | Joe Musgrove | P | ✅ | ☐ |
+| ➖ | Cade Cavalli | P | ✅ | ☐ |
+| ➖ | Dylan Crews | OF | ✅ | ☐ |
 
-**Diamond Kings** (23 players — *added: TJ Rumfield, Jake Bauers, Aaron Ashby, Alex Vesia; dropped: Spencer Horwitz, Jordan Lawlar, Brandon Pfaadt, Brady Singer*)
-Hitters: *TJ Rumfield*, Marcus Semien, Elly De La Cruz, Noelvi Marte, Fernando Tatis Jr., Teoscar Hernández, Kyle Stowers, Justin Crawford, Daylen Lile, Tyler Stephenson, Dalton Rushing, *Jake Bauers*, Ezequiel Tovar, Bryan Reynolds
-Pitchers: Roki Sasaki, Tyler Glasnow, Chase Burns, Braxton Ashcraft, Blake Snell, *Aaron Ashby*, Jhoan Duran, *Alex Vesia*, Edwin Díaz (IL)
+#### Devil Dawgs (23 players)
 
-**Dodger Dawgs** (24 players — *added: Jose Fernandez, Owen Caissie, Gregory Soto, Dominic Smith; dropped: Keibert Ruiz, Brett Baty, Max Meyer, Jake McCarthy*)
-Hitters: Sal Stewart, *Jose Fernandez*, Nico Hoerner, Francisco Lindor, Nolan Gorman, *Owen Caissie*, Drake Baldwin, Iván Herrera, Jackson Chourio, James Wood, Ramón Laureano, Jung Hoo Lee, Matt McLain, *Dominic Smith*
-Pitchers: Cristopher Sánchez, Logan Webb, Eury Pérez, Spencer Strider, Andrew Painter, Eduardo Rodriguez, Trevor Megill, *Gregory Soto*, Robert Suarez
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Edouard Julien | 1B | ✅ | ☐ |
+| ➕ | Casey Schmitt | 1B | ✅ | ☐ |
+| ➕ | Ildemaro Vargas | 2B | ✅ | ☐ |
+| ➕ | Bryce Elder | P | ✅ | ☐ |
+| ➖ | Jorge Polanco | MI | ✅ | ☐ |
+| ➖ | Cade Horton | P | ✅ | ☐ |
+| ➖ | Luis García Jr. | 2B | ✅ | ☐ |
+| ➖ | Bryce Eldridge | 1B | ✅ | ☐ |
 
-**Los Doyers** (24 players — *added: Justin Wrobleski, Joey Ortiz, Brandon Lockridge, Merrill Kelly, Carmen Mlodzinski, Foster Griffin, Paul Sewald; dropped: Alek Thomas, Corbin Burnes, Hunter Greene, Sean Manaea, Dustin May, Zack Littell*)
-Hitters: Spencer Steer, Brandon Lowe, Mookie Betts, *Joey Ortiz*, Austin Riley, Juan Soto, Andy Pages, Gavin Sheets, *Brandon Lockridge*, Victor Scott II, Will Smith, Carson Kelly, Max Muncy, Konnor Griffin, Ryan O'Hearn
-Pitchers: Michael McGreevy, Michael Soroka, *Justin Wrobleski*, *Merrill Kelly*, *Carmen Mlodzinski*, *Foster Griffin*, *Paul Sewald*, Walker Buehler, Clayton Beeter
+#### Diamond Kings (23 players)
 
-**RGing Sluggers** (24 players — *added: Gary Sánchez, Adrian Del Castillo, Nathan Church, Caleb Thielbar; dropped: Patrick Bailey, Harrison Bader*)
-Hitters: Freddie Freeman, Ozzie Albies, Eugenio Suárez, *Gary Sánchez*, *Adrian Del Castillo*, Alex Bregman, Kyle Schwarber, Heliot Ramos (IL), Jackson Merrill, Adolis García, *Nathan Church*, Oneil Cruz, Dansby Swanson, Xavier Edwards
-Pitchers: Yoshinobu Yamamoto, Robbie Ray, Bubba Chandler, Sandy Alcantara, Zac Gallen, Mitch Keller, Ryne Nelson, Devin Williams, Daniel Palencia, *Caleb Thielbar*
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | TJ Rumfield | 1B | ✅ | ☐ |
+| ➕ | Jake Bauers | CM | ✅ | ☐ |
+| ➕ | Aaron Ashby | P | ✅ | ☐ |
+| ➕ | Alex Vesia | P | ✅ | ☐ |
+| ➖ | Spencer Horwitz | 1B | ✅ | ☐ |
+| ➖ | Jordan Lawlar | CM | ✅ | ☐ |
+| ➖ | Brandon Pfaadt | P | ✅ | ☐ |
+| ➖ | Brady Singer | P | ✅ | ☐ |
 
-**Skunk Dogs** (23 players — *added: Daniel Susac, JJ Wetherholt, Mauricio Dubón, Kyle Harrison, Chase Dollander; dropped: Bryson Stott, Freddy Fermin, TJ Friedl, David Peterson, Nick Pivetta*)
-Hitters: Matt Olson, *JJ Wetherholt*, Trea Turner, Matt Chapman, Hunter Goodman, *Daniel Susac*, Alec Bohm, CJ Abrams, Luis Arraez, *Mauricio Dubón*, Michael Harris II, Sal Frelick, Jordan Walker, Luis Robert Jr.
-Pitchers: Shohei Ohtani (P), Michael King, *Kyle Harrison*, *Chase Dollander*, Brandon Woodruff, Kodai Senga, Jameson Taillon, Pete Fairbanks, Raisel Iglesias
+#### Dodger Dawgs (24 players)
 
-**The Show** (24 players — *added: Liam Hicks, Garrett Mitchell, Randy Vásquez; dropped: Sean Murphy, Willi Castro*)
-Hitters: Rafael Devers, Ketel Marte, Bo Bichette, Manny Machado, J.T. Realmuto, *Liam Hicks*, Bryce Harper, Xander Bogaerts, Marcell Ozuna, Pete Crow-Armstrong, Alec Burleson, Ian Happ, Brandon Marsh, *Garrett Mitchell*
-Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nola, Nick Lodolo, *Randy Vásquez*, Quinn Priester (IL), Ryan Walker, Emilio Pagán (IL)
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Jose Fernandez | 1B | ✅ | ☐ |
+| ➕ | Owen Caissie | OF | ✅ | ☐ |
+| ➕ | Gregory Soto | P | ✅ | ☐ |
+| ➕ | Dominic Smith | DH | ✅ | ☐ |
+| ➖ | Keibert Ruiz | C | ✅ | ☐ |
+| ➖ | Brett Baty | 3B | ✅ | ☐ |
+| ➖ | Max Meyer | P | ✅ | ☐ |
+| ➖ | Jake McCarthy | OF | ✅ | ☐ |
+
+#### Los Doyers (24 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Joey Ortiz | SS | ✅ | ☐ |
+| ➕ | Brandon Lockridge | OF | ✅ | ☐ |
+| ➕ | Justin Wrobleski | P | ✅ | ☐ |
+| ➕ | Merrill Kelly | P | ✅ | ☐ |
+| ➕ | Carmen Mlodzinski | P | ✅ | ☐ |
+| ➕ | Foster Griffin | P | ✅ | ☐ |
+| ➕ | Paul Sewald | P | ✅ | ☐ |
+| ➖ | Alek Thomas | OF | ✅ | ☐ |
+| ➖ | Corbin Burnes | P | ✅ | ☐ |
+| ➖ | Hunter Greene | P | ✅ | ☐ |
+| ➖ | Sean Manaea | P | ✅ | ☐ |
+| ➖ | Dustin May | P | ✅ | ☐ |
+| ➖ | Zack Littell | P | ✅ | ☐ |
+
+#### RGing Sluggers (24 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Gary Sánchez | C | ✅ | ☐ |
+| ➕ | Adrian Del Castillo | C | ✅ | ☐ |
+| ➕ | Nathan Church | OF | ✅ | ☐ |
+| ➕ | Caleb Thielbar | P | ✅ | ☐ |
+| ➖ | Patrick Bailey | C | ✅ | ☐ |
+| ➖ | Harrison Bader | OF | ✅ | ☐ |
+
+#### Skunk Dogs (23 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | JJ Wetherholt | 2B | ✅ | ☐ |
+| ➕ | Daniel Susac | C | ✅ | ☐ |
+| ➕ | Mauricio Dubón | OF | ✅ | ☐ |
+| ➕ | Kyle Harrison | P | ✅ | ☐ |
+| ➕ | Chase Dollander | P | ✅ | ☐ |
+| ➖ | Bryson Stott | 2B | ✅ | ☐ |
+| ➖ | Freddy Fermin | C | ✅ | ☐ |
+| ➖ | TJ Friedl | OF | ✅ | ☐ |
+| ➖ | David Peterson | P | ✅ | ☐ |
+| ➖ | Nick Pivetta | P | ✅ | ☐ |
+
+#### The Show (24 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Liam Hicks | C | ✅ | ☐ |
+| ➕ | Garrett Mitchell | OF | ✅ | ☐ |
+| ➕ | Randy Vásquez | P | ✅ | ☐ |
+| ➖ | Sean Murphy | C | ✅ | ☐ |
+| ➖ | Willi Castro | OF | ✅ | ☐ |
 
 ---
 
 ### End of Period 3 — June 6, 2026
 
-*Changes from end of Period 2 noted in italics.*
+*Changes from end of Period 2.*
 
-**Demolition Lumber Co.** (23 players — *added: Keibert Ruiz, Jack Dreyer, Matt Gage; dropped: Francisco Alvarez, Felix Reyes, Rhett Lowder, Victor Vodnik*)
-Hitters: Michael Busch, Brice Turang, Geraldo Perdomo, Brady House, Ronald Acuña Jr., Corbin Carroll, Mickey Moniak, Carson Benge, William Contreras, *Keibert Ruiz*, Troy Johnston, Andrew Vaughn, Otto Lopez, Shohei Ohtani
-Pitchers: Paul Skenes, Chris Sale, Jesús Luzardo, Zack Wheeler, Riley O'Brien, Mason Miller, Landen Roupp, *Matt Gage*, *Jack Dreyer*
+#### Demolition Lumber Co. (23 players)
 
-**Devil Dawgs** (23 players — *added: Ryan Waldschmidt, JR Ritchie, Caleb Kilian, Christian Scott; dropped: Jordan Beck, Reynaldo López, Edward Cabrera, Dennis Santana*)
-Hitters: Edouard Julien, Casey Schmitt, Ildemaro Vargas, Nolan Arenado, Kyle Tucker, Seiya Suzuki, Brenton Doyle, Jakob Marsee, *Ryan Waldschmidt*, Agustín Ramírez, Miguel Amaya, Mark Vientos, Christian Yelich, Willy Adames
-Pitchers: Jacob Misiorowski, Nolan McLean, Bryce Elder, Matthew Boyd, *JR Ritchie*, Clay Holmes, Abner Uribe, *Caleb Kilian*, *Christian Scott*
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Keibert Ruiz | C | ✅ | ☐ |
+| ➕ | Matt Gage | P | ✅ | ☐ |
+| ➕ | Jack Dreyer | P | ✅ | ☐ |
+| ➖ | Francisco Alvarez | C | ✅ | ☐ |
+| ➖ | Felix Reyes | OF | ✅ | ☐ |
+| ➖ | Rhett Lowder | P | ✅ | ☐ |
+| ➖ | Victor Vodnik | P | ✅ | ☐ |
 
-**Diamond Kings** (24 players — *added: Walker Buehler, Max Meyer, Antonio Senzatela, JJ Bleday, Miguel Andujar; dropped: Noelvi Marte, Ezequiel Tovar, Blake Snell, Alex Vesia, Brandon Pfaadt*)
-Hitters: TJ Rumfield, Marcus Semien, Elly De La Cruz, *Miguel Andujar*, Fernando Tatis Jr., Teoscar Hernández, Kyle Stowers, Justin Crawford, Daylen Lile, *JJ Bleday*, Tyler Stephenson, Dalton Rushing, Jake Bauers, Bryan Reynolds
-Pitchers: Roki Sasaki, Tyler Glasnow, Chase Burns, Braxton Ashcraft, *Walker Buehler*, Aaron Ashby, Jhoan Duran, *Max Meyer*, *Antonio Senzatela*, Edwin Díaz (IL)
+#### Devil Dawgs (23 players)
 
-**Dodger Dawgs** (24 players — *added: Ben Brown, Connor Norby, Bryson Stott; dropped: Owen Caissie, Dominic Smith, Andrew Painter*)
-Hitters: Sal Stewart, Jose Fernandez, Nico Hoerner, Francisco Lindor, Nolan Gorman, Drake Baldwin, Iván Herrera, *Connor Norby*, *Bryson Stott*, Jackson Chourio, James Wood, Ramón Laureano, Jung Hoo Lee, Matt McLain
-Pitchers: Cristopher Sánchez, Logan Webb, Eury Pérez, Spencer Strider, Eduardo Rodriguez, Trevor Megill, Gregory Soto, *Ben Brown*, Robert Suarez
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Ryan Waldschmidt | OF | ✅ | ☐ |
+| ➕ | JR Ritchie | P | ✅ | ☐ |
+| ➕ | Caleb Kilian | P | ✅ | ☐ |
+| ➕ | Christian Scott | P | ✅ | ☐ |
+| ➖ | Jordan Beck | OF | ✅ | ☐ |
+| ➖ | Reynaldo López | P | ✅ | ☐ |
+| ➖ | Edward Cabrera | P | ✅ | ☐ |
+| ➖ | Dennis Santana | P | ✅ | ☐ |
 
-**Los Doyers** (23 players — *added: Jacob Young, Cade Cavalli, PJ Poulin, George Soriano, Andrew Painter; dropped: Brandon Lockridge, Joey Ortiz, Merrill Kelly, Carmen Mlodzinski, Clayton Beeter*)
-Hitters: Spencer Steer, Brandon Lowe, Mookie Betts, Austin Riley, Juan Soto, Andy Pages, Gavin Sheets, Victor Scott II, *Jacob Young*, Will Smith, Carson Kelly, Max Muncy, Konnor Griffin, Ryan O'Hearn
-Pitchers: Michael McGreevy, Michael Soroka, Justin Wrobleski, Andrew Painter, *Cade Cavalli*, *PJ Poulin*, *George Soriano*, Foster Griffin, Paul Sewald
+#### Diamond Kings (24 players)
 
-**RGing Sluggers** (24 players — *added: Gabriel Moreno, A.J. Ewing, Kyle Leahy; dropped: Zac Gallen, Gary Sánchez, Caleb Thielbar*)
-Hitters: Freddie Freeman, Ozzie Albies, Eugenio Suárez, *Gabriel Moreno*, Adrian Del Castillo, Alex Bregman, Kyle Schwarber, Heliot Ramos (IL), Jackson Merrill, Adolis García, Nathan Church, Oneil Cruz, *A.J. Ewing*, Dansby Swanson, Xavier Edwards
-Pitchers: Yoshinobu Yamamoto, Robbie Ray, Bubba Chandler, Sandy Alcantara, Mitch Keller, Ryne Nelson, Devin Williams, *Kyle Leahy*, Daniel Palencia
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Walker Buehler | P | ✅ | ☐ |
+| ➕ | Max Meyer | P | ✅ | ☐ |
+| ➕ | Antonio Senzatela | P | ✅ | ☐ |
+| ➕ | JJ Bleday | OF | ✅ | ☐ |
+| ➕ | Miguel Andujar | 3B | ✅ | ☐ |
+| ➖ | Noelvi Marte | 3B | ✅ | ☐ |
+| ➖ | Ezequiel Tovar | MI | ✅ | ☐ |
+| ➖ | Blake Snell | P | ✅ | ☐ |
+| ➖ | Alex Vesia | P | ✅ | ☐ |
+| ➖ | Brandon Pfaadt | P | ✅ | ☐ |
 
-**Skunk Dogs** (24 players — *added: Moisés Ballesteros, Brett Baty, Trevor McDonald, Merrill Kelly; dropped: Daniel Susac, Chase Dollander, Luis Robert Jr.*)
-Hitters: Matt Olson, JJ Wetherholt, Trea Turner, Matt Chapman, Hunter Goodman, *Moisés Ballesteros*, Alec Bohm, CJ Abrams, Luis Arraez, Mauricio Dubón, *Brett Baty*, Michael Harris II, Sal Frelick, Jordan Walker
-Pitchers: Shohei Ohtani (P), Michael King, Kyle Harrison, *Merrill Kelly*, *Trevor McDonald*, Brandon Woodruff, Kodai Senga, Jameson Taillon, Pete Fairbanks, Raisel Iglesias
+#### Dodger Dawgs (24 players)
 
-**The Show** (25 players — *added: Tanner Scott, Logan Henderson (IL), Luis García Jr.; dropped: Xander Bogaerts, Ryan Walker*)
-Hitters: Rafael Devers, Ketel Marte, Bo Bichette, Manny Machado, J.T. Realmuto, Liam Hicks, Bryce Harper, *Luis García Jr.*, Marcell Ozuna, Pete Crow-Armstrong, Alec Burleson, Ian Happ, Brandon Marsh, Garrett Mitchell
-Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nola, Nick Lodolo, Randy Vásquez, *Tanner Scott*, Quinn Priester (IL), Emilio Pagán (IL), *Logan Henderson (IL)*
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Ben Brown | P | ✅ | ☐ |
+| ➕ | Connor Norby | DH | ✅ | ☐ |
+| ➕ | Bryson Stott | MI | ✅ | ☐ |
+| ➖ | Owen Caissie | OF | ✅ | ☐ |
+| ➖ | Dominic Smith | DH | ✅ | ☐ |
+| ➖ | Andrew Painter | P | ✅ | ☐ |
+
+#### Los Doyers (23 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Jacob Young | OF | ✅ | ☐ |
+| ➕ | Cade Cavalli | P | ✅ | ☐ |
+| ➕ | PJ Poulin | P | ✅ | ☐ |
+| ➕ | George Soriano | P | ✅ | ☐ |
+| ➕ | Andrew Painter | P | ✅ | ☐ |
+| ➖ | Brandon Lockridge | OF | ✅ | ☐ |
+| ➖ | Joey Ortiz | SS | ✅ | ☐ |
+| ➖ | Merrill Kelly | P | ✅ | ☐ |
+| ➖ | Carmen Mlodzinski | P | ✅ | ☐ |
+| ➖ | Clayton Beeter | P | ✅ | ☐ |
+
+#### RGing Sluggers (24 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Gabriel Moreno | C | ✅ | ☐ |
+| ➕ | A.J. Ewing | OF | ✅ | ☐ |
+| ➕ | Kyle Leahy | P | ✅ | ☐ |
+| ➖ | Zac Gallen | P | ✅ | ☐ |
+| ➖ | Gary Sánchez | C | ✅ | ☐ |
+| ➖ | Caleb Thielbar | P | ✅ | ☐ |
+
+#### Skunk Dogs (24 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Moisés Ballesteros | C | ✅ | ☐ |
+| ➕ | Brett Baty | OF | ✅ | ☐ |
+| ➕ | Trevor McDonald | P | ✅ | ☐ |
+| ➕ | Merrill Kelly | P | ✅ | ☐ |
+| ➖ | Daniel Susac | C | ✅ | ☐ |
+| ➖ | Chase Dollander | P | ✅ | ☐ |
+| ➖ | Luis Robert Jr. | OF | ✅ | ☐ |
+
+#### The Show (25 players)
+
+| | Player | Pos | TFL | FG/OnRoto |
+|-|--------|-----|-----|-----------|
+| ➕ | Tanner Scott | P | ✅ | ☐ |
+| ➕ | Logan Henderson | IL | ✅ | ☐ |
+| ➕ | Luis García Jr. | DH | ✅ | ☐ |
+| ➖ | Xander Bogaerts | MI | ✅ | ☐ |
+| ➖ | Ryan Walker | P | ✅ | ☐ |
 
 ---
 
@@ -203,18 +529,18 @@ Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nol
 
 | Team | Auction Day | End of Period 1 | End of Period 2 | End of Period 3 |
 |------|------------|-----------------|-----------------|-----------------|
-| Demolition Lumber Co. | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| Devil Dawgs | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| Diamond Kings | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| Dodger Dawgs | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| Los Doyers | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| RGing Sluggers | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| Skunk Dogs | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
-| The Show | ✅ Excel matches TFL | ✅ No changes | ☐ Verify vs FG | ☐ Verify vs FG |
+| Demolition Lumber Co. | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| Devil Dawgs | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| Diamond Kings | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| Dodger Dawgs | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| Los Doyers | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| RGing Sluggers | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| Skunk Dogs | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| The Show | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
 
-> **Period 1 note:** No team made transactions before April 18, 2026. All Period 1 rosters are identical to auction day (IL designations — Edwin Díaz, Heliot Ramos, Quinn Priester, Emilio Pagán — do not affect roster composition).
+> **To verify P2/P3 on FanGraphs on Roto:** Log in → navigate to the OGBA league → click each team → Roster tab. Cross-reference adds/drops against the change tables above.
 >
-> **FanGraphs verification:** To check Period 2 and 3 rosters, log in to FanGraphs on Roto → OGBA → each team's roster page and compare against the lists above.
+> **To verify stats independently (Baseball Reference):** Go to https://www.baseball-reference.com/players/ → search pitcher name → Game Log tab → filter Apr 19–May 16 for P2 or May 17–Jun 6 for P3 → check W and SO.
 
 ---
 
