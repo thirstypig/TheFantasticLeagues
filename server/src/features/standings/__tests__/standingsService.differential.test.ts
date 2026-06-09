@@ -367,10 +367,12 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
     ];
 
     it("PSP path: ghost-team (Bravo) gets zero credit; active team (Alpha) gets full credit", async () => {
-      // Run ONLY the PSP path (periodStatCount=1).
+      // The ghost row (Bravo acquiredAt=Apr 24) is strictly mid-period (Apr 19 < Apr 24 < May 16),
+      // so hasMidPeriodPickup=true and the code always falls back to computeWithDailyStats.
+      // PSP rows are bypassed; the daily path is the only path for this scenario.
       mockRosterFindMany.mockResolvedValueOnce(ghostRosters);
       mockPeriodStatsCount.mockResolvedValueOnce(1);
-      mockPeriodStatsFindMany.mockResolvedValueOnce(ghostPsp);
+      mockDailyFindMany.mockResolvedValueOnce(ghostDailies); // daily fallback, not PSP
       const pspResult = await computeTeamStatsFromDb(20, 36);
 
       const pspAlpha = pspResult.find(r => r.team.code === "AAA");
@@ -415,8 +417,9 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
     });
 
     it("both paths agree: player stats credited exactly once, zero double-counting", async () => {
-      // runBothPaths resets mocks between PSD and PSP runs.
-      const { psdResult, pspResult } = await runBothPaths(ghostRosters, ghostDailies, ghostPsp);
+      // Ghost row is mid-period → both PSD and PSP fall back to daily-stats (hasMidPeriodPickup=true).
+      // pspUsesDailyFallback:true ensures runBothPaths mocks dailyFindMany for both runs.
+      const { psdResult, pspResult } = await runBothPaths(ghostRosters, ghostDailies, ghostPsp, { pspUsesDailyFallback: true });
 
       const COUNTING_STATS = ["R", "HR", "RBI", "SB", "W", "S", "K", "H", "AB", "ER", "IP", "BB_H"] as const;
       // TeamStatRow uses "S" for saves; PSP/daily DB data uses "SV". Map before
