@@ -271,7 +271,7 @@ Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nol
 
 #### Rank Points Comparison — Period 1
 
-| Team | TFL Total | FG Total | **Delta** |
+| Team | TFL Total | FanGraphs Total | **Delta** |
 |------|-----------|----------|---------|
 | Demolition Lumber Co. | **58.0** | **56.5** | **+1.5** |
 | RGing Sluggers | **55.5** | **55.0** | **+0.5** |
@@ -341,7 +341,7 @@ Pitchers: Freddy Peralta, Emmet Sheehan, Shota Imanaga, Andrew Abbott, Aaron Nol
 
 #### Rank Points Comparison — Period 2
 
-| Team | TFL Total | FG Total | **Delta** |
+| Team | TFL Total | FanGraphs Total | **Delta** |
 |------|-----------|----------|---------|
 | Demolition Lumber Co. | **65.0** | **65.0** | **0.0** |
 | Devil Dawgs | **40.5** | **36.5** | **+4.0** |
