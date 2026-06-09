@@ -157,6 +157,8 @@ describe("GET /period-category-standings", () => {
       periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }],
       seasonRows: [],
     });
+    // computeTeamStatsFromDb is always called (fix for circular stale-cache bug)
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
     mockComputeCategoryRows.mockReturnValue([
       { teamId: 1, teamName: "Team A", teamCode: "TMA", value: 50, rank: 1, points: 2 },
       { teamId: 2, teamName: "Team B", teamCode: "TMB", value: 45, rank: 2, points: 1 },
@@ -179,13 +181,43 @@ describe("GET /period-category-standings", () => {
       seasonRows: [],
     });
     mockComputeCategoryRows.mockReturnValue([]);
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 7, leagueId: 1 });
 
     const res = await supertest(app).get("/period-category-standings?leagueId=1&periodId=7");
 
     expect(res.status).toBe(200);
     expect(res.body.periodId).toBe(7);
-    // getSeasonStandings was called (cache path), computeTeamStatsFromDb not needed
-    expect(mockGetSeasonStandings).toHaveBeenCalledWith(1);
+    // Fix for circular stale-cache bug: computeTeamStatsFromDb must always be
+    // called for the selected period — even when it is present in the seasonal
+    // cache — so the write-back (persistTeamStatsPeriodSnapshot) always uses
+    // fresh PSP-computed values rather than perpetuating stale cache entries.
+    expect(mockComputeTeamStatsFromDb).toHaveBeenCalledWith(1, 7);
+  });
+
+  it("always calls computeTeamStatsFromDb even when period is in seasonal cache (stale-cache regression)", async () => {
+    // Regression: prior to the fix, if a period existed in cachedStatsByPeriodId
+    // (populated by getSeasonStandings from TeamStatsPeriod), computeTeamStatsFromDb
+    // was bypassed entirely. That created a circular read→write-back that kept
+    // TeamStatsPeriod stale forever after being first written with incomplete data.
+    const staleCacheStats = [{ team: { id: 1, name: "Old", code: "OLD" }, W: 9, K: 102, R: 100, HR: 10, RBI: 50, SB: 5, AVG: 0.250, S: 2, ERA: 4.00, WHIP: 1.300 }];
+    const freshStats = [{ team: { id: 1, name: "Old", code: "OLD" }, W: 15, K: 166, R: 100, HR: 10, RBI: 50, SB: 5, AVG: 0.250, S: 2, ERA: 4.00, WHIP: 1.300 }];
+
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [36], // period IS in the seasonal cache
+      periodData: [{ teamStats: staleCacheStats, standings: [] }],
+      seasonRows: [],
+    });
+    // computeTeamStatsFromDb returns the fresh PSP values
+    mockComputeTeamStatsFromDb.mockResolvedValue(freshStats);
+    mockComputeCategoryRows.mockReturnValue([]);
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 36, leagueId: 1 });
+    mockComputeStandingsFromStats.mockReturnValue([]);
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1&periodId=36");
+
+    expect(res.status).toBe(200);
+    // Fresh PSP values used — not the stale cache (W=15, not W=9)
+    expect(mockComputeTeamStatsFromDb).toHaveBeenCalledWith(1, 36);
   });
 
   // Todo #134 regression: GET handlers must not block on writes. Production runs

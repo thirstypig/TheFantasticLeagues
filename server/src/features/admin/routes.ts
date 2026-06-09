@@ -14,7 +14,6 @@ import { CommissionerService } from "../commissioner/services/CommissionerServic
 import { syncAllPlayers, syncPositionEligibility, syncAAARosters, enrichStalePlayers } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
 import { computeTeamStatsFromDb } from "../standings/services/standingsService.js";
-import { persistTeamStatsPeriodSnapshot } from "../standings/routes.js";
 import * as errorBuffer from "../../lib/errorBuffer.js";
 import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
 import { BUFFER_CAPACITY } from "../../lib/errorBuffer.js";
@@ -341,7 +340,18 @@ router.post("/admin/recompute-period-cache", requireAuth, requireAdmin, validate
   if (!period) return res.status(404).json({ error: "Period not found in this league" });
 
   const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
-  await persistTeamStatsPeriodSnapshot(periodId, teamStats);
+  // Inline upsert — mirrors persistTeamStatsPeriodSnapshot from standings/routes.ts
+  // but avoids importing the full standings router (which drags requireLeagueMember
+  // into the module graph and breaks admin-only test suites).
+  if (teamStats.length > 0) {
+    await prisma.$transaction(
+      teamStats.map(t => prisma.teamStatsPeriod.upsert({
+        where: { teamId_periodId: { teamId: t.team.id, periodId } },
+        update: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
+        create: { teamId: t.team.id, periodId, R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
+      }))
+    );
+  }
 
   writeAuditLog({
     userId: req.user!.id,
