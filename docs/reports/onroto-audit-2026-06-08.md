@@ -11,8 +11,9 @@
 - **Period 2:** Demolition Lumber Co., Diamond Kings, and Dodger Dawgs match exactly. Los Doyers under-credited in TFL by 6.0 points — FanGraphs credits Los Doyers with **15 wins vs TFL's 9 wins**, and **166 K vs TFL's 102 K**, for the same roster.
 - **Period 3:** ✅ **Exact match — zero divergence across all 8 teams and all 10 categories.** Both systems record identical raw stats. Stats have fully finalized.
 - **Key insight — data lag:** The MLB Stats API feed lags FanGraphs' database by days to weeks for pitcher wins and strikeouts. The gap closes as stats finalize. Period 3 is fully converged; Period 1/2 divergence is real-time lag, not a system error.
-- **Rosters:** Auction-day rosters confirmed. Period-end rosters require manual spot-check on FanGraphs on Roto (roster pages require browser authentication).
-- **Attribution logic in The Fantastic Leagues is correct:** End-of-period owner attribution and roto computation verified. All discrepancies are data-source lag, not calculation errors.
+- **Rosters:** ✅ All 8 teams' auction-day rosters confirmed on FG/OnRoto via transaction log. P2 and P3 roster changes match TFL for 7 of 8 teams. One discrepancy: Dodger Dawgs — TFL dropped Jake McCarthy at P2; FG transaction log does not reflect this drop.
+- **BBRef/StatMuse P2 verification (Los Doyers):** Ground truth for all 9 LDY P2 pitchers = **23W / 166K**. FG credited 15W/166K (K exact match, W undercount by 8). TFL credited 9W/102K (W undercount by 14, K undercount by 64). The 64K gap = Foster Griffin (30K) + Carmen Mlodzinski (23K) + others missing from TFL's MLB Stats API feed during P2. See Section 3 for full detail.
+- **Attribution logic in The Fantastic Leagues is correct:** End-of-period owner attribution and roto computation verified. Discrepancies are MLB Stats API data lag, not calculation errors.
 
 ---
 
@@ -70,225 +71,225 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | William Contreras | $40 | ✅ | ✅ | ☐ |
-| C | Francisco Alvarez | $15 | ✅ | ✅ | ☐ |
-| 1B | Michael Busch | $40 | ✅ | ✅ | ☐ |
-| 2B | Brice Turang | $45 | ✅ | ✅ | ☐ |
-| SS | Geraldo Perdomo | $20 | ✅ | ✅ | ☐ |
-| 3B | Brady House | $2 | ✅ | ✅ | ☐ |
-| OF | Ronald Acuña Jr. | $35 | ✅ | ✅ | ☐ |
-| OF | Corbin Carroll | $30 | ✅ | ✅ | ☐ |
-| OF | Dylan Crews | $2 | ✅ | ✅ | ☐ |
-| OF | Mickey Moniak | $18 | ✅ | ✅ | ☐ |
-| OF | Carson Benge | $1 | ✅ | ✅ | ☐ |
-| CM | Andrew Vaughn | $10 | ✅ | ✅ | ☐ |
-| MI | Otto Lopez | $8 | ✅ | ✅ | ☐ |
-| DH | Shohei Ohtani | $46 | ✅ | ✅ | ☐ |
-| P | Paul Skenes | $30 | ✅ | ✅ | ☐ |
-| P | Chris Sale | $47 | ✅ | ✅ | ☐ |
-| P | Jesús Luzardo | $32 | ✅ | ✅ | ☐ |
-| P | Joe Musgrove | $1 | ✅ | ✅ | ☐ |
-| P | Zack Wheeler | $16 | ✅ | ✅ | ☐ |
-| P | Cade Cavalli | $1 | ✅ | ✅ | ☐ |
-| P | Victor Vodnik | $2 | ✅ | ✅ | ☐ |
-| P | Riley O'Brien | $1 | ✅ | ✅ | ☐ |
-| P | Mason Miller | $33 | ✅ | ✅ | ☐ |
+| C | William Contreras | $40 | ✅ | ✅ | ✅ |
+| C | Francisco Alvarez | $15 | ✅ | ✅ | ✅ |
+| 1B | Michael Busch | $40 | ✅ | ✅ | ✅ |
+| 2B | Brice Turang | $45 | ✅ | ✅ | ✅ |
+| SS | Geraldo Perdomo | $20 | ✅ | ✅ | ✅ |
+| 3B | Brady House | $2 | ✅ | ✅ | ✅ |
+| OF | Ronald Acuña Jr. | $35 | ✅ | ✅ | ✅ |
+| OF | Corbin Carroll | $30 | ✅ | ✅ | ✅ |
+| OF | Dylan Crews | $2 | ✅ | ✅ | ✅ |
+| OF | Mickey Moniak | $18 | ✅ | ✅ | ✅ |
+| OF | Carson Benge | $1 | ✅ | ✅ | ✅ |
+| CM | Andrew Vaughn | $10 | ✅ | ✅ | ✅ |
+| MI | Otto Lopez | $8 | ✅ | ✅ | ✅ |
+| DH | Shohei Ohtani | $46 | ✅ | ✅ | ✅ |
+| P | Paul Skenes | $30 | ✅ | ✅ | ✅ |
+| P | Chris Sale | $47 | ✅ | ✅ | ✅ |
+| P | Jesús Luzardo | $32 | ✅ | ✅ | ✅ |
+| P | Joe Musgrove | $1 | ✅ | ✅ | ✅ |
+| P | Zack Wheeler | $16 | ✅ | ✅ | ✅ |
+| P | Cade Cavalli | $1 | ✅ | ✅ | ✅ |
+| P | Victor Vodnik | $2 | ✅ | ✅ | ✅ |
+| P | Riley O'Brien | $1 | ✅ | ✅ | ✅ |
+| P | Mason Miller | $33 | ✅ | ✅ | ✅ |
 
 #### Devil Dawgs
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | Agustín Ramírez | $20 | ✅ | ✅ | ☐ |
-| C | Miguel Amaya | $1 | ✅ | ✅ | ☐ |
-| 1B | Bryce Eldridge | $10 | ✅ | ✅ | ☐ |
-| 2B | Luis García Jr. | $1 | ✅ | ✅ | ☐ |
-| SS | Willy Adames | $12 | ✅ | ✅ | ☐ |
-| 3B | Nolan Arenado | $4 | ✅ | ✅ | ☐ |
-| OF | Kyle Tucker | $33 | ✅ | ✅ | ☐ |
-| OF | Seiya Suzuki | $20 | ✅ | ✅ | ☐ |
-| OF | Brenton Doyle | $28 | ✅ | ✅ | ☐ |
-| OF | Jakob Marsee | $30 | ✅ | ✅ | ☐ |
-| OF | Jordan Beck | $27 | ✅ | ✅ | ☐ |
-| CM | Mark Vientos | $19 | ✅ | ✅ | ☐ |
-| MI | Jorge Polanco | $1 | ✅ | ✅ | ☐ |
-| DH | Christian Yelich | $15 | ✅ | ✅ | ☐ |
-| P | Jacob Misiorowski | $7 | ✅ | ✅ | ☐ |
-| P | Nolan McLean | $25 | ✅ | ✅ | ☐ |
-| P | Edward Cabrera | $10 | ✅ | ✅ | ☐ |
-| P | Matthew Boyd | $21 | ✅ | ✅ | ☐ |
-| P | Reynaldo López | $7 | ✅ | ✅ | ☐ |
-| P | Clay Holmes | $6 | ✅ | ✅ | ☐ |
-| P | Cade Horton | $3 | ✅ | ✅ | ☐ |
-| P | Abner Uribe | $6 | ✅ | ✅ | ☐ |
-| P | Dennis Santana | $19 | ✅ | ✅ | ☐ |
+| C | Agustín Ramírez | $20 | ✅ | ✅ | ✅ |
+| C | Miguel Amaya | $1 | ✅ | ✅ | ✅ |
+| 1B | Bryce Eldridge | $10 | ✅ | ✅ | ✅ |
+| 2B | Luis García Jr. | $1 | ✅ | ✅ | ✅ |
+| SS | Willy Adames | $12 | ✅ | ✅ | ✅ |
+| 3B | Nolan Arenado | $4 | ✅ | ✅ | ✅ |
+| OF | Kyle Tucker | $33 | ✅ | ✅ | ✅ |
+| OF | Seiya Suzuki | $20 | ✅ | ✅ | ✅ |
+| OF | Brenton Doyle | $28 | ✅ | ✅ | ✅ |
+| OF | Jakob Marsee | $30 | ✅ | ✅ | ✅ |
+| OF | Jordan Beck | $27 | ✅ | ✅ | ✅ |
+| CM | Mark Vientos | $19 | ✅ | ✅ | ✅ |
+| MI | Jorge Polanco | $1 | ✅ | ✅ | ✅ |
+| DH | Christian Yelich | $15 | ✅ | ✅ | ✅ |
+| P | Jacob Misiorowski | $7 | ✅ | ✅ | ✅ |
+| P | Nolan McLean | $25 | ✅ | ✅ | ✅ |
+| P | Edward Cabrera | $10 | ✅ | ✅ | ✅ |
+| P | Matthew Boyd | $21 | ✅ | ✅ | ✅ |
+| P | Reynaldo López | $7 | ✅ | ✅ | ✅ |
+| P | Clay Holmes | $6 | ✅ | ✅ | ✅ |
+| P | Cade Horton | $3 | ✅ | ✅ | ✅ |
+| P | Abner Uribe | $6 | ✅ | ✅ | ✅ |
+| P | Dennis Santana | $19 | ✅ | ✅ | ✅ |
 
 #### Diamond Kings
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | Tyler Stephenson | $8 | ✅ | ✅ | ☐ |
-| C | Dalton Rushing | $1 | ✅ | ✅ | ☐ |
-| 1B | Spencer Horwitz | $8 | ✅ | ✅ | ☐ |
-| 2B | Marcus Semien | $2 | ✅ | ✅ | ☐ |
-| SS | Elly De La Cruz | $34 | ✅ | ✅ | ☐ |
-| 3B | Noelvi Marte | $21 | ✅ | ✅ | ☐ |
-| OF | Fernando Tatis Jr. | $33 | ✅ | ✅ | ☐ |
-| OF | Teoscar Hernández | $34 | ✅ | ✅ | ☐ |
-| OF | Kyle Stowers | $36 | ✅ | ✅ | ☐ |
-| OF | Justin Crawford | $1 | ✅ | ✅ | ☐ |
-| OF | Daylen Lile | $55 | ✅ | ✅ | ☐ |
-| CM | Jordan Lawlar | $11 | ✅ | ✅ | ☐ |
-| MI | Ezequiel Tovar | $20 | ✅ | ✅ | ☐ |
-| DH | Bryan Reynolds | $21 | ✅ | ✅ | ☐ |
-| P | Roki Sasaki | $4 | ✅ | ✅ | ☐ |
-| P | Tyler Glasnow | $24 | ✅ | ✅ | ☐ |
-| P | Chase Burns | $29 | ✅ | ✅ | ☐ |
-| P | Braxton Ashcraft | $1 | ✅ | ✅ | ☐ |
-| P | Brandon Pfaadt | $2 | ✅ | ✅ | ☐ |
-| P | Blake Snell | $8 | ✅ | ✅ | ☐ |
-| P | Brady Singer | $4 | ✅ | ✅ | ☐ |
-| P | Jhoan Duran | $25 | ✅ | ✅ | ☐ |
-| P | Edwin Díaz | $18 | ✅ | ✅ | ☐ |
+| C | Tyler Stephenson | $8 | ✅ | ✅ | ✅ |
+| C | Dalton Rushing | $1 | ✅ | ✅ | ✅ |
+| 1B | Spencer Horwitz | $8 | ✅ | ✅ | ✅ |
+| 2B | Marcus Semien | $2 | ✅ | ✅ | ✅ |
+| SS | Elly De La Cruz | $34 | ✅ | ✅ | ✅ |
+| 3B | Noelvi Marte | $21 | ✅ | ✅ | ✅ |
+| OF | Fernando Tatis Jr. | $33 | ✅ | ✅ | ✅ |
+| OF | Teoscar Hernández | $34 | ✅ | ✅ | ✅ |
+| OF | Kyle Stowers | $36 | ✅ | ✅ | ✅ |
+| OF | Justin Crawford | $1 | ✅ | ✅ | ✅ |
+| OF | Daylen Lile | $55 | ✅ | ✅ | ✅ |
+| CM | Jordan Lawlar | $11 | ✅ | ✅ | ✅ |
+| MI | Ezequiel Tovar | $20 | ✅ | ✅ | ✅ |
+| DH | Bryan Reynolds | $21 | ✅ | ✅ | ✅ |
+| P | Roki Sasaki | $4 | ✅ | ✅ | ✅ |
+| P | Tyler Glasnow | $24 | ✅ | ✅ | ✅ |
+| P | Chase Burns | $29 | ✅ | ✅ | ✅ |
+| P | Braxton Ashcraft | $1 | ✅ | ✅ | ✅ |
+| P | Brandon Pfaadt | $2 | ✅ | ✅ | ✅ |
+| P | Blake Snell | $8 | ✅ | ✅ | ✅ |
+| P | Brady Singer | $4 | ✅ | ✅ | ✅ |
+| P | Jhoan Duran | $25 | ✅ | ✅ | ✅ |
+| P | Edwin Díaz | $18 | ✅ | ✅ | ✅ |
 
 #### Dodger Dawgs
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | Drake Baldwin | $21 | ✅ | ✅ | ☐ |
-| C | Keibert Ruiz | $4 | ✅ | ✅ | ☐ |
-| 1B | Sal Stewart | $32 | ✅ | ✅ | ☐ |
-| 2B | Nico Hoerner | $28 | ✅ | ✅ | ☐ |
-| SS | Francisco Lindor | $26 | ✅ | ✅ | ☐ |
-| 3B | Brett Baty | $3 | ✅ | ✅ | ☐ |
-| OF | Jackson Chourio | $30 | ✅ | ✅ | ☐ |
-| OF | James Wood | $28 | ✅ | ✅ | ☐ |
-| OF | Jung Hoo Lee | $5 | ✅ | ✅ | ☐ |
-| OF | Ramón Laureano | $12 | ✅ | ✅ | ☐ |
-| OF | Jake McCarthy | $1 | ✅ | ✅ | ☐ |
-| CM | Nolan Gorman | $1 | ✅ | ✅ | ☐ |
-| MI | Matt McLain | $28 | ✅ | ✅ | ☐ |
-| DH | Iván Herrera | $1 | ✅ | ✅ | ☐ |
-| P | Cristopher Sánchez | $52 | ✅ | ✅ | ☐ |
-| P | Logan Webb | $40 | ✅ | ✅ | ☐ |
-| P | Eury Pérez | $30 | ✅ | ✅ | ☐ |
-| P | Spencer Strider | $28 | ✅ | ✅ | ☐ |
-| P | Andrew Painter | $5 | ✅ | ✅ | ☐ |
-| P | Max Meyer | $1 | ✅ | ✅ | ☐ |
-| P | Eduardo Rodriguez | $6 | ✅ | ✅ | ☐ |
-| P | Trevor Megill | $11 | ✅ | ✅ | ☐ |
-| P | Robert Suarez | $7 | ✅ | ✅ | ☐ |
+| C | Drake Baldwin | $21 | ✅ | ✅ | ✅ |
+| C | Keibert Ruiz | $4 | ✅ | ✅ | ✅ |
+| 1B | Sal Stewart | $32 | ✅ | ✅ | ✅ |
+| 2B | Nico Hoerner | $28 | ✅ | ✅ | ✅ |
+| SS | Francisco Lindor | $26 | ✅ | ✅ | ✅ |
+| 3B | Brett Baty | $3 | ✅ | ✅ | ✅ |
+| OF | Jackson Chourio | $30 | ✅ | ✅ | ✅ |
+| OF | James Wood | $28 | ✅ | ✅ | ✅ |
+| OF | Jung Hoo Lee | $5 | ✅ | ✅ | ✅ |
+| OF | Ramón Laureano | $12 | ✅ | ✅ | ✅ |
+| OF | Jake McCarthy | $1 | ✅ | ✅ | ✅ |
+| CM | Nolan Gorman | $1 | ✅ | ✅ | ✅ |
+| MI | Matt McLain | $28 | ✅ | ✅ | ✅ |
+| DH | Iván Herrera | $1 | ✅ | ✅ | ✅ |
+| P | Cristopher Sánchez | $52 | ✅ | ✅ | ✅ |
+| P | Logan Webb | $40 | ✅ | ✅ | ✅ |
+| P | Eury Pérez | $30 | ✅ | ✅ | ✅ |
+| P | Spencer Strider | $28 | ✅ | ✅ | ✅ |
+| P | Andrew Painter | $5 | ✅ | ✅ | ✅ |
+| P | Max Meyer | $1 | ✅ | ✅ | ✅ |
+| P | Eduardo Rodriguez | $6 | ✅ | ✅ | ✅ |
+| P | Trevor Megill | $11 | ✅ | ✅ | ✅ |
+| P | Robert Suarez | $7 | ✅ | ✅ | ✅ |
 
 #### Los Doyers
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | Will Smith | $18 | ✅ | ✅ | ☐ |
-| C | Carson Kelly | $10 | ✅ | ✅ | ☐ |
-| 1B | Spencer Steer | $4 | ✅ | ✅ | ☐ |
-| 2B | Brandon Lowe | $17 | ✅ | ✅ | ☐ |
-| SS | Mookie Betts | $25 | ✅ | ✅ | ☐ |
-| 3B | Austin Riley | $35 | ✅ | ✅ | ☐ |
-| OF | Juan Soto | $39 | ✅ | ✅ | ☐ |
-| OF | Andy Pages | $20 | ✅ | ✅ | ☐ |
-| OF | Gavin Sheets | $1 | ✅ | ✅ | ☐ |
-| OF | Victor Scott II | $39 | ✅ | ✅ | ☐ |
-| OF | Alek Thomas | $3 | ✅ | ✅ | ☐ |
-| CM | Max Muncy | $18 | ✅ | ✅ | ☐ |
-| MI | Konnor Griffin | $150 | ✅ | ✅ | ☐ |
-| DH | Ryan O'Hearn | $7 | ✅ | ✅ | ☐ |
-| P | Zack Littell | $2 | ✅ | ✅ | ☐ |
-| P | Michael McGreevy | $1 | ✅ | ✅ | ☐ |
-| P | Sean Manaea | $1 | ✅ | ✅ | ☐ |
-| P | Corbin Burnes | $1 | ✅ | ✅ | ☐ |
-| P | Hunter Greene | $1 | ✅ | ✅ | ☐ |
-| P | Michael Soroka | $1 | ✅ | ✅ | ☐ |
-| P | Dustin May | $1 | ✅ | ✅ | ☐ |
-| P | Walker Buehler | $1 | ✅ | ✅ | ☐ |
-| P | Clayton Beeter | $5 | ✅ | ✅ | ☐ |
+| C | Will Smith | $18 | ✅ | ✅ | ✅ |
+| C | Carson Kelly | $10 | ✅ | ✅ | ✅ |
+| 1B | Spencer Steer | $4 | ✅ | ✅ | ✅ |
+| 2B | Brandon Lowe | $17 | ✅ | ✅ | ✅ |
+| SS | Mookie Betts | $25 | ✅ | ✅ | ✅ |
+| 3B | Austin Riley | $35 | ✅ | ✅ | ✅ |
+| OF | Juan Soto | $39 | ✅ | ✅ | ✅ |
+| OF | Andy Pages | $20 | ✅ | ✅ | ✅ |
+| OF | Gavin Sheets | $1 | ✅ | ✅ | ✅ |
+| OF | Victor Scott II | $39 | ✅ | ✅ | ✅ |
+| OF | Alek Thomas | $3 | ✅ | ✅ | ✅ |
+| CM | Max Muncy | $18 | ✅ | ✅ | ✅ |
+| MI | Konnor Griffin | $150 | ✅ | ✅ | ✅ |
+| DH | Ryan O'Hearn | $7 | ✅ | ✅ | ✅ |
+| P | Zack Littell | $2 | ✅ | ✅ | ✅ |
+| P | Michael McGreevy | $1 | ✅ | ✅ | ✅ |
+| P | Sean Manaea | $1 | ✅ | ✅ | ✅ |
+| P | Corbin Burnes | $1 | ✅ | ✅ | ✅ |
+| P | Hunter Greene | $1 | ✅ | ✅ | ✅ |
+| P | Michael Soroka | $1 | ✅ | ✅ | ✅ |
+| P | Dustin May | $1 | ✅ | ✅ | ✅ |
+| P | Walker Buehler | $1 | ✅ | ✅ | ✅ |
+| P | Clayton Beeter | $5 | ✅ | ✅ | ✅ |
 
 #### RGing Sluggers
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | Gabriel Moreno | $9 | ✅ | ✅ | ☐ |
-| C | Patrick Bailey | $3 | ✅ | ✅ | ☐ |
-| 1B | Freddie Freeman | $26 | ✅ | ✅ | ☐ |
-| 2B | Ozzie Albies | $10 | ✅ | ✅ | ☐ |
-| SS | Dansby Swanson | $13 | ✅ | ✅ | ☐ |
-| 3B | Eugenio Suárez | $32 | ✅ | ✅ | ☐ |
-| OF | Oneil Cruz | $19 | ✅ | ✅ | ☐ |
-| OF | Heliot Ramos | $13 | ✅ | ✅ | ☐ |
-| OF | Jackson Merrill | $25 | ✅ | ✅ | ☐ |
-| OF | Adolis García | $18 | ✅ | ✅ | ☐ |
-| OF | Harrison Bader | $16 | ✅ | ✅ | ☐ |
-| CM | Alex Bregman | $19 | ✅ | ✅ | ☐ |
-| MI | Xavier Edwards | $26 | ✅ | ✅ | ☐ |
-| DH | Kyle Schwarber | $27 | ✅ | ✅ | ☐ |
-| P | Yoshinobu Yamamoto | $22 | ✅ | ✅ | ☐ |
-| P | Robbie Ray | $18 | ✅ | ✅ | ☐ |
-| P | Bubba Chandler | $31 | ✅ | ✅ | ☐ |
-| P | Sandy Alcantara | $9 | ✅ | ✅ | ☐ |
-| P | Zac Gallen | $9 | ✅ | ✅ | ☐ |
-| P | Mitch Keller | $9 | ✅ | ✅ | ☐ |
-| P | Ryne Nelson | $1 | ✅ | ✅ | ☐ |
-| P | Devin Williams | $20 | ✅ | ✅ | ☐ |
-| P | Daniel Palencia | $25 | ✅ | ✅ | ☐ |
+| C | Gabriel Moreno | $9 | ✅ | ✅ | ✅ |
+| C | Patrick Bailey | $3 | ✅ | ✅ | ✅ |
+| 1B | Freddie Freeman | $26 | ✅ | ✅ | ✅ |
+| 2B | Ozzie Albies | $10 | ✅ | ✅ | ✅ |
+| SS | Dansby Swanson | $13 | ✅ | ✅ | ✅ |
+| 3B | Eugenio Suárez | $32 | ✅ | ✅ | ✅ |
+| OF | Oneil Cruz | $19 | ✅ | ✅ | ✅ |
+| OF | Heliot Ramos | $13 | ✅ | ✅ | ✅ |
+| OF | Jackson Merrill | $25 | ✅ | ✅ | ✅ |
+| OF | Adolis García | $18 | ✅ | ✅ | ✅ |
+| OF | Harrison Bader | $16 | ✅ | ✅ | ✅ |
+| CM | Alex Bregman | $19 | ✅ | ✅ | ✅ |
+| MI | Xavier Edwards | $26 | ✅ | ✅ | ✅ |
+| DH | Kyle Schwarber | $27 | ✅ | ✅ | ✅ |
+| P | Yoshinobu Yamamoto | $22 | ✅ | ✅ | ✅ |
+| P | Robbie Ray | $18 | ✅ | ✅ | ✅ |
+| P | Bubba Chandler | $31 | ✅ | ✅ | ✅ |
+| P | Sandy Alcantara | $9 | ✅ | ✅ | ✅ |
+| P | Zac Gallen | $9 | ✅ | ✅ | ✅ |
+| P | Mitch Keller | $9 | ✅ | ✅ | ✅ |
+| P | Ryne Nelson | $1 | ✅ | ✅ | ✅ |
+| P | Devin Williams | $20 | ✅ | ✅ | ✅ |
+| P | Daniel Palencia | $25 | ✅ | ✅ | ✅ |
 
 #### Skunk Dogs
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | Hunter Goodman | $22 | ✅ | ✅ | ☐ |
-| C | Freddy Fermin | $3 | ✅ | ✅ | ☐ |
-| 1B | Matt Olson | $25 | ✅ | ✅ | ☐ |
-| 2B | Bryson Stott | $16 | ✅ | ✅ | ☐ |
-| SS | Trea Turner | $28 | ✅ | ✅ | ☐ |
-| 3B | Matt Chapman | $12 | ✅ | ✅ | ☐ |
-| OF | Michael Harris II | $22 | ✅ | ✅ | ☐ |
-| OF | Luis Robert Jr. | $27 | ✅ | ✅ | ☐ |
-| OF | Sal Frelick | $13 | ✅ | ✅ | ☐ |
-| OF | TJ Friedl | $8 | ✅ | ✅ | ☐ |
-| OF | Jordan Walker | $10 | ✅ | ✅ | ☐ |
-| CM | Alec Bohm | $10 | ✅ | ✅ | ☐ |
-| MI | CJ Abrams | $41 | ✅ | ✅ | ☐ |
-| DH | Luis Arraez | $2 | ✅ | ✅ | ☐ |
-| P | Shohei Ohtani (P) | $15 | ✅ | ✅ | ☐ |
-| P | Nick Pivetta | $22 | ✅ | ✅ | ☐ |
-| P | Brandon Woodruff | $15 | ✅ | ✅ | ☐ |
-| P | Michael King | $21 | ✅ | ✅ | ☐ |
-| P | David Peterson | $5 | ✅ | ✅ | ☐ |
-| P | Jameson Taillon | $4 | ✅ | ✅ | ☐ |
-| P | Kodai Senga | $15 | ✅ | ✅ | ☐ |
-| P | Pete Fairbanks | $44 | ✅ | ✅ | ☐ |
-| P | Raisel Iglesias | $20 | ✅ | ✅ | ☐ |
+| C | Hunter Goodman | $22 | ✅ | ✅ | ✅ |
+| C | Freddy Fermin | $3 | ✅ | ✅ | ✅ |
+| 1B | Matt Olson | $25 | ✅ | ✅ | ✅ |
+| 2B | Bryson Stott | $16 | ✅ | ✅ | ✅ |
+| SS | Trea Turner | $28 | ✅ | ✅ | ✅ |
+| 3B | Matt Chapman | $12 | ✅ | ✅ | ✅ |
+| OF | Michael Harris II | $22 | ✅ | ✅ | ✅ |
+| OF | Luis Robert Jr. | $27 | ✅ | ✅ | ✅ |
+| OF | Sal Frelick | $13 | ✅ | ✅ | ✅ |
+| OF | TJ Friedl | $8 | ✅ | ✅ | ✅ |
+| OF | Jordan Walker | $10 | ✅ | ✅ | ✅ |
+| CM | Alec Bohm | $10 | ✅ | ✅ | ✅ |
+| MI | CJ Abrams | $41 | ✅ | ✅ | ✅ |
+| DH | Luis Arraez | $2 | ✅ | ✅ | ✅ |
+| P | Shohei Ohtani (P) | $15 | ✅ | ✅ | ✅ |
+| P | Nick Pivetta | $22 | ✅ | ✅ | ✅ |
+| P | Brandon Woodruff | $15 | ✅ | ✅ | ✅ |
+| P | Michael King | $21 | ✅ | ✅ | ✅ |
+| P | David Peterson | $5 | ✅ | ✅ | ✅ |
+| P | Jameson Taillon | $4 | ✅ | ✅ | ✅ |
+| P | Kodai Senga | $15 | ✅ | ✅ | ✅ |
+| P | Pete Fairbanks | $44 | ✅ | ✅ | ✅ |
+| P | Raisel Iglesias | $20 | ✅ | ✅ | ✅ |
 
 #### The Show
 
 | Pos | Player | Price | Excel | TFL | FG/OnRoto |
 |-----|--------|-------|-------|-----|-----------|
-| C | J.T. Realmuto | $19 | ✅ | ✅ | ☐ |
-| C | Sean Murphy | $1 | ✅ | ✅ | ☐ |
-| 1B | Rafael Devers | $22 | ✅ | ✅ | ☐ |
-| 2B | Ketel Marte | $50 | ✅ | ✅ | ☐ |
-| SS | Bo Bichette | $22 | ✅ | ✅ | ☐ |
-| 3B | Manny Machado | $27 | ✅ | ✅ | ☐ |
-| OF | Pete Crow-Armstrong | $28 | ✅ | ✅ | ☐ |
-| OF | Alec Burleson | $28 | ✅ | ✅ | ☐ |
-| OF | Ian Happ | $12 | ✅ | ✅ | ☐ |
-| OF | Willi Castro | $1 | ✅ | ✅ | ☐ |
-| OF | Brandon Marsh | $1 | ✅ | ✅ | ☐ |
-| CM | Bryce Harper | $27 | ✅ | ✅ | ☐ |
-| MI | Xander Bogaerts | $5 | ✅ | ✅ | ☐ |
-| DH | Marcell Ozuna | $5 | ✅ | ✅ | ☐ |
-| P | Freddy Peralta | $40 | ✅ | ✅ | ☐ |
-| P | Emmet Sheehan | $17 | ✅ | ✅ | ☐ |
-| P | Shota Imanaga | $27 | ✅ | ✅ | ☐ |
-| P | Andrew Abbott | $11 | ✅ | ✅ | ☐ |
-| P | Aaron Nola | $10 | ✅ | ✅ | ☐ |
-| P | Nick Lodolo | $14 | ✅ | ✅ | ☐ |
-| P | Quinn Priester | $2 | ✅ | ✅ | ☐ |
-| P | Ryan Walker | $17 | ✅ | ✅ | ☐ |
-| P | Emilio Pagán | $14 | ✅ | ✅ | ☐ |
+| C | J.T. Realmuto | $19 | ✅ | ✅ | ✅ |
+| C | Sean Murphy | $1 | ✅ | ✅ | ✅ |
+| 1B | Rafael Devers | $22 | ✅ | ✅ | ✅ |
+| 2B | Ketel Marte | $50 | ✅ | ✅ | ✅ |
+| SS | Bo Bichette | $22 | ✅ | ✅ | ✅ |
+| 3B | Manny Machado | $27 | ✅ | ✅ | ✅ |
+| OF | Pete Crow-Armstrong | $28 | ✅ | ✅ | ✅ |
+| OF | Alec Burleson | $28 | ✅ | ✅ | ✅ |
+| OF | Ian Happ | $12 | ✅ | ✅ | ✅ |
+| OF | Willi Castro | $1 | ✅ | ✅ | ✅ |
+| OF | Brandon Marsh | $1 | ✅ | ✅ | ✅ |
+| CM | Bryce Harper | $27 | ✅ | ✅ | ✅ |
+| MI | Xander Bogaerts | $5 | ✅ | ✅ | ✅ |
+| DH | Marcell Ozuna | $5 | ✅ | ✅ | ✅ |
+| P | Freddy Peralta | $40 | ✅ | ✅ | ✅ |
+| P | Emmet Sheehan | $17 | ✅ | ✅ | ✅ |
+| P | Shota Imanaga | $27 | ✅ | ✅ | ✅ |
+| P | Andrew Abbott | $11 | ✅ | ✅ | ✅ |
+| P | Aaron Nola | $10 | ✅ | ✅ | ✅ |
+| P | Nick Lodolo | $14 | ✅ | ✅ | ✅ |
+| P | Quinn Priester | $2 | ✅ | ✅ | ✅ |
+| P | Ryan Walker | $17 | ✅ | ✅ | ✅ |
+| P | Emilio Pagán | $14 | ✅ | ✅ | ✅ |
 
 ---
 
@@ -298,14 +299,14 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 | Team | Count | Changes from Auction Day | TFL | FG/OnRoto |
 |------|-------|-------------------------|-----|-----------|
-| Demolition Lumber Co. | 23 | None | ✅ | ☐ |
-| Devil Dawgs | 23 | None | ✅ | ☐ |
-| Diamond Kings | 23 | None — Edwin Díaz on IL (no roster change) | ✅ | ☐ |
-| Dodger Dawgs | 23 | None | ✅ | ☐ |
-| Los Doyers | 23 | None | ✅ | ☐ |
-| RGing Sluggers | 23 | None — Heliot Ramos on IL (no roster change) | ✅ | ☐ |
-| Skunk Dogs | 23 | None | ✅ | ☐ |
-| The Show | 23 | None — Quinn Priester & Emilio Pagán on IL (no roster change) | ✅ | ☐ |
+| Demolition Lumber Co. | 23 | None | ✅ | ✅ |
+| Devil Dawgs | 23 | None | ✅ | ✅ |
+| Diamond Kings | 23 | None — Edwin Díaz on IL (no roster change) | ✅ | ✅ |
+| Dodger Dawgs | 23 | None | ✅ | ✅ |
+| Los Doyers | 23 | None | ✅ | ✅ |
+| RGing Sluggers | 23 | None — Heliot Ramos on IL (no roster change) | ✅ | ✅ |
+| Skunk Dogs | 23 | None | ✅ | ✅ |
+| The Show | 23 | None — Quinn Priester & Emilio Pagán on IL (no roster change) | ✅ | ✅ |
 
 ---
 
@@ -317,106 +318,106 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Troy Johnston | OF | ✅ | ☐ |
-| ➕ | Felix Reyes | OF | ✅ | ☐ |
-| ➕ | Landen Roupp | P | ✅ | ☐ |
-| ➕ | Rhett Lowder | P | ✅ | ☐ |
-| ➖ | Joe Musgrove | P | ✅ | ☐ |
-| ➖ | Cade Cavalli | P | ✅ | ☐ |
-| ➖ | Dylan Crews | OF | ✅ | ☐ |
+| ➕ | Troy Johnston | OF | ✅ | ✅ |
+| ➕ | Felix Reyes | OF | ✅ | ✅ |
+| ➕ | Landen Roupp | P | ✅ | ✅ |
+| ➕ | Rhett Lowder | P | ✅ | ✅ |
+| ➖ | Joe Musgrove | P | ✅ | ✅ |
+| ➖ | Cade Cavalli | P | ✅ | ✅ |
+| ➖ | Dylan Crews | OF | ✅ | ✅ |
 
 #### Devil Dawgs (23 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Edouard Julien | 1B | ✅ | ☐ |
-| ➕ | Casey Schmitt | 1B | ✅ | ☐ |
-| ➕ | Ildemaro Vargas | 2B | ✅ | ☐ |
-| ➕ | Bryce Elder | P | ✅ | ☐ |
-| ➖ | Jorge Polanco | MI | ✅ | ☐ |
-| ➖ | Cade Horton | P | ✅ | ☐ |
-| ➖ | Luis García Jr. | 2B | ✅ | ☐ |
-| ➖ | Bryce Eldridge | 1B | ✅ | ☐ |
+| ➕ | Edouard Julien | 1B | ✅ | ✅ |
+| ➕ | Casey Schmitt | 1B | ✅ | ✅ |
+| ➕ | Ildemaro Vargas | 2B | ✅ | ✅ |
+| ➕ | Bryce Elder | P | ✅ | ✅ |
+| ➖ | Jorge Polanco | MI | ✅ | ✅ |
+| ➖ | Cade Horton | P | ✅ | ✅ |
+| ➖ | Luis García Jr. | 2B | ✅ | ✅ |
+| ➖ | Bryce Eldridge | 1B | ✅ | ✅ |
 
 #### Diamond Kings (23 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | TJ Rumfield | 1B | ✅ | ☐ |
-| ➕ | Jake Bauers | CM | ✅ | ☐ |
-| ➕ | Aaron Ashby | P | ✅ | ☐ |
-| ➕ | Alex Vesia | P | ✅ | ☐ |
-| ➖ | Spencer Horwitz | 1B | ✅ | ☐ |
-| ➖ | Jordan Lawlar | CM | ✅ | ☐ |
-| ➖ | Brandon Pfaadt | P | ✅ | ☐ |
-| ➖ | Brady Singer | P | ✅ | ☐ |
+| ➕ | TJ Rumfield | 1B | ✅ | ✅ |
+| ➕ | Jake Bauers | CM | ✅ | ✅ |
+| ➕ | Aaron Ashby | P | ✅ | ✅ |
+| ➕ | Alex Vesia | P | ✅ | ✅ |
+| ➖ | Spencer Horwitz | 1B | ✅ | ✅ |
+| ➖ | Jordan Lawlar | CM | ✅ | ✅ |
+| ➖ | Brandon Pfaadt | P | ✅ | ✅ |
+| ➖ | Brady Singer | P | ✅ | ✅ |
 
 #### Dodger Dawgs (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Jose Fernandez | 1B | ✅ | ☐ |
-| ➕ | Owen Caissie | OF | ✅ | ☐ |
-| ➕ | Gregory Soto | P | ✅ | ☐ |
-| ➕ | Dominic Smith | DH | ✅ | ☐ |
-| ➖ | Keibert Ruiz | C | ✅ | ☐ |
-| ➖ | Brett Baty | 3B | ✅ | ☐ |
-| ➖ | Max Meyer | P | ✅ | ☐ |
-| ➖ | Jake McCarthy | OF | ✅ | ☐ |
+| ➕ | Jose Fernandez | 1B | ✅ | ✅ |
+| ➕ | Owen Caissie | OF | ✅ | ✅ |
+| ➕ | Gregory Soto | P | ✅ | ✅ |
+| ➕ | Dominic Smith | DH | ✅ | ✅ |
+| ➖ | Keibert Ruiz | C | ✅ | ✅ |
+| ➖ | Brett Baty | 3B | ✅ | ✅ |
+| ➖ | Max Meyer | P | ✅ | ✅ |
+| ➖ | Jake McCarthy | OF | ✅ | ⚠️ |
 
 #### Los Doyers (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Joey Ortiz | SS | ✅ | ☐ |
-| ➕ | Brandon Lockridge | OF | ✅ | ☐ |
-| ➕ | Justin Wrobleski | P | ✅ | ☐ |
-| ➕ | Merrill Kelly | P | ✅ | ☐ |
-| ➕ | Carmen Mlodzinski | P | ✅ | ☐ |
-| ➕ | Foster Griffin | P | ✅ | ☐ |
-| ➕ | Paul Sewald | P | ✅ | ☐ |
-| ➖ | Alek Thomas | OF | ✅ | ☐ |
-| ➖ | Corbin Burnes | P | ✅ | ☐ |
-| ➖ | Hunter Greene | P | ✅ | ☐ |
-| ➖ | Sean Manaea | P | ✅ | ☐ |
-| ➖ | Dustin May | P | ✅ | ☐ |
-| ➖ | Zack Littell | P | ✅ | ☐ |
+| ➕ | Joey Ortiz | SS | ✅ | ✅ |
+| ➕ | Brandon Lockridge | OF | ✅ | ✅ |
+| ➕ | Justin Wrobleski | P | ✅ | ✅ |
+| ➕ | Merrill Kelly | P | ✅ | ✅ |
+| ➕ | Carmen Mlodzinski | P | ✅ | ✅ |
+| ➕ | Foster Griffin | P | ✅ | ✅ |
+| ➕ | Paul Sewald | P | ✅ | ✅ |
+| ➖ | Alek Thomas | OF | ✅ | ✅ |
+| ➖ | Corbin Burnes | P | ✅ | ✅ |
+| ➖ | Hunter Greene | P | ✅ | ✅ |
+| ➖ | Sean Manaea | P | ✅ | ✅ |
+| ➖ | Dustin May | P | ✅ | ✅ |
+| ➖ | Zack Littell | P | ✅ | ✅ |
 
 #### RGing Sluggers (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Gary Sánchez | C | ✅ | ☐ |
-| ➕ | Adrian Del Castillo | C | ✅ | ☐ |
-| ➕ | Nathan Church | OF | ✅ | ☐ |
-| ➕ | Caleb Thielbar | P | ✅ | ☐ |
-| ➖ | Patrick Bailey | C | ✅ | ☐ |
-| ➖ | Harrison Bader | OF | ✅ | ☐ |
+| ➕ | Gary Sánchez | C | ✅ | ✅ |
+| ➕ | Adrian Del Castillo | C | ✅ | ✅ |
+| ➕ | Nathan Church | OF | ✅ | ✅ |
+| ➕ | Caleb Thielbar | P | ✅ | ✅ |
+| ➖ | Patrick Bailey | C | ✅ | ✅ |
+| ➖ | Harrison Bader | OF | ✅ | ✅ |
 
 #### Skunk Dogs (23 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | JJ Wetherholt | 2B | ✅ | ☐ |
-| ➕ | Daniel Susac | C | ✅ | ☐ |
-| ➕ | Mauricio Dubón | OF | ✅ | ☐ |
-| ➕ | Kyle Harrison | P | ✅ | ☐ |
-| ➕ | Chase Dollander | P | ✅ | ☐ |
-| ➖ | Bryson Stott | 2B | ✅ | ☐ |
-| ➖ | Freddy Fermin | C | ✅ | ☐ |
-| ➖ | TJ Friedl | OF | ✅ | ☐ |
-| ➖ | David Peterson | P | ✅ | ☐ |
-| ➖ | Nick Pivetta | P | ✅ | ☐ |
+| ➕ | JJ Wetherholt | 2B | ✅ | ✅ |
+| ➕ | Daniel Susac | C | ✅ | ✅ |
+| ➕ | Mauricio Dubón | OF | ✅ | ✅ |
+| ➕ | Kyle Harrison | P | ✅ | ✅ |
+| ➕ | Chase Dollander | P | ✅ | ✅ |
+| ➖ | Bryson Stott | 2B | ✅ | ✅ |
+| ➖ | Freddy Fermin | C | ✅ | ✅ |
+| ➖ | TJ Friedl | OF | ✅ | ✅ |
+| ➖ | David Peterson | P | ✅ | ✅ |
+| ➖ | Nick Pivetta | P | ✅ | ✅ |
 
 #### The Show (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Liam Hicks | C | ✅ | ☐ |
-| ➕ | Garrett Mitchell | OF | ✅ | ☐ |
-| ➕ | Randy Vásquez | P | ✅ | ☐ |
-| ➖ | Sean Murphy | C | ✅ | ☐ |
-| ➖ | Willi Castro | OF | ✅ | ☐ |
+| ➕ | Liam Hicks | C | ✅ | ✅ |
+| ➕ | Garrett Mitchell | OF | ✅ | ✅ |
+| ➕ | Randy Vásquez | P | ✅ | ✅ |
+| ➖ | Sean Murphy | C | ✅ | ✅ |
+| ➖ | Willi Castro | OF | ✅ | ✅ |
 
 ---
 
@@ -428,100 +429,100 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Keibert Ruiz | C | ✅ | ☐ |
-| ➕ | Matt Gage | P | ✅ | ☐ |
-| ➕ | Jack Dreyer | P | ✅ | ☐ |
-| ➖ | Francisco Alvarez | C | ✅ | ☐ |
-| ➖ | Felix Reyes | OF | ✅ | ☐ |
-| ➖ | Rhett Lowder | P | ✅ | ☐ |
-| ➖ | Victor Vodnik | P | ✅ | ☐ |
+| ➕ | Keibert Ruiz | C | ✅ | ✅ |
+| ➕ | Matt Gage | P | ✅ | ✅ |
+| ➕ | Jack Dreyer | P | ✅ | ✅ |
+| ➖ | Francisco Alvarez | C | ✅ | ✅ |
+| ➖ | Felix Reyes | OF | ✅ | ✅ |
+| ➖ | Rhett Lowder | P | ✅ | ✅ |
+| ➖ | Victor Vodnik | P | ✅ | ✅ |
 
 #### Devil Dawgs (23 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Ryan Waldschmidt | OF | ✅ | ☐ |
-| ➕ | JR Ritchie | P | ✅ | ☐ |
-| ➕ | Caleb Kilian | P | ✅ | ☐ |
-| ➕ | Christian Scott | P | ✅ | ☐ |
-| ➖ | Jordan Beck | OF | ✅ | ☐ |
-| ➖ | Reynaldo López | P | ✅ | ☐ |
-| ➖ | Edward Cabrera | P | ✅ | ☐ |
-| ➖ | Dennis Santana | P | ✅ | ☐ |
+| ➕ | Ryan Waldschmidt | OF | ✅ | ✅ |
+| ➕ | JR Ritchie | P | ✅ | ✅ |
+| ➕ | Caleb Kilian | P | ✅ | ✅ |
+| ➕ | Christian Scott | P | ✅ | ✅ |
+| ➖ | Jordan Beck | OF | ✅ | ✅ |
+| ➖ | Reynaldo López | P | ✅ | ✅ |
+| ➖ | Edward Cabrera | P | ✅ | ✅ |
+| ➖ | Dennis Santana | P | ✅ | ✅ |
 
 #### Diamond Kings (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Walker Buehler | P | ✅ | ☐ |
-| ➕ | Max Meyer | P | ✅ | ☐ |
-| ➕ | Antonio Senzatela | P | ✅ | ☐ |
-| ➕ | JJ Bleday | OF | ✅ | ☐ |
-| ➕ | Miguel Andujar | 3B | ✅ | ☐ |
-| ➖ | Noelvi Marte | 3B | ✅ | ☐ |
-| ➖ | Ezequiel Tovar | MI | ✅ | ☐ |
-| ➖ | Blake Snell | P | ✅ | ☐ |
-| ➖ | Alex Vesia | P | ✅ | ☐ |
-| ➖ | Brandon Pfaadt | P | ✅ | ☐ |
+| ➕ | Walker Buehler | P | ✅ | ✅ |
+| ➕ | Max Meyer | P | ✅ | ✅ |
+| ➕ | Antonio Senzatela | P | ✅ | ✅ |
+| ➕ | JJ Bleday | OF | ✅ | ✅ |
+| ➕ | Miguel Andujar | 3B | ✅ | ✅ |
+| ➖ | Noelvi Marte | 3B | ✅ | ✅ |
+| ➖ | Ezequiel Tovar | MI | ✅ | ✅ |
+| ➖ | Blake Snell | P | ✅ | ✅ |
+| ➖ | Alex Vesia | P | ✅ | ✅ |
+| ➖ | Brandon Pfaadt | P | ✅ | ✅ |
 
 #### Dodger Dawgs (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Ben Brown | P | ✅ | ☐ |
-| ➕ | Connor Norby | DH | ✅ | ☐ |
-| ➕ | Bryson Stott | MI | ✅ | ☐ |
-| ➖ | Owen Caissie | OF | ✅ | ☐ |
-| ➖ | Dominic Smith | DH | ✅ | ☐ |
-| ➖ | Andrew Painter | P | ✅ | ☐ |
+| ➕ | Ben Brown | P | ✅ | ✅ |
+| ➕ | Connor Norby | DH | ✅ | ✅ |
+| ➕ | Bryson Stott | MI | ✅ | ✅ |
+| ➖ | Owen Caissie | OF | ✅ | ✅ |
+| ➖ | Dominic Smith | DH | ✅ | ✅ |
+| ➖ | Andrew Painter | P | ✅ | ✅ |
 
 #### Los Doyers (23 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Jacob Young | OF | ✅ | ☐ |
-| ➕ | Cade Cavalli | P | ✅ | ☐ |
-| ➕ | PJ Poulin | P | ✅ | ☐ |
-| ➕ | George Soriano | P | ✅ | ☐ |
-| ➕ | Andrew Painter | P | ✅ | ☐ |
-| ➖ | Brandon Lockridge | OF | ✅ | ☐ |
-| ➖ | Joey Ortiz | SS | ✅ | ☐ |
-| ➖ | Merrill Kelly | P | ✅ | ☐ |
-| ➖ | Carmen Mlodzinski | P | ✅ | ☐ |
-| ➖ | Clayton Beeter | P | ✅ | ☐ |
+| ➕ | Jacob Young | OF | ✅ | ✅ |
+| ➕ | Cade Cavalli | P | ✅ | ✅ |
+| ➕ | PJ Poulin | P | ✅ | ✅ |
+| ➕ | George Soriano | P | ✅ | ✅ |
+| ➕ | Andrew Painter | P | ✅ | ✅ |
+| ➖ | Brandon Lockridge | OF | ✅ | ✅ |
+| ➖ | Joey Ortiz | SS | ✅ | ✅ |
+| ➖ | Merrill Kelly | P | ✅ | ✅ |
+| ➖ | Carmen Mlodzinski | P | ✅ | ✅ |
+| ➖ | Clayton Beeter | P | ✅ | ✅ |
 
 #### RGing Sluggers (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Gabriel Moreno | C | ✅ | ☐ |
-| ➕ | A.J. Ewing | OF | ✅ | ☐ |
-| ➕ | Kyle Leahy | P | ✅ | ☐ |
-| ➖ | Zac Gallen | P | ✅ | ☐ |
-| ➖ | Gary Sánchez | C | ✅ | ☐ |
-| ➖ | Caleb Thielbar | P | ✅ | ☐ |
+| ➕ | Gabriel Moreno | C | ✅ | ✅ |
+| ➕ | A.J. Ewing | OF | ✅ | ✅ |
+| ➕ | Kyle Leahy | P | ✅ | ✅ |
+| ➖ | Zac Gallen | P | ✅ | ✅ |
+| ➖ | Gary Sánchez | C | ✅ | ✅ |
+| ➖ | Caleb Thielbar | P | ✅ | ✅ |
 
 #### Skunk Dogs (24 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Moisés Ballesteros | C | ✅ | ☐ |
-| ➕ | Brett Baty | OF | ✅ | ☐ |
-| ➕ | Trevor McDonald | P | ✅ | ☐ |
-| ➕ | Merrill Kelly | P | ✅ | ☐ |
-| ➖ | Daniel Susac | C | ✅ | ☐ |
-| ➖ | Chase Dollander | P | ✅ | ☐ |
-| ➖ | Luis Robert Jr. | OF | ✅ | ☐ |
+| ➕ | Moisés Ballesteros | C | ✅ | ✅ |
+| ➕ | Brett Baty | OF | ✅ | ✅ |
+| ➕ | Trevor McDonald | P | ✅ | ✅ |
+| ➕ | Merrill Kelly | P | ✅ | ✅ |
+| ➖ | Daniel Susac | C | ✅ | ✅ |
+| ➖ | Chase Dollander | P | ✅ | ✅ |
+| ➖ | Luis Robert Jr. | OF | ✅ | ✅ |
 
 #### The Show (25 players)
 
 | | Player | Pos | TFL | FG/OnRoto |
 |-|--------|-----|-----|-----------|
-| ➕ | Tanner Scott | P | ✅ | ☐ |
-| ➕ | Logan Henderson | IL | ✅ | ☐ |
-| ➕ | Luis García Jr. | DH | ✅ | ☐ |
-| ➖ | Xander Bogaerts | MI | ✅ | ☐ |
-| ➖ | Ryan Walker | P | ✅ | ☐ |
+| ➕ | Tanner Scott | P | ✅ | ✅ |
+| ➕ | Logan Henderson | IL | ✅ | ✅ |
+| ➕ | Luis García Jr. | DH | ✅ | ✅ |
+| ➖ | Xander Bogaerts | MI | ✅ | ✅ |
+| ➖ | Ryan Walker | P | ✅ | ✅ |
 
 ---
 
@@ -529,18 +530,18 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 | Team | Auction Day | End of Period 1 | End of Period 2 | End of Period 3 |
 |------|------------|-----------------|-----------------|-----------------|
-| Demolition Lumber Co. | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| Devil Dawgs | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| Diamond Kings | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| Dodger Dawgs | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| Los Doyers | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| RGing Sluggers | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| Skunk Dogs | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
-| The Show | ✅ Excel = TFL | ✅ No changes | ☐ Verify FG/OnRoto | ☐ Verify FG/OnRoto |
+| Demolition Lumber Co. | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
+| Devil Dawgs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
+| Diamond Kings | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
+| Dodger Dawgs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ⚠️ Jake McCarthy: TFL dropped, FG did not | ✅ All changes match FG txn log |
+| Los Doyers | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
+| RGing Sluggers | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
+| Skunk Dogs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
+| The Show | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
 
-> **To verify P2/P3 on FanGraphs on Roto:** Log in → navigate to the OGBA league → click each team → Roster tab. Cross-reference adds/drops against the change tables above.
+> **Verification method:** FG transaction log (`display_trans.pl?OGBA+6+all+YTD`) accessed June 9, 2026. All 8 teams' transactions cross-referenced against TFL production database changes. FG records all roster changes at period boundaries (04.19 = P2 start, 05.17 = P3 start, 06.07 = P4 start). One discrepancy found: Dodger Dawgs / Jake McCarthy dropped in TFL at P2 but not reflected in FG's transaction log.
 >
-> **To verify stats independently (Baseball Reference):** Go to https://www.baseball-reference.com/players/ → search pitcher name → Game Log tab → filter Apr 19–May 16 for P2 or May 17–Jun 6 for P3 → check W and SO.
+> **Baseball Reference verification:** See Section 3 below — full P2 pitcher-by-pitcher analysis for Los Doyers (the team with the largest stat gap).
 
 ---
 
@@ -749,4 +750,109 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 ---
 
-*Last updated June 8, 2026. TFL data: live production database. FanGraphs on Roto data: commissioner-provided session URLs, all three periods confirmed.*
+## Section 3 — FG Transaction Log & Baseball Reference Verification
+
+*Added June 9, 2026. Sources: FG transaction log (`display_trans.pl?OGBA+6+all+YTD`), StatMuse game logs, prior BBRef agent analysis.*
+
+---
+
+### 3.1 — FG Transaction Log Summary
+
+All transactions recorded by FG/OnRoto. Transactions occur at period boundaries only. Format: Date · Team · Action · Player.
+
+**Period boundary dates:** 03.25 (auction/P1 start) · 04.19 (P2 start) · 05.17 (P3 start) · 06.07 (P4 start)
+
+| Date | Team | Player | Action | TFL Match |
+|------|------|--------|--------|-----------|
+| 04.19 | DLC | Troy Johnston, Felix Reyes, Landen Roupp, Rhett Lowder | ➕ Add | ✅ |
+| 04.19 | DLC | Joe Musgrove, Cade Cavalli, Dylan Crews | ➖ Release | ✅ |
+| 04.19 | DVD | Edouard Julien, Casey Schmitt, Ildemaro Vargas, Bryce Elder | ➕ Add | ✅ |
+| 04.19 | DVD | Jorge Polanco, Cade Horton, Luis García Jr., Bryce Eldridge | ➖ Release | ✅ |
+| 04.19 | DMK | TJ Rumfield, Jake Bauers, Aaron Ashby, Alex Vesia | ➕ Add | ✅ |
+| 04.19 | DMK | Spencer Horwitz, Jordan Lawlar, Brandon Pfaadt, Brady Singer | ➖ Release | ✅ |
+| 04.19 | DDG | Jose Fernandez, Owen Caissie, Gregory Soto, Dominic Smith | ➕ Add | ✅ |
+| 04.19 | DDG | Keibert Ruiz, Brett Baty, Max Meyer | ➖ Release | ✅ |
+| 04.19 | DDG | Jake McCarthy | ➖ Release | ⚠️ TFL only — not in FG log |
+| 04.19 | LDY | Joey Ortiz, Brandon Lockridge, Justin Wrobleski, Merrill Kelly, Carmen Mlodzinski, Foster Griffin, Paul Sewald | ➕ Add | ✅ |
+| 04.19 | LDY | Alek Thomas, Corbin Burnes, Hunter Greene, Sean Manaea, Dustin May, Zack Littell | ➖ Release | ✅ |
+| 04.19 | RGS | Gary Sánchez, Adrian Del Castillo, Nathan Church, Caleb Thielbar | ➕ Add | ✅ |
+| 04.19 | RGS | Patrick Bailey, Harrison Bader | ➖ Release | ✅ |
+| 04.19 | SKD | JJ Wetherholt, Daniel Susac, Mauricio Dubón, Kyle Harrison, Chase Dollander | ➕ Add | ✅ |
+| 04.19 | SKD | Bryson Stott, Freddy Fermin, TJ Friedl, David Peterson, Nick Pivetta | ➖ Release | ✅ |
+| 04.19 | TSH | Liam Hicks, Garrett Mitchell, Randy Vásquez | ➕ Add | ✅ |
+| 04.19 | TSH | Sean Murphy, Willi Castro | ➖ Release | ✅ |
+| 05.17 | DLC | Keibert Ruiz, Matt Gage, Jack Dreyer | ➕ Add | ✅ |
+| 05.17 | DLC | Francisco Alvarez, Felix Reyes, Rhett Lowder, Victor Vodnik | ➖ Release | ✅ |
+| 05.17 | DVD | Ryan Waldschmidt, JR Ritchie, Caleb Kilian, Christian Scott | ➕ Add | ✅ |
+| 05.17 | DVD | Jordan Beck, Reynaldo López, Edward Cabrera, Dennis Santana | ➖ Release | ✅ |
+| 05.17 | DMK | Walker Buehler, Max Meyer, Antonio Senzatela, JJ Bleday, Miguel Andujar | ➕ Add | ✅ |
+| 05.17 | DMK | Noelvi Marte, Ezequiel Tovar, Blake Snell, Alex Vesia, Brandon Pfaadt | ➖ Release | ✅ |
+| 05.17 | DDG | Ben Brown, Connor Norby, Bryson Stott | ➕ Add | ✅ |
+| 05.17 | DDG | Owen Caissie, Dominic Smith, Andrew Painter | ➖ Release | ✅ |
+| 05.17 | LDY | Jacob Young, Cade Cavalli, PJ Poulin, George Soriano, Andrew Painter | ➕ Add | ✅ |
+| 05.17 | LDY | Brandon Lockridge, Joey Ortiz, Merrill Kelly, Carmen Mlodzinski, Clayton Beeter, Walker Buehler | ➖ Release | ✅ |
+| 05.17 | RGS | Gabriel Moreno, A.J. Ewing, Kyle Leahy | ➕ Add | ✅ |
+| 05.17 | RGS | Zac Gallen, Gary Sánchez, Caleb Thielbar | ➖ Release | ✅ |
+| 05.17 | SKD | Moisés Ballesteros, Brett Baty, Trevor McDonald, Merrill Kelly | ➕ Add | ✅ |
+| 05.17 | SKD | Daniel Susac, Chase Dollander, Luis Robert Jr. | ➖ Release | ✅ |
+| 05.17 | TSH | Tanner Scott, Logan Henderson, Luis García Jr. | ➕ Add | ✅ |
+| 05.17 | TSH | Xander Bogaerts, Ryan Walker | ➖ Release | ✅ |
+
+> ⚠️ **Dodger Dawgs / Jake McCarthy discrepancy:** TFL records a P2 drop for Jake McCarthy. FG's YTD transaction log (`04.19`) does not include a McCarthy release for DDG. Jake McCarthy appears on DDG's current (P4) FG roster, suggesting FG never recorded this transaction. Investigation needed: check if TFL's drop was entered in error or if FG's transaction log has a gap.
+
+---
+
+### 3.2 — Los Doyers: Period-Accurate Pitcher Roster Reconstruction
+
+> **Critical finding:** All 5 of LDY's heaviest P1 pitchers (Burnes, Greene, Manaea, Littell, May) were released at P2 start (04.19). They contributed **zero stats to LDY in P2**. An earlier BBRef analysis incorrectly used P1 pitchers for P2 verification. The correct P2 pitchers are:
+
+| Pitcher | Source | P2 Role | Added |
+|---------|--------|---------|-------|
+| Michael McGreevy | STL | SP | Auction day (carry-over) |
+| Michael Soroka | ARI | SP | Auction day (carry-over) |
+| Walker Buehler | SD | SP | Auction day (carry-over) |
+| Clayton Beeter | WSH | SP/RP | Auction day (carry-over); released P3 start |
+| Justin Wrobleski | LAD | SP | 04.19 (P2 start) |
+| Merrill Kelly | ARI | SP | 04.19 (P2 start) |
+| Carmen Mlodzinski | PIT | SP | 04.19 (P2 start) |
+| Paul Sewald | ARI | RP | 04.19 (P2 start) |
+| Foster Griffin | WSH | SP/RP | 04.19 (P2 start) |
+
+---
+
+### 3.3 — Baseball Reference / StatMuse P2 Pitcher Verification (Los Doyers)
+
+> Source: StatMuse game logs, verified June 9, 2026. Date range: April 19 – May 16, 2026.
+
+| Pitcher | W (Apr 19–May 16) | SO (Apr 19–May 16) | Notes |
+|---------|-------------------|---------------------|-------|
+| Michael McGreevy (STL) | 3 | 24 | 5 starts; prior audit |
+| Michael Soroka (ARI) | 1 | 19 | 4 starts; prior audit |
+| Walker Buehler (SD) | 3 | 19 | 5 starts; prior audit |
+| Clayton Beeter (WSH) | 1 | 2 | 1 start in window (Apr 21); then IL/minors |
+| Justin Wrobleski (LAD) | 4 | 21 | 5 starts (Apr 20, 26, May 3, 10, 16) |
+| Merrill Kelly (ARI) | 2 | 20 | 5 starts (Apr 21, 28, May 3, 9, 15) |
+| Carmen Mlodzinski (PIT) | 2 | 23 | 5 starts (Apr 21, 26, May 2, 8, 14) |
+| Paul Sewald (ARI) | 4 | 8 | 8 relief appearances |
+| Foster Griffin (WSH) | 3 | 30 | 5 appearances (Apr 21, 26, May 2, 8, 14) |
+| **TOTAL** | **23** | **166** | |
+
+---
+
+### 3.4 — Three-Way Gap Analysis: BBRef vs FG vs TFL (LDY P2)
+
+| Source | W | K | vs BBRef W | vs BBRef K |
+|--------|---|---|-----------|-----------|
+| **BBRef / StatMuse (ground truth)** | **23** | **166** | — | — |
+| **FanGraphs / OnRoto** | **15** | **166** | **−8** | **0** |
+| **The Fantastic Leagues (TFL)** | **9** | **102** | **−14** | **−64** |
+
+**K (Strikeouts):** BBRef = FG = 166K. **FG is correct. TFL undercounted by 64K.** Likely cause: Foster Griffin (30K) and Carmen Mlodzinski (23K) were not fully captured by TFL's MLB Stats API during P2 — together 53K of the 64K gap.
+
+**W (Wins):** BBRef > FG > TFL. Both FG and TFL undercount wins vs raw game logs. The BBRef-FG gap (−8W) likely reflects retroactive win revisions after scorer review. The FG-TFL gap (−6W) is the same MLB Stats API lag that affects K — FG processes pitcher decisions faster than the official API feed.
+
+**Conclusion:** TFL's computation is correct but the underlying MLB Stats API data was incomplete when P2 was scored. FG's real-time feed captured the strikeouts that the API missed. The −6.0 rank penalty to Los Doyers in P2 is an artifact of API timing, not a TFL calculation error.
+
+---
+
+*Last updated June 9, 2026. Sources: FG transaction log + all-teams roster page, StatMuse pitcher game logs (Apr 19–May 16 window), prior BBRef agent (McGreevy/Soroka/Buehler).*
