@@ -557,12 +557,21 @@ export default function Team() {
     if (!canManage) return [];
     const onIl = p.assignedSlot === "IL";
     if (onIl) {
-      return [{
-        key: "activate-il",
-        label: "Activate from IL",
-        glyph: "→",
-        onSelect: () => navigate(`/teams/${code}/manage/il-activate`),
-      }];
+      return [
+        {
+          key: "activate-il",
+          label: "Activate from IL",
+          glyph: "→",
+          onSelect: () => navigate(`/teams/${code}/manage/il-activate`),
+        },
+        {
+          key: "il-release",
+          label: "Release from IL",
+          glyph: "✕",
+          destructive: true,
+          onSelect: () => navigate(`/teams/${code}/manage/il-release?playerId=${p.playerId}`),
+        },
+      ];
     }
     return [
       {

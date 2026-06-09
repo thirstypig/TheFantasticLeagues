@@ -2,6 +2,7 @@
 import { fetchJsonApi, API_BASE, parseJsonResponse } from '../../api/base';
 import {
     ClaimRequestSchema,
+    DropRequestSchema,
     IlStashRequestSchema,
     IlActivateRequestSchema,
     SyncIlStatusBodySchema,
@@ -10,6 +11,7 @@ import {
 import type {
     ClaimRequest as SharedClaimRequest,
     ClaimResponse,
+    DropRequest as SharedDropRequest,
     IlStashRequest as SharedIlStashRequest,
     IlStashResponse,
     IlActivateRequest as SharedIlActivateRequest,
@@ -24,6 +26,7 @@ import type {
 export type {
     SharedClaimRequest as ClaimRequest,
     ClaimResponse,
+    SharedDropRequest as DropRequest,
     SharedIlStashRequest as IlStashRequest,
     IlStashResponse,
     SharedIlActivateRequest as IlActivateRequest,
@@ -165,6 +168,14 @@ export async function ilActivate(params: IlActivateParams): Promise<{ success: b
 export async function previewIlActivate(params: IlActivateParams): Promise<RosterMovePreviewResult> {
     const body = IlActivateRequestSchema.parse(params);
     return fetchJsonApi<RosterMovePreviewResult>(`${API_BASE}/transactions/il-activate/preview`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
+}
+
+export async function drop(params: SharedDropRequest): Promise<{ success: boolean; playerId: number }> {
+    const body = DropRequestSchema.parse(params);
+    return fetchJsonApi(`${API_BASE}/transactions/drop`, {
         method: 'POST',
         body: JSON.stringify(body),
     });

@@ -2,14 +2,14 @@
 //
 // Outlet-mounted child route for the v3 hub manage flows. Routed under
 // `/teams/:teamCode/manage/:mode` where `:mode` ∈ {claim, il-stash,
-// il-activate}. Reads the URL segment + the parent Team layout's shared
+// il-activate, il-release}. Reads the URL segment + the parent Team layout's shared
 // state (panel inputs) via `useOutletContext`, and renders the matching
 // transactions panel inside a `SubrouteContainer`. Per todo #150, this
 // replaces the legacy three-`useMatch` + ternary chain in Team.tsx with
 // a declarative nested route.
 //
 // The transactions panels themselves (AddDropPanel / PlaceOnIlPanel /
-// ActivateFromIlPanel) are unchanged — this component only owns the
+// ActivateFromIlPanel / DropFromIlPanel) are unchanged — this component only owns the
 // "which panel for which URL" decision plus the surrounding container
 // chrome (title, blurb, back button).
 
@@ -18,16 +18,18 @@ import { SubrouteContainer } from "./SubrouteContainer";
 import AddDropPanel from "../../../transactions/components/RosterMovesTab/AddDropPanel";
 import PlaceOnIlPanel from "../../../transactions/components/RosterMovesTab/PlaceOnIlPanel";
 import ActivateFromIlPanel from "../../../transactions/components/RosterMovesTab/ActivateFromIlPanel";
+import DropFromIlPanel from "../../../transactions/components/RosterMovesTab/DropFromIlPanel";
 import type { RosterMovesPlayer } from "../../../transactions/components/RosterMovesTab/types";
 import { useTeamManageContext } from "../../pages/teamManageContext";
 
 /** URL `:mode` segment vocabulary — pinned so a typo in App.tsx surfaces here. */
-type ManageMode = "claim" | "il-stash" | "il-activate";
+type ManageMode = "claim" | "il-stash" | "il-activate" | "il-release";
 
 const TITLES: Record<ManageMode, string> = {
   "claim": "Add free agent",
   "il-stash": "Place on IL",
   "il-activate": "Activate from IL",
+  "il-release": "Release from IL",
 };
 
 const BLURBS: Record<ManageMode, string> = {
@@ -37,10 +39,17 @@ const BLURBS: Record<ManageMode, string> = {
     "Move an injured player to your IL slot and bring in a replacement at their vacated position.",
   "il-activate":
     "Return a player from IL and pick an active-roster player to drop in their place.",
+  "il-release":
+    "Permanently release an IL-slotted player from your roster. The IL slot is freed immediately.",
 };
 
 function isManageMode(value: string | undefined): value is ManageMode {
-  return value === "claim" || value === "il-stash" || value === "il-activate";
+  return (
+    value === "claim" ||
+    value === "il-stash" ||
+    value === "il-activate" ||
+    value === "il-release"
+  );
 }
 
 export function ManagePanel() {
@@ -82,7 +91,7 @@ export function ManagePanel() {
           effectiveDate={effectiveDate}
           initialStashPlayerId={ctx.initialManagePlayerId}
         />
-      ) : (
+      ) : mode === "il-activate" ? (
         <ActivateFromIlPanel
           leagueId={ctx.leagueId}
           teamId={ctx.teamId}
@@ -90,6 +99,15 @@ export function ManagePanel() {
           onComplete={ctx.onPanelComplete}
           effectiveDate={effectiveDate}
           initialActivatePlayerId={ctx.initialManagePlayerId}
+        />
+      ) : (
+        <DropFromIlPanel
+          leagueId={ctx.leagueId}
+          teamId={ctx.teamId}
+          players={players}
+          onComplete={ctx.onPanelComplete}
+          effectiveDate={effectiveDate}
+          initialReleasePlayerId={ctx.initialManagePlayerId}
         />
       )}
     </SubrouteContainer>
