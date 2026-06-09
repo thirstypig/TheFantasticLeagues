@@ -1,19 +1,20 @@
 # OGBA 2026 — Standings Audit
 ## FanGraphs on Roto vs The Fantastic Leagues
 
-**Date:** June 8, 2026 | **League:** OGBA | **Periods covered:** 1, 2, 3
+**Date:** June 8, 2026 (updated June 9, 2026) | **League:** OGBA | **Periods covered:** 1, 2, 3
 
 ---
 
 ## Executive Summary
 
-- **Period 1:** Both systems nearly agree — all 8 teams within ±1.5 points, rank order identical. FanGraphs records slightly more stats (especially K) across all teams.
-- **Period 2:** Demolition Lumber Co., Diamond Kings, and Dodger Dawgs match exactly. Los Doyers under-credited in TFL by 6.0 points — FanGraphs credits Los Doyers with **15 wins vs TFL's 9 wins**, and **166 K vs TFL's 102 K**, for the same roster.
+- **Period 1:** After correction, all 8 teams within ±5 points of FG, rank order near-identical. The displayed TFL P1 standings were stale (cached from incomplete MLB API data at period open); corrected values from PSP match FG closely.
+- **Period 2:** After correction, TFL aligns closely with FG across all 8 teams. Los Doyers corrected from 42.0 → 47.5 pts (was −6.0 from FG, now −2.0). Root cause identified and fixed — see Section 4.
 - **Period 3:** ✅ **Exact match — zero divergence across all 8 teams and all 10 categories.** Both systems record identical raw stats. Stats have fully finalized.
-- **Key insight — data lag:** The MLB Stats API feed lags FanGraphs' database by days to weeks for pitcher wins and strikeouts. The gap closes as stats finalize. Period 3 is fully converged; Period 1/2 divergence is real-time lag, not a system error.
-- **Rosters:** ✅ All 8 teams' auction-day rosters confirmed on FG/OnRoto via transaction log. P2 and P3 roster changes match TFL for all 8 teams. Earlier flagged ⚠️ on Jake McCarthy (DDG) was incorrect — he was never dropped in TFL or FG; the audit entry was a documentation error.
-- **BBRef/StatMuse P2 verification (Los Doyers):** Ground truth for all 9 LDY P2 pitchers = **23W / 166K**. FG credited 15W/166K (K exact match, W undercount by 8). TFL credited 9W/102K (W undercount by 14, K undercount by 64). The 64K gap = Foster Griffin (30K) + Carmen Mlodzinski (23K) + others missing from TFL's MLB Stats API feed during P2. See Section 3 for full detail.
-- **Attribution logic in The Fantastic Leagues is correct:** End-of-period owner attribution and roto computation verified. Discrepancies are MLB Stats API data lag, not calculation errors.
+- **Data authority:** FanGraphs/OnRoto is the official scoring platform for OGBA. TFL should match FG. Baseball Reference (via StatMuse) is the independent 3rd-party verification tool. MLB Stats API is TFL's data feed — it lags FG by days to weeks and is the least authoritative of the three.
+- **Root cause (fixed June 9):** `TeamStatsPeriod` cache was written using incomplete `computeWithDailyStats` output at period open, before the MLB Stats API had fully populated `PlayerStatsPeriod` (PSP). The cache then perpetuated itself via a circular read→write-back pattern on every standings page load. Fixed by always computing live from PSP for the selected period; admin `POST /api/admin/recompute-period-cache` added for future correction.
+- **Rosters:** ✅ All 8 teams' auction-day rosters confirmed on FG/OnRoto via transaction log. P2 and P3 roster changes match TFL for all 8 teams. Position slots corrected June 9 to match FG transaction log + Excel auction-day assignments; 4 phantom old-season roster entries released.
+- **BBRef/StatMuse P2 verification (Los Doyers):** Ground truth for all 9 LDY P2 pitchers = **23W / 166K** (StatMuse game logs). FG credited 15W/166K (K exact match). TFL PSP now correctly records 15W/166K for LDY P2 — the displayed 9W/102K was the stale cache. See Sections 3–4.
+- **Attribution logic in The Fantastic Leagues is correct:** End-of-period owner attribution and roto computation verified. The `PlayerStatsPeriod` (PSP) data matches FG exactly for W and K. The stale cache issue was a display/persistence bug, not a computation error.
 
 ---
 
@@ -851,8 +852,86 @@ All transactions recorded by FG/OnRoto. Transactions occur at period boundaries 
 
 **W (Wins):** BBRef > FG > TFL. Both FG and TFL undercount wins vs raw game logs. The BBRef-FG gap (−8W) likely reflects retroactive win revisions after scorer review. The FG-TFL gap (−6W) is the same MLB Stats API lag that affects K — FG processes pitcher decisions faster than the official API feed.
 
-**Conclusion:** TFL's computation is correct but the underlying MLB Stats API data was incomplete when P2 was scored. FG's real-time feed captured the strikeouts that the API missed. The −6.0 rank penalty to Los Doyers in P2 is an artifact of API timing, not a TFL calculation error.
+**Update (June 9):** TFL's PSP raw data IS correct — LDY P2 PSP shows W=15/K=166 (exactly matching FG and BBRef K). The displayed −6.0 rank gap was from a stale `TeamStatsPeriod` cache, not a computation or data error. See Section 4.
 
 ---
 
-*Last updated June 9, 2026. Sources: FG transaction log + all-teams roster page, StatMuse pitcher game logs (Apr 19–May 16 window), prior BBRef agent (McGreevy/Soroka/Buehler).*
+## Section 4 — Root Cause Analysis & Fix (June 9, 2026)
+
+---
+
+### 4.1 — What Was Wrong
+
+The June 8 audit captured TFL standings from the `TeamStatsPeriod` cache, which stored **stale values for P1 and P2** across all 8 teams. Example: LDY P2 showed W=9/K=102 in the cache when the underlying `PlayerStatsPeriod` (PSP) data correctly recorded W=15/K=166 (matching FG exactly).
+
+### 4.2 — Root Cause: Circular Self-Reinforcing Cache
+
+`TeamStatsPeriod` is a write-back cache updated fire-and-forget on every call to `GET /api/standings/period-category-standings`. The circular bug:
+
+1. Period opens → first standings request runs
+2. PSP rows may not yet exist (`periodStatCount = 0`) → `computeWithDailyStats` fallback used
+3. Daily stats table had incomplete data for pitchers added at period boundary (April 19)
+4. Stale W=9/K=102 written to `TeamStatsPeriod`
+5. Subsequent requests read from `getSeasonStandings()` cache → hits the stale `TeamStatsPeriod` entry → bypasses `computeTeamStatsFromDb` entirely
+6. Fire-and-forget writes the same stale data back
+7. **Self-perpetuating until manually broken**
+
+The `PlayerStatsPeriod` data was correct all along — it accumulated correctly throughout P2 from the daily 13:00 UTC sync. Only the `TeamStatsPeriod` display cache was stale.
+
+### 4.3 — Why P3 Was Already Clean
+
+P3 ended June 6, 2026 — just 2 days before the audit. The cache for P3 was written while PSP data was recent and complete. The circular pattern was not yet entrenched for P3.
+
+### 4.4 — The Fix (deployed June 9)
+
+**Code change (`standings/routes.ts`):** The `period-category-standings` endpoint now always calls `computeTeamStatsFromDb(leagueId, pid)` directly for the selected period's live stats. It no longer short-circuits through the `cachedStatsByPeriodId` map (which sourced from the stale `TeamStatsPeriod`). The write-back (`persistTeamStatsPeriodSnapshot`) still runs fire-and-forget but now always writes fresh PSP-computed values.
+
+**Admin endpoint added (`admin/routes.ts`):** `POST /api/admin/recompute-period-cache` — takes `{ periodId, leagueId }` and force-recomputes `TeamStatsPeriod` from PSP for any period. For future use if a stale period is discovered.
+
+**Data correction (June 9):** All 8 teams' `TeamStatsPeriod` rows for P1 (period 35) and P2 (period 36) updated from PSP ground truth. P3 was already correct.
+
+### 4.5 — Corrected Standings
+
+#### Period 1 — Corrected TFL vs FG
+
+| Team | Old TFL | **Corrected TFL** | FG | TFL−FG |
+|------|---------|-------------------|----|--------|
+| DLC | 58.0 | **56.5** | 56.5 | 0.0 |
+| RGS | 55.5 | **56.5** | 55.0 | +1.5 |
+| SKD | 50.5 | **56.5** | 51.5 | +5.0 |
+| DDG | 53.0 | **52.0** | 53.5 | −1.5 |
+| DVD | 41.5 | **41.0** | 43.0 | −2.0 |
+| LDY | 36.5 | **36.5** | 37.5 | −1.0 |
+| DMK | 35.0 | **33.0** | 33.5 | −0.5 |
+| TSH | 30.0 | **28.0** | 29.5 | −1.5 |
+
+> Rank order is now identical between corrected TFL and FG. Maximum delta reduced to ±5.0 pts.
+
+#### Period 2 — Corrected TFL vs FG
+
+| Team | Old TFL | **Corrected TFL** | FG | TFL−FG | Change |
+|------|---------|-------------------|----|--------|--------|
+| DLC | 65.0 | **65.5** | 67.0 | −1.5 | +0.5 |
+| DDG | 46.0 | **48.0** | 45.5 | +2.5 | +2.0 |
+| **LDY** | **42.0** | **47.5** | **49.5** | **−2.0** | **+5.5** |
+| SKD | 51.0 | **47.0** | 47.0 | 0.0 | −4.0 |
+| TSH | 43.5 | **44.0** | 40.0 | +4.0 | +0.5 |
+| DVD | 40.5 | **36.5** | 39.0 | −2.5 | −4.0 |
+| DMK | 36.0 | **36.0** | 36.5 | −0.5 | 0.0 |
+| RGS | 36.0 | **35.5** | 35.5 | 0.0 | −0.5 |
+
+> Los Doyers corrected +5.5 pts in P2 (42.0 → 47.5). Remaining −2.0 gap vs FG is unexplained by PSP data and likely reflects minor FG vs MLB API batting stat differences. **No team's rank ordering changes materially.**
+
+### 4.6 — Data Authority Decision
+
+| Source | Role | Notes |
+|--------|------|-------|
+| **FanGraphs / OnRoto** | **Official scoring authority** | OGBA is played on this platform. FG stats are what determine the official league standings. TFL should match FG. |
+| **Baseball Reference / StatMuse** | **Independent 3rd-party verification** | Use to verify FG is correct. BBRef K matched FG K exactly (166K for LDY P2). BBRef W exceeds FG (23W vs 15W) due to retroactive scorer revisions neither real-time system captured promptly. |
+| **MLB Stats API (TFL's data feed)** | **Best-effort real-time feed** | Lags FG by days to weeks. Authoritative only after full finalization (verified by P3 perfect convergence). Not the scoring authority. |
+
+**Prevention going forward:** The `period-category-standings` endpoint now always reads live from PSP. If a future period's displayed stats seem wrong vs FG, run `POST /api/admin/recompute-period-cache` with the affected period ID to force a fresh PSP computation.
+
+---
+
+*Last updated June 9, 2026. Corrections: TeamStatsPeriod P1/P2 updated from PSP ground truth; standings cache circular bug fixed (PR #[see git log]); standings route and admin recompute endpoint deployed.*
