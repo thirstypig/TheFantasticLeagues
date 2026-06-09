@@ -11,7 +11,7 @@
 - **Period 2:** Demolition Lumber Co., Diamond Kings, and Dodger Dawgs match exactly. Los Doyers under-credited in TFL by 6.0 points — FanGraphs credits Los Doyers with **15 wins vs TFL's 9 wins**, and **166 K vs TFL's 102 K**, for the same roster.
 - **Period 3:** ✅ **Exact match — zero divergence across all 8 teams and all 10 categories.** Both systems record identical raw stats. Stats have fully finalized.
 - **Key insight — data lag:** The MLB Stats API feed lags FanGraphs' database by days to weeks for pitcher wins and strikeouts. The gap closes as stats finalize. Period 3 is fully converged; Period 1/2 divergence is real-time lag, not a system error.
-- **Rosters:** ✅ All 8 teams' auction-day rosters confirmed on FG/OnRoto via transaction log. P2 and P3 roster changes match TFL for 7 of 8 teams. One discrepancy: Dodger Dawgs — TFL dropped Jake McCarthy at P2; FG transaction log does not reflect this drop.
+- **Rosters:** ✅ All 8 teams' auction-day rosters confirmed on FG/OnRoto via transaction log. P2 and P3 roster changes match TFL for all 8 teams. Earlier flagged ⚠️ on Jake McCarthy (DDG) was incorrect — he was never dropped in TFL or FG; the audit entry was a documentation error.
 - **BBRef/StatMuse P2 verification (Los Doyers):** Ground truth for all 9 LDY P2 pitchers = **23W / 166K**. FG credited 15W/166K (K exact match, W undercount by 8). TFL credited 9W/102K (W undercount by 14, K undercount by 64). The 64K gap = Foster Griffin (30K) + Carmen Mlodzinski (23K) + others missing from TFL's MLB Stats API feed during P2. See Section 3 for full detail.
 - **Attribution logic in The Fantastic Leagues is correct:** End-of-period owner attribution and roto computation verified. Discrepancies are MLB Stats API data lag, not calculation errors.
 
@@ -363,7 +363,7 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 | ➖ | Keibert Ruiz | C | ✅ | ✅ |
 | ➖ | Brett Baty | 3B | ✅ | ✅ |
 | ➖ | Max Meyer | P | ✅ | ✅ |
-| ➖ | Jake McCarthy | OF | ✅ | ⚠️ |
+| ✅ | Jake McCarthy | OF | ✅ | ✅ | — never dropped; audit entry was incorrect |
 
 #### Los Doyers (24 players)
 
@@ -533,7 +533,7 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 | Demolition Lumber Co. | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
 | Devil Dawgs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
 | Diamond Kings | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
-| Dodger Dawgs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ⚠️ Jake McCarthy: TFL dropped, FG did not | ✅ All changes match FG txn log |
+| Dodger Dawgs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
 | Los Doyers | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
 | RGing Sluggers | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
 | Skunk Dogs | ✅ Excel = TFL = FG | ✅ TFL = FG (no changes) | ✅ All changes match FG txn log | ✅ All changes match FG txn log |
@@ -772,7 +772,7 @@ All transactions recorded by FG/OnRoto. Transactions occur at period boundaries 
 | 04.19 | DMK | Spencer Horwitz, Jordan Lawlar, Brandon Pfaadt, Brady Singer | ➖ Release | ✅ |
 | 04.19 | DDG | Jose Fernandez, Owen Caissie, Gregory Soto, Dominic Smith | ➕ Add | ✅ |
 | 04.19 | DDG | Keibert Ruiz, Brett Baty, Max Meyer | ➖ Release | ✅ |
-| 04.19 | DDG | Jake McCarthy | ➖ Release | ⚠️ TFL only — not in FG log |
+| — | DDG | Jake McCarthy | (no drop) | ✅ Confirmed on roster in both TFL and FG — prior ⚠️ was audit error |
 | 04.19 | LDY | Joey Ortiz, Brandon Lockridge, Justin Wrobleski, Merrill Kelly, Carmen Mlodzinski, Foster Griffin, Paul Sewald | ➕ Add | ✅ |
 | 04.19 | LDY | Alek Thomas, Corbin Burnes, Hunter Greene, Sean Manaea, Dustin May, Zack Littell | ➖ Release | ✅ |
 | 04.19 | RGS | Gary Sánchez, Adrian Del Castillo, Nathan Church, Caleb Thielbar | ➕ Add | ✅ |
@@ -798,7 +798,7 @@ All transactions recorded by FG/OnRoto. Transactions occur at period boundaries 
 | 05.17 | TSH | Tanner Scott, Logan Henderson, Luis García Jr. | ➕ Add | ✅ |
 | 05.17 | TSH | Xander Bogaerts, Ryan Walker | ➖ Release | ✅ |
 
-> ⚠️ **Dodger Dawgs / Jake McCarthy discrepancy:** TFL records a P2 drop for Jake McCarthy. FG's YTD transaction log (`04.19`) does not include a McCarthy release for DDG. Jake McCarthy appears on DDG's current (P4) FG roster, suggesting FG never recorded this transaction. Investigation needed: check if TFL's drop was entered in error or if FG's transaction log has a gap.
+> ✅ **Dodger Dawgs / Jake McCarthy:** Jake McCarthy was never dropped. He is confirmed on DDG in both TFL (roster_id 3851, OF slot) and FG. The prior ⚠️ was an audit documentation error.
 
 ---
 
