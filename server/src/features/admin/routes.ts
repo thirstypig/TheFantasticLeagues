@@ -13,6 +13,7 @@ import { buildDashboard } from "./services/dashboardService.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
 import { syncAllPlayers, syncPositionEligibility, syncAAARosters, enrichStalePlayers } from "../players/services/mlbSyncService.js";
 import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
+import { computeTeamStatsFromDb } from "../standings/services/standingsService.js";
 import * as errorBuffer from "../../lib/errorBuffer.js";
 import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
 import { BUFFER_CAPACITY } from "../../lib/errorBuffer.js";
@@ -317,6 +318,57 @@ router.post("/admin/sync-stats", requireAuth, requireAdmin, validateBody(syncSta
   });
 
   return res.json({ success: true, scope: "all_active" });
+}));
+
+/**
+ * POST /api/admin/recompute-period-cache
+ * Force-recompute TeamStatsPeriod cache for a specific period from PlayerStatsPeriod
+ * (PSP) ground truth. Use when the displayed standings for a completed period
+ * diverge from PSP — the circular stale-cache bug could cause this if the cache
+ * was first written before PSP data was complete.
+ * Body: { periodId: number, leagueId: number }
+ */
+const recomputePeriodCacheSchema = z.object({
+  periodId: z.number().int().positive(),
+  leagueId: z.number().int().positive(),
+});
+
+router.post("/admin/recompute-period-cache", requireAuth, requireAdmin, validateBody(recomputePeriodCacheSchema), asyncHandler(async (req, res) => {
+  const { periodId, leagueId } = req.body as { periodId: number; leagueId: number };
+
+  const period = await prisma.period.findFirst({ where: { id: periodId, leagueId } });
+  if (!period) return res.status(404).json({ error: "Period not found in this league" });
+
+  const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
+  // Inline upsert — mirrors persistTeamStatsPeriodSnapshot from standings/routes.ts
+  // but avoids importing the full standings router (which drags requireLeagueMember
+  // into the module graph and breaks admin-only test suites).
+  if (teamStats.length > 0) {
+    await prisma.$transaction(
+      teamStats.map(t => prisma.teamStatsPeriod.upsert({
+        where: { teamId_periodId: { teamId: t.team.id, periodId } },
+        update: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
+        create: { teamId: t.team.id, periodId, R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
+      }))
+    );
+  }
+
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "PERIOD_CACHE_RECOMPUTE",
+    resourceType: "Period",
+    resourceId: String(periodId),
+    metadata: { leagueId, periodId, teamCount: teamStats.length },
+  });
+
+  return res.json({
+    success: true,
+    periodId,
+    leagueId,
+    periodName: period.name,
+    teamsUpdated: teamStats.length,
+    stats: teamStats.map(t => ({ code: t.team.code, W: t.W, K: t.K, R: t.R })),
+  });
 }));
 
 /**

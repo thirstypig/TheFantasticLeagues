@@ -21,7 +21,7 @@ vi.mock("../../../db/prisma.js", () => ({
     teamStatsSeason: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     leagueMembership: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     leagueRule: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), findFirst: vi.fn() },
-    period: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    period: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), findFirst: vi.fn() },
     $transaction: vi.fn(async (ops: any[]) => Promise.all(ops)),
   },
 }));
@@ -62,6 +62,10 @@ vi.mock("../../players/services/mlbSyncService.js", () => ({
 vi.mock("../../players/services/mlbStatsSyncService.js", () => ({
   syncPeriodStats: vi.fn().mockResolvedValue({ synced: 20, skipped: 2, errors: 0 }),
   syncAllActivePeriods: vi.fn().mockResolvedValue(undefined),
+}));
+const mockComputeTeamStatsFromDb = vi.fn();
+vi.mock("../../standings/services/standingsService.js", () => ({
+  computeTeamStatsFromDb: (...args: any[]) => mockComputeTeamStatsFromDb(...args),
 }));
 vi.mock("../../../lib/schemas.js", () => ({
   addMemberSchema: { parse: vi.fn() },
@@ -511,5 +515,73 @@ describe("GET /admin/users", () => {
     expect(res.body.users[0].totalLogins).toBe(0);
     expect(res.body.users[0].lastLoginAt).toBeNull();
     expect(res.body.users[0].country).toBeNull();
+  });
+});
+
+// ── POST /admin/recompute-period-cache ──────────────────────────
+
+describe("POST /admin/recompute-period-cache", () => {
+  const sampleTeamStats = [
+    { team: { id: 1, name: "Los Doyers", code: "LDY" }, W: 15, K: 166, R: 159, HR: 46, RBI: 147, SB: 22, AVG: 0.247, S: 2, ERA: 4.40, WHIP: 1.293 },
+    { team: { id: 2, name: "Demolition", code: "DLC" }, W: 14, K: 209, R: 154, HR: 28, RBI: 155, SB: 24, AVG: 0.271, S: 15, ERA: 3.41, WHIP: 1.130 },
+  ];
+
+  it("returns 404 when period does not exist in the league", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue(null);
+
+    const res = await supertest(app)
+      .post("/admin/recompute-period-cache")
+      .send({ periodId: 99, leagueId: 20 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("Period not found in this league");
+    expect(mockComputeTeamStatsFromDb).not.toHaveBeenCalled();
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("calls computeTeamStatsFromDb and upserts TeamStatsPeriod rows", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 36, leagueId: 20, name: "Period 2" });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockPrisma.teamStatsPeriod.upsert = vi.fn().mockResolvedValue({});
+
+    const res = await supertest(app)
+      .post("/admin/recompute-period-cache")
+      .send({ periodId: 36, leagueId: 20 });
+
+    expect(res.status).toBe(200);
+    expect(mockComputeTeamStatsFromDb).toHaveBeenCalledWith(20, 36);
+    // One upsert per team (2 teams in sample)
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("returns correct response shape with W/K/R spot-check", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 36, leagueId: 20, name: "Period 2" });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockPrisma.teamStatsPeriod.upsert = vi.fn().mockResolvedValue({});
+
+    const res = await supertest(app)
+      .post("/admin/recompute-period-cache")
+      .send({ periodId: 36, leagueId: 20 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.periodId).toBe(36);
+    expect(res.body.periodName).toBe("Period 2");
+    expect(res.body.teamsUpdated).toBe(2);
+    expect(res.body.stats).toHaveLength(2);
+    expect(res.body.stats[0]).toMatchObject({ code: "LDY", W: 15, K: 166 });
+  });
+
+  it("uses period.findFirst scoped to leagueId to prevent cross-league IDOR", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue(null);
+
+    await supertest(app)
+      .post("/admin/recompute-period-cache")
+      .send({ periodId: 36, leagueId: 99 }); // wrong leagueId
+
+    // Must scope the lookup: { id: periodId, leagueId }
+    expect(mockPrisma.period.findFirst).toHaveBeenCalledWith({
+      where: { id: 36, leagueId: 99 },
+    });
   });
 });

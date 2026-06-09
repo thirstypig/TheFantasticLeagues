@@ -137,7 +137,13 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
   const cachedStatsByPeriodId = new Map(
     seasonData.periodIds.map((id, i) => [id, seasonData.periodData[i].teamStats])
   );
-  const teamStats = cachedStatsByPeriodId.get(pid) ?? await computeTeamStatsFromDb(leagueId, pid);
+  // Always compute live from PSP for the selected period — never short-circuit
+  // through the TeamStatsPeriod cache here. The cache is the DELTA source (read
+  // at line ~200 via `snapshots`), not the current-state source. Reading it here
+  // created a circular self-reinforcing stale-cache bug: stale read → stale
+  // write-back → stays stale forever across period close. The fire-and-forget
+  // persistTeamStatsPeriodSnapshot below will update the cache with fresh values.
+  const teamStats = await computeTeamStatsFromDb(leagueId, pid);
 
   // Compute season-to-date stats
   // Use findFirst scoped to leagueId to prevent cross-league period probing (IDOR).
