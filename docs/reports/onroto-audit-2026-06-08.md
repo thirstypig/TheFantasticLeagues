@@ -979,10 +979,63 @@ The "23 W" table was re-verified appearance-by-appearance using pitcher decision
 
 - [x] Data: fix `acquiredAt` for the two P1 artifact roster rows (Ohtani synthetic pitcher → 2026-03-25T00:00Z; Andrew Vaughn → 2026-03-25T00:00Z). *(Done 2026-06-09 PM — roster rows 3915, 3835.)*
 - [x] Data: rebuild P1 PSP under the correct boundary (`syncPeriodStats(35)`: 183 synced, 0 errors) and recompute the P1 `TeamStatsPeriod` cache. *(Done 2026-06-09 PM. Browser-verified on prod: P1 standings = FG points exactly for all 8 teams. Todo #284.)*
-- [ ] Code: date-normalize the `hasMidPeriodPickup` comparison (acquisitions on the period start date are boundary-aligned, not mid-period). *(Todo #285.)*
+- [x] Code: date-normalize the `hasMidPeriodPickup` comparison (acquisitions on the period start date are boundary-aligned, not mid-period). *(Todo #285 — shipped in PR #393 with 3 TDD path-routing tests.)*
 - [ ] Code (follow-up): hybrid PSP+daily attribution for periods with real mid-period pickups, so P3+ stays on accurate PSP data for boundary-aligned players. *(Todo #286.)*
-- [ ] Process: re-sync each period's PSP once, ~3 days after it closes.
+- [ ] Process: automated one-shot PSP re-sync of each period ~3 days after it closes. *(Todo #287.)*
 
 ---
 
-*Last updated June 9, 2026 (PM). Section 5 added: P1 boundary-inflation root cause + exact FG reconciliation for all closed periods; Sections 3.3/3.4 corrected (BBRef pitcher decisions: 15W/166K, all sources agree); Section 4.5 superseded. Earlier corrections: TeamStatsPeriod stale-cache circular bug fixed (PR #391); admin recompute endpoint deployed.*
+## Section 6 — Issues Found: Detection, Correction, Prevention
+
+A consolidated record of every defect this audit surfaced — what it was, how it was found, how it was (or will be) corrected, and what prevents a recurrence.
+
+### Issue 1 — Circular stale `TeamStatsPeriod` cache *(fixed)*
+
+| | |
+|---|---|
+| **What** | The standings endpoint served a write-back cache that was first populated from incomplete daily data at period open, then re-wrote its own stale values on every page load. LDY P2 displayed 9 W / 102 K while the underlying PSP correctly held 15 W / 166 K. |
+| **How found** | June 8 audit: FG showed +6 W / +64 K for the same LDY roster. Querying PSP directly showed the *database* agreed with FG — only the displayed cache differed. |
+| **Correction** | PR #391: the `period-category-standings` endpoint always computes live from PSP; cached P1/P2 rows rewritten; admin `POST /api/admin/recompute-period-cache` added. |
+| **Prevention** | The cache can no longer short-circuit the live computation; the admin endpoint exists for one-off correction if a stale row is ever observed again. |
+
+### Issue 2 — P1 PSP rows frozen with a stale period boundary (April-19 inflation) *(fixed)*
+
+| | |
+|---|---|
+| **What** | Every player's stored P1 stat row included the games of April 19 — P2's first day. The last P1 sync ran while P1's boundary still extended through 4/19; the boundary was later corrected to 4/18, but closed periods are never re-synced, so the extra day stayed baked in. Effect: TFL P1 read systematically high vs FG (+2..+7 R, up to +16 K per team) and season sums double-counted one day. |
+| **How found** | The decisive experiment: for every P1 player, diff the stored PSP row against a **fresh MLB API fetch of the identical 3/25–4/18 range**. The per-team diff reproduced the TFL−FG delta **cell-for-cell**, and each player's surplus equaled exactly his April 19 box score (Robbie Ray +7 K, Mitch Keller +5 K/+1 W, Devin Williams +3 K). This also disproved the earlier "MLB API lag" and "scorer revision" theories — the official record, FG, and BBRef all agreed; only our frozen rows differed. |
+| **Correction** | Todo #284 (executed June 9 PM): `syncPeriodStats(35)` re-ran under the correct boundary (183 players, 0 errors), cache recomputed, browser-verified on prod — P1 now equals FG exactly, all 8 teams, all categories. |
+| **Prevention** | Todo #287: automated one-shot re-sync of a period shortly after it closes (also picks up genuine late MLB stat corrections). Operationally: any future edit to a period's start/end dates **must** be followed by `POST /api/admin/sync-stats {periodId}`. |
+
+### Issue 3 — `hasMidPeriodPickup` compared timestamps, not dates *(fixed)*
+
+| | |
+|---|---|
+| **What** | Two artifact roster rows — Ohtani's synthetic pitcher row (`acquiredAt` 3/29, created late during data setup) and Andrew Vaughn (`acquiredAt` 3/25 **noon**, period starts 00:00) — registered as "mid-period pickups," silently flipping all of P1 onto the daily-stats fallback. That table has the 3/25–3/28 cold-start gap, so the **live** P1 standings were undercounted even after the cache fix. |
+| **How found** | Instrumenting which source path `computeTeamStatsFromDb` takes per period: P1 reported "mid-period pickup detected" in a period with zero real transactions. Listing the offending rows exposed the two timestamps. |
+| **Correction** | Data: both rows normalized to 2026-03-25T00:00Z (todo #284). Code: PR #393 compares at UTC calendar-date granularity — acquisitions on the period's start/end *date* are boundary-aligned; one day inside is still mid-period. TDD: 3 path-routing tests (red before fix). |
+| **Prevention** | The PR #393 regression tests pin the behavior; timestamp noise from import scripts can never flip a period's source path again. |
+
+### Issue 4 — One real mid-period pickup degrades the whole period (P3 regression) *(open — todo #286)*
+
+| | |
+|---|---|
+| **What** | Three genuine mid-period wire adds (DMK Spiers + Ashby 5/22, SKD Dollander 6/3) correctly trigger the ADR-013 daily fallback — but for **all** players, not just the three. The daily table's doubleheader collapse makes live P3 slightly wrong (e.g. DMK K 154 vs FG 152) even though P3's PSP data is verified FG-exact. |
+| **How found** | Same path instrumentation as Issue 3: P3 reported the daily path; recomputing P3 under PSP semantics matched FG exactly, isolating the deviation to the fallback's table, not the data. |
+| **Correction** | Todo #286: hybrid attribution — PSP rows for boundary-aligned players, daily ownership-windows only for the mid-period acquisitions. |
+| **Prevention** | The differential test suite will pin hybrid vs pure-path behavior once #286 lands. |
+
+### Issue 5 — Audit methodology errors (the false leads)
+
+These weren't product bugs, but they produced the wrong June 8 conclusions and cost a day — recorded so they aren't repeated:
+
+| Error | What went wrong | Rule going forward |
+|---|---|---|
+| **StatMuse "23 W"** | Per-pitcher game-log scrape counted **team results** in games the pitcher appeared (Sewald "4 W" was actually 0–2). | Always query **pitcher decisions**; cross-check with a "record between dates" query (e.g. Buehler's log misread 5/10 as a W; the record query returned 2–1). |
+| **FG P2 by subtraction** | `Accumulated − P3 − P1` was computed after P4 had started, so P4's first games leaked into the "P2" remainder (TSH +11 RBI phantom). | Never derive a period by subtraction unless every term is from the same frozen instant; validate against FG's own YTD totals (guest-accessible team pages). |
+| **`audit_period.ts` as source of truth** | The script classifies hitters/pitchers by *current* `assignedPosition` (a currently-IL'd pitcher's stats vanish) and double-counts drop-and-re-add players. Its "deltas" were partly tooling artifacts. | Audit with production semantics (`computeTeamStatsFromDb`) or a faithful replica; treat `audit_period.ts` output as approximate. |
+| **"Lag" as default explanation** | Divergence on **closed** periods was attributed to data-source lag. Lag only ever applies to the **active** period (TFL syncs 4×/day, FG nightly). | Any persistent closed-period divergence is a TFL-side defect until proven otherwise — final official stats are identical everywhere. |
+
+---
+
+*Last updated June 9, 2026 (PM). Section 6 added: consolidated issues / detection / correction / prevention. Section 5: P1 boundary-inflation root cause + exact FG reconciliation for all closed periods; Sections 3.3/3.4 corrected (BBRef pitcher decisions: 15W/166K, all sources agree); Section 4.5 superseded. Fixes shipped: PR #391 (stale cache), todo #284 (P1 re-sync, executed), PR #393 (date-normalized mid-period check). Open: todo #286 (hybrid attribution), todo #287 (post-close re-sync).*
