@@ -475,9 +475,18 @@ export async function computeTeamStatsFromDb(
   // If any player was acquired strictly mid-period, PSP would over-credit the
   // acquiring team with pre-acquisition stats. Fall back to daily-stats (ownership
   // windows) for those periods so attribution is correct per ADR-013.
+  //
+  // Compare at UTC calendar-date granularity, not timestamps (todo #285): import
+  // scripts and admin tools stamp acquiredAt with a time-of-day, and stats have
+  // per-day granularity anyway — an acquisition any time on the period's start or
+  // end DATE is boundary-aligned. A noon-on-start-day timestamp once flipped all
+  // of P1 onto the gappy daily table (audit report Section 5.4).
+  const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const periodStartDay = utcDay(period.startDate);
+  const periodEndDay = utcDay(period.endDate);
   const hasMidPeriodPickup = rosters.some(
-    r => r.acquiredAt.getTime() > period.startDate.getTime() &&
-         r.acquiredAt.getTime() < period.endDate.getTime()
+    r => utcDay(r.acquiredAt) > periodStartDay &&
+         utcDay(r.acquiredAt) < periodEndDay
   );
 
   if (periodStatCount > 0 && !hasMidPeriodPickup) {
