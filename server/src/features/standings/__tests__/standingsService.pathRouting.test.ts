@@ -150,6 +150,57 @@ describe("computeTeamStatsFromDb — path routing (todo #260)", () => {
     expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
   });
 
+  it("takes PSP path when acquiredAt is later the same day as period start (todo #285)", async () => {
+    // Import scripts and admin tools stamp acquiredAt with a time-of-day; an
+    // acquisition at noon on the period's start DATE is boundary-aligned, not a
+    // mid-period pickup. Regression: Andrew Vaughn's 2026-03-25T12:00 row flipped
+    // all of P1 onto the gappy daily table (audit report Section 5.4).
+    mockRosterFindMany.mockResolvedValueOnce([
+      { ...BASE_ROSTER_ROW, acquiredAt: new Date("2026-04-19T12:00:00.000Z") },
+    ]);
+    mockPeriodStatsCount.mockResolvedValueOnce(4);
+    mockPeriodStatsFindMany.mockResolvedValueOnce([
+      { playerId: 1, ...ZERO_STATS, R: 4 },
+    ]);
+
+    await computeTeamStatsFromDb(20, 36);
+
+    expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
+    expect(mockDailyFindMany).not.toHaveBeenCalled();
+  });
+
+  it("takes PSP path when acquiredAt is earlier the same day as period end (todo #285)", async () => {
+    // Same date-granularity rule on the end boundary: the existing convention
+    // already treats acquiredAt === endDate as boundary-aligned (exclusive
+    // comparison); time-of-day on that date must not change the answer.
+    mockRosterFindMany.mockResolvedValueOnce([
+      { ...BASE_ROSTER_ROW, acquiredAt: new Date("2026-05-16T08:00:00.000Z") },
+    ]);
+    mockPeriodStatsCount.mockResolvedValueOnce(4);
+    mockPeriodStatsFindMany.mockResolvedValueOnce([
+      { playerId: 1, ...ZERO_STATS, R: 4 },
+    ]);
+
+    await computeTeamStatsFromDb(20, 36);
+
+    expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
+    expect(mockDailyFindMany).not.toHaveBeenCalled();
+  });
+
+  it("still takes daily path when acquired the day AFTER period start (todo #285 guard)", async () => {
+    // Date normalization must not swallow real mid-period pickups: one calendar
+    // day inside the period is still mid-period.
+    mockRosterFindMany.mockResolvedValueOnce([
+      { ...BASE_ROSTER_ROW, acquiredAt: new Date("2026-04-20T00:30:00.000Z") },
+    ]);
+    mockPeriodStatsCount.mockResolvedValueOnce(4);
+
+    await computeTeamStatsFromDb(20, 36);
+
+    expect(mockPeriodStatsFindMany).not.toHaveBeenCalled();
+    expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+  });
+
   it("forces daily-stats when ANY roster row has a mid-period pickup (multi-player case)", async () => {
     // Player 1: clean (pre-period). Player 2: mid-period pickup. Should force daily for all.
     mockRosterFindMany.mockResolvedValueOnce([
