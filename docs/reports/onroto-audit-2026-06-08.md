@@ -977,10 +977,10 @@ The "23 W" table was re-verified appearance-by-appearance using pitcher decision
 
 ### 5.5 — Remediation checklist
 
-- [ ] Data: fix `acquiredAt` for the two P1 artifact roster rows (Ohtani synthetic pitcher → 2026-03-25T00:00Z; Andrew Vaughn → 2026-03-25T00:00Z).
-- [ ] Data: `POST /api/admin/sync-stats {periodId: 35}` to rebuild P1 PSP under the correct boundary, then `POST /api/admin/recompute-period-cache` for P1.
-- [ ] Code: date-normalize the `hasMidPeriodPickup` comparison (acquisitions on the period start date are boundary-aligned, not mid-period).
-- [ ] Code (follow-up): hybrid PSP+daily attribution for periods with real mid-period pickups, so P3+ stays on accurate PSP data for boundary-aligned players.
+- [x] Data: fix `acquiredAt` for the two P1 artifact roster rows (Ohtani synthetic pitcher → 2026-03-25T00:00Z; Andrew Vaughn → 2026-03-25T00:00Z). *(Done 2026-06-09 PM — roster rows 3915, 3835.)*
+- [x] Data: rebuild P1 PSP under the correct boundary (`syncPeriodStats(35)`: 183 synced, 0 errors) and recompute the P1 `TeamStatsPeriod` cache. *(Done 2026-06-09 PM. Browser-verified on prod: P1 standings = FG points exactly for all 8 teams. Todo #284.)*
+- [ ] Code: date-normalize the `hasMidPeriodPickup` comparison (acquisitions on the period start date are boundary-aligned, not mid-period). *(Todo #285.)*
+- [ ] Code (follow-up): hybrid PSP+daily attribution for periods with real mid-period pickups, so P3+ stays on accurate PSP data for boundary-aligned players. *(Todo #286.)*
 - [ ] Process: re-sync each period's PSP once, ~3 days after it closes.
 
 ---

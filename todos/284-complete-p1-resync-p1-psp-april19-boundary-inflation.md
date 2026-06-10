@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: 284
 tags: [standings, data-fix, psp, audit, onroto]
@@ -30,3 +30,7 @@ Prod data fix (admin, no code):
 - `computeTeamStatsFromDb(20, 35)` takes the PSP path (no mid-period acquisitions detected).
 - Season-total sums no longer double-count 4/19 (RGS season K = 460).
 - `git mv` this todo from pending → complete.
+
+## Resolution (2026-06-09)
+
+Executed same session: roster rows 3915 (Ohtani synthetic pitcher) and 3835 (Vaughn) normalized to 2026-03-25T00:00:00Z; `syncPeriodStats(35)` re-ran (183 synced, 0 errors, two-way mirror intact); `computeTeamStatsFromDb(20, 35)` takes the PSP path (0 mid-period acquisitions) and matches FG exactly for all 8 teams in all categories; TeamStatsPeriod cache recomputed. Browser-verified on prod: /season Period 1 column = FG points (DLC 56.5, RGS 55.0, DDG 53.5, SKD 51.5, DVD 43.0, LDY 37.5, DMK 33.5, TSH 29.5).
