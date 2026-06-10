@@ -59,7 +59,7 @@ import cron from 'node-cron';
 import { syncAllPlayers, syncAAARosters } from './features/players/services/mlbSyncService.js';
 import { attachAuctionWs } from './features/auction/services/auctionWsService.js';
 import { attachDraftWs } from './features/draft/services/draftWsService.js';
-import { syncAllActivePeriods, syncDailyStats } from './features/players/services/mlbStatsSyncService.js';
+import { syncAllActivePeriods, syncDailyStats, reconcileRecentlyClosedPeriods } from './features/players/services/mlbStatsSyncService.js';
 import { snapshotAllActiveLeaguesCategoryDaily } from './features/standings/services/categoryDailySnapshotService.js';
 import * as errorBuffer from './lib/errorBuffer.js';
 import { isRosterRuleError, type RosterRuleErrorCode } from "./lib/rosterRuleError.js";
@@ -306,6 +306,22 @@ async function main() {
   cron.schedule('0 22 * * *', runStatsSyncJob);
   cron.schedule('0 2 * * *',  runStatsSyncJob);
   logger.info({}, "Scheduled player stats sync at 13:00, 18:00, 22:00, 02:00 UTC (4× daily)");
+
+  // Stats integrity reconciliation (ADR-014, todo #287) — re-fetches recently
+  // closed periods from the MLB API, diffs against stored PSP, auto-heals via
+  // re-sync, and alerts on persistent drift. Catches boundary edits, late MLB
+  // stat corrections, and missed syncs that would otherwise stay silent forever
+  // (precedent: P1 carried April 19's games for seven weeks).
+  cron.schedule('0 14 * * *', async () => {
+    logger.info({}, "Starting stats integrity reconciliation");
+    try {
+      const entries = await reconcileRecentlyClosedPeriods();
+      logger.info({ entries }, "Stats integrity reconciliation complete");
+    } catch (err) {
+      logger.error({ error: String(err) }, "Stats integrity reconciliation failed");
+    }
+  });
+  logger.info({}, "Scheduled stats integrity reconciliation at 14:00 UTC (daily)");
 
   // Daily per-day stats sync at 6:30 AM PT (13:30 UTC) — for date-aware stats attribution
   cron.schedule('30 13 * * *', async () => {

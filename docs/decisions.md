@@ -206,3 +206,23 @@ The audit also confirmed OGBA's scoring model: scoring periods are discrete wind
 - The three audit scripts added in `server/src/scripts/` (`audit_period.ts`, `find_mid_period_trades.ts`, `spot_check_team.ts`) are the standard tooling for detecting attribution anomalies.
 - A pending todo (#260, below) tracks fixing `computeTeamStatsFromDb` to route through `computeWithDailyStats` automatically whenever a mid-period transaction is detected.
 - Documented in `docs/solutions/logic-errors/onroto-vs-fbst-stat-attribution-semantics.md`.
+
+## ADR-014: Stats Integrity — Continuous Reconciliation Against the Official MLB Record (2026-06-10)
+
+**Status**: Accepted
+
+**Context**: Every stats-correctness bug found by the June 2026 OnRoto audit was *silent*. P1's `PlayerStatsPeriod` rows carried April 19's games (a stale boundary at last sync) for seven weeks; the stale `TeamStatsPeriod` cache misdisplayed two periods; the daily-path regression drifted P3 off FanGraphs — none of it alerted. Tests prevent *known* failure modes; nothing protected against unknown ones. Stats correctness is the product's core promise: closed-period stats are FINAL and identical across the MLB Stats API, FanGraphs, and Baseball Reference. Any persistent closed-period divergence is therefore a TFL-side defect — never "lag" (lag applies only to the active period).
+
+**Decision**:
+
+1. **Closed periods are continuously reconciled against the official MLB record.** A daily job (14:00 UTC, after the morning sync) re-fetches each recently closed period's stats through the SAME fetch/parse path the syncer uses and diffs against stored PSP rows on the standings-driving fields.
+2. **Drift auto-heals, persistent drift alerts.** Mismatch → re-run `syncPeriodStats` under the period's current boundaries → re-verify. Still mismatched → `logger.error` + admin error buffer entry (`ERR-recon-p{id}`). Healed and clean outcomes are logged for the audit trail.
+3. **The reconciler and syncer share one fetch/parse implementation** (`fetchFreshPeriodStats`). A reconciler with its own fetch logic would eventually diverge from the syncer and report phantom drift — the same disease that made `audit_period.ts` untrustworthy.
+4. **Any edit to a period's start/end dates must be followed by a re-sync of that period** (`POST /api/admin/sync-stats {periodId}`). The reconciliation window (default 5 days post-close) backstops forgotten re-syncs and late MLB stat corrections; boundary edits to long-closed periods still require the manual call.
+5. **Manual diagnostics**: `POST /api/admin/reconcile-period {periodId}` (read-only diff report) or with no body (run the auto-healing sweep).
+
+**Consequences**:
+- Silent drift on closed periods is now bounded to ~24 hours across all leagues, sports, and seasons — the mechanism is league-agnostic and source-keyed (player external id + date range), not OGBA-specific.
+- The MLB API fetch cost is one batch-hydrate pass per recently-closed period per day — negligible.
+- Two-way (Ohtani) pre-split rows are reconciled via the same in-memory mirror transform the syncer applies, so they cannot false-alarm.
+- Origin: audit report `docs/reports/onroto-audit-2026-06-08.md` Sections 5–7; todo #287; solutions doc `docs/solutions/logic-errors/closed-period-psp-frozen-with-stale-boundary.md`.

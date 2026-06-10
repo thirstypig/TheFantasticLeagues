@@ -12,7 +12,7 @@ import { addMemberSchema } from "../../lib/schemas.js";
 import { buildDashboard } from "./services/dashboardService.js";
 import { CommissionerService } from "../commissioner/services/CommissionerService.js";
 import { syncAllPlayers, syncPositionEligibility, syncAAARosters, enrichStalePlayers } from "../players/services/mlbSyncService.js";
-import { syncPeriodStats, syncAllActivePeriods } from "../players/services/mlbStatsSyncService.js";
+import { syncPeriodStats, syncAllActivePeriods, reconcilePeriodStats, reconcileRecentlyClosedPeriods } from "../players/services/mlbStatsSyncService.js";
 import { computeTeamStatsFromDb } from "../standings/services/standingsService.js";
 import * as errorBuffer from "../../lib/errorBuffer.js";
 import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
@@ -318,6 +318,44 @@ router.post("/admin/sync-stats", requireAuth, requireAdmin, validateBody(syncSta
   });
 
   return res.json({ success: true, scope: "all_active" });
+}));
+
+/**
+ * POST /api/admin/reconcile-period
+ * Stats integrity check (ADR-014): re-fetch a period's stats from the MLB API
+ * through the same fetch/parse path the syncer uses and diff against stored
+ * PlayerStatsPeriod rows. Read-only — reports drift, never writes. With no
+ * periodId, runs the auto-healing sweep over recently closed periods (same as
+ * the daily 14:00 UTC cron).
+ * Body: { periodId?: number }
+ */
+const reconcilePeriodSchema = z.object({
+  periodId: z.number().int().positive().optional(),
+});
+
+router.post("/admin/reconcile-period", requireAuth, requireAdmin, validateBody(reconcilePeriodSchema), asyncHandler(async (req, res) => {
+  const periodId = req.body?.periodId ? Number(req.body.periodId) : null;
+
+  if (periodId) {
+    const report = await reconcilePeriodStats(periodId);
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "STATS_RECONCILE",
+      resourceType: "Period",
+      resourceId: String(periodId),
+      metadata: { mismatches: report.mismatches.length, fetchErrors: report.fetchErrors },
+    });
+    return res.json({ success: true, ...report });
+  }
+
+  const entries = await reconcileRecentlyClosedPeriods();
+  writeAuditLog({
+    userId: req.user!.id,
+    action: "STATS_RECONCILE",
+    resourceType: "Period",
+    metadata: { scope: "recently_closed", entries },
+  });
+  return res.json({ success: true, entries });
 }));
 
 /**
