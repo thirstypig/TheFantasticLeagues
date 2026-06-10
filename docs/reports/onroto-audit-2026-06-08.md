@@ -1038,4 +1038,21 @@ These weren't product bugs, but they produced the wrong June 8 conclusions and c
 
 ---
 
+## Section 7 — Full Re-Audit, June 10 (post-fix verification)
+
+Fresh four-period gap analysis against FanGraphs, run after the P1 re-sync (todo #284) with both engines. FG side scraped live as guest (per-period verified tables + Accumulated/Current-Week team totals); TFL side computed read-only from prod with the production engine.
+
+| Period | Status | Gap (TFL − FG, all 8 teams × R/HR/RBI/SB/W/SV/K) |
+|--------|--------|--------------------------------------------------|
+| **P1** (3/25–4/18) | completed | ✅ **Zero — exact** |
+| **P2** (4/19–5/16) | completed | ✅ **Zero — exact** |
+| **P3** (5/17–6/6) | completed | Live engine (pre-PR #394): residual daily-path artifacts — DVD K +4, DMK HR+1/RBI+1/K+2, DLC RBI−1/K+1, DDG R+1/RBI+1/SB+1, SKD RBI+1. **With PR #394's hybrid engine: ✅ zero — exact, all 10 categories.** |
+| **P4** (6/7–7/4) | active | ✅ **Zero — exact** vs FG Current Week at scrape time (both systems in lockstep) |
+
+**Season closure check** (TFL ΣP1..P4 vs FG Accumulated, fresh): LDY/RGS/TSH exact; the only residue is the P3 daily-path artifact above, which PR #394 eliminates. No new drift anywhere.
+
+*Method note: per-period FG references are the directly-scraped P1 table, the YTD-validated P2 values, and the June 8 P3 current-week scrape; P4 compared live-to-live and is timing-sensitive by nature.*
+
+---
+
 *Last updated June 9, 2026 (PM). Section 6 added: consolidated issues / detection / correction / prevention. Section 5: P1 boundary-inflation root cause + exact FG reconciliation for all closed periods; Sections 3.3/3.4 corrected (BBRef pitcher decisions: 15W/166K, all sources agree); Section 4.5 superseded. Fixes shipped: PR #391 (stale cache), todo #284 (P1 re-sync, executed), PR #393 (date-normalized mid-period check). Open: todo #286 (hybrid attribution), todo #287 (post-close re-sync).*
