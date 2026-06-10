@@ -7,14 +7,16 @@
 
 ## Executive Summary
 
-- **Period 1:** After correction, all 8 teams within ±5 points of FG, rank order near-identical. The displayed TFL P1 standings were stale (cached from incomplete MLB API data at period open); corrected values from PSP match FG closely.
-- **Period 2:** After correction, TFL aligns closely with FG across all 8 teams. Los Doyers corrected from 42.0 → 47.5 pts (was −6.0 from FG, now −2.0). Root cause identified and fixed — see Section 4.
-- **Period 3:** ✅ **Exact match — zero divergence across all 8 teams and all 10 categories.** Both systems record identical raw stats. Stats have fully finalized.
-- **Data authority:** FanGraphs/OnRoto is the official scoring platform for OGBA. TFL should match FG. Baseball Reference (via StatMuse) is the independent 3rd-party verification tool. MLB Stats API is TFL's data feed — it lags FG by days to weeks and is the least authoritative of the three.
-- **Root cause (fixed June 9):** `TeamStatsPeriod` cache was written using incomplete `computeWithDailyStats` output at period open, before the MLB Stats API had fully populated `PlayerStatsPeriod` (PSP). The cache then perpetuated itself via a circular read→write-back pattern on every standings page load. Fixed by always computing live from PSP for the selected period; admin `POST /api/admin/recompute-period-cache` added for future correction.
-- **Rosters:** ✅ All 8 teams' auction-day rosters confirmed on FG/OnRoto via transaction log. P2 and P3 roster changes match TFL for all 8 teams. Position slots corrected June 9 to match FG transaction log + Excel auction-day assignments; 4 phantom old-season roster entries released.
-- **BBRef/StatMuse P2 verification (Los Doyers):** Ground truth for all 9 LDY P2 pitchers = **23W / 166K** (StatMuse game logs). FG credited 15W/166K (K exact match). TFL PSP now correctly records 15W/166K for LDY P2 — the displayed 9W/102K was the stale cache. See Sections 3–4.
-- **Attribution logic in The Fantastic Leagues is correct:** End-of-period owner attribution and roto computation verified. The `PlayerStatsPeriod` (PSP) data matches FG exactly for W and K. The stale cache issue was a display/persistence bug, not a computation error.
+*(Rewritten June 9 PM after the definitive player-level reconciliation — see Section 5.)*
+
+- **Period 2:** ✅ **Exact match — all 8 teams, every subtraction-verifiable category (R/HR/RBI/SB/W/SV/K).** The apparent TSH deltas (+11 RBI, −1 W, −1 K) in the June 8 tables were arithmetic artifacts of deriving FG's P2 by subtraction while ignoring P4's first games; FG's own YTD totals prove FG P2 = TFL P2 (Section 5.2).
+- **Period 3:** ✅ Exact match on the PSP computation path (verified June 8 and re-verified player-level June 9). ⚠️ The live site currently serves P3 via the daily-stats fallback because of 3 real mid-period wire adds (Section 5.4) — small spurious deviations until the hybrid-attribution fix lands.
+- **Period 1:** ❌ TFL's stored `PlayerStatsPeriod` rows for P1 are **inflated by the games of April 19** — the first day of P2 — because the last P1 sync ran while the period boundary still extended through 4/19 and closed periods are never re-synced. Re-fetching the same 3/25–4/18 range from the MLB API today reproduces FG's numbers **exactly, cell for cell, for all 8 teams** (Section 5.1). The fix is one admin call: `POST /api/admin/sync-stats {periodId: 35}`.
+- **Period 4 (active):** PSP path, healthy. Intraday differences vs FG are sync-cadence only (TFL 4×/day vs FG nightly) and converge.
+- **BBRef verification (LDY P2 pitchers):** ✅ **BBRef = FG = TFL = 15 W / 166 K.** The June 8 claim of "23 W ground truth" was a bad scrape that counted team results instead of pitcher decisions (Section 5.3). There are **no retroactive scorer revisions** — once boundaries and syncs are correct, all sources agree exactly.
+- **Data authority:** FanGraphs/OnRoto is the official scoring platform; BBRef is the independent third party; the MLB Stats API is TFL's feed. After this audit, all three agree wherever TFL's stored data is current — "stats are the same everywhere" holds.
+- **`TeamStatsPeriod` cache fix (June 9 AM, PR #391):** the circular stale-cache bug is fixed (endpoint computes live from PSP) and remains valid. But two further defects were found June 9 PM: the P1 PSP boundary inflation above, and `hasMidPeriodPickup` mis-flagging P1 onto the daily path due to two artifact roster timestamps (Section 5.4).
+- **Rosters:** ✅ All 8 teams confirmed across auction day, P2, and P3 against the FG transaction log.
 
 ---
 
@@ -747,7 +749,7 @@ Each category ranked 1–8 per period (1 = worst, 8 = best). Ties receive averag
 
 **Period 3 — Zero divergence.** All raw stats are identical. By the time Period 3 stats are fully finalized (2–3 weeks after period end), both the MLB Stats API and FanGraphs database converge completely. This confirms TFL's computation is correct — the P1/P2 gaps reflect real-time data lag, not a systematic error.
 
-**Root cause summary:** The MLB Stats API feed that TFL uses lags FanGraphs' database by days to weeks, particularly for pitcher wins (which can be revised after review) and strikeouts (box score finalization). The gap closes as stats finalize — Period 3 shows zero difference because enough time has passed.
+**Root cause summary — SUPERSEDED (June 9 PM):** This section originally attributed the P1/P2 gaps to MLB Stats API lag. That explanation is **withdrawn**. The June 8 "TFL" numbers above were the stale `TeamStatsPeriod` cache (P1/P2) computed from the gappy daily table; the true causes are the April-19 boundary inflation in P1's stored PSP rows and derivation artifacts in the FG P2 subtraction. See Section 5 — after correction, TFL = FG exactly for P1, P2, and P3.
 
 ---
 
@@ -823,36 +825,34 @@ All transactions recorded by FG/OnRoto. Transactions occur at period boundaries 
 
 ### 3.3 — Baseball Reference / StatMuse P2 Pitcher Verification (Los Doyers)
 
-> Source: StatMuse game logs, verified June 9, 2026. Date range: April 19 – May 16, 2026.
+> **Corrected June 9 PM.** Source: StatMuse/BBRef game logs, re-verified per appearance using **pitcher decisions** (the W/L the official scorer assigned to the pitcher), not team results. The earlier version of this table counted team wins in games the pitcher appeared — Sewald, for example, had 0 personal wins (and 2 losses) in the span, not 4. Date range: April 19 – May 16, 2026.
 
-| Pitcher | W (Apr 19–May 16) | SO (Apr 19–May 16) | Notes |
-|---------|-------------------|---------------------|-------|
-| Michael McGreevy (STL) | 3 | 24 | 5 starts; prior audit |
-| Michael Soroka (ARI) | 1 | 19 | 4 starts; prior audit |
-| Walker Buehler (SD) | 3 | 19 | 5 starts; prior audit |
-| Clayton Beeter (WSH) | 1 | 2 | 1 start in window (Apr 21); then IL/minors |
-| Justin Wrobleski (LAD) | 4 | 21 | 5 starts (Apr 20, 26, May 3, 10, 16) |
-| Merrill Kelly (ARI) | 2 | 20 | 5 starts (Apr 21, 28, May 3, 9, 15) |
-| Carmen Mlodzinski (PIT) | 2 | 23 | 5 starts (Apr 21, 26, May 2, 8, 14) |
-| Paul Sewald (ARI) | 4 | 8 | 8 relief appearances |
-| Foster Griffin (WSH) | 3 | 30 | 5 appearances (Apr 21, 26, May 2, 8, 14) |
-| **TOTAL** | **23** | **166** | |
+| Pitcher | W (decisions) | SO | Notes |
+|---------|---------------|-----|-------|
+| Michael McGreevy (STL) | 2 | 24 | L 4/20, W 5/2, W 5/8 |
+| Michael Soroka (ARI) | 1 | 19 | W 5/11 |
+| Walker Buehler (SD) | 2 | 19 | 2–1 in span (W 5/5, W 5/16) |
+| Clayton Beeter (WSH) | 0 | 2 | 1 appearance (Apr 21), no decision |
+| Justin Wrobleski (LAD) | 4 | 21 | W 4/20, 4/26, 5/3, 5/16 |
+| Merrill Kelly (ARI) | 2 | 20 | W 5/9, 5/15 |
+| Carmen Mlodzinski (PIT) | 2 | 23 | W 5/2, 5/14 |
+| Paul Sewald (ARI) | 0 | 8 | 0–2 in 8 relief appearances |
+| Foster Griffin (WSH) | 2 | 30 | W 4/21, 5/8 |
+| **TOTAL** | **15** | **166** | |
 
 ---
 
 ### 3.4 — Three-Way Gap Analysis: BBRef vs FG vs TFL (LDY P2)
 
-| Source | W | K | vs BBRef W | vs BBRef K |
-|--------|---|---|-----------|-----------|
-| **BBRef / StatMuse (ground truth)** | **23** | **166** | — | — |
-| **FanGraphs / OnRoto** | **15** | **166** | **−8** | **0** |
-| **The Fantastic Leagues (TFL)** | **9** | **102** | **−14** | **−64** |
+*(Corrected June 9 PM.)*
 
-**K (Strikeouts):** BBRef = FG = 166K. **FG is correct. TFL undercounted by 64K.** Likely cause: Foster Griffin (30K) and Carmen Mlodzinski (23K) were not fully captured by TFL's MLB Stats API during P2 — together 53K of the 64K gap.
+| Source | W | K |
+|--------|---|---|
+| **BBRef / StatMuse (pitcher decisions)** | **15** | **166** |
+| **FanGraphs / OnRoto** | **15** | **166** |
+| **The Fantastic Leagues (PSP, production path)** | **15** | **166** |
 
-**W (Wins):** BBRef > FG > TFL. Both FG and TFL undercount wins vs raw game logs. The BBRef-FG gap (−8W) likely reflects retroactive win revisions after scorer review. The FG-TFL gap (−6W) is the same MLB Stats API lag that affects K — FG processes pitcher decisions faster than the official API feed.
-
-**Update (June 9):** TFL's PSP raw data IS correct — LDY P2 PSP shows W=15/K=166 (exactly matching FG and BBRef K). The displayed −6.0 rank gap was from a stale `TeamStatsPeriod` cache, not a computation or data error. See Section 4.
+✅ **All three sources agree exactly.** There are no retroactive scorer revisions and no residual MLB-API lag for this closed period. The previously reported "23 W BBRef ground truth" was a scrape error (team results counted as pitcher decisions); the previously displayed TFL 9W/102K was the stale `TeamStatsPeriod` cache fixed in PR #391. Per-pitcher TFL PSP values match the verified game logs cell-for-cell (McGreevy 2/24, Soroka 1/19, Buehler 2/19, Beeter 0/2, Wrobleski 4/21, Kelly 2/20, Mlodzinski 2/23, Sewald 0/8, Griffin 2/30).
 
 ---
 
@@ -890,7 +890,9 @@ P3 ended June 6, 2026 — just 2 days before the audit. The cache for P3 was wri
 
 **Data correction (June 9):** All 8 teams' `TeamStatsPeriod` rows for P1 (period 35) and P2 (period 36) updated from PSP ground truth. P3 was already correct.
 
-### 4.5 — Corrected Standings
+### 4.5 — Corrected Standings *(SUPERSEDED by Section 5)*
+
+> ⚠️ **June 9 PM:** The tables below were computed from PSP data that still contained the April-19 boundary inflation (Section 5.1), and the live endpoint was serving P1 via the daily-stats fallback (Section 5.4). They are kept for the historical record only. The definitive corrected P1 equals FG exactly — see Section 5.1.
 
 #### Period 1 — Corrected TFL vs FG
 
@@ -927,11 +929,60 @@ P3 ended June 6, 2026 — just 2 days before the audit. The cache for P3 was wri
 | Source | Role | Notes |
 |--------|------|-------|
 | **FanGraphs / OnRoto** | **Official scoring authority** | OGBA is played on this platform. FG stats are what determine the official league standings. TFL should match FG. |
-| **Baseball Reference / StatMuse** | **Independent 3rd-party verification** | Use to verify FG is correct. BBRef K matched FG K exactly (166K for LDY P2). BBRef W exceeds FG (23W vs 15W) due to retroactive scorer revisions neither real-time system captured promptly. |
-| **MLB Stats API (TFL's data feed)** | **Best-effort real-time feed** | Lags FG by days to weeks. Authoritative only after full finalization (verified by P3 perfect convergence). Not the scoring authority. |
+| **Baseball Reference / StatMuse** | **Independent 3rd-party verification** | Use to verify FG is correct. For LDY P2, BBRef pitcher decisions = FG = TFL exactly (15W/166K, Section 3.4). When querying StatMuse/BBRef, always use **pitcher decisions**, never team results. |
+| **MLB Stats API (TFL's data feed)** | **Official record, correct when queried with correct boundaries** | A fresh byDateRange fetch today reproduces FG exactly for every closed period (Section 5.1). Past divergence was TFL-side staleness (frozen P1 rows synced under an old boundary), not API lag. Intraday lag still applies to the active period. |
 
 **Prevention going forward:** The `period-category-standings` endpoint now always reads live from PSP. If a future period's displayed stats seem wrong vs FG, run `POST /api/admin/recompute-period-cache` with the affected period ID to force a fresh PSP computation.
 
 ---
 
-*Last updated June 9, 2026. Corrections: TeamStatsPeriod P1/P2 updated from PSP ground truth; standings cache circular bug fixed (PR #[see git log]); standings route and admin recompute endpoint deployed.*
+## Section 5 — Definitive Player-Level Reconciliation (June 9 PM)
+
+The remaining "data-source lag" and "scorer revision" explanations from earlier sections were challenged and re-investigated player-by-player. Both are **withdrawn**. Every residual divergence has a concrete, verified cause. Once corrected, **TFL = FG = BBRef exactly for every closed period.**
+
+### 5.1 — Period 1 root cause: stored PSP rows include April 19 (P2's first day)
+
+The decisive experiment: for every P1-rostered player, compare the stored `PlayerStatsPeriod` P1 row against a **fresh MLB API `byDateRange(03/25–04/18)` fetch run today**.
+
+Result: the per-team sum of (stored − fresh) reproduces the observed TFL−FG P1 delta **cell for cell**:
+
+| Team | Observed TFL−FG (R/RBI/K/W) | Stored−Fresh (R/RBI/K/W) |
+|------|------------------------------|---------------------------|
+| RGing Sluggers | +3 / +3 / +16 / +1 | +3 / +3 / +16 / +1 |
+| Dodger Dawgs | +3 / +4 / +12 / +1 | +3 / +4 / +12 / +1 |
+| Skunk Dogs | +7 / +5 / +10 / +1 | +7 / +5 / +10 / +1 *(after Ohtani synthetic-row adjustment)* |
+
+And the extra stats are precisely the **games of April 19, 2026**: e.g. Robbie Ray stored 31 K vs fresh 24 K, and Ray's 4/19 start was exactly 7 K; Mitch Keller +5 K +1 W = his 4/19 line; Devin Williams +3 K = his 4/19 outing. Nearly every hitter is +1 R/RBI — everyone played 4/19.
+
+**Why:** the last P1 sync ran while P1's end boundary still extended through 4/19 (the "period ends when the next begins" convention before the boundary was tightened to 4/18). `syncAllActivePeriods` only syncs **active** periods, so once P1 closed, its rows were frozen with the extra day baked in. P2 was synced under correct boundaries throughout, so P2 is clean — and the 4/19 games are *also correctly counted in P2*, which is why FG's YTD totals are lower than TFL's period sums (e.g. RGS season K: TFL 476 vs FG 460, a difference of exactly the P1 +16).
+
+**Verification that the fix lands on FG:** recomputing P1 entirely from fresh MLB data (production attribution semantics) matches FG's directly-scraped P1 table **exactly — all 8 teams, all categories** — and therefore reproduces FG's P1 rank points exactly (DLC 56.5, RGS 55.0, DDG 53.5, SKD 51.5, DVD 43.0, LDY 37.5, DMK 33.5, TSH 29.5).
+
+**Fix:** `POST /api/admin/sync-stats {periodId: 35}` (re-runs `syncPeriodStats` with the current, correct 3/25–4/18 boundary), then `POST /api/admin/recompute-period-cache` for P1.
+
+### 5.2 — Period 2 is a 100% exact match (TSH deltas were derivation artifacts)
+
+The June 8 FG P2 values were derived as `Accumulated − P3 − P1`. For The Show, that arithmetic ignored P4 games already present in "Accumulated" when scraped, producing phantom deltas (+11 RBI, −1 W, −1 K). Proof from FG's own team page (fetchable as guest): TSH season RBI = 431; back out P1 (121), P3 (146), and current-week (7) → FG P2 RBI = **157 = TFL exactly**. With that corrected, **Period 2 matches FG for all 8 teams in every subtraction-verifiable category.** (FG period-level ERA/WHIP/AVG cannot be derived by subtraction; with identical underlying counting stats and identical raw data, they match by construction.)
+
+### 5.3 — BBRef arbitration: all sources agree (see corrected Sections 3.3–3.4)
+
+The "23 W" table was re-verified appearance-by-appearance using pitcher decisions: true total **15 W / 166 K**, agreeing with FG and with TFL's PSP per-pitcher values cell-for-cell. The "retroactive scorer revisions" theory is withdrawn — wins are essentially never revised, and no revision occurred here.
+
+### 5.4 — Production-path defects found (code)
+
+1. **`hasMidPeriodPickup` mis-flags P1 onto the daily-stats fallback.** Two artifact roster rows — `Shohei Ohtani (Pitcher)` (`acquiredAt` 2026-03-29, synthetic row created late) and `Andrew Vaughn` (`acquiredAt` 2026-03-25T12:00, noon on period start day) — register as "mid-period acquisitions," so `computeTeamStatsFromDb` routes P1 through `computeWithDailyStats`. The daily table has the documented 3/25–3/28 cold-start gap, so **the live P1 standings are currently the undercounted numbers** (the June 8 "stale" values — they were never cache-only). Fix: normalize the two timestamps to period start, and compare calendar dates (not timestamps) in `hasMidPeriodPickup`.
+2. **Period 3 has regressed to the daily path.** Three real mid-period wire adds (DMK: Carson Spiers + Aaron Ashby on 5/22; SKD: Chase Dollander on 6/3) correctly trigger the ADR-013 fallback — but the daily table's doubleheader collapse makes the whole period slightly wrong (e.g. DMK K 154 vs FG 152). The verified-correct P3 numbers come from the PSP path. Fix direction (todo): hybrid attribution — PSP rows for boundary-aligned players, daily ownership-windows only for mid-period acquisitions.
+3. **Closed periods are never re-synced.** Any boundary edit or late MLB stat correction after a period closes is permanently invisible. Fix direction: one-shot re-sync of a period's PSP ~3 days after period close (or after any boundary edit), via the existing `POST /api/admin/sync-stats {periodId}`.
+4. **Audit-tooling note:** `src/scripts/audit_period.ts` classifies hitters/pitchers by *current* `assignedPosition` (drops a currently-IL'd pitcher's stats) and double-counts drop-and-re-add players (overlap attribution, no dedup). Its output diverges from production for exactly those cases — do not use it as the source of truth; use the production `computeTeamStatsFromDb` path.
+
+### 5.5 — Remediation checklist
+
+- [ ] Data: fix `acquiredAt` for the two P1 artifact roster rows (Ohtani synthetic pitcher → 2026-03-25T00:00Z; Andrew Vaughn → 2026-03-25T00:00Z).
+- [ ] Data: `POST /api/admin/sync-stats {periodId: 35}` to rebuild P1 PSP under the correct boundary, then `POST /api/admin/recompute-period-cache` for P1.
+- [ ] Code: date-normalize the `hasMidPeriodPickup` comparison (acquisitions on the period start date are boundary-aligned, not mid-period).
+- [ ] Code (follow-up): hybrid PSP+daily attribution for periods with real mid-period pickups, so P3+ stays on accurate PSP data for boundary-aligned players.
+- [ ] Process: re-sync each period's PSP once, ~3 days after it closes.
+
+---
+
+*Last updated June 9, 2026 (PM). Section 5 added: P1 boundary-inflation root cause + exact FG reconciliation for all closed periods; Sections 3.3/3.4 corrected (BBRef pitcher decisions: 15W/166K, all sources agree); Section 4.5 superseded. Earlier corrections: TeamStatsPeriod stale-cache circular bug fixed (PR #391); admin recompute endpoint deployed.*
