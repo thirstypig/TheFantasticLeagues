@@ -204,7 +204,7 @@ The audit also confirmed OGBA's scoring model: scoring periods are discrete wind
 - `computeWithPeriodStats` carries a code comment warning against use if mid-period transactions have occurred. Any code touching stat computation must check whether mid-period pickups exist before choosing the path.
 - `computeWithDailyStats` is the correct default for any period with transactions; `computeWithPeriodStats` is a cache-friendly optimization only for clean boundary-aligned periods.
 - The three audit scripts added in `server/src/scripts/` (`audit_period.ts`, `find_mid_period_trades.ts`, `spot_check_team.ts`) are the standard tooling for detecting attribution anomalies.
-- A pending todo (#260, below) tracks fixing `computeTeamStatsFromDb` to route through `computeWithDailyStats` automatically whenever a mid-period transaction is detected.
+- A pending todo (#260, below) tracks fixing `computeTeamStatsFromDb` to route through `computeWithDailyStats` automatically whenever a mid-period transaction is detected. *(Resolved 2026-06-10, PR #394: hybrid per-player routing — only mid-period players take the daily path; boundary-aligned players stay on doubleheader-safe PSP. ADR-014 adds the companion reconciliation guard.)*
 - Documented in `docs/solutions/logic-errors/onroto-vs-fbst-stat-attribution-semantics.md`.
 
 ## ADR-014: Stats Integrity — Continuous Reconciliation Against the Official MLB Record (2026-06-10)

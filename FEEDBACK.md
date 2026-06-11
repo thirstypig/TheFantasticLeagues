@@ -3891,3 +3891,36 @@ Massive session with 19 PRs merged (#46 through #64), completing 10 of 12 auctio
 - Server: 1207 passing, 7 skipped (89 test files)
 - Client: 855 passing (69 test files)
 - Total: 2062 green
+
+## Session 2026-06-09/10 — Stats correctness arc: audit → root cause → hardening
+
+### Completed
+- **Definitive FG/TFL/BBRef reconciliation** (continues the June 8 audit). "MLB API lag" and "scorer revisions" explanations withdrawn; every closed period now reconciles EXACTLY with FanGraphs. Audit report Sections 5–7.
+- **P1 root cause found + fixed (todo #284, executed on prod):** stored PSP rows included April 19 (P2's first day) — last sync ran under the old boundary; closed periods never re-synced. Fixed two artifact roster timestamps (Ohtani synthetic 3915, Vaughn 3835), re-ran `syncPeriodStats(35)`, recomputed cache. Browser-verified: live P1 = FG points exactly, 8/8 teams.
+- **BBRef re-verification:** LDY P2 = 15 W / 166 K across BBRef, FG, and TFL (the "23 W" was a scrape counting team results). TSH P2 deltas were subtraction-derivation artifacts; FG's own YTD totals prove P2 = TFL exactly.
+- **PR #393:** `hasMidPeriodPickup` date-normalized (todo #285) — noon timestamps can no longer flip a period to the daily path.
+- **PR #394:** hybrid PSP+daily attribution (todo #286) — only mid-period players take daily windows; half-open `releasedAt` fixes same-day drop-re-add double-count. Verified P3 = FG exactly 8/8, all categories; P1/P2 unchanged.
+- **PR #395:** ADR-014 continuous reconciliation (todo #287) — daily 14:00 UTC cron diffs recently closed periods against the MLB record through the syncer's own fetch path, auto-heals, alerts on persistent drift. First live run caught real late MLB corrections (Skenes ER 13→11, Lodolo BB_H +1) and healed them.
+- **PR #396:** client CI flake root-cause (3 failures in 24h) — per-panel `findByText` anchoring in Home.test.tsx + global RTL `asyncUtilTimeout` 4000ms.
+- **PR #397:** todos #285–#287 renamed complete. PR #392: audit report updates + todos #284–#287 + solutions doc.
+- **Full re-audit June 10:** P1 ✅ P2 ✅ P4 ✅ zero-gap; P3 ✅ with the merged hybrid engine. Season-closure check vs FG Accumulated: clean.
+- 2 new solutions docs; ADR-014 added; memory updated.
+
+### Pending / Next Steps
+- [ ] Browser-verify deployed P3 column (expected SKD 58.5, DMK 58.0, DDG 51.5, DLC 48.0, LDY 44.5, TSH 40.5, RGS 30.0, DVD 29.0) — deploy was propagating at session end
+- [ ] Check first unattended reconciliation cron run (14:00 UTC) in Railway logs
+- [ ] Hardening tier 2: verified-snapshot drift alarm; CI lint for raw roster-window predicates; rewrite `audit_period.ts` on production engine; property-based differential tests
+- [ ] posGames P2 batch (todos #274–278) — pre-audit backlog
+- [ ] OnRoto period-end snapshots still pending (contacted 2026-06-03)
+
+### Post-session addendum (same night)
+- **Prod deploys were silently failing since 19:10 PT** — PR #396's `@testing-library/react` import in `src/test/setup.ts` broke the Railway build (no devDeps in prod; build tsc compiled `src/test/**`). Caught during deploy verification via `railway deployments` (4 consecutive FAILED); fixed in PR #398 (tsconfig exclude). Lesson: local + CI both have devDeps — only the prod build command proves a build change.
+
+### Concerns / Tech Debt
+- `audit_period.ts` is NOT production-faithful (slot-based classification, overlap double-count) — flagged in audit Section 6; do not use as source of truth until rewritten.
+- The reconciliation sweep covers periods ≤5 days post-close; boundary edits to LONG-closed periods still require a manual `POST /api/admin/sync-stats {periodId}`.
+
+### Test Results
+- Server: 1252 passing, 7 skipped (92 test files)
+- Client: 893 passing (73 test files)
+- Total: 2145 green (+ 83 MCP fbst-app + 50 MCP mlb-data in CI)
