@@ -1,4 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+import { configure } from "@testing-library/react";
+
+// CI runners are shared and slow under load; RTL's 1000ms default async
+// timeout intermittently expires mid-cascade (tab click -> select change ->
+// fetch -> rerender), producing "Unable to find an element" flakes that pass
+// locally (precedent: Home.test.tsx x2, ArchivePage.test.tsx x1, June 9-10).
+// waitFor/findBy* POLL, so raising the ceiling never slows a passing test.
+configure({ asyncUtilTimeout: 4000 });
 
 // jsdom polyfills for `@tanstack/react-virtual` — without these the
 // virtualizer reads zero-sized rects and renders no virtual items, so
