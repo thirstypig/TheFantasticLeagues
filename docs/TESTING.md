@@ -30,6 +30,11 @@ A single place where any admin or contributor can see **what tests exist, what t
 ### The pyramid
 Many unit tests, fewer integration tests, few E2E tests — and only the most important flows as E2E because they are the most expensive to write and maintain.
 
+## Async test conventions
+
+- RTL `asyncUtilTimeout` is set to 4000ms globally (`client/src/test/setup.ts`) — CI runners are shared and slow under load; `waitFor`/`findBy*` poll, so the higher ceiling never slows a passing test (precedent: Home/ArchivePage "Unable to find element" CI flakes, June 9–10).
+- When a test asserts content from MULTIPLE independent fetches, anchor each panel's first data-driven assertion with `findBy*` — one `findByText` only synchronizes the fetch that renders it, not its siblings.
+
 ## How often we run
 
 | Trigger | What runs | Why |
