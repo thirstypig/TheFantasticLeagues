@@ -439,3 +439,46 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
     });
   });
 });
+
+describe("computeTeamStatsFromDb — hybrid attribution (todo #286)", () => {
+  it("stable players keep PSP credit while a mid-period trade splits by ownership window, with league totals conserved", async () => {
+    // Player 1: on Alpha all period — must be credited from PSP (R=10), NOT from
+    // his daily rows (deliberately wrong: R=99) — proves the source.
+    // Player 3: Alpha through 4/25, traded to Bravo effective 4/26 (UTC midnight).
+    const TRADE_AT = new Date("2026-04-26T00:00:00.000Z");
+    mockRosterFindMany.mockResolvedValueOnce([
+      // DESC by acquiredAt — matches the production query orderBy
+      { teamId: 1002, playerId: 3, acquiredAt: TRADE_AT, releasedAt: null, assignedPosition: "SS", player: { id: 3, mlbId: 3000, posPrimary: "SS" } },
+      { teamId: 1001, playerId: 1, acquiredAt: new Date("2026-03-22"), releasedAt: null, assignedPosition: "OF", player: { id: 1, mlbId: 1000, posPrimary: "OF" } },
+      { teamId: 1001, playerId: 3, acquiredAt: new Date("2026-03-22"), releasedAt: TRADE_AT, assignedPosition: "SS", player: { id: 3, mlbId: 3000, posPrimary: "SS" } },
+    ]);
+    mockPeriodStatsCount.mockResolvedValueOnce(2);
+    mockPeriodStatsFindMany.mockResolvedValueOnce([
+      { playerId: 1, ...ZERO_STATS, R: 10, AB: 40, H: 12 },
+      { playerId: 3, ...ZERO_STATS, R: 6, AB: 11, H: 5 }, // must be ignored (mid-period player)
+    ]);
+    mockDailyFindMany.mockResolvedValueOnce([
+      dailyRow(1, "2026-04-22", { R: 99 }), // stable player's daily — must NOT be used
+      dailyRow(3, "2026-04-22", { R: 2, AB: 4, H: 2 }),  // Alpha window
+      dailyRow(3, "2026-05-01", { R: 3, AB: 4, H: 2 }),  // Bravo window
+      dailyRow(3, "2026-05-10", { R: 1, AB: 3, H: 1 }),  // Bravo window
+    ]);
+
+    const rows = await computeTeamStatsFromDb(20, 36);
+
+    expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
+    expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
+
+    const alpha = (rows as any[]).find(r => r.team.id === 1001);
+    const bravo = (rows as any[]).find(r => r.team.id === 1002);
+    // Alpha: 10 (player 1 via PSP — not 99) + 2 (player 3 pre-trade window)
+    expect(alpha.R).toBe(12);
+    // Bravo: player 3 post-trade window only
+    expect(bravo.R).toBe(4);
+    // Conservation: nothing lost or double-counted across the league
+    expect(alpha.R + bravo.R).toBe(16);
+    // Merged rate components survive for weighted cross-period averaging (Issue #109)
+    expect(alpha.AB).toBe(44); // 40 (PSP) + 4 (daily window)
+    expect(alpha.H).toBe(14);  // 12 + 2
+  });
+});

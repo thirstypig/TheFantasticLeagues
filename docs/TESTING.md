@@ -30,12 +30,17 @@ A single place where any admin or contributor can see **what tests exist, what t
 ### The pyramid
 Many unit tests, fewer integration tests, few E2E tests — and only the most important flows as E2E because they are the most expensive to write and maintain.
 
+## Async test conventions
+
+- RTL `asyncUtilTimeout` is set to 4000ms globally (`client/src/test/setup.ts`) — CI runners are shared and slow under load; `waitFor`/`findBy*` poll, so the higher ceiling never slows a passing test (precedent: Home/ArchivePage "Unable to find element" CI flakes, June 9–10).
+- When a test asserts content from MULTIPLE independent fetches, anchor each panel's first data-driven assertion with `findBy*` — one `findByText` only synchronizes the fetch that renders it, not its siblings.
+
 ## How often we run
 
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1241 server + 845 client tests, ~20s total) + 83 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1244 server + 845 client tests, ~20s total) + 83 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
@@ -55,7 +60,7 @@ Major covered areas (selected):
 - `features/trades/routes.test.ts` — 13 (propose, vote, process)
 - `features/waivers/routes.test.ts` — 12 (submit, process, cancel)
 - `features/wire-list/routes.test.ts` + `processor.test.ts` — 24 (Zod schema validation: CreatePeriodBody / Add / Drop entry bodies, error-code enum, drop-mode enum, period-results response shape)
-- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation) + 6 releaseAt boundary (free-agent → 0 credit, released before period → 0, traded mid-period → new team, no double-count, dropped pitcher pitching stats → 0, multiple simultaneous free agents → 0 all teams) + 10 IL exclusion (standingsService.IL.test.ts — daily + period paths; includes mid-period pitcher-in-IL-slot scenario where pre-stash W/K/IP count, and period-start-IL pitcher where all pitching stats are zeroed) + 9 path routing (standingsService.pathRouting.test.ts — PSP vs daily-fallback selection per todo #260; UTC calendar-date boundary normalization per todo #285: same-day-as-start/end timestamps are boundary-aligned, day-after is mid-period)
+- `features/standings/` — 26 service + 7 integration + 11 routes + 13 categoryDailySnapshotService (period selection / no-period skip / row-count = teams×categories / idempotent upsert key / UTC-midnight normalization in batch + readback / per-league failure isolation) + 6 releaseAt boundary (free-agent → 0 credit, released before period → 0, traded mid-period → new team, no double-count, dropped pitcher pitching stats → 0, multiple simultaneous free agents → 0 all teams) + 10 IL exclusion (standingsService.IL.test.ts — daily + period paths; includes mid-period pitcher-in-IL-slot scenario where pre-stash W/K/IP count, and period-start-IL pitcher where all pitching stats are zeroed) + 11 path routing (standingsService.pathRouting.test.ts — PSP vs daily selection per todo #260; UTC calendar-date boundary normalization per todo #285; hybrid attribution per todo #286: PSP for boundary-aligned players + daily windows for mid-period players, same-day drop-and-re-add counted once, mid-period release credits dropper pre-release only) + 8 differential (standingsService.differential.test.ts — PSD↔PSP agreement on static ownership, window-split on trades, zero-sum invariant, hybrid source-of-credit proof)
 - `features/seasons/` — 14 service + 5 routes
 - `features/players/mlbSyncService.test.ts` — 28 (roster sync, position eligibility, Rule 2 prior-year 20-GP fallback)
 - `features/players/statsReconcile.test.ts` — 8 (ADR-014 integrity reconciliation: clean period, field-level drift incl April-19 inflation shape, missing stored row, two-way mirror transform no-false-alarm, sweep window selection, clean/healed/persistent-drift outcomes with error-buffer alert)
