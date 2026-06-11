@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: 287
 tags: [standings, cron, psp, data-integrity, prevention]
@@ -24,3 +24,7 @@ Cheaper alternative (process-only): a runbook rule — after any period closes o
 - A boundary edit to a closed period is healed by the next cron run (or the runbook documents the manual call).
 - Unit test covering the period-selection window (completed, endDate within N days).
 - `git mv` this todo from pending → complete.
+
+## Resolution (2026-06-10)
+
+Shipped in PR #395 as ADR-014 continuous reconciliation (supersedes the simple re-sync idea): daily 14:00 UTC cron re-fetches recently closed periods through the syncer's own fetch path, diffs stored PSP, auto-heals via syncPeriodStats, alerts on persistent drift. First live run caught real drift (Skenes ER 13→11, Lodolo BB_H +1 — late MLB corrections in P3) and it was healed + re-verified clean. Admin: POST /api/admin/reconcile-period. 8 tests.

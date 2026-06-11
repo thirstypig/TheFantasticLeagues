@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: 285
 tags: [standings, code-fix, attribution, computeTeamStatsFromDb]
@@ -21,3 +21,7 @@ Add a regression test pinning: acquiredAt at 12:00 on the period start date → 
 - Acquisitions time-stamped any time on the period start date do not trigger the daily fallback.
 - Paired test added to `standingsService.differential.test.ts` (per standings-architecture convention).
 - `git mv` this todo from pending → complete.
+
+## Resolution (2026-06-09)
+
+Shipped in PR #393: `hasMidPeriodPickup` compares UTC calendar dates; 3 TDD path-routing tests (noon-on-start, same-day-end, day-after guard). Merged to main 2026-06-10.

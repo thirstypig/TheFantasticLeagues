@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: 286
 tags: [standings, code-fix, attribution, ADR-013, wire-list]
@@ -23,3 +23,7 @@ Alternative considered: sync a sub-period PSP row (byDateRange acquiredAt→peri
 - Differential test pinning hybrid vs pure-daily vs pure-PSP behavior.
 - P3 live standings return to the FG-exact values.
 - `git mv` this todo from pending → complete.
+
+## Resolution (2026-06-10)
+
+Shipped in PR #394: hybrid per-player routing (PSP for boundary-aligned, daily windows for mid-period acquired/released players), half-open releasedAt in the daily window, mergeTeamStatRows component merging. Verified read-only vs prod: P3 = FanGraphs exactly 8/8 teams all categories; P1/P2 unchanged. 4 tests. Solutions doc: docs/solutions/logic-errors/mid-period-pickup-degrades-whole-period-to-daily-stats.md.
