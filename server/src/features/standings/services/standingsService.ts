@@ -472,30 +472,93 @@ export async function computeTeamStatsFromDb(
   // Prefer PlayerStatsPeriod (via MLB byDateRange API) — accurate, handles
   // doubleheaders. playerStatsDaily uses @@unique([playerId, gameDate]) which
   // collapses doubleheaders, systematically undercounting RBI, K, W, IP.
-  // If any player was acquired strictly mid-period, PSP would over-credit the
-  // acquiring team with pre-acquisition stats. Fall back to daily-stats (ownership
-  // windows) for those periods so attribution is correct per ADR-013.
+  // If a player was acquired or released strictly mid-period, PSP whole-period
+  // attribution is wrong for that player: it would over-credit an acquirer with
+  // pre-acquisition stats, and give a mid-period dropper nothing. Those players
+  // need daily ownership windows per ADR-013.
   //
   // Compare at UTC calendar-date granularity, not timestamps (todo #285): import
   // scripts and admin tools stamp acquiredAt with a time-of-day, and stats have
   // per-day granularity anyway — an acquisition any time on the period's start or
   // end DATE is boundary-aligned. A noon-on-start-day timestamp once flipped all
   // of P1 onto the gappy daily table (audit report Section 5.4).
+  //
+  // Hybrid routing (todo #286): only the affected PLAYERS go through the daily
+  // table; everyone boundary-aligned stays on PSP. Before this, one wire pickup
+  // degraded the whole period to the daily table (doubleheader collapse, gaps) —
+  // live P3 drifted off FanGraphs because of three mid-period adds.
   const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   const periodStartDay = utcDay(period.startDate);
   const periodEndDay = utcDay(period.endDate);
-  const hasMidPeriodPickup = rosters.some(
-    r => utcDay(r.acquiredAt) > periodStartDay &&
-         utcDay(r.acquiredAt) < periodEndDay
+  const strictlyInside = (d: Date) => utcDay(d) > periodStartDay && utcDay(d) < periodEndDay;
+  // Per PLAYER, not per row: a drop-and-re-add produces two rows for one player,
+  // and splitting one player's rows across the two paths would double-credit.
+  const midPeriodPlayerIds = new Set(
+    rosters
+      .filter(r => strictlyInside(r.acquiredAt) || (r.releasedAt !== null && strictlyInside(r.releasedAt)))
+      .map(r => r.playerId)
   );
 
-  if (periodStatCount > 0 && !hasMidPeriodPickup) {
+  if (periodStatCount > 0 && midPeriodPlayerIds.size === 0) {
     return computeWithPeriodStats(teams, rosters, period, ilWindowsByPlayer);
   }
 
-  // No PlayerStatsPeriod data yet (new period), or mid-period pickup detected —
-  // use daily stats as the correct ownership-window fallback.
-  return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
+  // No PlayerStatsPeriod data yet (new period) — daily is the only source.
+  if (periodStatCount === 0) {
+    return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
+  }
+
+  const pspRosters = rosters.filter(r => !midPeriodPlayerIds.has(r.playerId));
+  const dailyRosters = rosters.filter(r => midPeriodPlayerIds.has(r.playerId));
+
+  // Degenerate case: every overlapping player moved mid-period — pure daily.
+  if (pspRosters.length === 0) {
+    return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
+  }
+
+  const [pspRows, dailyRows] = await Promise.all([
+    computeWithPeriodStats(teams, pspRosters, period, ilWindowsByPlayer),
+    computeWithDailyStats(teams, dailyRosters, period, ilWindowsByPlayer),
+  ]);
+  return mergeTeamStatRows(teams, pspRows, dailyRows);
+}
+
+/**
+ * Merge two TeamStatRow sets (hybrid attribution, todo #286): sum counting stats
+ * and rate-stat components per team, then recompute AVG/ERA/WHIP from the merged
+ * components so rates are weighted correctly (Issue #109).
+ */
+function mergeTeamStatRows(
+  teams: { id: number; name: string; code: string | null }[],
+  a: TeamStatRow[],
+  b: TeamStatRow[],
+): TeamStatRow[] {
+  const aById = new Map(a.map(r => [r.team.id, r]));
+  const bById = new Map(b.map(r => [r.team.id, r]));
+  return teams.map(t => {
+    const x = aById.get(t.id);
+    const y = bById.get(t.id);
+    const n = (v: number | undefined) => v ?? 0;
+    const H = n(x?.H) + n(y?.H);
+    const AB = n(x?.AB) + n(y?.AB);
+    const ER = n(x?.ER) + n(y?.ER);
+    const IP = n(x?.IP) + n(y?.IP);
+    const BB_H = n(x?.BB_H) + n(y?.BB_H);
+    return {
+      team: { id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() },
+      R: n(x?.R) + n(y?.R),
+      HR: n(x?.HR) + n(y?.HR),
+      RBI: n(x?.RBI) + n(y?.RBI),
+      SB: n(x?.SB) + n(y?.SB),
+      AVG: AB > 0 ? H / AB : 0,
+      W: n(x?.W) + n(y?.W),
+      S: n(x?.S) + n(y?.S),
+      K: n(x?.K) + n(y?.K),
+      ERA: IP > 0 ? (ER / IP) * 9 : 0,
+      WHIP: IP > 0 ? BB_H / IP : 0,
+      H, AB, ER, IP, BB_H,
+    };
+  });
 }
 
 /** Precise path: sum daily stats within each roster entry's ownership window. */
@@ -560,7 +623,12 @@ async function computeWithDailyStats(
 
     for (const [dateMs, ds] of playerDailyStats) {
       const d = new Date(dateMs);
-      if (d >= from && d <= to) {
+      // releasedAt is exclusive (half-open window, see lib/rosterWindow.ts header):
+      // with the conventional UTC-midnight effDate, the release day belongs to the
+      // next owner (or nobody), never the dropper. Without this, a same-day
+      // drop-and-re-add double-counts the boundary day, and a player released at a
+      // period-start boundary leaks that day's stats to the dropper (todo #286).
+      if (d >= from && d <= to && (roster.releasedAt === null || d < roster.releasedAt)) {
         if (countHitting) {
           acc.R += ds.R; acc.HR += ds.HR; acc.RBI += ds.RBI; acc.SB += ds.SB;
           acc.H += ds.H; acc.AB += ds.AB;
