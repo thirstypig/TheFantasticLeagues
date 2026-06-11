@@ -227,17 +227,21 @@ describe("Home dashboard", () => {
     expect(news).toHaveTextContent("compact:true");
     expect(news).toHaveTextContent("limit:5");
 
+    // Each panel below is fed by its OWN fetch; the findByText anchor above only
+    // synchronizes the my-team panel. Anchor each panel's first data-driven
+    // assertion with findByText so panel render order can't flake under slow CI
+    // (precedent: "Trade block chatter" flaked twice in CI, June 9–10).
     expect(screen.getByText("League board")).toBeInTheDocument();
-    expect(screen.getByText("Trade block chatter")).toBeInTheDocument();
+    expect(await screen.findByText("Trade block chatter")).toBeInTheDocument();
     expect(screen.getByText("Looking for steals and saves.")).toBeInTheDocument();
     expect(screen.getByText("2 replies")).toBeInTheDocument();
 
-    expect(screen.getByText(/Pending trade proposals · 1/)).toBeInTheDocument();
+    expect(await screen.findByText(/Pending trade proposals · 1/)).toBeInTheDocument();
     expect(document.body).toHaveTextContent(/Los Doyers proposed a trade with Demolition Lumber Co\./);
     expect(screen.getByRole("button", { name: "Withdraw" })).toBeInTheDocument();
 
     expect(screen.getByText("League activity")).toBeInTheDocument();
-    expect(screen.getByText("Dodger Dawgs")).toBeInTheDocument();
+    expect(await screen.findByText("Dodger Dawgs")).toBeInTheDocument();
     expect(screen.getByText("Claimed Dominic Smith")).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: /League Board/ })).toHaveAttribute("href", "/board");
