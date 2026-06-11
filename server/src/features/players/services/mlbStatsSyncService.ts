@@ -2,6 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk, parseIP } from "../../../lib/utils.js";
+import * as errorBuffer from "../../../lib/errorBuffer.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -52,44 +53,21 @@ export async function syncPeriodStats(periodId: number): Promise<{
   );
 
   let synced = 0;
-  let skipped = 0;
-  let errors = 0;
 
-  const batches = chunk(mlbIds.map(String), 50);
+  // Shared fetch path with reconcilePeriodStats — the reconciler must compare
+  // against EXACTLY what the syncer would write (single source of fetch/parse
+  // semantics; see docs ADR-014).
+  const fresh = await fetchFreshPeriodStats(playerMap, startDate!, endDate!);
+  const skipped = fresh.skipped;
+  const errors = fresh.errors;
 
-  for (const batch of batches) {
-    try {
-      const ids = batch.join(",");
-      const hydrate = `stats(group=[hitting,pitching],type=[byDateRange],startDate=${startDate},endDate=${endDate})`;
-      const url = `${MLB_BASE}/people?personIds=${ids}&hydrate=${hydrate}`;
-      const data = await mlbGetJson(url);
-      const people: any[] = data.people || [];
-
-      for (const person of people) {
-        const mlbId = person.id;
-        const playerId = playerMap.get(mlbId);
-        if (!playerId) {
-          skipped++;
-          continue;
-        }
-
-        const stats = parsePlayerStats(person);
-
-        await prisma.playerStatsPeriod.upsert({
-          where: { playerId_periodId: { playerId, periodId } },
-          create: { playerId, periodId, ...stats },
-          update: stats,
-        });
-
-        synced++;
-      }
-
-      // Polite delay between batches
-      await new Promise((r) => setTimeout(r, 100));
-    } catch (err) {
-      logger.error({ error: String(err), batch: batch.slice(0, 3) }, "Batch stats fetch failed");
-      errors += batch.length;
-    }
+  for (const [playerId, stats] of fresh.statsByPlayerId) {
+    await prisma.playerStatsPeriod.upsert({
+      where: { playerId_periodId: { playerId, periodId } },
+      create: { playerId, periodId, ...stats },
+      update: stats,
+    });
+    synced++;
   }
 
   // Mirror pitching stats for two-way player split entries (e.g., Ohtani Pitcher)
@@ -396,4 +374,213 @@ async function mirrorTwoWayDailyPitcherStats(gameDate: Date): Promise<void> {
       data: { W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0, L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0, SHO: 0 },
     });
   }
+}
+
+// ─── Stats integrity reconciliation (ADR-014, todo #287) ───────────────────
+//
+// Closed periods drift silently: a boundary edit after the last sync, a late
+// MLB stat correction, or a missed sync leaves PlayerStatsPeriod diverging
+// from the official record forever (precedent: P1 carried April 19's games for
+// seven weeks — audit report Section 5.1). The reconciler re-fetches the SAME
+// date range through the SAME fetch/parse path the syncer uses and diffs the
+// result against what is stored. Any difference means the stored rows are
+// stale — never "lag": closed-period stats are final everywhere.
+
+/** Core standings-driving fields compared by the reconciler. */
+const RECONCILE_INT_FIELDS = ["AB", "H", "R", "HR", "RBI", "SB", "W", "SV", "K", "ER", "BB_H"] as const;
+const TWO_WAY_OFFSET = 1_000_000;
+
+export interface PeriodReconcileMismatch {
+  playerId: number;
+  mlbId: number | null;
+  field: string;
+  stored: number;
+  fresh: number;
+}
+
+export interface PeriodReconcileReport {
+  periodId: number;
+  playersChecked: number;
+  fetchErrors: number;
+  mismatches: PeriodReconcileMismatch[];
+}
+
+/**
+ * Fetch fresh byDateRange stats for a set of players — the single fetch/parse
+ * path shared by syncPeriodStats (which writes) and reconcilePeriodStats
+ * (which diffs). Synthetic two-way ids (>= 1M) are absent from the MLB API
+ * response and are handled by the mirror step / mirror transform respectively.
+ */
+async function fetchFreshPeriodStats(
+  playerMap: Map<number, number>, // mlbId -> playerId
+  startDate: string,
+  endDate: string,
+): Promise<{ statsByPlayerId: Map<number, ReturnType<typeof parsePlayerStats>>; skipped: number; errors: number }> {
+  const statsByPlayerId = new Map<number, ReturnType<typeof parsePlayerStats>>();
+  let skipped = 0;
+  let errors = 0;
+
+  const batches = chunk([...playerMap.keys()].map(String), 50);
+  for (const batch of batches) {
+    try {
+      const ids = batch.join(",");
+      const hydrate = `stats(group=[hitting,pitching],type=[byDateRange],startDate=${startDate},endDate=${endDate})`;
+      const url = `${MLB_BASE}/people?personIds=${ids}&hydrate=${hydrate}`;
+      const data = await mlbGetJson(url);
+      const people: any[] = data.people || [];
+      for (const person of people) {
+        const playerId = playerMap.get(person.id);
+        if (!playerId) {
+          skipped++;
+          continue;
+        }
+        statsByPlayerId.set(playerId, parsePlayerStats(person));
+      }
+      // Polite delay between batches
+      await new Promise((r) => setTimeout(r, 100));
+    } catch (err) {
+      logger.error({ error: String(err), batch: batch.slice(0, 3) }, "Batch stats fetch failed");
+      errors += batch.length;
+    }
+  }
+  return { statsByPlayerId, skipped, errors };
+}
+
+/**
+ * Re-fetch a period's stats from the MLB API and diff against the stored
+ * PlayerStatsPeriod rows. Read-only — never writes. Applies the same two-way
+ * split transform the syncer's mirror step applies (real row: pitching zeroed;
+ * synthetic row: real pitching, hitting zeroed) so Ohtani never false-alarms.
+ */
+export async function reconcilePeriodStats(periodId: number): Promise<PeriodReconcileReport> {
+  const period = await prisma.period.findUnique({ where: { id: periodId } });
+  if (!period) throw new Error(`Period ${periodId} not found`);
+  const startDate = period.startDate.toISOString().split("T")[0]!;
+  const endDate = period.endDate.toISOString().split("T")[0]!;
+
+  // Same roster window as syncPeriodStats — ever-rostered during the period.
+  const rosters = await prisma.roster.findMany({
+    where: {
+      OR: [{ releasedAt: null }, { releasedAt: { gte: period.startDate } }],
+      acquiredAt: { lte: period.endDate },
+    },
+    select: { player: { select: { id: true, mlbId: true } } },
+  });
+  const playerMap = new Map<number, number>(); // mlbId -> playerId
+  for (const r of rosters) {
+    if (r.player.mlbId) playerMap.set(r.player.mlbId, r.player.id);
+  }
+
+  const fresh = await fetchFreshPeriodStats(playerMap, startDate, endDate);
+
+  // Expected = fresh + two-way mirror transform (in memory, mirrors mirrorTwoWayPitcherStats).
+  const expected = new Map(fresh.statsByPlayerId);
+  for (const [mlbId, playerId] of playerMap) {
+    const syntheticPlayerId = playerMap.get(mlbId + TWO_WAY_OFFSET);
+    if (!syntheticPlayerId) continue;
+    const real = expected.get(playerId);
+    if (!real) continue;
+    expected.set(syntheticPlayerId, {
+      ...real,
+      AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
+      BB: 0, HBP: 0, SF: 0, TB: 0, DBL: 0, TPL: 0, SO: 0, OBP: 0, SLG: 0, OPS: 0, GS_HR: 0,
+    });
+    expected.set(playerId, {
+      ...real,
+      W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0,
+      L: 0, GS: 0, K9: 0, BB9: 0, HR_A: 0, BF: 0, SHO: 0,
+    });
+  }
+
+  const stored = await prisma.playerStatsPeriod.findMany({ where: { periodId } });
+  const storedByPlayerId = new Map(stored.map((s) => [s.playerId, s]));
+  const mlbIdByPlayerId = new Map([...playerMap].map(([m, p]) => [p, m]));
+
+  const mismatches: PeriodReconcileMismatch[] = [];
+  for (const [playerId, exp] of expected) {
+    const sto = storedByPlayerId.get(playerId);
+    const mlbId = mlbIdByPlayerId.get(playerId) ?? null;
+    for (const field of RECONCILE_INT_FIELDS) {
+      const s = (sto?.[field] as number | undefined) ?? 0;
+      const f = exp[field] as number;
+      if (s !== f) mismatches.push({ playerId, mlbId, field, stored: s, fresh: f });
+    }
+    const sIP = (sto?.IP as number | undefined) ?? 0;
+    if (Math.abs(sIP - exp.IP) > 0.05) {
+      mismatches.push({ playerId, mlbId, field: "IP", stored: sIP, fresh: exp.IP });
+    }
+  }
+
+  return { periodId, playersChecked: expected.size, fetchErrors: fresh.errors, mismatches };
+}
+
+export interface ReconcileSweepEntry {
+  periodId: number;
+  periodName: string;
+  status: "clean" | "healed" | "drift" | "fetch_error";
+  mismatchesBefore: number;
+  mismatchesAfter: number;
+}
+
+/**
+ * Reconcile recently closed periods; on drift, auto-heal by re-running
+ * syncPeriodStats under the period's CURRENT boundaries, then verify. Persistent
+ * drift after a re-sync means something deeper than staleness — alert loudly.
+ * Runs across ALL leagues' periods (roster window is league-agnostic upstream).
+ */
+export async function reconcileRecentlyClosedPeriods(
+  opts: { windowDays?: number; resync?: (periodId: number) => Promise<unknown> } = {},
+): Promise<ReconcileSweepEntry[]> {
+  const windowDays = opts.windowDays ?? 5;
+  const resync = opts.resync ?? syncPeriodStats;
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
+
+  const periods = await prisma.period.findMany({
+    where: { status: "completed", endDate: { gte: cutoff, lte: now } },
+    select: { id: true, name: true },
+    orderBy: { endDate: "asc" },
+  });
+
+  const entries: ReconcileSweepEntry[] = [];
+  for (const p of periods) {
+    const before = await reconcilePeriodStats(p.id);
+    if (before.fetchErrors > 0 && before.mismatches.length === 0) {
+      entries.push({ periodId: p.id, periodName: p.name, status: "fetch_error", mismatchesBefore: 0, mismatchesAfter: 0 });
+      continue;
+    }
+    if (before.mismatches.length === 0) {
+      entries.push({ periodId: p.id, periodName: p.name, status: "clean", mismatchesBefore: 0, mismatchesAfter: 0 });
+      continue;
+    }
+
+    logger.warn(
+      { periodId: p.id, mismatches: before.mismatches.length, sample: before.mismatches.slice(0, 5) },
+      "Stats reconcile: drift detected on closed period — re-syncing",
+    );
+    await resync(p.id);
+    const after = await reconcilePeriodStats(p.id);
+
+    if (after.mismatches.length === 0) {
+      entries.push({ periodId: p.id, periodName: p.name, status: "healed", mismatchesBefore: before.mismatches.length, mismatchesAfter: 0 });
+      logger.warn({ periodId: p.id, healed: before.mismatches.length }, "Stats reconcile: drift healed by re-sync");
+    } else {
+      entries.push({ periodId: p.id, periodName: p.name, status: "drift", mismatchesBefore: before.mismatches.length, mismatchesAfter: after.mismatches.length });
+      const message = `Stats reconcile: PERSISTENT drift on closed period ${p.id} (${p.name}) — ${after.mismatches.length} mismatches after re-sync`;
+      logger.error({ periodId: p.id, sample: after.mismatches.slice(0, 10) }, message);
+      errorBuffer.push({
+        ref: `ERR-recon-p${p.id}`,
+        requestId: `recon-p${p.id}`,
+        message,
+        stack: null,
+        path: "cron:stats-reconcile",
+        method: "CRON",
+        userId: null,
+        userEmail: null,
+        statusCode: 500,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+  return entries;
 }
