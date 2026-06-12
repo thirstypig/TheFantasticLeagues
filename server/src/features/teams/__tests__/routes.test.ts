@@ -460,41 +460,76 @@ describe("PATCH /api/teams/:teamId/roster/:rosterId — schema accepts effective
   });
 });
 
-// ─── period-roster: releasedAt boundary and assignedPosition override ─────────
+// ─── period-roster: ownership-window boundary and assignedPosition override ───
 //
-// These tests encode the two bugs fixed in GET /api/teams/:id/period-roster:
-//  1. releasedAt boundary: `gte` (not `gt`) so a player released at exactly
-//     period.startDate is included in the period's roster.
-//  2. assignedPosition historical override: a player whose DB column reads
+// These tests encode the GET /api/teams/:id/period-roster window semantics:
+//  1. releasedAt boundary is EXCLUSIVE (`gt`, half-open window): a player
+//     released at exactly period.startDate owned zero days of the period and
+//     must NOT appear — they show in the PRIOR period's view instead. This
+//     matches `ownedOn`/scoring semantics in lib/rosterWindow.ts. (The May-14
+//     `gte` change overshot: it made boundary drops appear in BOTH periods,
+//     which desktop hid client-side but mobile rendered as a roster-rules
+//     violation — DLC P4 showed two 3Bs/CMs, 2026-06-11.)
+//  2. acquiredAt boundary is INCLUSIVE (`lte`): acquired on the period's last
+//     day still counts (prevents a one-day final-day stint vanishing from
+//     every period's view).
+//  3. assignedPosition historical override: a player whose DB column reads
 //     "IL" but who was not on IL at period.startDate gets their posPrimary
 //     shown instead, preventing cross-period IL bleed.
 
-describe("period-roster — releasedAt gte boundary invariant", () => {
-  it("includes a player released exactly at period start (gte)", () => {
-    // Roster release timestamps are set to midnight UTC at period boundaries.
-    // The gte predicate must include this exact timestamp; gt would drop the player.
-    const periodStart = new Date("2026-04-19T00:00:00.000Z");
-    const releasedAtBoundary = new Date("2026-04-19T00:00:00.000Z");
+describe("period-roster — ownership-window boundary invariants", () => {
+  const periodStart = new Date("2026-06-07T00:00:00.000Z");
+  const periodEnd = new Date("2026-07-04T00:00:00.000Z");
+  const overlaps = (acquiredAt: Date, releasedAt: Date | null) =>
+    acquiredAt <= periodEnd && (releasedAt === null || releasedAt > periodStart);
 
-    const matchesGte = releasedAtBoundary >= periodStart; // gte — the fix
-    const matchesGt  = releasedAtBoundary >  periodStart; // gt  — the bug
-
-    expect(matchesGte).toBe(true);  // player was present at period open
-    expect(matchesGt).toBe(false);  // bug silently dropped this player
+  it("excludes a player released exactly at period start (half-open releasedAt)", () => {
+    // Brady House / Andrew Vaughn (DLC): dropped effective P4 start — they
+    // belong to P3's view, not P4's. Scoring credits them zero P4 days.
+    expect(overlaps(new Date("2026-03-23T02:31:09.453Z"), periodStart)).toBe(false);
   });
 
-  it("excludes a player released the day before period start", () => {
-    const periodStart = new Date("2026-04-19T00:00:00.000Z");
-    const releasedBefore = new Date("2026-04-18T00:00:00.000Z");
-
-    expect(releasedBefore >= periodStart).toBe(false);
+  it("still shows the boundary-released player in the PRIOR period", () => {
+    const p3Start = new Date("2026-05-17T00:00:00.000Z");
+    const p3End = new Date("2026-06-06T00:00:00.000Z");
+    const releasedAtP4Start = new Date("2026-06-07T00:00:00.000Z");
+    const acquired = new Date("2026-03-23T02:31:09.453Z");
+    expect(acquired <= p3End && releasedAtP4Start > p3Start).toBe(true);
   });
 
   it("includes a player released mid-period", () => {
-    const periodStart = new Date("2026-04-19T00:00:00.000Z");
-    const releasedMid = new Date("2026-05-01T00:00:00.000Z");
+    expect(overlaps(new Date("2026-03-25T00:00:00.000Z"), new Date("2026-06-20T00:00:00.000Z"))).toBe(true);
+  });
 
-    expect(releasedMid >= periodStart).toBe(true);
+  it("includes an active (never released) player", () => {
+    expect(overlaps(new Date("2026-06-08T00:00:00.000Z"), null)).toBe(true);
+  });
+
+  it("includes a player acquired on the period's last day (inclusive acquiredAt)", () => {
+    expect(overlaps(periodEnd, null)).toBe(true);
+  });
+
+  it("excludes a player acquired after the period ended", () => {
+    expect(overlaps(new Date("2026-07-05T00:00:00.000Z"), null)).toBe(false);
+  });
+});
+
+describe("period-roster — same-period stint dedupe (mirrors route transformation)", () => {
+  it("prefers the active stint when a player was dropped and re-acquired in one period", () => {
+    const rows = [
+      { id: 1, playerId: 42, releasedAt: new Date("2026-06-15T00:00:00.000Z") },
+      { id: 2, playerId: 42, releasedAt: null },
+      { id: 3, playerId: 7, releasedAt: new Date("2026-06-20T00:00:00.000Z") },
+    ];
+    const byPlayer = new Map<number, (typeof rows)[number]>();
+    for (const r of rows) {
+      const existing = byPlayer.get(r.playerId);
+      if (!existing || r.releasedAt === null) byPlayer.set(r.playerId, r);
+    }
+    const deduped = Array.from(byPlayer.values());
+    expect(deduped).toHaveLength(2);
+    expect(deduped.find(r => r.playerId === 42)?.id).toBe(2); // active stint wins
+    expect(deduped.find(r => r.playerId === 7)?.id).toBe(3);  // sole stint kept
   });
 });
 

@@ -435,21 +435,36 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
   // Prevent cross-league reads: a user in League A cannot supply a periodId from League B.
   if (period.leagueId !== team.leagueId) return res.status(403).json({ error: "Period does not belong to this league" });
 
-  // All roster entries that overlapped with this period
-  // `gte` is intentional: a player released at exactly period.startDate
-  // was on the roster at the period's opening moment.
-  const rosters = await prisma.roster.findMany({
+  // All roster entries that owned the player for at least one day of this
+  // period: acquiredAt <= endDate (inclusive — acquired on the last day still
+  // counts) AND releasedAt > startDate (exclusive — released at the period's
+  // first instant means zero days owned, matching `ownedOn`/scoring semantics
+  // in lib/rosterWindow.ts; such a player appears in the PRIOR period's view
+  // instead). Mid-period drops (releasedAt strictly inside the period) still
+  // appear: they contributed stats before departing.
+  const overlapping = await prisma.roster.findMany({
     where: {
       teamId,
-      acquiredAt: { lt: period.endDate },
+      acquiredAt: { lte: period.endDate },
       OR: [
         { releasedAt: null },
-        { releasedAt: { gte: period.startDate } },
+        { releasedAt: { gt: period.startDate } },
       ],
     },
     include: { player: true },
     orderBy: { acquiredAt: "asc" },
   });
+
+  // Deduplicate multiple stints of the same player within the period —
+  // prefer the active row (releasedAt === null) so drop-and-reacquire shows
+  // the current stint. Stats are per-player (one PSP row), so collapsing
+  // stints loses nothing.
+  const byPlayer = new Map<number, (typeof overlapping)[number]>();
+  for (const r of overlapping) {
+    const existing = byPlayer.get(r.playerId);
+    if (!existing || r.releasedAt === null) byPlayer.set(r.playerId, r);
+  }
+  const rosters = Array.from(byPlayer.values());
 
   const playerIds = rosters.map(r => r.playerId);
 

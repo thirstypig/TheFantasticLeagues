@@ -227,7 +227,6 @@ export default function Team() {
   const [periodMode, setPeriodMode] = useState<PeriodMode>("season");
   const [periodOptions, setPeriodOptions] = useState<PeriodOption[]>([]);
   const [periodRoster, setPeriodRoster] = useState<PeriodRosterEntry[] | null>(null);
-  const [selectedPeriodStart, setSelectedPeriodStart] = useState<string | null>(null);
   const [periodLoading, setPeriodLoading] = useState(false);
 
   // Resolve teamCode → team metadata + DB id, then load roster + AI.
@@ -383,19 +382,15 @@ export default function Team() {
   useEffect(() => {
     if (periodMode === "season" || !teamMeta?.id) {
       setPeriodRoster(null);
-      setSelectedPeriodStart(null);
       return;
     }
     let canceled = false;
     setPeriodLoading(true);
     getTeamPeriodRoster(teamMeta.id, periodMode)
       .then(res => {
-        if (!canceled) {
-          setPeriodRoster(res.roster);
-          setSelectedPeriodStart(res.period.startDate);
-        }
+        if (!canceled) setPeriodRoster(res.roster);
       })
-      .catch(() => { if (!canceled) { setPeriodRoster([]); setSelectedPeriodStart(null); } })
+      .catch(() => { if (!canceled) setPeriodRoster([]); })
       .finally(() => { if (!canceled) setPeriodLoading(false); });
     return () => { canceled = true; };
   }, [periodMode, teamMeta?.id]);
@@ -404,26 +399,10 @@ export default function Team() {
   // as the season roster — so hitters/pitchers memos work uniformly.
   const displayRoster: RosterPlayer[] = useMemo(() => {
     if (periodMode === "season" || !periodRoster) return roster;
-    // Only show players who were actually on the team during this period:
-    // exclude entries where releasedAt === period.startDate — those exist in
-    // the DB response solely for stats computation (gte boundary) but the
-    // player was released at the period's first moment and never played for
-    // this team during the period.
-    const filtered = periodRoster.filter(r =>
-      r.releasedAt === null || !selectedPeriodStart ||
-      new Date(r.releasedAt) > new Date(selectedPeriodStart)
-    );
-    // Deduplicate by playerId, keeping active rows (releasedAt === null) over
-    // released rows — handles the trade-away-and-back scenario where the same
-    // player appears as both a released entry and an active entry.
-    const deduped = new Map<number, typeof filtered[number]>();
-    for (const r of filtered) {
-      const existing = deduped.get(r.playerId);
-      if (!existing || r.releasedAt === null) {
-        deduped.set(r.playerId, r);
-      }
-    }
-    return Array.from(deduped.values()).map(r => {
+    // Boundary filtering (releasedAt === period.startDate) and same-period
+    // stint dedupe both happen server-side in the period-roster endpoint,
+    // shared with the mobile twin page.
+    return periodRoster.map(r => {
       // Use Partial because the row may have no period-stats yet (synthetic
       // rows, mid-period sync gap). Each Number(...) call below tolerates
       // undefined fields by falling back to 0.
@@ -468,7 +447,7 @@ export default function Team() {
         WHIP: whip,
       };
     });
-  }, [periodMode, periodRoster, roster, selectedPeriodStart]);
+  }, [periodMode, periodRoster, roster]);
 
   // Team navigator helpers — sort allTeams by name; resolve prev/next.
   const sortedTeams = useMemo(
