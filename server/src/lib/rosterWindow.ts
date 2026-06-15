@@ -191,6 +191,32 @@ export function ownedOn(
 }
 
 /**
+ * Prisma WHERE fragment for a period-roster `findMany` query.
+ *
+ * Implements the half-open `[acquiredAt, releasedAt)` ownership window that
+ * matches `ownedOn`/scoring semantics:
+ *   - `acquiredAt <= endDate`  — inclusive: acquired on the last day still counts
+ *   - `releasedAt > startDate` — exclusive: released at the period's first instant
+ *     means zero days owned; that player belongs in the PRIOR period's view
+ *
+ * Use this instead of inlining the boundary logic in each endpoint.
+ * See CLAUDE.md "Time-aware ownership predicates" convention.
+ *
+ * NOTE: this uses `ownedOn`-style EXCLUSIVE upper bound (`releasedAt > startDate`),
+ * NOT `overlapsPeriod`'s inclusive bound (`>= startDate`). The distinction matters
+ * for players released exactly at period boundaries (wire-list drops at midnight UTC).
+ */
+export function periodOverlapFilter(period: PeriodWindow): {
+  acquiredAt: { lte: Date };
+  OR: ({ releasedAt: null } | { releasedAt: { gt: Date } })[];
+} {
+  return {
+    acquiredAt: { lte: period.endDate },
+    OR: [{ releasedAt: null }, { releasedAt: { gt: period.startDate } }],
+  };
+}
+
+/**
  * Returns the [from, to] date window clamped to the period boundaries.
  * Used by `computeWithDailyStats` to decide which daily-stat rows belong to
  * this roster entry's stint.

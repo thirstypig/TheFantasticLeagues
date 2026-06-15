@@ -16,6 +16,7 @@ import { registerWireListTools } from "./tools.js";
 import { registerCommissionerTools } from "./commissionerTools.js";
 import { registerStandingsTools } from "./tools/standings.js";
 import { registerTransactionTools } from "./tools/transactionTools.js";
+import { registerTeamTools } from "./tools/teamTools.js";
 
 const client = new FbstApiClient();
 
@@ -28,6 +29,7 @@ registerWireListTools(server, client);
 registerCommissionerTools(server, client);
 registerStandingsTools(server, client);
 registerTransactionTools(server, client);
+registerTeamTools(server, client);
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();

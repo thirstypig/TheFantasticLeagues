@@ -7,8 +7,19 @@ vi.mock("../../../db/prisma.js", () => ({
     leagueMembership: { findUnique: vi.fn(), findMany: vi.fn() },
     roster: { findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() },
     period: { findUnique: vi.fn() },
+    playerStatsPeriod: { findMany: vi.fn() },
     transactionEvent: { findMany: vi.fn() },
   },
+}));
+vi.mock("../../standings/services/standingsService.js", () => ({
+  computeStandingsFromStats: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("../../transactions/lib/positionInherit.js", () => ({
+  isEligibleForSlot: vi.fn().mockReturnValue(true),
+}));
+vi.mock("../lib/rosterVersionGuard.js", () => ({
+  checkRosterVersion: vi.fn(),
+  incrementRosterVersion: vi.fn(),
 }));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -32,14 +43,31 @@ vi.mock("../../../middleware/validate.js", () => ({
   validateBody: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 vi.mock("../services/teamService.js", () => ({
-  TeamService: vi.fn().mockImplementation(() => ({
-    getTeamSummary: vi.fn(),
-  })),
+  TeamService: class {
+    getTeamSummary = vi.fn();
+    getTeamHubData = vi.fn();
+  },
 }));
 
 import { prisma } from "../../../db/prisma.js";
+import express from "express";
+import type { NextFunction } from "express";
+import supertest from "supertest";
+import { teamsRouter } from "../routes.js";
 
 const mockPrisma = prisma as any;
+
+// Express test app for handler-level (supertest) tests
+const testApp = express();
+testApp.use(express.json());
+testApp.use((req: any, _res: any, next: NextFunction) => {
+  req.user = { id: 1, isAdmin: false };
+  next();
+});
+testApp.use("/api/teams", teamsRouter);
+testApp.use((err: any, _req: any, res: any, _next: NextFunction) => {
+  res.status(500).json({ error: "Internal Server Error" });
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -673,5 +701,46 @@ describe("period-roster — cross-league IDOR guard", () => {
 
     expect(blocked).toBe(false);
     expect(res.status).not.toHaveBeenCalled();
+  });
+});
+
+// ─── period-roster: handler-level Prisma query predicate verification ─────────
+//
+// These tests call through the actual Express handler (via supertest) and assert
+// on the Prisma WHERE clause that was sent to the database. A revert of gt → gte
+// in routes.ts would fail the first test here even if the logic-copy tests above
+// still pass.
+
+describe("GET /api/teams/:id/period-roster — Prisma query predicates", () => {
+  const periodStart = new Date("2026-06-07T00:00:00.000Z");
+  const periodEnd = new Date("2026-07-04T00:00:00.000Z");
+
+  beforeEach(() => {
+    mockPrisma.team.findUnique.mockResolvedValue({ id: 1, leagueId: 10, ownerUserId: 1 });
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ leagueId: 10, userId: 1 });
+    mockPrisma.period.findUnique.mockResolvedValue({
+      id: 5, leagueId: 10, startDate: periodStart, endDate: periodEnd, name: "Period 4",
+    });
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+    mockPrisma.playerStatsPeriod.findMany.mockResolvedValue([]);
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+  });
+
+  it("uses exclusive releasedAt boundary (gt not gte) — a gt→gte revert fails here", async () => {
+    await supertest(testApp).get("/api/teams/1/period-roster?periodId=5");
+
+    expect(mockPrisma.roster.findMany).toHaveBeenCalled();
+    const where = mockPrisma.roster.findMany.mock.calls[0][0].where;
+    const releasedClause = where.OR?.find((c: any) => c.releasedAt != null);
+    expect(releasedClause?.releasedAt).toEqual({ gt: periodStart });
+    expect(releasedClause?.releasedAt).not.toHaveProperty("gte");
+  });
+
+  it("uses inclusive acquiredAt boundary (lte not lt) — final-day acquisitions survive", async () => {
+    await supertest(testApp).get("/api/teams/1/period-roster?periodId=5");
+
+    const where = mockPrisma.roster.findMany.mock.calls[0][0].where;
+    expect(where.acquiredAt).toEqual({ lte: periodEnd });
+    expect(where.acquiredAt).not.toHaveProperty("lt");
   });
 });

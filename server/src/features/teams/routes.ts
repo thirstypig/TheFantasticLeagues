@@ -10,6 +10,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
 import { buildIlWindows, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
+import { periodOverlapFilter } from "../../lib/rosterWindow.js";
 import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
 import { checkRosterVersion, incrementRosterVersion } from "./lib/rosterVersionGuard.js";
 
@@ -435,22 +436,11 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
   // Prevent cross-league reads: a user in League A cannot supply a periodId from League B.
   if (period.leagueId !== team.leagueId) return res.status(403).json({ error: "Period does not belong to this league" });
 
-  // All roster entries that owned the player for at least one day of this
-  // period: acquiredAt <= endDate (inclusive — acquired on the last day still
-  // counts) AND releasedAt > startDate (exclusive — released at the period's
-  // first instant means zero days owned, matching `ownedOn`/scoring semantics
-  // in lib/rosterWindow.ts; such a player appears in the PRIOR period's view
-  // instead). Mid-period drops (releasedAt strictly inside the period) still
-  // appear: they contributed stats before departing.
+  // Half-open ownership window — see periodOverlapFilter() in lib/rosterWindow.ts.
+  // Mid-period drops (releasedAt strictly inside the period) still appear:
+  // they contributed stats before departing.
   const overlapping = await prisma.roster.findMany({
-    where: {
-      teamId,
-      acquiredAt: { lte: period.endDate },
-      OR: [
-        { releasedAt: null },
-        { releasedAt: { gt: period.startDate } },
-      ],
-    },
+    where: { teamId, ...periodOverlapFilter(period) },
     include: { player: true },
     orderBy: { acquiredAt: "asc" },
   });
@@ -458,7 +448,8 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
   // Deduplicate multiple stints of the same player within the period —
   // prefer the active row (releasedAt === null) so drop-and-reacquire shows
   // the current stint. Stats are per-player (one PSP row), so collapsing
-  // stints loses nothing.
+  // stints loses nothing. When all stints are closed, the last-acquired
+  // stint wins (rows are ordered acquiredAt: asc).
   const byPlayer = new Map<number, (typeof overlapping)[number]>();
   for (const r of overlapping) {
     const existing = byPlayer.get(r.playerId);
