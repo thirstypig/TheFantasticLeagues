@@ -266,6 +266,7 @@ export class TeamService {
         mlbTeam: row.mlbTeam ?? undefined,
         isKeeper: row.isKeeper,
         gamesByPos: row.gamesByPos,
+        posGamesSource: row.posGamesSource,
         mlbStatus: row.mlbStatus,
         AB,
         H,
