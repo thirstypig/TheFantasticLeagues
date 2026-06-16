@@ -808,6 +808,30 @@ describe("syncPositionEligibility", () => {
       expect(mockPrisma.player.update).not.toHaveBeenCalled();
     });
 
+    it("KNOWN_FIELD_POSITIONS allowlist: filters unknown API keys from posGames", async () => {
+      // The MLB Stats API occasionally returns non-standard position keys
+      // (e.g. "XB", "TWP", pitch-only codes). KNOWN_FIELD_POSITIONS guards
+      // the extraction loop so garbage keys never land in the DB.
+      mockPrisma.player.findMany.mockResolvedValue([
+        { id: 1, mlbId: 12345, posPrimary: "1B", posList: "1B", posGames: null },
+      ]);
+      mockMlbGetJson.mockResolvedValue(
+        makeMlbFieldingResponse([
+          { id: 12345, positions: [{ pos: "1B", games: 50 }, { pos: "XB", games: 30 }, { pos: "TWP", games: 5 }] },
+        ])
+      );
+      mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+      const result = await syncPositionEligibility(2026, 3);
+
+      expect(result.updated).toBe(1);
+      const updateData = mockPrisma.player.update.mock.calls[0][0].data;
+      // Only "1B" (a KNOWN_FIELD_POSITION) should be stored
+      expect(updateData.posGames).toEqual({ "1B": 50 });
+      expect(updateData.posGames).not.toHaveProperty("XB");
+      expect(updateData.posGames).not.toHaveProperty("TWP");
+    });
+
     it("treats corrupt stored posGames (non-object) as null and writes real data", async () => {
       // Defensive: if a bad value somehow landed in the DB (e.g. a string
       // "null" or a plain number), the runtime guard in storedPosGames

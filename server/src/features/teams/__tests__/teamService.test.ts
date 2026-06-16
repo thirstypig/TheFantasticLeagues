@@ -252,6 +252,8 @@ describe("TeamService.getTeamRosterHub", () => {
       AVG: 0.3,
       HR: 2,
     });
+    // No posGames in this fixture → synthetic fallback
+    expect(result.hitters[0].posGamesSource).toBe("synthetic");
     expect(result.pitchers).toHaveLength(1);
     expect(result.pitchers[0]).toMatchObject({
       rosterId: 102,
@@ -271,6 +273,80 @@ describe("TeamService.getTeamRosterHub", () => {
       assignedPosition: "IL",
       mlbStatus: "Injured 10-Day",
     });
+  });
+
+  it("posGamesSource is 'real' when player.posGames has MLB data, 'synthetic' otherwise", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({
+      id: 20,
+      leagueId: 1,
+      name: "T",
+      owner: "O",
+      budget: 260,
+    });
+    mockPrisma.roster.findMany.mockImplementation((args: any) => {
+      if (args?.where?.releasedAt === null) {
+        return Promise.resolve([
+          {
+            id: 201,
+            playerId: 10,
+            teamId: 20,
+            assignedPosition: "C",
+            isKeeper: false,
+            price: 20,
+            acquiredAt: new Date("2026-04-01"),
+            releasedAt: null,
+            source: "auction",
+            player: {
+              id: 10,
+              mlbId: 700010,
+              name: "Real GP Player",
+              posPrimary: "C",
+              posList: "C",
+              mlbTeam: "LAD",
+              mlbStatus: null,
+              // real MLB data from the cron
+              posGames: { C: 48, DH: 2 },
+            },
+          },
+          {
+            id: 202,
+            playerId: 11,
+            teamId: 20,
+            assignedPosition: "SS",
+            isKeeper: false,
+            price: 10,
+            acquiredAt: new Date("2026-04-01"),
+            releasedAt: null,
+            source: "auction",
+            player: {
+              id: 11,
+              mlbId: 700011,
+              name: "No GP Player",
+              posPrimary: "SS",
+              posList: "SS",
+              mlbTeam: "LAD",
+              mlbStatus: null,
+              // cron hasn't run yet
+              posGames: null,
+            },
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const service = new TeamService();
+    const result = await service.getTeamRosterHub(20);
+
+    const realRow = result.hitters.find((r: { playerId: number }) => r.playerId === 10)! as any;
+    const syntheticRow = result.hitters.find((r: { playerId: number }) => r.playerId === 11)! as any;
+
+    expect(realRow.posGamesSource).toBe("real");
+    expect(realRow.gamesByPos).toEqual({ C: 48, DH: 2 });
+
+    expect(syntheticRow.posGamesSource).toBe("synthetic");
+    // Synthetic single-position: 20 GP
+    expect(syntheticRow.gamesByPos).toEqual({ SS: 20 });
   });
 });
 
