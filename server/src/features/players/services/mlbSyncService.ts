@@ -3,6 +3,7 @@ import { logger } from "../../../lib/logger.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk } from "../../../lib/utils.js";
 import { TWO_WAY_PLAYERS, POSITION_OVERRIDES } from "../../../lib/sportConfig.js";
+import { isPosGamesRecord } from "../../../lib/jsonGuards.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -298,6 +299,13 @@ function normalizePos(pos: string): string {
  * Extract games-per-position from MLB API fielding stats response for one player.
  * Aggregates across teams (traded players have separate splits per team).
  */
+// Known MLB fielding position abbreviations returned by the Stats API.
+// Includes sub-positions (LF/CF/RF) which narrowGamesByPos collapses to OF on display,
+// but we store them verbatim so agents can distinguish outfield sub-positions.
+const KNOWN_FIELD_POSITIONS = new Set([
+  "C", "1B", "2B", "3B", "SS", "OF", "LF", "CF", "RF", "P", "DH",
+]);
+
 function extractFieldingPositions(player: MlbPerson): Map<string, number> {
   const posMap = new Map<string, number>();
 
@@ -307,7 +315,7 @@ function extractFieldingPositions(player: MlbPerson): Map<string, number> {
     for (const split of group.splits ?? []) {
       const pos: string | undefined = split.position?.abbreviation;
       const games = Number(split.stat?.games ?? split.stat?.gamesPlayed ?? 0);
-      if (pos && games > 0) {
+      if (pos && games > 0 && KNOWN_FIELD_POSITIONS.has(pos)) {
         posMap.set(pos, (posMap.get(pos) ?? 0) + games);
       }
     }
@@ -484,10 +492,7 @@ export async function syncPositionEligibility(
       // but Object.fromEntries(Map) preserves insertion order, so a naive JSON.stringify
       // would always mismatch even when the data is identical (#272).
       const storedRaw = player.posGames;
-      const storedPosGames: Record<string, number> | null =
-        storedRaw && typeof storedRaw === "object" && !Array.isArray(storedRaw)
-          ? storedRaw as Record<string, number>
-          : null;
+      const storedPosGames: Record<string, number> | null = isPosGamesRecord(storedRaw) ? storedRaw : null;
       const sortedJson = (o: Record<string, number> | null | undefined): string =>
         o ? JSON.stringify(Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)))) : "null";
       const posGamesChanged = posGamesValue !== undefined &&

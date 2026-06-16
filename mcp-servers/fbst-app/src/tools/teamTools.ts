@@ -2,11 +2,11 @@
  * Team read MCP tool definitions.
  *
  *   team_get_period_roster  — GET /api/teams/:teamId/period-roster?periodId=
+ *   team_get_roster_hub     — GET /api/teams/:teamId/roster-hub
  *
- * Lets agents query historical roster composition by period — who was on a
- * team during period X? Useful for commissioner audit, standings verification,
- * and wire-list context. Complements transaction tools (current-state) with
- * historical read coverage.
+ * Lets agents query team rosters: historical (period-roster) or current (roster-hub).
+ * roster-hub is the richest player payload in the app — stats, slot, eligibility,
+ * gamesByPos, IL status, price, keeper flag.
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -41,6 +41,23 @@ export function registerTeamTools(server: McpServer, client: FbstApiClient): voi
       }
     },
   );
+
+
+  server.tool(
+    "team_get_roster_hub",
+    "Get the current active roster hub for a team. Returns the richest player payload in the app: slot assignment, position eligibility, period stats (AB/H/HR/R/RBI/SB for hitters; IP/ERA/WHIP/W/SV/K for pitchers), gamesByPos (real MLB GP data when posGamesSource is \"real\"; synthetic 60/40 fallback otherwise), IL status, price, and keeper flag. Use for position-eligibility analysis, GP-by-position queries, or commissioner roster audits.",
+    {
+      teamId: z.number().int().positive().describe("Team DB id (Team.id)"),
+    },
+    async ({ teamId }) => {
+      try {
+        const data = await client.request("GET", `/api/teams/${teamId}/roster-hub`);
+        return ok(data);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
 }
 
-export const TEAM_TOOL_NAMES = ["team_get_period_roster"] as const;
+export const TEAM_TOOL_NAMES = ["team_get_period_roster", "team_get_roster_hub"] as const;

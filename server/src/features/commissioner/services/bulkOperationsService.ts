@@ -217,7 +217,7 @@ async function stashOneIdempotent(args: {
         }
       }
       if (result.ok) {
-        await applyAssignments(tx, result.assignments, playerNames, rosterRowToPlayerId);
+        await applyAssignments(tx, result.assignments, playerNames, rosterRowToPlayerId, new Map());
       }
       // If still not ok, we accept the orphaned slot — same forgiving stance
       // as the route handler when a manual rule edit creates an unsolvable

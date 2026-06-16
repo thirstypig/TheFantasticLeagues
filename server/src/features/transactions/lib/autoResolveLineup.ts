@@ -201,7 +201,7 @@ export async function applyAssignments(
   assignments: SlotAssignment[],
   playerNames: Map<number, string>,
   rosterRowToPlayerId: Map<number, number>,
-  playerMlbIds?: Map<number, number | null>,
+  playerMlbIds: Map<number, number | null>,
 ): Promise<AppliedReassignment[]> {
   const out: AppliedReassignment[] = [];
   for (const a of assignments) {
@@ -214,7 +214,7 @@ export async function applyAssignments(
     out.push({
       rosterId: a.rosterId,
       playerId,
-      mlbId: playerMlbIds?.get(a.rosterId) ?? null,
+      mlbId: playerMlbIds.get(a.rosterId) ?? null,
       playerName: playerNames.get(a.rosterId) ?? `Player #${playerId}`,
       oldSlot: a.oldSlot ?? "",
       newSlot: a.newSlot,

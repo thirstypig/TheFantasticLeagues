@@ -49,8 +49,10 @@ export const RosterHubRowSchema = z.object({
   price: z.number().nullable().optional(),
   mlbTeam: z.string().optional(),
   isKeeper: z.boolean().nullable().optional(),
-  /** Synthetic per-position GP today (60/40 split); real values when Player.posGames lands. */
+  /** Per-position games played. Real MLB data when posGamesSource is "real"; 60/40 synthetic fallback otherwise. */
   gamesByPos: z.record(z.string(), z.number()).optional(),
+  /** "real" when gamesByPos is populated from the MLB Stats API cron; "synthetic" for the 60/40 fallback. */
+  posGamesSource: z.enum(["real", "synthetic"]).optional(),
   /** Verbatim MLB statsapi status — drives the ghost-IL chip. Null when unknown. */
   mlbStatus: z.string().nullable().optional(),
   // ---- Hitter stats ----

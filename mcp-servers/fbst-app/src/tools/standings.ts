@@ -39,13 +39,25 @@ export function registerStandingsTools(server: McpServer, client: FbstApiClient)
 
   server.tool(
     "standings_get_period",
-    "Get period standings for a league. When periodId is omitted, returns current period stats. When periodId is provided, returns per-category stats for that historical period.",
-    { ...LeagueIdInput, periodId: z.number().int().positive().optional().describe("Period ID for historical lookup; omit for current period") },
+    "Get current period standings for a league. Returns { periodId, data: [{teamId, teamName, teamCode, points}], computedAt }. For historical period category breakdown use standings_get_period_by_id.",
+    LeagueIdInput,
+    async ({ leagueId }) => {
+      try {
+        const data = await client.request("GET", "/api/standings/period/current", { query: { leagueId } });
+        return ok(data);
+      } catch (err) {
+        return fail(err);
+      }
+    },
+  );
+
+  server.tool(
+    "standings_get_period_by_id",
+    "Get per-category standings for a specific historical period. Returns { periodId, categories: [...], teamCount, totalDelta, computedAt }. For current-period point totals use standings_get_period.",
+    { ...LeagueIdInput, periodId: z.number().int().positive().describe("Period DB id (Period.id)") },
     async ({ leagueId, periodId }) => {
       try {
-        const data = periodId
-          ? await client.request("GET", "/api/standings/period-category-standings", { query: { leagueId, periodId } })
-          : await client.request("GET", "/api/standings/period/current", { query: { leagueId } });
+        const data = await client.request("GET", "/api/standings/period-category-standings", { query: { leagueId, periodId } });
         return ok(data);
       } catch (err) {
         return fail(err);
@@ -72,5 +84,6 @@ export function registerStandingsTools(server: McpServer, client: FbstApiClient)
 export const STANDINGS_TOOL_NAMES = [
   "standings_get_waiver_priority",
   "standings_get_period",
+  "standings_get_period_by_id",
   "standings_get_season",
 ] as const;

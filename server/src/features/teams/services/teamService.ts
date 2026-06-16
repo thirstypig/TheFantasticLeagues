@@ -1,19 +1,11 @@
 
 import { prisma } from "../../../db/prisma.js";
 import { POINTS_CANDIDATES } from "../../../constants/stats.js";
+import { isPosGamesRecord } from "../../../lib/jsonGuards.js";
 import type { RosterHubResponse } from "@shared/api/teams.js";
 
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
-
-/** Runtime guard: Prisma returns posGames as Prisma.JsonValue (wide union).
- *  Validates it's actually an object with finite-number values before use. */
-function isPosGamesRecord(v: unknown): v is Record<string, number> {
-  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
-  return Object.values(v as Record<string, unknown>).every(
-    (val) => typeof val === "number" && Number.isFinite(val),
-  );
-}
 
 function posScore(pos?: string | null): number {
   if (!pos) return 99;
@@ -54,7 +46,7 @@ export class TeamService {
     posPrimary: string,
     posList: string | null,
     posGames?: Record<string, number> | null,
-  ) {
+  ): Record<string, number> {
     // Use real per-position GP from the MLB Stats API when available.
     if (posGames && Object.keys(posGames).length > 0) return posGames;
 
@@ -213,6 +205,7 @@ export class TeamService {
       assignedPosition: r.assignedPosition,
       isKeeper: r.isKeeper,
       gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, isPosGamesRecord(r.player.posGames) ? r.player.posGames : null),
+      posGamesSource: isPosGamesRecord(r.player.posGames) && Object.keys(r.player.posGames as object).length > 0 ? "real" as const : "synthetic" as const,
       periodStats: playerPeriodStatsMap.get(r.playerId) ?? null,
     }));
 
@@ -225,7 +218,10 @@ export class TeamService {
       acquiredAt: r.acquiredAt,
       releasedAt: r.releasedAt!,
       price: r.price,
-      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, isPosGamesRecord(r.player.posGames) ? r.player.posGames : null),
+      // Intentionally pass null: dropped players are a historical log; showing
+      // current-state posGames (which grows all season) would misrepresent GP
+      // at the time the player was on the roster.
+      gamesByPos: TeamService.buildGamesByPos(r.player.posPrimary, r.player.posList, null),
     }));
 
     return {

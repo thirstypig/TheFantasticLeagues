@@ -669,13 +669,6 @@ export interface UsePendingChangesApi {
   /** Clear the error banner + per-change failures without dropping changes. */
   clearError: () => void;
   /**
-   * Mark a single change as committed (removed from the pending queue).
-   * Intended for use inside saveFn: call after each individual mutation
-   * succeeds so the bar shrinks progressively. On partial failure the
-   * remaining uncommitted changes stay visible without manual bookkeeping.
-   */
-  commitChange: (id: string) => void;
-  /**
    * Computed dependency edges for the current queue. Recomputed any
    * time `state.changes` changes. Read by `PendingChangeBar` to render
    * the "↳ depends on Drop #N" badge.
@@ -803,7 +796,6 @@ export function usePendingChanges(opts: UsePendingChangesOptions): UsePendingCha
       addChange,
       revertChange,
       revertAll,
-      commitChange,
       save,
       clearError,
       dependencies,
