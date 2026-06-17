@@ -597,6 +597,7 @@ export default function AddDropPanel({
   const [query, setQuery] = useState("");
   const [addMlbId, setAddMlbId] = useState<string | null>(null);
   const [dropPlayerId, setDropPlayerId] = useState<number | "">("");
+  const [ilStashPlayerId, setIlStashPlayerId] = useState<number | "">("");
   const [positionFilter, setPositionFilter] = useState<(typeof POSITION_FILTERS)[number]>("ALL");
   const [faSortKey, setFaSortKey] = useState<SortKey>("name");
   const [faSortDir, setFaSortDir] = useState<"asc" | "desc">("asc");
@@ -630,9 +631,31 @@ export default function AddDropPanel({
   const dropCandidates = useMemo(() => {
     return players.filter((p) => {
       const tid = p._dbTeamId;
-      return tid === teamId && p.assignedPosition !== "IL" && (p._dbPlayerId ?? 0) > 0;
+      return (
+        tid === teamId &&
+        p.assignedPosition !== "IL" &&
+        (p._dbPlayerId ?? 0) > 0 &&
+        p._dbPlayerId !== ilStashPlayerId
+      );
     });
-  }, [players, teamId]);
+  }, [players, teamId, ilStashPlayerId]);
+
+  // Option B: only surface players with an mlbStatus (indicates injury),
+  // so the stash picker doesn't confusingly offer healthy players who will
+  // fail the MLB-eligibility check on the server.
+  const stashCandidates = useMemo(() => {
+    return players.filter((p) => {
+      const tid = p._dbTeamId;
+      return (
+        tid === teamId &&
+        p.assignedPosition !== "IL" &&
+        (p._dbPlayerId ?? 0) > 0 &&
+        p._dbPlayerId !== dropPlayerId &&
+        p.mlbStatus != null &&
+        p.mlbStatus !== ""
+      );
+    });
+  }, [players, teamId, dropPlayerId]);
 
   // Keyed directly off `players` (not `allFreeAgents`) so that typing in the
   // FA search box doesn't invalidate addSlots → filteredDropCandidates chain.
@@ -733,6 +756,7 @@ export default function AddDropPanel({
 
   useEffect(() => {
     setDropPlayerId("");
+    setIlStashPlayerId("");
     setExpandedDropId(null);
     setReviewOpen(false);
     setSlotChanges([]);
@@ -755,6 +779,7 @@ export default function AddDropPanel({
       mlbId: Number(addMlbId),
       ...(selectedAdd._dbPlayerId ? { playerId: selectedAdd._dbPlayerId } : {}),
       dropPlayerId: Number(dropPlayerId),
+      ...(ilStashPlayerId !== "" ? { ilStashPlayerId: Number(ilStashPlayerId) } : {}),
       ...(effectiveDate ? { effectiveDate } : {}),
     })
       .then((result) => {
@@ -778,7 +803,7 @@ export default function AddDropPanel({
     // Depend on the player's stable id, not the memoized object — `selectedAdd`
     // is recomputed on every keystroke / sort toggle, which would re-fire previewClaim
     // dozens of times during typing.
-  }, [addMlbId, dropPlayerId, effectiveDate, leagueId, needsServerPreview, selectedAdd?._dbPlayerId, teamId]);
+  }, [addMlbId, dropPlayerId, ilStashPlayerId, effectiveDate, leagueId, needsServerPreview, selectedAdd?._dbPlayerId, teamId]);
 
   function defaultSortDir(key: SortKey): "asc" | "desc" {
     if (key === "ERA" || key === "WHIP") return "asc";
@@ -818,6 +843,8 @@ export default function AddDropPanel({
         success: boolean;
         playerId: number;
         appliedReassignments?: AppliedReassignment[];
+        ilStashedPlayerId?: number | null;
+        ilStashedPlayerName?: string | null;
       }>(`${API_BASE}/transactions/claim`, {
         method: "POST",
         body: JSON.stringify({
@@ -826,6 +853,7 @@ export default function AddDropPanel({
           mlbId: addMlbId,
           ...(addDbId ? { playerId: addDbId } : {}),
           ...(dropPlayerId !== "" ? { dropPlayerId: Number(dropPlayerId) } : {}),
+          ...(ilStashPlayerId !== "" ? { ilStashPlayerId: Number(ilStashPlayerId) } : {}),
           ...(effectiveDate ? { effectiveDate } : {}),
           ...(slotChanges.length > 0 ? { slotChanges } : {}),
         }),
@@ -833,15 +861,20 @@ export default function AddDropPanel({
       const addedName = playerName(selectedAdd);
       const droppedRow = dropCandidates.find(p => p._dbPlayerId === Number(dropPlayerId));
       const droppedName = droppedRow ? playerName(droppedRow) : null;
+      const stashedName = response.ilStashedPlayerName ?? null;
       const claimedPlayerId = selectedAdd._dbPlayerId ?? response.playerId;
       const cascade = (response.appliedReassignments ?? []).filter(r => r.playerId !== claimedPlayerId);
+      const primaryParts = [`Added ${addedName}`];
+      if (droppedName) primaryParts.push(`dropped ${droppedName}`);
+      if (stashedName) primaryParts.push(`stashed ${stashedName} to IL`);
       setTxResult({
         title: "Claim succeeded",
-        primaryLine: droppedName ? `Added ${addedName}, dropped ${droppedName}.` : `Added ${addedName}.`,
+        primaryLine: primaryParts.join(", ") + ".",
         cascadeMoves: cascade,
       });
       setAddMlbId(null);
       setDropPlayerId("");
+      setIlStashPlayerId("");
       setQuery("");
       setReviewOpen(false);
       // onComplete deferred to modal dismiss.
@@ -939,6 +972,30 @@ export default function AddDropPanel({
           onToggleExpand={toggleDropExpansion}
         />
       </section>
+
+      {dropRequired && stashCandidates.length > 0 && (
+        <section>
+          <label className="mb-1 block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+            Also stash to IL{" "}
+            <span className="font-normal normal-case text-[var(--lg-text-faint)]">(optional — moves an injured active player to your IL slot)</span>
+          </label>
+          <select
+            aria-label="also stash to IL"
+            className="w-full rounded border border-[var(--lg-border)] bg-[var(--lg-bg-surface)] px-2 py-1.5 text-[12px] text-[var(--lg-text)]"
+            value={ilStashPlayerId}
+            onChange={(e) =>
+              setIlStashPlayerId(e.target.value === "" ? "" : Number(e.target.value))
+            }
+          >
+            <option value="">— none —</option>
+            {stashCandidates.map((p) => (
+              <option key={p._dbPlayerId} value={p._dbPlayerId!}>
+                {playerName(p)}{p.mlbStatus ? ` (${p.mlbStatus})` : ""}
+              </option>
+            ))}
+          </select>
+        </section>
+      )}
 
       {rosterRulesSatisfied && dropPlayerId !== "" && (
         <SlotRearrangementSection

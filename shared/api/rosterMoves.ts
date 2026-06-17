@@ -230,6 +230,7 @@ export const ClaimRequestSchema = z
     playerId: z.number().int().positive().optional(),
     mlbId: MlbIdSchema.optional(),
     dropPlayerId: z.number().int().positive().optional(),
+    ilStashPlayerId: z.number().int().positive().optional(),
     effectiveDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}($|T)/)
@@ -325,6 +326,8 @@ export const ClaimResponseSchema = z.object({
    *  forcing a follow-up player-detail fetch. */
   name: z.string().optional(),
   appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
+  ilStashedPlayerId: z.number().int().positive().nullable().optional(),
+  ilStashedPlayerName: z.string().nullable().optional(),
 });
 export type ClaimResponse = z.infer<typeof ClaimResponseSchema>;
 

@@ -181,6 +181,48 @@ router.post(
       }
     }
 
+    // 3-way stash validation (preview): verify stash candidate is on the
+    // active roster, not already on IL, and MLB-eligible before running
+    // the matcher. Pre-flight matches the claim endpoint's own pre-tx checks.
+    const { ilStashPlayerId } = req.body as { ilStashPlayerId?: number };
+    let stashRosterPreview: { id: number; assignedPosition: string | null } | null = null;
+    if (ilStashPlayerId) {
+      stashRosterPreview = await prisma.roster.findFirst({
+        where: { teamId, playerId: ilStashPlayerId, releasedAt: null },
+        select: { id: true, assignedPosition: true },
+      });
+      if (!stashRosterPreview) {
+        return res.status(400).json({
+          ok: false,
+          error: "Stash player is not on this team's active roster.",
+          code: "IL_UNKNOWN_PLAYER",
+        });
+      }
+      if (stashRosterPreview.assignedPosition === "IL") {
+        return res.status(400).json({
+          ok: false,
+          error: "Stash player is already on IL.",
+          code: "NOT_ON_IL",
+        });
+      }
+      try {
+        await checkMlbIlEligibility(ilStashPlayerId);
+      } catch (err) {
+        if (isRosterRuleError(err)) {
+          return res.status(400).json({ ok: false, error: err.message, code: err.code });
+        }
+        throw err;
+      }
+      const ilCheck = await assertIlSlotAvailable(prisma as any, teamId, leagueId).catch((e: unknown) => e as Error);
+      if (ilCheck instanceof Error) {
+        return res.status(400).json({
+          ok: false,
+          error: (ilCheck as any).message ?? "IL slot unavailable",
+          code: (ilCheck as any).code ?? "IL_SLOT_FULL",
+        });
+      }
+    }
+
     const player = await prisma.player.findUnique({
       where: { id: playerId },
       select: { id: true, name: true, posList: true },
@@ -199,7 +241,10 @@ router.post(
     const [slotCapacities, candidatesResult] = await Promise.all([
       loadSlotCapacities(prisma as any, leagueId),
       buildCandidatesForTeam(prisma as any, teamId, {
-        excludeRosterIds: dropRosterPreview ? [dropRosterPreview.id] : [],
+        excludeRosterIds: [
+          ...(dropRosterPreview ? [dropRosterPreview.id] : []),
+          ...(stashRosterPreview ? [stashRosterPreview.id] : []),
+        ],
         includeNewPlayer: { playerId: player.id, posList: player.posList ?? "" },
       }),
     ]);
@@ -266,9 +311,9 @@ router.get("/transactions", requireAuth, requireLeagueMember("leagueId"), asyncH
  * Claims a player for a team. Commissioner-only per league rules.
  */
 router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requireSeasonStatus(["IN_SEASON"]), requireTeamOwnerOrCommissioner(), asyncHandler(async (req, res) => {
-  const { leagueId, teamId, dropPlayerId, effectiveDate: effDateRaw, slotChanges } = req.body as {
-    leagueId: number; teamId: number; dropPlayerId?: number; effectiveDate?: string;
-    slotChanges?: SlotChange[];
+  const { leagueId, teamId, dropPlayerId, ilStashPlayerId, effectiveDate: effDateRaw, slotChanges } = req.body as {
+    leagueId: number; teamId: number; dropPlayerId?: number; ilStashPlayerId?: number;
+    effectiveDate?: string; slotChanges?: SlotChange[];
   };
 
   let effective: Date;
@@ -346,6 +391,48 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     }
   }
 
+  // 3b. 3-way stash pre-flight: validate before entering the transaction so
+  //     the error path is cheap and the happy path locks the team row once.
+  let stashRosterPreview: { id: number; assignedPosition: string | null } | null = null;
+  let stashPlayerInfo: { mlbId: number | null; name: string | null } | null = null;
+  if (ilStashPlayerId) {
+    stashRosterPreview = await prisma.roster.findFirst({
+      where: { teamId, playerId: ilStashPlayerId, releasedAt: null },
+      select: { id: true, assignedPosition: true },
+    });
+    if (!stashRosterPreview) {
+      return res.status(400).json({
+        error: "Stash player is not on this team's active roster.",
+        code: "IL_UNKNOWN_PLAYER",
+      });
+    }
+    if (stashRosterPreview.assignedPosition === "IL") {
+      return res.status(400).json({
+        error: "Stash player is already on IL.",
+        code: "NOT_ON_IL",
+      });
+    }
+    try {
+      await checkMlbIlEligibility(ilStashPlayerId);
+    } catch (err) {
+      if (isRosterRuleError(err)) {
+        return res.status(400).json({ error: err.message, code: err.code });
+      }
+      throw err;
+    }
+    const ilCheck = await assertIlSlotAvailable(prisma as any, teamId, leagueId).catch((e: unknown) => e as Error);
+    if (ilCheck instanceof Error) {
+      return res.status(400).json({
+        error: (ilCheck as any).message ?? "IL slot unavailable",
+        code: (ilCheck as any).code ?? "IL_SLOT_FULL",
+      });
+    }
+    stashPlayerInfo = await prisma.player.findUnique({
+      where: { id: ilStashPlayerId },
+      select: { mlbId: true, name: true },
+    });
+  }
+
   // 5. Look up league season for transaction records
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
   const season = league?.season ?? new Date().getFullYear();
@@ -401,15 +488,55 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       excludeRosterIds,
     });
 
+    // 3-way stash: move stashPlayer to IL BEFORE the cap check so the
+    // guard reads the post-stash count (active = CAP−1). Re-verify inside
+    // the tx to catch concurrent modifications since the pre-flight read.
+    if (ilStashPlayerId && stashRosterPreview) {
+      const lockedStash = await tx.roster.findFirst({
+        where: { teamId, playerId: ilStashPlayerId, releasedAt: null },
+        select: { id: true, assignedPosition: true },
+      });
+      if (!lockedStash || lockedStash.assignedPosition === "IL") {
+        throw new RosterRuleError(
+          "IL_UNKNOWN_PLAYER",
+          "Stash player is no longer available (concurrent modification).",
+          {},
+        );
+      }
+      await tx.roster.update({
+        where: { id: lockedStash.id },
+        data: { assignedPosition: "IL" },
+      });
+      await tx.transactionEvent.create({
+        data: {
+          rowHash: `IL-STASH-CLAIM-${crypto.randomUUID()}-${ilStashPlayerId}`,
+          leagueId,
+          season,
+          effDate: effective,
+          submittedAt: new Date(),
+          teamId,
+          playerId: ilStashPlayerId,
+          transactionRaw: `Stashed ${stashPlayerInfo?.name ?? `Player #${ilStashPlayerId}`} to IL`,
+          transactionType: "IL_STASH",
+        },
+      });
+    }
+
     // Roster-size invariant. In-season: must be exactly at cap after the
-    // transaction. Pre-season (or ENFORCE off): fall back to the looser
-    // <=-cap guard for backward compatibility with legacy callsites.
+    // transaction. For a 3-way (ilStashPlayerId set), the stash already
+    // moved one player to IL so active = CAP−1; use the ≤-cap guard
+    // (assertRosterLimit) since the end state is intentionally under cap.
+    // Pre-season (or ENFORCE off): fall back to the same looser guard.
     if (enforce) {
       const cap = await loadLeagueRosterCap(tx, leagueId);
-      // Delta = +1 (add) − (dropPlayerId ? 1 : 0) = 0 when paired, +1 otherwise.
-      // We already required dropPlayerId above when enforce is true, so delta=0.
-      const delta = dropPlayerId ? 0 : 1;
-      await assertRosterAtExactCap(tx, teamId, cap, delta);
+      if (ilStashPlayerId) {
+        // After stash: active = CAP−1. add+drop nets 0. End: CAP−1 ≤ cap ✓.
+        await assertRosterLimit(tx, teamId, !!dropPlayerId, cap);
+      } else {
+        // Delta = +1 (add) − (dropPlayerId ? 1 : 0) = 0 when paired.
+        const delta = dropPlayerId ? 0 : 1;
+        await assertRosterAtExactCap(tx, teamId, cap, delta);
+      }
     } else {
       await assertRosterLimit(tx, teamId, !!dropPlayerId);
     }
@@ -654,6 +781,8 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     mlbId: claimedPlayerInfo?.mlbId ?? null,
     name: claimedPlayerInfo?.name ?? undefined,
     appliedReassignments,
+    ilStashedPlayerId: ilStashPlayerId ?? null,
+    ilStashedPlayerName: stashPlayerInfo?.name ?? null,
   };
   return res.json(claimResp);
 }));

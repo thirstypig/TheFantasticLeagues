@@ -13,6 +13,54 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 
+// ClaimRequestSchema is tested inline here because the shared/ module has
+// a local zod-resolution quirk that prevents importing it directly in this
+// test runner (CI resolves correctly — see local_server_tsc_zod_false_negative.md).
+const claimRequestSchema = z
+  .object({
+    leagueId: z.number().int().positive(),
+    teamId: z.number().int().positive(),
+    playerId: z.number().int().positive().optional(),
+    mlbId: z.number().int().positive().max(9_999_999).optional(),
+    dropPlayerId: z.number().int().positive().optional(),
+    ilStashPlayerId: z.number().int().positive().optional(),
+    effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}($|T)/).optional(),
+    slotChanges: z.array(z.object({ playerId: z.number(), slot: z.string() })).max(25).optional(),
+  })
+  .refine((d) => d.playerId || d.mlbId, { message: "playerId or mlbId required" });
+
+describe("ClaimRequestSchema — ilStashPlayerId (3-way claim)", () => {
+  it("accepts a valid 3-way body with ilStashPlayerId", () => {
+    const r = claimRequestSchema.safeParse({
+      leagueId: 20, teamId: 5, mlbId: 999, dropPlayerId: 42, ilStashPlayerId: 77,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.ilStashPlayerId).toBe(77);
+  });
+
+  it("accepts a standard 2-way claim without ilStashPlayerId", () => {
+    const r = claimRequestSchema.safeParse({
+      leagueId: 20, teamId: 5, mlbId: 999, dropPlayerId: 42,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.ilStashPlayerId).toBeUndefined();
+  });
+
+  it("rejects ilStashPlayerId of 0", () => {
+    const r = claimRequestSchema.safeParse({
+      leagueId: 20, teamId: 5, mlbId: 999, dropPlayerId: 42, ilStashPlayerId: 0,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects negative ilStashPlayerId", () => {
+    const r = claimRequestSchema.safeParse({
+      leagueId: 20, teamId: 5, mlbId: 999, dropPlayerId: 42, ilStashPlayerId: -1,
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
 // Inline copies of the route's tightened schemas. Keep these in sync
 // with `server/src/features/transactions/routes.ts` — if those move
 // to `shared/api/rosterMoves.ts` later, this test should import from
