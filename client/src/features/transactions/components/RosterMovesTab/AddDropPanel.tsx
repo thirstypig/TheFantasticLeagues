@@ -640,9 +640,10 @@ export default function AddDropPanel({
     });
   }, [players, teamId, ilStashPlayerId]);
 
-  // Option B: only surface players with an mlbStatus (indicates injury),
-  // so the stash picker doesn't confusingly offer healthy players who will
-  // fail the MLB-eligibility check on the server.
+  // Option B: only surface players whose mlbStatus matches the server's
+  // IL-eligibility regex so the picker never offers healthy players who
+  // would fail checkMlbIlEligibility with a confusing 400.
+  const IL_STATUS_RE = /^Injured (List )?\d+-Day$/;
   const stashCandidates = useMemo(() => {
     return players.filter((p) => {
       const tid = p._dbTeamId;
@@ -651,10 +652,10 @@ export default function AddDropPanel({
         p.assignedPosition !== "IL" &&
         (p._dbPlayerId ?? 0) > 0 &&
         p._dbPlayerId !== dropPlayerId &&
-        p.mlbStatus != null &&
-        p.mlbStatus !== ""
+        IL_STATUS_RE.test(p.mlbStatus ?? "")
       );
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players, teamId, dropPlayerId]);
 
   // Keyed directly off `players` (not `allFreeAgents`) so that typing in the
