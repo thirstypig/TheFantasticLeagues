@@ -65,7 +65,7 @@ export async function loadRosterMovePlayers(
   // since the legacy path had the same gap.
   const rosterByMlbId = new Map<
     string,
-    { rosterId: number; playerId: number; assignedPosition: string | null }
+    { rosterId: number; playerId: number; assignedPosition: string | null; mlbStatus: string | null }
   >();
   for (const row of currentRoster) {
     if (row.mlbId === null || row.mlbId === undefined) continue;
@@ -73,6 +73,7 @@ export async function loadRosterMovePlayers(
       rosterId: row.id,
       playerId: row.playerId,
       assignedPosition: row.assignedPosition ?? null,
+      mlbStatus: row.mlbStatus ?? null,
     });
   }
 
@@ -100,6 +101,7 @@ export async function loadRosterMovePlayers(
       _dbPlayerId: match.playerId,
       _dbTeamId: teamId,
       assignedPosition: match.assignedPosition ?? undefined,
+      mlbStatus: match.mlbStatus ?? undefined,
     } as RosterMovesPlayer;
   });
 
