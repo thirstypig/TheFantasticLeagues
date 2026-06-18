@@ -1296,3 +1296,243 @@ describe("POST /transactions/claim — error leakage (#158)", () => {
     expect(JSON.stringify(res.body)).not.toContain("_RosterToPlayer");
   });
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  3-way atomic Add + IL-stash + Drop (ilStashPlayerId)
+// ══════════════════════════════════════════════════════════════════
+//
+// ilStashPlayerId bundles a concurrent "move player X to IL" inside the
+// same $transaction as the add+drop. Three ordering invariants matter:
+//  1. stash roster.update fires BEFORE the cap check (so guard reads CAP−1)
+//  2. IL_STASH TransactionEvent precedes the ADD event in the call list
+//  3. assertRosterLimit (≤ cap) is used — NOT assertRosterAtExactCap (== cap)
+//
+// All pre-flight checks short-circuit before $transaction so errors are cheap.
+
+describe("POST /transactions/claim — 3-way Add + IL-stash + Drop", () => {
+  const OGBA_RULES = [
+    { category: "roster", key: "pitcher_count", value: "9" },
+    { category: "roster", key: "batter_count", value: "14" },
+  ];
+
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockTx.leagueRule.findMany.mockResolvedValue(OGBA_RULES);
+    mockTx.roster.count.mockResolvedValue(23);
+    mockCheckMlbIlEligibility.mockResolvedValue({
+      status: "Injured 10-Day",
+      cacheFetchedAt: new Date("2026-06-01T12:00:00Z"),
+    });
+    mockAssertIlSlotAvailable.mockResolvedValue(undefined);
+  });
+
+  it("rejects when stash player is not on the team's roster (IL_UNKNOWN_PLAYER, no tx)", async () => {
+    // 3 sequential roster.findFirst calls outside the tx:
+    // 1. existingRoster   2. dropRosterPreview   3. stashRosterPreview
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)                                  // add target free
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })   // drop on team
+      .mockResolvedValueOnce(null);                                 // stash NOT on team
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("IL_UNKNOWN_PLAYER");
+    expect(res.body.error).toContain("not on this team's active roster");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects when stash player is already on IL (NOT_ON_IL, no tx)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "IL" });  // stash already on IL
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_ON_IL");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects when stash player's MLB status is not an IL designation (NOT_MLB_IL, no tx)", async () => {
+    mockCheckMlbIlEligibility.mockRejectedValue(
+      new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
+        "NOT_MLB_IL",
+        "Player's MLB status is \"Active\" — not eligible for IL.",
+      ),
+    );
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_MLB_IL");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects when no IL slot is available for the stash (IL_SLOT_FULL, no tx)", async () => {
+    mockAssertIlSlotAvailable.mockRejectedValue(
+      new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
+        "IL_SLOT_FULL",
+        "Team has no open IL slot.",
+      ),
+    );
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("IL_SLOT_FULL");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("happy path: IL_STASH event fires before ADD; assertRosterLimit used (not assertRosterAtExactCap)", async () => {
+    // Outside-tx: existingRoster → dropRosterPreview → stashRosterPreview
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+    // stashPlayerInfo then claimedPlayerInfo (both read outside the tx via prisma)
+    mockPrisma.player.findUnique
+      .mockResolvedValueOnce({ mlbId: 999, name: "Stash Guy" })
+      .mockResolvedValueOnce({ mlbId: 545361, name: "Mike Trout" });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+
+    // Inside-tx: lockedStash re-verify → drop roster lookup
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" })
+      .mockResolvedValueOnce({ id: 50, teamId: 10, playerId: 200 });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(200);
+
+    // Stash player's Roster row flipped to IL inside the tx
+    expect(mockTx.roster.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 55 },
+        data: expect.objectContaining({ assignedPosition: "IL" }),
+      }),
+    );
+
+    // IL_STASH TransactionEvent precedes ADD in the tx (ordering invariant)
+    const txTypes = (mockTx.transactionEvent.create as any).mock.calls
+      .map((c: any[]) => c[0].data.transactionType);
+    const ilStashIdx = txTypes.indexOf("IL_STASH");
+    const addIdx = txTypes.indexOf("ADD");
+    expect(ilStashIdx).toBeGreaterThanOrEqual(0);
+    expect(addIdx).toBeGreaterThanOrEqual(0);
+    expect(ilStashIdx).toBeLessThan(addIdx);
+
+    // 3-way path must use assertRosterLimit (≤ cap), NOT assertRosterAtExactCap (== cap).
+    // Using assertRosterAtExactCap here would always reject because the stash
+    // moved one player to IL so active count is CAP−1, not CAP.
+    const { assertRosterLimit, assertRosterAtExactCap } = await import("../../../lib/rosterGuard.js");
+    expect(assertRosterLimit).toHaveBeenCalled();
+    expect(assertRosterAtExactCap).not.toHaveBeenCalled();
+  });
+
+  it("response envelope includes ilStashedPlayerId and ilStashedPlayerName", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+    mockPrisma.player.findUnique
+      .mockResolvedValueOnce({ mlbId: 999, name: "Stash Guy" })
+      .mockResolvedValueOnce({ mlbId: 545361, name: "Mike Trout" });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" })
+      .mockResolvedValueOnce({ id: 50, teamId: 10, playerId: 200 });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ilStashedPlayerId).toBe(42);
+    expect(res.body.ilStashedPlayerName).toBe("Stash Guy");
+  });
+});
+
+// ── POST /transactions/claim/preview — 3-way stash validation ────
+//
+// The preview endpoint mirrors the claim's pre-flight checks so the client
+// sees an error before committing. Tests cover only the error paths that
+// short-circuit before `buildCandidatesForTeam` (the expensive DB scan).
+
+describe("POST /transactions/claim/preview — 3-way stash validation", () => {
+  beforeEach(() => {
+    process.env.ENFORCE_ROSTER_RULES = "true";
+    mockCheckMlbIlEligibility.mockResolvedValue({
+      status: "Injured 10-Day",
+      cacheFetchedAt: new Date("2026-06-01T12:00:00Z"),
+    });
+    mockAssertIlSlotAvailable.mockResolvedValue(undefined);
+  });
+
+  it("rejects when stash player is not on the team's roster (IL_UNKNOWN_PLAYER)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)                                  // existingRoster
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })   // dropRosterPreview
+      .mockResolvedValueOnce(null);                                 // stashRosterPreview: not on team
+
+    const res = await supertest(app).post("/transactions/claim/preview").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("IL_UNKNOWN_PLAYER");
+  });
+
+  it("rejects when stash player is already on IL (NOT_ON_IL)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "IL" });  // stash already on IL
+
+    const res = await supertest(app).post("/transactions/claim/preview").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_ON_IL");
+  });
+
+  it("rejects when stash player's MLB IL eligibility check fails (NOT_MLB_IL)", async () => {
+    mockCheckMlbIlEligibility.mockRejectedValue(
+      new (await import("../../../lib/rosterRuleError.js")).RosterRuleError(
+        "NOT_MLB_IL",
+        "Player's MLB status is \"Active\".",
+      ),
+    );
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+
+    const res = await supertest(app).post("/transactions/claim/preview").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("NOT_MLB_IL");
+  });
+});
