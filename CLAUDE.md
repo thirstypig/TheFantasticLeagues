@@ -3,7 +3,7 @@
 ## Current status
 
 <!-- now-tldr -->
-Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is the day-to-day of running a team: a daily league cockpit on the home page (today's matchups, standings, trade proposals, league activity, injured list), smarter add/drop with live previews of how a move affects the roster, and an injured-list workflow that doesn't fight the user. Next up: tightening the in-season correctness of the standings, the daily stat lines, and the league dashboard.
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging infrastructure) is complete** — a separate Supabase staging project, seed script, and admin docs are wired. **Phase 1 (MLB snake draft) starts next session.** Draft transport: **WebSocket** (already in use by `chat` and `draft` features — locked decision). See `ROADMAP.md` for the full phase breakdown and `docs/STAGING.md` for staging setup.
 <!-- /now-tldr -->
 
 ## Project Overview

@@ -421,9 +421,10 @@ router.post("/complete", requireAuth, asyncHandler(async (req, res) => {
       data: {
         teamId: pick.teamId,
         playerId: pick.playerId,
-        price: 0, // Snake draft = no price (or derive from pick position)
+        price: 0,
         source: rosterSource,
         acquiredAt: new Date(pick.timestamp),
+        assignedPosition: (pick.position ?? "UT").toUpperCase(),
       },
     });
   }

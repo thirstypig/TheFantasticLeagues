@@ -19,7 +19,8 @@
     "test:server": "cd server && npm test",
     "test:client": "cd client && npm test",
     "prisma:migrate": "cd server && npx prisma migrate dev",
-    "prisma:generate": "cd server && npx prisma generate --schema ../prisma/schema.prisma"
+    "prisma:generate": "cd server && npx prisma generate --schema ../prisma/schema.prisma",
+    "seed:staging": "npx tsx scripts/seed-staging.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",

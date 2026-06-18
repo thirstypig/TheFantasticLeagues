@@ -78,6 +78,27 @@ npm run server    # Express on :4010
 npm run dev       # Vite on :3010 (proxies /api → :4010)
 ```
 
+## Local Staging Setup
+
+A separate Supabase staging project keeps test data isolated from the live OGBA season.
+
+**Prerequisites:** Complete [docs/STAGING.md](./docs/STAGING.md) — create the Supabase project and fill in `.env.staging`.
+
+```bash
+# 1. Apply schema migrations to staging DB
+DATABASE_URL=$(grep ^DATABASE_URL .env.staging | cut -d= -f2-) \
+  npx prisma migrate deploy --schema ./prisma/schema.prisma
+
+# 2. Seed staging with live MLB players + test league
+npm run seed:staging
+
+# 3. Reset and re-seed (destructive)
+npm run seed:staging -- --reset
+```
+
+After seeding, create Auth users in the Supabase staging console (Authentication → Users)
+using the email addresses printed by the seed script. See `docs/STAGING.md` for full details.
+
 ## Testing
 
 ```bash

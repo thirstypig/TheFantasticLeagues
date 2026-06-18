@@ -70,6 +70,7 @@ const SwapModePreview = React.lazy(() => import("./pages/design/SwapModePreview"
 const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Preview"));
 const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRosterHubDeferred"));
 const ManualSlotAssignmentPreview = React.lazy(() => import("./pages/design/ManualSlotAssignmentPreview"));
+const StagingDocsPreview = React.lazy(() => import("./pages/design/StagingDocsPreview"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -254,6 +255,8 @@ export default function App() {
                         validation before backend work on IL Activate.
                         See docs/solutions issue from PR #357 followup. */}
                     <Route path="/design/manual-slot-assignment" element={<ManualSlotAssignmentPreview />} />
+                    {/* Phase 0 staging environment admin docs mockup */}
+                    <Route path="/design/staging-docs" element={<StagingDocsPreview />} />
                     {/* Legacy v2 roster-hub preview retired after v3 shipped
                         to the live Team page. Keep the URL as a bookmark-safe
                         redirect to the maintained v3 preview. */}

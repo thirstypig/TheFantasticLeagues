@@ -15,6 +15,7 @@ import {
   Settings,
   History,
   ClipboardList,
+  FlaskConical,
 } from "lucide-react";
 
 /* ── Static markdown imports via Vite ───────────────────────────── */
@@ -37,13 +38,16 @@ import historicalMapping from "../../../docs/HistoricalTeamMapping.md?raw";
 // docs/reports/ — audit and analysis documents (admin-facing)
 import onrotoAudit from "../../../docs/reports/onroto-audit-2026-06-08.md?raw";
 
+// docs/admin — operational guides (admin-only)
+import stagingMd from "../../../docs/STAGING.md?raw";
+
 /* ── Doc registry ───────────────────────────────────────────────── */
 
 interface DocEntry {
   name: string;
   filename: string;
   content: string;
-  category: "root" | "docs" | "report";
+  category: "root" | "docs" | "report" | "admin";
   icon: React.ElementType;
   description: string;
 }
@@ -64,6 +68,8 @@ const docs: DocEntry[] = [
   { name: "Historical Team Mapping", filename: "docs/HistoricalTeamMapping.md", content: historicalMapping, category: "docs", icon: History, description: "Automated player-to-team mapping logic for archive imports" },
   // reports/ — audit and analysis
   { name: "FG/OnRoto vs TFL Audit (Jun 2026)", filename: "docs/reports/onroto-audit-2026-06-08.md", content: onrotoAudit, category: "report", icon: ClipboardList, description: "P1–P3 FanGraphs on Roto vs The Fantastic Leagues standings gap analysis — rosters, raw stats, rank deltas" },
+  // admin/ — operational guides
+  { name: "Staging Environment", filename: "docs/STAGING.md", content: stagingMd, category: "admin", icon: FlaskConical, description: "Staging setup guide: seed script, env vars, stats APIs, troubleshooting" },
 ];
 
 /* ── Simple markdown renderer ───────────────────────────────────── */
@@ -298,6 +304,7 @@ export default function Docs() {
   const rootDocs = docs.filter(d => d.category === "root");
   const dirDocs = docs.filter(d => d.category === "docs");
   const reportDocs = docs.filter(d => d.category === "report");
+  const adminDocs = docs.filter(d => d.category === "admin");
 
   const filteredDocs = useMemo(() => {
     if (!search) return docs;
@@ -421,6 +428,38 @@ export default function Docs() {
               })}
             </div>
           </div>
+
+          {/* Admin guides */}
+          {((search ? filteredDocs.filter(d => d.category === "admin") : adminDocs).length > 0) && (
+            <div>
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-fuchsia-400 mb-2 flex items-center gap-1">
+                <FlaskConical className="w-3 h-3" /> Admin Guides
+              </h3>
+              <div className="space-y-0.5">
+                {(search ? filteredDocs.filter(d => d.category === "admin") : adminDocs).map(doc => {
+                  const Icon = doc.icon;
+                  const isActive = doc.filename === activeDoc;
+                  return (
+                    <button
+                      key={doc.filename}
+                      onClick={() => setActiveDoc(doc.filename)}
+                      className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors border-l-2 ${
+                        isActive
+                          ? "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-400"
+                          : "border-fuchsia-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{doc.name}</div>
+                        <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
