@@ -18,14 +18,14 @@ function makeServer(): { server: McpServer; registered: Set<string> } {
 }
 
 describe("standings tool registration", () => {
-  it("registers all 3 documented tool names", () => {
+  it("registers all 4 documented tool names", () => {
     const { server, registered } = makeServer();
     const client = new FbstApiClient({ baseUrl: "http://localhost:0", token: "stub" });
     registerStandingsTools(server, client);
     for (const name of STANDINGS_TOOL_NAMES) {
       expect(registered.has(name)).toBe(true);
     }
-    expect(STANDINGS_TOOL_NAMES.length).toBe(3);
+    expect(STANDINGS_TOOL_NAMES.length).toBe(4);
   });
 
   it("tool name list is unique", () => {
