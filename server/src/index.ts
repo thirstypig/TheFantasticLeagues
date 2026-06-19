@@ -28,6 +28,7 @@ import { tradesRouter } from "./features/trades/index.js";
 import { waiversRouter } from "./features/waivers/index.js";
 import { wireListRouter } from "./features/wire-list/index.js";
 import { transactionsRouter } from "./features/transactions/index.js";
+import { testSportsApiRouter } from "./features/test/testSportsApiRoutes.js";
 import { standingsRouter } from "./features/standings/index.js";
 import { archiveRouter } from "./features/archive/index.js";
 import { rosterRouter, rosterImportRouter } from "./features/roster/index.js";
@@ -226,6 +227,7 @@ async function main() {
   app.use("/api/leagues", rulesRouter);
   app.use("/api/auction", auctionRouter);
   app.use("/api/draft", draftRouter);
+  app.use("/api", testSportsApiRouter);
   app.use("/api/matchups", matchupsRouter);
   app.use("/api/teams", teamsRouter);
   app.use(rosterRouter);
