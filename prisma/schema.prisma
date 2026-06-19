@@ -97,6 +97,12 @@ enum SeasonStatus {
   COMPLETED
 }
 
+enum Sport {
+  MLB
+  NFL
+  NBA
+}
+
 // ======================
 //  Models
 // ======================
@@ -104,6 +110,10 @@ enum SeasonStatus {
 model Franchise {
   id                Int      @id @default(autoincrement())
   name              String   @unique
+  sport             Sport?
+  abbreviation      String?
+  externalId        String?
+  logoUrl           String?
   isPublic          Boolean  @default(false)
   publicSlug        String?  @unique
   inviteCode        String?  @unique
@@ -112,8 +122,11 @@ model Franchise {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  leagues     League[]
-  memberships FranchiseMembership[]
+  leagues           League[]
+  memberships       FranchiseMembership[]
+  players           Player[]
+  schedulesHome     Schedule[] @relation("HomeFranchise")
+  schedulesAway     Schedule[] @relation("AwayFranchise")
 }
 
 model FranchiseMembership {
@@ -264,8 +277,8 @@ model League {
   draftOrder DraftOrder?
   createdAt  DateTime    @default(now())
 
-  // Sport type — "baseball", "football", "basketball"
-  sport String @default("baseball")
+  // Sport type — MLB, NFL, NBA
+  sport Sport @default(MLB)
 
   isPublic   Boolean @default(false)
   publicSlug String? @unique
@@ -462,10 +475,13 @@ model Player {
   // Keep nullable for now to avoid breaking existing rows; Postgres UNIQUE allows many NULLs.
   mlbId Int? @unique
 
-  name       String
-  posPrimary String
-  posList    String // comma-separated for now
-  mlbTeam    String? // e.g. "LAD", "NYY"
+  sport             Sport?
+  name              String
+  posPrimary        String
+  posList           String // comma-separated for now
+  franchiseId       Int?
+  externalId        String?
+  mlbTeam           String? // e.g. "LAD", "NYY"
 
   /// Raw MLB statsapi roster status string ("Active", "Injured 10-Day",
   /// "Injured 60-Day", "Restricted", …). Verbatim per direction-lock IL #1
@@ -481,7 +497,8 @@ model Player {
 
   createdAt DateTime @default(now())
 
-  rosters               Roster[]
+  franchise         Franchise? @relation(fields: [franchiseId], references: [id], onDelete: SetNull)
+  rosters           Roster[]
   lots                  AuctionLot[]
   aliases               PlayerAlias[]
   transactions          TransactionEvent[]
@@ -800,6 +817,7 @@ model Roster {
   id               Int       @id @default(autoincrement())
   teamId           Int
   playerId         Int
+  sport            Sport     @default(MLB)
   acquiredAt       DateTime  @default(now())
   releasedAt       DateTime?
   source           String
@@ -812,8 +830,29 @@ model Roster {
 
   @@index([teamId])
   @@index([playerId])
-  @@index([teamId, releasedAt])
+  @@index([teamId, sport])
+  @@index([teamId, releasedAt, sport])
   @@index([releasedAt, playerId])
+}
+
+model Schedule {
+  id                Int       @id @default(autoincrement())
+  sport             Sport     @default(MLB)
+  season            String
+  week              Int?
+  gameDate          DateTime
+  homeFranchiseId   Int
+  awayFranchiseId   Int
+  externalId        String?
+  createdAt         DateTime  @default(now())
+
+  homeFranchise Franchise @relation("HomeFranchise", fields: [homeFranchiseId], references: [id], onDelete: Cascade)
+  awayFranchise Franchise @relation("AwayFranchise", fields: [awayFranchiseId], references: [id], onDelete: Cascade)
+
+  @@unique([sport, season, week, homeFranchiseId, awayFranchiseId])
+  @@index([sport, season, gameDate])
+  @@index([homeFranchiseId])
+  @@index([awayFranchiseId])
 }
 
 model AuctionLot {
