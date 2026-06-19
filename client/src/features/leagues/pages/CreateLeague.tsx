@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Trophy, Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Trophy, Copy, Check, Lock } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { useToast } from "../../../contexts/ToastContext";
@@ -11,15 +11,30 @@ export default function CreateLeague() {
   const nav = useNavigate();
   const { toast } = useToast();
   const { refreshLeagues } = useLeague();
+  const [searchParams] = useSearchParams();
+
+  // Extract URL params
+  const sportParam = searchParams.get("sport");
+  const draftModeParam = searchParams.get("draftMode");
+
+  // Check if sport is not MLB (coming soon)
+  const isComingSoon = sportParam && sportParam !== "MLB";
 
   const [form, setForm] = useState<CreateLeagueInput & { scoringFormat: string }>({
     name: "",
     season: new Date().getFullYear(),
     leagueType: "NL",
-    draftMode: "AUCTION",
+    draftMode: (draftModeParam as any) || "AUCTION",
     isPublic: false,
     scoringFormat: "ROTO",
   });
+
+  // Pre-fill draftMode if provided via URL
+  useEffect(() => {
+    if (draftModeParam && (draftModeParam === "DRAFT" || draftModeParam === "AUCTION" || draftModeParam === "H2H")) {
+      setForm(f => ({ ...f, draftMode: draftModeParam as any }));
+    }
+  }, [draftModeParam]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ leagueId: number; inviteCode: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -46,6 +61,26 @@ export default function CreateLeague() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Show "Coming Soon" guard for NFL/NBA
+  if (isComingSoon) {
+    return (
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "8px 16px" }}>
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+            <Lock size={32} className="text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-semibold text-[var(--lg-text-heading)] mb-2">Coming Soon</h1>
+          <p className="text-sm text-[var(--lg-text-muted)]">{sportParam} leagues are in development. Stay tuned!</p>
+        </div>
+        <div className="flex gap-3 justify-center">
+          <Button variant="outline" onClick={() => nav("/create-league/select-sport")}>
+            Back to Sport Selection
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (result) {
     return (

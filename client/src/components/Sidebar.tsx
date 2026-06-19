@@ -397,7 +397,7 @@ function AccountMenu({
       icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5.5-3.5l-2 6-6 2 2-6 6-2z" />,
     },
     {
-      label: "Create League", to: "/create-league",
+      label: "Create League", to: "/create-league/select-sport",
       icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14M5 12h14" />,
     },
     {
