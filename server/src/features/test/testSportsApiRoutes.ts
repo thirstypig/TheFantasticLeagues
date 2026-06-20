@@ -1,8 +1,11 @@
 /**
- * Test routes for validating NFL and NBA API connectivity.
+ * Test routes for validating NFL API connectivity.
  * Used in Phase 2 to validate APIs work before implementing full sync.
- * Routes: GET /api/test/nfl/teams, /api/test/nfl/players/:teamAbbr,
- *         GET /api/test/nba/teams, /api/test/nba/players/:teamId
+ * Routes: GET /api/test/nfl/teams, /api/test/nfl/players/:teamAbbr
+ *
+ * NOTE: NBA routes removed — stats.nba.com blocks server-side requests at TCP layer
+ * (connection established but zero response regardless of User-Agent/headers).
+ * For Phase 3, evaluate alternative NBA data sources (ESPN API, residential proxy, etc).
  */
 
 import express, { Router, Request, Response } from "express";
@@ -116,156 +119,6 @@ router.get("/test/nfl/players/:teamAbbr", async (req: Request, res: Response) =>
     console.error("NFL players endpoint error:", error);
     res.status(500).json({
       error: "Failed to fetch NFL players",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
-
-// ============================================================================
-// NBA ROUTES (via stats.nba.com)
-// ============================================================================
-
-/**
- * GET /api/test/nba/teams
- * Fetch NBA teams from stats.nba.com
- * Endpoint: https://stats.nba.com/stats/leaguedashteamstats
- * Rate limit: ~600 requests/hour
- * Auth: User-Agent header required (Mozilla/5.0)
- */
-router.get("/test/nba/teams", async (req: Request, res: Response) => {
-  try {
-    // Call stats.nba.com API with 3-second timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-
-    const response = await fetch(
-      "https://stats.nba.com/stats/leaguedashteamstats?Season=2025-26&SeasonType=Regular%20Season",
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-        },
-        signal: controller.signal,
-      }
-    );
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      throw new Error(`NBA API returned ${response.status}`);
-    }
-
-    const data = (await response.json()) as any;
-
-    // Extract team data from resultSets
-    const teamHeaders = data.resultSets[0]?.headers || [];
-    const teamRows = data.resultSets[0]?.rowSet || [];
-
-    // Map to readable format (using TEAM_ID, TEAM_NAME indices)
-    const teamIdIdx = teamHeaders.indexOf("TEAM_ID");
-    const teamNameIdx = teamHeaders.indexOf("TEAM_NAME");
-
-    const teams = teamRows.slice(0, 5).map((row: any[]) => ({
-      id: row[teamIdIdx],
-      name: row[teamNameIdx],
-    }));
-
-    // Check for rate limit headers
-    const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
-
-    res.json({
-      success: true,
-      source: "stats.nba.com (official)",
-      endpoint: "leaguedashteamstats",
-      teamCount: teamRows.length,
-      rateLimit: {
-        remaining: rateLimitRemaining ? parseInt(rateLimitRemaining) : "unknown",
-      },
-      teams,
-    });
-  } catch (error) {
-    console.error("NBA teams endpoint error:", error);
-    res.status(500).json({
-      error: "Failed to fetch NBA teams",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
-
-/**
- * GET /api/test/nba/players/:teamId
- * Fetch NBA players for a given team ID
- * Endpoint: https://stats.nba.com/stats/commonteamroster
- * Params: TeamID (e.g., 1610612738 for Celtics)
- * Rate limit: ~600 requests/hour
- * Auth: User-Agent header required (Mozilla/5.0)
- */
-router.get("/test/nba/players/:teamId", async (req: Request, res: Response) => {
-  try {
-    const { teamId } = req.params;
-
-    // Validate teamId is numeric
-    if (!/^\d+$/.test(teamId)) {
-      return res.status(400).json({
-        error: "Invalid teamId",
-        message: "teamId must be numeric (e.g., 1610612738 for Celtics)",
-      });
-    }
-
-    // Call stats.nba.com API for team roster with 3-second timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-
-    const response = await fetch(
-      `https://stats.nba.com/stats/commonteamroster?TeamID=${teamId}&Season=2025-26`,
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-        },
-        signal: controller.signal,
-      }
-    );
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      throw new Error(`NBA API returned ${response.status}`);
-    }
-
-    const data = (await response.json()) as any;
-
-    // Extract player data from resultSets
-    const playerHeaders = data.resultSets[0]?.headers || [];
-    const playerRows = data.resultSets[0]?.rowSet || [];
-
-    // Map to readable format (using PLAYER_ID, PLAYER_NAME, POSITION indices)
-    const playerIdIdx = playerHeaders.indexOf("PLAYER_ID");
-    const playerNameIdx = playerHeaders.indexOf("PLAYER_NAME");
-    const positionIdx = playerHeaders.indexOf("POSITION");
-
-    const players = playerRows.slice(0, 5).map((row: any[]) => ({
-      id: row[playerIdIdx],
-      name: row[playerNameIdx],
-      position: row[positionIdx] || "Unknown",
-    }));
-
-    // Check for rate limit headers
-    const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
-
-    res.json({
-      success: true,
-      source: "stats.nba.com (official)",
-      endpoint: "commonteamroster",
-      teamId,
-      playerCount: playerRows.length,
-      rateLimit: {
-        remaining: rateLimitRemaining ? parseInt(rateLimitRemaining) : "unknown",
-      },
-      players,
-    });
-  } catch (error) {
-    console.error("NBA players endpoint error:", error);
-    res.status(500).json({
-      error: "Failed to fetch NBA players",
       message: error instanceof Error ? error.message : "Unknown error",
     });
   }
