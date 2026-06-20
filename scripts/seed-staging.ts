@@ -94,7 +94,7 @@ const STAGING_FRANCHISE_NAME = "TFL Staging Franchise";
 // Mirrors OGBA structure for validation comparisons
 const STAGING_LEAGUE = {
   name: "OGBA Staging",
-  sport: "baseball",
+  sport: "MLB",
   season: SEASON,
   draftMode: "AUCTION" as const,
   faabBudget: 260,
