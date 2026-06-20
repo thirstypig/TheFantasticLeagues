@@ -72,6 +72,8 @@ const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRo
 const ManualSlotAssignmentPreview = React.lazy(() => import("./pages/design/ManualSlotAssignmentPreview"));
 const StagingDocsPreview = React.lazy(() => import("./pages/design/StagingDocsPreview"));
 const SportLeagueSelectorPreview = React.lazy(() => import("./pages/design/SportLeagueSelectorPreview"));
+const NBADashboard = React.lazy(() => import("./features/nba/pages/NBADashboard"));
+const NFLDashboard = React.lazy(() => import("./features/nfl/pages/NFLDashboard"));
 // Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -246,6 +248,14 @@ export default function App() {
                         consumes the existing /api/reports/:leagueId server
                         endpoint that survived the prior client-UI removal. */}
                     <Route path="/weekly-report" element={<WeeklyReport />} />
+                    {/* NBA Dashboard — Phase 2 multi-sport expansion. League hub page
+                        with standings, weekly matchups (category scoring), and
+                        category leaders. Uses Score Sheet tokens + sport-nba purple accent. */}
+                    <Route path="/nba" element={<NBADashboard />} />
+                    {/* NFL Dashboard — Phase 2 multi-sport expansion. League hub page
+                        with standings, this week's matchups, and top performers.
+                        Uses Score Sheet tokens + sport-nfl gold accent. */}
+                    <Route path="/nfl" element={<NFLDashboard />} />
                     {/* Static design preview for the PR2 Swap Mode UI
                         (admin-gated inside the page). Plan reference:
                         docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md

@@ -89,6 +89,26 @@
   --am-ai-strip: var(--am-surface);
 }
 
+/* Sport-specific accent overrides — light mode */
+.aurora-theme.sport-nba {
+  --am-accent: #4c1d95; /* purple */
+}
+
+.aurora-theme.sport-nfl {
+  --am-accent: #854d0e; /* gold */
+}
+
+/* Sport-specific accent overrides — dark mode */
+.aurora-theme.dark.sport-nba,
+.dark .aurora-theme.sport-nba {
+  --am-accent: #7c3aed; /* lighter purple for dark */
+}
+
+.aurora-theme.dark.sport-nfl,
+.dark .aurora-theme.sport-nfl {
+  --am-accent: #d97706; /* lighter gold for dark */
+}
+
 /*
  * Legacy `--lg-*` token redirects.
  *

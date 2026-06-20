@@ -11,7 +11,7 @@
  * switching, and theme toggle are preserved exactly as they were.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import type { LeagueListItem } from "../../api";
 import { useAuth } from "../../auth/AuthProvider";
@@ -34,10 +34,21 @@ interface MoreSection {
 
 export default function AuroraShell({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { leagueId, setLeagueId, leagues, draftMode, myTeamCode, currentSeason } = useLeague();
   const gating = useSeasonGating();
+
+  // Detect current sport from URL path
+  const currentSport = useMemo(() => {
+    if (location.pathname.startsWith("/nba")) return "NBA";
+    if (location.pathname.startsWith("/nfl")) return "NFL";
+    return "MLB";
+  }, [location.pathname]);
+
+  // Sport accent class for root div
+  const sportClass = currentSport === "NBA" ? "sport-nba" : currentSport === "NFL" ? "sport-nfl" : "";
 
   const [moreOpen, setMoreOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -73,6 +84,13 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
     const selected = (leagues ?? []).find((l: LeagueListItem) => l.id === leagueId);
     return selected?.access?.type === "MEMBER" && selected?.access?.role === "COMMISSIONER";
   }, [leagues, user, leagueId]);
+
+  // Sport nav tabs
+  const sportTabs = useMemo(() => [
+    { key: "MLB", label: "MLB", to: "/season" },
+    { key: "NFL", label: "NFL", to: "/nfl" },
+    { key: "NBA", label: "NBA", to: "/nba" },
+  ], []);
 
   // Primary nav tabs — same items as the old dock
   const navTabs = useMemo(() => {
@@ -161,7 +179,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
 
   return (
     <div
-      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
+      className={`aurora-theme ${sportClass} ${theme === "dark" ? "dark" : ""}`}
       style={{ minHeight: "100svh", background: "var(--am-bg)" }}
     >
       {/* ── Sticky top nav bar ── */}
@@ -223,6 +241,42 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
             The Fantastic Leagues
           </span>
         </button>
+
+        {/* Separator */}
+        <div
+          aria-hidden
+          style={{ width: 1, background: "var(--am-border)", margin: "10px 0", flexShrink: 0 }}
+        />
+
+        {/* Sport nav tabs */}
+        <nav
+          aria-label="Sport navigation"
+          style={{ display: "flex", alignItems: "stretch", gap: 0, flexShrink: 0 }}
+        >
+          {sportTabs.map((item) => (
+            <NavLink
+              key={item.key}
+              to={item.to}
+              end={item.key === "MLB"}
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                padding: "0 12px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
+                borderBottom: isActive
+                  ? "2px solid var(--am-accent)"
+                  : "2px solid transparent",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                transition: "color 0.15s, border-color 0.15s",
+              })}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
 
         {/* Separator */}
         <div
