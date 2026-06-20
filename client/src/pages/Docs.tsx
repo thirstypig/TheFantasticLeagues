@@ -71,7 +71,7 @@ const docs: DocEntry[] = [
   { name: "FG/OnRoto vs TFL Audit (Jun 2026)", filename: "docs/reports/onroto-audit-2026-06-08.md", content: onrotoAudit, category: "report", icon: ClipboardList, description: "P1–P3 FanGraphs on Roto vs The Fantastic Leagues standings gap analysis — rosters, raw stats, rank deltas" },
   // admin/ — operational guides
   { name: "Staging Environment", filename: "docs/STAGING.md", content: stagingMd, category: "admin", icon: FlaskConical, description: "Staging setup guide: seed script, env vars, stats APIs, troubleshooting" },
-  { name: "Multi-Sport Architecture", filename: "docs/MULTISPORT_ARCHITECTURE.md", content: multiSportArchMd, category: "admin", icon: Layers, description: "Phase 2 multi-sport support: MLB, NFL, NBA APIs, test routes, accent colors, dashboards, staging guide" },
+  { name: "Multi-Sport Architecture", filename: "docs/MULTISPORT_ARCHITECTURE.md", content: multiSportArchMd, category: "admin", icon: Layers, description: "Phase 2 multi-sport support: MLB, NFL, NBA APIs, test routes, accent colors, dashboards" },
 ];
 
 /* ── Simple markdown renderer ───────────────────────────────────── */

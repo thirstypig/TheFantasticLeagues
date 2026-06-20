@@ -64,38 +64,4 @@ All dashboards use hardcoded mock data. Real data integration with team rosters 
 
 ## Staging Environment
 
-### Connection Details
-
-- **Project ID:** kfxdgcxiawwhzooexqtm
-- **Database:** PostgreSQL on Supabase (tfl-staging)
-- **URL:** https://kfxdgcxiawwhzooexqtm.supabase.co
-
-### Test Account
-
-```
-Email:    commissioner@staging.tfl
-Password: Staging123!@#
-```
-
-Other staging users: `admin@staging.tfl`, `player1@staging.tfl` through `player8@staging.tfl` (same password).
-
-### Seeding
-
-Run the staging seed script to populate test users, league, teams, and live MLB player data:
-
-```bash
-npm run seed:staging
-```
-
-Results: 10 users, 1 league (OGBA Staging), 10 teams, 1,345 MLB players synced from live API.
-
-**Note:** The seed script updates (not inserts) existing users, making it safe to run multiple times.
-
-### Auth Configuration
-
-- **Provider:** Email + Password
-- **Email Confirmation:** Disabled (auto-verified on signup)
-- **Session Duration:** 1 hour
-- **Refresh Token:** Persisted in browser localStorage
-
-No OAuth providers configured on staging; email/password is the sole auth method.
+For staging setup, credentials, seeding instructions, and authentication configuration, see the **[Staging Environment](./STAGING.md)** admin guide (private documentation).
