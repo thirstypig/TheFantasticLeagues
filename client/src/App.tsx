@@ -24,6 +24,7 @@ import Login from "./features/auth/pages/Login";
 
 // Non-critical routes — lazy-loaded (code-split chunks)
 const Commissioner = React.lazy(() => import("./features/commissioner/pages/Commissioner"));
+const ScoringSettings = React.lazy(() => import("./features/commissioner/pages/ScoringSettings").then(m => ({ default: m.ScoringSettings })));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
@@ -178,6 +179,7 @@ export default function App() {
                     </Route>
                     <Route path="/teams/:teamCode/wire-list" element={<WireListOwnerPage />} />
                     <Route path="/commissioner/:leagueId/wire-list" element={<WireListCommissionerPage />} />
+                    <Route path="/commissioner/:leagueId/scoring" element={<Suspense fallback={<div>Loading...</div>}><ScoringSettings /></Suspense>} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team
                         shortcut (PR #132) and external bookmarks both land here. */}

@@ -103,6 +103,17 @@ enum Sport {
   NBA
 }
 
+enum ScoringType {
+  POINTS
+  CATEGORIES
+}
+
+enum H2HMatchupStatus {
+  SCHEDULED
+  LIVE
+  FINAL
+}
+
 // ======================
 //  Models
 // ======================
@@ -338,6 +349,9 @@ model League {
   rosterSlotEvents       RosterSlotEvent[]
   teamStatsCategoryDaily TeamStatsCategoryDaily[]
   waiverPeriods          WaiverPeriod[]
+  scoringSettings        ScoringSettings?
+  rosterConfig           RosterConfig?
+  h2hMatchups            H2HMatchup[]
 
   @@unique([name, season])
 }
@@ -462,6 +476,11 @@ model Team {
   waiverAddEntries  WaiverAddEntry[]
   waiverDropEntries WaiverDropEntry[]
 
+  // Phase 3: H2H Matchups (NFL/NBA)
+  h2hMatchupsHome H2HMatchup[] @relation("H2HMatchupHome")
+  h2hMatchupsAway H2HMatchup[] @relation("H2HMatchupAway")
+  statLines       StatLine[]   @relation("StatLineTeam")
+
   @@unique([leagueId, name])
   @@unique([leagueId, code])
   @@index([leagueId])
@@ -516,6 +535,7 @@ model Player {
   tradingBlockEntries   TradingBlock[]
   rosterSlotEvents      RosterSlotEvent[]
   financeLedgerEntries  FinanceLedger[]
+  statLines             StatLine[]      @relation("StatLinePlayer")
 
   @@index([name])
 }
@@ -1584,4 +1604,102 @@ model OutboxEvent {
 
   @@index([completedAt, createdAt])
   @@index([kind, completedAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 3: Scoring Engine Models (NFL/NBA H2H)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model ScoringSettings {
+  id            Int          @id @default(autoincrement())
+  leagueId      Int          @unique
+  sport         Sport
+  scoringType   ScoringType
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  league League         @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  rules  ScoringRule[]
+
+  @@index([leagueId, sport])
+}
+
+model ScoringRule {
+  id                Int             @id @default(autoincrement())
+  scoringSettingsId Int
+  statKey           String
+  label             String
+  pointValue        Float
+  isActive          Boolean         @default(true)
+  sortOrder         Int             @default(0)
+  isCustom          Boolean         @default(false)
+
+  scoringSettings ScoringSettings @relation(fields: [scoringSettingsId], references: [id], onDelete: Cascade)
+
+  @@unique([scoringSettingsId, statKey])
+  @@index([scoringSettingsId])
+  @@index([isActive])
+}
+
+model RosterConfig {
+  id        Int      @id @default(autoincrement())
+  leagueId  Int      @unique
+  sport     Sport
+  slots     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, sport])
+}
+
+model H2HMatchup {
+  id          Int                 @id @default(autoincrement())
+  leagueId    Int
+  sport       Sport
+  week        Int
+  season      String
+  homeTeamId  Int
+  awayTeamId  Int
+  homeScore   Float?
+  awayScore   Float?
+  status      H2HMatchupStatus    @default(SCHEDULED)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  league       League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  homeTeam     Team         @relation("H2HMatchupHome", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeam     Team         @relation("H2HMatchupAway", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  statLines    StatLine[]
+
+  @@unique([leagueId, sport, week, season, homeTeamId, awayTeamId])
+  @@index([leagueId, sport, week, season])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([status])
+}
+
+model StatLine {
+  id             Int      @id @default(autoincrement())
+  h2hMatchupId   Int
+  playerId       Int
+  teamId         Int
+  week           Int
+  season         String
+  sport          Sport
+  stats          Json
+  fantasyPoints  Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  h2hMatchup H2HMatchup @relation(fields: [h2hMatchupId], references: [id], onDelete: Cascade)
+  player     Player     @relation("StatLinePlayer", fields: [playerId], references: [id], onDelete: Cascade)
+  team       Team       @relation("StatLineTeam", fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([h2hMatchupId, playerId])
+  @@index([h2hMatchupId])
+  @@index([playerId])
+  @@index([teamId])
+  @@index([week, season, sport])
 }

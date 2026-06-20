@@ -51,8 +51,22 @@ if (!process.env.DATABASE_URL?.includes("supabase")) {
 
 import { PrismaClient } from "../server/node_modules/.prisma/client/index.js";
 import { syncAllPlayers } from "../server/src/features/players/services/mlbSyncService.js";
+import { createClient } from "@supabase/supabase-js";
 
 const prisma = new PrismaClient();
+
+// ─── Supabase Admin Client (for creating auth users) ──────────────────────────
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  console.error(
+    "❌  SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set in .env.staging"
+  );
+  process.exit(1);
+}
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // ─── CLI flags ────────────────────────────────────────────────────────────────
 
@@ -139,6 +153,67 @@ async function resetStagingData() {
   log("   Reset complete.");
 }
 
+// ─── Seed Supabase Auth users ─────────────────────────────────────────────────
+
+async function seedSupabaseAuthUsers(
+  allUsers: Array<{ email: string; name: string; isAdmin: boolean }>
+) {
+  const TEST_PASSWORD = "Staging123!@#";
+  let authCreated = 0;
+  let authUpdated = 0;
+
+  log("   Fetching existing Supabase Auth users...");
+  const { data: existingUsersData, error: listError } =
+    await supabaseAdmin.auth.admin.listUsers();
+
+  if (listError) {
+    log(`   ❌ Failed to list users: ${listError.message}`);
+    return;
+  }
+
+  const existingUsers = existingUsersData?.users || [];
+  log(`   Found ${existingUsers.length} existing auth users`);
+
+  for (const u of allUsers) {
+    const existingUser = existingUsers.find((su) => su.email === u.email);
+
+    try {
+      if (existingUser) {
+        // Update password for existing user
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          existingUser.id,
+          { password: TEST_PASSWORD }
+        );
+        if (updateError) {
+          log(`   ⚠️  Update error for ${u.email}: ${updateError.message}`);
+        } else {
+          authUpdated++;
+        }
+      } else {
+        // Create new auth user
+        const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: u.email,
+          password: TEST_PASSWORD,
+          email_confirm: true,
+        });
+        if (createError) {
+          log(`   ⚠️  Create error for ${u.email}: ${createError.message}`);
+        } else {
+          authCreated++;
+        }
+      }
+    } catch (err) {
+      log(
+        `   ❌ Exception for ${u.email}: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  log(
+    `   Supabase Auth: ${authCreated} created, ${authUpdated} updated (password: ${TEST_PASSWORD})`
+  );
+}
+
 // ─── Seed users ───────────────────────────────────────────────────────────────
 
 async function seedUsers() {
@@ -169,6 +244,10 @@ async function seedUsers() {
   }
 
   log(`   Users: ${created} created, ${updated} updated`);
+
+  // Also seed Supabase Auth users
+  await seedSupabaseAuthUsers(allUsers);
+
   return allUsers.length;
 }
 
@@ -284,8 +363,11 @@ async function main() {
   console.log(`    League:  ${STAGING_LEAGUE.name} (id=${leagueId})`);
   console.log(`    Teams:   ${teamsCreated}`);
   console.log(`    Players: ${playerResult.created} created, ${playerResult.updated} updated`);
-  console.log("\n    Next: create Auth users in the Supabase staging console");
-  console.log("    (Authentication → Users → Add User) using the emails above.");
+  console.log("\n    ✅ Supabase Auth users automatically seeded (password: Staging123!@#)");
+  console.log("       Test accounts:");
+  console.log("       - admin@staging.tfl (admin user)");
+  console.log("       - commissioner@staging.tfl (commissioner user)");
+  console.log("       - player*@staging.tfl (owner users)");
 }
 
 main()
