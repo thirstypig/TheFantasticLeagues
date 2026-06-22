@@ -69,3 +69,4 @@ compound-engineering.local.md
 .venv/
 __pycache__/
 *.pyc
+supabase/
