@@ -338,6 +338,95 @@ async function seedMlbPlayers() {
   return result;
 }
 
+// ─── Seed snake draft ─────────────────────────────────────────────────────────
+
+async function seedSnakeDraft(leagueId: number, teamIds: number[]) {
+  // Create initial draft state
+  const draftState = {
+    leagueId,
+    status: "waiting" as const,
+    config: {
+      totalRounds: 10,
+      secondsPerPick: 120,
+      orderType: "SNAKE" as const,
+      teamOrder: teamIds,
+    },
+    pickOrder: generatePickOrder(teamIds, 10, "SNAKE"),
+    currentPickIndex: 0,
+    picks: [] as any[],
+    draftedPlayerIds: [],
+    autoPickTeams: [],
+    timerExpiresAt: null,
+  };
+
+  // Add sample picks (first round)
+  const players = await prisma.player.findMany({
+    take: teamIds.length,
+    orderBy: { id: "asc" },
+  });
+
+  let picksCreated = 0;
+  for (let i = 0; i < Math.min(teamIds.length, players.length); i++) {
+    const pick = await prisma.draftPick.upsert({
+      where: {
+        leagueId_round_pickNum: {
+          leagueId,
+          round: 1,
+          pickNum: i + 1,
+        },
+      },
+      create: {
+        leagueId,
+        round: 1,
+        pickNum: i + 1,
+        teamId: draftState.pickOrder[i],
+        playerId: players[i].id,
+        isAutoPick: false,
+      },
+      update: {
+        playerId: players[i].id,
+      },
+    });
+    if (pick.playerId === players[i].id) picksCreated++;
+  }
+
+  // Update draft state with the picks
+  draftState.picks = await prisma.draftPick.findMany({
+    where: { leagueId },
+    orderBy: { pickNum: "asc" },
+  });
+  draftState.draftedPlayerIds = draftState.picks
+    .filter((p: any) => p.playerId)
+    .map((p: any) => p.playerId);
+
+  // Save draft session
+  await prisma.snakeDraftSession.upsert({
+    where: { leagueId },
+    create: {
+      leagueId,
+      state: draftState as any,
+    },
+    update: {
+      state: draftState as any,
+    },
+  });
+
+  log(`   Snake draft: 10 rounds, ${picksCreated} sample picks seeded`);
+}
+
+// Helper: generate pick order for snake draft
+function generatePickOrder(teamOrder: number[], totalRounds: number, orderType: "SNAKE" | "LINEAR"): number[] {
+  const order: number[] = [];
+  for (let round = 0; round < totalRounds; round++) {
+    if (orderType === "SNAKE" && round % 2 === 1) {
+      order.push(...[...teamOrder].reverse());
+    } else {
+      order.push(...teamOrder);
+    }
+  }
+  return order;
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -349,19 +438,31 @@ async function main() {
     await resetStagingData();
   }
 
-  log("1/3  Seeding users…");
+  log("1/4  Seeding users…");
   const userCount = await seedUsers();
 
-  log("2/3  Seeding league and teams…");
+  log("2/4  Seeding league and teams…");
   const { leagueId, teamsCreated } = await seedLeagueAndTeams();
 
-  log("3/3  Syncing MLB players from live API…");
+  // Get team IDs for the draft
+  const teams = await prisma.team.findMany({
+    where: { leagueId },
+    orderBy: { code: "asc" },
+    select: { id: true },
+  });
+  const teamIds = teams.map((t) => t.id);
+
+  log("3/4  Seeding snake draft…");
+  await seedSnakeDraft(leagueId, teamIds);
+
+  log("4/4  Syncing MLB players from live API…");
   const playerResult = await seedMlbPlayers();
 
   console.log("\n✅  Staging seed complete:");
   console.log(`    Users:   ${userCount}`);
   console.log(`    League:  ${STAGING_LEAGUE.name} (id=${leagueId})`);
   console.log(`    Teams:   ${teamsCreated}`);
+  console.log(`    Snake draft: 10 rounds, ready to test`);
   console.log(`    Players: ${playerResult.created} created, ${playerResult.updated} updated`);
   console.log("\n    ✅ Supabase Auth users automatically seeded (password: Staging123!@#)");
   console.log("       Test accounts:");
