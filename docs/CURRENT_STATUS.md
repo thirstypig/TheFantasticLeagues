@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-06-08
+Last updated: 2026-06-22
 
 ## Planning Source of Truth
 
@@ -11,6 +11,26 @@ Last updated: 2026-06-08
 ## Active Period
 
 **Period 4** (Jun 7 – Jul 4, 2026) is live. All 8 OGBA teams completed roster overhauls on June 7 (72 transactions recorded, all matching OnRoto/FanGraphs). Logan Henderson (The Show) is on IL as of June 7 by commissioner action.
+
+---
+
+## Shipped This Week (2026-06-22)
+
+### Scoring Settings (Phase 3 — Partial)
+**Commit:** 859e1bc (feature), 23dd133 (test plan), 0317433 (local setup docs)
+
+- **ScoringSettings component** (453 lines) — Two-tab commissioner UI for configuring league scoring rules (points-per-stat) and roster slot limits
+- **Scoring Engine service** (476 lines) — Pure functions for NFL/NBA scoring: `calculateNFLPoints`, `calculateNBACategories`, `compareNBACategories`, `calculateStandings`, `getDefaultScoringRules`
+- **API endpoints** (394 lines) — GET/PATCH `/api/leagues/:id/scoring-settings` and `/api/leagues/:id/roster-config`
+- **Database schema** — ScoringSettings, ScoringRule, RosterConfig Prisma models + migration (20260620000000_phase3_scoring_engine)
+- **Test plan** — 20 unit tests (pure functions), 11 integration tests (API contracts), 7 component tests (UI behavior). Deferred execution pending local Supabase migration fix.
+- **Solution documentation** — `docs/solutions/integration-issues/untyped-fetch-wrapper-api-contracts.md` captures TypeScript error resolution + prevention strategies for API boundary typing
+
+**Test suite status after Phase 3:**
+- Backend: 1289 passing (93 files), 7 skipped, 1 todo
+- Frontend: 893 passing (73 files)
+- Total: 2182 passing tests (excludes MCP suites which track separately)
+- TypeScript: clean (both client and server)
 
 ---
 
@@ -56,9 +76,11 @@ OGBA uses **period-by-period roto accumulated** scoring:
 
 ---
 
-## Verification Baseline (last clean run)
+## Verification Baseline (2026-06-22 latest)
 
-- Server tests: ~1195 passing, 7 skipped, 1 todo
-- Client tests: ~874 passing (71 test files)
-- MCP fbst-app: 53 passing
+- Server tests: 1289 passing, 7 skipped, 1 todo (93 test files)
+- Client tests: 893 passing (73 test files)
+- MCP fbst-app: 83 passing
+- MCP mlb-data: 50 passing
 - TypeScript: `cd client && npx tsc --noEmit` clean; server local tsc shows phantom zod errors for `shared/` (known false-positive — CI is the authority)
+- **Total test count:** 2182 tests passing (backend + frontend, excluding MCP suites tracked separately)

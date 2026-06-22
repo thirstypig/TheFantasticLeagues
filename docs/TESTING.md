@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-06-10
+Last updated: 2026-06-22
 
 ## What this document is
 
@@ -40,14 +40,23 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1252 server + 893 client tests, ~25s total) + 83 MCP fbst-app + 50 MCP mlb-data run separately in CI | Required green baseline. |
+| Before every push / PR | `npm run test` (1289 server + 893 client tests, ~25s total); MCP suites (83 fbst-app + 50 mlb-data) run separately in CI | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
-**Current reality (2026-05-04):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Recent /ce:review work on PRs #226–#230 was verified with full unit suite (1544 green), both typechecks clean, and a 6-step browser smoke (Home → Team V3 hub → AddDrop preview-gating regression → Place-on-IL → Activate-from-IL) at `http://localhost:3011/`.
+**Current reality (2026-06-22):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2182 tests: 1289 backend + 893 frontend) + both typechecks clean.
 
-## Current coverage (2026-06-10 baseline)
+## Current coverage (2026-06-22 baseline)
+
+**Test suite total:** 2182 passing tests (1289 backend + 893 frontend)
+- Backend: 93 test files, 1289 passing, 7 skipped, 1 todo
+- Frontend: 73 test files, 893 passing
+- MCP servers: tracked separately (83 fbst-app, 50 mlb-data)
+- TypeScript: both client and server tsc clean
+- Full run time: ~25 seconds locally, ~35 seconds in CI
+
+## Previous coverage (2026-06-10 baseline)
 
 ### Server — 1252 passing, 92 files (last verified 2026-06-10)
 
