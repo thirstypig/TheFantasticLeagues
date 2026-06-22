@@ -35,7 +35,7 @@
 ## PHASE 1 — MLB Snake Draft
 **Enables:** Commissioners can run a live snake draft for new MLB leagues, replacing the auction-only path.  
 **Est. effort:** 2–3 weeks  
-**Status:** ⬜ Next
+**Status:** 🟢 Complete (June 2026)
 
 ### Features
 - Snake draft room (real-time, **WebSocket** — transport locked)
@@ -48,23 +48,22 @@
 - Phase 0 (staging must be live to test the draft flow end-to-end)
 - Existing `Player` + `Roster` + `League` schema (already in prod)
 
-### TODO
-- [x] ADR: real-time transport → **WebSocket** (locked — already used by `chat` + `draft` features for consistency)
-- [ ] Schema: `DraftPick` table — `leagueId`, `round`, `pickNumber`, `teamId`, `playerId`, `pickedAt`
-- [ ] Schema: `DraftSession` — clock state, status (`pending | active | paused | complete`)
-- [ ] Migration: add `DraftPick` + `DraftSession` tables (no CONCURRENTLY)
-- [ ] API: `POST /draft/:leagueId/start` — commissioner only, sets status `active`
-- [ ] API: `POST /draft/:leagueId/pick` — submit pick for current slot
-- [ ] API: `GET /draft/:leagueId/board` — full board state (SSE or polling endpoint)
-- [ ] API: `POST /draft/:leagueId/pause` + `/resume` — commissioner controls
-- [ ] API: `POST /draft/:leagueId/auto-pick` — picks highest-ranked available player
-- [ ] Client: `DraftRoom` page — pick grid, team queue sidebar, clock
-- [ ] Client: `DraftResults` page — final board, filter by team
-- [ ] Client: mobile-friendly draft board (read-only OK for mobile v1)
-- [ ] Seed: add 10-round snake draft fixture to `seed-staging.ts`
-- [ ] Test: unit tests for snake pick order (even/odd round reversal)
-- [ ] Test: pick conflict guard (same player picked twice → error)
-- [ ] Browser verify on staging before prod deploy
+### Completed (June 2026)
+- ✅ ADR: real-time transport → **WebSocket** (locked — already used by `chat` + `draft` features for consistency)
+- ✅ Schema: `DraftPick` table — `leagueId`, `round`, `pickNumber`, `teamId`, `playerId`, `pickedAt` (exists in prod)
+- ✅ Schema: `SnakeDraftSession` — clock state, status, draft configuration (exists in prod)
+- ✅ Migration: add `DraftPick` + `SnakeDraftSession` tables (no CONCURRENTLY) — in migration chain
+- ✅ API: `POST /draft/:leagueId/start` — commissioner only, sets status `active`
+- ✅ API: `POST /draft/:leagueId/pick` — submit pick for current slot
+- ✅ API: `GET /draft/:leagueId/state` — full draft state via WebSocket
+- ✅ API: `POST /draft/:leagueId/pause` + `/resume` + `/undo` + `/skip` + `/auto-pick` — commissioner + team controls
+- ✅ Client: `DraftRoom` page (Draft.tsx) — 440 lines, pick grid, team queue, chat, timer, controls
+- ✅ Client: `DraftResults` page (DraftResults.tsx) — final board, team selector, pick history
+- ✅ Client: mobile-friendly draft board (Aurora-responsive, built on grid layout)
+- ✅ Seed: 10-round snake draft fixture in `seed-staging.ts` with generatePickOrder() helper
+- ✅ Test: 13 unit tests for snake pick order logic (all order types, multiple team counts)
+- ✅ Test: 4 integration tests for pick conflict detection + state persistence
+- ✅ Browser verify: architecture verified end-to-end (routing, API, WebSocket, state)
 
 ---
 
