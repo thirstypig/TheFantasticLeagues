@@ -61,6 +61,7 @@ const CreateLeague = React.lazy(() => import("./features/leagues/pages/CreateLea
 const JoinLeague = React.lazy(() => import("./features/leagues/pages/JoinLeague"));
 const DiscoverLeagues = React.lazy(() => import("./features/leagues/pages/DiscoverLeagues"));
 const Draft = React.lazy(() => import("./features/draft/pages/Draft"));
+const DraftResults = React.lazy(() => import("./features/draft/pages/DraftResults"));
 const MatchupPage = React.lazy(() => import("./features/matchups/pages/Matchup"));
 const TradingBlockPage = React.lazy(() => import("./features/trading-block/pages/TradingBlockPage"));
 const BoardPage = React.lazy(() => import("./features/board/pages/BoardPage"));
@@ -205,6 +206,7 @@ export default function App() {
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
                     <Route path="/auction-values" element={<AuctionValues />} />
                     <Route path="/draft" element={<ErrorBoundary name="draft"><Draft /></ErrorBoundary>} />
+                    <Route path="/draft-results" element={<ErrorBoundary name="draft-results"><DraftResults /></ErrorBoundary>} />
                     <Route path="/matchup" element={<MatchupPage />} />
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
