@@ -1,12 +1,24 @@
 # The Fantastic Leagues (FBST)
 
-## Current status
+## Current Status
 
-<!-- now-tldr -->
-Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging infrastructure) is complete** — a separate Supabase staging project, seed script, and admin docs are wired. **Phase 1 (MLB snake draft) starts next session.** Draft transport: **WebSocket** (already in use by `chat` and `draft` features — locked decision). See `ROADMAP.md` for the full phase breakdown and `docs/STAGING.md` for staging setup.
-<!-- /now-tldr -->
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging infrastructure) is complete** — a separate Supabase staging project, seed script, and admin docs are wired. **Phase 1 (MLB snake draft) starts next session.** Draft transport: **WebSocket** (already in use). See `ROADMAP.md` for phases and `docs/STAGING.md` for staging setup.
+
+## Quick Links
+
+**Reference guides** (detailed runbooks, moved out to keep this file compact):
+- **[Feature Modules](docs/guides/feature-modules.md)** — 31 modules, cross-feature imports, adding new features
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2182 tests across 33 modules
+- **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
+- **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
+- **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands
+- **[MCP Servers](docs/guides/mcp-servers.md)** — MLB Data Proxy + FBST App Tools (24 wire-list tools)
+- **[AI Analysis System](docs/guides/ai-analysis.md)** — 8 AI features, data sources, prompt guidelines, digest rules
+- **[Custom Commands](docs/guides/commands.md)** — /check, /db, /test-new, /ship, etc.
+- **[Feedback Loop](docs/guides/feedback-loop.md)** — Session checklists, browser verification, continuous improvement signals
 
 ## Project Overview
+
 Fantasy baseball league management tool. Client/server monorepo organized by **feature modules**.
 
 ## Tech Stack
@@ -69,132 +81,7 @@ fbst/
 
 ## Feature Modules
 
-The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
-
-### Current Feature Modules (31)
-
-| Module | Server | Client | Description |
-|--------|--------|--------|-------------|
-| `auth` | routes | 5 pages, api | Login, signup, password reset, landing |
-| `leagues` | routes, rules-routes | api only | League CRUD, rules management (pages removed; API used by admin, commissioner, keeper-prep) |
-| `teams` | routes, teamService | 2 pages, 4 components, api | Team management, roster views |
-| `players` | routes, dataService | 1 page, 2 components, api | Player search/detail (`GET /api/players`, `GET /:mlbId`), per-player slot eligibility (`GET /:mlbId/eligible-slots` — rate-limited 60/min/user), fielding stats (`GET /:mlbId/fielding`), per-player news (`GET /:mlbId/news`), MLB transactions feed (`GET /news/transactions`). All endpoints require auth |
-| `roster` | routes, rosterImport-routes | 5 components | Roster grid, controls, import |
-| `standings` | routes, standingsService | api only | Standings computation (pages removed; StatsTables promoted to shared components) |
-| `trades` | routes | 1 page, 1 component, api | Trade proposals, voting |
-| `waivers` | routes | (minimal) | Legacy paired-row waiver-claim auto-engine (FAAB-style) — kept running; new owners use `wire-list` |
-| `wire-list` | routes, processor | 2 pages, 2 picker components, api | Two-list waiver model: ranked Add list + ranked Drop list per period. Commissioner-driven consume/free reducer (succeed/fail/skip/revert), atomic finalize, auto-lock at deadline, push notifications on outcomes. Owner UI at `/teams/:code/wire-list`, commissioner UI at `/commissioner/:leagueId/wire-list`. See `docs/decisions.md` ADR-012 |
-| `transactions` | routes | 1 page, api | Transaction history (`GET /api/transactions`), claim/drop (`POST /transactions/{claim,drop}` + `/preview`), atomic IL stash and activate (`POST /transactions/{il-stash,il-activate}` + `/preview`), MLB status sync (`POST /transactions/sync-il-status`). All writes: requireAuth + requireSeasonStatus(IN_SEASON) + requireTeamOwnerOrCommissioner |
-| `auction` | routes, auctionImport | 2 pages, 14 components, 5 hooks | Live auction draft (chat, sounds, watchlist, value overlay, spending pace, settings, timer, sold visual). `GET /api/auction/state` = live/current rosters; `GET /api/auction/results` = auction-day frozen snapshot (PR #370, 2026-06-02) used by `/auction-results` so totals don't drift with in-season churn — source=`auction_2026`/`prior_season`/`DROP`/`SEASON_IMPORT`, `acquiredAt < firstPeriod.startDate + 7d`, `releasedAt IS NULL OR releasedAt >= cutoff` |
-| `keeper-prep` | routes, keeperPrepService | 1 page, 1 component, api | Keeper selection workflows |
-| `commissioner` | routes, CommissionerService | 1 page, 5 components | Commissioner admin tools |
-| `franchises` | routes | — | Franchise (org) CRUD, org-level settings |
-| `seasons` | routes, seasonService | api only | Season lifecycle (SETUP→DRAFT→IN_SEASON→COMPLETED) |
-| `admin` | routes | 1 page, 2 components | System admin panel (includes league creation + CSV import) |
-| `archive` | routes, 3 archive services | 1 page, api | Historical data import/export |
-| `periods` | routes | 1 page (Season) | Season/period standings with toggle |
-| `mlb-feed` | routes, digestService | — | Live MLB scores, transactions, my-players-today, weekly league digest, depth charts, news feeds (MLB.com, ESPN, Yahoo, Reddit, Trade Rumors) |
-| `awards` | routes, awardsService | — | Fantasy MVP / Cy Young rankings via z-score composite (`GET /api/leagues/:leagueId/awards`); persisted snapshots round-trip from league digest |
-| `ai` | routes, draftReportCardService, aiInsightService, checkpoints lib | 4 pages, 1 component, api | AI Insights hub, Draft Report (`/draft-report`), Draft Report Card (`/draft-report-card`, PR #371 2026-06-03 — per-team auction-day values + busts at 1/3, 2/3, EOS checkpoints by `surplus = composite_z − price_z`; reuses `auction/lib/auctionDaySnapshot`; keepers excluded), league digest on Home page |
-| `watchlist` | routes | 1 component, api | Private per-team player watchlist (notes, tags) |
-| `trading-block` | routes | 1 page, 1 component, api | Public league-wide trading block ("asking for" field) |
-| `board` | routes | 1 page, 3 components, api | League Board: Commissioner/Trade Block/Banter cards with threads |
-| `community` | routes | 1 page, api | Product Board placeholder: Announcements, Marketplace, General |
-| `chat` | routes, WebSocket | 1 component, api | In-app league chat: ChatPanel, unread badges, system messages on trade/waiver events |
-| `notifications` | routes | 1 component, api | Push notifications: web-push VAPID, PushSubscription, NotificationPreference, per-type settings |
-| `draft` | routes, WebSocket | 1 page, 3 components, api | Snake draft: DraftBoard grid, auto-pick, pause/resume, On the Clock indicator |
-| `matchups` | routes | — | H2H matchup generation: round-robin scheduling, ScoringEngine (Roto/H2H/Points) |
-| `profiles` | routes | 1 page, api | User profiles: bio, favorite team, experience, preferred formats, payment handles |
-| `reports` | routes, reportBuilder | — (client removed) | Weekly report API — server endpoints still active at `/api/reports/:leagueId`; client UI removed (weekly digest on Home covers this) |
-
-### Feature Module Pattern
-```
-server/src/features/<feature>/
-├── routes.ts          # Express router (named export: <feature>Router)
-├── services/          # Business logic (if needed)
-│   └── <name>Service.ts
-├── types.ts           # Feature-specific types (if needed)
-└── index.ts           # Re-exports router
-
-client/src/features/<feature>/
-├── pages/             # Page components for this feature
-├── components/        # Feature-specific components
-├── api.ts             # API client functions
-├── hooks/             # Feature-specific hooks (if needed)
-└── index.ts           # Re-exports pages for routing
-```
-
-### Adding a New Feature Module
-1. Create `server/src/features/<name>/` with `routes.ts` and `index.ts`
-2. Create `client/src/features/<name>/` with pages, components, api as needed
-3. Mount router in `server/src/index.ts`: `app.use("/api/<prefix>", <name>Router)`
-4. Import pages in `client/src/App.tsx` from `./features/<name>/pages/<Page>`
-5. Add API re-exports to `client/src/api/index.ts` if needed
-6. Write unit tests in `__tests__/` directories within the feature
-7. Add integration tests if the feature interacts with other modules
-
-### Cross-Feature Dependencies
-Some features import from other features' services or components.
-
-**Server (service imports):**
-- `leagues/routes.ts` imports `keeper-prep/services/keeperPrepService`
-- `leagues/rules-routes.ts` imports `commissioner/services/CommissionerService`
-- `admin/routes.ts` imports `commissioner/services/CommissionerService`
-- `commissioner/services/CommissionerService` imports `auction/services/auctionImport`
-- `auth/routes.ts` imports `commissioner/services/CommissionerService` (auto-accept invites on login)
-- `standings/routes.ts` imports `players/services/dataService`
-- `transactions/routes.ts` imports `players/services/dataService`
-- `commissioner/routes.ts` imports `trades/routes.ts` for `tradeItemSchema`
-- `seasons/services/seasonService` imports `commissioner/services/CommissionerService` (lockRules)
-- `auction/routes.ts` imports `seasons/services/seasonService` (auto-transition on init)
-- `leagues/routes.ts` reads `franchise.inviteCode` for invite code endpoints
-- `commissioner/services/CommissionerService` creates/links `Franchise` rows on league creation
-- `mlb-feed/services/digestService` imports `standings/services/standingsService` (dynamic, for digest context)
-- `mlb-feed/services/digestService` imports `lib/sportConfig` (dynamic, `isKeeperRoster`)
-- `mlb-feed/services/digestService` imports `awards/services/awardsService` (static, for Fantasy MVP / Cy Young rankings embedded in the digest payload)
-- `ai/services/draftReportCardService` imports `auction/lib/auctionDaySnapshot` (single source for "what each team had on auction day" — also consumed by `/api/auction/results`)
-- `mlb-feed/digestRoutes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
-- `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
-- `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
-- `wire-list/processor.ts` imports `transactions/lib/positionInherit` (`isEligibleForSlot` for position-eligibility re-check at succeed time, mirroring legacy waivers processor)
-- `wire-list/routes.ts` imports `transactions/lib/freeAgent` (`assertPlayerIsFreeAgent` — single source of truth for FA detection per todo #175; legacy `waivers/routes.ts` uses a different policy and is intentionally not migrated)
-- `wire-list/processor.ts` imports `lib/pushService` (per-team summary push at finalize)
-- `matchups/routes.ts` imports `standings/services/standingsService` (H2H scoring from category stats)
-- `draft/routes.ts` imports `seasons/services/seasonService` (auto-transition on draft completion)
-- `teams/routes.ts` imports `standings/services/standingsService` (AI insights standings computation)
-- `reports/services/reportBuilder` queries `AiInsight` (type=league_digest + type=weekly) and `TransactionEvent` — aggregator-only, no services imported
-
-**Client (component imports):**
-- `commissioner/pages/Commissioner` imports `keeper-prep/components/KeeperPrepDashboard`
-- `commissioner/pages/Commissioner` imports `leagues/api` (getInviteCode, regenerateInviteCode — invite management)
-- `commissioner/pages/Commissioner` imports `transactions/api` (getTransactions — recent activity on Overview tab)
-- `commissioner/pages/Commissioner` imports `roster/components/RosterControls` (commissioner-level roster lock/unlock)
-- `commissioner/pages/Commissioner` imports `commissioner/components/SeasonManager`
-- `commissioner/components/SeasonManager` imports `seasons/api`
-- `periods/pages/Season` imports `seasons/api` (getCurrentSeason)
-- `commissioner/components/CommissionerRosterTool` imports `transactions/api` (ilStash — direct IL stash from commissioner view)
-- `keeper-prep/pages/KeeperSelection` imports `leagues/api` (getMyRoster, saveKeepers)
-- `transactions/pages/TransactionsPage` imports `roster/components/AddDropTab`
-- `trades/pages/TradesPage` imports `teams/components/TeamRosterView`
-- `auction/pages/AuctionValues` imports `components/shared/PlayerDetailModal`
-- `teams/pages/Team` imports `components/shared/PlayerDetailModal`
-- `teams/pages/Team` imports `transactions/components/RosterMovesTab/AddDropPanel`, `PlaceOnIlPanel`, `ActivateFromIlPanel` (Yahoo-style v3 hub remounts these existing panels as inline sub-routes under `/teams/:code/manage/{claim,il-stash,il-activate}` per plan §0.5 refinement #2 "no modals" — replaces the modal entry point on Team page; the panels themselves are unchanged)
-- `components/shared/PlayerDetailModal` imports `hooks/usePlayerNews` (RSS feed aggregation for news section)
-- `archive/pages/ArchivePage` imports `players/components/EditPlayerNameModal`, `teams/components/EditTeamNameModal`, `admin/components/ArchiveAdminPanel`, `components/shared/StatsTables`
-- `periods/pages/Season` imports `components/shared/StatsTables`
-- `commissioner/components/CommissionerTradeTool` imports `trades/components/TradeAssetSelector`
-- `admin/components/AdminLeagueTools` imports `leagues/api` (adminCreateLeague, adminImportRosters, getLeagues)
-- `periods/pages/Season` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
-- `teams/pages/Team` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
-- `pages/Home` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
-- `pages/Home` imports `transactions/api` (getTransactions — recent league activity feed)
-- `pages/Home` imports `trades/api` (getTrades, cancelTrade — pending trade proposals widget)
-- `pages/Home` imports `board/api` (getBoardCards — league board summary widget)
-- `board/pages/Board` imports `trading-block/api` (auto-synced Trade Block cards)
-- `periods/pages/Season` imports `matchups/api` (Matchups tab for H2H scoring)
-- `pages/Home` imports `chat/components/ChatPanel` (league chat slide-over)
-
-When adding cross-feature imports, document them here to maintain visibility.
+31 modules organized by domain, each with routes, services, pages, and components. See **[Feature Modules guide](docs/guides/feature-modules.md)** for the full catalog, patterns, and cross-feature dependencies.
 
 ## Shared Infrastructure (do NOT move into features)
 - `shared/api/` — **cross-side Zod schemas** (pilot: `playerSeasonStats.ts`). Both client and server import from here; the inferred type is the single source of truth for the wire format. See `docs/CONTRACT_TESTING.md` for how to add a new schema. Server imports via relative `.js` path (NodeNext), client via `@shared/*` path alias.
@@ -232,442 +119,37 @@ When adding cross-feature imports, document them here to maintain visibility.
 - `server/src/lib/sportConfig.ts` — server-side baseball constants, position config, default league rules, `OPENING_DAYS` by year
 - `server/src/scripts/lib/cli.ts` — shared CLI utilities for scripts (`parseYear`)
 
-## Conventions
-- TypeScript strict mode in both client and server
-- Server files use `.js` extensions in imports (ESM compat): `from "../db/prisma.js"`
-- Client files use no extensions in imports: `from "../api/base"`
-- Prisma singleton imported from `server/src/db/prisma.ts` — NEVER create `new PrismaClient()` inline
-- All routers use named exports: `export const fooRouter = router;`
-- API client functions use `fetchJsonApi()` from `client/src/api/base.ts`
-- Auth token passed via `Authorization: Bearer <token>` header
-- Tailwind for all styling; shadcn-pattern components in `components/ui/`
-- Named exports preferred; default exports only for page components
-- **All write endpoints (POST, PATCH, DELETE) MUST use `requireAuth` middleware** — no exceptions
-- **Admin-only endpoints** (waiver processing, trade processing) use `requireAdmin`
-- **Middleware ordering**: `requireAuth → validateBody(schema) → requireSeasonStatus([...]) → requireTeamOwner/requireLeagueMember → asyncHandler(fn)`. Validation runs before season guard and authorization because both read from `req.body`. Season guard placed after validation so leagueId/teamId are parsed. For param-based auth (e.g., `requireCommissionerOrAdmin()`), auth runs before validation.
-- **Season-gated endpoints** use `requireSeasonStatus(["DRAFT"])` or `requireSeasonStatus(["IN_SEASON"], "body.teamId")` — auction nominate/bid require DRAFT, trade propose and waiver submit require IN_SEASON
-- **Error responses MUST NOT leak internal details** — return `{ error: "Internal Server Error", requestId, ref }` for 500s; admins (`req.user?.isAdmin === true`) additionally get `detail: message`; log details server-side via `logger` with `{ ref, requestId, path, method, userId }`
-- **Request correlation** — every request gets an 8-char hex `req.requestId` set by middleware in `server/src/index.ts`; always echoed back via `X-Request-Id` response header (exposed to browser JS via `Access-Control-Expose-Headers`). User-facing code is `ERR-${requestId}`. Every 500 also pushes a record into the in-memory `errorBuffer` (capacity 100, newest-first, admin-visible at `GET /api/admin/errors`).
-- **Client-side error surface** — thrown `ApiError` (not plain `Error`) carries `status`, `url`, `requestId`, `ref`, `detail`, `body`, `serverMessage`. Callers that want the toast to appear should call `reportError(err, { source: "feature-name" })` from `client/src/lib/errorBus.ts`. `ErrorProvider` must wrap the app root in `main.tsx`.
-- **Required env vars** (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `IP_HASH_SECRET`) validated at startup — server exits if missing. `IP_HASH_SECRET` must be ≥32 chars (generate with `openssl rand -hex 32`); rotate yearly per session-tracking plan R8
-- **Dev-only endpoints** gated behind explicit env vars (e.g., `ENABLE_DEV_LOGIN=true`), never `NODE_ENV` checks
-- **Time-aware ownership predicates** — any function checking "does this roster entry cover this date/period?" MUST use the named predicates from `lib/rosterWindow.ts` (`ownedOn(roster, date)`, `overlapsPeriod(roster, period)`, `clampToPeriod(roster, period)`) rather than raw `releasedAt === null` checks. `releasedAt === null` is ONLY correct for free-agent detection (no time dimension) — see `transactions/lib/freeAgent.ts`. Using `releasedAt === null` for a period-scoped query answers "is the player currently on a team?" not "was the player on this team during this period?" — a category error that silently mis-attributes stats across period boundaries. See `docs/solutions/logic-errors/closed-period-stat-attribution-uses-current-owner.md`.
+## Code Conventions
 
-### Player row enrichment (deprecated)
-
-Several wire-format responses ferry the Prisma `Player.id` through to the client under leading-underscore field names (`_dbPlayerId`, `_dbTeamId`, `_rosterId`, `_posList`). The convention exists because the original `/api/players` endpoint returned an "MLB-shape" payload (`mlb_id`, `player_name`, etc.) that mirrored the legacy CSV import, leaving no obvious slot for the database row's primary key. Rather than reshape the payload, the join key was smuggled in as a leading-underscore "private" field.
-
-Live consumers:
-- `server/src/features/players/routes.ts` emits `_dbPlayerId` on `/api/players` rows (renamed from `_dbId` in PR #196 / todo #141 for consistency).
-- `client/src/features/teams/pages/TeamLegacy.tsx` synthesizes `_dbPlayerId`/`_dbTeamId`/`_rosterId`/`_posList` for the legacy roster panel join.
-- `client/src/features/transactions/components/RosterMovesTab/{AddDropPanel,PlaceOnIlPanel,ActivateFromIlPanel}.tsx` read those fields via `as any` casts.
-- `client/src/features/watchlist/components/WatchlistPanel.tsx` reads `_dbPlayerId` (with a `_dbId` fallback for cached client bundles).
-- `client/src/features/transactions/pages/ActivityPage.tsx` has a `_dbTeamId` fallback.
-
-**Status: deprecated — scheduled for removal when v3 ships everywhere.** The removal vehicles:
-- Todo #140 — server-side hub roster endpoint (`GET /api/teams/:code/hub-roster`) returns a clean payload that obviates the underscore fields; once consumers migrate, the legacy MLB-shape responses can drop the enrichment.
-- Todo #116 — panel data-shape cleanup audits the consumer side and removes the `as any` casts.
-
-Until then: every new server emission of a Prisma row id MUST use `_dbPlayerId` (or the appropriate `_dbXxx` form), never invent a new variant. Document any new consumer in this section.
+TypeScript strict mode, ESM imports, Prisma singleton, named exports, auth middleware ordering, error handling + request correlation, time-aware ownership logic. See **[Code Conventions guide](docs/guides/conventions.md)** for details and the deprecated player row enrichment pattern.
 
 ## Database
-- Schema at `prisma/schema.prisma`
-- Never run migrations without explicit confirmation
-- Key models: Franchise, FranchiseMembership, User, UserProfile, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, TeamStatsSeason, Trade, WaiverClaim, WaiverPeriod, WaiverAddEntry, WaiverDropEntry, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat, ChatMessage, PushSubscription, NotificationPreference, Matchup
-- `Player.posGames Json?` — per-position games-played map populated daily by `syncPositionEligibility` from the MLB Stats API fielding group. Null until first cron run. Used by hub GP chips and position eligibility logic via `buildGamesByPos` in `teamService.ts`.
-- `Team.rosterVersion Int @default(0)` — monotonic counter incremented on every roster-mutating transaction (claim, drop, IL stash/activate, slot swap). Used by the hub client for optimistic-concurrency (`If-Match` header, 409 on stale write). See `server/src/features/teams/lib/rosterVersionGuard.ts`.
-- `AiInsight` — persisted AI-generated analyses (type: "weekly" for team insights, "league_digest" for home page digest; deduped by weekKey)
-- `Trade.aiAnalysis` — JSON, auto-generated post-trade analysis (fire-and-forget on processing)
-- `WaiverClaim.aiAnalysis` — JSON, auto-generated post-waiver analysis (fire-and-forget on processing)
-- `AuctionSession.state.draftReport` — JSON, persisted Draft Report (generated once, survives restarts)
 
-### Migrations
-- **Unique timestamps required.** Prisma applies migrations in lexicographic directory-name order. Two migrations sharing the same timestamp prefix (e.g. `20260430000000_a` and `20260430000000_b`) work today via name disambiguation but will become non-deterministic if a third with the same timestamp lands. Use `20260430000000` then `20260430000001` for same-day migrations.
-- **`CONCURRENTLY` is forbidden inside Prisma migration files.** `prisma migrate deploy` wraps every migration in a single transaction; `CREATE INDEX CONCURRENTLY` aborts with Postgres error 25001 and leaves the migration failed-in-flight (P3009), freezing all future deploys. Default to plain `CREATE INDEX IF NOT EXISTS` — acceptable for any table under ~1M rows or write rate <50/s, which covers every table in this repo today. CI greps `prisma/migrations/**/*.sql` for `CONCURRENTLY` and fails the build. For the rare genuine high-write case, use the two-step out-of-band pattern documented in `docs/solutions/deployment/railway-prisma-concurrent-index-p3009-block.md` (no-op marker migration + manual `CREATE INDEX CONCURRENTLY` in prod + `prisma migrate resolve --applied`). See also recovery runbook in that same doc.
-- **`IF EXISTS` / `IF NOT EXISTS` guards** on destructive ops (`DROP COLUMN`, `DROP INDEX`) so the migration is idempotent.
-- **Destructive migrations need a rollback runbook** at `docs/runbooks/<migration_name>_rollback.md` documenting the recovery SQL. Copy `docs/runbooks/_template_rollback.md` for new entries; see `docs/runbooks/auto_resolve_slots_rollback.md` for a worked example. Reference the runbook from a comment at the top of the migration SQL.
-- **Two-phase column drop / row delete.** When a migration removes a column or deletes rows that an older deployed container still reads, ship the change in two PRs: (1) remove every read site in code (so the container after deploy tolerates the column being gone), then (2) merge the schema change. Railway's blue-green overlap (~10–30s) means the OLD container can serve traffic against the NEW DB; if it still selects `Roster.displayOrder` after `DROP COLUMN`, every roster query 500s. Precedent: PR #180 dropped `Roster.displayOrder` and removed every reader in the same PR — practically harmless because Roster wasn't read via Prisma during the exact overlap window, but the convention is a foot-gun. Going forward: code-removal PR first, schema-drop PR next deploy.
-- **Baseline migrations.** If a table was created via `prisma db push` against shared Supabase before migrations were the canonical source, add a backfill `CREATE TABLE IF NOT EXISTS` migration dated BEFORE the first migration that references it. Guards make it a no-op against prod and let `prisma migrate deploy` succeed end-to-end on a fresh DB. Precedent: `20260330000000_baseline_aiinsight_table` (todo #125).
-- **`ENFORCE_ROSTER_RULES=true` triggers unconditional auto-resolve** as of 2026-04-30 (PR #180). The per-league `LeagueRule(transactions.auto_resolve_slots)` was retired — auto-resolve is no longer toggleable per league.
-- **`migrate resolve --applied` marks the migration row but does NOT execute the DDL.** If you use it to pre-mark a migration (e.g. for columns already applied manually), verify the column physically exists before deploying code that references it. `prisma migrate status` shows "up to date" whether the DDL ran or not. After deploy, `prisma generate` will make the client SELECT the new column — if the column is absent, every query using it 500s. Precedent: `posGames` and `rosterVersion` columns (2026-06-06) — both were pre-marked but not applied; browser verify caught the 500s before prod traffic hit them.
+Schema, migrations, cron jobs, critical special columns. See **[Database Operations guide](docs/guides/database-operations.md)** for detailed migration best practices, cron schedules, and the CRITICAL `syncAllPlayers()` preservation rule.
 
-### Daily Cron Jobs (server/src/index.ts)
-- **12:00 UTC (~5 AM PT)**: `syncAllPlayers()` — roster sync for all 30 MLB teams, followed by `syncPositionEligibility(season, 3)` which applies OGBA's three-layer position eligibility and writes `Player.posGames` (real per-position GP from the MLB Stats API fielding group; used by hub GP chips and eligibility computation):
-  1. **Rule 1** — current season ≥3 GP at a position → eligible.
-  2. **Rule 2** — prior season ≥20 GP at a position → eligible (additive with Rule 1; PR #124). Fail-closed on prior-season MLB API error; prior fetch uses 30-day TTL. Derived-IDs (≥1M) filtered to avoid 404s on Ohtani's synthetic pitcher row.
-  3. **Rule 3** — rookies / minors → primary position only (falls out of the empty-fielding skip).
-  Global threshold; per-league future. `posGames` uses key-order-normalized `JSON.stringify` for change detection to avoid ~1000 no-op DB writes/day (JSONB alphabetizes keys; `Object.fromEntries(Map)` preserves insertion order).
-- **13:00 UTC (~6 AM PT)**: `syncAllActivePeriods()` — player stats sync for active scoring periods. Populates `PlayerStatsPeriod` (PSP). Once PSP rows exist, `computeTeamStatsFromDb` routes via **hybrid attribution (PR #394)**: boundary-aligned players use `computeWithPeriodStats` (end-of-period owner gets full PSP row); players acquired or released strictly mid-period (UTC calendar-date comparison) are windowed through `computeWithDailyStats` automatically. No manual path switching is needed. See ADR-013 + ADR-014.
-- **14:00 UTC (~7 AM PT)**: stats integrity reconciliation (ADR-014) — re-fetches each recently closed period (≤5 days post-close) from the MLB API through the same fetch/parse path as the syncer, diffs against stored `PlayerStatsPeriod`, auto-heals drift via `syncPeriodStats`, and pushes an `ERR-recon-p{id}` admin error on persistent drift. Manual: `POST /api/admin/reconcile-period {periodId?}`. Boundary edits to long-closed periods still require a manual `POST /api/admin/sync-stats {periodId}`.
-- **Every 5 min**: Wire List auto-lock — flips PENDING `WaiverPeriod` rows past their `deadlineAt` to LOCKED so owners can no longer mutate Add/Drop entries. Advisory-locked (`pg_try_advisory_lock(0x57495245)`) for multi-instance safety. Commissioner still finalizes manually.
+## Development Setup
 
-**CRITICAL**: `syncAllPlayers()` updates `Player.posPrimary` and `Player.mlbTeam` but **preserves enriched `Player.posList`** — it only overwrites `posList` if the existing value is just the primary position (not enriched by current or prior-season fielding stats). This prevents the daily sync from wiping multi-position eligibility data produced by `syncPositionEligibility`.
+Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guides/development-setup.md)**.
 
-## Development
+## Testing
 
-### Port Assignments (per MASTER-PORTS.md — DO NOT CHANGE without updating all references)
-| Project | Service | Port |
-|---------|---------|------|
-| **FBST** | Vite dev server | **3010** |
-| **FBST** | Express API server | **4010** |
-| **FBST** | PostgreSQL | **5442** |
-| **FBST** | Redis | **6381** |
+2182 tests (1289 server, 893 client, 50 MCP). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
-### Starting the App (two terminals)
-```bash
-# Terminal 1: Express API server
-npm run server        # Starts on :4010
+## Feedback Loop & Checklists
 
-# Terminal 2: Vite dev server (proxies /api → :4010)
-npm run dev           # Starts on :3010, open http://localhost:3010
-```
-
-### Other Commands
-- `npm run test` (from root) — runs all tests
-- `npm run test:server` — server unit + integration tests
-- `npm run test:client` — client unit tests
-
-## Testing Strategy
-
-### Unit Tests (per feature module)
-Each feature module should have tests co-located with the code:
-```
-server/src/features/<feature>/
-├── __tests__/
-│   ├── routes.test.ts         # Route handler tests (mock Prisma, test HTTP)
-│   └── <name>Service.test.ts  # Service logic tests (mock DB)
-
-client/src/features/<feature>/
-├── __tests__/
-│   ├── api.test.ts            # API client tests (mock fetch)
-│   └── <Page>.test.tsx        # Component render tests
-```
-
-**What to test per module:**
-- **Routes**: HTTP method, status codes, request validation, error responses
-- **Services**: Business logic, edge cases, error handling
-- **API clients**: Request construction, response parsing, error handling
-- **Pages/Components**: Rendering, user interactions, loading/error states
-
-### Integration Tests
-Cross-feature interactions should be tested in a shared integration test directory:
-```
-server/src/__tests__/integration/
-├── auction-roster.test.ts     # Auction draft populates roster
-├── trade-roster.test.ts       # Trade execution moves players between rosters
-├── waiver-roster.test.ts      # Waiver claims modify rosters and budgets
-├── keeper-league.test.ts      # Keeper prep interacts with league settings
-└── commissioner-league.test.ts # Commissioner actions affect league state
-```
-
-**Key integration scenarios:**
-- Auction draft completion should create roster entries and update team budgets
-- Trade processing should move players between rosters and adjust budgets
-- Waiver claim processing should enforce budget limits and roster rules
-- Commissioner roster lock should prevent trades/waivers for locked teams
-- Keeper selection should respect league rules and roster constraints
-
-### Test Configuration
-- **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Server mocking**: Use `vi.mock()` to mock Prisma (`../../db/prisma.js`) and Supabase (`../../lib/supabase.js`) in unit tests
-- **Client mocking**: React Testing Library for components; `vi.mock()` for API mocking
-- **DB tests**: Use a test database with Prisma migrations for integration tests (future)
-- **CI**: Run `npm run test` in CI pipeline before deploy
-
-### Current Test Coverage (1289 server + 893 client = 2182 tests across 33 feature modules)
-
-**Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
-
-**Update (2026-06-22):** Scoring Engine Phase 3 shipped (commit 859e1bc) with 453-line ScoringSettings component + 394-line API routes + 476-line scoring engine service. Test plan documented (23dd133) pending local Supabase migration fix. Typecheck errors in ScoringSettings fixed via API response type definitions (see `docs/solutions/integration-issues/untyped-fetch-wrapper-api-contracts.md`).
-
-See `docs/TESTING.md` for the full catalog, vocabulary (unit/integration/E2E), coverage gaps, and run cadence.
-E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e` (requires both dev servers up).
-
-
-**Server (493 tests):**
-- `server/src/lib/__tests__/utils.test.ts` — 36 tests (toNum, toBool, norm, normCode, parseCsv, splitCsvLine, chunk, parseIntParam)
-- `server/src/features/standings/__tests__/standingsService.test.ts` — 26 tests (buildTeamNameMap, CATEGORY_CONFIG, computeCategoryRows, computeStandingsFromStats, rankPoints)
-- `server/src/features/standings/__tests__/standings.integration.test.ts` — 7 tests (full pipeline: 4-team league scenario)
-- `server/src/middleware/__tests__/auth.test.ts` — 6 tests (requireAuth, requireAdmin)
-- `server/src/middleware/__tests__/authExtended.test.ts` — 45 tests (attachUser, requireLeagueRole, requireCommissionerOrAdmin, requireLeagueMember body fallback, requireTeamOwnerOrCommissioner matrix: admin / IDOR / commissioner / toggle on-off / legacy ownerUserId / co-owner TeamOwnership / fail-closed rule value variants)
-- `server/src/lib/__tests__/leagueRuleCache.test.ts` — 9 tests + 1 todo (row→map shape, cache hits across repeated reads, per-league isolation, 60s TTL expiry with fake timers, invalidation scoping, _clearLeagueRuleCache for test isolation)
-- `server/src/middleware/__tests__/asyncHandler.test.ts` — 4 tests
-- `server/src/middleware/__tests__/validate.test.ts` — 7 tests
-- `server/src/middleware/__tests__/seasonGuard.test.ts` — 10 tests (requireSeasonStatus: allowed/denied status, no season, team lookup, error forwarding)
-- `server/src/features/auth/__tests__/routes.test.ts` — 16 tests (handleAuthHealth, handleGetMe, handleDevLogin)
-- `server/src/features/auction/__tests__/routes.test.ts` — 23 tests (bid, finish, reset, init, position limits)
-- `server/src/features/auction/__tests__/auctionPersistence.test.ts` — 8 tests (save/load/clear round-trip)
-- `server/src/features/auction/__tests__/autoFinish.test.ts` — 3 tests (timer fire, cancel on pause, reset on bid)
-- `server/src/features/trades/__tests__/routes.test.ts` — 13 tests (propose, vote, process)
-- `server/src/features/waivers/__tests__/routes.test.ts` — 12 tests (submit, process, cancel)
-- `server/src/__tests__/integration/auction-roster.test.ts` — 9 tests (finish→roster, budget deduction, queue)
-- `server/src/__tests__/integration/auction-simulation.test.ts` — 29 tests (full auction lifecycle, queue rotation, completion)
-- `server/src/__tests__/integration/trade-roster.test.ts` — 10 tests (player movement, budget, atomicity)
-- `server/src/__tests__/integration/waiver-roster.test.ts` — 11 tests (FAAB ordering, budget, drop player)
-- `server/src/features/seasons/__tests__/seasonService.test.ts` — 14 tests (transitions, auto-lock, validation)
-- `server/src/features/seasons/__tests__/routes.test.ts` — 5 tests (router export, service integration)
-- `server/src/features/commissioner/__tests__/CommissionerService.test.ts` — 7 tests
-- `server/src/features/teams/__tests__/routes.test.ts` — 4 tests
-- `server/src/__tests__/integration/transaction-claims.test.ts` — 25 tests
-- `server/src/features/archive/__tests__/routes.test.ts` — 38 tests (seasons, standings, periods, stats, team update, stat update, sync, recalculate, search, AI, archive-current)
-- `server/src/features/standings/__tests__/routes.test.ts` — 11 tests (period, category, season standings with live data)
-- `server/src/features/players/__tests__/mlbSyncService.test.ts` — 9 tests (fetchAllTeams, fetchNLTeams, syncAllPlayers with team changes)
-- `server/src/features/admin/__tests__/routes.test.ts` — 21 tests (league CRUD, members, import-rosters, reset, delete, team-codes, sync-mlb, sync-stats, audit-log)
-- `server/src/features/keeper-prep/__tests__/routes.test.ts` — 8 tests (populate, status, roster, save, lock/unlock)
-- `server/src/features/players/__tests__/routes.test.ts` — 16 tests (list/filter, detail, fielding, season-stats, period-stats, auction-values, transactions)
-- `server/src/features/periods/__tests__/routes.test.ts` — 10 tests (list, create, update, delete with auth checks)
-- `server/src/features/transactions/__tests__/routes.test.ts` — 8 tests (list, filter, paginate, claim by playerId/mlbId, drop)
-- `server/src/features/franchises/__tests__/routes.test.ts` — 6 tests (list, detail, update settings)
-- `server/src/features/auction/__tests__/retrospective.test.ts` — 11 tests (league stats, bargains/overpays, position spending, team efficiency)
-
-**Client (187 tests):**
-- `client/src/api/__tests__/base.test.ts` — 18 tests (toNum, fmt2, fmt3Avg, fmtRate, yyyyMmDd, addDays; includes IEEE 754 edge case 19/80→.238)
-- `client/src/lib/__tests__/baseball.test.ts` — 9 tests (fmt3Avg/fmtRate/fmt2 canonical sports/baseball.ts: happy path + IEEE 754 rounding + non-finite guards)
-- `client/src/lib/__tests__/baseballUtils.test.ts` — 32 tests (POS_ORDER, POS_SCORE, getPrimaryPosition, sortByPosition, positionToSlots)
-- `client/src/lib/__tests__/mlbStatus.test.ts` — 6 tests (isMlbIlStatus: real MLB API format `Injured N-Day` + legacy `Injured List N-Day` + non-IL rejects + malformed cases + case sensitivity; mirror of server `ilSlotGuard.test.ts`)
-- `client/src/features/players/__tests__/PlayerDetailModal.test.tsx` — 14 tests (rendering, badges, stats, fielding)
-- `client/src/features/standings/__tests__/StatsTables.test.tsx` — 22 tests (table rendering, sorting)
-- `client/src/features/auction/__tests__/AuctionValuesLegacy.test.tsx` — 10 tests against the preserved legacy code path at `/auction-values-classic` (rendering, tabs, search, sorting, modal). Renamed from `AuctionValues.test.tsx` in PR #145 when the Aurora port shipped.
-- `client/src/features/auction/__tests__/AuctionValuesAurora.test.tsx` — 3 tests for Aurora-only behavior at `/auction-values` (hero copy, `.aurora-theme` wrapper, footer escape link to `/auction-values-classic`).
-- `client/src/features/teams/__tests__/Teams.test.tsx` — 8 tests (team list, roster counts, links, empty/error states)
-- `client/src/features/teams/__tests__/Team.test.tsx` — 9 tests (roster display, tabs, manage button, loading/error)
-- `client/src/features/trades/__tests__/TradesPage.test.tsx` — 23 tests (trade list, actions, commissioner controls)
-- `client/src/features/archive/__tests__/ArchivePage.test.tsx` — 16 tests (seasons, tabs, standings, draft results)
-- `client/src/features/keeper-prep/__tests__/KeeperSelection.test.tsx` — 8 tests (rendering, budget, locked state)
-- `client/src/features/periods/__tests__/Season.test.tsx` — 8 tests (standings matrix, period toggle)
-- `client/src/features/commissioner/__tests__/Commissioner.test.tsx` — 8 tests (tabs, overview, phase badge)
-- `client/src/features/transactions/__tests__/ActivityPage.test.tsx` — 6 tests (tabs, add/drop)
-- `client/src/features/transactions/__tests__/api.test.ts` — 6 tests (ilStash + ilActivate: URL/method/body shape, optional params forwarding, error propagation)
-- `client/src/features/commissioner/__tests__/api.test.ts` — 4 tests (getGhostIlSummary: URL interpolation, GET semantics, error propagation)
-- `client/src/features/admin/__tests__/Admin.test.tsx` — 6 tests (admin access, non-admin denied)
-
-**MCP (50 tests):**
-- `mcp-servers/mlb-data/__tests__/cache.test.ts` — 8 tests (get/set/invalidate/TTL expiry/stats)
-- `mcp-servers/mlb-data/__tests__/rateLimiter.test.ts` — 5 tests (token bucket, queue, rejection, metrics)
-- `mcp-servers/mlb-data/__tests__/tools.test.ts` — 16 tests (all 8 tools with mocked MLB API responses)
-- `mcp-servers/mlb-data/__tests__/integration.test.ts` — 21 tests (cache round-trip, rate limiter integration, tool registry, end-to-end scenarios)
-
-### Running Tests
-```bash
-# All tests
-npm run test
-
-# Server tests only
-npm run test:server
-
-# Client tests only
-npm run test:client
-
-# Single feature (from server/ or client/)
-npx vitest run src/features/auction/__tests__/
-
-# Watch mode
-npx vitest --watch
-```
-
-## Feedback Loop
-
-### Purpose
-Maintain a structured feedback loop between development sessions to ensure continuity, catch regressions, and improve code quality over time.
-
-### Session Start Checklist
-When starting a new session, review these items:
-1. **Read `CLAUDE.md`** — confirms current architecture and conventions
-2. **Check `FEEDBACK.md`** — review any open items from previous sessions
-3. **Run `npm run test`** — verify all tests pass before making changes
-4. **Run `git log --oneline -10`** — understand recent changes
-5. **Check for open TODOs** — `grep -r "TODO\|FIXME\|HACK" server/src/ client/src/ --include="*.ts" --include="*.tsx" | head -20`
-
-### Browser Verification (MANDATORY after every code change)
-After ANY code change — before declaring "done" or moving to the next task:
-1. **Open affected page** in Playwright browser
-2. **Interact with the changed feature** — click, select, submit, not just look
-3. **Verify persistence** — reload the page, confirm the change survived
-4. **Check adjacent features** — if you changed position handling, verify dropdowns, sort, AND eligibility still work
-5. **Check for cron/background job conflicts** — if the changed data is also modified by daily syncs, verify the sync won't overwrite your change
-
-### Session End Checklist
-Before ending a session:
-1. **Run tests** — `npm run test` must pass
-2. **Run builds** — `cd client && npx tsc --noEmit` and `cd server && npx tsc --noEmit`
-3. **Browser smoke test** — open the app in Playwright, navigate to pages touched this session, verify no regressions
-4. **Update `FEEDBACK.md`** — log what was done, what's pending, any concerns
-5. **Update `CLAUDE.md`** — if architecture or conventions changed
-6. **Commit with descriptive message** — include scope of changes
-
-### FEEDBACK.md Format
-```markdown
-## Session [DATE]
-
-### Completed
-- [ item ]
-
-### Pending / Next Steps
-- [ item ]
-
-### Concerns / Tech Debt
-- [ item ]
-
-### Test Results
-- Server: X passing, Y failing
-- Client: X passing, Y failing
-```
-
-### Continuous Improvement Signals
-Track these metrics across sessions:
-- **Test coverage trend** — are new features being tested?
-- **Build errors** — are pre-existing TypeScript errors being resolved?
-- **Cross-feature dependencies** — are they growing? Should modules be refactored?
-- **Import path consistency** — all Prisma imports from `db/prisma.ts`, all routers named exports
-- **Feature module completeness** — does each module have tests, proper index.ts, types?
+Session start/end checklists, browser verification, continuous improvement signals. See **[Feedback Loop guide](docs/guides/feedback-loop.md)**.
 
 ## Custom Slash Commands
 
-Located in `.claude/commands/`. Run from Claude Code with `/<name>`:
-
-| Command | Description |
-|---------|-------------|
-| `/check` | Run all tests + TypeScript checks in parallel |
-| `/db <query>` | Run a Prisma database query (natural language) |
-| `/feature-test <name>` | Run server + client tests for a feature module |
-| `/feature-overview <name>` | Show files, routes, imports, tests for a feature |
-| `/smoke-test` | Hit all API endpoints and report status codes |
-| `/test-new <feature>` | Write unit/integration/E2E tests for a new feature, run them, update `docs/TESTING.md` |
-| `/test-run [e2e\|<feature>]` | Run tsc + unit/integration (~10s). Add `e2e` for Playwright suite |
-| `/test-audit` | Scan test-infra gaps (pre-commit hook, contract testing, CI, etc.) and recommend next investment |
-| `/doc [context]` | Synchronize all docs atomically — CLAUDE.md, FEEDBACK, `docs/*`, TODO — with drift detection |
-| `/ship <feature-name>` | Meta: runs `/test-new` → `/doc` → tsc+tests → commit in one flow. Kebab-case name required |
-
-All five `test-*` + `/doc` + `/ship` also live at `~/.claude/commands/` so they work in every project.
+/check, /db, /test-new, /ship, etc. See **[Commands guide](docs/guides/commands.md)**.
 
 ## MCP Servers
 
-### MLB Data Proxy (`mcp-servers/mlb-data/`)
-
-Local MCP server that acts as an intelligent caching proxy between FBST and the MLB Stats API (`statsapi.mlb.com`). Configured in `.mcp.json` at project root.
-
-**Tools (8):**
-| Tool | Description | Cache TTL |
-|------|-------------|-----------|
-| `get-player-info` | Player lookup by MLB ID | 24h |
-| `get-player-stats` | Season hitting/pitching stats | 1h |
-| `search-players` | Fuzzy name search | 1h |
-| `get-team-roster` | 40-man or active roster | 6h |
-| `get-mlb-standings` | Division standings | 15min |
-| `get-mlb-schedule` | Game schedule by date | 5min |
-| `sync-player-teams` | Batch player ID → team abbr mapping | 24h |
-| `cache-status` | View/clear cache stats | — |
-
-**Resources:** `mlb://teams` (all 30 MLB teams), `mlb://cache-stats`
-
-**Architecture:**
-- SQLite persistent cache via `better-sqlite3` (WAL mode)
-- Token bucket rate limiter (10 req/s, burst 20, queue 50)
-- Circuit breaker (opens after 5 failures, resets in 60s)
-- **Shared cache**: Both MCP server and Express server read/write the same `mcp-servers/mlb-data/cache/mlb-data.db` via `server/src/lib/mlbCache.ts`
-- Configurable DB path via `MLB_CACHE_PATH` env var
-
-**Running:** Spawned automatically by Claude Code CLI via `.mcp.json`. For manual testing:
-```bash
-cd mcp-servers/mlb-data && npm run build && node dist/index.js
-```
-
-**Tests:** 50 tests (8 cache + 5 rate limiter + 16 tool tests + 21 integration tests)
-```bash
-cd mcp-servers/mlb-data && npx vitest run
-```
-
-**Detailed plan:** `docs/MCP-MLB-API-PLAN.md`
-
-### FBST App Tools (`mcp-servers/fbst-app/`)
-
-Companion MCP server that exposes FBST app actions as Claude-callable tools.
-v1 ships **12 wire-list tools** (owner CRUD + commissioner reducer) wrapping
-the live Express API, so agents can drive the same flows a human owner or
-commissioner would. Lands the agent-native promise of "every user action is
-also a tool" for the wire-list module (todo #176).
-
-**Tools (24):**
-
-| Category | Tool | Endpoint |
-|----------|------|---------|
-| Read | `wire_list_get_active_period` | `GET /api/wire-list/periods/active?leagueId=` |
-| Read | `wire_list_list_adds` | `GET /api/wire-list/periods/:periodId/adds?teamId=` |
-| Read | `wire_list_list_drops` | `GET /api/wire-list/periods/:periodId/drops?teamId=` |
-| Read | `wire_list_get_results` | `GET /api/wire-list/periods/:periodId/results` |
-| Owner write | `wire_list_create_add` | `POST /api/wire-list/periods/:periodId/adds` |
-| Owner write | `wire_list_create_drop` | `POST /api/wire-list/periods/:periodId/drops` |
-| Owner write | `wire_list_reorder_entries` | `POST /api/wire-list/periods/:periodId/reorder` |
-| Owner write | `wire_list_delete_add` | `DELETE /api/wire-list/adds/:id` |
-| Owner write | `wire_list_delete_drop` | `DELETE /api/wire-list/drops/:id` |
-| Owner write | `wire_list_update_drop` | `PATCH /api/wire-list/drops/:id` |
-| Commissioner | `wire_list_lock_period` | `POST /api/wire-list/periods/:periodId/lock` |
-| Commissioner | `wire_list_succeed_add` | `POST /api/wire-list/adds/:id/succeed` |
-| Commissioner | `wire_list_fail_add` | `POST /api/wire-list/adds/:id/fail` |
-| Commissioner | `wire_list_skip_add` | `POST /api/wire-list/adds/:id/skip` |
-| Commissioner | `wire_list_revert_add` | `POST /api/wire-list/adds/:id/revert` |
-| Commissioner | `wire_list_finalize_period` | `POST /api/wire-list/periods/:periodId/finalize` |
-| Transactions | `players_get_eligible_slots` | `GET /api/players/:mlbId/eligible-slots` |
-| Transactions | `transactions_preview_claim` | `POST /api/transactions/claim/preview` |
-| Transactions | `transactions_execute_claim` | `POST /api/transactions/claim` |
-| Transactions | `transactions_preview_il_stash` | `POST /api/transactions/il-stash/preview` |
-| Transactions | `transactions_execute_il_stash` | `POST /api/transactions/il-stash` |
-| Transactions | `transactions_preview_il_activate` | `POST /api/transactions/il-activate/preview` |
-| Transactions | `transactions_execute_il_activate` | `POST /api/transactions/il-activate` |
-| Transactions | `transactions_execute_drop` | `POST /api/transactions/drop` |
-
-**Architecture:**
-- Input validators reuse `shared/api/wireList.ts` Zod schemas (one schema → client + server + MCP)
-- Auth: Supabase JWT via `FBST_AUTH_TOKEN` env var; tools fail clean if unset
-- Base URL: `FBST_API_BASE` (default `http://localhost:4010`)
-- No cache, no rate limiter — straight HTTP proxy to Express. Errors include the stable `code` from `WireListErrorCodeSchema`.
-
-**Out of scope for v1:** the `GET /api/wire-list/teams/:teamId/status` aggregate endpoint from todo #176 is a follow-up PR.
-
-**Running:** Build (`npm install && npm run build` from `mcp-servers/fbst-app/`) then register in `.mcp.json` (snippet in `mcp-servers/fbst-app/README.md`).
+MLB Data Proxy (8 tools, caching) + FBST App Tools (24 wire-list/transaction tools). See **[MCP Servers guide](docs/guides/mcp-servers.md)**.
 
 ## AI Analysis System
 
-### Architecture
-- **Service**: `server/src/services/aiAnalysisService.ts` — all AI methods, model selection, prompt templates
-- **Models**: Google Gemini 2.5 Flash (primary), Anthropic Claude Sonnet 4 (fallback)
-- **Validation**: All LLM JSON responses validated with Zod schemas
-- **Attribution**: All AI-generated content must show "Powered by Google Gemini & Anthropic Claude"
-
-### AI Features (8 active)
-
-| Feature | Trigger | Persistence | Location |
-|---------|---------|-------------|----------|
-| Draft Report | Manual (generate once) | `AuctionSession.state.draftReport` | `/draft-report` page |
-| Live Bid Advice | On-demand during auction | In-memory cache per bid | Auction stage inline |
-| Weekly Team Insights | Auto on Team page load | `AiInsight` table (weekly dedup) | Team page header |
-| League Digest | Auto on Home page load | `AiInsight` table (weekly dedup) | Home page (with week tabs) |
-| Trade of the Week Poll | Part of League Digest | Votes in `AiInsight.data` JSON | Home page (current week only) |
-| Post-Trade Analysis | Fire-and-forget on processing | `Trade.aiAnalysis` JSON | Activity/Trades inline |
-| Post-Waiver Analysis | Fire-and-forget on processing | `WaiverClaim.aiAnalysis` JSON | Activity inline |
-| Keeper Recommendations | On-demand | In-memory cache | Keeper prep page |
-
-### Data Sources for AI Prompts
-- **Projected values**: `server/data/ogba_auction_values_2026.csv` (843 players with dollar values)
-- **Roster data**: Prisma queries (player names, positions, prices, MLB teams, keeper status via `source` field)
-- **Auction log**: `AuctionSession.state.log` (WIN events with timestamps, prices, team assignments)
-- **League context**: NL-only/AL-only/Mixed from league rules, budget caps, roster sizes
-
-### Prompt Guidelines
-- Always include NL-only context when applicable (player scarcity)
-- Discount injury-prone players by 15-30% in projections
-- Apply ~5% uncertainty discount on all stat projections
-- Use "Waiver Budget" instead of "FAAB" in user-facing content
-- Grade on value efficiency (surplus), not just star power
-
-### League Digest Rules
-- **NO auction prices, draft costs, or budget amounts** in weekly digests — focus on performance only
-- Week 1 digest (post-draft) is the ONLY exception — it may discuss auction results and team grades for the draft
-- All subsequent weekly digests must be stats-focused: real category standings, player availability, who played vs who didn't
-- Trade of the Week must NEVER include keeper players — keepers are untouchable
-- Power rankings must correlate with actual standings data
-- Digest sections: weekInOneSentence, powerRankings, hotTeam, coldTeam, statOfTheWeek, categoryMovers, proposedTrade, boldPrediction
-- Past digests are browsable via week tabs on the Home page; votes are read-only on past weeks
+8 AI features (Draft Reports, Live Bid Advice, Weekly Insights, League Digest, Trade Analysis, etc.), data sources, prompt guidelines, digest rules. See **[AI Analysis guide](docs/guides/ai-analysis.md)**.
 
 ## Coding Guidelines
 - **SOLID Principles**: Single Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
