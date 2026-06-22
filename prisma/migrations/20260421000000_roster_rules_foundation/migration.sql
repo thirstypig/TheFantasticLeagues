@@ -105,11 +105,14 @@ CREATE INDEX "OutboxEvent_kind_completedAt_idx"      ON "OutboxEvent"("kind", "c
 -- ═══════════════════════════════════════════════════════════════
 -- 4. TransactionEvent indexes — stint derivation + backdate perf
 -- ═══════════════════════════════════════════════════════════════
+-- NOTE: These indexes are created by the baseline migration
+-- (20260420000000_baseline_transaction_event), so we use IF NOT EXISTS
+-- here to make this migration idempotent.
 
-CREATE INDEX "TransactionEvent_leagueId_transactionType_effDate_idx"
+CREATE INDEX IF NOT EXISTS "TransactionEvent_leagueId_transactionType_effDate_idx"
   ON "TransactionEvent"("leagueId", "transactionType", "effDate");
 
-CREATE INDEX "TransactionEvent_teamId_playerId_effDate_idx"
+CREATE INDEX IF NOT EXISTS "TransactionEvent_teamId_playerId_effDate_idx"
   ON "TransactionEvent"("teamId", "playerId", "effDate");
 
 -- ═══════════════════════════════════════════════════════════════

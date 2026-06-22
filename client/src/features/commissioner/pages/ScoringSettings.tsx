@@ -18,6 +18,25 @@ interface RosterSlot {
   count: number;
 }
 
+interface ScoringSettingsResponse {
+  leagueId: number;
+  sport: "NFL" | "NBA";
+  rules: ScoringRule[];
+}
+
+interface RosterConfigResponse {
+  leagueId: number;
+  slots: Record<string, number>;
+}
+
+interface SaveScoringSettingsRequest {
+  rules: ScoringRule[];
+}
+
+interface SaveRosterConfigRequest {
+  slots: Record<string, number>;
+}
+
 export function ScoringSettings() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const [activeTab, setActiveTab] = useState<"rules" | "roster">("rules");
@@ -49,14 +68,14 @@ export function ScoringSettings() {
         // Fetch scoring settings
         const settingsResp = await fetchJsonApi(
           `GET /api/leagues/${leagueId}/scoring-settings`
-        );
+        ) as ScoringSettingsResponse;
         setRules(settingsResp.rules);
         setSport(settingsResp.sport);
 
         // Fetch roster config
         const rosterResp = await fetchJsonApi(
           `GET /api/leagues/${leagueId}/roster-config`
-        );
+        ) as RosterConfigResponse;
         setRosterSlots(rosterResp.slots);
 
         setRulesError(null);
@@ -84,9 +103,10 @@ export function ScoringSettings() {
       setRulesSaving(true);
       setRulesError(null);
 
+      const payload: SaveScoringSettingsRequest = { rules };
       await fetchJsonApi(`PATCH /api/leagues/${leagueId}/scoring-settings`, {
-        rules,
-      });
+        body: JSON.stringify(payload),
+      } as RequestInit);
 
       setRulesChanged(false);
     } catch (err) {
@@ -108,9 +128,10 @@ export function ScoringSettings() {
       setRosterSaving(true);
       setRosterError(null);
 
+      const payload: SaveRosterConfigRequest = { slots: rosterSlots };
       await fetchJsonApi(`PATCH /api/leagues/${leagueId}/roster-config`, {
-        slots: rosterSlots,
-      });
+        body: JSON.stringify(payload),
+      } as RequestInit);
 
       setRosterChanged(false);
     } catch (err) {
