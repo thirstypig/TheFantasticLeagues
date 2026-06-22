@@ -374,9 +374,11 @@ server/src/__tests__/integration/
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
 
-### Current Test Coverage (1252 server + 893 client + 83 MCP fbst-app + 50 MCP mlb-data + 1 E2E = 2279 tests, 32 feature modules)
+### Current Test Coverage (1289 server + 893 client = 2182 tests across 33 feature modules)
 
 **Note:** The per-file breakdown below is severely stale (last full-sync ~session 66). See `docs/TESTING.md` for the live catalog; summary count above is authoritative.
+
+**Update (2026-06-22):** Scoring Engine Phase 3 shipped (commit 859e1bc) with 453-line ScoringSettings component + 394-line API routes + 476-line scoring engine service. Test plan documented (23dd133) pending local Supabase migration fix. Typecheck errors in ScoringSettings fixed via API response type definitions (see `docs/solutions/integration-issues/untyped-fetch-wrapper-api-contracts.md`).
 
 See `docs/TESTING.md` for the full catalog, vocabulary (unit/integration/E2E), coverage gaps, and run cadence.
 E2E tests live in `client/e2e/` and are run with `cd client && npm run test:e2e` (requires both dev servers up).
