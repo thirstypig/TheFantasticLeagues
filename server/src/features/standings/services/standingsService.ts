@@ -249,17 +249,34 @@ export function aggregatePeriodStatsFromCsv(
     }
   }
 
-  // Build result rows (rate stats computed on-demand by categoryEngine)
+  // Build result rows with pre-computed rate stats
   const result: TeamStatRow[] = [];
   let idx = 0;
   for (const team of teamMap.values()) {
+    // Pre-compute rate stats (AVG, ERA, WHIP) from component stats
+    const rateStats: Record<string, number> = {};
+
+    if (sport === "baseball") {
+      const ab = team.stats["AB"] ?? 0;
+      const h = team.stats["H"] ?? 0;
+      if (ab > 0) rateStats["AVG"] = h / ab;
+
+      const ip = team.stats["IP"] ?? 0;
+      const er = team.stats["ER"] ?? 0;
+      if (ip > 0) rateStats["ERA"] = (er / ip) * 9;
+
+      const bb_h = team.stats["BB_H"] ?? 0;
+      if (ip > 0) rateStats["WHIP"] = bb_h / ip;
+    }
+
     result.push({
       team: {
         id: idx + 1,
         name: team.teamName,
         code: team.teamCode,
       },
-      ...team.stats, // Spread generic stats dict
+      ...team.stats,  // Spread accumulated stats
+      ...rateStats,   // Add pre-computed rate stats
     });
     idx++;
   }

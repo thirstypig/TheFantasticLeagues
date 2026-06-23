@@ -48,7 +48,7 @@ vi.mock("../../../db/prisma.js", () => ({
   },
 }));
 
-import { computeTeamStatsFromDb } from "../services/standingsService.js";
+import { computeTeamStatsFromDb, getTeamStatValue } from "../services/standingsService.js";
 
 const PERIOD_START = new Date("2026-04-19T00:00:00.000Z");
 // noon UTC — matches periods/routes.ts storage convention (new Date(date + "T12:00:00Z"))
@@ -151,12 +151,12 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       if (!psdRgs || !pspRgs) return;
 
       // Both paths credit RGS with the player's full-period stats.
-      expect(psdRgs.R).toBe(12);
-      expect(pspRgs.R).toBe(12);
-      expect(psdRgs.HR).toBe(4);
-      expect(pspRgs.HR).toBe(4);
-      expect(psdRgs.RBI).toBe(8);
-      expect(pspRgs.RBI).toBe(8);
+      expect(getTeamStatValue(psdRgs, "R")).toBe(12);
+      expect(getTeamStatValue(pspRgs, "R")).toBe(12);
+      expect(getTeamStatValue(psdRgs, "HR")).toBe(4);
+      expect(getTeamStatValue(pspRgs, "HR")).toBe(4);
+      expect(getTeamStatValue(psdRgs, "RBI")).toBe(8);
+      expect(getTeamStatValue(pspRgs, "RBI")).toBe(8);
     });
 
     it("PSD and PSP both produce zero credit when the only roster row is on IL at period start", async () => {
@@ -250,26 +250,26 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       if (!psdRgs || !psdDlc || !pspRgs || !pspDlc) return;
 
       // PSD: RGS gets the pre-trade day (R=2, HR=1, RBI=2)
-      expect(psdRgs.R).toBe(2);
-      expect(psdRgs.HR).toBe(1);
-      expect(psdRgs.RBI).toBe(2);
+      expect(getTeamStatValue(psdRgs, "R")).toBe(2);
+      expect(getTeamStatValue(psdRgs, "HR")).toBe(1);
+      expect(getTeamStatValue(psdRgs, "RBI")).toBe(2);
       // PSD: DLC gets the two post-trade days (R=4, HR=1, RBI=5)
-      expect(psdDlc.R).toBe(4);
-      expect(psdDlc.HR).toBe(1);
-      expect(psdDlc.RBI).toBe(5);
+      expect(getTeamStatValue(psdDlc, "R")).toBe(4);
+      expect(getTeamStatValue(psdDlc, "HR")).toBe(1);
+      expect(getTeamStatValue(psdDlc, "RBI")).toBe(5);
 
       // PSP: falls back to daily stats — same split as PSD (not end-of-period owner)
-      expect(pspRgs.R).toBe(2);
-      expect(pspRgs.HR).toBe(1);
-      expect(pspRgs.RBI).toBe(2);
-      expect(pspDlc.R).toBe(4);
-      expect(pspDlc.HR).toBe(1);
-      expect(pspDlc.RBI).toBe(5);
+      expect(getTeamStatValue(pspRgs, "R")).toBe(2);
+      expect(getTeamStatValue(pspRgs, "HR")).toBe(1);
+      expect(getTeamStatValue(pspRgs, "RBI")).toBe(2);
+      expect(getTeamStatValue(pspDlc, "R")).toBe(4);
+      expect(getTeamStatValue(pspDlc, "HR")).toBe(1);
+      expect(getTeamStatValue(pspDlc, "RBI")).toBe(5);
 
       // Both paths now fully agree on per-team attribution for mid-period pickups.
-      expect(psdRgs.R + psdDlc.R).toBe(pspRgs.R + pspDlc.R); // 6 = 6
-      expect(psdRgs.HR + psdDlc.HR).toBe(pspRgs.HR + pspDlc.HR); // 2 = 2
-      expect(psdRgs.RBI + psdDlc.RBI).toBe(pspRgs.RBI + pspDlc.RBI); // 7 = 7
+      expect(getTeamStatValue(psdRgs, "R") + getTeamStatValue(psdDlc, "R")).toBe(getTeamStatValue(pspRgs, "R") + getTeamStatValue(pspDlc, "R")); // 6 = 6
+      expect(getTeamStatValue(psdRgs, "HR") + getTeamStatValue(psdDlc, "HR")).toBe(getTeamStatValue(pspRgs, "HR") + getTeamStatValue(pspDlc, "HR")); // 2 = 2
+      expect(getTeamStatValue(psdRgs, "RBI") + getTeamStatValue(psdDlc, "RBI")).toBe(getTeamStatValue(pspRgs, "RBI") + getTeamStatValue(pspDlc, "RBI")); // 7 = 7
     });
 
     it("league-wide totals invariant: PSD and PSP redistribute, but never lose or gain credit (zero-sum check)", async () => {
