@@ -1,11 +1,11 @@
 /**
  * Sport-agnostic type definitions for the sport registry.
- * Phase 1: Extract refactor — baseball only.
+ * Week 1 refactor: Extract baseball config, add NFL/NBA stubs.
  */
 
 export interface SportConfig {
-  id: string;           // "baseball"
-  name: string;         // "Fantasy Baseball"
+  id: string; // "baseball", "nfl", "nba"
+  name: string;
   positions: PositionConfig[];
   categories: CategoryConfig[];
   rosterSlots: Record<string, number>;
@@ -13,21 +13,22 @@ export interface SportConfig {
   draftFormats: string[];
   seasonMonths: [number, number];
   dataProvider: string;
-  defaultRules: Record<string, any>;
+  defaultRules: Record<string, string>;
 }
 
 export interface PositionConfig {
   code: string;
   name: string;
-  group: string;        // "H" for hitters, "P" for pitchers
+  group: string;        // "H" for hitters, "P" for pitchers (MLB); "skill", "def" (NFL); "all" (NBA)
   isMultiSlot?: boolean;
-  slotEligible?: string[];
+  slotEligible?: string[]; // Which roster slots can use this position
 }
 
 export interface CategoryConfig {
   id: string;
   name: string;
-  group: string;        // "H" for hitting, "P" for pitching
-  isLowerBetter?: boolean;
-  formatFn: string;     // name of formatting function to use
+  group: string;        // "H" for hitting, "P" for pitching (MLB); varies by sport
+  isLowerBetter?: boolean; // e.g., ERA/WHIP are lower-better
+  formatFn?: string;    // name of formatting function (fmtRate, fmt2, integer, etc.)
 }
+
