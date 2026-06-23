@@ -115,14 +115,56 @@ router.post("/admin/recompute-period-cache", requireAuth, requireAdmin, validate
   const period = await prisma.period.findFirst({ where: { id: periodId, leagueId } });
   if (!period) return res.status(404).json({ error: "Period not found in this league" });
 
+  const league = await prisma.league.findUnique({ where: { id: leagueId } });
+  if (!league) return res.status(404).json({ error: "League not found" });
+
   const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
   if (teamStats.length > 0) {
+    // Get league's sport (default to "baseball" for backward compatibility)
+    const sport = league.sport ?? "baseball";
+
+    // Extract stat values using categoryEngine (works for any sport)
     await prisma.$transaction(
-      teamStats.map(t => prisma.teamStatsPeriod.upsert({
-        where: { teamId_periodId: { teamId: t.team.id, periodId } },
-        update: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
-        create: { teamId: t.team.id, periodId, R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
-      }))
+      teamStats.map(t => {
+        // For now, hard-code MLB categories for the DB update
+        // (Future: make teamStatsPeriod schema sport-agnostic)
+        const getStatValue = (key: string): number => {
+          if (t[key] !== undefined && typeof t[key] === "number") {
+            return t[key] as number;
+          }
+          return 0;
+        };
+
+        return prisma.teamStatsPeriod.upsert({
+          where: { teamId_periodId: { teamId: t.team.id, periodId } },
+          update: {
+            R: getStatValue("R"),
+            HR: getStatValue("HR"),
+            RBI: getStatValue("RBI"),
+            SB: getStatValue("SB"),
+            AVG: getStatValue("AVG"),
+            W: getStatValue("W"),
+            S: getStatValue("S"),
+            ERA: getStatValue("ERA"),
+            WHIP: getStatValue("WHIP"),
+            K: getStatValue("K"),
+          },
+          create: {
+            teamId: t.team.id,
+            periodId,
+            R: getStatValue("R"),
+            HR: getStatValue("HR"),
+            RBI: getStatValue("RBI"),
+            SB: getStatValue("SB"),
+            AVG: getStatValue("AVG"),
+            W: getStatValue("W"),
+            S: getStatValue("S"),
+            ERA: getStatValue("ERA"),
+            WHIP: getStatValue("WHIP"),
+            K: getStatValue("K"),
+          },
+        });
+      })
     );
   }
 

@@ -4,6 +4,7 @@ import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, PITCHER_CODES_SET as PITCHER_CODES } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
+import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
 
 import type { PeriodStatRow } from "../../../types/stats.js";
 
@@ -19,28 +20,14 @@ export type CsvPlayerRow = PeriodStatRow & {
   ogba_team_code?: string;
 };
 
-/** Team-level aggregated stat row — output of aggregation, input to ranking */
+/** Team-level aggregated stat row — output of aggregation, input to ranking.
+ * Sport-agnostic: stats keyed by category ID, computed on-demand via categoryEngine.
+ * All stats stored by key (e.g., "R", "HR", "AVG", "W", "ERA", etc. per sport).
+ * Rate stats (AVG, ERA, WHIP) computed from components via getCategoryValue().
+ */
 export interface TeamStatRow {
   team: { id: number; name: string; code: string };
-  R: number;
-  HR: number;
-  RBI: number;
-  SB: number;
-  AVG: number;
-  W: number;
-  S: number;
-  ERA: number;
-  WHIP: number;
-  K: number;
-  // Underlying components for rate stats. Optional because not all callers
-  // populate them (e.g. legacy DB-snapshot rows in `period-category-standings`).
-  // Required for correct cross-period weighted averaging — see Issue #109.
-  H?: number;
-  AB?: number;
-  ER?: number;
-  IP?: number;
-  BB_H?: number;
-  [key: string]: number | { id: number; name: string; code: string } | undefined;
+  [statKey: string]: number | { id: number; name: string; code: string } | undefined;
 }
 
 /** A single category ranking row */
@@ -214,38 +201,21 @@ export function computeStandingsFromStats(
 
 /**
  * Aggregate player-level CSV rows into team-level stats for a given period.
- * Returns objects shaped like DB TeamStatsPeriod rows with { team: { id, name, code } }
- * so they can be passed directly to computeCategoryRows.
+ * Sport-agnostic: accumulates stats into generic Record<string, number>.
+ * Rate stats (AVG, ERA, WHIP) computed via categoryEngine; call sites use getCategoryValue().
  */
 export function aggregatePeriodStatsFromCsv(
   periodStats: CsvPlayerRow[],
-  periodKey: string
+  periodKey: string,
+  sport: string = "baseball"
 ): TeamStatRow[] {
   // Filter rows for the requested period (CSV uses "P1", "P2", etc.)
   const periodRows = periodStats.filter(
     (r) => String(r.period_id ?? "").trim().toUpperCase() === periodKey.toUpperCase()
   );
 
-  // Group by team_code
-  const teamMap = new Map<
-    string,
-    {
-      teamCode: string;
-      teamName: string;
-      R: number;
-      HR: number;
-      RBI: number;
-      SB: number;
-      H: number;
-      AB: number;
-      W: number;
-      S: number; // DB uses "S" for saves
-      K: number;
-      ER: number;
-      IP: number;
-      BB_H: number;
-    }
-  >();
+  // Group by team_code; generic accumulator
+  const teamMap = new Map<string, { teamCode: string; teamName: string; stats: Record<string, number> }>();
 
   for (const r of periodRows) {
     const code = String(r.team_code ?? "").trim().toUpperCase();
@@ -255,58 +225,41 @@ export function aggregatePeriodStatsFromCsv(
       teamMap.set(code, {
         teamCode: code,
         teamName: String(r.team_name ?? code).trim(),
-        R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0,
-        W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0,
+        stats: {},
       });
     }
 
     const team = teamMap.get(code)!;
     const n = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
-    team.R += n(r.R);
-    team.HR += n(r.HR);
-    team.RBI += n(r.RBI);
-    team.SB += n(r.SB);
-    team.H += n(r.H);
-    team.AB += n(r.AB);
-    team.W += n(r.W);
-    team.S += n(r.SV); // CSV uses SV, DB uses S
-    team.K += n(r.K);
-    team.ER += n(r.ER);
-    team.IP += n(r.IP);
-    team.BB_H += n(r.BB_H);
+    // Sport-specific stat accumulation (MLB for now; extend for NFL/NBA)
+    if (sport === "baseball") {
+      team.stats["R"] = (team.stats["R"] ?? 0) + n(r.R);
+      team.stats["HR"] = (team.stats["HR"] ?? 0) + n(r.HR);
+      team.stats["RBI"] = (team.stats["RBI"] ?? 0) + n(r.RBI);
+      team.stats["SB"] = (team.stats["SB"] ?? 0) + n(r.SB);
+      team.stats["H"] = (team.stats["H"] ?? 0) + n(r.H);
+      team.stats["AB"] = (team.stats["AB"] ?? 0) + n(r.AB);
+      team.stats["W"] = (team.stats["W"] ?? 0) + n(r.W);
+      team.stats["S"] = (team.stats["S"] ?? 0) + n(r.SV); // CSV uses SV, DB uses S
+      team.stats["K"] = (team.stats["K"] ?? 0) + n(r.K);
+      team.stats["ER"] = (team.stats["ER"] ?? 0) + n(r.ER);
+      team.stats["IP"] = (team.stats["IP"] ?? 0) + n(r.IP);
+      team.stats["BB_H"] = (team.stats["BB_H"] ?? 0) + n(r.BB_H);
+    }
   }
 
-  // Compute rate stats (AVG, ERA, WHIP) from components
+  // Build result rows (rate stats computed on-demand by categoryEngine)
   const result: TeamStatRow[] = [];
   let idx = 0;
   for (const team of teamMap.values()) {
-    const AVG = team.AB > 0 ? team.H / team.AB : 0;
-    const ERA = team.IP > 0 ? (team.ER / team.IP) * 9 : 0;
-    const WHIP = team.IP > 0 ? team.BB_H / team.IP : 0;
-
     result.push({
       team: {
-        id: idx + 1, // synthetic ID — used only for ranking
+        id: idx + 1,
         name: team.teamName,
         code: team.teamCode,
       },
-      R: team.R,
-      HR: team.HR,
-      RBI: team.RBI,
-      SB: team.SB,
-      AVG,
-      W: team.W,
-      S: team.S, // computeCategoryRows maps SV → "S"
-      ERA,
-      WHIP,
-      K: team.K,
-      // Components for weighted cross-period averaging (Issue #109)
-      H: team.H,
-      AB: team.AB,
-      ER: team.ER,
-      IP: team.IP,
-      BB_H: team.BB_H,
+      ...team.stats, // Spread generic stats dict
     });
     idx++;
   }
@@ -318,11 +271,22 @@ export function aggregatePeriodStatsFromCsv(
  * Aggregate player-level CSV rows across ALL periods into team-level season totals.
  * Same shape as aggregatePeriodStatsFromCsv output.
  */
-export function aggregateSeasonStatsFromCsv(periodStats: CsvPlayerRow[]): TeamStatRow[] {
+export function aggregateSeasonStatsFromCsv(periodStats: CsvPlayerRow[], sport: string = "baseball"): TeamStatRow[] {
   return aggregatePeriodStatsFromCsv(
     periodStats.map((r) => ({ ...r, period_id: "ALL" })),
-    "ALL"
+    "ALL",
+    sport
   );
+}
+
+/**
+ * Safe accessor for stat values from generic TeamStatRow.
+ * Used by tests and callers that need to extract numeric stats by key.
+ */
+export function getTeamStatValue(row: TeamStatRow, key: string): number {
+  const val = row[key];
+  if (typeof val === "number") return val;
+  return 0;
 }
 
 export function rankPoints(
