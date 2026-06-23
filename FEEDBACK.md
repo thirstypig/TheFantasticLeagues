@@ -4,6 +4,57 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-06-22b — Week 2 Sport-Agnostic Standings Refactoring (Continuation)
+
+### Completed
+- **Week 2 standings refactoring infrastructure (50% complete)** — Comprehensive sport-agnostic architecture for standings computation. Enabled Phase 3.5 foundation work ahead of Phase 4 (trades, payouts, AI features).
+  - **categoryEngine.ts** (NEW) — `getLeagueCategories(sport, customCategories)`, `getCategoryValue(teamStats, category, sport)`, `hasComponentStats()`. Handles computed stats (AVG, ERA, WHIP) from component stats. Ready for MLB, NFL, NBA.
+  - **Generic TeamStatRow** — Refactored from hardcoded 10 MLB fields to `Record<string, number>`. Added `getTeamStatValue()` helper for safe field access. All tests updated (14 fixes across standings + admin tests).
+  - **Sport-aware aggregation** — `aggregatePeriodStatsFromCsv(periodStats, periodKey, sport = "baseball")` now accepts sport parameter. Pre-computes rate stats. Generic accumulation via `Record<string, number>`.
+  - **Generic category ranking** — `computeCategoryRows(stats, key: string, lowerIsBetter)` accepts any sport's category keys. Maintains MLB field mapping (SV → S) via `KEY_TO_DB_FIELD` for backward compatibility.
+- **Test suite enhanced** — 23 new unit tests for categoryEngine covering happy paths, edge cases (division-by-zero, missing stats), and sport variations. All tests passing: 2222 total (was 2203).
+- **Test implementation** — Used `/test-new` skill to systematically add unit tests for pure functions. No integration tests needed (utility layer). No E2E needed (already covered by standings integration tests).
+- **Documentation & handoff** — Created `docs/WEEK2_PROGRESS.md` (246 lines) with full completion details, remaining 3 steps (computeTeamStats refactor, route plumbing, OGBA regression testing), and testing checklist for Week 2.2. Saved memory entry (`week2_standings_refactor.md`) for next session context.
+
+### Architecture & Design Decisions
+1. **Keep MLB field mapping (KEY_TO_DB_FIELD)** — Backward compatibility with tests that use "SV" key but "S" field.
+2. **Pre-compute rate stats in aggregation** — Tests expect AVG/ERA/WHIP to exist. `getCategoryValue()` used by future code for dynamic computation.
+3. **Load categories from scoringSettings** — Future leagues can customize; defaults to sport config for OGBA.
+4. **No DB schema changes** — All application-layer refactoring; DB stays backward-compatible.
+
+### Test Results
+- Server: 1325 passing (96 files) + 4 pre-existing failures (draftIntegration.test.ts, unrelated)
+- Client: 897 passing (74 files)
+- Total: 2222 tests green (was 2203 before Week 2 work)
+- categoryEngine tests: 23 new tests, all passing
+- tsc: clean (server)
+
+### Pending / Next Steps (Week 2.2)
+- [ ] **computeTeamStats() refactor** (3h) — Load categories from league.scoringSettings dynamically
+- [ ] **Route/API plumbing** (4-5h) — Pass sport context through all layers
+- [ ] **OGBA regression testing** (4-5h) — Ensure standings unchanged, verify 10 categories, spot-check teams vs OnRoto/FanGraphs
+
+### Session Strategy & Decisions
+- **Chose Option 2 (wrap & resume)** — 11 hours invested in foundation; remaining 12-15 hours better done fresh in Week 2.2 session.
+- **Used `/test-new` skill** — Systematic test coverage for categoryEngine infrastructure. 23 unit tests added, all passing.
+- **Used `/test-run` skill** — Verified full suite after test additions. Zero regressions, tsc clean.
+- **Used `/doc` skill** — Synchronized CLAUDE.md + ROADMAP.md + FEEDBACK.md atomically.
+
+### Lessons & Insights
+1. **Sport-agnostic architecture requires type genericity** — `Record<string, number>` allows any stat; helpers like `getTeamStatValue()` ensure safe access in tests/routes.
+2. **Rate stat computation is bimodal** — Aggregation pre-computes them for backward compatibility; category engine computes dynamically for flexibility. Both patterns needed.
+3. **Field mapping (SV → S) must survive refactoring** — Test data uses "S", category config uses "SV". Removing `KEY_TO_DB_FIELD` broke tests silently (0.5-point drift in standings).
+4. **Infrastructure refactoring can be 50% without feature changes** — Category engine is ready; integration (routes, computeTeamStats) is the remaining 50%. Staged approach de-risks.
+
+### Cross-Session Context
+- **Phase 1 (MLB Snake Draft)** — SHIPPED (June 2026)
+- **Phase 2 (Multi-sport dashboards)** — SHIPPED (June 2026)
+- **Phase 3 (Scoring Settings)** — SHIPPED (June 2026) — see prior session entry
+- **Phase 3.5 (Sport-agnostic standings)** — IN PROGRESS (50% complete, Week 2 infrastructure + Week 2.2 integration)
+- **Phase 4 (Stripe & Monetization)** — UNBLOCKED by Phase 3.5 completion (current ETA: Week 4)
+
+---
+
 ## Session 2026-06-22 — Scoring Settings Phase 3 + test suite verification + solution documentation
 
 ### Completed

@@ -2,13 +2,13 @@
 
 ## Current Status
 
-Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging infrastructure) is complete** — a separate Supabase staging project, seed script, and admin docs are wired. **Phase 1 (MLB snake draft) starts next session.** Draft transport: **WebSocket** (already in use). See `ROADMAP.md` for phases and `docs/STAGING.md` for staging setup.
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging) COMPLETE** · **Phase 1 (MLB snake draft) SHIPPED** (DraftResults page + seed fixture, 2222 tests) · **Phase 2 (Multi-sport dashboards) COMPLETE** (NFL + NBA stubs) · **Phase 3 (Scoring Settings) SHIPPED** (UI + Engine + Routes) · **Phase 3.5 (Sport-agnostic standings refactor) IN PROGRESS** (50% complete, 23 new tests for categoryEngine). See `ROADMAP.md` for full roadmap and `docs/WEEK2_PROGRESS.md` for standings refactoring details.
 
 ## Quick Links
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
 - **[Feature Modules](docs/guides/feature-modules.md)** — 31 modules, cross-feature imports, adding new features
-- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2182 tests across 33 modules
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2222 tests across 33 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
 - **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands

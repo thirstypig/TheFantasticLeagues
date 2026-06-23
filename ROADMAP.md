@@ -124,6 +124,34 @@ Phase 3 was partially delivered in June 2026: the scoring config UI + pure scori
 
 ---
 
+## PHASE 3.5 — Sport-Agnostic Standings Refactoring
+**Enables:** Standings computation that works for MLB, NFL, and NBA without duplicating logic. Foundation for Phase 4+ features (trades, payouts, analysis).  
+**Est. effort:** 3–4 weeks  
+**Status:** 🟡 In Progress (50% complete, June 2026)
+
+### Completed (June 2026)
+- ✅ **Category Engine Infrastructure** — `categoryEngine.ts` with `getLeagueCategories()`, `getCategoryValue()`, `hasComponentStats()`. Sport-aware category loading from config or custom league settings.
+- ✅ **Generic TeamStatRow** — Refactored from hardcoded 10 MLB fields (`R, HR, RBI, ...`) to generic `Record<string, number>`. Backward compatible via `getTeamStatValue()` helper.
+- ✅ **Sport-Aware Aggregation** — `aggregatePeriodStatsFromCsv(periodStats, periodKey, sport)` accepts sport parameter. Pre-computes rate stats (AVG, ERA, WHIP) from component stats.
+- ✅ **Generic Category Ranking** — `computeCategoryRows(stats, key: string, lowerIsBetter)` accepts any sport's category keys. Maintains MLB field mapping (SV → S) for backward compatibility.
+- ✅ **Test Infrastructure** — 23 new unit tests for categoryEngine. All 2222 tests passing, zero regressions.
+
+### TODO (Week 2.2)
+- [ ] **computeTeamStats() refactor** — Load categories from `league.scoringSettings` dynamically (3h)
+- [ ] **Route/API plumbing** — Pass sport context through all layers (4-5h)
+- [ ] **OGBA Regression Testing** — Verify standings unchanged, all 10 categories correct (4-5h)
+
+### Dependencies
+- Phase 3 (scoring config UI + engine exist)
+- MLB standings working (regression baseline)
+
+### Why It Matters
+- **Prevents N versions** of standings logic for each sport
+- **Enables Phase 4+** (trades, payouts, AI) to be sport-aware
+- **Decouples schema from code** — no hardcoded column lists
+
+---
+
 ## PHASE 4 — Stripe & Monetization
 **Enables:** Paid league memberships and commissioner billing.  
 **Est. effort:** 2 weeks  
