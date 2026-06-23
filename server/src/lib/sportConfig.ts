@@ -27,5 +27,5 @@ export {
 export type { CategoryKey } from "./sports/baseball.js";
 
 // Re-export registry for convenience
-export { getSportConfig, getAllSports } from "./sports/index.js";
+export { getSportConfig, getAllSports, getPositionToSlots } from "./sports/index.js";
 export type { SportConfig, PositionConfig, CategoryConfig } from "./sports/types.js";

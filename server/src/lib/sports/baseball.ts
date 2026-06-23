@@ -17,7 +17,7 @@ export const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "
 // ─── Position-to-Slot Mapping ───
 
 /** Map a player's MLB position to the roster slot(s) it can fill. */
-export function positionToSlots(pos: string): string[] {
+export function mlbPositionToSlots(pos: string): string[] {
   const p = pos.trim().toUpperCase();
   if (p === "C") return ["C"];
   if (p === "1B") return ["1B", "CM"];
@@ -28,6 +28,11 @@ export function positionToSlots(pos: string): string[] {
   if (p === "DH") return ["DH"];
   if (p === "P" || p === "SP" || p === "RP" || p === "CL" || p === "TWP") return ["P"];
   return [];
+}
+
+/** Backward-compatible alias for mlbPositionToSlots. @deprecated Use getPositionToSlots(sport) instead. */
+export function positionToSlots(pos: string): string[] {
+  return mlbPositionToSlots(pos);
 }
 
 // ─── Category Configuration ───

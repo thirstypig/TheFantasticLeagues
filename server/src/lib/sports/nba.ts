@@ -9,6 +9,17 @@ import type { SportConfig, PositionConfig, CategoryConfig } from "./types.js";
 
 export const POSITIONS = ["PG", "SG", "SF", "PF", "C"] as const;
 
+/** Map a player's NBA position to the roster slot(s) it can fill. */
+export function nbaPositionToSlots(pos: string): string[] {
+  const p = pos.trim().toUpperCase();
+  if (p === "PG") return ["PG"];
+  if (p === "SG") return ["SG"];
+  if (p === "SF") return ["SF"];
+  if (p === "PF") return ["PF"];
+  if (p === "C") return ["C"];
+  return [];
+}
+
 // ─── Categories ───
 
 export const CATEGORY_CONFIG = [

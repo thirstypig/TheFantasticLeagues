@@ -9,6 +9,18 @@ import type { SportConfig, PositionConfig, CategoryConfig } from "./types.js";
 
 export const POSITIONS = ["QB", "RB", "WR", "TE", "OL", "K", "DEF"] as const;
 
+/** Map a player's NFL position to the roster slot(s) it can fill. */
+export function nflPositionToSlots(pos: string): string[] {
+  const p = pos.trim().toUpperCase();
+  if (p === "QB") return ["QB"];
+  if (p === "RB") return ["RB", "FLEX"];
+  if (p === "WR") return ["WR", "FLEX"];
+  if (p === "TE") return ["TE", "FLEX"];
+  if (p === "K") return ["K"];
+  if (p === "DEF") return ["DEF"];
+  return [];
+}
+
 // ─── Categories ───
 
 export const CATEGORY_CONFIG = [
