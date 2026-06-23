@@ -102,17 +102,27 @@ export { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../../../lib/sportConfig.js";
 export type { CategoryKey } from "../../../lib/sportConfig.js";
 import { CATEGORY_CONFIG, KEY_TO_DB_FIELD, type CategoryKey } from "../../../lib/sportConfig.js";
 
+/**
+ * Compute category rankings for teams.
+ * Sport-agnostic: works with any category key in generic TeamStatRow.
+ * Uses KEY_TO_DB_FIELD mapping for MLB-specific field aliases (e.g., SV → S).
+ * @param stats — aggregated team stats (generic Record<string, number>)
+ * @param key — category key to rank (e.g., "R", "AVG", "ERA", "SV", etc.)
+ * @param lowerIsBetter — true for inverse stats (ERA, WHIP, turnovers), false for most
+ */
 export function computeCategoryRows(
   stats: TeamStatRow[],
-  key: CategoryKey,
+  key: string,
   lowerIsBetter: boolean
 ): CategoryRow[] {
-  const dbField = KEY_TO_DB_FIELD[key] || key;
+  // For MLB, map category keys to DB field names (e.g., SV → S)
+  const dbField = KEY_TO_DB_FIELD[key as CategoryKey] || key;
+
   const rows = stats.map((s) => ({
     teamId: s.team.id,
     teamName: s.team.name,
     teamCode: s.team.code || s.team.name.substring(0, 3).toUpperCase(),
-    value: Number(s[dbField]),
+    value: typeof s[dbField] === "number" ? (s[dbField] as number) : 0,
   }));
 
   const n = rows.length;
@@ -179,7 +189,7 @@ export function computeStandingsFromStats(
 
   // For each category, rank and add points
   for (const cfg of cats) {
-    const rows = computeCategoryRows(stats, cfg.key as CategoryKey, cfg.lowerIsBetter);
+    const rows = computeCategoryRows(stats, cfg.key, cfg.lowerIsBetter);
     for (const r of rows) {
       const team = teamMap.get(r.teamId);
       if (!team) continue;
