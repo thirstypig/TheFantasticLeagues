@@ -27,12 +27,91 @@
  * Default leagueId = 20 (2026 OGBA live season per project memory).
  */
 
+import { fileURLToPath } from "node:url";
 import { prisma } from "../db/prisma.js";
 import { computeCategoryRows, computeStandingsFromStats } from "../features/standings/services/standingsService.js";
 import { TWO_WAY_PLAYERS } from "../lib/sportConfig.js";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
+import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../lib/ilWindows.js";
 
 const PITCHER_CODES = ["P", "SP", "RP", "CL"];
+
+export type Accum = {
+  R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
+  W: number; S: number; K: number; ER: number; IP: number; BB_H: number;
+};
+export const zeroAccum = (): Accum => ({ R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 });
+
+/** PSP fields the audit reads (subset of the Prisma row). */
+export type AuditPspRow = {
+  R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
+  W: number; SV: number; K: number; ER: number; IP: number; BB_H: number;
+};
+
+/** Roster fields the audit reads (subset of the Prisma roster row). */
+export type AuditRoster = {
+  teamId: number; playerId: number; acquiredAt: Date; releasedAt: Date | null;
+  assignedPosition: string | null;
+  player: { mlbId: number | null; posPrimary: string | null };
+};
+
+/**
+ * Accumulate ONE period's PSP into per-team totals using ownership-window
+ * overlap, mutating `teamAccum` in place. Mirrors the closed-period
+ * attribution model FanGraphs/OnRoto and the OGBA Excel snapshot use —
+ * stats credited to whoever owned the player WHEN they earned them.
+ *
+ * Dedup guard: a player can have multiple roster rows on the SAME team
+ * within one period (drop-and-re-add cycle, e.g. Aaron Ashby on Diamond
+ * Kings dropped + re-added 2026-05-22 in Period 3). The whole-period PSP is
+ * credited to that team ONCE, not once per row — mirrors production
+ * `computeWithPeriodStats`'s `countedPlayers` guard (standingsService.ts:701).
+ * Keyed by team+player so a player traded mid-period still counts under each
+ * owning team per the overlap model.
+ *
+ * Exported for unit testing (see __tests__/fangraphs-audit.test.ts).
+ */
+export function accumulatePeriodStats(
+  rosters: AuditRoster[],
+  period: { startDate: Date; endDate: Date },
+  pspByPlayer: ReadonlyMap<number, AuditPspRow>,
+  ilWindowsByPlayer: Map<number, IlWindow[]>,
+  teamAccum: Map<number, Accum>,
+): void {
+  const counted = new Set<string>();
+
+  for (const roster of rosters) {
+    // Overlap test for THIS period only.
+    if (roster.acquiredAt > period.endDate) continue;
+    if (roster.releasedAt && roster.releasedAt <= period.startDate) continue;
+    // IL window check — same as production (lib/ilWindows.ts).
+    if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
+
+    const dedupKey = `${roster.teamId}:${roster.playerId}`;
+    if (counted.has(dedupKey)) continue;
+    counted.add(dedupKey);
+
+    const ps = pspByPlayer.get(roster.playerId);
+    if (!ps) continue;
+
+    const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
+    const assignedAsP = PITCHER_CODES.includes(
+      (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase(),
+    );
+    const countHitting = !isTwoWay || !assignedAsP;
+    const countPitching = !isTwoWay || assignedAsP;
+
+    const acc = teamAccum.get(roster.teamId);
+    if (!acc) continue;
+    if (countHitting) {
+      acc.R += ps.R; acc.HR += ps.HR; acc.RBI += ps.RBI; acc.SB += ps.SB;
+      acc.H += ps.H; acc.AB += ps.AB;
+    }
+    if (countPitching) {
+      acc.W += ps.W; acc.S += ps.SV; acc.K += ps.K;
+      acc.ER += ps.ER; acc.IP += ps.IP; acc.BB_H += ps.BB_H;
+    }
+  }
+}
 
 async function main() {
   const leagueId = Number(process.argv[2] ?? 20);
@@ -101,57 +180,15 @@ async function main() {
   });
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
-  type Accum = {
-    R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
-    W: number; S: number; K: number; ER: number; IP: number; BB_H: number;
-  };
-  const zero = (): Accum => ({ R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 });
-  const teamAccum = new Map<number, Accum>(teams.map((t) => [t.id, zero()]));
+  const teamAccum = new Map<number, Accum>(teams.map((t) => [t.id, zeroAccum()]));
 
-  // Sum each player's PSP row into the team that owned them during that
-  // period (ownership-window overlap). Mirrors what FanGraphs/OnRoto and
-  // most fantasy leagues compute for closed periods — stats attributed to
-  // who owned the player WHEN they earned them, not who owns them now.
-  //
-  // NB: production `computeWithPeriodStats` instead attributes to the
-  // CURRENT owner (`standingsService.ts:597-664`). For mid-period trades
-  // and post-period roster movements, the two methods diverge — current-
-  // owner over-credits the receiving team for stats earned under prior
-  // ownership. The audit prefers the ownership-overlap semantic because
-  // it matches the OGBA Excel snapshot and FG exactly (Period 2: Σ|Δ| = 0
-  // points across all 8 teams), surfacing the production attribution bug
-  // as a separate finding rather than masking it.
+  // Sum each period's PSP into per-team totals via `accumulatePeriodStats`
+  // (ownership-window overlap + same-team drop-and-re-add dedup). Extracted
+  // and unit-tested in __tests__/fangraphs-audit.test.ts.
   for (const period of periods) {
     const psp = await prisma.playerStatsPeriod.findMany({ where: { periodId: period.id } });
     const pspByPlayer = new Map(psp.map((p) => [p.playerId, p]));
-
-    for (const roster of rosters) {
-      // Overlap test for THIS period only.
-      if (roster.acquiredAt > period.endDate) continue;
-      if (roster.releasedAt && roster.releasedAt <= period.startDate) continue;
-      // IL window check — same as production (lib/ilWindows.ts).
-      if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
-
-      const ps = pspByPlayer.get(roster.playerId);
-      if (!ps) continue;
-
-      const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-      const assignedAsP = PITCHER_CODES.includes(
-        (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase(),
-      );
-      const countHitting = !isTwoWay || !assignedAsP;
-      const countPitching = !isTwoWay || assignedAsP;
-
-      const acc = teamAccum.get(roster.teamId)!;
-      if (countHitting) {
-        acc.R += ps.R; acc.HR += ps.HR; acc.RBI += ps.RBI; acc.SB += ps.SB;
-        acc.H += ps.H; acc.AB += ps.AB;
-      }
-      if (countPitching) {
-        acc.W += ps.W; acc.S += ps.SV; acc.K += ps.K;
-        acc.ER += ps.ER; acc.IP += ps.IP; acc.BB_H += ps.BB_H;
-      }
-    }
+    accumulatePeriodStats(rosters, period, pspByPlayer, ilWindowsByPlayer, teamAccum);
   }
 
   // Build TeamStatRow shape for standingsService
@@ -242,7 +279,11 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only run when invoked directly (`tsx fangraphs-audit.ts`), not when the
+// module is imported by the unit test for `accumulatePeriodStats`.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
