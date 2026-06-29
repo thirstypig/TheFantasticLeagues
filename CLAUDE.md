@@ -245,14 +245,32 @@ period-close and audit logging.
   precedent: false-positive tsc-clean twice in session 89). Type-only
   imports of shared schemas can mask runtime ESM/CJS bugs — verify with a
   real runtime import path when changing `shared/api/*`.
-- **DB.** Local `.env` `DATABASE_URL` points at **prod Supabase**. Any
-  localhost mutation IS a prod mutation. Browser-verified mutations must
-  be reversed in the same session (precedent:
+- **DB.** There are now **three distinct databases** — verify which one
+  you're hitting before any mutation (the old "local = prod" rule is dead
+  as of 2026-06-29):
+  - `server/.env` → **LOCAL** Supabase (`127.0.0.1:54322`). Standalone
+    scripts run via `tsx` resolve to this (only Prisma's auto-load of
+    `.env` applies).
+  - `server/.env.local` → a **separate cloud project**
+    (`kfxdgcxiawwhzooexqtm`). The server (`src/index.ts`) loads
+    `.env.local` first, so the local **server** uses this, not prod.
+  - **PROD** (`oaogpsshewmcazhehryl`) lives **only in Railway env**, in no
+    local file. To run a script against prod, export its URLs first:
+    `export DATABASE_URL="$(env -u RAILWAY_API_TOKEN railway variables --kv | grep '^DATABASE_URL=' | cut -d= -f2-)"` (same for `DIRECT_URL`);
+    dotenv/Prisma won't override pre-set env vars.
+
+  Safety inversion: a mutation you *think* hits prod may silently hit
+  local/staging — and vice-versa. Browser-verified prod mutations must be
+  reversed in the same session (precedent:
   `feedback_test_addrops_full_cleanup.md`). Never write
   `CREATE INDEX CONCURRENTLY` inside a Prisma migration — Prisma wraps
   each migration in a transaction, the command fails with PG 25001 and
   blocks all future Railway deploys via P3009 (precedent: 2026-05-05
-  outage).
+  outage). A failed migration left with `finished_at=null` (e.g. a bare
+  `CREATE TYPE`/`CREATE TABLE` of an already-existing object, error 42710)
+  also triggers P3009 and freezes every deploy until cleared with
+  `prisma migrate resolve --applied <migration>` (precedent: 2026-06-29,
+  prod frozen 8 days on the ClaimStatus enum).
 - **DEPLOY.** Railway runs `prisma migrate deploy` on boot. A bad migration
   freezes the live build at yesterday's image until reverted. Migrations
   warrant the same scrutiny as code changes touching production. The
