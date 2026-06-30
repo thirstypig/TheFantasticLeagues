@@ -3,7 +3,7 @@
 ## Overview
 
 - **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Coverage**: 1332 server (CI-equivalent, destructive DB suite skipped) + 897 client across 33 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
+- **Coverage**: 1339 server main suite + 4 draft integration (separate `db-integration` CI job) + 897 client across 33 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
 - **Approach**: Unit tests per feature + integration tests for cross-feature interactions
 
 Run all: `npm run test` | Server only: `npm run test:server` | Client only: `npm run test:client`
@@ -78,10 +78,11 @@ npx vitest --watch
 
 ## Current Coverage Snapshot (2026-06-29)
 
-**Server**: 1332 tests across 97 files (CI-equivalent; the destructive draft
-integration suite — `draft/__tests__/draftIntegration.test.ts`, 4 tests — is
-gated by `lib/dbSafety.ts:isLocalThrowawayDbUrl` and runs only against a local
-Postgres, so it's skipped in CI)  
+**Server**: 1339 tests across 97 files (main `test` job) + 4 draft integration
+tests (`draft/__tests__/draftIntegration.test.ts`) run in the separate
+`db-integration` CI job against a postgres:16 service. That suite is gated by
+`test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1`
+(fail-closed), so it runs only against a local/CI throwaway Postgres, never prod.  
 **Client**: 897 tests across 74 files  
 **MCP**: 133 tests (83 fbst-app + 50 mlb-data)
 

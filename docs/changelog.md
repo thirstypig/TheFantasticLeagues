@@ -2,6 +2,12 @@
 
 All notable changes to The Fantastic Leagues will be documented in this file.
 
+## v2.1.2 — 2026-06-29 — reliability
+### Deploy monitoring + CI/test hardening (internal)
+
+- **Reliability:** Automated deploy-failure alerting — `/api/health` now reports the deployed commit, and CI fails (notifying maintainers) if a push doesn't actually go live. Prevents a recurrence of a silent deploy freeze.
+- **Internal:** Hardened the destructive-test database guard (fail-closed); draft integration tests now run in CI against an ephemeral Postgres; fixed an IPv6 rate-limiter boot warning. No user-facing behavior change.
+
 ## v2.1.1 — 2026-06-29 — fix
 ### Deploy pipeline restored; recent features now actually live
 

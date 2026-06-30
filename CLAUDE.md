@@ -8,7 +8,7 @@ Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Ya
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
 - **[Feature Modules](docs/guides/feature-modules.md)** — 31 modules, cross-feature imports, adding new features
-- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2229 tests across 33 modules
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2240 tests across 33 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
 - **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands
@@ -133,7 +133,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2229 app tests (1332 server CI-equivalent + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately in CI). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2240 app tests (1339 server main suite + 4 draft integration in the separate `db-integration` CI job + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 
@@ -272,9 +272,18 @@ period-close and audit logging.
   `prisma migrate resolve --applied <migration>` (precedent: 2026-06-29,
   prod frozen 8 days on the ClaimStatus enum).
 - **DEPLOY.** Railway runs `prisma migrate deploy` on boot. A bad migration
-  freezes the live build at yesterday's image until reverted. Migrations
-  warrant the same scrutiny as code changes touching production. The
-  marketing site is on a separate repo and separate deploy.
+  freezes the live build at yesterday's image until reverted (a failed
+  migration left `finished_at=null` triggers P3009 and blocks every deploy —
+  recover with `prisma migrate resolve --applied <name>`; precedent
+  2026-06-29). Migrations warrant the same scrutiny as code changes touching
+  production. The marketing site is on a separate repo and separate deploy.
+  **Deploy-failure alarm (PR #405):** `/api/health` returns `version` (the
+  deployed commit SHA, stamped at build by `scripts/stamp-version.cjs`), and
+  `.github/workflows/verify-deploy.yml` fails (→ emails the owner) if prod
+  doesn't report the merged commit within ~12 min. A plain health-200 can't
+  detect a frozen deploy (the old image keeps serving) — only this version
+  check can. Manual check: `curl -s https://app.thefantasticleagues.com/api/health | jq .version`
+  vs `git rev-parse origin/main`.
 - **DESIGN.** Score Sheet design system (flat paper, Inter only, warm taupe /
   medium gray, outfield-green accent). CSS class `.aurora-theme` and token
   prefix `--am-*` are legacy Aurora names kept to avoid touching hundreds of

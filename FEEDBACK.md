@@ -4,6 +4,25 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-06-29 (cont.) — code review, deploy alerting, remaining cleanups
+
+Continuation of the same day (see entry below for the audit + prod-freeze rescue). Shipped 5 more PRs (#404–#408), all merged + prod-verified.
+
+- **Code review (`/ce:review`) of the day's PRs (#404)** — 6 agents, 0 P1, 2 P2 + 3 P3, all fixed: hardened the destructive-test guard to **fail closed** (`ALLOW_DESTRUCTIVE_DB_TESTS=1` + `new URL().hostname` allowlist, replacing a bypassable substring regex; moved to `test-support/`); fixed the `TeamStatRow` CSV-path cast laundering missing rate stats; caught a *live* `PITCHER_CODES` drift in the audit (missing `TWP`); fixed a mislabeled two-way test. Todos #293–297 complete.
+- **Deploy-failure alerting (#405)** — closes the #1 freeze follow-up. Build stamps the commit SHA into `server/version.txt`; `/api/health` returns it as `version`; `.github/workflows/verify-deploy.yml` polls prod after each push to main and fails (→ emails owner) if the merged commit isn't live within ~12 min. **Plain health-200 was useless during the freeze** — only a version check detects a frozen deploy. Validated end-to-end in prod.
+- **Draft tests now run in CI (#407)** — new isolated `db-integration` job (postgres:16 + `prisma db push` + the opt-in flag) runs the 4 draft integration tests against a real Postgres. **Confirmed 4 passed, not skipped.** Closes the "draft tests don't run in CI" gap.
+- **IPv6 rate-limit warning (#406)** — dropped the public limiter's custom `keyGenerator`; v8 default is IPv6-safe. Clean boot.
+- **Nested-`stats` refactor PLANNED (#408)** — `docs/plans/standings-nested-stats-refactor.md`. HIGH-risk (live scoring); plan uses the FanGraphs audit as a before/after byte-identical regression gate. Not started — the natural next focus.
+
+### Test counts (current)
+1339 server main suite + **4 draft integration (new db-integration CI job)** + 897 client = 2240; plus 133 MCP separate. Server tsc clean (modulo known local-only zod false-negatives).
+
+### Remaining
+- **#1 nested-`stats` refactor** — planned, ready to execute as its own PR (retires todo #294 debt, completes Week-2).
+- Optional: Railway native deploy-failure notification (dashboard, belt-and-suspenders to the #405 alarm).
+
+---
+
 ## Session 2026-06-29 — FanGraphs audit → uncovered + fixed an 8-day prod freeze
 
 ### What happened (started as a routine OnRoto/FanGraphs audit)

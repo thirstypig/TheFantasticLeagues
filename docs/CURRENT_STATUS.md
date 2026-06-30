@@ -32,9 +32,10 @@ Two planning artifacts exist, with distinct roles (do not create additional `TOD
 - **Solution documentation** — `docs/solutions/integration-issues/untyped-fetch-wrapper-api-contracts.md` captures TypeScript error resolution + prevention strategies for API boundary typing
 
 **Test suite status (2026-06-29):**
-- Backend: 1332 passing (97 files, CI-equivalent), 11 skipped, 1 todo
+- Backend: 1339 passing (97 files, main `test` job), 11 skipped, 1 todo
+- Draft integration: 4 passing (separate `db-integration` CI job, real Postgres)
 - Frontend: 897 passing (74 files)
-- Total: 2229 passing tests (excludes MCP suites which track separately)
+- Total: 2240 passing tests (excludes MCP suites which track separately)
 - TypeScript: clean (both client and server; server modulo known local-only zod false-negatives)
 
 ---
@@ -83,9 +84,9 @@ OGBA uses **period-by-period roto accumulated** scoring:
 
 ## Verification Baseline (2026-06-29 latest)
 
-- Server tests: 1332 passing (CI-equivalent), 11 skipped, 1 todo (97 test files)
+- Server tests: 1339 passing (main job), 11 skipped, 1 todo (97 test files); + 4 draft integration (db-integration job)
 - Client tests: 897 passing (74 test files)
 - MCP fbst-app: 83 passing
 - MCP mlb-data: 50 passing
 - TypeScript: `cd client && npx tsc --noEmit` clean; server local tsc shows phantom zod errors for `shared/` (known false-positive — CI is the authority)
-- **Total test count:** 2229 tests passing (backend + frontend, excluding the 133 MCP tests tracked separately)
+- **Total test count:** 2240 tests passing (1339 backend main + 4 draft integration + 897 frontend, excluding the 133 MCP tests tracked separately)
