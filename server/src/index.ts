@@ -185,6 +185,18 @@ async function main() {
   app.use("/api", globalLimiter);
   app.use("/api/auth", authLimiter);
 
+  // Deployed commit SHA, stamped at build time by scripts/stamp-version.cjs
+  // into server/version.txt (cwd is server/ at runtime). Exposed on /api/health
+  // so the verify-deploy workflow can confirm prod is actually serving the
+  // merged commit — a frozen deploy keeps returning 200 with the OLD sha,
+  // which a plain health check can't detect (precedent: 2026-06-29 P3009 freeze).
+  let appVersion = "unknown";
+  try {
+    appVersion = fs.readFileSync("version.txt", "utf8").trim() || "unknown";
+  } catch {
+    /* version.txt only exists in built deploys; "unknown" in local dev */
+  }
+
   // Health check
   app.get("/api/health", async (req, res) => {
     const checks: Record<string, string> = {};
@@ -210,7 +222,7 @@ async function main() {
     }
 
     const status = healthy ? 200 : 503;
-    res.status(status).json({ status: healthy ? "ok" : "degraded", checks, timestamp: Date.now() });
+    res.status(status).json({ status: healthy ? "ok" : "degraded", version: appVersion, checks, timestamp: Date.now() });
   });
 
   // Routes

@@ -1,0 +1,45 @@
+name: Verify Deploy
+
+# After every push to main, confirm Railway actually deployed THIS commit — not
+# just that prod returns 200. A failed/frozen deploy keeps serving the previous
+# image (health stays 200), so we assert /api/health reports the merged commit
+# SHA. If it doesn't converge within ~12 min, the job fails, which emails the
+# repo owner. Precedent: 2026-06-29 P3009 freeze went unnoticed for 8 days
+# because health was 200 the whole time.
+
+on:
+  push:
+    branches: [main]
+
+# Don't pile up overlapping checks if several merges land quickly; the latest
+# commit is the one that must be live.
+concurrency:
+  group: verify-deploy
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Wait for prod to report the merged commit
+        env:
+          HEALTH_URL: https://app.thefantasticleagues.com/api/health
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          short="${EXPECTED_SHA:0:7}"
+          echo "Expecting prod /api/health version to reach ${short} (full: ${EXPECTED_SHA})"
+          for i in $(seq 1 24); do   # 24 × 30s ≈ 12 min
+            body="$(curl -fsS --max-time 10 "$HEALTH_URL" 2>/dev/null || true)"
+            deployed="$(printf '%s' "$body" | jq -r '.version // ""' 2>/dev/null | cut -c1-7)"
+            echo "[attempt $i/24] deployed version=${deployed:-<none>}"
+            if [ "$deployed" = "$short" ]; then
+              echo "✅ Prod is serving the merged commit (${short})."
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error title=Deploy not live::Prod did not report commit ${short} within ~12 min."
+          echo "The Railway deploy likely FAILED or is frozen on a previous image."
+          echo "Check: env -u RAILWAY_API_TOKEN railway deployment list  (and railway logs --deployment <id>)"
+          exit 1
