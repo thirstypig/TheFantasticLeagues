@@ -1,17 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { prisma } from "../../../db/prisma.js";
-import { isLocalThrowawayDbUrl } from "../../../lib/dbSafety.js";
+import { isLocalThrowawayDbUrl } from "../../../test-support/dbSafety.js";
 import type { DraftState } from "../types.js";
 
 // SAFETY GUARD: this suite's beforeEach runs UNSCOPED `deleteMany({})` against
-// every core table — it wipes the entire database it connects to. Run it ONLY
-// against an explicit local throwaway DB, never CI (no DATABASE_URL → would
-// fail), staging, or prod. `isLocalThrowawayDbUrl` keys on localhost so a
-// prod-pointing `.env` (or the staging cloud project) skips instead of nuking
-// real data — see lib/dbSafety.ts + its unit test.
+// every core table — it wipes the entire database it connects to. It must FAIL
+// CLOSED: it runs ONLY when BOTH (a) DATABASE_URL's host is local loopback AND
+// (b) ALLOW_DESTRUCTIVE_DB_TESTS=1 is set deliberately. A misconfigured
+// DATABASE_URL alone can never trigger the wipe — neither can a guard
+// false-positive, an SSH tunnel, or CI (which sets neither). See
+// test-support/dbSafety.ts + its unit test.
 // TODO(week2/ci): replace with a scoped per-test dataset + a dedicated CI
 // Postgres service so these integration tests actually run in CI.
-describe.skipIf(!isLocalThrowawayDbUrl(process.env.DATABASE_URL))("Draft Integration Tests", () => {
+const DESTRUCTIVE_DB_TESTS_OK =
+  isLocalThrowawayDbUrl(process.env.DATABASE_URL) &&
+  process.env.ALLOW_DESTRUCTIVE_DB_TESTS === "1";
+
+describe.skipIf(!DESTRUCTIVE_DB_TESTS_OK)("Draft Integration Tests", () => {
   let testLeagueId: number;
   let testTeamIds: number[];
 

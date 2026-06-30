@@ -275,34 +275,40 @@ export function aggregatePeriodStatsFromCsv(
   const result: TeamStatRow[] = [];
   let idx = 0;
   for (const team of teamMap.values()) {
-    // Pre-compute rate stats (AVG, ERA, WHIP) from component stats
+    // Pre-compute rate stats (AVG, ERA, WHIP). ALWAYS emit a numeric value
+    // (0 when the denominator is 0) so these can never go missing at runtime —
+    // matching the DB-path constructors (computeWithDailyStats / mergeTeamStatRows).
+    // Previously these were set only when AB/IP > 0, so a team with no AB/IP
+    // produced a row missing AVG/ERA/WHIP while the type declared them required;
+    // the cast below then laundered that absence. Now fixed.
     const rateStats: Record<string, number> = {};
 
     if (sport === "baseball") {
       const ab = team.stats["AB"] ?? 0;
       const h = team.stats["H"] ?? 0;
-      if (ab > 0) rateStats["AVG"] = h / ab;
+      rateStats["AVG"] = ab > 0 ? h / ab : 0;
 
       const ip = team.stats["IP"] ?? 0;
       const er = team.stats["ER"] ?? 0;
-      if (ip > 0) rateStats["ERA"] = (er / ip) * 9;
+      rateStats["ERA"] = ip > 0 ? (er / ip) * 9 : 0;
 
       const bb_h = team.stats["BB_H"] ?? 0;
-      if (ip > 0) rateStats["WHIP"] = bb_h / ip;
+      rateStats["WHIP"] = ip > 0 ? bb_h / ip : 0;
     }
 
-    // Sport-agnostic builder: categories come from a dynamic `Record<string,
-    // number>`, so TS can't prove the known MLB members (R, HR, …) are present.
-    // They are at runtime for baseball; the cast bridges the generic spread to
-    // the partially-typed TeamStatRow.
+    // The cast bridges the dynamic `...team.stats` (Record<string, number>) to
+    // TeamStatRow's named MLB members — a type-system limitation, NOT a runtime
+    // absence: counting stats are populated by accumulation above and rate stats
+    // are always emitted (0-fallback). Full cast removal awaits the sport-agnostic
+    // nested `stats: Record<string, number>` shape (Week 2 — see todo 294).
     result.push({
       team: {
         id: idx + 1,
         name: team.teamName,
         code: team.teamCode,
       },
-      ...team.stats,  // Spread accumulated stats
-      ...rateStats,   // Add pre-computed rate stats
+      ...team.stats,  // Spread accumulated counting stats
+      ...rateStats,   // Pre-computed rate stats (always present for baseball)
     } as TeamStatRow);
     idx++;
   }
