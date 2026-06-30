@@ -2,13 +2,13 @@
 
 ## Current Status
 
-Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging) COMPLETE** · **Phase 1 (MLB snake draft) SHIPPED** (DraftResults page + seed fixture, 2222 tests) · **Phase 2 (Multi-sport dashboards) COMPLETE** (NFL + NBA stubs) · **Phase 3 (Scoring Settings) SHIPPED** (UI + Engine + Routes) · **Phase 3.5 (Sport-agnostic standings refactor) IN PROGRESS** (50% complete, 23 new tests for categoryEngine). See `ROADMAP.md` for full roadmap and `docs/WEEK2_PROGRESS.md` for standings refactoring details.
+Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Yahoo and ESPN never really served. **The app is live for OGBA** — auction has wrapped and the season is in flight. Current focus is code quality hardening: tests, refactors, and edge-case coverage while the season runs. **Phase 0 (staging) COMPLETE** · **Phase 1 (MLB snake draft) SHIPPED** (DraftResults page + seed fixture) · **Phase 2 (Multi-sport dashboards) COMPLETE** (NFL + NBA stubs) · **Phase 3 (Scoring Settings) SHIPPED** (UI + Engine + Routes) · **Phase 3.5 (Sport-agnostic standings refactor) IN PROGRESS** (50% complete, 23 new tests for categoryEngine). NOTE: Phases 1–3 only went **live in prod on 2026-06-29** — a failed migration (P3009) had frozen Railway deploys for the prior 8 days; verify the latest deploy is `SUCCESS` before recording a feature as live. See `ROADMAP.md` for full roadmap and `docs/WEEK2_PROGRESS.md` for standings refactoring details.
 
 ## Quick Links
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
 - **[Feature Modules](docs/guides/feature-modules.md)** — 31 modules, cross-feature imports, adding new features
-- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2222 tests across 33 modules
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2229 tests across 33 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
 - **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands
@@ -133,7 +133,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2182 tests (1289 server, 893 client, 50 MCP). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2229 app tests (1332 server CI-equivalent + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately in CI). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 
@@ -245,14 +245,32 @@ period-close and audit logging.
   precedent: false-positive tsc-clean twice in session 89). Type-only
   imports of shared schemas can mask runtime ESM/CJS bugs — verify with a
   real runtime import path when changing `shared/api/*`.
-- **DB.** Local `.env` `DATABASE_URL` points at **prod Supabase**. Any
-  localhost mutation IS a prod mutation. Browser-verified mutations must
-  be reversed in the same session (precedent:
+- **DB.** There are now **three distinct databases** — verify which one
+  you're hitting before any mutation (the old "local = prod" rule is dead
+  as of 2026-06-29):
+  - `server/.env` → **LOCAL** Supabase (`127.0.0.1:54322`). Standalone
+    scripts run via `tsx` resolve to this (only Prisma's auto-load of
+    `.env` applies).
+  - `server/.env.local` → a **separate cloud project**
+    (`kfxdgcxiawwhzooexqtm`). The server (`src/index.ts`) loads
+    `.env.local` first, so the local **server** uses this, not prod.
+  - **PROD** (`oaogpsshewmcazhehryl`) lives **only in Railway env**, in no
+    local file. To run a script against prod, export its URLs first:
+    `export DATABASE_URL="$(env -u RAILWAY_API_TOKEN railway variables --kv | grep '^DATABASE_URL=' | cut -d= -f2-)"` (same for `DIRECT_URL`);
+    dotenv/Prisma won't override pre-set env vars.
+
+  Safety inversion: a mutation you *think* hits prod may silently hit
+  local/staging — and vice-versa. Browser-verified prod mutations must be
+  reversed in the same session (precedent:
   `feedback_test_addrops_full_cleanup.md`). Never write
   `CREATE INDEX CONCURRENTLY` inside a Prisma migration — Prisma wraps
   each migration in a transaction, the command fails with PG 25001 and
   blocks all future Railway deploys via P3009 (precedent: 2026-05-05
-  outage).
+  outage). A failed migration left with `finished_at=null` (e.g. a bare
+  `CREATE TYPE`/`CREATE TABLE` of an already-existing object, error 42710)
+  also triggers P3009 and freezes every deploy until cleared with
+  `prisma migrate resolve --applied <migration>` (precedent: 2026-06-29,
+  prod frozen 8 days on the ClaimStatus enum).
 - **DEPLOY.** Railway runs `prisma migrate deploy` on boot. A bad migration
   freezes the live build at yesterday's image until reverted. Migrations
   warrant the same scrutiny as code changes touching production. The

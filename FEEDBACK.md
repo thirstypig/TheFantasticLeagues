@@ -4,6 +4,28 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-06-29 — FanGraphs audit → uncovered + fixed an 8-day prod freeze
+
+### What happened (started as a routine OnRoto/FanGraphs audit)
+- **Audit result:** live OGBA standings reconcile with FanGraphs **exactly, all 8 teams**. The only discrepancy was a bug in the *audit tool itself* — `fangraphs-audit.ts` credited a player's whole-period PSP once per roster row, so Aaron Ashby's same-day drop-and-re-add (2026-05-22, Period 3) double-counted (+9 K / +1 W on Diamond Kings). Production was always correct (`computeWithPeriodStats` has a `countedPlayers` dedup guard). Fixed the script (extracted + tested `accumulatePeriodStats`) → **PR #402**.
+- **🚨 Prod was frozen for 8 days.** The audit needed prod data, which surfaced that **every Railway deploy since 2026-06-21 had FAILED** (8 in a row) with **P3009** — the `ClaimStatus` enum migration is a bare `CREATE TYPE` that errored PG 42710 "already exists", leaving `finished_at=null` and blocking all deploys. **None of Phase 1/2/3 or Week 2 was actually live** despite being recorded as "shipped." Recovered with `prisma migrate resolve --applied` (enum + the baseline) + redeploy; prod now healthy on current `main` (`/api/health` 200, "No pending migrations"). Documented in `docs/solutions/deployment/prisma-p3009-already-exists-finished-at-null.md`.
+- **Server CI was red** since the Week 2 refactor (`TeamStatRow` index signature widened every static stat access). Fixed type-only (pinned the known MLB categories, kept the index signature as the sport-agnostic escape hatch) + corrected CLAUDE.md's stale "local .env = prod" DB section → **PR #403**.
+- **Found + defused a prod-wipe landmine.** Fixing tsc exposed that `draftIntegration.test.ts` runs unscoped `deleteMany({})` on core tables against the real DB — with the old prod-pointing `.env`, `npm test` would have erased the production league. Guarded with `lib/dbSafety.ts:isLocalThrowawayDbUrl` (runs only against a localhost DB) + 7 unit tests → in **PR #403**. No damage occurred (it never ran against prod).
+
+### Test results
+- Client tsc clean; server tsc clean (modulo known local-only zod false-negatives, CI-resolved).
+- **2229 app tests passing** (1332 server CI-equivalent + 897 client). Destructive draft suite (4 tests) gated to skip outside a local Postgres.
+
+### Concerns / follow-ups
+1. **No deploy-failure alerting** — an 8-day prod freeze went unnoticed. Add a Railway deploy-failure notification (or post-merge `railway deployment list` check).
+2. **"Ready to deploy" ≠ deployed** — phases were recorded as shipped while frozen. Verify last `SUCCESS` deploy before claiming a feature is live.
+3. **Three distinct DBs now** — local `.env` → `127.0.0.1`; `.env.local` → staging cloud project; **prod only in Railway env**. The old "localhost = prod" rule is dead.
+4. **Draft integration tests don't run in CI** (no Postgres service) — interim skip; proper fix = scoped fixtures + CI Postgres (fits Week 2).
+5. Minor: `express-rate-limit` IPv6 `keyGenerator` boot warning in `public.ts:13` (non-fatal).
+6. **Week 2 standings refactor still ~50%** — the `TeamStatRow` fix was a pragmatic CI unblock, not the full sport-agnostic generalization.
+
+---
+
 ## Session 2026-06-22b — Week 2 Sport-Agnostic Standings Refactoring (Continuation)
 
 ### Completed

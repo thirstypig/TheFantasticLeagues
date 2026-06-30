@@ -1,10 +1,15 @@
 # Current Product Status
 
-Last updated: 2026-06-22
+Last updated: 2026-06-29
 
-## Planning Source of Truth
+## Planning Sources
 
-`server/data/planning.json` is the unified source for both micro todos and macro roadmap. Do not create separate `TODO.md`, `todo-tasks.json`, or `ROADMAP.md`. Active todo list and roadmap render from this file in the Admin and Roadmap views.
+Two planning artifacts exist, with distinct roles (do not create additional `TODO.md` / `todo-tasks.json` files):
+
+- **`server/data/planning.json`** — backs the **in-app** views: the Admin todo list (`server/src/features/admin/routes/todos.ts`) and the Roadmap page (`client/src/pages/Roadmap.tsx`). Edit via those surfaces; preserve IDs/ordering.
+- **`ROADMAP.md`** — the human-readable narrative roadmap (phase descriptions, effort, status). Maintained alongside session docs; currently the more actively updated of the two.
+
+> Known overlap: these two can drift from each other. Consolidating to a single source is a tracked cleanup; until then, treat `planning.json` as authoritative for the *in-app* todo/roadmap UI and `ROADMAP.md` as the prose narrative.
 
 ---
 
@@ -26,11 +31,11 @@ Last updated: 2026-06-22
 - **Test plan** — 20 unit tests (pure functions), 11 integration tests (API contracts), 7 component tests (UI behavior). Deferred execution pending local Supabase migration fix.
 - **Solution documentation** — `docs/solutions/integration-issues/untyped-fetch-wrapper-api-contracts.md` captures TypeScript error resolution + prevention strategies for API boundary typing
 
-**Test suite status after Phase 3:**
-- Backend: 1289 passing (93 files), 7 skipped, 1 todo
-- Frontend: 893 passing (73 files)
-- Total: 2182 passing tests (excludes MCP suites which track separately)
-- TypeScript: clean (both client and server)
+**Test suite status (2026-06-29):**
+- Backend: 1332 passing (97 files, CI-equivalent), 11 skipped, 1 todo
+- Frontend: 897 passing (74 files)
+- Total: 2229 passing tests (excludes MCP suites which track separately)
+- TypeScript: clean (both client and server; server modulo known local-only zod false-negatives)
 
 ---
 
@@ -76,11 +81,11 @@ OGBA uses **period-by-period roto accumulated** scoring:
 
 ---
 
-## Verification Baseline (2026-06-22 latest)
+## Verification Baseline (2026-06-29 latest)
 
-- Server tests: 1289 passing, 7 skipped, 1 todo (93 test files)
-- Client tests: 893 passing (73 test files)
+- Server tests: 1332 passing (CI-equivalent), 11 skipped, 1 todo (97 test files)
+- Client tests: 897 passing (74 test files)
 - MCP fbst-app: 83 passing
 - MCP mlb-data: 50 passing
 - TypeScript: `cd client && npx tsc --noEmit` clean; server local tsc shows phantom zod errors for `shared/` (known false-positive — CI is the authority)
-- **Total test count:** 2182 tests passing (backend + frontend, excluding MCP suites tracked separately)
+- **Total test count:** 2229 tests passing (backend + frontend, excluding the 133 MCP tests tracked separately)

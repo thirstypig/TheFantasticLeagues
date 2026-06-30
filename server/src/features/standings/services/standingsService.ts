@@ -27,6 +27,18 @@ export type CsvPlayerRow = PeriodStatRow & {
  */
 export interface TeamStatRow {
   team: { id: number; name: string; code: string };
+  // Known MLB scoring categories — always present for baseball rows, so they
+  // are typed as `number` (not the widened index-signature union). Without
+  // these explicit members every `row.R`/`row.K` access would widen to
+  // `number | {team} | undefined` and break arithmetic at every call site.
+  R: number; HR: number; RBI: number; SB: number; AVG: number;
+  W: number; S: number; K: number; ERA: number; WHIP: number;
+  // Rate-stat components for weighted cross-period averaging — optional
+  // because the CSV-aggregation path doesn't populate them.
+  H?: number; AB?: number; ER?: number; IP?: number; BB_H?: number;
+  // Sport-agnostic escape hatch: additional category keys (NFL/NBA, etc.)
+  // read dynamically via `computeCategoryRows(stats, key)`. The object branch
+  // carries the `team` member above.
   [statKey: string]: number | { id: number; name: string; code: string } | undefined;
 }
 
@@ -279,6 +291,10 @@ export function aggregatePeriodStatsFromCsv(
       if (ip > 0) rateStats["WHIP"] = bb_h / ip;
     }
 
+    // Sport-agnostic builder: categories come from a dynamic `Record<string,
+    // number>`, so TS can't prove the known MLB members (R, HR, …) are present.
+    // They are at runtime for baseball; the cast bridges the generic spread to
+    // the partially-typed TeamStatRow.
     result.push({
       team: {
         id: idx + 1,
@@ -287,7 +303,7 @@ export function aggregatePeriodStatsFromCsv(
       },
       ...team.stats,  // Spread accumulated stats
       ...rateStats,   // Add pre-computed rate stats
-    });
+    } as TeamStatRow);
     idx++;
   }
 
