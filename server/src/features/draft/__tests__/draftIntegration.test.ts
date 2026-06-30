@@ -1,18 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { prisma } from "../../../db/prisma.js";
+import { isLocalThrowawayDbUrl } from "../../../lib/dbSafety.js";
 import type { DraftState } from "../types.js";
 
 // SAFETY GUARD: this suite's beforeEach runs UNSCOPED `deleteMany({})` against
 // every core table — it wipes the entire database it connects to. Run it ONLY
 // against an explicit local throwaway DB, never CI (no DATABASE_URL → would
-// fail), staging, or prod. Keyed on localhost so a prod-pointing `.env` (or
-// the staging cloud project) skips instead of nuking real data.
+// fail), staging, or prod. `isLocalThrowawayDbUrl` keys on localhost so a
+// prod-pointing `.env` (or the staging cloud project) skips instead of nuking
+// real data — see lib/dbSafety.ts + its unit test.
 // TODO(week2/ci): replace with a scoped per-test dataset + a dedicated CI
 // Postgres service so these integration tests actually run in CI.
-const dbUrl = process.env.DATABASE_URL ?? "";
-const isLocalThrowawayDb = /@(localhost|127\.0\.0\.1)[:/]/.test(dbUrl);
-
-describe.skipIf(!isLocalThrowawayDb)("Draft Integration Tests", () => {
+describe.skipIf(!isLocalThrowawayDbUrl(process.env.DATABASE_URL))("Draft Integration Tests", () => {
   let testLeagueId: number;
   let testTeamIds: number[];
 

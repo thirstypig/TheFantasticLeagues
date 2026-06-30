@@ -3,7 +3,7 @@
 ## Overview
 
 - **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Coverage**: 1289 server + 893 client = 2182 tests across 33 feature modules
+- **Coverage**: 1332 server (CI-equivalent, destructive DB suite skipped) + 893 client across 33 feature modules
 - **Approach**: Unit tests per feature + integration tests for cross-feature interactions
 
 Run all: `npm run test` | Server only: `npm run test:server` | Client only: `npm run test:client`
@@ -76,9 +76,12 @@ npx vitest run src/features/auction/__tests__/
 npx vitest --watch
 ```
 
-## Current Coverage Snapshot (2026-06-22)
+## Current Coverage Snapshot (2026-06-29)
 
-**Server**: 1289 tests across 93 files  
+**Server**: 1332 tests across 97 files (CI-equivalent; the destructive draft
+integration suite — `draft/__tests__/draftIntegration.test.ts`, 4 tests — is
+gated by `lib/dbSafety.ts:isLocalThrowawayDbUrl` and runs only against a local
+Postgres, so it's skipped in CI)  
 **Client**: 893 tests across 73 files  
 **MCP**: 50 tests (mlb-data + fbst-app)
 
