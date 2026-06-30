@@ -2,6 +2,14 @@
 
 All notable changes to The Fantastic Leagues will be documented in this file.
 
+## v2.1.1 — 2026-06-29 — fix
+### Deploy pipeline restored; recent features now actually live
+
+- **Fix:** Production deploys had been failing for 8 days (a failed Prisma migration blocked every Railway boot via P3009). Resolved the migration state and redeployed — the MLB snake draft, NFL/NBA dashboards, and Scoring Settings built over the prior week are now actually live in production.
+- **Fix:** Server CI typecheck (red since the standings refactor) restored to green.
+- **Verification:** OGBA standings audited against FanGraphs/OnRoto — all 8 teams reconcile exactly.
+- **Internal:** Hardened a destructive test-database guard and added regression tests; no user-facing change.
+
 ## v2.1.0 — 2026-06-22 — improvement, feature
 ### In-season standings accuracy + AI refinements
 
