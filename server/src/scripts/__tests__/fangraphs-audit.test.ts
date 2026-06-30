@@ -97,16 +97,23 @@ describe("accumulatePeriodStats", () => {
     expect(teamAccum.get(1)!.K).toBe(0);
   });
 
-  it("counts a two-way player's pitching to the pitcher slot and hitting elsewhere", () => {
-    // Sanity that the two-way split still applies through the extracted fn.
-    // A non-two-way pitcher gets pitching stats credited (control case).
-    const rosters: AuditRoster[] = [rosterRow({ assignedPosition: "SP" })];
-    const pspByPlayer = new Map([[100, PSP]]);
+  it("credits BOTH hitting and pitching for a non-two-way player (two-way split is inert: TWO_WAY_PLAYERS empty by design)", () => {
+    // TWO_WAY_PLAYERS is intentionally empty (Ohtani is split into separate
+    // player records — see lib/sports/baseball.ts), so `isTwoWay` is always
+    // false and the countHitting/countPitching split never excludes anything:
+    // every owned player's full hitting AND pitching line is credited
+    // regardless of assignedPosition. This pins that current reality so a
+    // future change to two-way handling can't silently alter audit totals.
+    const bothLine: AuditPspRow = { ...PSP, R: 5 }; // 5 R (hitting) + 9 K (pitching)
+    const rosters: AuditRoster[] = [
+      rosterRow({ assignedPosition: "OF", player: { mlbId: 1000, posPrimary: "OF" } }),
+    ];
+    const pspByPlayer = new Map([[100, bothLine]]);
     const teamAccum = new Map<number, Accum>([[1, zeroAccum()]]);
 
     accumulatePeriodStats(rosters, PERIOD, pspByPlayer, NO_IL, teamAccum);
 
-    expect(teamAccum.get(1)!.K).toBe(9);
-    expect(teamAccum.get(1)!.R).toBe(0);
+    expect(teamAccum.get(1)!.R).toBe(5); // hitting credited
+    expect(teamAccum.get(1)!.K).toBe(9); // pitching credited too (not two-way → no split)
   });
 });

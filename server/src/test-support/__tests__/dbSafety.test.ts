@@ -42,4 +42,20 @@ describe("isLocalThrowawayDbUrl", () => {
   it("does not match when only the database NAME contains 'localhost' on a remote host", () => {
     expect(isLocalThrowawayDbUrl("postgresql://u:p@prod.supabase.co:5432/localhost_db")).toBe(false);
   });
+
+  // Regression: a substring `.test(/@localhost/)` matched these as "local" and
+  // would have wiped prod. Host-parsing resolves the host after the LAST `@`.
+  it("does not match @localhost embedded in the password (multi-@ userinfo)", () => {
+    expect(
+      isLocalThrowawayDbUrl("postgresql://user:p@localhost:5432@db.prod.supabase.co:5432/postgres"),
+    ).toBe(false);
+  });
+
+  it("does not match @localhost embedded in a query parameter", () => {
+    expect(
+      isLocalThrowawayDbUrl(
+        "postgresql://postgres:pw@db.prod.supabase.co:6543/postgres?application_name=svc@localhost:1",
+      ),
+    ).toBe(false);
+  });
 });
