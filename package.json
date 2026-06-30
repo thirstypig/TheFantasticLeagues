@@ -10,7 +10,7 @@
     "// NOTE_2": "API server (Express/TS) lives in ./server",
     "// NOTE_3": "These scripts are just delegators so you always run them from repo root",
     "dev": "cd client && npm run dev",
-    "build": "cd client && npm install && npm run build && cd ../server && npm install && npx prisma generate --schema ../prisma/schema.prisma",
+    "build": "node scripts/stamp-version.cjs && cd client && npm install && npm run build && cd ../server && npm install && npx prisma generate --schema ../prisma/schema.prisma",
     "server": "cd server && npm start",
     "start": "cd server && npm start",
     "preview": "cd client && npm run preview",
