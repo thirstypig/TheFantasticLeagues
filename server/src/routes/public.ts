@@ -13,7 +13,11 @@ export const publicRouter = Router();
 const publicLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
-  keyGenerator: (req) => req.ip || "unknown",
+  // No custom keyGenerator: express-rate-limit's default already keys on the
+  // client IP via the IPv6-safe `ipKeyGenerator` helper. The previous
+  // `(req) => req.ip || "unknown"` triggered a boot-time ValidationError
+  // (ERR_ERL_KEY_GEN_IPV6) because a raw IPv6 req.ip lets clients bypass the
+  // limit by varying the low 64 bits.
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later" },
