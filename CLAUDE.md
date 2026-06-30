@@ -133,7 +133,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2229 tests (1332 server CI-equivalent, 897 client, 50 MCP). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2229 app tests (1332 server CI-equivalent + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately in CI). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 
