@@ -39,6 +39,49 @@ jobs:
       - name: MCP mlb-data tests
         run: cd mcp-servers/mlb-data && npm test
 
+  # DB-integration tests need a real Postgres. Kept in a SEPARATE job (its own
+  # DATABASE_URL) so the main `test` job stays DB-less and unaffected. Only the
+  # destructive draft suite — gated by ALLOW_DESTRUCTIVE_DB_TESTS + a localhost
+  # host (see server/src/test-support/dbSafety.ts) — runs here, against an
+  # ephemeral container that is fine to wipe.
+  db-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fbst_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fbst_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fbst_test
+      ALLOW_DESTRUCTIVE_DB_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: cd server && npm ci # postinstall runs `prisma generate`
+
+      # `db push` syncs schema.prisma directly — no migration SQL runs, so the
+      # ephemeral DB can't hit P3009 and doesn't depend on migration history.
+      - name: Sync schema to test DB
+        run: cd server && npx prisma db push --schema ../prisma/schema.prisma --skip-generate --accept-data-loss
+
+      - name: Draft integration tests (real Postgres)
+        run: cd server && npx vitest run src/features/draft/__tests__/draftIntegration.test.ts
+
   audit:
     runs-on: ubuntu-latest
     steps:
