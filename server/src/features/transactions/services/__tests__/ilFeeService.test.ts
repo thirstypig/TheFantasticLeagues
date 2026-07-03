@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockTx = {
   $queryRaw: vi.fn().mockResolvedValue([]),
+  $executeRaw: vi.fn().mockResolvedValue(1), // advisory lock (pg_advisory_xact_lock)
   period: { findUnique: vi.fn() },
   leagueRule: { findMany: vi.fn().mockResolvedValue([]) },
   rosterSlotEvent: { findMany: vi.fn().mockResolvedValue([]) },
@@ -272,10 +273,13 @@ describe("reconcileIlFeesForPeriod", () => {
     expect(mockTx.financeLedger).not.toHaveProperty("delete");
   });
 
-  it("takes an advisory lock on the period", async () => {
+  it("takes the advisory lock via $executeRaw (blocking lock returns void — $queryRaw P2010s)", async () => {
     mockTx.rosterSlotEvent.findMany.mockResolvedValue([]);
     mockTx.financeLedger.findMany.mockResolvedValue([]);
     await reconcileIlFeesForPeriod(1, 7);
-    expect(mockTx.$queryRaw).toHaveBeenCalled();
+    // Must use $executeRaw, not $queryRaw: pg_advisory_xact_lock returns void,
+    // which $queryRaw cannot deserialize. Real-PG regression: ilFeeService.integration.test.ts.
+    expect(mockTx.$executeRaw).toHaveBeenCalled();
+    expect(mockTx.$queryRaw).not.toHaveBeenCalled();
   });
 });
