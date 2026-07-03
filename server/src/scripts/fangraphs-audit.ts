@@ -30,7 +30,7 @@
 import { fileURLToPath } from "node:url";
 import { prisma } from "../db/prisma.js";
 import { computeCategoryRows, computeStandingsFromStats } from "../features/standings/services/standingsService.js";
-import { TWO_WAY_PLAYERS, PITCHER_CODES_SET } from "../lib/sportConfig.js";
+import { TWO_WAY_PLAYERS, playerStatRoles } from "../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../lib/ilWindows.js";
 
 export type Accum = {
@@ -92,11 +92,11 @@ export function accumulatePeriodStats(
     if (!ps) continue;
 
     const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-    const assignedAsP = PITCHER_CODES_SET.has(
-      (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase(),
-    );
-    const countHitting = !isTwoWay || !assignedAsP;
-    const countPitching = !isTwoWay || assignedAsP;
+    const { countHitting, countPitching } = playerStatRoles({
+      posPrimary: roster.player.posPrimary,
+      assignedPosition: roster.assignedPosition,
+      isTwoWay,
+    });
 
     const acc = teamAccum.get(roster.teamId);
     if (!acc) continue;

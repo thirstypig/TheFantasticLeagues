@@ -97,23 +97,33 @@ describe("accumulatePeriodStats", () => {
     expect(teamAccum.get(1)!.K).toBe(0);
   });
 
-  it("credits BOTH hitting and pitching for a non-two-way player (two-way split is inert: TWO_WAY_PLAYERS empty by design)", () => {
-    // TWO_WAY_PLAYERS is intentionally empty (Ohtani is split into separate
-    // player records — see lib/sports/baseball.ts), so `isTwoWay` is always
-    // false and the countHitting/countPitching split never excludes anything:
-    // every owned player's full hitting AND pitching line is credited
-    // regardless of assignedPosition. This pins that current reality so a
-    // future change to two-way handling can't silently alter audit totals.
-    const bothLine: AuditPspRow = { ...PSP, R: 5 }; // 5 R (hitting) + 9 K (pitching)
+  it("does NOT credit a position player's mop-up pitching (posPrimary=OF → pitching excluded)", () => {
+    // Regression guard (2026-07-03): a catcher/OF who throws a blowout inning is
+    // not a pitcher on your fantasy staff. Their hitting counts; their pitching
+    // does NOT — matching OnRoto/OGBA scoring. Precedent: Carson Kelly (C) and
+    // Adrian Del Castillo (DH) each pitched a mop-up inning FBST wrongly counted.
+    const bothLine: AuditPspRow = { ...PSP, R: 5 }; // has 5 R (hitting) and 9 K (pitching)
     const rosters: AuditRoster[] = [
       rosterRow({ assignedPosition: "OF", player: { mlbId: 1000, posPrimary: "OF" } }),
     ];
-    const pspByPlayer = new Map([[100, bothLine]]);
     const teamAccum = new Map<number, Accum>([[1, zeroAccum()]]);
 
-    accumulatePeriodStats(rosters, PERIOD, pspByPlayer, NO_IL, teamAccum);
+    accumulatePeriodStats(rosters, PERIOD, new Map([[100, bothLine]]), NO_IL, teamAccum);
 
     expect(teamAccum.get(1)!.R).toBe(5); // hitting credited
-    expect(teamAccum.get(1)!.K).toBe(9); // pitching credited too (not two-way → no split)
+    expect(teamAccum.get(1)!.K).toBe(0); // pitching NOT credited — position player
+  });
+
+  it("credits a real pitcher's pitching but not their hitting (posPrimary=P)", () => {
+    const bothLine: AuditPspRow = { ...PSP, R: 5 }; // 5 R + 9 K
+    const rosters: AuditRoster[] = [
+      rosterRow({ assignedPosition: "P", player: { mlbId: 1001, posPrimary: "P" } }),
+    ];
+    const teamAccum = new Map<number, Accum>([[1, zeroAccum()]]);
+
+    accumulatePeriodStats(rosters, PERIOD, new Map([[100, bothLine]]), NO_IL, teamAccum);
+
+    expect(teamAccum.get(1)!.K).toBe(9); // pitching credited
+    expect(teamAccum.get(1)!.R).toBe(0); // hitting NOT credited — pitcher
   });
 });
