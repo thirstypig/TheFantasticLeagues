@@ -1,5 +1,5 @@
 ---
-title: Sub-0.02 ERA residual vs FanGraphs is a STABLE FG-side deviation from MLB, not an FBST bug (we match MLB to the out)
+title: "FanGraphs ERA/WHIP residual RESOLVED: mostly an FBST bug (position-player pitching counted in team pitching) — fixed; a sub-0.01 remainder is FG-stale"
 slug: fangraphs-era-residual-is-rounding-not-a-bug
 category: integration-issues
 created: 2026-07-02
@@ -12,7 +12,42 @@ prs: []
 tags: fangraphs, onroto, audit, era, earned-runs, whip, rounding, ownership-window, current-roster-ytd, psp, mlb-statsapi, gamelog, ip-thirds-notation, false-positive, trust-hierarchy, display-team-stats, OGBA
 ---
 
+## ✅ 2026-07-03 RESOLVED — the delta was TWO things; the big one was OUR bug (read this first)
+
+The investigation below arrived at "we match MLB exactly, FanGraphs is the deviation, don't chase
+OnRoto." **That was half right and it missed the main cause.** The full resolution:
+
+**The delta was a *scoring-rule* difference, not a data-accuracy one — and on scoring rules OnRoto
+is authoritative (it runs OGBA's official standings).** It decomposed into two parts:
+
+1. **Position-player pitching (the big part — OUR bug).** Carson Kelly (C, Los Doyers) and Adrian
+   Del Castillo (DH, RGing) each threw a blowout mop-up inning. MLB records it in their pitching
+   log, so FBST — which counted *any* rostered non-two-way player's pitching — credited it to team
+   ERA/WHIP. **OnRoto does not** (a catcher isn't a pitcher on your fantasy staff). Because those
+   innings had K=0/W=0, only the rate stats moved: Los Doyers 4.13→4.15 ERA, RGing WHIP 1.253→1.256.
+   **Fixed** by keying pitching attribution on `posPrimary` (role) via the shared `playerStatRoles`
+   helper — PR #412, todo #306. After the fix the audit matches OnRoto: Los Doyers EXACT; RGing WHIP
+   exact; 6 other teams and all counting/hitting stats unchanged.
+2. **Chandler's ER (the tiny remainder — genuinely FG-stale).** After the fix, RGing still reads
+   4.19 vs FG 4.20 because FanGraphs has Bubba Chandler at 45 ER while MLB (and we) have 44 — a
+   frozen pre-correction stat on FG's side. This one we correctly do **not** chase.
+
+**Lesson / correction to the "don't chase OnRoto" stance below:** when the delta is a *scoring rule*
+(what counts), OnRoto is the authority and a mismatch can be OUR bug. When it's *raw stat accuracy*
+(what MLB recorded), MLB is the authority and the mismatch is usually FG-stale. This residual was
+one of each. The "we're exact, FG is wrong" framing was right only for part 2.
+
+**How it was pinpointed:** the OnRoto **Full Report PDF** (`.../OGBA/report.pdf`, via Print Reports)
+is the standings-level per-pitcher breakdown *including released players* — the view
+`display_team_stats.pl` (current-roster) can't give. Diffing its per-pitcher ER/IP against MLB named
+Carson Kelly / Del Castillo (position-player pitching) and Chandler (FG-stale) exactly.
+
+---
+
 ## 2026-07-03 UPDATE — DEFINITIVE: we match MLB to the out; FanGraphs is the deviation
+
+> ⚠️ Superseded by the RESOLVED banner above — this section proved our raw stats match MLB (true),
+> but concluded the whole delta was FG-side (wrong: the main part was our position-player-pitching bug).
 
 The residual reappeared on the 2026-07-03 audit — **identical deltas, same two teams**
 (Los Doyers our 4.15 vs FG 4.13; RGing our 4.19 vs FG 4.20). Persisting *unchanged* for two
