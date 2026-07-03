@@ -9,17 +9,33 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 Follow-through on the 2026-07-02 pipeline staleness audit (see the register `docs/reports/pipeline-staleness-audit-2026-07-02.md`, PR #410). The audit's OutboxEvent-backlog query surfaced a **real, money-adjacent bug no stat audit could catch** — root-caused and fixed here (PR #411).
 
 - **The bug: `IL_FEE_RECONCILE` outbox dead ~30 days.** Two `OutboxEvent` rows (OGBA P2/P3) stuck at `attempts=5`. **Two bugs on one line** of `ilFeeService.reconcileIlFeesForPeriod`: (1) `pg_advisory_xact_lock(integer, bigint)` — `hashtext()` is int4 but Prisma binds `periodId` as int8, matching no overload (**42883**); (2) the blocking lock returns `void`, which `$queryRaw` can't deserialize (**P2010**) — masked until #1 was fixed. Fix: cast `${periodId}::int` **and** use `$executeRaw` (the repo's working `pg_try_*` sites return boolean → `$queryRaw` works there; the blocking variant needs `$executeRaw`).
-- **Impact — IL fees never assessed for OGBA.** This reconcile is the *sole* writer of `il_fee` FinanceLedger rows (no stash-time path); P1 predated the feature, P2/P3 failed, P4 active → the ledger was empty. Read-only dry-run against prod: **P2 $30 + P3 $70** unassessed (P4 $50 bills at close via the now-working outbox; P1 $0), ~$100 across 6 teams. **Not yet applied — awaiting commissioner approval** (writes to the ledger).
+- **Impact — IL fees never assessed for OGBA.** This reconcile is the *sole* writer of `il_fee` FinanceLedger rows (no stash-time path); P1 predated the feature, P2/P3 failed, P4 active → the ledger was empty. Read-only dry-run against prod: **P2 $30 + P3 $70** unassessed (P4 $50 bills at close via the now-working outbox; P1 $0), ~$100 across 6 teams. **Not yet applied — awaiting commissioner approval** (writes to the ledger). The two stuck events have `attempts=5`, so the drainer's `attempts < 5` guard means they will NOT auto-fire on deploy.
 - **Why it hid so long = the audit's thesis.** Unit suite mocks `$queryRaw` → structurally can't exercise the lock SQL (green the whole time). Outbox exhausted 5 retries into an ephemeral in-memory buffer with no alert. Confirms Findings 2 (no failure visibility) + the mocked-test false-confidence lesson.
-- **Tests + tooling.** Real-Postgres regression `ilFeeService.integration.test.ts` (dbSafety-gated) **wired into CI's `db-integration` job** (it previously ran only the draft test — an unwired integration file is a dead guard). Enriched `dryRun` to return the exact per-team/player breakdown (`ReconcilePreviewRow[]`) so a financial reconcile is previewable before writing; 2 unit tests guard its rate-selection + reversal-sign. Solution doc: `docs/solutions/runtime-errors/prisma-advisory-lock-int-cast-and-void-executeraw.md`.
-
-### Test counts
-2240 → **2245** (1341 server main + 7 db-integration [4 draft + 3 IL-fee] + 897 client); +2 unit (dryRun preview) + 3 integration. Both typechecks clean.
+- **Tests + tooling.** Real-Postgres regression `ilFeeService.integration.test.ts` (dbSafety-gated) **wired into CI's `db-integration` job**. `dryRun` now returns the exact per-team/player breakdown (`ReconcilePreviewRow[]`). Solution doc: `docs/solutions/runtime-errors/prisma-advisory-lock-int-cast-and-void-executeraw.md`.
+- **Also shipped 2026-07-03:** position-player-pitching fix (PR #412, merged + deployed) — FBST counted a catcher's mop-up pitching in team ERA/WHIP; OnRoto doesn't. Los Doyers now matches OnRoto exactly (4.13). Solution doc: `docs/solutions/logic-errors/position-player-pitching-counted-in-team-era.md`; todo #306. And a perf finding: cold standings compute ~3s serialized on `connection_limit=1` (todo #305).
 
 ### Remaining / open decisions
-- **Apply P2+P3 IL fees ($100)** — awaits explicit approval (ledger write).
+- **Apply P2+P3 IL fees ($100)** — awaits explicit approval (ledger write) + the boundary-billing call below.
 - **Boundary-billing call:** Chourio (DDG) + Vaughn (DLC) were activated *off* IL on 05-17 (P3 day 1) yet bill a full P3 fee under "any overlap = full fee" — that's the +$20 making P3 $70 not $50. $100 vs $80 is a league-rules decision.
-- **Systemic follow-ups (todos #299/#300):** job-run tracking + alerting and `syncedAt` on scoring tables — the fixes that would have caught this in June.
+- **Systemic follow-ups (todos #299/#300):** job-run tracking + alerting and `syncedAt` on scoring tables.
+
+---
+
+## Session 2026-07-02 — FanGraphs audit (clean) + audit-instrument-traps solution doc
+
+Routine live-scoring audit of OGBA (leagueId 20) against FanGraphs OnRoto. **No code change** — read-only against prod (Railway DB URLs exported per CLAUDE.md recipe); temp pinpoint script removed, tree clean apart from the new doc.
+
+- **Two-run timing arc.** 07-01 evening run: every counting-stat delta vs FG was **uniformly positive** (we led by ~1 day of finals) — the documented evening timing-lag signature, not a bug. 07-02 morning run (post-9AM, once FG's nightly sync caught up → both "through 07-01"): the cleanest possible same-instant compare, which confirmed the evening deltas were 100% timing.
+- **Result: 8/8 teams exact** on all counting stats (R/HR/RBI/SB/W/SV/K); **6/8 exact on all 10 categories.** Only residuals: sub-0.02 ERA / sub-0.003 WHIP on **Los Doyers** (4.15 vs FG 4.13) and **RGing** (4.20 vs FG 4.21).
+- **Pinpointed as non-bug.** Reconciled every rostered pitcher's ER against the MLB statsapi game log, windowed to owned periods: **Doyers 302 = 302, RGing 320 = 320, Δ=0** (all 20 + 14 pitchers exact, full-season and mid-season alike). Our accumulated ER equals MLB to the earned run; the residual is FG-side display-rounding + correction-sync timing.
+- **New solution doc:** `docs/solutions/integration-issues/fangraphs-era-residual-is-rounding-not-a-bug.md`. Captures two audit-instrument traps: (1) back-solving a rounded 2-decimal ERA is inference, not measurement (a 0.02 ERA gap over ~655 IP = ~1 ER **or** ~3 IP); (2) FG's `display_team_stats.pl` is **current-roster YTD** (RGing shows 3.55 with entirely different pitchers), NOT the accumulated ownership-window model the standings use — wrong instrument for auditing standings ER. Plus the MLB IP thirds-notation gotcha (`95.1` = 95⅓, not 95.3). Reusable verification recipe (per-pitcher windowed ER vs MLB game log) documented.
+
+### Test counts (unchanged)
+1339 server main + 897 client = 2236 local green (re-verified this session via `/test-run`) + 4 draft integration (db-integration CI job) = 2240; 133 MCP separate. Client tsc clean; server tsc clean modulo the known local-only zod false-negative.
+
+### Remaining
+- Nested-`stats` refactor (#408 plan) still the natural next focus — unchanged.
+- This session's doc PR not yet opened; one-line `fangraphs_audit_reference` memory append (the `display_team_stats.pl` current-roster trap) pending.
 
 ---
 
