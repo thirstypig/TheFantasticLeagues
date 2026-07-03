@@ -1,7 +1,7 @@
 
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
-import { TWO_WAY_PLAYERS, PITCHER_CODES_SET as PITCHER_CODES } from "../../../lib/sportConfig.js";
+import { TWO_WAY_PLAYERS, playerStatRoles } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
@@ -622,12 +622,14 @@ async function computeWithDailyStats(
     const playerDailyStats = statsIndex.get(roster.playerId);
     if (!playerDailyStats) continue;
 
-    // Two-way player check
+    // Role-based attribution (shared with the FanGraphs audit): a position
+    // player's mop-up pitching does NOT count toward team pitching.
     const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-    const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
-    const assignedAsP = PITCHER_CODES.has(pos);
-    const countHitting = !isTwoWay || !assignedAsP;
-    const countPitching = !isTwoWay || assignedAsP;
+    const { countHitting, countPitching } = playerStatRoles({
+      posPrimary: roster.player.posPrimary,
+      assignedPosition: roster.assignedPosition,
+      isTwoWay,
+    });
 
     if (!teamAccum.has(roster.teamId)) {
       teamAccum.set(roster.teamId, { R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 });
@@ -744,11 +746,11 @@ async function computeWithPeriodStats(
       if (!stats) continue;
 
       const isTwoWay = roster.player.mlbId ? TWO_WAY_PLAYERS.has(roster.player.mlbId) : false;
-      const pos = (roster.assignedPosition ?? roster.player.posPrimary ?? "").toUpperCase();
-      const assignedAsP = PITCHER_CODES.has(pos);
-
-      const countHitting = !isTwoWay || !assignedAsP;
-      const countPitching = !isTwoWay || assignedAsP;
+      const { countHitting, countPitching } = playerStatRoles({
+        posPrimary: roster.player.posPrimary,
+        assignedPosition: roster.assignedPosition,
+        isTwoWay,
+      });
 
       if (countHitting) {
         R += stats.R; HR += stats.HR; RBI += stats.RBI; SB += stats.SB;
