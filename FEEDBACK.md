@@ -4,6 +4,24 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-02 — FanGraphs audit (clean) + audit-instrument-traps solution doc
+
+Routine live-scoring audit of OGBA (leagueId 20) against FanGraphs OnRoto. **No code change** — read-only against prod (Railway DB URLs exported per CLAUDE.md recipe); temp pinpoint script removed, tree clean apart from the new doc.
+
+- **Two-run timing arc.** 07-01 evening run: every counting-stat delta vs FG was **uniformly positive** (we led by ~1 day of finals) — the documented evening timing-lag signature, not a bug. 07-02 morning run (post-9AM, once FG's nightly sync caught up → both "through 07-01"): the cleanest possible same-instant compare, which confirmed the evening deltas were 100% timing.
+- **Result: 8/8 teams exact** on all counting stats (R/HR/RBI/SB/W/SV/K); **6/8 exact on all 10 categories.** Only residuals: sub-0.02 ERA / sub-0.003 WHIP on **Los Doyers** (4.15 vs FG 4.13) and **RGing** (4.20 vs FG 4.21).
+- **Pinpointed as non-bug.** Reconciled every rostered pitcher's ER against the MLB statsapi game log, windowed to owned periods: **Doyers 302 = 302, RGing 320 = 320, Δ=0** (all 20 + 14 pitchers exact, full-season and mid-season alike). Our accumulated ER equals MLB to the earned run; the residual is FG-side display-rounding + correction-sync timing.
+- **New solution doc:** `docs/solutions/integration-issues/fangraphs-era-residual-is-rounding-not-a-bug.md`. Captures two audit-instrument traps: (1) back-solving a rounded 2-decimal ERA is inference, not measurement (a 0.02 ERA gap over ~655 IP = ~1 ER **or** ~3 IP); (2) FG's `display_team_stats.pl` is **current-roster YTD** (RGing shows 3.55 with entirely different pitchers), NOT the accumulated ownership-window model the standings use — wrong instrument for auditing standings ER. Plus the MLB IP thirds-notation gotcha (`95.1` = 95⅓, not 95.3). Reusable verification recipe (per-pitcher windowed ER vs MLB game log) documented.
+
+### Test counts (unchanged)
+1339 server main + 897 client = 2236 local green (re-verified this session via `/test-run`) + 4 draft integration (db-integration CI job) = 2240; 133 MCP separate. Client tsc clean; server tsc clean modulo the known local-only zod false-negative.
+
+### Remaining
+- Nested-`stats` refactor (#408 plan) still the natural next focus — unchanged.
+- This session's doc PR not yet opened; one-line `fangraphs_audit_reference` memory append (the `display_team_stats.pl` current-roster trap) pending.
+
+---
+
 ## Session 2026-06-29 (cont.) — code review, deploy alerting, remaining cleanups
 
 Continuation of the same day (see entry below for the audit + prod-freeze rescue). Shipped 5 more PRs (#404–#408), all merged + prod-verified.
