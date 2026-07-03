@@ -1,15 +1,51 @@
 ---
-title: Sub-0.02 ERA residual vs FanGraphs is FG-side rounding/timing, not an FBST bug
+title: Sub-0.02 ERA residual vs FanGraphs is a STABLE FG-side deviation from MLB, not an FBST bug (we match MLB to the out)
 slug: fangraphs-era-residual-is-rounding-not-a-bug
 category: integration-issues
 created: 2026-07-02
 component: fangraphs-audit, standings, mlb-data-sync
 problem_type: false-positive-triage / audit-methodology
 symptom: FanGraphs audit showed 6/8 teams exact but 2 teams had a ≤0.02 ERA (and ≤0.003 WHIP) residual; question was whether it was a computation bug
-root_cause: No FBST bug — our accumulated per-pitcher ER reconciles to the MLB game log exactly; the residual is FanGraphs display-rounding + correction-sync timing. Two "instrument traps" manufactured false precision during triage.
+root_cause: No FBST bug — every pitcher on both teams reconciles to the MLB game log EXACTLY on IP (in outs), ER, and BB+H; our ERA/WHIP equal the MLB-derived values to the decimal. FanGraphs is the one that deviates from MLB (≤0.02 ERA). Confirmed STABLE (identical delta on two consecutive daily audits — NOT transient timing, correcting the initial hypothesis). Do NOT "match OnRoto": FG is a derived view, and forcing our numbers to FG would inject FG's deviation into MLB-correct data.
 related_modules: standings, players, periods, fangraphs-audit
 prs: []
 tags: fangraphs, onroto, audit, era, earned-runs, whip, rounding, ownership-window, current-roster-ytd, psp, mlb-statsapi, gamelog, ip-thirds-notation, false-positive, trust-hierarchy, display-team-stats, OGBA
+---
+
+## 2026-07-03 UPDATE — DEFINITIVE: we match MLB to the out; FanGraphs is the deviation
+
+The residual reappeared on the 2026-07-03 audit — **identical deltas, same two teams**
+(Los Doyers our 4.15 vs FG 4.13; RGing our 4.19 vs FG 4.20). Persisting *unchanged* for two
+consecutive days **disproves the "correction-sync timing" hypothesis** in the original writeup
+below: this is a **stable** FG-side difference, not transient lag.
+
+To settle it beyond doubt, every pitcher on both teams was reconciled against the MLB game log
+on the exact residual-driving components — **IP counted in OUTS** (zero decimal rounding),
+**ER**, and **BB+H** — windowed to ownership:
+
+| Team | IP (outs) ours/MLB | ER ours/MLB | BB+H ours/MLB | ERA ours/MLB | WHIP ours/MLB |
+|---|---|---|---|---|---|
+| Los Doyers | 1965 / 1965 | 302 / 302 | 801 / 801 | **4.150 / 4.150** | **1.223 / 1.223** |
+| RGing | 2061 / 2061 | 320 / 320 | 863 / 863 | **4.192 / 4.192** | **1.256 / 1.256** |
+
+**Δ=0 for all 34 pitchers, every stat.** Our ERA/WHIP equal the MLB-derived values *exactly*.
+FanGraphs shows 4.13 / 4.20 → **FanGraphs is the one that deviates from MLB** (≤0.02 ERA) on
+these two teams. Since FG derives from the same MLB feed, this is a small rounding / stale-
+correction quirk on FG's side that we cannot see into and must not chase.
+
+**Do NOT "make our data match OnRoto."** OnRoto/FanGraphs is a *derived view* (trust hierarchy:
+`MLB statsapi > PSP > FanGraphs`). Forcing our numbers to equal FG's would inject FG's deviation
+from MLB into data that is currently MLB-exact. "Close is not acceptable for data" cuts the
+*other* way here: we are not *close* to MLB, we are **exact** — FG is the close-but-not-exact one.
+
+**No stale code.** This reconciliation exercised the entire scoring path — PSP sync →
+`parseIP` thirds conversion (`lib/utils.ts`: `whole + frac/3`, verified correct) → ownership-
+window attribution → aggregation — and produced MLB-exact numbers for all 34 pitchers. Checking
+IP in *outs* eliminated any decimal-rounding suspicion. There is nothing to fix on our side.
+
+**Reproduce:** windowed per-pitcher IP(outs)/ER/BB+H reconciliation vs MLB `people/{id}/stats?stats=gameLog&group=pitching`
+(same method as the ER-only pinpoint below, extended to IP-in-outs and BB+H).
+
 ---
 
 ## Symptom
