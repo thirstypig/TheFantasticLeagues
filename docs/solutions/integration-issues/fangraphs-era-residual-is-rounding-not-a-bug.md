@@ -46,6 +46,37 @@ IP in *outs* eliminated any decimal-rounding suspicion. There is nothing to fix 
 **Reproduce:** windowed per-pitcher IP(outs)/ER/BB+H reconciliation vs MLB `people/{id}/stats?stats=gameLog&group=pitching`
 (same method as the ER-only pinpoint below, extended to IP-in-outs and BB+H).
 
+### Why FG deviates: it CALCULATES ERA from component inputs that are stale — not from wrong rosters/dates
+
+FG necessarily *calculates* team ERA (`9·ΣER / ΣIP` over the team's rostered pitchers) — there is
+no pre-computed "team ERA" to pull. So the deviation lives in FG's **component inputs**, and two
+independent facts prove it is **NOT** an attribution / roster / date difference on our side:
+
+1. **Counting stats match FG exactly (all 8 teams).** A pitcher's K/W/SV are credited to a team by
+   the *same* ownership window that credits his IP/ER. If our rosters or period dates differed from
+   FG's, the counting stats would diverge too (a misattributed pitcher carries his K/W to the wrong
+   team). They don't — not by one strikeout. So we and FG credit the **identical** set of
+   pitcher-games to each team; attribution is provably the same.
+2. **Our windowed components match MLB exactly** (Δ=0, 34 pitchers, above).
+
+Therefore the delta is isolated to a **stat value** on some pitcher-game where FG differs from
+current MLB. And the two teams diverge via *different* shapes:
+- **Los Doyers:** ERA and WHIP both drop together → an **IP-shaped** difference (more innings shrinks
+  both rates).
+- **RGing:** ERA rises while WHIP falls → **impossible from IP alone** (IP moves both the same way) →
+  an **ER/baserunner-shaped** difference (e.g., a run scored earned vs. unearned, or a hit ↔ error).
+
+Different shapes on different teams rule out a systematic rounding/method bug (which would bias every
+team one way) and point to **isolated frozen/stale component values** — a per-pitcher-game MLB
+correction FG never re-ingested, one per team. This also explains the *stability*: FG appears to
+freeze already-counted stats and not re-apply corrections, so it never self-heals.
+
+**Open item to name the exact game:** FG's *standings-level* per-pitcher ER/IP breakdown would let us
+diff each pitcher against MLB and identify the stale line. FG's `display_team_stats.pl` uses a
+*current-roster* model (not the standings accumulation), so it cannot supply this — a
+standings-accumulation per-pitcher view (or the raw pitching lines pasted in) is required. Until then
+the mechanism is proven (stale FG input, not our attribution) but the specific pitcher-game is unnamed.
+
 ---
 
 ## Symptom
