@@ -40,21 +40,21 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1339 server + 897 client tests, ~25s total); draft integration (4 tests) + MCP suites (83 fbst-app + 50 mlb-data) run as separate CI jobs | Required green baseline. |
+| Before every push / PR | `npm run test` (1341 server + 897 client tests, ~25s total); db-integration (7 tests: 4 draft + 3 IL-fee) + MCP suites (83 fbst-app + 50 mlb-data) run as separate CI jobs | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
-**Current reality (2026-06-29):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2240 tests: 1339 backend main + 4 draft integration + 897 frontend) + both typechecks clean.
+**Current reality (2026-07-03):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2245 tests: 1341 backend main + 7 integration [4 draft + 3 IL-fee] + 897 frontend) + both typechecks clean.
 
 ## Current coverage (2026-06-29 baseline)
 
-**Test suite total:** 2240 passing tests (1339 backend main + 4 draft integration + 897 frontend)
-- Backend: 97 test files, 1339 passing in the main `test` job, 11 skipped, 1 todo
+**Test suite total:** 2245 passing tests (1341 backend main + 7 integration [4 draft + 3 IL-fee] + 897 frontend)
+- Backend: 99 test files, 1341 passing in the main `test` job, 14 skipped, 1 todo
 - Draft integration: 4 tests in the separate `db-integration` CI job (postgres:16 + `prisma db push`)
 - Frontend: 74 test files, 897 passing
 - MCP servers: tracked separately (83 fbst-app, 50 mlb-data)
-- NOTE: the destructive draft integration suite (`draft/__tests__/draftIntegration.test.ts`) is gated by `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1` (fail-closed). It runs in CI's `db-integration` job against an ephemeral Postgres and locally only against a throwaway DB — never prod.
+- NOTE: the real-Postgres integration suites (`draft/__tests__/draftIntegration.test.ts` and `transactions/services/__tests__/ilFeeService.integration.test.ts`) are gated by `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1` (fail-closed). They run in CI's `db-integration` job against an ephemeral Postgres and locally only against a throwaway DB — never prod. The IL-fee suite is a regression guard for the `pg_advisory_xact_lock` bug that the unit suite's mocked `$queryRaw` could not catch.
 - TypeScript: both client and server tsc clean
 - Full run time: ~25 seconds locally, ~35 seconds in CI
 

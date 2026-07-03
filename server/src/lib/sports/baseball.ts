@@ -12,6 +12,39 @@ export const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "P", "D
 export const PITCHER_CODES = ["P", "SP", "RP", "CL", "TWP"] as const;
 export const PITCHER_CODES_SET: ReadonlySet<string> = new Set(PITCHER_CODES);
 
+/**
+ * Which stat categories a rostered player contributes toward team totals, by
+ * ROLE. Single source of truth shared by the standings service and the
+ * FanGraphs audit so they can never diverge.
+ *
+ * Key rule: a position player's occasional mop-up pitching does NOT count toward
+ * team pitching (ERA/WHIP/etc). A catcher who throws a blowout inning is not a
+ * pitcher on your fantasy staff — this matches OGBA/OnRoto scoring, the league's
+ * system of record. Keyed on `posPrimary` (the player's role), NOT
+ * `assignedPosition` (the roster slot), so a benched pitcher's stats still count.
+ *
+ * Two-way players (Ohtani) are the exception: they are slotted per period via
+ * `assignedPosition`, so their contribution follows the assigned slot.
+ *
+ * Precedent: 2026-07-03 FanGraphs audit — Carson Kelly (C) and Adrian Del
+ * Castillo (DH) each pitched a mop-up inning that FBST counted but OnRoto did
+ * not, shifting Los Doyers/RGing ERA & WHIP by ≤0.02.
+ */
+export function playerStatRoles(args: {
+  posPrimary: string | null | undefined;
+  assignedPosition: string | null | undefined;
+  isTwoWay: boolean;
+}): { countHitting: boolean; countPitching: boolean } {
+  const primaryIsP = PITCHER_CODES_SET.has((args.posPrimary ?? "").toUpperCase());
+  const assignedIsP = PITCHER_CODES_SET.has(
+    (args.assignedPosition ?? args.posPrimary ?? "").toUpperCase(),
+  );
+  if (args.isTwoWay) {
+    return { countHitting: !assignedIsP, countPitching: assignedIsP };
+  }
+  return { countHitting: !primaryIsP, countPitching: primaryIsP };
+}
+
 export const POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "BN", "IL"] as const;
 
 // ─── Position-to-Slot Mapping ───
