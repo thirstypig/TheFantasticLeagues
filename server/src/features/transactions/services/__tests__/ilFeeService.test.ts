@@ -204,6 +204,42 @@ describe("reconcileIlFeesForPeriod", () => {
     expect(mockTx.financeLedger.create).not.toHaveBeenCalled();
   });
 
+  it("dryRun preview carries the rank-based amount ($10 rank 1, $15 rank 2)", async () => {
+    // Two concurrent stints on the same team: Alpha alone → rank 1; Bravo while
+    // Alpha still on IL → rank 2. Guards the rate-selection ternary — a flipped
+    // rank→rate mapping would let the commissioner approve the wrong fee.
+    mockTx.rosterSlotEvent.findMany.mockResolvedValue([
+      { id: 1, teamId: 10, playerId: 100, event: "IL_STASH", effDate: new Date("2026-04-05Z"), player: { name: "Alpha" } },
+      { id: 2, teamId: 10, playerId: 200, event: "IL_STASH", effDate: new Date("2026-04-10Z"), player: { name: "Bravo" } },
+    ]);
+    mockTx.financeLedger.findMany.mockResolvedValue([]);
+
+    const result = await reconcileIlFeesForPeriod(1, 7, { dryRun: true });
+    expect(result.preview).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ action: "add", playerId: 100, rank: 1, amount: 10 }),
+        expect.objectContaining({ action: "add", playerId: 200, rank: 2, amount: 15 }),
+      ]),
+    );
+    expect(mockTx.financeLedger.createMany).not.toHaveBeenCalled();
+  });
+
+  it("dryRun preview carries a negated amount for a no-longer-billable void", async () => {
+    // No stint events → the existing $10 fee is no longer billable and should
+    // show as a void of -10. Guards the reversal sign in the preview builder.
+    mockTx.rosterSlotEvent.findMany.mockResolvedValue([]);
+    mockTx.financeLedger.findMany.mockResolvedValue([
+      { id: 500, teamId: 10, playerId: 100, amount: 10 },
+    ]);
+
+    const result = await reconcileIlFeesForPeriod(1, 7, { dryRun: true });
+    expect(result.voided).toBe(1);
+    expect(result.preview).toEqual([
+      expect.objectContaining({ action: "void", teamId: 10, playerId: 100, amount: -10 }),
+    ]);
+    expect(mockTx.financeLedger.update).not.toHaveBeenCalled();
+  });
+
   it("IDOR guard: rejects period that does not belong to league", async () => {
     mockTx.period.findUnique.mockResolvedValue({ ...period, leagueId: 999 });
     await expect(reconcileIlFeesForPeriod(1, 7)).rejects.toThrow(/does not belong to league/);
