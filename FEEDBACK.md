@@ -4,6 +4,25 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-03 — IL-fee reconcile fix (dead 30 days; found by the staleness audit)
+
+Follow-through on the 2026-07-02 pipeline staleness audit (see the register `docs/reports/pipeline-staleness-audit-2026-07-02.md`, PR #410). The audit's OutboxEvent-backlog query surfaced a **real, money-adjacent bug no stat audit could catch** — root-caused and fixed here (PR #411).
+
+- **The bug: `IL_FEE_RECONCILE` outbox dead ~30 days.** Two `OutboxEvent` rows (OGBA P2/P3) stuck at `attempts=5`. **Two bugs on one line** of `ilFeeService.reconcileIlFeesForPeriod`: (1) `pg_advisory_xact_lock(integer, bigint)` — `hashtext()` is int4 but Prisma binds `periodId` as int8, matching no overload (**42883**); (2) the blocking lock returns `void`, which `$queryRaw` can't deserialize (**P2010**) — masked until #1 was fixed. Fix: cast `${periodId}::int` **and** use `$executeRaw` (the repo's working `pg_try_*` sites return boolean → `$queryRaw` works there; the blocking variant needs `$executeRaw`).
+- **Impact — IL fees never assessed for OGBA.** This reconcile is the *sole* writer of `il_fee` FinanceLedger rows (no stash-time path); P1 predated the feature, P2/P3 failed, P4 active → the ledger was empty. Read-only dry-run against prod: **P2 $30 + P3 $70** unassessed (P4 $50 bills at close via the now-working outbox; P1 $0), ~$100 across 6 teams. **Not yet applied — awaiting commissioner approval** (writes to the ledger).
+- **Why it hid so long = the audit's thesis.** Unit suite mocks `$queryRaw` → structurally can't exercise the lock SQL (green the whole time). Outbox exhausted 5 retries into an ephemeral in-memory buffer with no alert. Confirms Findings 2 (no failure visibility) + the mocked-test false-confidence lesson.
+- **Tests + tooling.** Real-Postgres regression `ilFeeService.integration.test.ts` (dbSafety-gated) **wired into CI's `db-integration` job** (it previously ran only the draft test — an unwired integration file is a dead guard). Enriched `dryRun` to return the exact per-team/player breakdown (`ReconcilePreviewRow[]`) so a financial reconcile is previewable before writing; 2 unit tests guard its rate-selection + reversal-sign. Solution doc: `docs/solutions/runtime-errors/prisma-advisory-lock-int-cast-and-void-executeraw.md`.
+
+### Test counts
+2240 → **2245** (1341 server main + 7 db-integration [4 draft + 3 IL-fee] + 897 client); +2 unit (dryRun preview) + 3 integration. Both typechecks clean.
+
+### Remaining / open decisions
+- **Apply P2+P3 IL fees ($100)** — awaits explicit approval (ledger write).
+- **Boundary-billing call:** Chourio (DDG) + Vaughn (DLC) were activated *off* IL on 05-17 (P3 day 1) yet bill a full P3 fee under "any overlap = full fee" — that's the +$20 making P3 $70 not $50. $100 vs $80 is a league-rules decision.
+- **Systemic follow-ups (todos #299/#300):** job-run tracking + alerting and `syncedAt` on scoring tables — the fixes that would have caught this in June.
+
+---
+
 ## Session 2026-06-29 (cont.) — code review, deploy alerting, remaining cleanups
 
 Continuation of the same day (see entry below for the audit + prod-freeze rescue). Shipped 5 more PRs (#404–#408), all merged + prod-verified.

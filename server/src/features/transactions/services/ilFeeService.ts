@@ -177,6 +177,16 @@ function stintOverlapsPeriod(
   return startedBeforeEnd && endedAfterStart;
 }
 
+/** One planned ledger change (populated on dryRun so callers can preview $). */
+export type ReconcilePreviewRow = {
+  action: "add" | "void";
+  teamId: number;
+  playerId: number | null;
+  playerName?: string;
+  rank?: 1 | 2;
+  amount: number; // positive for an add, negative for a void/reversal
+};
+
 export type ReconcileResult = {
   leagueId: number;
   periodId: number;
@@ -184,6 +194,8 @@ export type ReconcileResult = {
   voided: number;
   unchanged: number;
   dryRun: boolean;
+  /** Only populated on dryRun — the exact rows that WOULD be written. */
+  preview?: ReconcilePreviewRow[];
 };
 
 /**
@@ -209,7 +221,16 @@ export async function reconcileIlFeesForPeriod(
     // Advisory lock keyed on periodId — two concurrent reconciles for the
     // same period serialize; different periods run in parallel. Hash the
     // string "il_fee_reconcile" to a stable 32-bit int for the first arg.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('il_fee_reconcile'), ${periodId})`;
+    // Two bugs lived on this one line and silently killed every
+    // IL_FEE_RECONCILE outbox event (docs/reports/pipeline-staleness-audit-2026-07-02.md):
+    //   1. `hashtext()` returns int4 but Prisma bound `${periodId}` as int8, so
+    //      `pg_advisory_xact_lock(integer, bigint)` matched no overload (42883).
+    //      The two-arg form is (int4, int4) → periodId must be cast to int.
+    //   2. The blocking `pg_advisory_xact_lock` returns `void`; `$queryRaw` then
+    //      failed to deserialize a void column (P2010). The `pg_try_*` sites in
+    //      this repo return boolean so `$queryRaw` works there — but the blocking
+    //      variant must use `$executeRaw`, which does not deserialize a result.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('il_fee_reconcile'), ${periodId}::int)`;
 
     const period = await tx.period.findUnique({
       where: { id: periodId },
@@ -270,12 +291,29 @@ export async function reconcileIlFeesForPeriod(
     }
 
     if (dryRun) {
+      const preview: ReconcilePreviewRow[] = [
+        ...toAdd.map((s) => ({
+          action: "add" as const,
+          teamId: s.teamId,
+          playerId: s.playerId,
+          playerName: s.playerName,
+          rank: s.rankAtEntry,
+          amount: s.rankAtEntry === 1 ? rates.slot1 : rates.slot2,
+        })),
+        ...toVoid.map((r) => ({
+          action: "void" as const,
+          teamId: r.teamId,
+          playerId: r.playerId,
+          amount: -r.amount,
+        })),
+      ];
       return {
         leagueId, periodId,
         added: toAdd.length,
         voided: toVoid.length,
         unchanged,
         dryRun: true,
+        preview,
       };
     }
 

@@ -79,8 +79,8 @@ jobs:
       - name: Sync schema to test DB
         run: cd server && npx prisma db push --schema ../prisma/schema.prisma --skip-generate --accept-data-loss
 
-      - name: Draft integration tests (real Postgres)
-        run: cd server && npx vitest run src/features/draft/__tests__/draftIntegration.test.ts
+      - name: DB integration tests (real Postgres)
+        run: cd server && npx vitest run src/features/draft/__tests__/draftIntegration.test.ts src/features/transactions/services/__tests__/ilFeeService.integration.test.ts
 
   audit:
     runs-on: ubuntu-latest
