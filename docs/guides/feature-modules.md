@@ -2,7 +2,7 @@
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-## Current Feature Modules (31)
+## Current Feature Modules (32)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -37,6 +37,7 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `matchups` | routes | — | H2H matchup generation: round-robin scheduling, ScoringEngine (Roto/H2H/Points) |
 | `profiles` | routes | 1 page, api | User profiles: bio, favorite team, experience, preferred formats, payment handles |
 | `reports` | routes, reportBuilder | — (client removed) | Weekly report API — server endpoints still active at `/api/reports/:leagueId`; client UI removed (weekly digest on Home covers this) |
+| `subscribers` | routes, pagesRouter, service | — (marketing form lives in the `www` repo) | Public double-opt-in email list (PR #415, pending deploy). `POST /api/public/subscribe` (no auth, per-IP rate-limit + honeypot + DB cooldown + no-enumeration); server-rendered `GET /confirm` + `GET /unsubscribe` pages (mounted before the SPA catch-all). `Subscriber` table is RLS-locked from the anon key; confirmation email from `hello@alephco.io` via Resend |
 
 ## Feature Module Pattern
 

@@ -7,8 +7,8 @@ Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Ya
 ## Quick Links
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
-- **[Feature Modules](docs/guides/feature-modules.md)** — 31 modules, cross-feature imports, adding new features
-- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2245 tests across 33 modules
+- **[Feature Modules](docs/guides/feature-modules.md)** — 32 modules, cross-feature imports, adding new features
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2284 tests across 34 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
 - **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands
@@ -40,7 +40,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 31 feature modules under `server/src/features/`; 27 with a corresponding client surface
+- 32 feature modules under `server/src/features/`; 27 with a corresponding client surface (the new `subscribers` module's UI lives in the separate `www` marketing repo)
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -81,7 +81,7 @@ fbst/
 
 ## Feature Modules
 
-31 modules organized by domain, each with routes, services, pages, and components. See **[Feature Modules guide](docs/guides/feature-modules.md)** for the full catalog, patterns, and cross-feature dependencies.
+32 modules organized by domain, each with routes, services, pages, and components. See **[Feature Modules guide](docs/guides/feature-modules.md)** for the full catalog, patterns, and cross-feature dependencies.
 
 ## Shared Infrastructure (do NOT move into features)
 - `shared/api/` — **cross-side Zod schemas** (pilot: `playerSeasonStats.ts`). Both client and server import from here; the inferred type is the single source of truth for the wire format. See `docs/CONTRACT_TESTING.md` for how to add a new schema. Server imports via relative `.js` path (NodeNext), client via `@shared/*` path alias.
@@ -133,7 +133,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2245 app tests (1341 server main suite + 7 integration [4 draft + 3 IL-fee] in the separate `db-integration` CI job + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2284 app tests (1380 server main suite + 7 integration [4 draft + 3 IL-fee] in the separate `db-integration` CI job + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 

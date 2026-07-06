@@ -4,6 +4,21 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-05 — Email signup (double opt-in) built + IL cache-freshness fix
+
+Two in-flight workstreams; **both are PRs open, not yet deployed.**
+
+- **Email marketing signup — verified email list, built as 6 approved steps (PR #415 app + www #6).** Double opt-in via a new `Subscriber` table (email only, no PII) with **RLS enabled** so the Supabase anon/public key can neither read nor write — all writes go through the server. `POST /api/public/subscribe` (public, per-IP rate-limit 5/15min) with **honeypot**, format + disposable-domain filter, **DB-enforced 5-min per-address cooldown** (anti spam-bomb), and **no-enumeration** responses. Server-rendered `/confirm` + `/unsubscribe` pages (registered before the SPA catch-all). Confirmation email from **hello@alephco.io** (alephco.io already verified on Resend; separate from the app's `noreply@` transactional sender) — only the single confirmation is ever sent. Marketing form on `thefantasticleagues.com` (www repo) rewired from a dead stub (`/api/auth/subscribe`, never existed) to a real fetch; **CORS** opened to the marketing origin. **33 tests** (7 validation + 14 service + 12 HTTP-layer via supertest). tsc clean.
+- **Bonus find during setup:** the Railway `RESEND_API_KEY` was **invalid** (401) — meaning the app's league-invite emails were silently failing too. User rotated the key; verified sending works (test email delivered). Key also copied into `server/.env.local` (gitignored).
+- **Still pending (email):** merge order is **app #415 first** (creates the table + endpoint + CORS on Railway boot), then www #6. The **live end-to-end smoke test** (real signup → email → confirm → unsubscribe) needs the deployed stack and is the only verification outstanding — NOT claimed done.
+- **IL cache-freshness fix (PR #414).** A player placed on the real MLB IL *today* couldn't be placed on a fantasy IL slot — `checkMlbIlEligibility` read MLB status through a 6-hour cache (`ROSTER_STATUS_TTL=21600`) still showing "Active". Fix: `mlbGetJson` gains a `{ forceFresh }` bypass, used only by the **write-path** eligibility check; read/display paths (ghost-IL detection) keep the cache. **The "60-day IL not on the 40-man" theory was empirically ruled out** — MLB's 40Man feed includes 60-day-IL players as `Injured 60-Day` (matches the regex). Solution doc: `docs/solutions/integration-issues/mlb-status-cache-blocks-fresh-injury-il-eligibility.md`.
+- **Roster move (DLC: IL Acuña + pick up Cole Carrigg).** Validated end-to-end server-side (Acuña IL-eligible, Carrigg a free-agent CF that fits Acuña's OF slot, IL slot open) but **not hand-executed** — a money-league roster mutation belongs in the app's atomic transaction path (which fires the `IL_STASH` RosterSlotEvent + fee/audit rows), not a script. Routed to the UI; the day-of failure was the now-fixed 6h cache.
+
+### Migration drift flagged (pre-existing, not from this session)
+Prod's `_prisma_migrations` has `20260618150714_phase_2_multisport_schema` recorded, but that migration file is on **neither `main` nor any branch** — a schema change applied to prod without its migration committed. Does **not** block the `add_subscribers` migration (`migrate deploy` only applies pending *local* migrations). Repo can't fully recreate prod's schema until reconciled — worth a separate cleanup pass.
+
+---
+
 ## Session 2026-07-03 — IL-fee reconcile fix (dead 30 days; found by the staleness audit)
 
 Follow-through on the 2026-07-02 pipeline staleness audit (see the register `docs/reports/pipeline-staleness-audit-2026-07-02.md`, PR #410). The audit's OutboxEvent-backlog query surfaced a **real, money-adjacent bug no stat audit could catch** — root-caused and fixed here (PR #411).
