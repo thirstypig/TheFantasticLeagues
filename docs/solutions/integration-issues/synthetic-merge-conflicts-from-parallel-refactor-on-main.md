@@ -7,6 +7,8 @@ symptoms:
   - "`git diff main..feature --stat` shows ~thousands of LOC changed across files the feature never intended to touch"
   - "Conflict surface includes wholesale rewrites of files the feature branch's commits do not modify"
   - "Cherry-picking the feature commits onto main produces conflicts on a file the feature changed in the same logical area as main"
+  - "`gh pr merge --squash` fails with 'Pull Request is not mergeable' / mergeable=UNKNOWN after a SIBLING PR was squash-merged to main first — even when the two PRs touch entirely disjoint files"
+  - "`gh pr update-branch` fails 'Cannot update PR branch due to conflicts', yet a local `git merge --no-commit --no-ff` of the same branch is clean"
 date_solved: "2026-06-01"
 session: "Activate-from-IL polish + PR #349 cleanup"
 related_pr: 354
@@ -18,6 +20,9 @@ tags:
   - long-lived-branch
   - refactor
   - branch-mismatch
+  - squash-merge
+  - sibling-pr
+  - gh-cli
 ---
 
 ## Symptom
@@ -132,6 +137,67 @@ $ git log --stat $(git merge-base main HEAD)..HEAD | grep -E '^ [a-z]'
 ```
 
 Compare to `git diff main --stat` — if the former is much smaller, the diff stat is misleading and the "conflict" is largely synthetic.
+
+## Variant: squash-merged sibling PR (2026-07-06)
+
+A second trigger for the *same* "the tool says conflict, the topology says clean" phenomenon — but with **disjoint files and a small diff**, so the parallel-refactor tell (huge diff stat) is absent.
+
+### Symptom
+
+Two independent PRs (`#414` IL cache fix, `#415` email signup) branched off the same base and touched **completely disjoint files**. `#415` was **squash-merged** to main first. Then `#414` would not merge:
+
+```
+$ gh pr merge 414 --squash --delete-branch
+GraphQL: Pull Request is not mergeable (mergePullRequest)
+
+$ gh pr view 414 --json mergeable,mergeStateStatus   # persisted across retries
+UNKNOWN / UNKNOWN
+
+$ gh pr update-branch 414
+X Cannot update PR branch due to conflicts
+```
+
+### Root cause
+
+A **squash-merge collapses the merged PR's commits into one brand-new commit** on main that shares no commit identity with what the sibling branch was based on. GitHub's *asynchronous* mergeability computation can get stuck on `UNKNOWN` or emit a **false CONFLICTING** after the base moves this way — even though git's own 3-way merge is clean because the files never overlapped. `update-branch` (which merges base→head server-side) inherits the same false conflict.
+
+### The disambiguating test
+
+Ask **git**, not GitHub:
+
+```
+$ git fetch origin fix/il-status-cache-freshness
+$ git merge --no-commit --no-ff origin/fix/il-status-cache-freshness
+Automatic merge went well; stopped before committing as requested   # ← CLEAN
+$ git merge --abort
+```
+
+Clean local merge + disjoint file lists (`git diff --name-only main...origin/<branch>`) ⇒ the GitHub conflict is synthetic.
+
+### Resolution (works because `main` is not branch-protected here)
+
+Merge locally and push; the PR auto-closes when GitHub sees its diff on main is empty, or close it with a note:
+
+```
+$ git checkout main && git pull
+$ git merge --squash origin/fix/il-status-cache-freshness
+$ git commit -m "fix(il): ... (#414)"
+$ git push origin main
+$ gh pr close 414 --comment "Merged via squash <sha>; GitHub showed a synthetic conflict from #415's squash topology."
+```
+
+(If main *were* protected, the equivalent is `git rebase origin/main` on the branch + force-push, which forces GitHub to recompute mergeability against real content.)
+
+### How this variant differs from the parallel-refactor one above
+
+| | Parallel refactor (2026-06-01) | Squash-merged sibling (2026-07-06) |
+|---|---|---|
+| Diff stat | **Huge** (adjacent files rewritten on main) | **Small / disjoint** |
+| GitHub flag | `CONFLICTING` | `UNKNOWN` → "not mergeable" |
+| Real overlap | Adjacent files, some feature already absorbed | **None** — fully disjoint |
+| Fix | Cherry-pick unique commits onto main | Local squash-merge + push (or rebase to force recompute) |
+
+Same lesson both times: **the mergeability flag is advisory; the merge-base + a local `git merge --no-commit` are authoritative.** See memory [synthetic merge conflicts](../../../memory/feedback_synthetic_merge_conflicts.md) and [stacked PR squash-merge](../../../memory/feedback_stacked_pr_squash_merge.md).
 
 ## See also
 
