@@ -17,6 +17,8 @@ import fs from "fs";
 
 import { authRouter } from "./features/auth/index.js";
 import { publicRouter } from "./routes/public.js";
+import { subscribersRouter } from "./features/subscribers/routes.js";
+import { subscriberPagesRouter } from "./features/subscribers/pagesRouter.js";
 import { leaguesRouter } from "./features/leagues/index.js";
 import { rulesRouter } from "./features/leagues/index.js";
 import { adminRouter, validateTodoFileAtBoot } from "./features/admin/index.js";
@@ -88,6 +90,9 @@ async function main() {
 
   const corsOrigins: string[] = [
     process.env.CLIENT_URL || "",
+    // Marketing site (separate origin) posts to the public /subscribe endpoint.
+    process.env.MARKETING_URL || "https://thefantasticleagues.com",
+    "https://www.thefantasticleagues.com",
   ];
   if (process.env.NODE_ENV !== "production") {
     corsOrigins.push("http://localhost:3010", "http://localhost:3011", "http://localhost:4173");
@@ -228,6 +233,8 @@ async function main() {
   // Routes
   app.use("/api/auth", authRouter);
   app.use("/api", publicRouter);
+  app.use("/api/public", subscribersRouter); // public marketing signup (no auth)
+  app.use("/", subscriberPagesRouter);       // /confirm + /unsubscribe pages (before SPA catch-all)
   app.use("/api", leaguesRouter);
   app.use("/api", adminRouter);
   app.use("/api", commissionerRouter);
