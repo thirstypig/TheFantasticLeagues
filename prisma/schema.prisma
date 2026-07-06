@@ -1703,3 +1703,24 @@ model StatLine {
   @@index([teamId])
   @@index([week, season, sport])
 }
+
+/// Marketing email list for the public site (double opt-in). Only email is
+/// stored — no names, no phone. Writes happen ONLY through the server (Prisma /
+/// direct connection); Row Level Security denies the Supabase anon/public key.
+/// `email` is normalized (lowercased + trimmed) by the subscribe action before
+/// insert. status: 'pending' → 'confirmed' → 'unsubscribed'.
+model Subscriber {
+  id                     Int       @id @default(autoincrement())
+  email                  String    @unique
+  status                 String    @default("pending")
+  source                 String    @default("The Fantastic Leagues")
+  confirmationToken      String?   @unique
+  tokenExpiresAt         DateTime?
+  confirmedAt            DateTime?
+  lastConfirmationSentAt DateTime?
+  unsubscribeToken       String?   @unique
+  unsubscribedAt         DateTime?
+  createdAt              DateTime  @default(now())
+
+  @@index([status])
+}
