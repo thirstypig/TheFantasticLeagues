@@ -59,9 +59,18 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   throw lastError || new Error(`MLB API failed after ${retries} retries`);
 }
 
-export async function mlbGetJson<T = any>(url: string, ttlSeconds = DEFAULT_TTL): Promise<T> {
-  const cached = cacheGet(url);
-  if (cached !== null) return cached as T;
+export async function mlbGetJson<T = any>(
+  url: string,
+  ttlSeconds = DEFAULT_TTL,
+  opts?: { forceFresh?: boolean },
+): Promise<T> {
+  // forceFresh skips the cache READ (used by write-path IL eligibility checks so
+  // a just-injured player isn't blocked by a stale "Active" status). The fresh
+  // result is still cached for subsequent reads.
+  if (!opts?.forceFresh) {
+    const cached = cacheGet(url);
+    if (cached !== null) return cached as T;
+  }
 
   const res = await fetchWithRetry(url);
   const data = await res.json() as T;
@@ -147,6 +156,7 @@ type FortyManResponse = { roster?: FortyManRosterEntry[] };
 export async function getMlbPlayerStatus(
   mlbId: number,
   mlbTeamAbbr: string,
+  opts?: { forceFresh?: boolean },
 ): Promise<MlbRosterStatus | null> {
   const teamsMap = await fetchMlbTeamsMap();
   const teamId = Number(
@@ -155,7 +165,7 @@ export async function getMlbPlayerStatus(
   if (!Number.isFinite(teamId)) return null;
 
   const url = `${MLB_BASE}/teams/${teamId}/roster?rosterType=40Man`;
-  const data = await mlbGetJson<FortyManResponse>(url, ROSTER_STATUS_TTL);
+  const data = await mlbGetJson<FortyManResponse>(url, ROSTER_STATUS_TTL, opts);
 
   const entry = (data.roster || []).find(e => e.person?.id === mlbId);
   if (!entry) return null;

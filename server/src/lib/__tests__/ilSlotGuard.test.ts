@@ -194,6 +194,18 @@ describe("checkMlbIlEligibility", () => {
     expect(result.cacheFetchedAt).toEqual(new Date(1776900000000));
   });
 
+  it("forces a FRESH MLB status fetch (a just-injured player must not be blocked by the 6h cache)", async () => {
+    mockPrisma.player.findUnique.mockResolvedValue({
+      id: 42, name: "Ronald Acuña Jr.", mlbId: 660670, mlbTeam: "ATL",
+    });
+    mockGetMlbPlayerStatus.mockResolvedValue({
+      status: "Injured 10-Day", position: "RF", fetchedAt: 1776900000000,
+    });
+    await checkMlbIlEligibility(42);
+    // Write-path eligibility must bypass the cache — pass { forceFresh: true }.
+    expect(mockGetMlbPlayerStatus).toHaveBeenCalledWith(660670, "ATL", { forceFresh: true });
+  });
+
   it("rejects an Active player with NOT_MLB_IL", async () => {
     mockPrisma.player.findUnique.mockResolvedValue({
       id: 42, name: "Mike Trout", mlbId: 545361, mlbTeam: "LAA",

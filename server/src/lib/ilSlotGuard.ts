@@ -86,7 +86,10 @@ export async function checkMlbIlEligibility(
 
   let result: MlbRosterStatus | null;
   try {
-    result = await getMlbPlayerStatus(player.mlbId, player.mlbTeam);
+    // forceFresh: this is a WRITE-path check. A player who just went on the IL
+    // must be stashable immediately, not blocked for up to 6h by a cached
+    // "Active" status. (Read/display paths like ghost-IL detection keep the cache.)
+    result = await getMlbPlayerStatus(player.mlbId, player.mlbTeam, { forceFresh: true });
   } catch (err) {
     // Fail CLOSED — network/feed errors can't be treated as "status unknown,
     // allow it." A malicious or unlucky timing would otherwise let a
