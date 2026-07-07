@@ -5,6 +5,7 @@ import {
   assertNoOwnershipConflict,
   overlapsPeriod,
   ownedOn,
+  periodOverlapFilter,
   clampToPeriod,
 } from "../rosterWindow.js";
 
@@ -224,6 +225,33 @@ describe("ownedOn", () => {
 
   it("returns true when acquiredAt equals the date (inclusive lower bound)", () => {
     expect(ownedOn({ acquiredAt: END, releasedAt: null }, END)).toBe(true);
+  });
+});
+
+describe("periodOverlapFilter — the Prisma boundary the period-roster views use (teams/routes.ts)", () => {
+  it("uses an EXCLUSIVE releasedAt lower bound (gt startDate), NOT inclusive", () => {
+    // The load-bearing rule: a player released effective the period start owned
+    // ZERO days of the period and must be excluded. Changing this to `gte` would
+    // leak drops-at-period-start back into the roster — the 2026-07-06 league-wide
+    // move-misdating incident (docs/solutions/logic-errors/late-period-rollover-move-dates-leak-across-boundary.md).
+    const f = periodOverlapFilter(PERIOD);
+    expect(f.OR).toContainEqual({ releasedAt: { gt: PERIOD.startDate } });
+    expect(JSON.stringify(f)).not.toContain('"gte"');
+  });
+
+  it("acquiredAt bound is INCLUSIVE (lte endDate) — acquired on the last day still counts", () => {
+    expect(periodOverlapFilter(PERIOD).acquiredAt).toEqual({ lte: PERIOD.endDate });
+  });
+
+  it("includes still-active players (releasedAt: null)", () => {
+    expect(periodOverlapFilter(PERIOD).OR).toContainEqual({ releasedAt: null });
+  });
+
+  it("agrees with ownedOn at the boundary — both exclude releasedAt == startDate", () => {
+    // periodOverlapFilter (query) and ownedOn (in-memory) MUST share the exclusive
+    // upper bound, or the roster view and the scoring path disagree at the boundary.
+    expect(ownedOn({ acquiredAt: new Date("2026-03-22"), releasedAt: PERIOD.startDate }, PERIOD.startDate)).toBe(false);
+    expect(periodOverlapFilter(PERIOD).OR).toContainEqual({ releasedAt: { gt: PERIOD.startDate } });
   });
 });
 

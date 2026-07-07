@@ -8,7 +8,7 @@ Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Ya
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
 - **[Feature Modules](docs/guides/feature-modules.md)** — 32 modules, cross-feature imports, adding new features
-- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2284 tests across 34 modules
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2293 tests across 34 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
 - **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands
@@ -133,7 +133,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2284 app tests (1380 server main suite + 7 integration [4 draft + 3 IL-fee] in the separate `db-integration` CI job + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2293 app tests (1389 server main suite + 7 integration [4 draft + 3 IL-fee] in the separate `db-integration` CI job + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 
