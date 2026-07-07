@@ -2,6 +2,12 @@
 
 All notable changes to The Fantastic Leagues will be documented in this file.
 
+## v2.2.0 — 2026-07-06 — feature
+### Email signup on the marketing site
+
+- **Feature:** Visitors can subscribe for updates from the home page at thefantasticleagues.com — a verified **double opt-in** list (confirmation email required, one-click unsubscribe). Only the email address is stored; no names, no tracking scripts.
+- **Internal:** New `Subscriber` table (Row-Level-Security-locked from the public/anon key — writes only via the server); public `/api/public/subscribe` endpoint with honeypot + per-IP rate limit + per-address cooldown; server-rendered confirm/unsubscribe pages; confirmation email via Resend. Also fixed a rotated/invalid Resend API key that had been silently breaking league-invite emails.
+
 ## v2.1.2 — 2026-06-29 — reliability
 ### Deploy monitoring + CI/test hardening (internal)
 

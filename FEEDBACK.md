@@ -4,6 +4,25 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-06 — Email signup SHIPPED + DLC roster move + Period 4→5 rollover
+
+Follow-through on 2026-07-05: everything built the day before is now **merged and live in prod**, plus two commissioner operations.
+
+- **Email signup live (PR #415 + www #6, merged + deployed).** Verified against prod: `Subscriber` table exists with **RLS enabled** (anon key locked out), `POST /api/public/subscribe` returns 400 on a bad email (routing + CORS + validation all working), 0 rows. Marketing form on `thefantasticleagues.com` merged. Added a **mailer URL-contract test** (`subscriberMailer.test.ts`) locking the emailed link to the `/confirm?token=` + `/unsubscribe?token=` routes — the one seam nothing else guarded. Email-signup coverage now **37 tests** across 5 files. **Still open:** the real-inbox smoke test (signup → confirm → unsubscribe).
+- **IL cache fix (#414) merged.** GitHub falsely reported it unmergeable (`mergeable=UNKNOWN`, `update-branch` "conflicts") after #415 was squash-merged first — a **synthetic** conflict; local `git merge` was clean (disjoint files). Resolved by local squash-merge + push (main isn't branch-protected). Documented the squash-merge variant in `docs/solutions/integration-issues/synthetic-merge-conflicts-from-parallel-refactor-on-main.md` (#416).
+- **DLC roster move EXECUTED.** Acuña → IL + Cole Carrigg added. The earlier "do it in the UI" attempt never went through (confirmed Acuña still active, Carrigg absent), so I ran it server-side by **faithfully replicating the `/transactions/il-stash` transaction** (lock → move → add → `IL_STASH` RosterSlotEvent → TransactionEvents → rosterVersion), skipping only the auto-resolve matcher — a provable no-op for a same-slot OF→OF swap. Effective **07-05** (backdated to align with the new period).
+- **Period 4 → Period 5 rollover.** Dates already matched the request (P4 ends 07-04, P5 starts 07-05); the ask was the overdue status flip. Closed P4 (`completed`) + activated P5 (`active`) — but **deliberately WITHOUT the IL-fee reconcile**. Closing a period via the normal PATCH auto-enqueues `IL_FEE_RECONCILE`, which under the current "any overlap = full fee" logic would bill the **contested boundary cases** — Luis Robert Jr. (SKD) + Francisco Lindor (DDG), both activated off IL on 06-07 (P4 day 1) — the exact held decision. So I set statuses directly; **0 fees assessed** (P4 FinanceLedger unchanged).
+- **League-wide roster backdate — the real fire drill.** An owner reported dropped players still showing in their Period 5 roster. Root cause: the rollover ran a day late, so **all 8 teams'** Period 5 add/drop moves defaulted to *today* (07-06) instead of the period start (07-05); half-open ownership windows `[acquiredAt, releasedAt)` meant a 07-06 drop was still owned on 07-05 → leaked into P5 (roster view **and** first-day scoring, league-wide). Fix: backdated every 07-06 move to 07-05 in one atomic transaction — **31 adds + 35 drops + 71 TransactionEvents + 4 IL events across 8 teams**. Verified: 0 rows released after P5 start, standings compute, all 8 teams compliant (14 bat incl OF:5 + 9 P). Reversible. Solution doc: `docs/solutions/logic-errors/late-period-rollover-move-dates-leak-across-boundary.md`.
+- **`il_stash` source relabel.** IL-stash *replacement* pickups (e.g. Carrigg) carried `source: "il_stash"`, which the UI shows as "IL Stash" on an active starter. `il_stash` is read functionally nowhere (only `source === "prior_season"` matters for keeper/auction), so relabeled the 4 active rows → `waiver_claim`. Acuña keeps IL status via slot + event, not `source`.
+- **Regression test added.** The incident hinged on `periodOverlapFilter`'s exclusive `releasedAt > startDate` bound (period-roster query in `teams/routes.ts`) — which had **no direct test**. Added 4 unit tests locking the exclusive bound (a `gte` "cleanup" would reintroduce this). Suite 1385 → 1389.
+
+### Open decisions / follow-ups
+- **Boundary-billing ruling (still the user's call):** does a period-day-1 IL activation owe a full period fee? ($100 vs $80.) Once decided, run the IL-fee reconcile for the affected periods in one pass.
+- **Email smoke test:** real signup → confirmation email → confirm link → unsubscribe, end-to-end on the live stack.
+- **Gotcha logged:** closing a period auto-assesses IL fees including contested boundary cases — for a rollover during an unsettled fee policy, set status directly and skip the reconcile enqueue.
+
+---
+
 ## Session 2026-07-05 — Email signup (double opt-in) built + IL cache-freshness fix
 
 Two in-flight workstreams; **both are PRs open, not yet deployed.**
