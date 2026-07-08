@@ -97,6 +97,37 @@ describe("accumulatePeriodStats", () => {
     expect(teamAccum.get(1)!.K).toBe(0);
   });
 
+  it("excludes a player released EXACTLY on period.startDate (half-open — zero days owned)", () => {
+    // The load-bearing boundary behind the 2026-07-06 period-rollover backdate:
+    // a drop dated at the period start owns ZERO days of it. Must agree with
+    // production's periodOverlapFilter (releasedAt > startDate). A <= → < slip
+    // here would wrongly credit dropped-at-start players in the audit.
+    const rosters: AuditRoster[] = [
+      rosterRow({ acquiredAt: new Date("2026-04-19"), releasedAt: new Date("2026-05-12") }),
+    ];
+    const teamAccum = new Map<number, Accum>([[1, zeroAccum()]]);
+    accumulatePeriodStats(rosters, PERIOD, new Map([[100, PSP]]), NO_IL, teamAccum);
+    expect(teamAccum.get(1)!.K).toBe(0);
+  });
+
+  it("credits a player released the day AFTER period.startDate (window overlaps by one day)", () => {
+    const rosters: AuditRoster[] = [
+      rosterRow({ acquiredAt: new Date("2026-04-19"), releasedAt: new Date("2026-05-13") }),
+    ];
+    const teamAccum = new Map<number, Accum>([[1, zeroAccum()]]);
+    accumulatePeriodStats(rosters, PERIOD, new Map([[100, PSP]]), NO_IL, teamAccum);
+    expect(teamAccum.get(1)!.K).toBe(9);
+  });
+
+  it("credits a player acquired EXACTLY on period.endDate (inclusive: acquiredAt <= endDate)", () => {
+    const rosters: AuditRoster[] = [
+      rosterRow({ acquiredAt: new Date("2026-05-25"), releasedAt: null }),
+    ];
+    const teamAccum = new Map<number, Accum>([[1, zeroAccum()]]);
+    accumulatePeriodStats(rosters, PERIOD, new Map([[100, PSP]]), NO_IL, teamAccum);
+    expect(teamAccum.get(1)!.K).toBe(9);
+  });
+
   it("does NOT credit a position player's mop-up pitching (posPrimary=OF → pitching excluded)", () => {
     // Regression guard (2026-07-03): a catcher/OF who throws a blowout inning is
     // not a pitcher on your fantasy staff. Their hitting counts; their pitching

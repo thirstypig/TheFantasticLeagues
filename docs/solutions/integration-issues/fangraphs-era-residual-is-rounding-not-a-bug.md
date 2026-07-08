@@ -9,7 +9,29 @@ symptom: FanGraphs audit showed 6/8 teams exact but 2 teams had a ≤0.02 ERA (a
 root_cause: No FBST bug — every pitcher on both teams reconciles to the MLB game log EXACTLY on IP (in outs), ER, and BB+H; our ERA/WHIP equal the MLB-derived values to the decimal. FanGraphs is the one that deviates from MLB (≤0.02 ERA). Confirmed STABLE (identical delta on two consecutive daily audits — NOT transient timing, correcting the initial hypothesis). Do NOT "match OnRoto": FG is a derived view, and forcing our numbers to FG would inject FG's deviation into MLB-correct data.
 related_modules: standings, players, periods, fangraphs-audit
 prs: []
-tags: fangraphs, onroto, audit, era, earned-runs, whip, rounding, ownership-window, current-roster-ytd, psp, mlb-statsapi, gamelog, ip-thirds-notation, false-positive, trust-hierarchy, display-team-stats, OGBA
+tags: fangraphs, onroto, audit, era, earned-runs, whip, avg, hits, rounding, ownership-window, current-roster-ytd, psp, mlb-statsapi, baseball-reference, gamelog, ip-thirds-notation, false-positive, trust-hierarchy, display-team-stats, bubba-chandler, adolis-garcia, OGBA
+---
+
+## ✅ 2026-07-07 RESOLVED — named the exact stale FG lines (Chandler ER + García H); confirmed vs MLB *and* Baseball Reference
+
+Closes the "Open item to name the exact game" further down. A fresh OnRoto audit (2026-07-07) again showed **7/8 teams exact**; RGing's residual (ERA 4.17 vs FG 4.19, AVG .2473 vs .2471) localized to **exactly two players**, both of which FanGraphs/OnRoto has stale by one and FBST + MLB have right:
+
+| Cat | Player | OnRoto/FanGraphs | **MLB statsapi (authoritative)** | FBST | Baseball Ref |
+|---|---|---|---|---|---|
+| ERA | Bubba Chandler | 49 ER (ERA 4.92) | **48 ER** (IP 89.2, ERA 4.82) | 48 ✅ | agrees w/ MLB |
+| AVG | Adolis García | 44 H | **45 H** (both at 231 AB) | 45 ✅ | agrees w/ MLB |
+
+- **How the exact lines were named** (the thing the old open item said `display_team_stats.pl` couldn't do): pull OnRoto's per-player breakdown from `display_team_stats.pl?OGBA+<team>+<team>` **and** compute FBST's per-player accumulation (reuse `accumulatePeriodStats` from `fangraphs-audit.ts`, keyed by `playerId` instead of `teamId`), then diff player-by-player. The single off-by-one player pops out. `display_team_stats.pl` DOES supply enough at the per-player level once cross-referenced with FBST's per-player sums — correcting the old note that it couldn't.
+- **Third-source confirmation:** Baseball Reference independently agreed with MLB/FBST on both. FanGraphs is the lone outlier — not a two-source coin flip.
+- **First HITTING instance:** García (H → AVG) proves the FG-staleness mechanism is **not pitching-only** — it freezes any already-counted raw stat (ER, H) and doesn't re-apply MLB's later corrections.
+- **Chandler is a repeat culprit** — 45-vs-44 ER on 07-03, now 49-vs-48. FanGraphs consistently runs ~1 ER hot on him. Do NOT chase; matching OnRoto would inject FG's error into MLB-correct data.
+
+### Verification recipe (name-the-stale-line, ~2 min)
+1. FBST side: `cd server && npx tsx src/scripts/fangraphs-audit.ts 20` (prod DB URLs exported).
+2. OnRoto side: `onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+<teamIdx>+<teamIdx>&session_id=<...>` — per-player AB/H/IP/ER.
+3. Localize: compute FBST per-player (remap `teamId→playerId` in `accumulatePeriodStats`), diff vs OnRoto; the off-by-1 player is the culprit. (Ignore IL'd players — the no-IL per-player sum over-includes their reserved stint.)
+4. Tiebreak: `https://statsapi.mlb.com/api/v1/people/<mlbId>/stats?stats=season&group=<hitting|pitching>&season=2026`. **Verdict: FBST == MLB ⇒ FanGraphs stale, do NOT change FBST.**
+
 ---
 
 ## ✅ 2026-07-03 RESOLVED — the delta was TWO things; the big one was OUR bug (read this first)
@@ -105,6 +127,8 @@ Different shapes on different teams rule out a systematic rounding/method bug (w
 team one way) and point to **isolated frozen/stale component values** — a per-pitcher-game MLB
 correction FG never re-ingested, one per team. This also explains the *stability*: FG appears to
 freeze already-counted stats and not re-apply corrections, so it never self-heals.
+
+> ✅ **RESOLVED 2026-07-07 — see the top banner.** The exact lines were named (Chandler 49-vs-48 ER, García 44-vs-45 H) by cross-referencing `display_team_stats.pl`'s per-player view against FBST's per-player accumulation, then tie-breaking against MLB statsapi + Baseball Reference. `display_team_stats.pl` *can* supply this at the per-player level after all.
 
 **Open item to name the exact game:** FG's *standings-level* per-pitcher ER/IP breakdown would let us
 diff each pitcher against MLB and identify the stale line. FG's `display_team_stats.pl` uses a
