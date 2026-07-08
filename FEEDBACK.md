@@ -4,6 +4,17 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-07 — OnRoto audit: 7/8 exact; the one residual is FanGraphs-stale (confirmed 3 ways)
+
+Ran the recurring OnRoto/FanGraphs stat audit for OGBA (through 07-06) as a reconciliation check after the 07-06 roster operations. **Clean result.**
+
+- **7 of 8 teams reconcile EXACTLY** across all 10 raw categories, and **all 8 teams' total points + standings order match OnRoto exactly.** Los Doyers is now exact too (the position-player-pitching fix from earlier this session held).
+- **The one residual: RGing Sluggers** — ERA 4.17 vs OnRoto 4.19, AVG .2473 vs .2471. Rosters match exactly (same players, same ownership windows). Localized to **two named players**: **Bubba Chandler** (OnRoto/FanGraphs 49 ER vs FBST 48) and **Adolis García** (OnRoto/FanGraphs 44 H vs FBST 45, both at 231 AB). **MLB statsapi confirmed 48 ER + 45 H — matching FBST. The user cross-checked Baseball Reference; it also agreed with MLB/FBST.** So FanGraphs is the lone stale outlier; FBST is correct to the box scores. Do NOT chase — matching OnRoto would inject FG's error into MLB-correct data. Trust hierarchy holds: **MLB statsapi > FBST > FanGraphs/OnRoto**.
+- **Method (now the doc's verification recipe):** `fangraphs-audit.ts 20` for FBST side → OnRoto per-player via `display_team_stats.pl` → localize the delta by computing FBST per-player (`accumulatePeriodStats` remapped `teamId→playerId`) → tie-break vs `people/{mlbId}/stats`. This **closed the open item** in `docs/solutions/integration-issues/fangraphs-era-residual-is-rounding-not-a-bug.md` (named the exact stale lines; added a 07-07 RESOLVED banner) — and it's the first *hitting*-stat instance of the FG-staleness mechanism (previously pitching-only).
+- **Regression tests added:** 3 boundary cases in `fangraphs-audit.test.ts` locking `accumulatePeriodStats`'s half-open ownership boundary (released-exactly-at-period-start → 0 credit) to agree with production's `periodOverlapFilter`. Suite 1389 → 1392.
+
+---
+
 ## Session 2026-07-06 — Email signup SHIPPED + DLC roster move + Period 4→5 rollover
 
 Follow-through on 2026-07-05: everything built the day before is now **merged and live in prod**, plus two commissioner operations.
