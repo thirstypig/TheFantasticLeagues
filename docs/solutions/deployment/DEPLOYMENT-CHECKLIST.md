@@ -448,7 +448,7 @@ If production is broken post-deploy:
 
 ## Related Documentation
 
-- `docs/plans/2026-03-20-feat-production-deployment-render-plan.md` — detailed deployment plan
+- `docs/archive/plans/2026-03-20-feat-production-deployment-render-plan.md` — detailed deployment plan
 - `FEEDBACK.md` Session 33 (2026-03-20) — deployment execution notes
 - `FEEDBACK.md` Session 34 (2026-03-21) — post-deployment retrospective
 - `.claude/scripts/check.sh` — automated pre-deploy checks (tests + TypeScript)

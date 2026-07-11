@@ -87,7 +87,7 @@ Why startCommand (not build):
 
 3. **Two latent bugs in the same code path can hide each other.** The `isMlbIlStatus` predicate bug (PR #118) was rejecting all stashes at the guard layer, so the stash flow *never executed* `rosterSlotEvent.create()` and the missing table was invisible. Discovering this required fixing the predicate first, which immediately exposed the next layer. When a fix stops reproducing a failure, continue testing — the fix may have exposed a new bug rather than resolved the only one.
 
-4. **Unit tests missed both.** The server tests mocked the Prisma client entirely, so no test ever exercised the real DB schema. Integration tests against a real Postgres would have caught the schema gap; live-MLB-API tests would have caught the predicate gap. Both are called out in `docs/plans/2026-04-22-real-db-integration-tests-plan.md` as future work — this incident is the justification to prioritize that plan.
+4. **Unit tests missed both.** The server tests mocked the Prisma client entirely, so no test ever exercised the real DB schema. Integration tests against a real Postgres would have caught the schema gap; live-MLB-API tests would have caught the predicate gap. Both are called out in `docs/archive/plans/2026-04-22-real-db-integration-tests-plan.md` as future work — this incident is the justification to prioritize that plan.
 
 ## Detection query
 

@@ -139,8 +139,8 @@ Reference `var(--app-vh)` in layouts so viewport unit changes only need to happe
 
 ### Internal
 - `docs/solutions/ui-bugs/css-sticky-fails-nested-overflow-containers.md` — closely related; references `h-[100dvh]` as part of the sticky fix, covers iOS Safari GPU compositing
-- `docs/plans/2026-03-21-fix-mobile-readiness-audit-plan.md` — the plan that drove this fix
-- `docs/plans/2026-03-21-fix-color-accessibility-age-friendly-plan.md` — companion WCAG compliance work (color contrast)
+- `docs/archive/plans/2026-03-21-fix-mobile-readiness-audit-plan.md` — the plan that drove this fix
+- `docs/archive/plans/2026-03-21-fix-color-accessibility-age-friendly-plan.md` — companion WCAG compliance work (color contrast)
 - FEEDBACK.md Session 34: documents completed mobile readiness PR #77
 
 ### External

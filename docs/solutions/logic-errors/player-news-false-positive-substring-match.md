@@ -138,4 +138,4 @@ Two call sites in `routes.ts` still use the old `includes()` pattern and should 
 
 - `docs/solutions/logic-errors/ohtani-derived-id-api-resolution.md` — same class: identifier-level false matching (derived ID collision). Multi-layer guards for player identity.
 - `docs/solutions/logic-errors/ohtani-two-way-player-split-architecture.md` — player identity disambiguation at the data model level.
-- `docs/plans/2026-03-23-feat-player-news-feed-plan.md` — original plan called for `matchPlayerByName()` but never specified disambiguation rules, leading to the `includes()` implementation.
+- `docs/archive/plans/2026-03-23-feat-player-news-feed-plan.md` — original plan called for `matchPlayerByName()` but never specified disambiguation rules, leading to the `includes()` implementation.
