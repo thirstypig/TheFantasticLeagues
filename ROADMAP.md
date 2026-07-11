@@ -1,8 +1,15 @@
 # TFL Roadmap
 
-> Last updated: June 2026  
-> Focus: MLB rotisserie/auction is live. Expanding to multi-sport platform.  
-> Constraint: season is active — correctness + reliability over new features until offseason.
+> Last updated: 2026-07-11
+> **Canonical status source:** the in-app **Roadmap** page (`/roadmap`), backed by
+> `server/data/planning.json` — edit item status there (via the in-app Todo/Roadmap
+> admin), not in this file. This document is the **phase narrative** (the "why" and
+> the dependency story); `planning.json` is the machine-readable live status. When
+> the two disagree, `planning.json` wins for item status.
+> Focus: season is active and the current push is **code-quality hardening** —
+> tests, refactors, and edge-case coverage over new features (per project context,
+> 2026-06-16). Multi-sport scaffolding (NFL/NBA dashboards) shipped; sport-agnostic
+> standings refactor is in progress.
 
 ---
 
