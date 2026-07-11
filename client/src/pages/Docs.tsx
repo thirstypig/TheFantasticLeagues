@@ -8,71 +8,149 @@ import {
   ArrowRight,
   Search,
   BookOpen,
-  Shield,
   Terminal,
-  Database,
   Layers,
   Settings,
-  History,
   ClipboardList,
   FlaskConical,
 } from "lucide-react";
 
-/* ── Static markdown imports via Vite ───────────────────────────── */
+/* ── Auto-discovered markdown (Vite glob) ───────────────────────────
+ * Every .md in the reference folders below is discovered at build time
+ * — no manual registration. Add a doc, it appears here automatically.
+ * Working/superseded folders (docs/plans, brainstorms, scratch, design,
+ * archive) are intentionally excluded from the viewer.               */
 
-// Root-level docs
-import claudeMd from "../../../CLAUDE.md?raw";
-import readmeMd from "../../../README.md?raw";
-import feedbackMd from "../../../FEEDBACK.md?raw";
+const RAW_MODULES = import.meta.glob(
+  [
+    "../../../docs/*.md",
+    "../../../docs/guides/*.md",
+    "../../../docs/reports/*.md",
+    "../../../docs/runbooks/*.md",
+    "../../../docs/learnings/*.md",
+    "../../../docs/solutions/**/*.md",
+    "../../../CLAUDE.md",
+    "../../../README.md",
+    "../../../FEEDBACK.md",
+    "../../../ROADMAP.md",
+  ],
+  { query: "?raw", import: "default", eager: true },
+) as Record<string, string>;
 
-// docs/ directory — active reference set (trimmed June 2026)
-import currentStatus from "../../../docs/CURRENT_STATUS.md?raw";
-import howto from "../../../docs/howto.md?raw";
-import decisions from "../../../docs/decisions.md?raw";
-import security from "../../../docs/SECURITY.md?raw";
-import dataSchema from "../../../docs/data-schema.md?raw";
-import archiveStandards from "../../../docs/archive_standards.md?raw";
-import authSetup from "../../../docs/AUTH_SETUP.md?raw";
-import historicalMapping from "../../../docs/HistoricalTeamMapping.md?raw";
+/* ── Categories ─────────────────────────────────────────────────── */
 
-// docs/reports/ — audit and analysis documents (admin-facing)
-import onrotoAudit from "../../../docs/reports/onroto-audit-2026-06-08.md?raw";
-
-// docs/admin — operational guides (admin-only)
-import stagingMd from "../../../docs/STAGING.md?raw";
-import multiSportArchMd from "../../../docs/MULTISPORT_ARCHITECTURE.md?raw";
-
-/* ── Doc registry ───────────────────────────────────────────────── */
+type CategoryKey =
+  | "root" | "docs" | "guides" | "report" | "solutions" | "runbooks" | "learnings" | "other";
 
 interface DocEntry {
   name: string;
-  filename: string;
+  filename: string; // repo-relative, e.g. docs/solutions/integration-issues/foo.md
   content: string;
-  category: "root" | "docs" | "report" | "admin";
+  category: CategoryKey;
   icon: React.ElementType;
   description: string;
 }
 
-const docs: DocEntry[] = [
-  // Root-level
-  { name: "CLAUDE.md", filename: "CLAUDE.md", content: claudeMd, category: "root", icon: Terminal, description: "Project conventions, architecture, and coding guidelines" },
-  { name: "README.md", filename: "README.md", content: readmeMd, category: "root", icon: BookOpen, description: "Project overview and getting started" },
-  { name: "FEEDBACK.md", filename: "FEEDBACK.md", content: feedbackMd, category: "root", icon: History, description: "Session-by-session development log" },
-  // docs/ — active reference
-  { name: "Current Product Status", filename: "docs/CURRENT_STATUS.md", content: currentStatus, category: "docs", icon: ClipboardList, description: "Active work, open PRs, scoring model, deferred items — updated June 2026" },
-  { name: "How-To Guides", filename: "docs/howto.md", content: howto, category: "docs", icon: BookOpen, description: "Step-by-step guides: features, tests, Prisma, Python worker, display conventions" },
-  { name: "Architecture Decisions", filename: "docs/decisions.md", content: decisions, category: "docs", icon: Layers, description: "ADR-001 → ADR-013: why behind key architectural choices" },
-  { name: "Security Architecture", filename: "docs/SECURITY.md", content: security, category: "docs", icon: Shield, description: "Auth, authorization, and security patterns" },
-  { name: "Data Schema", filename: "docs/data-schema.md", content: dataSchema, category: "docs", icon: Database, description: "JSON schemas for stats worker and API" },
-  { name: "Archive Standards", filename: "docs/archive_standards.md", content: archiveStandards, category: "docs", icon: FileText, description: "Historical player data validation rules" },
-  { name: "Auth Setup", filename: "docs/AUTH_SETUP.md", content: authSetup, category: "docs", icon: Shield, description: "OAuth provider configuration" },
-  { name: "Historical Team Mapping", filename: "docs/HistoricalTeamMapping.md", content: historicalMapping, category: "docs", icon: History, description: "Automated player-to-team mapping logic for archive imports" },
-  // reports/ — audit and analysis
-  { name: "FG/OnRoto vs TFL Audit (Jun 2026)", filename: "docs/reports/onroto-audit-2026-06-08.md", content: onrotoAudit, category: "report", icon: ClipboardList, description: "P1–P3 FanGraphs on Roto vs The Fantastic Leagues standings gap analysis — rosters, raw stats, rank deltas" },
-  // admin/ — operational guides
-  { name: "Staging Environment", filename: "docs/STAGING.md", content: stagingMd, category: "admin", icon: FlaskConical, description: "Staging setup guide: seed script, env vars, stats APIs, troubleshooting" },
-  { name: "Multi-Sport Architecture", filename: "docs/MULTISPORT_ARCHITECTURE.md", content: multiSportArchMd, category: "admin", icon: Layers, description: "Phase 2 multi-sport support: MLB, NFL, NBA APIs, test routes, accent colors, dashboards" },
+const CATEGORY_META: Record<CategoryKey, { label: string; icon: React.ElementType; accent: AccentKey }> = {
+  root: { label: "Project Root", icon: Terminal, accent: "none" },
+  report: { label: "Reports & Audits", icon: ClipboardList, accent: "sky" },
+  solutions: { label: "Solutions", icon: FlaskConical, accent: "emerald" },
+  runbooks: { label: "Runbooks", icon: Settings, accent: "fuchsia" },
+  guides: { label: "Guides", icon: BookOpen, accent: "none" },
+  learnings: { label: "Learnings", icon: BookOpen, accent: "amber" },
+  docs: { label: "docs/", icon: FolderOpen, accent: "none" },
+  other: { label: "Other", icon: FileText, accent: "none" },
+};
+
+const CATEGORY_ORDER: CategoryKey[] = [
+  "root", "report", "solutions", "guides", "runbooks", "learnings", "docs", "other",
 ];
+
+type AccentKey = "none" | "sky" | "emerald" | "amber" | "fuchsia";
+
+// Literal class strings (Tailwind JIT can't see dynamically-built names).
+const ACCENT: Record<AccentKey, { header: string; itemBase: string; active: string; inactive: string }> = {
+  none: {
+    header: "text-[var(--lg-text-muted)]",
+    itemBase: "",
+    active: "bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]",
+    inactive: "text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]",
+  },
+  sky: {
+    header: "text-sky-400",
+    itemBase: "border-l-2",
+    active: "bg-sky-500/10 text-sky-300 border-sky-400",
+    inactive: "border-sky-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]",
+  },
+  emerald: {
+    header: "text-emerald-400",
+    itemBase: "border-l-2",
+    active: "bg-emerald-500/10 text-emerald-300 border-emerald-400",
+    inactive: "border-emerald-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]",
+  },
+  amber: {
+    header: "text-amber-400",
+    itemBase: "border-l-2",
+    active: "bg-amber-500/10 text-amber-300 border-amber-400",
+    inactive: "border-amber-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]",
+  },
+  fuchsia: {
+    header: "text-fuchsia-400",
+    itemBase: "border-l-2",
+    active: "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-400",
+    inactive: "border-fuchsia-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]",
+  },
+};
+
+function categorize(filename: string): CategoryKey {
+  if (!filename.startsWith("docs/")) return "root";
+  if (filename.startsWith("docs/reports/")) return "report";
+  if (filename.startsWith("docs/solutions/")) return "solutions";
+  if (filename.startsWith("docs/guides/")) return "guides";
+  if (filename.startsWith("docs/runbooks/")) return "runbooks";
+  if (filename.startsWith("docs/learnings/")) return "learnings";
+  if (filename.slice("docs/".length).indexOf("/") === -1) return "docs";
+  return "other";
+}
+
+/** Derive a display name + one-line description from frontmatter / first heading. */
+function parseDoc(filename: string, raw: string): { name: string; description: string } {
+  let body = raw;
+  let fmTitle = "";
+  let fmDesc = "";
+  const fm = raw.match(/^---\n([\s\S]*?)\n---\n?/);
+  if (fm) {
+    body = raw.slice(fm[0].length);
+    const t = fm[1].match(/^title:\s*["']?(.+?)["']?\s*$/m);
+    const d = fm[1].match(/^description:\s*["']?(.+?)["']?\s*$/m);
+    if (t) fmTitle = t[1].trim();
+    if (d) fmDesc = d[1].trim();
+  }
+  const base = filename.split("/").pop() ?? filename;
+  const h1 = body.match(/^#\s+(.+)$/m);
+  const name = fmTitle || (h1 ? h1[1].trim() : base);
+  let description = fmDesc;
+  if (!description) {
+    for (const line of body.split("\n")) {
+      const t = line.trim();
+      if (!t || t.startsWith("#") || t.startsWith("---") || t.startsWith(">") || t.startsWith("|")) continue;
+      description = t;
+      break;
+    }
+  }
+  description = description.replace(/[*_`]/g, "");
+  if (description.length > 130) description = description.slice(0, 127) + "…";
+  return { name, description };
+}
+
+const docs: DocEntry[] = Object.entries(RAW_MODULES)
+  .map(([path, content]) => {
+    const filename = path.replace(/^(?:\.\.\/)+/, "");
+    const category = categorize(filename);
+    const { name, description } = parseDoc(filename, content);
+    return { name, filename, content, category, icon: CATEGORY_META[category].icon, description };
+  })
+  .sort((a, b) => a.filename.localeCompare(b.filename));
 
 /* ── Simple markdown renderer ───────────────────────────────────── */
 
@@ -303,11 +381,6 @@ export default function Docs() {
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const rootDocs = docs.filter(d => d.category === "root");
-  const dirDocs = docs.filter(d => d.category === "docs");
-  const reportDocs = docs.filter(d => d.category === "report");
-  const adminDocs = docs.filter(d => d.category === "admin");
-
   const filteredDocs = useMemo(() => {
     if (!search) return docs;
     const q = search.toLowerCase();
@@ -339,129 +412,41 @@ export default function Docs() {
             />
           </div>
 
-          {/* Root docs */}
-          <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--lg-text-muted)] mb-2">
-              Project Root
-            </h3>
-            <div className="space-y-0.5">
-              {(search ? filteredDocs.filter(d => d.category === "root") : rootDocs).map(doc => {
-                const Icon = doc.icon;
-                const isActive = doc.filename === activeDoc;
-                return (
-                  <button
-                    key={doc.filename}
-                    onClick={() => setActiveDoc(doc.filename)}
-                    className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors ${
-                      isActive
-                        ? "bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]"
-                        : "text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{doc.name}</div>
-                      <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Reports / audits */}
-          {((search ? filteredDocs.filter(d => d.category === "report") : reportDocs).length > 0) && (
-            <div>
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-sky-400 mb-2 flex items-center gap-1">
-                <ClipboardList className="w-3 h-3" /> Reports
-              </h3>
-              <div className="space-y-0.5">
-                {(search ? filteredDocs.filter(d => d.category === "report") : reportDocs).map(doc => {
-                  const Icon = doc.icon;
-                  const isActive = doc.filename === activeDoc;
-                  return (
-                    <button
-                      key={doc.filename}
-                      onClick={() => setActiveDoc(doc.filename)}
-                      className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors border-l-2 ${
-                        isActive
-                          ? "bg-sky-500/10 text-sky-300 border-sky-400"
-                          : "border-sky-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]"
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{doc.name}</div>
-                        <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
-                      </div>
-                    </button>
-                  );
-                })}
+          {/* Category groups — auto-discovered, folder-derived */}
+          {CATEGORY_ORDER.map((catKey) => {
+            const items = (search ? filteredDocs : docs).filter((d) => d.category === catKey);
+            if (items.length === 0) return null;
+            const meta = CATEGORY_META[catKey];
+            const acc = ACCENT[meta.accent];
+            const HeaderIcon = meta.icon;
+            return (
+              <div key={catKey}>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-wider ${acc.header} mb-2 flex items-center gap-1`}>
+                  <HeaderIcon className="w-3 h-3" /> {meta.label}
+                  <span className="opacity-50">({items.length})</span>
+                </h3>
+                <div className="space-y-0.5">
+                  {items.map((doc) => {
+                    const Icon = doc.icon;
+                    const isActive = doc.filename === activeDoc;
+                    return (
+                      <button
+                        key={doc.filename}
+                        onClick={() => setActiveDoc(doc.filename)}
+                        className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors ${acc.itemBase} ${isActive ? acc.active : acc.inactive}`}
+                      >
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{doc.name}</div>
+                          <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* docs/ directory */}
-          <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--lg-text-muted)] mb-2 flex items-center gap-1">
-              <FolderOpen className="w-3 h-3" /> docs/
-            </h3>
-            <div className="space-y-0.5">
-              {(search ? filteredDocs.filter(d => d.category === "docs") : dirDocs).map(doc => {
-                const Icon = doc.icon;
-                const isActive = doc.filename === activeDoc;
-                return (
-                  <button
-                    key={doc.filename}
-                    onClick={() => setActiveDoc(doc.filename)}
-                    className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors ${
-                      isActive
-                        ? "bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]"
-                        : "text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{doc.name}</div>
-                      <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Admin guides */}
-          {((search ? filteredDocs.filter(d => d.category === "admin") : adminDocs).length > 0) && (
-            <div>
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-fuchsia-400 mb-2 flex items-center gap-1">
-                <FlaskConical className="w-3 h-3" /> Admin Guides
-              </h3>
-              <div className="space-y-0.5">
-                {(search ? filteredDocs.filter(d => d.category === "admin") : adminDocs).map(doc => {
-                  const Icon = doc.icon;
-                  const isActive = doc.filename === activeDoc;
-                  return (
-                    <button
-                      key={doc.filename}
-                      onClick={() => setActiveDoc(doc.filename)}
-                      className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors border-l-2 ${
-                        isActive
-                          ? "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-400"
-                          : "border-fuchsia-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]"
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{doc.name}</div>
-                        <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
 
