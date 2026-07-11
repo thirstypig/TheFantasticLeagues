@@ -222,5 +222,5 @@ it("falls back to posPrimary when posList is undefined", () => {
 - **PR #185** — `toHubPlayer` extraction with regression tests
 - **`docs/CONTRACT_TESTING.md`** — Zod-source-of-truth pattern that prevents this class
 - **`shared/api/playerSeasonStats.ts`** — pilot of the source-of-truth pattern (Session 69)
-- **Plan**: `docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md` §0.5 refinement #3
+- **Plan**: `docs/archive/plans/2026-04-29-yahoo-style-roster-moves-plan.md` §0.5 refinement #3
 - **Related symptom**: anywhere a client `as any` cast accesses a field on a server response, the field exists at runtime but isn't typed. Search for `(row as any)` or `(row as unknown as ...)` in client code — each is a candidate for this bug class.

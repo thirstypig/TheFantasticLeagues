@@ -414,7 +414,7 @@ connectSrc: [
 ## Related Documentation
 
 - `DEPLOYMENT-CHECKLIST.md` — Full pre-deploy checklist (includes CSP section)
-- `docs/plans/2026-03-20-feat-production-deployment-render-plan.md` — Deployment plan
+- `docs/archive/plans/2026-03-20-feat-production-deployment-render-plan.md` — Deployment plan
 - `FEEDBACK.md` Session 33 (2026-03-20) — Deployment execution
 - `server/src/index.ts` — Live CSP configuration
 

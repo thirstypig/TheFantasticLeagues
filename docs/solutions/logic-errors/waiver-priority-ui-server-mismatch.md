@@ -181,7 +181,7 @@ Flag any hit: the ranking must happen once, server-side, in a shared service.
 - `docs/solutions/logic-errors/ai-grading-zero-data-random-standings.md` — AI grading used empty `TeamStatsSeason`; similar "wrong data source" class.
 - `docs/solutions/logic-errors/trade-reversal-ghost-roster-double-counting.md` — Display/processing mismatch on roster state after trade reversal.
 - `docs/solutions/logic-errors/silent-null-causes-llm-hallucination.md` — Silent data degradation pattern analog.
-- `docs/plans/2026-04-01-feat-trading-block-and-waiver-position-fix-plan.md` — Planning doc for the prior waiver priority fix.
+- `docs/archive/plans/2026-04-01-feat-trading-block-and-waiver-position-fix-plan.md` — Planning doc for the prior waiver priority fix.
 
 ## Related Call Sites (Audit Candidates)
 

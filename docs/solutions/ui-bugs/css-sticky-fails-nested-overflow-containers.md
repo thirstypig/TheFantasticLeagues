@@ -212,8 +212,8 @@ test('table header stays visible when scrolled', async ({ page }) => {
 ## Related Documentation
 
 ### Internal
-- Plan: `docs/plans/2026-03-21-fix-sticky-table-headers-plan.md`
-- Plan: `docs/plans/2026-03-21-fix-color-accessibility-age-friendly-plan.md`
+- Plan: `docs/archive/plans/2026-03-21-fix-sticky-table-headers-plan.md`
+- Plan: `docs/archive/plans/2026-03-21-fix-color-accessibility-age-friendly-plan.md`
 - FEEDBACK.md: Session 34 (2026-03-21)
 - Working reference: `KeeperPrepDashboard.tsx:320-322` (raw `<table>` + single scroll container)
 

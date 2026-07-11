@@ -237,7 +237,7 @@ Each hit is a candidate. Ask: "if this rejects, is there a legal end-state via r
 
 ## Related
 
-- `docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md` — the full roster-moves plan; §0 captures the deepening pass that validated this approach against Yahoo/ESPN/Fantrax 2026 prior art.
+- `docs/archive/plans/2026-04-29-yahoo-style-roster-moves-plan.md` — the full roster-moves plan; §0 captures the deepening pass that validated this approach against Yahoo/ESPN/Fantrax 2026 prior art.
 - `docs/solutions/deployment/supabase-railway-ipv6-pooler-and-pool-exhaustion.md` — separate incident; same lesson on running things inside vs. outside transactions (eligibility re-read here mirrors the migration's pool-slot management).
 - `docs/solutions/ui-bugs/auction-ux-position-dropdown-ohtani-stats-api-migration.md` — companion: position eligibility data must come from `positionToSlots()` / `Player.posList`, never hardcoded. The matcher consumes these.
 - PR #167 (commit `658822b`) — the implementation.

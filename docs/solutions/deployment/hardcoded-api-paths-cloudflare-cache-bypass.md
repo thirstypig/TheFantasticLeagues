@@ -282,7 +282,7 @@ describe('fetchJsonApi respects API_BASE', () => {
 - **Commit (Fix):** `a510daf` — "fix: route all API calls through API_BASE, not hardcoded /api/ paths"
 - **Commit (Backup):** `b43ce0b` — same changes without PR
 - **FEEDBACK.md:** Session 33-34 deployment notes
-- **docs/plans/2026-03-20-feat-production-deployment-render-plan.md** — deployment plan
+- **docs/archive/plans/2026-03-20-feat-production-deployment-render-plan.md** — deployment plan
 
 ---
 
