@@ -153,6 +153,34 @@ purpose is to check FBST against **independent ground truth**, not just
 against FanGraphs and our own audit tool. Investigation depth is not
 verification; the four external sources are.
 
+### Automated (run this EVERY audit)
+
+The MLB.com leg is automated — run it every audit, not just on a residual:
+
+```bash
+cd server && npx tsx src/scripts/audit-mlb-crosscheck.ts 20        # whole league
+cd server && npx tsx src/scripts/audit-mlb-crosscheck.ts 20 Dodger  # one team
+```
+
+For every **fully-owned** player it reconstructs the raw stats from the
+MLB.com statsapi game log and checks FBST against them — **self-aligning by
+cumulative game boundary** (no fixed as-of date; PSD and PSP have different
+frontiers, which a fixed cutoff gets wrong). It classifies each player as
+`consistent` (matches a cumulative prefix — as-of lag is fine),
+`in-progress` (FBST sandwiched within a live/just-finished game — transient,
+re-run when final), or **`inconsistent`** (fits no coherent point in time — a
+real discrepancy to investigate). Partial-ownership / IL / traded players are
+skipped (that's where ADR-013 attribution legitimately diverges → they need
+the manual per-source check below). Synthetic Ohtani-pitcher ids are mapped to
+the real id automatically. Baseline: 2026-07-11, all 100 fully-owned OGBA
+players reconciled, 0 flagged.
+
+A non-empty **FLAGGED** list is the only thing that should ever gate a verdict
+on a real bug. If it's empty, any standings residual is attribution or FG
+staleness, not an FBST data error.
+
+### Manual per-source drill (when the automated pass flags, or for a skipped player)
+
 For each player driving the residual, gather the raw season line from **four
 sources**:
 
