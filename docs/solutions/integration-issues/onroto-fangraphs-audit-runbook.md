@@ -33,7 +33,8 @@ raw values).
 2. Run `npx tsx src/scripts/fangraphs-audit.ts 20` → FBST season totals from `PlayerStatsPeriod` (production's source).
 3. `curl` OnRoto `display_stand.pl?OGBA+6&session_id=guest` → read the **category-breakdown rows** for FG's raw per-team values.
 4. Confirm FG's **"STANDINGS through MM.DD.YY"** header covers the same games as FBST, then diff all 80 cells (8 teams × 10 categories).
-5. Exact match (counting stats identical, rates to displayed precision) = pass. Any residual → apply the interpretation guide below **before** suspecting an FBST bug.
+5. Exact match (counting stats identical, rates to displayed precision) = pass.
+6. **Any residual → run the Step 5 four-way tie-break (MLB.com statsapi + Baseball Reference) BEFORE stating any verdict.** This is mandatory, not optional: no conclusion and no confidence claim above *"unverified hypothesis"* until the tie-break is done. Then apply the interpretation guide.
 
 ---
 
@@ -141,6 +142,65 @@ print(f"Mismatches: {mism} / {len(fbst)*len(cats)}")
 
 Pass = 0 mismatches. Counting stats must be identical; rates match to FG's
 displayed precision.
+
+---
+
+## Step 5 — Per-player four-way tie-break (MANDATORY on any residual)
+
+**This step is not optional and not a follow-up. If any cell in Step 4
+diverges — counting OR rate — you run this BEFORE writing a verdict.** The
+purpose is to check FBST against **independent ground truth**, not just
+against FanGraphs and our own audit tool. Investigation depth is not
+verification; the four external sources are.
+
+For each player driving the residual, gather the raw season line from **four
+sources**:
+
+1. **MLB.com statsapi** (authoritative, and the *fastest* to update):
+   ```bash
+   curl -s "https://statsapi.mlb.com/api/v1/people/{mlbId}/stats?stats=season&group=pitching&season=2026"   # or group=hitting
+   curl -s "https://statsapi.mlb.com/api/v1/people/{mlbId}/stats?stats=gameLog&group=pitching&season=2026"   # to align by date
+   ```
+2. **Baseball Reference** — independent third party. **Blocks `curl`/WebFetch (403).** Use the browser (Claude-in-Chrome cleared it); read the 2026 row of `players_standard_pitching` / batting via `data-stat` attributes.
+3. **FanGraphs OnRoto** per-player — `display_team_stats.pl?OGBA+6+SORT_{n}` (the stats index uses `SORT_n`, NOT plain `n`; verify the team by name — the index map is stale). Also Cloudflare-gated → browser.
+4. **FBST** — from the audit script (`accumulatePeriodStats` remapped `teamId→playerId`), or a direct prod PSP query.
+
+### Align the as-of date FIRST — this is where the trap lives
+
+**MLB.com statsapi is the most real-time source and will show MORE than
+Baseball Reference, FanGraphs, and FBST when it has already ingested TODAY's
+in-flight games.** Even Baseball Reference lags same-day games. So statsapi
+being higher is **not** evidence of an undercount elsewhere.
+
+- **Reconcile by games-played (G).** If statsapi shows G=19 and the others
+  G=18, statsapi has exactly one extra game. Pull it from the `gameLog` and
+  subtract it before comparing.
+- **IP thirds notation:** statsapi `100.1` = 100⅓ innings = FBST/FanGraphs
+  `100.3`. Same value — never flag it as a mismatch.
+
+Full method + worked example (E-Rodriguez, 2026-07-10: statsapi 29 ER/G19 vs
+BBRef+FG+FBST 27 ER/G18 = his same-day game only statsapi had) →
+`statsapi-leads-bbref-fangraphs-on-todays-games-align-as-of-date.md`.
+
+### The calibration rule (the whole point of this step)
+
+**Do not state a verdict, and do not claim any confidence above "unverified
+hypothesis," until this tie-break is complete.** A confident-sounding
+internal analysis ("FG is stale by ~3 ER") is still unverified until it is
+checked against MLB.com + Baseball Reference. Precedent — 2026-07-10: a
+MODERATE-HIGH "FG stale" call was **overturned** by the four-way; the
+per-player data was identical across all four sources and the residual was
+pure ADR-013 attribution. Naming the missing check and issuing a verdict
+anyway is the failure this rule exists to prevent.
+
+Outcome routing:
+- **All four sources agree at a common as-of date** → no per-player data
+  error. The team-standings residual is attribution (ADR-013), by design.
+  FBST is correct. Record it; do not "fix" FBST to match OnRoto.
+- **A per-player disagreement survives date-alignment** → now it's a real
+  finding. MLB.com + Baseball Reference agreeing against FanGraphs = FG stale,
+  FBST correct (leave it). MLB.com + BBRef agreeing against **FBST** = a real
+  FBST bug → escalate and root-cause.
 
 ---
 
