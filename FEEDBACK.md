@@ -4,6 +4,27 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-10 — Three recurring OnRoto audits (07-08 → 07-10) + four-way reconciliation; no code, two solution docs
+
+Ran the recurring OnRoto/FanGraphs stat audit on three consecutive days as an ongoing reconciliation check. **No source code changed this session** — the work is verification + documentation. Suite unchanged (2289 local green; 2296 with the separate `db-integration` CI job).
+
+- **07-08 (through 07-07): 8/8 exact.** All 10 raw categories + total points reconcile for all 8 teams. RGing's 07-07 ERA/AVG residual (FG-stale on Chandler/García) cleared overnight — confirming that call was right.
+- **07-09 (through 07-08): 8/8 exact.** Scraped at 07:52 AM PDT and FG was *already* synced through 07-08 — disproving the "before ~9 AM PT = FG stale" wall-clock heuristic. **Lesson: FG's own `STANDINGS through MM.DD.YY` header is authoritative; the clock is a weak prior.** Refined the `fangraphs-audit-timing-lag` memory accordingly.
+- **07-10 (through 07-09): 76/80 exact.** All 7 counting-stat categories match for all 8 teams; **4 rate cells** diverge — Dodger ERA 3.59 vs 3.55, Dodger WHIP 1.199 vs 1.198, Skunk/Show AVG ±.0002. Chased the Dodger ERA (0.04 > usual FG-stale residual) to ground:
+  - Ruled out position-player-pitching contamination (all `posPrimary=P`), post-drop over-crediting (0 post-drop ER from the 07-05-dropped pitchers), and a prod-vs-audit split — **production `computeTeamStatsFromDb` summed across periods == the audit script == 264 ER / 661.3 IP = 3.59.** FBST is internally consistent across two independent code paths.
+  - Root cause: **ADR-013 ownership-window attribution on the 07-05-dropped Dodger pitchers** (Strider/Manaea/Brown/Suarez/etc.) — the standings page attributes partially-owned pitchers slightly differently than OnRoto's display. By design, not a bug. **Rank-neutral** (Dodger stays 2nd in ERA; season points reconcile).
+- **Four-way per-player reconciliation** (MLB.com statsapi / Baseball Reference / FanGraphs OnRoto / FBST) on the Dodger pitchers — browser-driven past Cloudflare for the FG per-player page and BBRef. **Every pitcher agrees once as-of dates are aligned.** The one apparent gap — **Eduardo Rodriguez: statsapi 29 ER / 109 IP / G19 vs BBRef + FanGraphs + FBST all 27 ER / 108 IP / G18** — was purely that statsapi had already ingested his **07-10 (same-day) outing** (2 ER, 1 IP) that the other three snapshots hadn't. **Even Baseball Reference lags today's in-flight games.** So "statsapi shows more" is *not* evidence of an undercount elsewhere; it's the fastest source leading. FBST confirmed correct.
+- **Two new solution docs** (`docs/solutions/integration-issues/`):
+  - `onroto-fangraphs-audit-runbook.md` — consolidated the previously-scattered end-to-end audit procedure (Railway prod-URL export → `fangraphs-audit.ts 20` → `session_id=guest` scrape → the category-breakdown-rows parsing gotcha → 80-cell diff → interpretation guide → results log).
+  - `statsapi-leads-bbref-fangraphs-on-todays-games-align-as-of-date.md` — the four-way as-of-date trap above, framed as the active-period corollary to the 06-08 report's "lag only applies to the active period."
+
+### Open decisions / follow-ups
+- **Commit the two solution docs** (branch + PR). App repo is on `main`; not yet committed.
+- **Legality pass not run:** these audits were stat-reconciliation only — the active-cap / per-slot / position-eligibility pass wasn't run (carryover; not part of the stat-diff procedure).
+- **Email smoke test** still owed (carryover from 07-06): real signup → confirm → unsubscribe on the live stack.
+
+---
+
 ## Session 2026-07-07 — OnRoto audit: 7/8 exact; the one residual is FanGraphs-stale (confirmed 3 ways)
 
 Ran the recurring OnRoto/FanGraphs stat audit for OGBA (through 07-06) as a reconciliation check after the 07-06 roster operations. **Clean result.**
