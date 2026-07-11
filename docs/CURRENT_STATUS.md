@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-06-29
+Last updated: 2026-07-10
 
 ## Planning Sources
 
@@ -15,7 +15,7 @@ Two planning artifacts exist, with distinct roles (do not create additional `TOD
 
 ## Active Period
 
-**Period 4** (Jun 7 – Jul 4, 2026) is live. All 8 OGBA teams completed roster overhauls on June 7 (72 transactions recorded, all matching OnRoto/FanGraphs). Logan Henderson (The Show) is on IL as of June 7 by commissioner action.
+**Period 5** (Jul 5 – Aug 1, 2026) is live — rolled over from Period 4 on 2026-07-06, with all 8 teams' Period 5 add/drop moves backdated to the 07-05 period start (late-rollover boundary fix; see FEEDBACK 2026-07-06). Recurring OnRoto/FanGraphs stat audits through 07-09 reconcile: raw counting stats match cell-for-cell; the few small rate residuals are ADR-013 ownership-window attribution on mid-season-dropped players, not data errors (verified four-way against MLB.com statsapi + Baseball Reference). Audit runbook: `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
 
 ---
 
