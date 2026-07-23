@@ -20,7 +20,7 @@ updated: 2026-07-23
 > production. Production env lives only in Railway and is not readable from here.
 > **Key values are never read or printed — only their names.**
 
-*Generated 2026-07-23 · local HEAD `24bceaf` (2026-07-11)*
+*Generated 2026-07-23 · local HEAD `18fde71` (2026-07-23)*
 
 ## Service configuration (local environment)
 

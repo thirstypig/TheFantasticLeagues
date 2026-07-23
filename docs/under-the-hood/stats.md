@@ -21,24 +21,26 @@ updated: 2026-07-23
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-07-23 from 1,680 git-tracked files.*
+*Generated 2026-07-23 from 1,712 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 530 | 96,661 |
+| `.ts` | 530 | 96,670 |
 | `.tsx` | 302 | 89,119 |
-| `.md` | 502 | 59,678 |
-| `.json` | 33 | 39,736 |
+| `.md` | 524 | 62,585 |
+| `.json` | 36 | 40,054 |
 | `.sql` | 37 | 2,069 |
 | `.css` | 8 | 1,755 |
 | `.prisma` | 1 | 1,727 |
 | `.js` | 8 | 1,220 |
+| `.mjs` | 4 | 1,089 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 171 |
-| `.mjs` | 1 | 108 |
-| **All tracked** | **1,680** | **328,897** |
+| **All tracked** | **1,708** | **333,112** |
+
+<sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
 ## Surface area
 
@@ -53,9 +55,9 @@ updated: 2026-07-23
 
 ## Docs
 
-**162** board-scope markdown files (`docs/` plus the four root docs), of which **100** carry frontmatter.
+**185** board-scope markdown files (`docs/` plus the four root docs), of which **123** carry frontmatter.
 
-*502 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*528 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **62 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -67,23 +69,47 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `fix` | 6 | ❌ off-vocabulary |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
+| `inbox` | 1 | ✅ |
+| `doc` | 1 | ✅ |
 | `brainstorm` | 1 | ❌ off-vocabulary |
 | `test` | 1 | ❌ off-vocabulary |
 | `plan` | 1 | ✅ |
 | `test-infra` | 1 | ❌ off-vocabulary |
+| `adr` | 1 | ✅ |
+| `api-docs` | 1 | ✅ |
+| `component-lib` | 1 | ✅ |
+| `decision-log` | 1 | ✅ |
+| `tech-spec` | 1 | ✅ |
+| `testing` | 1 | ✅ |
+| `intake-rules` | 1 | ✅ |
+| `glossary` | 1 | ✅ |
+| `launch-spec` | 1 | ✅ |
+| `prd` | 1 | ✅ |
+| `roadmap` | 1 | ✅ |
+| `todos` | 1 | ✅ |
+| `solution` | 1 | ✅ |
 | `build-config-issue` | 1 | ❌ off-vocabulary |
+| `changelog` | 1 | ✅ |
+| `costs` | 1 | ✅ |
+| `experiment` | 1 | ✅ |
+| `privacy` | 1 | ✅ |
+| `risk` | 1 | ✅ |
+| `runbook` | 1 | ✅ |
+| `stats` | 1 | ✅ |
+| `status` | 1 | ✅ |
 
 **35 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 25 | ✅ |
+| `active` | 43 | ✅ |
+| `draft` | 5 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
 | `in_progress` | 1 | ❌ off-vocabulary |
-| `draft` | 1 | ✅ |
 | `phases-1-3-complete` | 1 | ❌ off-vocabulary |
 | `implemented` | 1 | ❌ off-vocabulary |
+| `locked` | 1 | ✅ |
 | `fixed` | 1 | ❌ off-vocabulary |
 
 **12 docs use a `status` outside `draft|active|locked|done|deprecated`.** The board's "done" filter cannot see them.

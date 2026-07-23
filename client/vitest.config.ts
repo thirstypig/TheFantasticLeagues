@@ -4,6 +4,12 @@ import { fileURLToPath } from "url";
 
 export default defineConfig({
   plugins: [react()],
+  // Top-level (not just under `test`): Vitest 4's module runner enforces fs.allow from
+  // the root Vite server config. Needed so ?raw imports of the four root docs
+  // (CLAUDE.md / README.md / FEEDBACK.md / ROADMAP.md) resolve in tests.
+  server: {
+    fs: { allow: [".", fileURLToPath(new URL("..", import.meta.url))] },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -20,8 +26,11 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     server: {
       fs: {
-        // Allow ?raw imports of files outside client/ (docs/, shared/)
-        allow: [".", "../docs", "../shared"],
+        // Allow ?raw imports of files outside client/ (docs/, shared/, and the four
+        // root docs — CLAUDE.md / README.md / FEEDBACK.md / ROADMAP.md — which the
+        // /docs board globs alongside docs/**). Absolute path: a relative ".." is not
+        // resolved against this config's directory by Vite's fs.allow.
+        allow: [".", fileURLToPath(new URL("..", import.meta.url))],
       },
     },
     coverage: {
