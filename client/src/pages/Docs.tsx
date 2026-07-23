@@ -4,22 +4,34 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
-  FolderOpen,
   ArrowRight,
   Search,
   BookOpen,
   Terminal,
-  Layers,
   Settings,
   ClipboardList,
   FlaskConical,
+  Shield,
 } from "lucide-react";
+import {
+  buildIndex,
+  searchDocs,
+  groupBySection,
+  type DocEntry,
+  type SectionKey,
+  type Badge,
+  type BadgeTone,
+} from "./docs/docsIndex";
 
 /* ── Auto-discovered markdown (Vite glob) ───────────────────────────
  * Every .md in the reference folders below is discovered at build time
  * — no manual registration. Add a doc, it appears here automatically.
  * Working/superseded folders (docs/plans, brainstorms, scratch, design,
- * archive) are intentionally excluded from the viewer.               */
+ * archive) are intentionally excluded from the viewer, as is
+ * docs/_templates (enforced again by isExcluded in docsIndex.ts).
+ *
+ * Indexing, title extraction, sectioning and badges live in
+ * ./docs/docsIndex.ts — pure and unit-tested. See docs/README-DOCS.md. */
 
 const RAW_MODULES = import.meta.glob(
   [
@@ -29,6 +41,9 @@ const RAW_MODULES = import.meta.glob(
     "../../../docs/runbooks/*.md",
     "../../../docs/learnings/*.md",
     "../../../docs/solutions/**/*.md",
+    "../../../docs/product/**/*.md",
+    "../../../docs/engineering/**/*.md",
+    "../../../docs/under-the-hood/*.md",
     "../../../CLAUDE.md",
     "../../../README.md",
     "../../../FEEDBACK.md",
@@ -37,36 +52,55 @@ const RAW_MODULES = import.meta.glob(
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;
 
-/* ── Categories ─────────────────────────────────────────────────── */
+const docs: DocEntry[] = buildIndex(
+  Object.entries(RAW_MODULES).map(([path, raw]) => ({
+    path: path.replace(/^(?:\.\.\/)+/, ""),
+    raw,
+  })),
+);
 
-type CategoryKey =
-  | "root" | "docs" | "guides" | "report" | "solutions" | "runbooks" | "learnings" | "other";
-
-interface DocEntry {
-  name: string;
-  filename: string; // repo-relative, e.g. docs/solutions/integration-issues/foo.md
-  content: string;
-  category: CategoryKey;
-  icon: React.ElementType;
-  description: string;
-}
-
-const CATEGORY_META: Record<CategoryKey, { label: string; icon: React.ElementType; accent: AccentKey }> = {
-  root: { label: "Project Root", icon: Terminal, accent: "none" },
-  report: { label: "Reports & Audits", icon: ClipboardList, accent: "sky" },
-  solutions: { label: "Solutions", icon: FlaskConical, accent: "emerald" },
-  runbooks: { label: "Runbooks", icon: Settings, accent: "fuchsia" },
-  guides: { label: "Guides", icon: BookOpen, accent: "none" },
-  learnings: { label: "Learnings", icon: BookOpen, accent: "amber" },
-  docs: { label: "docs/", icon: FolderOpen, accent: "none" },
-  other: { label: "Other", icon: FileText, accent: "none" },
+const BADGE_TONE: Record<BadgeTone, string> = {
+  good: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  warn: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  info: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  muted: "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border-[var(--lg-border-faint)]",
+  neutral: "bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] border-[var(--lg-border-faint)]",
 };
 
-const CATEGORY_ORDER: CategoryKey[] = [
-  "root", "report", "solutions", "guides", "runbooks", "learnings", "docs", "other",
-];
+function BadgeChip({ badge }: { badge: Badge }) {
+  return (
+    <span
+      title={badge.title}
+      className={`px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wide border ${BADGE_TONE[badge.tone]}`}
+    >
+      {badge.label}
+    </span>
+  );
+}
+
+/* ── Section presentation ───────────────────────────────────────── */
+
+const SECTION_ICON: Record<SectionKey, React.ElementType> = {
+  product: ClipboardList,
+  engineering: Terminal,
+  security: Shield,
+  operations: Settings,
+  troubleshooting: FlaskConical,
+  foundations: BookOpen,
+  notes: FileText,
+};
 
 type AccentKey = "none" | "sky" | "emerald" | "amber" | "fuchsia";
+
+const SECTION_ACCENT: Record<SectionKey, AccentKey> = {
+  product: "sky",
+  engineering: "none",
+  security: "amber",
+  operations: "fuchsia",
+  troubleshooting: "emerald",
+  foundations: "none",
+  notes: "none",
+};
 
 // Literal class strings (Tailwind JIT can't see dynamically-built names).
 const ACCENT: Record<AccentKey, { header: string; itemBase: string; active: string; inactive: string }> = {
@@ -101,56 +135,6 @@ const ACCENT: Record<AccentKey, { header: string; itemBase: string; active: stri
     inactive: "border-fuchsia-500/30 text-[var(--lg-text-secondary)] hover:bg-[var(--lg-tint)] hover:text-[var(--lg-text-primary)]",
   },
 };
-
-function categorize(filename: string): CategoryKey {
-  if (!filename.startsWith("docs/")) return "root";
-  if (filename.startsWith("docs/reports/")) return "report";
-  if (filename.startsWith("docs/solutions/")) return "solutions";
-  if (filename.startsWith("docs/guides/")) return "guides";
-  if (filename.startsWith("docs/runbooks/")) return "runbooks";
-  if (filename.startsWith("docs/learnings/")) return "learnings";
-  if (filename.slice("docs/".length).indexOf("/") === -1) return "docs";
-  return "other";
-}
-
-/** Derive a display name + one-line description from frontmatter / first heading. */
-function parseDoc(filename: string, raw: string): { name: string; description: string } {
-  let body = raw;
-  let fmTitle = "";
-  let fmDesc = "";
-  const fm = raw.match(/^---\n([\s\S]*?)\n---\n?/);
-  if (fm) {
-    body = raw.slice(fm[0].length);
-    const t = fm[1].match(/^title:\s*["']?(.+?)["']?\s*$/m);
-    const d = fm[1].match(/^description:\s*["']?(.+?)["']?\s*$/m);
-    if (t) fmTitle = t[1].trim();
-    if (d) fmDesc = d[1].trim();
-  }
-  const base = filename.split("/").pop() ?? filename;
-  const h1 = body.match(/^#\s+(.+)$/m);
-  const name = fmTitle || (h1 ? h1[1].trim() : base);
-  let description = fmDesc;
-  if (!description) {
-    for (const line of body.split("\n")) {
-      const t = line.trim();
-      if (!t || t.startsWith("#") || t.startsWith("---") || t.startsWith(">") || t.startsWith("|")) continue;
-      description = t;
-      break;
-    }
-  }
-  description = description.replace(/[*_`]/g, "");
-  if (description.length > 130) description = description.slice(0, 127) + "…";
-  return { name, description };
-}
-
-const docs: DocEntry[] = Object.entries(RAW_MODULES)
-  .map(([path, content]) => {
-    const filename = path.replace(/^(?:\.\.\/)+/, "");
-    const category = categorize(filename);
-    const { name, description } = parseDoc(filename, content);
-    return { name, filename, content, category, icon: CATEGORY_META[category].icon, description };
-  })
-  .sort((a, b) => a.filename.localeCompare(b.filename));
 
 /* ── Simple markdown renderer ───────────────────────────────────── */
 
@@ -381,25 +365,18 @@ export default function Docs() {
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const filteredDocs = useMemo(() => {
-    if (!search) return docs;
-    const q = search.toLowerCase();
-    return docs.filter(d =>
-      d.name.toLowerCase().includes(q) ||
-      d.description.toLowerCase().includes(q) ||
-      d.filename.toLowerCase().includes(q)
-    );
-  }, [search]);
+  const groups = useMemo(() => groupBySection(searchDocs(docs, search)), [search]);
+  const matchCount = useMemo(() => searchDocs(docs, search).length, [search]);
 
-  const currentDoc = docs.find(d => d.filename === activeDoc);
+  const currentDoc = docs.find(d => d.path === activeDoc);
   const lineCount = currentDoc ? currentDoc.content.split("\n").length : 0;
   const charCount = currentDoc ? currentDoc.content.length : 0;
 
   return (
     <div className="flex h-[calc(100svh-64px)]">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? "w-72" : "w-0"} transition-all duration-200 overflow-hidden border-r border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] flex-shrink-0`}>
-        <div className="p-4 space-y-4 w-72">
+      <div className={`${sidebarOpen ? "w-80" : "w-0"} transition-all duration-200 overflow-y-auto border-r border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] flex-shrink-0`}>
+        <div className="p-4 space-y-5 w-80">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-[var(--lg-text-muted)]" />
@@ -407,38 +384,52 @@ export default function Docs() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search docs..."
+              placeholder="Search by title, ID, or path…"
               className="w-full pl-8 pr-3 py-2 text-xs rounded-md bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-[var(--lg-text-primary)] placeholder:text-[var(--lg-text-muted)] focus:outline-none focus:border-[var(--lg-accent)]"
             />
           </div>
 
-          {/* Category groups — auto-discovered, folder-derived */}
-          {CATEGORY_ORDER.map((catKey) => {
-            const items = (search ? filteredDocs : docs).filter((d) => d.category === catKey);
-            if (items.length === 0) return null;
-            const meta = CATEGORY_META[catKey];
-            const acc = ACCENT[meta.accent];
-            const HeaderIcon = meta.icon;
+          {search && (
+            <p className="text-[10px] text-[var(--lg-text-muted)] -mt-2">
+              {matchCount} of {docs.length} {matchCount === 1 ? "doc" : "docs"}
+            </p>
+          )}
+
+          {/* Sections — grouped by the QUESTION a reader is asking, not by folder */}
+          {groups.map(({ meta, docs: items }) => {
+            const acc = ACCENT[SECTION_ACCENT[meta.key]];
+            const HeaderIcon = SECTION_ICON[meta.key];
             return (
-              <div key={catKey}>
-                <h3 className={`text-[10px] font-semibold uppercase tracking-wider ${acc.header} mb-2 flex items-center gap-1`}>
+              <div key={meta.key}>
+                <h3 className={`text-[10px] font-semibold uppercase tracking-wider ${acc.header} flex items-center gap-1`}>
                   <HeaderIcon className="w-3 h-3" /> {meta.label}
                   <span className="opacity-50">({items.length})</span>
                 </h3>
+                <p className="text-[10px] text-[var(--lg-text-muted)] mb-2 mt-0.5 leading-snug">{meta.blurb}</p>
                 <div className="space-y-0.5">
                   {items.map((doc) => {
-                    const Icon = doc.icon;
-                    const isActive = doc.filename === activeDoc;
+                    const isActive = doc.path === activeDoc;
                     return (
                       <button
-                        key={doc.filename}
-                        onClick={() => setActiveDoc(doc.filename)}
-                        className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-center gap-2 transition-colors ${acc.itemBase} ${isActive ? acc.active : acc.inactive}`}
+                        key={doc.path}
+                        onClick={() => setActiveDoc(doc.path)}
+                        title={`${doc.id ? doc.id + " — " : ""}${doc.title}\n${doc.path}`}
+                        className={`w-full text-left px-2.5 py-2 rounded-md text-xs flex items-start gap-2 transition-colors ${acc.itemBase} ${isActive ? acc.active : acc.inactive}`}
                       >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{doc.name}</div>
-                          <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{doc.description}</div>
+                        <FileText className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {doc.id && (
+                              <span className="text-[9px] font-mono text-[var(--lg-text-muted)] shrink-0">{doc.id}</span>
+                            )}
+                            <span className="font-medium truncate">{doc.title}</span>
+                          </div>
+                          {doc.badges.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {doc.badges.map((b) => <BadgeChip key={b.label} badge={b} />)}
+                            </div>
+                          )}
+                          <div className="text-[10px] text-[var(--lg-text-muted)] truncate mt-0.5">{doc.description}</div>
                         </div>
                       </button>
                     );
@@ -461,11 +452,20 @@ export default function Docs() {
             >
               {sidebarOpen ? <ChevronDown className="w-4 h-4 rotate-90" /> : <ChevronUp className="w-4 h-4 rotate-90" />}
             </button>
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[var(--lg-text-muted)]" />
-              <span className="text-sm font-medium text-[var(--lg-text-primary)]">
-                {currentDoc?.filename}
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="w-4 h-4 text-[var(--lg-text-muted)] shrink-0" />
+              <span className="text-sm font-medium text-[var(--lg-text-primary)] truncate" title={currentDoc?.path}>
+                {currentDoc?.path}
               </span>
+              {currentDoc?.badges.map((b) => <BadgeChip key={b.label} badge={b} />)}
+              {currentDoc?.generated && (
+                <span
+                  title="Generated by npm run docs:refresh — hand edits are destroyed on the next run."
+                  className="px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wide border bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border-[var(--lg-border-faint)] shrink-0"
+                >
+                  generated
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4 text-[10px] text-[var(--lg-text-muted)]">

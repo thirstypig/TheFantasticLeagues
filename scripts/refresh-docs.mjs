@@ -61,11 +61,28 @@ const KNOWN_TYPES = new Set([
 ]);
 const KNOWN_STATUS = new Set(["draft", "active", "locked", "done", "deprecated"]);
 
+/**
+ * Files this script itself writes. They are EXCLUDED from the line counts for two reasons:
+ *
+ *  1. Correctness — stats.md reports a line total that includes stats.md. Writing it
+ *     changes that total, so the next run produces a different number, forever. A
+ *     generator whose output is an input to itself never converges. (Latent until the
+ *     file became git-tracked, which is exactly when `git ls-files` started seeing it.)
+ *  2. Honesty — generated output is not authored work. Counting it inflates a number the
+ *     header already warns is a vanity signal.
+ */
+const GENERATED_OUTPUTS = new Set([
+  "docs/under-the-hood/stats.md",
+  "docs/under-the-hood/costs.md",
+  "docs/under-the-hood/system-status.md",
+  "docs/INBOX.md",
+]);
+
 function buildStats(files) {
   const byExt = new Map();
   let totalLoc = 0;
 
-  for (const f of files) {
+  for (const f of files.filter((f) => !GENERATED_OUTPUTS.has(f))) {
     const ext = extname(f) || "(none)";
     const abs = P(f);
     let loc = 0;
@@ -153,7 +170,8 @@ function buildStats(files) {
   L.push("| Type | Files | Lines |");
   L.push("|---|---:|---:|");
   rows.forEach(([e, v]) => L.push(`| \`${e}\` | ${num(v.files)} | ${num(v.loc)} |`));
-  L.push(`| **All tracked** | **${num(files.length)}** | **${num(totalLoc)}** |`, "");
+  L.push(`| **All tracked** | **${num(files.length - GENERATED_OUTPUTS.size)}** | **${num(totalLoc)}** |`, "");
+  L.push(`<sub>Excludes the ${GENERATED_OUTPUTS.size} files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>`, "");
 
   L.push("## Surface area", "");
   L.push("| Measure | Count |");
