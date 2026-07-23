@@ -1,0 +1,46 @@
+{
+  "_README": "INPUTS for docs/under-the-hood/costs.md. Edit this file, then run `npm run docs:refresh`. Never edit costs.md directly — it is generated and your edits will be destroyed.",
+  "_HONESTY_RULE": "Any number you have not personally verified against a real invoice or a published price sheet MUST stay listed in `verify` below. Anything in `verify` is rendered with a VERIFY flag in the output. This document is shown to partners and investors — an unflagged guess presented as fact is the one failure mode that matters here.",
+  "assumptions": {
+    "unitsPerUserPerMonth": 0,
+    "unitLabel": "AI analyses",
+    "avgUnitSize": 0,
+    "unitSizeLabel": "tokens",
+    "planPriceUsd": 0,
+    "unitLabelSingular": "AI analysis"
+  },
+  "unitCosts": {
+    "primaryVariablePerUnit": 0,
+    "perUserMonthAuth": 0,
+    "perUserMonthDb": 0,
+    "hostingFlatMonth": 0,
+    "paymentPctFee": 0.029,
+    "paymentFlatFee": 0.3
+  },
+  "tiers": [
+    10,
+    100,
+    1000
+  ],
+  "verify": [
+    "assumptions.unitsPerUserPerMonth",
+    "assumptions.avgUnitSize",
+    "assumptions.planPriceUsd",
+    "unitCosts.primaryVariablePerUnit",
+    "unitCosts.perUserMonthAuth",
+    "unitCosts.perUserMonthDb",
+    "unitCosts.hostingFlatMonth",
+    "unitCosts.paymentPctFee",
+    "unitCosts.paymentFlatFee"
+  ],
+  "notes": {
+    "planPriceUsd": "THERE IS NO PRICING MODEL. The app has one tenant (OGBA) and charges nothing. Until a price is set, revenue and margin are structurally zero — not low, undefined.",
+    "primaryVariablePerUnit": "The main per-use cost is AI. Two providers are in play: Claude Sonnet via raw fetch to api.anthropic.com (server/src/services/aiAnalysisService.ts) and Gemini 2.5 Flash as a fallback. Needs: (a) actual per-analysis token counts, (b) current per-token prices for both models. Neither is known.",
+    "perUserMonthAuth": "Supabase Auth. Free tier today. Needs the paid-tier MAU price and the free-tier ceiling.",
+    "perUserMonthDb": "Supabase Postgres. Free tier today — which is also why DATABASE_URL and DIRECT_URL must both use the pooler with connection_limit=1 (free-tier direct connection is IPv6-only and fails from Railway).",
+    "hostingFlatMonth": "Railway — one service serving both API and static client. Actual monthly bill is not recorded anywhere in this repo.",
+    "paymentPctFee": "NOT APPLICABLE TODAY. There is no payment processor in this codebase. The venmoHandle / zelleHandle / paypalHandle fields on user profiles are stored text only — league members settle entry fees and payouts manually, outside the app. The 2.9% + $0.30 defaults are a placeholder for if that ever changes.",
+    "paymentFlatFee": "See paymentPctFee.",
+    "unaccountedServices": "Not yet modelled as line items: Resend (transactional email), PostHog (product analytics), web-push/VAPID, Cloudflare (DNS/CDN), YouTube API. Most are plausibly free at current scale, but 'plausibly free' is an assumption, not a verified zero."
+  }
+}

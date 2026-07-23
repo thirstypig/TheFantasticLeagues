@@ -1,0 +1,165 @@
+{
+  "_comment": "LOCAL STUB DATA SOURCE for scripts/sync-inbox.mjs. See docs/README-DOCS.md §8 for the comment model. TODO(james): replace with the real source once the admin board persists comments — see the TODO block in scripts/sync-inbox.mjs.",
+  "_schema": {
+    "id": "C-### — stable, never reused",
+    "doc": "the doc id this comment is on",
+    "path": "repo-relative path (survives an id change)",
+    "anchor": "optional — which part of the doc",
+    "kind": "question | change_request | note",
+    "status": "open | in_review | resolved",
+    "author": "who raised it",
+    "created": "ISO timestamp — drives newest-first ordering",
+    "resolution": "null, or { note, link, resolvedAt, resolvedBy } — link is REQUIRED"
+  },
+  "comments": [
+    {
+      "id": "C-001",
+      "doc": "DOC-005",
+      "path": "docs/product/roadmap.md",
+      "anchor": "Honest observation",
+      "kind": "change_request",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T14:20:00Z",
+      "body": "planning.json carries updatedAt 2026-05-19 but was declared the canonical roadmap source on 2026-07-11 (PR #424). Two months of shipped work (#415, #418-424) is missing from it, so the in-app /roadmap page is showing a stale picture with full confidence. Reconcile the JSON against what actually shipped.",
+      "resolution": null
+    },
+    {
+      "id": "C-002",
+      "doc": "ADR-015",
+      "path": "docs/engineering/adrs/ADR-015-feature-module-boundaries.md",
+      "anchor": "Consequences / Neutral",
+      "kind": "change_request",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T15:05:00Z",
+      "body": "scripts/check-feature-isolation.mjs is not wired to CI. Until it runs in .github/workflows/ci.yml the ratchet is voluntary, and a voluntary convention is exactly what produced 85 violations from 6 documented ones. Single highest-leverage follow-up in this whole session.",
+      "resolution": null
+    },
+    {
+      "id": "C-003",
+      "doc": "DOC-004",
+      "path": "docs/product/glossary.md",
+      "anchor": "Candidates",
+      "kind": "change_request",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T13:40:00Z",
+      "body": "Two term pairs need defining before anything else in the glossary: 'wire list' vs 'waivers' (this project runs BOTH systems simultaneously and they are different) and 'franchise' vs 'team' (distinct entities in the schema). Both are distinctions a newcomer gets wrong, and both appear throughout the code.",
+      "resolution": null
+    },
+    {
+      "id": "C-004",
+      "doc": "PRD-001",
+      "path": "docs/product/prds/PRD-001-player-comparison.md",
+      "anchor": "§5(b) What we can measure today",
+      "kind": "question",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T13:10:00Z",
+      "body": "Is VITE_POSTHOG_KEY actually set in the Railway production environment? PostHog init is gated on it and it is in no local file. If it is unset, every 'measurable today' claim in this PRD is zero and the app is capturing nothing in prod.",
+      "resolution": null
+    },
+    {
+      "id": "C-005",
+      "doc": "PRD-001",
+      "path": "docs/product/prds/PRD-001-player-comparison.md",
+      "anchor": "§10 Open questions",
+      "kind": "question",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T13:15:00Z",
+      "body": "Should /compare be built before the four open P1 bugs (todos 298, 299, 300, 306)? Two of those sit on money-adjacent and live-scoring paths. This PRD fails intake question 5 ('what are we deferring to fit it?') because that ranking has never been made.",
+      "resolution": null
+    },
+    {
+      "id": "C-006",
+      "doc": "DOC-002",
+      "path": "docs/product/launch-spec.md",
+      "anchor": "Which launch is this?",
+      "kind": "question",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T13:30:00Z",
+      "body": "Is this doc an in-season stability freeze, or a spec for the NEXT launch (public / multi-league availability)? I wrote the in-season-freeze version because that is what the repo state supports, but the two readings imply very different IN/OUT lists.",
+      "resolution": null
+    },
+    {
+      "id": "C-007",
+      "doc": "DOC-001",
+      "path": "docs/README-DOCS.md",
+      "anchor": "§2 ID scheme",
+      "kind": "question",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T12:15:00Z",
+      "body": "Back-fill ADR-001 through ADR-014 as real files, or leave them as CLAUDE.md references and start the folder at ADR-015? ADR-013 (stat attribution) and ADR-014 (closed-period reconciliation) are cited as real decisions but have no files.",
+      "resolution": null
+    },
+    {
+      "id": "C-008",
+      "doc": "DOC-008",
+      "path": "docs/engineering/api-docs.md",
+      "anchor": "Router mount table",
+      "kind": "question",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T15:30:00Z",
+      "body": "The chat REST router is commented out in server/src/index.ts while the chat feature runs live over WebSocket. Is the REST surface dead code to be deleted, or a deliberate WebSocket-only choice worth a decision-log line? The code cannot tell me.",
+      "resolution": null
+    },
+    {
+      "id": "C-009",
+      "doc": "DOC-006",
+      "path": "docs/product/todos.md",
+      "anchor": "A fragility worth knowing about",
+      "kind": "question",
+      "status": "in_review",
+      "author": "claude",
+      "created": "2026-07-23T13:50:00Z",
+      "body": "Todo status is recorded in two places — the filename (298-pending-p1-...) and the frontmatter (status: pending) — with nothing enforcing agreement. Which one should win? Frontmatter is more natural for a docs board to read; the filename is what you actually see in `ls`. todo 151 was itself about cleaning up this drift.",
+      "resolution": null
+    },
+    {
+      "id": "C-010",
+      "doc": "DOC-010",
+      "path": "docs/engineering/testing-strategy.md",
+      "anchor": "§2 The code-fence guard",
+      "kind": "note",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T15:45:00Z",
+      "body": "Five docs have their first '#' inside a bash code fence. All five are currently masked by a frontmatter title:, so nothing is visibly broken. Latent, not live — it bites the first doc that lacks a frontmatter title. Recorded so it is fixed by test rather than by sighting.",
+      "resolution": null
+    },
+    {
+      "id": "C-011",
+      "doc": "DOC-011",
+      "path": "docs/engineering/component-library.md",
+      "anchor": "Design-system primitives",
+      "kind": "note",
+      "status": "open",
+      "author": "claude",
+      "created": "2026-07-23T16:00:00Z",
+      "body": "The props and states columns are unfilled for 12 of 15 ui/ primitives and 6 of 9 shared/ components. An unfilled component table is a directory listing with extra steps. Roughly an afternoon of reading source; do ui/ first since those are what you reach for when building something new.",
+      "resolution": null
+    },
+    {
+      "id": "C-012",
+      "doc": "DOC-005",
+      "path": "docs/product/roadmap.md",
+      "anchor": "whole doc",
+      "kind": "question",
+      "status": "resolved",
+      "author": "claude",
+      "created": "2026-07-23T11:05:00Z",
+      "body": "docs/product/roadmap.md, todos.md and under-the-hood/changelog.md all collide with sources already wired into the live app. Should the new structure fork them, point at them, skip them, or migrate them?",
+      "resolution": {
+        "note": "Pointer docs. New files carry frontmatter so the board indexes them, but the real content stays in server/data/planning.json, todos/, and docs/changelog.md. Forking would re-break what PR #423 and #424 deliberately fixed.",
+        "link": "DOC-009",
+        "resolvedAt": "2026-07-23T11:20:00Z",
+        "resolvedBy": "james"
+      }
+    }
+  ]
+}
