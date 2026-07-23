@@ -21,14 +21,23 @@ describe.skipIf(!DESTRUCTIVE_DB_TESTS_OK)("Draft Integration Tests", () => {
   let testTeamIds: number[];
 
   beforeEach(async () => {
-    // Clean up test data
-    await prisma.draftPick.deleteMany({});
-    await prisma.snakeDraftSession.deleteMany({});
-    await prisma.roster.deleteMany({});
-    await prisma.team.deleteMany({});
-    await prisma.league.deleteMany({});
-    await prisma.player.deleteMany({});
-    await prisma.user.deleteMany({});
+    // Clean up test data.
+    //
+    // The old hand-ordered deleteMany() chain deleted only draftPick / snakeDraftSession
+    // / roster before team — but Team has 11 other non-cascading children
+    // (RosterSlotEvent, TeamStats{Period,CategoryDaily,Season}, FinanceLedger, Trade,
+    // TradeItem, WaiverClaim, Waiver{Add,Drop}Entry, Matchup). A second `it`'s beforeEach
+    // hit `team.deleteMany()` while RosterSlotEvent rows from the first test still
+    // referenced those teams → P2003 FK violation (RosterSlotEvent_teamId_fkey). This has
+    // failed the db-integration CI job on every branch since 2026-07-11.
+    //
+    // TRUNCATE ... CASCADE removes dependents regardless of FK order, so a future child
+    // table can never re-break this the way the enumerated chain did. Blast radius is
+    // identical to the previous unscoped deleteMany({}) chain and is already gated to a
+    // local throwaway DB by DESTRUCTIVE_DB_TESTS_OK above.
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE "User", "Player", "Team", "League", "Franchise" RESTART IDENTITY CASCADE',
+    );
 
     // Create test franchise and league
     const franchise = await prisma.franchise.upsert({
