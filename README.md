@@ -171,3 +171,23 @@ Notable surfaces:
 - **KISS** — avoid over-engineering; no feature flags or backwards-compat shims when you can change the code directly
 - **Clean code** — meaningful names; minimal comments (explain *why*, not *what*)
 - **Error handling** — structured logging via `logger`; no swallowed exceptions
+
+---
+
+<!-- DOCS:STATUS:START -->
+
+### Current status
+
+**Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
+
+**Next 3 to-dos** (10 open):
+
+- `298` **P1** — il fee reconcile advisory lock type bug
+- `299` **P1** — ingestion job run tracking and alerting
+- `300` **P1** — syncedat timestamp on scoring tables
+
+Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
+
+<sub>Generated 2026-07-23 by `npm run docs:refresh` — do not edit between the markers.</sub>
+
+<!-- DOCS:STATUS:END -->

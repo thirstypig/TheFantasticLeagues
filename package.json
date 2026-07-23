@@ -18,6 +18,7 @@
     "test": "cd server && npm test && cd ../client && npm test",
     "test:server": "cd server && npm test",
     "test:client": "cd client && npm test",
+    "docs:refresh": "node scripts/refresh-docs.mjs",
     "prisma:migrate": "cd server && npx prisma migrate dev",
     "prisma:generate": "cd server && npx prisma generate --schema ../prisma/schema.prisma",
     "seed:staging": "npx tsx scripts/seed-staging.ts"
