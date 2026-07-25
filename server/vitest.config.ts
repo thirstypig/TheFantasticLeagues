@@ -8,7 +8,10 @@ export default defineConfig({
     // shared schemas in `../shared/api/` are imported by both client and
     // server; running their contract tests under the server vitest gives
     // them a Node environment without standing up a separate test runner.
-    include: ["src/**/*.test.ts", "../shared/**/*.test.ts"],
+    // Also picks up the repo-root docs-system scripts (scripts/*.mjs). They have
+    // no other test runner, and they write to tracked files — so their pure
+    // helpers are worth guarding. Same rationale as ../shared above.
+    include: ["src/**/*.test.ts", "../shared/**/*.test.ts", "../scripts/**/*.test.mjs"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

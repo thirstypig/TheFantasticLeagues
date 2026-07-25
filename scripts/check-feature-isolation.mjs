@@ -152,16 +152,21 @@ if (REPORT) {
 }
 
 if (UPDATE) {
+  // Dedupe: a file that imports the same specifier in two separate statements yields
+  // the same `side|file|spec` key twice. Storing it twice makes `count` overstate the
+  // distinct violations and adds noise the ratchet can't act on.
+  const allowed = [...new Set(current.map(keyOf))].sort();
   const baseline = {
     _comment:
       "Grandfathered cross-feature imports — see docs/engineering/adrs/ADR-015-feature-module-boundaries.md. " +
-      "This list may SHRINK but must never grow. Regenerate only after legitimately removing a violation.",
+      "This list may SHRINK but must never grow. Regenerate only after legitimately removing a violation. " +
+      "Entries are DISTINCT side|file|specifier keys; a file importing one specifier twice counts once.",
     generated: new Date().toISOString().slice(0, 10),
-    count: current.length,
-    allowed: current.map(keyOf).sort(),
+    count: allowed.length,
+    allowed,
   };
   writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + "\n");
-  console.log(`Baseline written: ${current.length} entries → scripts/feature-isolation-baseline.json`);
+  console.log(`Baseline written: ${allowed.length} distinct entries (from ${current.length} import statements) → scripts/feature-isolation-baseline.json`);
   process.exit(0);
 }
 

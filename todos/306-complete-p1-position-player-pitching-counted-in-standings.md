@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: 306
 tags: [standings, scoring, attribution, fangraphs, live-scoring, bug, position-player-pitching]
@@ -23,3 +23,28 @@ Shared role helper `playerStatRoles({posPrimary, assignedPosition, isTwoWay})` i
 
 ## Resolution
 Fixed on branch `fix/position-player-pitching-excluded`: shared `playerStatRoles` helper, 3 callsites routed through it, verified against prod (Los Doyers now EXACT vs FG; 6 other teams unchanged), full server suite green (1345). PR pending; deploy gated on owner approval (live scoring).
+
+## Resolution — SHIPPED
+
+Fixed in **PR #412** (`d9507fd`, "fix(standings): exclude position players' mop-up
+pitching from team ERA/WHIP").
+
+- `playerStatRoles({posPrimary, assignedPosition, isTwoWay})` lives in
+  `server/src/lib/sports/baseball.ts`, keyed on **posPrimary** (role) not
+  `assignedPosition` (slot), so benched pitchers still count and two-way players
+  follow their assigned slot.
+- All four callsites route through it:
+  `standingsService.ts:628` and `:749` (both production compute paths),
+  `scripts/fangraphs-audit.ts:95`, `scripts/audit-mlb-crosscheck.ts:203`.
+- Unit tests: `server/src/lib/__tests__/playerStatRoles.test.ts`.
+
+**Verified in prod 2026-07-24.** Four position players currently carry pitching
+lines in raw `PlayerStatsPeriod` — Carson Kelly (C), Adrian Del Castillo (DH),
+Ildemaro Vargas (1B), Jorge Mateo (SS). That is *correct*: PSP mirrors MLB raw
+stats. Scoring excludes them, and the 2026-07-24 OnRoto audit confirmed team
+ERA/WHIP match FanGraphs for every affected team.
+
+> **Note for future auditors.** A hand-rolled query that sums PSP directly will
+> appear to show this bug because it bypasses `playerStatRoles`. That is the
+> measuring instrument being wrong, not the data — the same trap as PR #402.
+> Always reconcile through `accumulatePeriodStats` / the audit scripts.

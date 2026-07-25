@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-07-23
+updated: 2026-07-25
 ---
 
 # Repo statistics
@@ -21,24 +21,24 @@ updated: 2026-07-23
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-07-23 from 1,712 git-tracked files.*
+*Generated 2026-07-25 from 1,715 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 530 | 96,670 |
-| `.tsx` | 302 | 89,119 |
-| `.md` | 524 | 62,585 |
-| `.json` | 36 | 40,054 |
+| `.ts` | 532 | 97,250 |
+| `.tsx` | 303 | 89,211 |
+| `.md` | 524 | 62,704 |
+| `.json` | 36 | 40,052 |
 | `.sql` | 37 | 2,069 |
 | `.css` | 8 | 1,755 |
 | `.prisma` | 1 | 1,727 |
 | `.js` | 8 | 1,220 |
-| `.mjs` | 4 | 1,089 |
+| `.mjs` | 4 | 1,122 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 171 |
-| **All tracked** | **1,708** | **333,112** |
+| **All tracked** | **1,711** | **333,934** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -51,7 +51,7 @@ updated: 2026-07-23
 | Prisma migrations | 35 |
 | Server feature modules | 34 |
 | Client feature modules | 29 |
-| Cross-feature imports (ADR-015 baseline) | 97 |
+| Cross-feature imports (ADR-015 baseline) | 95 |
 
 ## Docs
 
@@ -116,17 +116,17 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**10 open** of 303 total to-dos.
+**9 open** of 303 total to-dos.
 
 | Priority | Open |
 |---|---:|
 | `p1` | 4 |
-| `p2` | 4 |
+| `p2` | 3 |
 | `p3` | 2 |
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (65 days ago).
+`server/data/planning.json` last updated **2026-05-19** (67 days ago).
 
-> ⚠️ The canonical roadmap source is **65 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **67 days stale**. Numbers above are honest; the *plan* they describe may not be.
 

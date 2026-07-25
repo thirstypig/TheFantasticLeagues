@@ -8,7 +8,7 @@ Fantasy baseball for the dozen-owner, auction-draft, keeper-league crowd that Ya
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
 - **[Feature Modules](docs/guides/feature-modules.md)** — 32 modules, cross-feature imports, adding new features
-- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2296 tests across 34 modules
+- **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2411 tests across 34 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
 - **[Development Setup](docs/guides/development-setup.md)** — Ports, startup, commands
@@ -133,7 +133,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2296 app tests (1392 server main suite + 7 integration [4 draft + 3 IL-fee] in the separate `db-integration` CI job + 897 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2411 app tests (1444 server main suite + 7 integration [4 draft + 3 IL-fee] in the separate `db-integration` CI job + 960 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). The server main suite now also runs the docs-system script tests (`scripts/__tests__/*.test.mjs`, 41 tests) via a `../scripts/**` include. Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 
@@ -425,7 +425,7 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (10 open):
+**Next 3 to-dos** (9 open):
 
 - `298` **P1** — il fee reconcile advisory lock type bug
 - `299` **P1** — ingestion job run tracking and alerting
@@ -433,6 +433,6 @@ not summarize the diff. PRs land before session end whenever possible
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-07-23 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-07-25 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->

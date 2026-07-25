@@ -3,7 +3,7 @@
 ## Overview
 
 - **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Coverage**: 1392 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 897 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
+- **Coverage**: 1444 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 960 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
 - **Approach**: Unit tests per feature + integration tests for cross-feature interactions
 
 Run all: `npm run test` | Server only: `npm run test:server` | Client only: `npm run test:client`
@@ -76,14 +76,17 @@ npx vitest run src/features/auction/__tests__/
 npx vitest --watch
 ```
 
-## Current Coverage Snapshot (2026-06-29)
+## Current Coverage Snapshot (2026-07-24)
 
-**Server**: 1392 tests across 105 files (main `test` job) + 7 integration [4 draft + 3 IL-fee]
+**Server**: 1444 tests across 107 files (main `test` job) + 7 integration [4 draft + 3 IL-fee]
 tests (`draft/__tests__/draftIntegration.test.ts`) run in the separate
 `db-integration` CI job against a postgres:16 service. That suite is gated by
 `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1`
-(fail-closed), so it runs only against a local/CI throwaway Postgres, never prod.  
-**Client**: 897 tests across 74 files  
+(fail-closed), so it runs only against a local/CI throwaway Postgres, never prod.
+The server `test` include also covers the **docs-system script tests** at
+`scripts/__tests__/*.test.mjs` (41 tests — `refresh-docs`, `sync-inbox`,
+`feature-isolation-baseline`), same pattern as the `../shared/**` contract tests.  
+**Client**: 960 tests across 76 files  
 **MCP**: 133 tests (83 fbst-app + 50 mlb-data)
 
 See `docs/TESTING.md` for the live detailed catalog and per-file breakdown.
