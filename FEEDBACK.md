@@ -4,6 +4,38 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-07-23/24 — Docs board shipped (#425–427), then an OnRoto audit found + fixed a real FBST bug
+
+Two arcs. **Suite: 1444 server + 960 client = 2404 local green (2411 with the 7-test `db-integration` CI job); 133 MCP separate.** Up from 2296 — +63 client (docs board) + 41 server (docs-system scripts) + the counts had also drifted.
+
+**Arc 1 — Docs board content layer + viewer (3 PRs, all merged to `main` + deployed):**
+- **#425** — content layer for the in-app `/docs` board: a frontmatter convention (`docs/README-DOCS.md`, DOC-001), product/engineering/under-the-hood docs (PRD-001, ADR-015, tech-spec, risks register, runbook, privacy, etc.), a comment-inbox loop (`sync-inbox.mjs` → `INBOX.md`), and living-doc generators (`refresh-docs.mjs` → stats/costs/system-status). Pointer docs (roadmap/todos/changelog) rather than forks. No app code.
+- **#426** — wired it into the viewer (`client/src/pages/Docs.tsx`): glob extended to the new folders, sidebar grouped by *question asked* not folder (Product · Engineering · Security · Operations · Troubleshooting · Foundations), status + `feature_status` badges, indexing logic extracted to a pure, unit-tested `docsIndex.ts` (54 unit + 9 render tests). Browser-verified via a throwaway harness (auth gate blocks the live route); all 6 sections + badges + code-fence-title guard confirmed in a real DOM.
+- **#427** — fixed `db-integration` CI (red on every branch since 2026-07-11): `draftIntegration.test.ts` cleanup hand-deleted 3 of Team's 14 children before `team.deleteMany()`. Replaced with `TRUNCATE ... CASCADE`. **First fully-green CI on the repo in 12 days.**
+- **ADR-015 feature-isolation ratchet**: scanned all 63 modules — 85 production cross-feature imports vs 6 documented, 4 cycles. Grandfathered a baseline (95 distinct keys); new violations fail. **Not yet wired to CI** — `RISK-002`, the top follow-up.
+
+**Arc 2 — OnRoto audit 2026-07-24 (`docs/reports/onroto-audit-2026-07-24.md`, DOC-022):**
+- Opened at **76/80 raw cells exact.** Residual was Dodger Dawgs ERA 3.69 vs FG 3.65 + WHIP + two AVGs — a rate-only divergence with every counting stat exact.
+- **First audit since 2026-06-09 that did NOT reconcile.** Signature (counting stats exact, `IP`/`SO`/`W`/`SV` exact, only `ER`/`H` off) ruled out lag and attribution. Four-way tie-break (MLB.com + Baseball Reference + FanGraphs, browser past Cloudflare): three sources agreed **ER=14**, FBST had **17** → confirmed FBST bug.
+- **Root cause:** `reconcileRecentlyClosedPeriods` uses `windowDays: 5`. Period 4 closed 07-04, left the window 07-09; MLB revised Manaea's earned runs after FBST's last sync → frozen stale. **This is exactly the ≤5-day limitation flagged as tech debt in the 2026-06-09/10 concerns — first time it caused a live standings error.**
+- **Remediated on prod** (authorised): re-synced Period 4 via `reconcileRecentlyClosedPeriods({ windowDays: 25 })` — healed 5 fields across 3 players (Manaea ER, Dubón +hit, Hicks −hit; the two hit fixes were the AVG residuals). **Re-audit: 80/80 exact.** Dodger 54.5→55.5, Devil 33.5→32.5.
+- **Live drift observed:** the closing crosscheck flagged 2 players (Sánchez, Pages) that had *passed* 2 hours earlier — MLB revised them mid-session. Proof the leak is continuous, not a one-off.
+- Corrected my own wrong hypothesis mid-audit: todo **#306** (position-player pitching) was *already fixed* in PR #412 — the file was just stale. A hand-rolled PSP sum that bypassed `playerStatRoles` manufactured a phantom sighting (the PR #402 measuring-instrument trap).
+- **New:** solution doc `stale-psp-outside-5-day-reconcile-window.md` (DOC-023); todo #306 → complete; todo #301 → **P1** with the confirmed live instance.
+
+**Arc 3 — docs-system script tests (41 new, `scripts/__tests__/`):** the three scripts write to tracked files and had zero coverage. Refactored each to export pure helpers behind a main-guard (mirrors `fangraphs-audit.ts`), wired into server vitest via `../scripts/**`. Guards: **convergence** (the `stats.md`-counts-itself bug that shipped this session), **resolved-requires-a-link**, **baseline-never-grows**. All three mutation-tested. Found a real defect: the isolation baseline had 2 duplicate keys (97 statements → 95 distinct); fixed the generator to dedupe.
+
+### Open decisions / follow-ups
+- **Commit the uncommitted batch** — two unrelated threads (OnRoto audit docs + docs-system tests). Recommend two separate PRs.
+- **Wire `check-feature-isolation.mjs` into CI** (`RISK-002`) — until then the ratchet is voluntary. Highest-leverage follow-up.
+- **Chase Sánchez + Pages** — find their owning periods and re-sync; likely another exact-match restoration and a gauge of how far back the rot goes.
+- **Ship todo #301** (now P1) — nightly diff of ALL closed periods, no 5-day filter. Everything above recurs weekly until it exists.
+- **`planning.json` is ~66 days stale** (RISK-008) while being the canonical roadmap — the in-app `/roadmap` shows an old picture. Needs a reconciliation pass (what actually shipped since 2026-05-19).
+- **Verify `VITE_POSTHOG_KEY` in Railway** — if unset, prod analytics capture nothing (RISK-011).
+- Carryover: email smoke test; legality/cap pass on the audits.
+
+---
+
 ## Session 2026-07-10 — Three recurring OnRoto audits (07-08 → 07-10) + four-way reconciliation; no code, two solution docs
 
 Ran the recurring OnRoto/FanGraphs stat audit on three consecutive days as an ongoing reconciliation check. **No source code changed this session** — the work is verification + documentation. Suite unchanged (2289 local green; 2296 with the separate `db-integration` CI job).

@@ -210,8 +210,15 @@ function relLink(p) {
   return p.startsWith("docs/") ? p.slice("docs/".length) : "../" + p;
 }
 
+/* ── exports for testing ──────────────────────────────────────────
+ * Pure helpers exported so they can be unit-tested without touching
+ * docs/INBOX.md. Same pattern as server/src/scripts/fangraphs-audit.ts. */
+
+export { validate, render, loadComments, KIND_ORDER, KIND_META, STATUS_BADGE };
+
 /* ── main ─────────────────────────────────────────────────────────── */
 
+function main() {
 const comments = loadComments();
 
 const problems = validate(comments);
@@ -239,3 +246,9 @@ writeFileSync(OUT, next);
 const open = comments.filter((c) => c.status !== "resolved");
 const cr = open.filter((c) => c.kind === "change_request").length;
 console.log(`✓ docs/INBOX.md written — ${open.length} open (${cr} change request${cr === 1 ? "" : "s"}), ${comments.length - open.length} resolved.`);
+}
+
+// Only run when invoked directly — importing this module must not write files.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

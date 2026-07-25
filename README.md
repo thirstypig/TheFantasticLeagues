@@ -180,7 +180,7 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (10 open):
+**Next 3 to-dos** (9 open):
 
 - `298` **P1** — il fee reconcile advisory lock type bug
 - `299` **P1** — ingestion job run tracking and alerting
@@ -188,6 +188,6 @@ Notable surfaces:
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-07-23 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-07-25 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->

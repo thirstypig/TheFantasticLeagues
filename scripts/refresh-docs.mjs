@@ -495,42 +495,57 @@ function fm(id, title, description, type, tag) {
   ].join("\n");
 }
 
+/* ══ exports for testing ══════════════════════════════════════════
+ * Pure helpers are exported so they can be unit-tested without running the
+ * generator (which writes to tracked files). Same export+main-guard pattern as
+ * server/src/scripts/fangraphs-audit.ts. See scripts/__tests__/. */
+
+export { parseFrontmatter, buildStats, buildCosts, buildStatus, statusBlock, applyBlock, trackedFiles };
+export { GENERATED_OUTPUTS, KNOWN_TYPES, KNOWN_STATUS, START, END };
+
 /* ══ main ═════════════════════════════════════════════════════════ */
 
-const files = trackedFiles();
+function main() {
+  const files = trackedFiles();
 
-const outputs = [
-  { path: "docs/under-the-hood/stats.md", content: buildStats(files) },
-  { path: "docs/under-the-hood/costs.md", content: buildCosts() },
-  { path: "docs/under-the-hood/system-status.md", content: buildStatus() },
-];
+  const outputs = [
+    { path: "docs/under-the-hood/stats.md", content: buildStats(files) },
+    { path: "docs/under-the-hood/costs.md", content: buildCosts() },
+    { path: "docs/under-the-hood/system-status.md", content: buildStatus() },
+  ];
 
-const blocks = [applyBlock("README.md", statusBlock(files)), applyBlock("CLAUDE.md", statusBlock(files))];
+  const blocks = [applyBlock("README.md", statusBlock(files)), applyBlock("CLAUDE.md", statusBlock(files))];
 
-if (CHECK) {
-  const stale = [];
+  if (CHECK) {
+    const stale = [];
+    for (const o of outputs) {
+      const cur = existsSync(P(o.path)) ? rd(P(o.path)) : "";
+      if (cur !== o.content) stale.push(o.path);
+    }
+    for (const b of blocks) if (b.changed) stale.push(b.path);
+    if (stale.length) {
+      console.error(`✗ ${stale.length} generated doc(s) stale — run \`npm run docs:refresh\`:`);
+      stale.forEach((s) => console.error("   " + s));
+      process.exit(1);
+    }
+    console.log("✓ All generated docs are up to date.");
+    process.exit(0);
+  }
+
   for (const o of outputs) {
-    const cur = existsSync(P(o.path)) ? rd(P(o.path)) : "";
-    if (cur !== o.content) stale.push(o.path);
+    writeFileSync(P(o.path), o.content);
+    console.log(`✓ ${o.path}`);
   }
-  for (const b of blocks) if (b.changed) stale.push(b.path);
-  if (stale.length) {
-    console.error(`✗ ${stale.length} generated doc(s) stale — run \`npm run docs:refresh\`:`);
-    stale.forEach((s) => console.error("   " + s));
-    process.exit(1);
+  for (const b of blocks) {
+    if (b.next === undefined) { console.log(`- ${b.path} — ${b.action}`); continue; }
+    writeFileSync(P(b.path), b.next);
+    console.log(`✓ ${b.path} — ${b.action}${b.changed ? "" : " (no change)"}`);
   }
-  console.log("✓ All generated docs are up to date.");
-  process.exit(0);
+  console.log("\nRun before every push. Consider a pre-push hook:");
+  console.log("  echo 'npm run docs:refresh --silent && git diff --quiet docs || (echo \"docs stale — commit the refresh\"; exit 1)' > .git/hooks/pre-push");
 }
 
-for (const o of outputs) {
-  writeFileSync(P(o.path), o.content);
-  console.log(`✓ ${o.path}`);
+// Only run when invoked directly — importing this module must not write files.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
 }
-for (const b of blocks) {
-  if (b.next === undefined) { console.log(`- ${b.path} — ${b.action}`); continue; }
-  writeFileSync(P(b.path), b.next);
-  console.log(`✓ ${b.path} — ${b.action}${b.changed ? "" : " (no change)"}`);
-}
-console.log("\nRun before every push. Consider a pre-push hook:");
-console.log("  echo 'npm run docs:refresh --silent && git diff --quiet docs || (echo \"docs stale — commit the refresh\"; exit 1)' > .git/hooks/pre-push");

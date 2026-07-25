@@ -40,8 +40,22 @@ updated: 2026-07-23
 
 ## Tests the docs system needs
 
-None of these exist yet. They cover the docs board's own logic — the parts that will
-silently produce wrong output rather than crash.
+**Status: implemented 2026-07-24.** `scripts/__tests__/` — 41 tests, run by the server
+vitest project (`include` covers `../scripts/**/*.test.mjs`, same pattern as
+`../shared/**`). The three scripts were refactored to export their pure helpers behind a
+main-guard (matching `server/src/scripts/fangraphs-audit.ts`) so importing them no longer
+writes files.
+
+| File | Tests | Guards |
+|---|---|---|
+| `refresh-docs.test.mjs` | 13 | Frontmatter parsing · **self-reference/convergence** · marker-block idempotency · vocabulary sync with README-DOCS §4 |
+| `sync-inbox.test.mjs` | 22 | **Resolved-requires-note-and-link** · schema validation · change_request-first ordering · open/resolved separation · pipe escaping |
+| `feature-isolation-baseline.test.mjs` | 6 | **Baseline never grows** · no duplicates · no line numbers in keys |
+
+All three headline guards were mutation-tested — each fails when its behaviour is
+reverted, so none of them pass by definition.
+
+The sections below describe what those tests cover and remain the spec.
 
 ### 1. Title extraction
 
@@ -53,6 +67,7 @@ silently produce wrong output rather than crash.
 | `# H1` present but **inside a fenced code block** | **Must be ignored** |
 
 ### 2. The code-fence guard — a real, currently-latent hazard
+*(covered by `client/src/pages/docs/__tests__/docsIndex.test.ts`)*
 
 Strip fenced blocks before matching the H1:
 
