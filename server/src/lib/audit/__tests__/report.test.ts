@@ -50,6 +50,20 @@ describe("decideVerdict", () => {
     const partial: Coverage = { ...fullCoverage, playersSkipped: 1, skipReasons: ["IL"] };
     expect(decideVerdict({ results: [withResidual], coverage: partial })).toBe("INCOMPLETE");
   });
+
+  it("is INCOMPLETE when results are empty, even with a full playersChecked count", () => {
+    // Absence of evidence must never render green. An audit that examined
+    // nothing (empty results array) must not report PASS just because
+    // coverage counters look complete.
+    expect(decideVerdict({ results: [], coverage: fullCoverage })).toBe("INCOMPLETE");
+  });
+
+  it("is INCOMPLETE when playersChecked is zero, even with non-empty results", () => {
+    // Independent of the empty-results guard: playersChecked === 0 must also
+    // force INCOMPLETE, even if a results array was somehow passed in.
+    const zeroChecked: Coverage = { ...fullCoverage, playersChecked: 0 };
+    expect(decideVerdict({ results: [clean], coverage: zeroChecked })).toBe("INCOMPLETE");
+  });
 });
 
 describe("renderReport", () => {
@@ -62,7 +76,11 @@ describe("renderReport", () => {
     expect(md).toMatch(/team-level/);
   });
 
-  it("prints explained and residual side by side", () => {
+  it("prints explained and residual side by side with the actual rendered values", () => {
+    // Must assert rendered VALUES, not just the static header words "explained"
+    // and "residual" — those appear in the table header regardless of state,
+    // so a regex match on them alone passes even if fmt() drops every value
+    // (verified by mutating fmt() to return a constant; see task-8-report.md).
     const md = renderReport({
       periodName: "Period 5",
       results: [{ teamName: "Demolition Lumber Co", explained: { HR: 3 }, residual: { RBI: -2 }, causes: [] }],
@@ -70,5 +88,34 @@ describe("renderReport", () => {
     });
     expect(md).toMatch(/explained/i);
     expect(md).toMatch(/residual/i);
+    expect(md).toContain("HR +3");
+    expect(md).toContain("RBI -2");
+  });
+
+  it("renders attributed divergences with the cause's evidence string", () => {
+    const md = renderReport({
+      periodName: "Period 5",
+      results: [
+        {
+          teamName: "Demolition Lumber Co",
+          explained: { HR: 3 },
+          residual: {},
+          causes: [
+            {
+              playerId: 42,
+              playerName: "Jane Slugger",
+              cause: "il_exclusion",
+              expected: { HR: 3 },
+              evidence: "IL stint 2026-07-01 to 2026-07-10, txn #991",
+            },
+          ],
+        },
+      ],
+      coverage: fullCoverage,
+    });
+    expect(md).toMatch(/Attributed divergences/i);
+    expect(md).toContain("Jane Slugger");
+    expect(md).toContain("il_exclusion");
+    expect(md).toContain("IL stint 2026-07-01 to 2026-07-10, txn #991");
   });
 });

@@ -18,6 +18,11 @@ export type Verdict = "PASS" | "FINDINGS" | "INCOMPLETE";
  */
 export function decideVerdict(args: { results: ClassifyResult[]; coverage: Coverage }): Verdict {
   const { results, coverage } = args;
+  // An audit that examined nothing must never report clean. Zero-evidence
+  // runs (no results, or a coverage count of zero players checked) are
+  // INCOMPLETE, independently of each other — either signal alone is enough
+  // to prove nothing was actually audited.
+  if (results.length === 0 || coverage.playersChecked === 0) return "INCOMPLETE";
   const allReached = Object.values(coverage.sourcesReached).every(Boolean);
   if (!allReached || coverage.playersSkipped > 0) return "INCOMPLETE";
   // Check VALUES, not key presence. classifyTeamDelta (Task 7) writes every
