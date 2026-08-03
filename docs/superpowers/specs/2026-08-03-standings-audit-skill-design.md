@@ -2,7 +2,7 @@
 id: DOC-024
 title: "Per-player standings audit skill — design"
 description: "Design for a project skill that reconciles one period across FBST, MLB statsapi, FanGraphs OnRoto, and Baseball Reference, per player, reporting only unexplained residuals."
-type: spec
+type: tech-spec
 status: draft
 phase: null
 owner: james
