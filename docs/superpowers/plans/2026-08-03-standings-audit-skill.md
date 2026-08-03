@@ -655,8 +655,15 @@ Encodes the column-name lesson: BBRef uses `data-stat="date"` and `b_`-prefixed 
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `parseBbrefGameLog(html: string): BbrefGame[]` and
+- Produces: `parseBbrefGameLog(html: string): { games: BbrefGame[]; skipped: string[] }` and
   `sumWindow(games: BbrefGame[], startIso: string, endIso: string): { games: number; stats: Record<string, number> }`.
+
+> **Mandatory for every external-source parser in this plan.** Never drop an
+> unparseable row through a bare `continue`. Return a `skipped: string[]` naming
+> what was dropped, so the caller can render `INCOMPLETE` instead of `PASS`, and
+> assert its exact contents in a test. Tasks 5 and 6 both shipped this defect from
+> this plan's own sample code before it was caught. Precedent:
+> `docs/solutions/integration-issues/html-parser-silent-row-drop-passes-its-own-tests.md`
 
 - [ ] **Step 1: Capture the fixture**
 
@@ -688,9 +695,17 @@ const html = readFileSync(
 describe("parseBbrefGameLog", () => {
   const games = parseBbrefGameLog(html);
 
-  it("parses a non-empty game log", () => {
-    // The whole point: wrong data-stat keys return [] silently. Assert loudly.
-    expect(games.length).toBeGreaterThan(20);
+  it("parses the exact expected number of games", () => {
+    // The whole point: wrong data-stat keys return [] silently. Assert an EXACT
+    // count derived from the fixture — a loose `toBeGreaterThan` is the test
+    // smell that let 18 of 41 rows vanish undetected in Task 5. See
+    // docs/solutions/integration-issues/html-parser-silent-row-drop-passes-its-own-tests.md
+    expect(games.length).toBe(60);
+  });
+
+  it("accounts for every skipped row rather than dropping it silently", () => {
+    // 6 repeated "Date" header rows + 1 blank separator = 7 non-game rows.
+    expect(skipped).toHaveLength(7);
   });
 
   it("reads dates from data-stat='date', not 'date_game'", () => {
