@@ -24,16 +24,39 @@ function cellByStat(rowHtml: string, stat: string): string | null {
   return m ? m[1]!.replace(/<[^>]+>/g, "").trim() : null;
 }
 
-export function parseBbrefGameLog(rawHtml: string): BbrefGame[] {
+/**
+ * Parses every `<tr>` that carries a `data-stat="date"` cell. Two kinds of
+ * such rows are NOT games and are structurally recognized as such rather
+ * than silently vanishing: table header rows (cell text literally "Date")
+ * and blank separator rows (empty cell text). Rows without a `date`
+ * data-stat cell at all belong to other tables on the page entirely (splits,
+ * streaks, RBI-opportunity summaries, ...) and are not candidate game rows,
+ * so they are not tracked in `skipped`.
+ *
+ * Every row that HAS a date cell but fails to yield a parseable ISO date is
+ * pushed to `skipped` instead of disappearing through a bare `continue` —
+ * see docs/solutions/integration-issues/html-parser-silent-row-drop-passes-its-own-tests.md.
+ * A caller can inspect `skipped` and treat a non-empty list as grounds for
+ * marking the audit run INCOMPLETE rather than trusting an unexplained drop.
+ */
+export function parseBbrefGameLog(rawHtml: string): { games: BbrefGame[]; skipped: string[] } {
   const html = unescapeHtml(rawHtml);
   const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((m) => m[1]!);
 
   const games: BbrefGame[] = [];
+  const skipped: string[] = [];
   for (const row of rows) {
     const dateCell = cellByStat(row, "date");
-    if (!dateCell) continue;
+    // Distinguish "no date-stat cell at all" (null, row belongs to another
+    // table entirely) from "cell present but empty" (blank separator row,
+    // a real candidate that must be tracked in `skipped`, not silently
+    // dropped by `""` being falsy).
+    if (dateCell === null) continue;
     const iso = dateCell.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-    if (!iso) continue;
+    if (!iso) {
+      skipped.push(dateCell || "<blank>");
+      continue;
+    }
 
     const stats: Record<string, number> = {};
     for (const [out, key] of Object.entries(BATTING_KEYS)) {
@@ -43,7 +66,7 @@ export function parseBbrefGameLog(rawHtml: string): BbrefGame[] {
     }
     games.push({ date: iso, stats });
   }
-  return games;
+  return { games, skipped };
 }
 
 /**
