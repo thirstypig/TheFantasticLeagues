@@ -72,6 +72,34 @@ describe("computeTeamPeriodTotals", () => {
     expect(got.get(1)!.R).toBe(0);
   });
 
+  it("COUNTS a stint acquired exactly on the period end date", () => {
+    // Boundary equality. The guard is `acquiredAt > period.endDate`, so a player
+    // picked up on the final day of the period still counts. Flipping it to `>=`
+    // silently drops him — no error, just a quietly smaller team total. The
+    // existing "acquired after the period end" test uses 08-02, one day clear of
+    // the boundary, so it cannot catch that flip.
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ acquiredAt: new Date("2026-08-01T00:00:00Z") })],
+      pspByPlayer: new Map([[10, psp({ R: 5, HR: 1 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(5);
+    expect(got.get(1)!.HR).toBe(1);
+  });
+
+  it("COUNTS a stint released exactly on the period end date", () => {
+    // The release guard is `releasedAt <= period.startDate`, so a release at the
+    // period END is far outside it and must not exclude the player.
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ releasedAt: new Date("2026-08-01T00:00:00Z") })],
+      pspByPlayer: new Map([[10, psp({ R: 7 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(7);
+  });
+
   it("routes pitcher slots to pitching cats and hitters to hitting cats", () => {
     const got = computeTeamPeriodTotals({
       teams: TEAMS,

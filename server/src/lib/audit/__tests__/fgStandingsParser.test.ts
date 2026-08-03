@@ -36,6 +36,26 @@ describe("parseFgStandings", () => {
     expect(parsed.teams["Demolition Lumber Co"]!.WHIP).toBe("1.140");
   });
 
+  it("maps every one of the 10 categories to the right block, not just the sampled ones", () => {
+    // CAT_ORDER is zipped POSITIONALLY against the breakdown blocks in document
+    // order, so an off-by-one silently swaps whole categories — HR values landing
+    // under RBI, say — with no error and plausible-looking numbers. The other tests
+    // in this file only sample R/AVG/ERA/WHIP/SV/K, leaving HR/RBI/SB/W unguarded,
+    // which is exactly the window an off-by-one could slip through.
+    const demo = parsed.teams["Demolition Lumber Co"]!;
+    expect(demo.HR).toBe("167");
+    expect(demo.RBI).toBe("646");
+    expect(demo.SB).toBe("124");
+    expect(demo.W).toBe("60");
+
+    // A second team, because a single-team check can coincide with a shifted map.
+    const show = parsed.teams["The Show"]!;
+    expect(show.HR).toBe("230");
+    expect(show.RBI).toBe("768");
+    expect(show.SB).toBe("87");
+    expect(show.W).toBe("45");
+  });
+
   it("maps FG's SV/SO labels onto FBST's SV/K keys", () => {
     expect(parsed.teams["Demolition Lumber Co"]!.SV).toBe("58");
     expect(parsed.teams["Demolition Lumber Co"]!.K).toBe("907");

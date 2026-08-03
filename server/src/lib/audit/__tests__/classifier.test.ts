@@ -51,6 +51,26 @@ describe("buildIlCandidates", () => {
     expect(got).toHaveLength(0);
   });
 
+  it("produces NO candidate when the IL window closes exactly at the period start", () => {
+    // Boundary equality on the other end of the window. The predicate is
+    // `end === null || end > period.startDate`, so a player activated exactly at
+    // the period start was NOT on IL for that period and must not be excluded.
+    // Flipping `>` to `>=` would wrongly drop his whole period from the team's
+    // total while quietly reporting it as "explained by IL" — a divergence
+    // invented rather than derived, which is the one thing this file must never do.
+    const got = buildIlCandidates({
+      teamName: "Demolition Lumber Co",
+      period: PERIOD_5,
+      ilWindows: [{
+        playerId: 1, playerName: "Ronald Acuña Jr.",
+        start: new Date("2026-06-01T00:00:00Z"),
+        end: new Date("2026-07-05T00:00:00Z"), // == PERIOD_5.startDate
+      }],
+      pspByPlayer: new Map([[1, ACUNA_P5]]),
+    });
+    expect(got).toHaveLength(0);
+  });
+
   it("produces no candidate when the player has no PSP row", () => {
     const got = buildIlCandidates({
       teamName: "Demolition Lumber Co",
