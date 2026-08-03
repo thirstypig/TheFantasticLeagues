@@ -1113,6 +1113,19 @@ describe("decideVerdict", () => {
     expect(decideVerdict({ results: [clean], coverage: fullCoverage })).toBe("PASS");
   });
 
+  it("passes on a classifier-shaped residual whose values are all zero", () => {
+    // Regression guard: classifyTeamDelta writes EVERY stat key, so a clean
+    // team arrives here with 12 zero-valued keys. A key-presence check would
+    // make PASS unreachable. This test fails against that implementation.
+    const zeroed: ClassifyResult = {
+      teamName: "Clean Team",
+      explained: {},
+      residual: { AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 },
+      causes: [],
+    };
+    expect(decideVerdict({ results: [zeroed], coverage: fullCoverage })).toBe("PASS");
+  });
+
   it("reports FINDINGS when any residual is non-zero", () => {
     const withResidual: ClassifyResult = { ...clean, residual: { RBI: -2 } };
     expect(decideVerdict({ results: [withResidual], coverage: fullCoverage })).toBe("FINDINGS");
@@ -1189,7 +1202,11 @@ export function decideVerdict(args: { results: ClassifyResult[]; coverage: Cover
   const { results, coverage } = args;
   const allReached = Object.values(coverage.sourcesReached).every(Boolean);
   if (!allReached || coverage.playersSkipped > 0) return "INCOMPLETE";
-  const anyResidual = results.some((r) => Object.keys(r.residual).length > 0);
+  // Check VALUES, not key presence. classifyTeamDelta (Task 7) writes every
+  // stat key including exact-zero reconciliations, so a perfectly clean team
+  // still carries 12 residual keys. Testing `Object.keys(...).length > 0` here
+  // would make PASS unreachable — every audit would report FINDINGS forever.
+  const anyResidual = results.some((r) => Object.values(r.residual).some((v) => v !== 0));
   return anyResidual ? "FINDINGS" : "PASS";
 }
 
