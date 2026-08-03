@@ -1,18 +1,35 @@
 ---
-title: "An IL-stashed player who returns to MLB play mid-period creates an FBST↔OnRoto delta that looks like a stat bug (it isn't)"
+title: "One team diverges from FanGraphs and the IL explanation fit the arithmetic — but was falsified hours later (root cause still OPEN)"
 slug: il-stashed-player-returns-to-play-creates-phantom-fangraphs-delta
 category: integration-issues
 created: 2026-08-03
+updated: 2026-08-03
 component: standings, ilWindows, fangraphs-audit, mlb-data-sync
 problem_type: audit-methodology / attribution-semantics
 symptom: "A single team diverges from FanGraphs on most hitting categories (FBST lower) while the other seven teams reconcile cell-for-cell. Counting stats are off by amounts too large to be sync lag and too small to be a whole-player omission."
-root_cause: "The team IL-stashed a player who was still accruing MLB stats. FBST's wasOnIlAtPeriodStart() excludes an IL-slotted player's whole period; OnRoto's current-roster YTD model counts him. Neither system is wrong — they answer different questions."
+root_cause: "OPEN. The IL-exclusion hypothesis below fit the arithmetic for the affected team but was FALSIFIED the same day: six other teams have IL-at-period-start players with real accumulated stats and show zero divergence. The real mechanism is not yet identified."
 related_modules: standings, periods, transactions, players, fangraphs-audit
 prs: []
 tags: fangraphs, onroto, audit, standings, il, attribution, adr-013, baseball-reference, statsapi, four-way
 ---
 
-# IL-stashed player returns to play → phantom FanGraphs delta
+# One team diverges from FanGraphs — and the obvious explanation was wrong
+
+> ## ⚠️ STATUS: ROOT CAUSE FALSIFIED AND STILL OPEN
+>
+> This document originally concluded that FBST's IL exclusion caused the divergence.
+> **That conclusion is wrong** and was disproved the same day by the audit tool built
+> from it. See [The disconfirming evidence](#the-disconfirming-evidence).
+>
+> **What still holds:** every measurement here. Acuña's Period 5 line is R5/HR2/RBI2/AB22
+> in FBST, MLB statsapi, and Baseball Reference — verified three ways. The doubleheader
+> observation, the reproduction recipe, and the Baseball Reference parser keys are all
+> unaffected.
+>
+> **What does not hold:** the causal claim built on top of those measurements.
+>
+> Read this as a worked example of an explanation that matched a number without being
+> the mechanism — which is more useful than the wrong answer it originally gave.
 
 ## Symptom
 
@@ -35,7 +52,7 @@ The shape is the tell. **One team diverging rules out sync-timing lag**, which
 would hit all eight. And the hitting deltas are far too large for rounding but far
 too small to be a whole player missing.
 
-## Root cause
+## The hypothesis (FALSIFIED — kept for the record)
 
 Demolition IL-stashed **Ronald Acuña Jr. on 2026-07-05** and activated him on
 **2026-08-02**. Period 5 ran 07-05 → 08-01 — so the stash covered the period
@@ -109,8 +126,51 @@ close:
 **The residual is real and remains open.** Do not round it away. It is also
 confounded: FBST included 08-03 games while FG's header said `through 08.02.26`,
 which means the true IL-attributable gap is *larger* than the raw delta, not
-smaller. Resolving it needs a per-player FG *period* slice — FG's per-team pages
-show season YTD only.
+smaller.
+
+That HR column closing to exactly zero is what sold the hypothesis. It should not have.
+
+---
+
+## The disconfirming evidence
+
+Later the same day, the audit skill built from this document ran the IL rule across
+**all eight teams** instead of just the affected one. The result killed the hypothesis.
+
+Six of the seven *non-diverging* teams also have IL-at-period-start players carrying
+real accumulated stats:
+
+| Team | IL-at-period-start player(s) | FBST↔FG divergence |
+|---|---|---|
+| Dodger Dawgs | Jackson Chourio (P2), Francisco Lindor (P3) | **none** |
+| Devil Dawgs | Heliot Ramos (P3, P4) | **none** |
+| RGing Sluggers | Daniel Palencia (P2), Heliot Ramos (P3, P4) | **none** |
+| Skunk Dogs | Quinn Priester (P2–P4), Luis Robert Jr. (P3) | **none** |
+| Diamond Kings | Edwin Díaz (P3, P4) | **none** |
+| Los Doyers | (IL windows present) | **none** |
+| Demolition Lumber Co. | Acuña (P5), Vaughn (P2) | **8 of 10 categories** |
+
+Re-confirmed by re-running the 80-cell diff: **8 mismatches out of 80, all Demolition.**
+
+If FBST excluded IL-period stats while OnRoto counted them, every team in that table
+would diverge. Six of them do not. **The mechanism is not generally operative.**
+
+The tell inside the tool was unmistakable: for six teams the classifier printed
+`explained` and `residual` as *identical* columns — because `residual = fbst + explained − fg`
+and `fbst == fg` already. Subtracting an "expected" divergence from a gap that does not
+exist manufactures a residual out of nothing.
+
+### What this means
+
+- Acuña's and Vaughn's numbers are correct and triple-verified. That was never the issue.
+- The arithmetic fit (HR closing to exactly 0) was **coincidence**, or at best a partial
+  overlap with whatever the real mechanism is.
+- Demolition's divergence has a cause that has **not** been identified. The pitching side
+  always argued against the IL story anyway — it runs the *opposite* direction (FBST has
+  +4 K and worse ERA/WHIP), which IL exclusion cannot produce.
+- Next step is a genuine four-way, per-player, on Demolition's roster specifically:
+  which players' season lines differ between FBST and FG, and why does no other team
+  show the same effect?
 
 ## Reproduction recipe
 
@@ -147,6 +207,13 @@ trusting a total.
 
 ## Prevention
 
+0. **An explanation that fits the arithmetic is not yet a mechanism.** Before accepting
+   one, apply it to the cases that *did not* fail. If the rule predicts divergence for six
+   other teams and they reconcile exactly, the rule is wrong — no matter how neatly it
+   closes the column you started from. This is the most expensive lesson in this file: a
+   same-day writeup asserted a root cause that its own tooling disproved hours later. The
+   check is cheap and it is not optional — run the candidate rule against the *passing*
+   cases before you believe it.
 1. **Shape-read the diff before theorizing.** One team diverging = attribution or
    roster. All teams diverging by a similar trailing amount = sync timing. This
    single check would have skipped an hour of speculation.
