@@ -1160,14 +1160,23 @@ describe("renderReport", () => {
     expect(md).toMatch(/team-level/);
   });
 
-  it("prints explained and residual side by side", () => {
+  it("is INCOMPLETE when nothing was examined", () => {
+    // Absence of evidence never renders green. Both signals independently.
+    expect(decideVerdict({ results: [], coverage: fullCoverage })).toBe("INCOMPLETE");
+    expect(decideVerdict({ results: [clean], coverage: { ...fullCoverage, playersChecked: 0 } })).toBe("INCOMPLETE");
+  });
+
+  it("prints the actual explained and residual VALUES, not just the header words", () => {
+    // The header words "explained"/"residual" are hardcoded in the template, so
+    // matching them proves nothing — an earlier version of this test passed with
+    // fmt() stubbed to return a constant. Assert rendered values.
     const md = renderReport({
       periodName: "Period 5",
       results: [{ teamName: "Demolition Lumber Co", explained: { HR: 3 }, residual: { RBI: -2 }, causes: [] }],
       coverage: fullCoverage,
     });
-    expect(md).toMatch(/explained/i);
-    expect(md).toMatch(/residual/i);
+    expect(md).toContain("HR +3");
+    expect(md).toContain("RBI -2");
   });
 });
 ```
@@ -1200,6 +1209,10 @@ export type Verdict = "PASS" | "FINDINGS" | "INCOMPLETE";
  */
 export function decideVerdict(args: { results: ClassifyResult[]; coverage: Coverage }): Verdict {
   const { results, coverage } = args;
+  // Zero-evidence guard, FIRST. An audit that examined nothing must never
+  // report clean. Use exact numeric checks — an empty array is JS-truthy, so
+  // a falsy-check on `results` would not fire.
+  if (results.length === 0 || coverage.playersChecked === 0) return "INCOMPLETE";
   const allReached = Object.values(coverage.sourcesReached).every(Boolean);
   if (!allReached || coverage.playersSkipped > 0) return "INCOMPLETE";
   // Check VALUES, not key presence. classifyTeamDelta (Task 7) writes every
