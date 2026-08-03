@@ -1515,6 +1515,31 @@ git commit -m "feat(audit): extract per-team period accumulator with drop-and-re
 
 ### Task 9: CLI orchestrator
 
+> **DESIGN CORRECTION (2026-08-03, after the first prod run).** The spec's "Branch B
+> team-level tripwire" was unsound. FanGraphs' `display_stand.pl` reports
+> **season-to-date** totals, so comparing them against FBST *period* totals produced
+> residuals of −570 R per team — the verdict was `FINDINGS` on every run regardless of
+> correctness, which is the "always FINDINGS is noise nobody reads" failure Task 8's
+> review called severe. A tripwire that always fires is not a tripwire.
+>
+> **The two legs are now scope-separated:**
+>
+> | Leg | Scope | Compares | Feeds the verdict via |
+> |---|---|---|---|
+> | Correctness | the target period | FBST `PlayerStatsPeriod` vs a fresh MLB statsapi fetch | `reconcilePeriodStats` mismatches + PSP coverage gaps |
+> | Reconciliation | season to date | FBST season totals vs FanGraphs season totals | classified residual after IL/model divergence is subtracted |
+>
+> **Season totals require no new accumulator.** Verified against prod 2026-08-03: summing
+> `computeTeamPeriodTotals` across every `active`/`completed` period reproduces
+> `fangraphs-audit.ts`'s season figures exactly for all 8 teams. Call the same pure
+> function once per period and add the results.
+>
+> **IL candidates for the season leg accumulate across periods.** FanGraphs counts a
+> player's full season once he is on the roster; FBST drops him for each period he began
+> on IL. So the expected divergence is the sum, over all periods, of every
+> IL-at-that-period's-start player's PSP for that period. Building candidates only for the
+> target period under-explains the season gap.
+
 **Files:**
 - Create: `server/src/scripts/audit-standings.ts`
 
