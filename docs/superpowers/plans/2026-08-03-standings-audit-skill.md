@@ -1231,6 +1231,226 @@ git commit -m "feat(audit): report renderer where coverage gaps force INCOMPLETE
 
 ---
 
+### Task 8.5: Extract the FBST per-team period accumulator
+
+`server/src/scripts/audit_period.ts` holds the only per-team period accumulation, but it exports **nothing** (one `async function main()`). Task 9 cannot reuse it without this extraction, and writing a second accumulator is the PR #402 failure mode.
+
+It also carries a **latent double-count bug**: it iterates roster stints with no per-player dedup, so a same-period drop-and-re-add credits that player's whole-period PSP twice. `computeWithPeriodStats` guards this with a `countedPlayers` set; this extraction must too.
+
+**Files:**
+- Create: `server/src/lib/audit/fbstTotals.ts`
+- Test: `server/src/lib/audit/__tests__/fbstTotals.test.ts`
+
+**Interfaces:**
+- Consumes: `StatLine`, `emptyStatLine` from `./types.js` (Task 2).
+- Produces: `RosterStint`, `computeTeamPeriodTotals(args): Map<number, StatLine>`.
+
+- [ ] **Step 1: Write the failing test**
+
+```typescript
+// server/src/lib/audit/__tests__/fbstTotals.test.ts
+import { describe, it, expect } from "vitest";
+import { computeTeamPeriodTotals, type RosterStint } from "../fbstTotals.js";
+import { emptyStatLine, type StatLine } from "../types.js";
+
+const PERIOD = { startDate: new Date("2026-07-05T00:00:00Z"), endDate: new Date("2026-08-01T00:00:00Z") };
+const TEAMS = [{ id: 1, name: "Team A" }];
+const noIl = () => false;
+
+function stint(p: Partial<RosterStint>): RosterStint {
+  return {
+    teamId: 1, playerId: 10,
+    acquiredAt: new Date("2026-03-22T00:00:00Z"), releasedAt: null,
+    assignedPosition: "OF", posPrimary: "OF", ...p,
+  };
+}
+function psp(p: Partial<StatLine>): StatLine {
+  return { ...emptyStatLine(), ...p };
+}
+
+describe("computeTeamPeriodTotals", () => {
+  it("credits a hitter's period stats to the owning team", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS, rosters: [stint({})],
+      pspByPlayer: new Map([[10, psp({ R: 12, HR: 3, RBI: 9, SB: 1, H: 20, AB: 80 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(12);
+    expect(got.get(1)!.AB).toBe(80);
+  });
+
+  it("counts a same-period drop-and-re-add ONCE", () => {
+    // The PR #402 flaw: two stints for one player in one period must not
+    // credit his whole-period PSP twice.
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [
+        stint({ releasedAt: new Date("2026-07-15T00:00:00Z") }),
+        stint({ acquiredAt: new Date("2026-07-20T00:00:00Z") }),
+      ],
+      pspByPlayer: new Map([[10, psp({ R: 12, HR: 3 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(12);
+    expect(got.get(1)!.HR).toBe(3);
+  });
+
+  it("excludes a player who was on IL at period start", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS, rosters: [stint({})],
+      pspByPlayer: new Map([[10, psp({ R: 5 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: (id) => id === 10,
+    });
+    expect(got.get(1)!.R).toBe(0);
+  });
+
+  it("excludes a stint released at or before the period start", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS, rosters: [stint({ releasedAt: new Date("2026-07-05T00:00:00Z") })],
+      pspByPlayer: new Map([[10, psp({ R: 5 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(0);
+  });
+
+  it("excludes a stint acquired after the period end", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS, rosters: [stint({ acquiredAt: new Date("2026-08-02T00:00:00Z") })],
+      pspByPlayer: new Map([[10, psp({ R: 5 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(0);
+  });
+
+  it("routes pitcher slots to pitching cats and hitters to hitting cats", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [
+        stint({ playerId: 10, assignedPosition: "OF" }),
+        stint({ playerId: 11, assignedPosition: "P" }),
+      ],
+      pspByPlayer: new Map([
+        [10, psp({ R: 7, K: 999 })],   // hitter: K must be ignored
+        [11, psp({ K: 40, W: 3, R: 999 })], // pitcher: R must be ignored
+      ]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(7);
+    expect(got.get(1)!.K).toBe(40);
+    expect(got.get(1)!.W).toBe(3);
+  });
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `cd server && npx vitest run src/lib/audit/__tests__/fbstTotals.test.ts`
+Expected: FAIL — cannot resolve `../fbstTotals.js`.
+
+- [ ] **Step 3: Implement**
+
+```typescript
+// server/src/lib/audit/fbstTotals.ts
+import { emptyStatLine, type StatLine } from "./types.js";
+
+/** Slot codes that score as pitching. Mirrors audit_period.ts PITCHER_CODES. */
+const PITCHER_CODES = new Set(["P", "SP", "RP", "CL", "TWP"]);
+
+export interface RosterStint {
+  teamId: number;
+  playerId: number;
+  acquiredAt: Date;
+  releasedAt: Date | null;
+  assignedPosition: string | null;
+  posPrimary: string | null;
+}
+
+/**
+ * Per-team period totals from PlayerStatsPeriod, using the same window and IL
+ * rules as audit_period.ts — plus a per-team dedup guard that audit_period.ts
+ * lacks (a same-period drop-and-re-add would otherwise count twice; see PR #402).
+ *
+ * Pure: all I/O is the caller's job, so this is unit-testable with no DB.
+ */
+export function computeTeamPeriodTotals(args: {
+  teams: { id: number; name: string }[];
+  rosters: RosterStint[];
+  pspByPlayer: Map<number, StatLine>;
+  period: { startDate: Date; endDate: Date };
+  isOnIlAtPeriodStart: (playerId: number) => boolean;
+}): Map<number, StatLine> {
+  const { teams, rosters, pspByPlayer, period, isOnIlAtPeriodStart } = args;
+
+  const acc = new Map<number, StatLine>(teams.map((t) => [t.id, emptyStatLine()]));
+  const counted = new Set<string>(); // `${teamId}:${playerId}` — the PR #402 guard
+
+  for (const r of rosters) {
+    if (r.acquiredAt > period.endDate) continue;
+    if (r.releasedAt && r.releasedAt <= period.startDate) continue;
+    if (isOnIlAtPeriodStart(r.playerId)) continue;
+
+    const key = `${r.teamId}:${r.playerId}`;
+    if (counted.has(key)) continue;
+
+    const ps = pspByPlayer.get(r.playerId);
+    if (!ps) continue;
+
+    const a = acc.get(r.teamId);
+    if (!a) continue;
+
+    counted.add(key);
+
+    const pos = (r.assignedPosition ?? r.posPrimary ?? "").toUpperCase();
+    if (PITCHER_CODES.has(pos)) {
+      a.W += ps.W; a.SV += ps.SV; a.K += ps.K;
+      a.ER += ps.ER; a.IP += ps.IP; a.BB_H += ps.BB_H;
+    } else {
+      a.R += ps.R; a.HR += ps.HR; a.RBI += ps.RBI;
+      a.SB += ps.SB; a.H += ps.H; a.AB += ps.AB;
+    }
+  }
+
+  return acc;
+}
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd server && npx vitest run src/lib/audit/__tests__/fbstTotals.test.ts`
+Expected: PASS, 6 tests.
+
+- [ ] **Step 5: Verify faithfulness against the existing script (prod, read-only)**
+
+The unit tests prove the rules; this proves the extraction reproduces today's numbers.
+
+```bash
+cd server && ./scripts/with-prod-db.sh npx tsx src/scripts/audit_period.ts 20 2>&1 | sed -n '/Period 5/,/Rosters at period start/p'
+```
+
+Compare the Period 5 table against these values, captured 2026-08-03:
+
+| Team | R | HR | RBI | SB | AVG | W | SV | K | ERA | WHIP |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Skunk Dogs | 143 | 48 | 153 | 22 | .2613 | 5 | 10 | 135 | 3.99 | 1.191 |
+| Diamond Kings | 159 | 45 | 125 | 26 | .2465 | 7 | 4 | 104 | 5.21 | 1.453 |
+| Dodger Dawgs | 165 | 41 | 159 | 26 | .2623 | 10 | 9 | 125 | 4.39 | 1.375 |
+| Devil Dawgs | 130 | 47 | 142 | 23 | .2514 | 13 | 0 | 180 | 3.69 | 1.208 |
+| RGing Sluggers | 134 | 33 | 125 | 26 | .2609 | 6 | 4 | 134 | 2.79 | 1.092 |
+| The Show | 145 | 32 | 130 | 23 | .2520 | 8 | 14 | 151 | 3.45 | 1.203 |
+| Los Doyers | 99 | 27 | 102 | 15 | .2296 | 10 | 4 | 146 | 4.28 | 1.275 |
+| Demolition Lumber Co. | 130 | 33 | 123 | 28 | .2432 | 15 | 11 | 219 | 3.11 | 0.988 |
+
+Any difference is either a real dedup correction (a same-period drop-and-re-add existed and the old script double-counted it) or an extraction error. **Identify which before proceeding** — record the finding in the task report either way. Do not assume a difference is the dedup fix.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add server/src/lib/audit/fbstTotals.ts server/src/lib/audit/__tests__/fbstTotals.test.ts
+git commit -m "feat(audit): extract per-team period accumulator with drop-and-re-add dedup"
+```
+
+---
+
 ### Task 9: CLI orchestrator
 
 **Files:**
@@ -1367,7 +1587,7 @@ main().catch(async (err) => {
 });
 ```
 
-> **Note for the implementer:** `fbstTotals` is left as `emptyStatLine()` above because computing FBST's per-team period totals must reuse the existing accumulation path rather than reimplement it. Before finishing this task, read `server/src/scripts/audit_period.ts` and reuse its per-team accumulation (it already applies `buildIlWindows` and ownership windows). Do **not** write a second accumulator — a divergent copy is exactly the PR #402 failure. If that logic is not exported, extract it into `server/src/lib/audit/fbstTotals.ts` and have both callers use it.
+> **Note for the implementer:** replace the `emptyStatLine()` stand-in above by calling `computeTeamPeriodTotals` from `../lib/audit/fbstTotals.js` (Task 8.5). Load rosters and IL windows the same way `audit_period.ts` does — `buildIlWindows(ilEvents)` from `../lib/ilWindows.js`, then pass `isOnIlAtPeriodStart: (playerId) => wasOnIlAtPeriodStart(playerId, period.startDate, ilWindowsByPlayer)`. Do **not** write a second accumulator; Task 8.5 exists precisely so there is one.
 
 - [ ] **Step 2: Typecheck**
 
