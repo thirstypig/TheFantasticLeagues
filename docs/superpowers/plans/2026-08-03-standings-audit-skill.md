@@ -536,8 +536,20 @@ export interface FgPlayerRow {
   stats: Record<string, string>;
 }
 
-const HITTER_COLS = ["Pos", "Name", "Tm", "Sta", "GamesByPos", "AB", "H", "R", "HR", "RBI", "SB", "AVG", "GS"];
-const PITCHER_COLS = ["Pos", "Name", "Tm", "Sta", "IP", "ER", "H", "BB", "SO", "W", "SV", "ERA", "WHIP", "ShO", "NH"];
+/**
+ * Stat column names, in document order, STARTING AT THE FIRST TWO-VALUE CELL.
+ *
+ * Positional indexing from the row start does NOT work: the header's
+ * "2026 Games by Position" is one <th> but expands to SEVEN <td> cells on
+ * hitter rows (games at each position), and to zero on pitcher rows. Verified
+ * against the fixture 2026-08-03: a hitter row is 19 cells with stats at 11-18,
+ * a pitcher row is 15 cells with stats at 4-14.
+ *
+ * The reliable anchor is that every stat cell holds "season\nweek" while all
+ * leading cells are single-valued.
+ */
+const HITTER_STATS = ["AB", "H", "R", "HR", "RBI", "SB", "AVG", "GS"];
+const PITCHER_STATS = ["IP", "ER", "H", "BB", "SO", "W", "SV", "ERA", "WHIP", "ShO", "NH"];
 
 function unescapeHtml(s: string): string {
   return s
@@ -565,7 +577,7 @@ export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[] } {
   const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((m) => m[1]!);
 
   const players: FgPlayerRow[] = [];
-  let cols: string[] | null = null;
+  let statNames: string[] | null = null;
   let reservedSection = false;
 
   for (const row of rows) {
@@ -578,16 +590,21 @@ export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[] } {
       continue;
     }
     if (c[0] === "Pos" && c[1] === "Name") {
-      cols = c.includes("IP") ? PITCHER_COLS : HITTER_COLS;
+      statNames = c.includes("IP") ? PITCHER_STATS : HITTER_STATS;
       continue;
     }
-    if (!cols) continue;
+    if (!statNames) continue;
     if (c[0] === "TOTAL:" || c.length < 5) continue;
 
+    // Stats begin at the first two-value ("season\nweek") cell. See the
+    // HITTER_STATS comment for why positional indexing from 0 is unsafe.
+    const firstStatIdx = c.findIndex((cell) => cell.includes("\n"));
+    if (firstStatIdx === -1) continue;
+
     const stats: Record<string, string> = {};
-    cols.forEach((col, i) => {
-      if (["Pos", "Name", "Tm", "Sta", "GamesByPos"].includes(col)) return;
-      if (c[i] !== undefined) stats[col] = seasonHalf(c[i]!);
+    statNames.forEach((name, i) => {
+      const cell = c[firstStatIdx + i];
+      if (cell !== undefined) stats[name] = seasonHalf(cell);
     });
 
     const status = (c[3] ?? "").trim();
