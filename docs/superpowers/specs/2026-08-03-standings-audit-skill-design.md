@@ -98,9 +98,27 @@ Parsing gotcha, already learned: on `display_stand.pl` the top grid holds roto
 rows further down. Run all HTML through `html.unescape`. FG labels categories `SV`
 and `SO` where FBST uses `S` and `K`.
 
-**Open risk — resolve by spike before implementing this step.** FG's per-team pages
-show **season YTD** per player, not period slices, so they are not directly
-comparable in period mode. Two branches:
+**RESOLVED 2026-08-03 by spike — Branch B is taken.** Driving
+`display_team_stats.pl` in Playwright shows the page's only `<select>` is
+`changeTeam` (8 team options). There is **no date filter**, so FG cannot express a
+per-player period slice. `team_run_old_roto.pl` is team-level only and also
+Cloudflare-gated (403 to curl, loads under Playwright).
+
+Two things the spike *did* find, both useful to the classifier:
+
+- The per-player tables carry a **`Sta` column** (`act` = active) plus a separate
+  *"stats of previously reserved hitters"* table — this is FG's own IL/reserve
+  marker, so the classifier can read FG's IL opinion rather than infer it.
+- Every stat cell holds **two newline-separated values: season, then week**
+  (e.g. `419\n3` = 419 season AB, 3 this week). Same shape as the standings page's
+  Year/Wk pair. The week value is a *calendar* week, not a period, so it cannot
+  substitute for a period slice.
+
+Column headers, verbatim:
+- Hitters: `Pos|Name|Tm|Sta|2026 Games by Position|AB|H|R|HR|RBI|SB|AVG|GS`
+- Pitchers: `Pos|Name|Tm|Sta|IP|ER|H|BB|SO|W|SV|ERA|WHIP|ShO|NH`
+
+The original two branches, retained for the record:
 
 - **Branch A (preferred, if FG supports it):** obtain a per-player period slice by
   differencing two FG snapshots (as-of period start vs as-of period end). The only
