@@ -2,6 +2,14 @@
 
 All notable changes to The Fantastic Leagues will be documented in this file.
 
+## v2.2.1 — 2026-08-03 — fix
+### Traded players' stats were being silently dropped
+
+- **Fix:** When a player was traded between MLB teams in the middle of a scoring period, FBST recorded only his **first** team's partial line — sometimes zero. Curtis Mead's entire Period 5 was stored as zeros while he actually played 15 games (11 R, 3 HR, 9 RBI, 2 SB). Two players were affected across the season; both periods have been re-synced. Demolition Lumber Co.'s totals gained 11 R / 3 HR / 9 RBI / 2 SB and now match OnRoto exactly. **Standings moved**: Demolition 66.0 → 68.0 roto points, RGing Sluggers 45.0 → 44.0, Diamond Kings 37.0 → 36.0.
+- **Internal:** MLB statsapi returns one split per team plus an aggregate row; the sync took `splits[0]`. It now selects the aggregate (`sport.id === 0`). The two tempting alternatives are both wrong and are pinned by tests — summing double-counts single-team players, and keying off a missing `team` field fails because the aggregate carries `team` when only one club is involved.
+- **Known gap:** the period reconciler shares its fetch path with the syncer by design (ADR-014), so it reported "0 mismatches" while this was live — it was comparing the pipeline against itself. Giving it an independent source is filed as follow-up.
+- **Internal:** Regenerated stale living docs (CI had been red on `refresh-docs` for ~10 days, blocking unrelated merges) and made the two DB integration suites run sequentially, fixing an intermittent foreign-key flake caused by `RESTART IDENTITY` colliding ids across concurrently-executing test files.
+
 ## v2.2.0 — 2026-07-06 — feature
 ### Email signup on the marketing site
 

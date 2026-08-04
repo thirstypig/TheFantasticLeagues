@@ -4,6 +4,26 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-08-03 — Period rollover → an OnRoto audit → a real production stat-loss bug
+
+Started as "can I refresh standings after backdating roster moves?" Ended with a shipped production fix for silently dropped statistics. **Suite: 1448 server + 960 client = 2408 local green (2415 with the 7-test `db-integration` CI job); 133 MCP separate.**
+
+**Ops first.** Period 5 closed, Period 6 activated, both stats-synced. The backdating needed no repair — all 60 transactions already carried `effDate = 2026-08-02`, and because P6 *starts* 08-02 nothing landed mid-period, which kept the whole period on the doubleheader-safe PSP path.
+
+**The bug (#429, merged + deployed, prod confirmed at `28fcd91`).** MLB statsapi returns one split per team plus an aggregate; `parsePlayerStats` took `splits[0]`. Curtis Mead was traded Boston → Washington mid-Period-5, so his first split was Boston — 1 game, all zeros — and his entire period stored as zero while he played 15 games. That was the whole of Demolition's −11 R / −3 HR / −9 RBI / −2 SB gap vs OnRoto. Swept every period: a second instance (Patrick Bailey, P2, SF → CLE). Both re-synced. FanGraphs diff went **8/80 → 3/80**; the remaining 3 are Demolition pitching, opposite direction, different mechanism, still open.
+
+**The finding that matters more than the bug.** `reconcilePeriodStats` shares `fetchFreshPeriodStats` with the syncer *by design* — ADR-014 requires it compare against "exactly what the syncer would write." So it re-read the same bad split and reported **0 mismatches** while this was live. Proof is exact: same stored data, same call, 0 mismatches before the fix and 6 after. A reconciler that shares its fetch path with the thing it audits is a consistency check, not an audit. Independent path (`gameLog`) is filed.
+
+**I was confidently wrong twice** before getting there — asserted IL exclusion as the cause and wrote it up as verified, then ADR-013 pre-acquisition attribution. Both retracted in-file. What killed each was applying the explanation to the cases that *didn't* fail: six teams with identical IL setups and zero divergence. That's now Prevention item 0 in the doc.
+
+**Audit skill (#431, draft, 27 commits pushed).** Spec + plan + 8 of 10 tasks, 57 unit tests. Deliberately not merged: its IL classifier still attributes to the disproved mechanism, and Tasks 9/10 are unfinished. **Eight defects came from the plan's own sample code and none from the implementers** — worst case a parser that silently dropped 18 of 41 rows while passing all four of its prescribed tests. Only reviews that *mutated* the code caught them; diff-reading approved every one. Written up in #432.
+
+**Also:** `main` had been red ~10 days on `refresh-docs` staleness, blocking merges (#430). Fixed a `db-integration` FK flake caused by `RESTART IDENTITY` colliding ids across parallel test files (#433).
+
+**Open:** #431 (Task 9 re-review, Task 10, IL classifier rework) · #432, #433 awaiting merge · the 3-cell pitching residual · `system-status.md` embeds local HEAD so `docs:refresh --check` can never pass · PR #413 a month cold · 4 P1 todos.
+
+---
+
 ## Session 2026-07-23/24 — Docs board shipped (#425–427), then an OnRoto audit found + fixed a real FBST bug
 
 Two arcs. **Suite: 1444 server + 960 client = 2404 local green (2411 with the 7-test `db-integration` CI job); 133 MCP separate.** Up from 2296 — +63 client (docs board) + 41 server (docs-system scripts) + the counts had also drifted.
