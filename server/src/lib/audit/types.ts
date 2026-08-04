@@ -10,9 +10,14 @@ export const COUNTING_CATS = ["R", "HR", "RBI", "SB", "W", "SV", "K"] as const;
 export const RATE_CATS = ["AVG", "ERA", "WHIP"] as const;
 export type CatKey = (typeof COUNTING_CATS)[number] | (typeof RATE_CATS)[number];
 
-/** Why FBST and FanGraphs legitimately disagree about a player. */
+/**
+ * Why FBST and FanGraphs legitimately disagree about a player.
+ *
+ * No producer emits any of these yet — see the header comment in
+ * `classifier.ts` for the bar a new one has to clear. `il_exclusion` was
+ * removed on 2026-08-04 after its mechanism was falsified.
+ */
 export type DivergenceCause =
-  | "il_exclusion"
   | "partial_ownership"
   | "two_way_synthetic"
   | "roster_mismatch"

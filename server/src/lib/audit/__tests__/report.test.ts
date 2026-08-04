@@ -104,9 +104,9 @@ describe("renderReport", () => {
             {
               playerId: 42,
               playerName: "Jane Slugger",
-              cause: "il_exclusion",
+              cause: "partial_ownership",
               expected: { HR: 3 },
-              evidence: "IL stint 2026-07-01 to 2026-07-10, txn #991",
+              evidence: "acquired 2026-07-01, 9 of 28 period days, txn #991",
             },
           ],
         },
@@ -115,7 +115,7 @@ describe("renderReport", () => {
     });
     expect(md).toMatch(/Attributed divergences/i);
     expect(md).toContain("Jane Slugger");
-    expect(md).toContain("il_exclusion");
-    expect(md).toContain("IL stint 2026-07-01 to 2026-07-10, txn #991");
+    expect(md).toContain("partial_ownership");
+    expect(md).toContain("acquired 2026-07-01, 9 of 28 period days, txn #991");
   });
 });

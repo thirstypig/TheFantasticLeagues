@@ -4,49 +4,31 @@ import { emptyStatLine, type ExplainedDelta, type ClassifyResult, type StatLine 
 const STAT_KEYS = Object.keys(emptyStatLine()) as (keyof StatLine)[];
 
 /**
- * Build expected IL divergences from the transaction log.
+ * THERE IS DELIBERATELY NO CANDIDATE PRODUCER IN THIS MODULE.
  *
- * Deliberately takes NO FanGraphs input: candidates must be derivable from
- * FBST's own data alone, so the classifier can never be tuned to fit an
- * observed gap. (See PR #402 — the measuring instrument was the bug.)
+ * `classifyTeamDelta` accepts `candidates` so that a *validated* divergence
+ * cause has somewhere to land. Today every caller passes `[]`, which means
+ * `residual` is the raw FBST-minus-FG difference. That is the honest default:
+ * with no proven mechanism, every delta is unexplained.
  *
- * Mirrors wasOnIlAtPeriodStart: FBST excludes a player who was IL-slotted at
- * the START of the period, regardless of when he came back.
+ * One producer was written and then deleted — `buildIlCandidates`, on the
+ * theory that FBST drops the stats of a player who was IL-slotted at period
+ * start while OnRoto counts them all season. It was FALSIFIED on 2026-08-03:
+ * six teams (Chourio, Ramos, Palencia, Priester, Diaz, Lindor) hold exactly
+ * that shape of IL window with real accumulated stats and reconcile with
+ * FanGraphs cell-for-cell. The one team that did diverge turned out to be a
+ * data bug — a mid-period MLB trade stored as zeros (`splits[0]`, fixed in
+ * PR #429) — not an attribution rule at all. Symptom while it was live:
+ * `explained` and `residual` printed as identical columns, because
+ * subtracting a phantom divergence manufactures the very gap it claims to
+ * explain.
+ *
+ * THE BAR FOR ADDING A PRODUCER HERE: the proposed mechanism must be tested
+ * against the teams that do NOT diverge, and must correctly predict that they
+ * don't. An explanation that only fits the failing case is curve-fitting —
+ * it was the trap both times. See
+ * `docs/solutions/integration-issues/il-stashed-player-returns-to-play-creates-phantom-fangraphs-delta.md`.
  */
-export function buildIlCandidates(args: {
-  teamName: string;
-  ilWindows: { playerId: number; playerName: string; start: Date; end: Date | null }[];
-  period: { id: number; startDate: Date; endDate: Date };
-  pspByPlayer: Map<number, StatLine>;
-}): ExplainedDelta[] {
-  const { ilWindows, period, pspByPlayer } = args;
-  const out: ExplainedDelta[] = [];
-
-  for (const w of ilWindows) {
-    const startedOnOrBefore = w.start.getTime() <= period.startDate.getTime();
-    const stillOpenAtStart = w.end === null || w.end.getTime() > period.startDate.getTime();
-    if (!startedOnOrBefore || !stillOpenAtStart) continue;
-
-    const psp = pspByPlayer.get(w.playerId);
-    if (!psp) continue; // no stats to be excluded — nothing to explain
-
-    const expected: Partial<StatLine> = {};
-    for (const k of STAT_KEYS) if (psp[k]) expected[k] = psp[k];
-
-    out.push({
-      playerId: w.playerId,
-      playerName: w.playerName,
-      cause: "il_exclusion",
-      expected,
-      evidence:
-        `IL window ${w.start.toISOString().slice(0, 10)}..` +
-        `${w.end ? w.end.toISOString().slice(0, 10) : "open"} covers start of ` +
-        `period ${period.id} (${period.startDate.toISOString().slice(0, 10)}); ` +
-        `FBST excludes, OnRoto counts YTD`,
-    });
-  }
-  return out;
-}
 
 /**
  * residual = (FBST + explained) - FG, per category.

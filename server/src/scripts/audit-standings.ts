@@ -22,7 +22,7 @@ import { prisma } from "../db/prisma.js";
 import { reconcilePeriodStats } from "../features/players/services/mlbStatsSyncService.js";
 import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
 import { parseFgStandings } from "../lib/audit/fgStandingsParser.js";
-import { classifyTeamDelta, buildIlCandidates } from "../lib/audit/classifier.js";
+import { classifyTeamDelta } from "../lib/audit/classifier.js";
 import { computeTeamPeriodTotals, type RosterStint } from "../lib/audit/fbstTotals.js";
 import { decideVerdict, renderReport, type Coverage, type Verdict } from "../lib/audit/report.js";
 import { emptyStatLine, type StatLine, type ClassifyResult, type ExplainedDelta } from "../lib/audit/types.js";
@@ -90,10 +90,10 @@ function buildPspMap(rows: PspRow[]): Map<number, StatLine> {
 /**
  * Roster rows that WOULD be counted by computeTeamPeriodTotals's own window
  * filter (acquired/released/IL-at-start) but have no PSP row for the given
- * period. computeTeamPeriodTotals and buildIlCandidates both silently
- * `continue` on a missing row — indistinguishable, from inside a pure
- * function, from "genuinely zero". This is the caller-side check that tells
- * the two cases apart, so a coverage gap surfaces instead of under-counting.
+ * period. computeTeamPeriodTotals silently `continue`s on a missing row —
+ * indistinguishable, from inside a pure function, from "genuinely zero".
+ * This is the caller-side check that tells the two cases apart, so a
+ * coverage gap surfaces instead of under-counting.
  */
 function findCoverageGaps(args: {
   rosters: RosterStint[];
@@ -265,7 +265,6 @@ async function main(): Promise<void> {
   });
 
   const seasonTotalsByTeam = new Map<number, StatLine>(teams.map((t) => [t.id, emptyStatLine()]));
-  const seasonCandidatesByTeam = new Map<number, ExplainedDelta[]>(teams.map((t) => [t.id, []]));
   let seasonPlayersSkipped = 0;
   const seasonSkipReasons: string[] = [];
 
@@ -288,21 +287,6 @@ async function main(): Promise<void> {
       const acc = seasonTotalsByTeam.get(t.id)!;
       const add = totalsQ.get(t.id)!;
       for (const k of STAT_KEYS) acc[k] += add[k];
-
-      // IL candidates for THIS period's start, for this team's players. FG
-      // counts a player's whole season once he's rostered; FBST drops him
-      // for every period he started on IL — so the season-level explained
-      // delta is the sum, over every period, of each such exclusion.
-      const windows = [...(teamPlayerIds.get(t.id) ?? [])].flatMap((playerId) =>
-        (ilWindowsByPlayer.get(playerId) ?? []).map((w) => ({
-          playerId,
-          playerName: playerNameById.get(playerId) ?? `playerId ${playerId}`,
-          start: w.startDate,
-          end: w.endDate,
-        })),
-      );
-      const candidates = buildIlCandidates({ teamName: t.name, ilWindows: windows, period: q, pspByPlayer: pspByPlayerQ });
-      seasonCandidatesByTeam.get(t.id)!.push(...candidates.map(toFgComparableCandidate));
     }
   }
 
@@ -316,7 +300,11 @@ async function main(): Promise<void> {
       teamName: t.name,
       fbstTotals: toFgComparableStatLine(seasonTotalsByTeam.get(t.id)!),
       fgTotals,
-      candidates: seasonCandidatesByTeam.get(t.id)!,
+      // No validated divergence mechanism exists — residual is the raw
+      // FBST-minus-FG diff. See the header comment in lib/audit/classifier.ts
+      // for why the one producer that existed was deleted, and the bar a
+      // replacement has to clear.
+      candidates: [],
     });
   });
 
@@ -345,8 +333,9 @@ async function main(): Promise<void> {
   const seasonSection =
     `## Season to date — FBST vs FanGraphs\n\n` +
     `FanGraphs values are season-to-date (${fgThrough ?? "coverage unknown — fetch failed"}), matched against FBST ` +
-    `season-to-date totals summed across every active/completed period (${seasonPeriods.map((p) => p.name).join(", ")}), ` +
-    `with IL-exclusion divergences accumulated across all of those periods before residuals are computed.\n\n` +
+    `season-to-date totals summed across every active/completed period (${seasonPeriods.map((p) => p.name).join(", ")}). ` +
+    `Residuals are the raw FBST-minus-FG difference: no divergence-explanation layer is applied, because no ` +
+    `proposed mechanism has survived testing against the teams that reconcile exactly.\n\n` +
     renderReport({ periodName: "Season to date — FBST vs FanGraphs", results: seasonResults, coverage: seasonCoverage });
 
   const md = [
