@@ -144,10 +144,33 @@ async function mirrorTwoWayPitcherStats(periodId: number): Promise<void> {
 }
 
 /**
+ * Pick the split that represents the player's TOTAL for the queried window.
+ *
+ * statsapi returns one split per MLB team the player appeared for, PLUS an
+ * aggregate row. The aggregate is identified by `sport.id === 0` (`code: "All"`).
+ *
+ * Do not use `splits[0]`: for a player traded mid-window that is only his first
+ * team's partial line. Do not sum the splits either — a single-team player still
+ * gets two splits (his team, and the aggregate, both tagged with that team), so
+ * summing double-counts. And do not key off the absence of a `team` field: the
+ * aggregate row carries `team` when the player only played for one club.
+ *
+ * Precedent: Curtis Mead, traded Boston -> Washington during Period 5 2026. His
+ * first split was Boston (1 game, all zeros), so an entire period of production
+ * was stored as zero. See
+ * docs/solutions/logic-errors/mlb-multi-team-split-zeroes-traded-player-stats.md
+ */
+function selectTotalSplit(splits: any[] | undefined): any | undefined {
+  if (!splits || splits.length === 0) return undefined;
+  const aggregate = splits.find((s) => s?.sport?.id === 0);
+  return aggregate ?? splits[0];
+}
+
+/**
  * Parse hitting + pitching stats from an MLB API person response.
  * Extracts both core fantasy stats and extended stats for MVP/Cy Young tracking.
  */
-function parsePlayerStats(person: any) {
+export function parsePlayerStats(person: any) {
   const result = {
     // Core batting
     AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
@@ -168,7 +191,7 @@ function parsePlayerStats(person: any) {
 
   for (const statGroup of person.stats) {
     const groupName = statGroup.group?.displayName?.toLowerCase();
-    const split = statGroup.splits?.[0]?.stat;
+    const split = selectTotalSplit(statGroup.splits)?.stat;
     if (!split) continue;
 
     if (groupName === "hitting") {
