@@ -1,9 +1,37 @@
+/**
+ * One stat line from an OnRoto per-team page.
+ *
+ * ⚠️ `name` IS NOT A KEY. A player who has had more than one stint on the
+ * team appears on MULTIPLE rows — his current stint plus one carryover row
+ * per prior stint (`carryover: true`). `players.find(p => p.name === X)`
+ * returns an arbitrary stint and is always a bug; filter and aggregate
+ * instead. Verified in the 2026-08-03 fixture: Ronald Acuna has an active
+ * row (AB 199) and a reserved carryover row (AB 22); Andrew Vaughn has two
+ * carryover rows (AB 50 active-table, AB 27 reserved-table). FanGraphs
+ * publishes no player id on these pages, so there is no better key to offer.
+ *
+ * A team's category total is the sum over ALL rows in a table, carryover
+ * included — confirmed against the page's own `TOTAL:` row: the Reserved
+ * Hitters total (AB 49 / H 11 / R 10 / HR 3) is exactly Acuna's 22/3/5/2
+ * plus Vaughn's 27/8/5/1.
+ */
 export interface FgPlayerRow {
   name: string;
   pos: string;
   mlbTeam: string;
+  /** FanGraphs' own status string: "act", "rel", "min", … */
   status: string;
+  /**
+   * Table membership — is this row in the Reserved table? This is NOT
+   * "is the player benched/inactive": a released player carried over in the
+   * Active table has `status: "rel"` and `reserved: false`.
+   */
   reserved: boolean;
+  /**
+   * True when the row sits in a "stats of previously active/reserved …"
+   * subsection, i.e. it is a PRIOR stint, not the player's current line.
+   */
+  carryover: boolean;
   stats: Record<string, string>;
 }
 
@@ -54,14 +82,38 @@ function seasonHalf(cell: string): string {
   return cell.split("\n")[0]!.trim();
 }
 
+/**
+ * Table membership from the row's own class, e.g. `Active_Hitters_prev` or
+ * `Reserved_Hitters_prev`. This is the authoritative signal and outranks the
+ * divider-text tracking below: the "stats of previously reserved" divider
+ * sits INSIDE the Reserved table, so any row above it would otherwise be
+ * mislabelled. Returns null when the attribute is absent or unrecognised, in
+ * which case the caller falls back to divider tracking.
+ */
+function reservedFromRowClass(attrs: string): boolean | null {
+  const cls = (attrs.match(/class="([^"]+)"/) ?? [])[1];
+  if (!cls) return null;
+  if (/^Reserved_(Hitters|Pitchers)_prev$/.test(cls)) return true;
+  if (/^Active_(Hitters|Pitchers)_prev$/.test(cls)) return false;
+  return null;
+}
+
 export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[]; skipped: string[] } {
   const html = unescapeHtml(rawHtml);
-  const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((m) => m[1]!);
+  const rows = [...html.matchAll(/<tr([^>]*)>([\s\S]*?)<\/tr>/gi)].map((m) => ({
+    attrs: m[1]!,
+    body: m[2]!,
+  }));
 
   const players: FgPlayerRow[] = [];
   const skipped: string[] = [];
   let statNames: string[] | null = null;
   let reservedSection = false;
+  // Set by any "stats of previously active/reserved <hitters|pitchers>"
+  // divider. There are FOUR such subsections per page, one per table — an
+  // earlier version tracked only "previously reserved" and so could not tell
+  // a prior stint from a current one in the Active table.
+  let carryoverSection = false;
   // Hitter tables render a rowspan="2" header split across two <tr> rows:
   // the first carries Pos/Name/Tm/Sta/stat labels, the second carries the
   // seven individual "games by position" column labels (DH/C/1B/2B/3B/SS/OF)
@@ -72,7 +124,7 @@ export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[]; skip
   let pendingPositionSubheaderRow = false;
 
   for (const row of rows) {
-    const c = rawCells(row);
+    const c = rawCells(row.body);
     if (c.length === 0) continue;
 
     if (pendingPositionSubheaderRow) {
@@ -81,8 +133,9 @@ export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[]; skip
     }
 
     const joined = c.join(" ").toLowerCase();
-    if (joined.includes("previously reserved")) {
-      reservedSection = true;
+    if (/previously (active|reserved)/.test(joined)) {
+      carryoverSection = true;
+      if (joined.includes("previously reserved")) reservedSection = true;
       continue;
     }
     if (c[0] === "Pos" && c[1] === "Name") {
@@ -93,6 +146,7 @@ export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[]; skip
       // carrying it forward into the next table mislabels every row there
       // as reserved (e.g. an active, healthy Chris Sale).
       reservedSection = false;
+      carryoverSection = false;
       pendingPositionSubheaderRow = statNames === HITTER_STATS;
       continue;
     }
@@ -118,7 +172,12 @@ export function parseFgTeamPage(rawHtml: string): { players: FgPlayerRow[]; skip
       name: c[1]!,
       mlbTeam: c[2] ?? "",
       status,
-      reserved: reservedSection || status.toLowerCase() !== "act",
+      // Table membership only. Deriving this from `status !== "act"` (as an
+      // earlier version did) mislabels a released player carried over in the
+      // Active table — Andrew Vaughn's Active_Hitters_prev row, status "rel",
+      // is NOT in the Reserved table and must not be counted as though it were.
+      reserved: reservedFromRowClass(row.attrs) ?? reservedSection,
+      carryover: carryoverSection,
       stats,
     });
   }

@@ -56,6 +56,48 @@ describe("parseFgTeamPage", () => {
     expect(vaughn).toBeDefined();
   });
 
+  it("keeps multi-stint players as distinguishable rows, not name collisions", () => {
+    // `name` is not a key. Acuna has a current active line plus a reserved
+    // carryover stint; Vaughn is released and carries a stint in BOTH tables.
+    // A consumer doing .find(p => p.name === X) picks an arbitrary one.
+    const acuna = players.filter((p) => p.name === "Ronald Acuna");
+    expect(acuna).toHaveLength(2);
+    expect(acuna.map((p) => ({ r: p.reserved, c: p.carryover, ab: p.stats.AB }))).toEqual([
+      { r: false, c: false, ab: "199" }, // current stint, Active table
+      { r: true, c: true, ab: "22" }, // prior stint, Reserved table
+    ]);
+
+    const vaughn = players.filter((p) => p.name === "Andrew Vaughn");
+    expect(vaughn).toHaveLength(2);
+    // Both are carryover and both say status "rel" — but only ONE is in the
+    // Reserved table. Deriving `reserved` from status marked both, which
+    // moved 50 AB into the wrong table's total.
+    expect(vaughn.every((p) => p.carryover && p.status === "rel")).toBe(true);
+    expect(vaughn.map((p) => p.reserved)).toEqual([false, true]);
+  });
+
+  it("reproduces the page's own TOTAL: rows when each table is summed", () => {
+    // The strongest available check on this parser: OnRoto publishes a TOTAL:
+    // row per table, so the fixture self-checks. Every row must be present
+    // AND filed under the right table — a dropped row or a misfiled one
+    // breaks the identity. Carryover rows ARE included in FG's totals.
+    //
+    // Read straight off fg_team_0.html's two hitter TOTAL: rows (2026-08-03).
+    const hitters = players.filter((p) => p.stats.AB !== undefined);
+    const sum = (rows: typeof hitters, k: string) =>
+      rows.reduce((acc, p) => acc + Number(p.stats[k] ?? 0), 0);
+
+    const active = hitters.filter((p) => !p.reserved);
+    expect({ AB: sum(active, "AB"), H: sum(active, "H"), R: sum(active, "R"),
+             HR: sum(active, "HR"), RBI: sum(active, "RBI"), SB: sum(active, "SB") })
+      .toEqual({ AB: 4813, H: 1280, R: 699, HR: 167, RBI: 646, SB: 124 });
+
+    const reserved = hitters.filter((p) => p.reserved);
+    expect({ AB: sum(reserved, "AB"), H: sum(reserved, "H"), R: sum(reserved, "R"),
+             HR: sum(reserved, "HR"), RBI: sum(reserved, "RBI"), SB: sum(reserved, "SB") })
+      .toEqual({ AB: 49, H: 11, R: 10, HR: 3, RBI: 7, SB: 0 });
+  });
+
   it("parses every real player row in the fixture, with none skipped", () => {
     // Derived directly from the fixture: 22 Active_Hitters_prev rows + 17
     // Active_Pitchers_prev rows + 2 Reserved_Hitters_prev rows (Reserved
