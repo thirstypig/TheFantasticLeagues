@@ -23,53 +23,18 @@ import { reconcilePeriodStats } from "../features/players/services/mlbStatsSyncS
 import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
 import { parseFgStandings } from "../lib/audit/fgStandingsParser.js";
 import { classifyTeamDelta } from "../lib/audit/classifier.js";
-import { computeTeamPeriodTotals, type RosterStint } from "../lib/audit/fbstTotals.js";
+import { computeTeamPeriodTotals, findCoverageGaps, type RosterStint } from "../lib/audit/fbstTotals.js";
+import { FG_COUNTING_KEYS, normalizeTeamName, toFgComparableStatLine } from "../lib/audit/fgCompare.js";
 import { decideVerdict, renderReport, type Coverage, type Verdict } from "../lib/audit/report.js";
-import { emptyStatLine, type StatLine, type ClassifyResult, type ExplainedDelta } from "../lib/audit/types.js";
+import { emptyStatLine, type StatLine, type ClassifyResult } from "../lib/audit/types.js";
 
 const PROD_REF = "oaogpsshewmcazhehryl";
-const FG_COUNTING_KEYS = ["R", "HR", "RBI", "SB", "W", "SV", "K"] as const;
 const STAT_KEYS = Object.keys(emptyStatLine()) as (keyof StatLine)[];
 
 function assertProd(): void {
   if (!(process.env.DATABASE_URL ?? "").includes(PROD_REF)) {
     throw new Error(`Refusing to run: DATABASE_URL is not prod (${PROD_REF}). Use ./scripts/with-prod-db.sh`);
   }
-}
-
-/**
- * FanGraphs team names drop the trailing period FBST keeps ("Demolition
- * Lumber Co." in the app vs. "Demolition Lumber Co" on OnRoto), and the app
- * copy also carries a stray trailing space. Strip trailing whitespace and a
- * trailing "." before comparing either side so the join isn't silently
- * empty for the one team that happens to end in punctuation.
- */
-function normalizeTeamName(name: string): string {
-  return name.trim().replace(/\.+$/, "").trim();
-}
-
-/**
- * FanGraphs' standings page reports only the 7 roto counting categories
- * (R, HR, RBI, SB, W, SV, K) — the ERA/WHIP/AVG rate stats are shown, but
- * never their raw components (AB, H, IP, ER, BB_H). fgTotals therefore has
- * those 5 keys pinned at 0 by construction, which is not "FBST is wrong" —
- * it's "FanGraphs never published this number". Feeding the full 12-key
- * StatLine into classifyTeamDelta would compare FBST's real AB/H/IP/ER/BB_H
- * against FanGraphs' permanent zero and report a large residual on every
- * team, every run, regardless of correctness — which would make a season
- * PASS structurally unreachable. Project both the FBST totals and every IL
- * candidate's expected delta down to the 7 keys FanGraphs can actually be
- * compared against before classifying.
- */
-function toFgComparableStatLine(line: StatLine): StatLine {
-  const out = emptyStatLine();
-  for (const k of FG_COUNTING_KEYS) out[k] = line[k];
-  return out;
-}
-function toFgComparableCandidate(c: ExplainedDelta): ExplainedDelta {
-  const expected: Partial<StatLine> = {};
-  for (const k of FG_COUNTING_KEYS) if (c.expected[k] !== undefined) expected[k] = c.expected[k];
-  return { ...c, expected };
 }
 
 interface PspRow {
@@ -85,37 +50,6 @@ function buildPspMap(rows: PspRow[]): Map<number, StatLine> {
       { AB: p.AB, H: p.H, R: p.R, HR: p.HR, RBI: p.RBI, SB: p.SB, W: p.W, SV: p.SV, K: p.K, IP: p.IP, ER: p.ER, BB_H: p.BB_H },
     ]),
   );
-}
-
-/**
- * Roster rows that WOULD be counted by computeTeamPeriodTotals's own window
- * filter (acquired/released/IL-at-start) but have no PSP row for the given
- * period. computeTeamPeriodTotals silently `continue`s on a missing row —
- * indistinguishable, from inside a pure function, from "genuinely zero".
- * This is the caller-side check that tells the two cases apart, so a
- * coverage gap surfaces instead of under-counting.
- */
-function findCoverageGaps(args: {
-  rosters: RosterStint[];
-  period: { startDate: Date; endDate: Date; name: string };
-  pspByPlayer: Map<number, StatLine>;
-  isOnIlAtPeriodStart: (playerId: number) => boolean;
-  playerNameById: Map<number, string>;
-}): { playersSkipped: number; skipReasons: string[] } {
-  const { rosters, period, pspByPlayer, isOnIlAtPeriodStart, playerNameById } = args;
-  let playersSkipped = 0;
-  const skipReasons: string[] = [];
-  for (const r of rosters) {
-    if (r.acquiredAt > period.endDate) continue;
-    if (r.releasedAt && r.releasedAt <= period.startDate) continue;
-    if (isOnIlAtPeriodStart(r.playerId)) continue;
-    if (!pspByPlayer.has(r.playerId)) {
-      playersSkipped++;
-      const name = playerNameById.get(r.playerId) ?? `playerId ${r.playerId}`;
-      skipReasons.push(`[${period.name}] ${name} (teamId=${r.teamId}): no PlayerStatsPeriod row`);
-    }
-  }
-  return { playersSkipped, skipReasons };
 }
 
 function renderCorrectnessLegSection(args: {
@@ -204,9 +138,6 @@ async function main(): Promise<void> {
   }));
   const playerNameById = new Map<number, string>(rosterRows.map((r) => [r.playerId, r.player.name]));
   const rosterPlayerIds = [...new Set(rosterRows.map((r) => r.playerId))];
-  const teamPlayerIds = new Map<number, Set<number>>(
-    teams.map((t) => [t.id, new Set(rosterRows.filter((r) => r.teamId === t.id).map((r) => r.playerId))]),
-  );
 
   const ilEvents = await prisma.transactionEvent.findMany({
     where: { playerId: { in: rosterPlayerIds }, transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] }, effDate: { not: null } },

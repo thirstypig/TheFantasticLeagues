@@ -3,7 +3,7 @@
 ## Overview
 
 - **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Coverage**: 1444 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 960 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
+- **Coverage**: 1519 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 960 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
 - **Approach**: Unit tests per feature + integration tests for cross-feature interactions
 
 Run all: `npm run test` | Server only: `npm run test:server` | Client only: `npm run test:client`
@@ -76,16 +76,22 @@ npx vitest run src/features/auction/__tests__/
 npx vitest --watch
 ```
 
-## Current Coverage Snapshot (2026-07-24)
+## Current Coverage Snapshot (2026-08-04)
 
-**Server**: 1444 tests across 107 files (main `test` job) + 7 integration [4 draft + 3 IL-fee]
+**Server**: 1519 tests across 109 files (main `test` job) + 7 integration [4 draft + 3 IL-fee]
 tests (`draft/__tests__/draftIntegration.test.ts`) run in the separate
 `db-integration` CI job against a postgres:16 service. That suite is gated by
 `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1`
 (fail-closed), so it runs only against a local/CI throwaway Postgres, never prod.
 The server `test` include also covers the **docs-system script tests** at
 `scripts/__tests__/*.test.mjs` (41 tests — `refresh-docs`, `sync-inbox`,
-`feature-isolation-baseline`), same pattern as the `../shared/**` contract tests.  
+`feature-isolation-baseline`), same pattern as the `../shared/**` contract tests.
+The **standings-audit module** (`src/lib/audit/`, 71 tests across 9 files) is
+fixture-driven with no network or DB: external-source parsers are tested against
+saved HTML, and the pure accumulator/classifier against hand-built roster stints.
+Its tests are mutation-verified — see
+`docs/solutions/integration-issues/parser-boolean-conflates-membership-with-status-misfiles-stat-total.md`
+for why a green suite was not evidence of correctness there.  
 **Client**: 960 tests across 76 files  
 **MCP**: 133 tests (83 fbst-app + 50 mlb-data)
 
