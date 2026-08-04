@@ -1,0 +1,1074 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title> OnRoto - OGBA </title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<link rel='icon' href='/favicon.ico' type='image/x-icon'>
+<link rel="stylesheet" type="text/css" href="/css/menu_styles_side_red.css">
+<link rel="stylesheet" type="text/css" href="/css/page_styles_red.css">
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui-1.8.16.custom.css">
+
+<!--[if IE]>
+<style type="text/css" media="screen">
+#menu ul li {float: left; width: 100%;}
+</style>
+<![endif]-->
+<!--[if lt IE 7]>
+<style type="text/css" media="screen">
+body {
+behavior: url(/css/csshover.htc);
+font-size: 100%;
+} 
+#menu ul li {float: left; width: 100%;}
+#menu ul li a {height: 1%;} 
+
+#menu a, #menu h2, #menu h1, #menu h4 {
+font: bold 0.8em/1.6em arial, helvetica, sans-serif;
+} 
+</style>
+<![endif]-->
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script type="text/javascript" src="https://onroto.fangraphs.com/baseball/webnew/javascript/jquery-ui-1.8.16.custom.min.js"></script>
+<script type="text/javascript" src="https://onroto.fangraphs.com/baseball/webnew/javascript/touch_device.js"></script>
+<!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-G0RN1B30CD"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-G0RN1B30CD'); </script>
+
+
+<script type="text/javascript">
+var a = Math.floor(Math.random()*9999999999+1);
+var random_number = a;
+
+function clear_psearch()
+{		
+	if(document.forms.player_search_form.psearch.value== "Player Search (use first init + last name)")
+	{
+		document.forms.player_search_form.psearch.value="";
+	}
+}	
+function blur_psearch()
+{		
+	if(document.forms.player_search_form.psearch.value == "")
+	{
+		document.forms.player_search_form.psearch.value="Player Search (use first init + last name)";
+	}
+}	
+</script> 
+</head>
+<body marginwidth="0" marginheight="0" onLoad="document.forms.player_search_form.psearch.blur()" align=center>
+<table width='1020' align='center' border=0 cellpadding=0 cellspacing=0>
+<tr>
+
+
+<!--  Logo, top left  -->
+<td class='nav_header_bg' width=180 height=120 rowspan=2 align="center" valign="middle" bgcolor="#cccccc">
+<a href="https://baseball.mocksports.com/" target="_blank"><img src="/images/msbanner2010.jpg" border=0 width=170 height=105 alt=""></a>
+<div class=visit><em>2026 Leagues Now Forming</em></div>
+</td>
+
+<!--  Banner/league name, top center  -->
+<td class='nav_header_bg' width=840 align="center" height=100 valign="middle" bgcolor="#cccccc">
+
+<!-- PLACE THIS SECTION INSIDE OF YOUR BODY TAGS -->
+<!-- Tag ID: ads-fangraphs_728 -->
+<div align="center" id="ads-fangraphs_728">
+  <script src="https://yield-manager-deployment.assertive.workers.dev/tRW2xasmrSZrN7QWk"></script>
+</div>
+</td>
+</tr>
+<tr>
+
+<td class=nav_header_bg width=840 align="center" valign="middle"  class="league_name">
+<form method=post name="player_search_form" id="player_search_form" action="https://onroto.fangraphs.com/baseball/webnew/player_search.pl?OGBA+6&session_id=guest">
+<table width="100%" cellpadding=0 cellspacing=0 border=0 bgcolor=cccccc>
+<tr>
+<td class='nav_header_bg' bgcolor=cccccc align=left>OGBA Baseball</td>
+<td class='nav_header_bg' align=right bgcolor=cccccc>
+<input class="input10b" size=40 name="psearch" type="text" value="Player Search (use first init + last name)" id="psearch" onBlur="blur_psearch()" onfocus="clear_psearch()"> 
+&nbsp; 
+<input class="input10b_grey" type=submit name=psearch_submit value="Go">
+</td></tr>
+</table>
+</form>
+</td>
+</tr>
+</table>
+<table width='1020' align='center' cellspacing=0 cellpadding=0 border=0>
+<tr>
+ <td class='nav_header_bg' bgcolor="#cccccc" valign=top align=center height=1200 width=180>
+<div id = "menu">
+<ul>
+  <li> <h2> OnRoto Site Navigation </h2>
+    <ul>
+      <li> <a href="https://onroto.fangraphs.com/index.pl?OGBA+6&session_id=guest"> My OnRoto Account </a> </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/site_map.pl?OGBA+6&session_id=guest"> League Site Map</a> </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/updates.pl?OGBA+6&session_id=guest"> Updates from OnRoto </a> </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_LFO.pl?OGBA+6&session_id=guest">Leagues Needing Owners</a> </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_tributes.pl?OGBA+6&session_id=guest"> Member Tributes </a> </li>
+    </ul>
+  </li>
+</ul>
+<div class='stats_darker_grey'>
+&nbsp;<br>
+</div>
+<ul>
+  <li> <h2> League Pages </h2>
+    <ul>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_front_office&session_id=guest"> Front Office </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_uploads.pl?OGBA+6&session_id=guest"> Constitution, etc </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_owner_info.pl?OGBA+6&session_id=guest"> Owner Info </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+basic&session_id=guest"> League Rules </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+basic&session_id=guest"> Basic Set Up </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+line_ups&session_id=guest"> Line-ups and Rosters </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+categories&session_id=guest"> Scoring Categories </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+aux_categories&session_id=guest"> Display Categories </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+transactions&session_id=guest"> Transactions </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans_timeline.pl?OGBA+6&session_id=guest"> Transaction Timeline </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+trades&session_id=guest"> Trades </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+free_agents&session_id=guest"> Free Agents </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_specs.pl?OGBA+6+misc&session_id=guest"> Miscellany </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_overrides.pl?OGBA+6&session_id=guest"> Special Player Statuses  </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_stat_cor.pl?OGBA+6&session_id=guest"> Stat Corrections </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_draft_choices.pl?OGBA+6&session_id=guest"> Draft Pick Trades </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/adfree_upgrade.pl?OGBA+6+2026&session_id=guest"> Upgrade to ad-free </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/payment_history.pl?OGBA+6&session_id=guest"> Payment History </a> </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6&session_id=guest"> League Standings </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6&session_id=guest"> Standings </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_alt_stand.pl?OGBA+6&session_id=guest"> Alt Format Standings </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_league_summary.pl?OGBA+6&session_id=guest"> League Stat Summary </a> </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_team_stats&session_id=guest"> Team Stats </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_6&session_id=guest"> My Team </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_6&session_id=guest"> Team by Team </a> 
+            <ul>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_0&session_id=guest"> Diamond Kings</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_1&session_id=guest"> Demolition Lumber Co</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_2&session_id=guest"> Dodger Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_3&session_id=guest"> Skunk Dogs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_4&session_id=guest"> RGing Sluggers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_5&session_id=guest"> Devil Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_6&session_id=guest"> Los Doyers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_7&session_id=guest"> The Show</a> </li>
+            </ul>
+</li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_last_night's_boxes&session_id=guest"> Last Night's Boxes </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+6&session_id=guest"> My Team </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+tot&session_id=guest"> All Teams </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+6&session_id=guest"> Team by Team </a> 
+            <ul>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+0&session_id=guest"> Diamond Kings</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+1&session_id=guest"> Demolition Lumber Co</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+2&session_id=guest"> Dodger Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+3&session_id=guest"> Skunk Dogs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+4&session_id=guest"> RGing Sluggers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+5&session_id=guest"> Devil Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+6&session_id=guest"> Los Doyers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_box.pl?OGBA+6+7&session_id=guest"> The Show</a> </li>
+            </ul>
+</li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_live_scoring&session_id=guest"> Live Scoring </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6&session_id=guest" target=_blank> My Team </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+all&session_id=guest" target=_blank> All Team Summary </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+6&session_id=guest"> Team by Team </a> 
+            <ul>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+0&session_id=guest"> Diamond Kings</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+1&session_id=guest"> Demolition Lumber Co</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+2&session_id=guest"> Dodger Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+3&session_id=guest"> Skunk Dogs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+4&session_id=guest"> RGing Sluggers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+5&session_id=guest"> Devil Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+6&session_id=guest"> Los Doyers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+7&session_id=guest"> The Show</a> </li>
+            </ul>
+</li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_live_scoring.pl?OGBA+6+stand&session_id=guest" target=_blank> Live Standings </a> </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_MLB_scoreboard.pl?OGBA+6&session_id=guest"> Live MLB Boxes </a> </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_old_live_scoring&session_id=guest"> Old Live Scoring </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/livebox.cgi?OGBA+6" target=_blank> My Team </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/livebox.cgi?OGBA+all" target=_blank> All Team Summary </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/livebox.cgi?OGBA+stand" target=_blank> Live Standings </a> </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_team_rosters&session_id=guest"> Team Rosters </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+6&session_id=guest"> My Team </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+all+today&session_id=guest"> All Teams </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+all+today&session_id=guest"> Current </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+all&session_id=guest"> Upcoming </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_short_roster.pl?OGBA+6&session_id=guest"> On Single Page </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_short_roster.pl?OGBA+6&session_id=guest"> All Players </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_short_roster.pl?OGBA+6+actives_only&session_id=guest"> Actives Only </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_print_ros.pl?OGBA+6&session_id=guest"> Printable Rosters </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+6&session_id=guest"> Team by Team </a> 
+            <ul>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+0&session_id=guest"> Diamond Kings</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+1&session_id=guest"> Demolition Lumber Co</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+2&session_id=guest"> Dodger Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+3&session_id=guest"> Skunk Dogs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+4&session_id=guest"> RGing Sluggers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+5&session_id=guest"> Devil Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+6&session_id=guest"> Los Doyers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+7&session_id=guest"> The Show</a> </li>
+            </ul>
+</li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_available_players&session_id=guest"> Available Players </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+freeagent+hitters&session_id=guest"> Free Agent Hitters </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+freeagent+hitters&session_id=guest"> Sortable </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+freeagent+hitters+no_weekly&session_id=guest"> YTD Stats Only </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+freeagent+hitters+no_weekly+OLD&session_id=guest"> 2025 YTD Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+freeagent+hitters+sortable+OLD&session_id=guest"> Sortable 2025 Stats </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+freeagent+pitchers&session_id=guest"> Free Agent Pitchers </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+freeagent+pitchers&session_id=guest"> Sortable </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+freeagent+pitchers+no_weekly&session_id=guest"> YTD Stats Only </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+freeagent+pitchers+no_weekly+OLD&session_id=guest"> 2025 YTD Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+freeagent+pitchers+sortable+OLD&session_id=guest"> Sortable 2025 Stats </a> </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_mlb_player_data&session_id=guest"> MLB Player Data </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+stats+hitters&session_id=guest"> Hitter Stats </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+stats+hitters&session_id=guest"> Sortable Hitters </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+stats+hitters+no_weekly&session_id=guest"> Printable Hitters </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+leaders+hitters+no_weekly+OLD&session_id=guest"> 2025 YTD Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+leaders+hitters+sortable+OLD&session_id=guest"> Sortable 2025 YTD Stats </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+stats+pitchers&session_id=guest"> Pitcher Stats </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_new_multi_stats.pl?OGBA+6+stats+pitchers&session_id=guest"> Sortable Pitchers </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+stats+pitchers+no_weekly&session_id=guest"> Printable Pitchers </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+leaders+pitchers+no_weekly+OLD&session_id=guest"> 2025 YTD Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_multi_stats.pl?OGBA+6+leaders+pitchers+sortable+OLD&session_id=guest"> Sortable 2025 YTD Stats </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_elig_pos.pl?OGBA+6+all&session_id=guest"> Position Eligibility </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_trans.pl?OGBA+6+new&session_id=guest"> MLB Transactions </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_trans.pl?OGBA+6&session_id=guest"> YTD </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_trans.pl?OGBA+6+new&session_id=guest"> Yesterday </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_trans.pl?OGBA+6+7&session_id=guest"> Last 7 days </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_rosters.pl?OGBA+6&session_id=guest"> MLB Rosters </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_rosters.pl?OGBA+6&session_id=guest"> All MLB Rosters </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_rosters.pl?OGBA+6+MLB40&session_id=guest"> All MLB 40 Man Rosters </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_rosters.pl?OGBA+6&session_id=guest"> League Pool MLB Rosters </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_mlb_rosters.pl?OGBA+6+40&session_id=guest"> League Pool 40 Man Rosters </a> </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_transaction_logs&session_id=guest"> Transaction Logs </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+6+YTD&session_id=guest"> YTD, My Team </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+week&session_id=guest"> Current Period, All Teams </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+6+YTD&session_id=guest"> YTD, Team by Team  </a> 
+            <ul>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+0+YTD&session_id=guest"> Diamond Kings</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+1+YTD&session_id=guest"> Demolition Lumber Co</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+2+YTD&session_id=guest"> Dodger Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+3+YTD&session_id=guest"> Skunk Dogs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+4+YTD&session_id=guest"> RGing Sluggers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+5+YTD&session_id=guest"> Devil Dawgs</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+6+YTD&session_id=guest"> Los Doyers</a> </li>
+              <li><a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+7+YTD&session_id=guest"> The Show</a> </li>
+            </ul>
+</li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+YTD&session_id=guest"> YTD, All Teams </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+by_week&session_id=guest"> All Teams, by Period </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_FA_acquisitions.pl?OGBA+6&session_id=guest"> Free Agent Acquisitions </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trades.pl?OGBA+6&session_id=guest"> All League Trades </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/team_pick_trade_log.pl?OGBA+6&session_id=guest"> Draft Pick Trade Log </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans_count.pl?OGBA+6&session_id=guest"> Transaction Counter </a> </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_print_reports&session_id=guest"> Print Reports </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/OGBA/report.pdf" target=_blank> Full Report </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/OGBA/stand.pdf" target=_blank> Standings </a> </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/OGBA/team08.pdf" target=_blank> My Team Report </a> </li>
+        </ul>
+      </li>
+      <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_past_results&session_id=guest"> Past Years' Results </a> 
+        <ul>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_2024_results&session_id=guest"> 2024 Results </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6+2024&session_id=guest"> Standings </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_6+2024&session_id=guest"> Team Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/team_run_old_roto.pl?OGBA+6+2024&session_id=guest"> Select Report Date </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/OGBA/2024/report.pdf" target=_blank> Print Report </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_player_stats.pl?OGBA+6+hitters+2024&session_id=guest"> MLB Hitter Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_player_stats.pl?OGBA+6+pitchers+2024&session_id=guest"> MLB Pitcher Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+by_week+2024&session_id=guest"> Transactions (by week) </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+YTD+2024&session_id=guest"> Transactions (by team) </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans_count.pl?OGBA+6+2024&session_id=guest"> Transaction Counter </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trades.pl?OGBA+6+2024&session_id=guest"> All League Trades </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+all+2024&session_id=guest"> Final Rosters </a> </li>
+            </ul>
+          </li>
+          <li> <a href="https://onroto.fangraphs.com/baseball/webnew/mini_site_map.pl?OGBA+6+league_2025_results&session_id=guest"> 2025 Results </a> 
+            <ul>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_stand.pl?OGBA+6+2025&session_id=guest"> Standings </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+SORT_6+2025&session_id=guest"> Team Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/team_run_old_roto.pl?OGBA+6+2025&session_id=guest"> Select Report Date </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/OGBA/2025/report.pdf" target=_blank> Print Report </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_player_stats.pl?OGBA+6+hitters+2025&session_id=guest"> MLB Hitter Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_player_stats.pl?OGBA+6+pitchers+2025&session_id=guest"> MLB Pitcher Stats </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+by_week+2025&session_id=guest"> Transactions (by week) </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+YTD+2025&session_id=guest"> Transactions (by team) </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trans_count.pl?OGBA+6+2025&session_id=guest"> Transaction Counter </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_trades.pl?OGBA+6+2025&session_id=guest"> All League Trades </a> </li>
+              <li> <a href="https://onroto.fangraphs.com/baseball/webnew/display_roster.pl?OGBA+6+all+2025&session_id=guest"> Final Rosters </a> </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class='stats_darker_grey'>
+&nbsp;<br>
+</div>
+
+</div>
+ </td>
+ <td rowspan=2 valign=top align=center width=840>
+
+<!--Standings Begin--><p><center>&nbsp;<br><font color="#484848" size="3">
+<b> STANDINGS
+through 08.02.26<br>&nbsp;</b></font>
+</p>
+<table width='' cellpadding=2 cellspacing=2 border=0 bgcolor=FFFFFF> <tr><th id='base_color' class='white_on_grey'> Team Name </th>
+<th class='white_on_grey'>    R </th>
+<th class='white_on_grey'>   HR </th>
+<th class='white_on_grey'>  RBI </th>
+<th class='white_on_grey'>   SB </th>
+<th class='white_on_grey'>  AVG </th>
+<th class='white_on_grey'>    W </th>
+<th class='white_on_grey'>   SV </th>
+<th class='white_on_grey'>  ERA </th>
+<th class='white_on_grey'> WHIP </th>
+<th class='white_on_grey'>   SO </th>
+<th class='white_on_grey'> TOTAL</th> <th class='white_on_grey'> +/- </th>
+</tr>
+<tr><td align = left nowrap class='stats_light_grey'><a class=team_link rel=1 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+0&session_id=guest">Demolition Lumber Co</a></td>
+<td align=right class='stats_light_grey'> 5.0</td>
+<td align=right class='stats_light_grey'> 3.0</td>
+<td align=right class='stats_light_grey'> 5.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align = right class='stats_light_grey'><b> 68.0</b></td>
+<td align = right class='stats_light_grey'>  0.0</td>
+</tr><tr><td align = left nowrap class='stats_dark_grey'><a class=team_link rel=2 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+1&session_id=guest">Dodger Dawgs</a></td>
+<td align=right class='stats_dark_grey'> 7.0</td>
+<td align=right class='stats_dark_grey'> 4.5</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align=right class='stats_dark_grey'> 8.0</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align=right class='stats_dark_grey'> 5.0</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align=right class='stats_dark_grey'> 7.0</td>
+<td align=right class='stats_dark_grey'> 5.0</td>
+<td align=right class='stats_dark_grey'> 5.0</td>
+<td align = right class='stats_dark_grey'><b> 59.5</b></td>
+<td align = right class='stats_dark_grey'><font color=green><b>  0.5</b></font></td>
+</tr><tr><td align = left nowrap class='stats_light_grey'><a class=team_link rel=3 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+2&session_id=guest">Skunk Dogs</a></td>
+<td align=right class='stats_light_grey'> 6.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align=right class='stats_light_grey'> 5.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align=right class='stats_light_grey'> 3.0</td>
+<td align=right class='stats_light_grey'> 6.0</td>
+<td align=right class='stats_light_grey'> 3.0</td>
+<td align = right class='stats_light_grey'><b> 52.0</b></td>
+<td align = right class='stats_light_grey'>  0.0</td>
+</tr><tr><td align = left nowrap class='stats_dark_grey'><a class=team_link rel=4 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+3&session_id=guest">RGing Sluggers</a></td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align=right class='stats_dark_grey'> 3.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 2.0</td>
+<td align=right class='stats_dark_grey'> 5.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align = right class='stats_dark_grey'><b> 44.0</b></td>
+<td align = right class='stats_dark_grey'><font color=green><b>  1.5</b></font></td>
+</tr><tr><td align = left nowrap class='stats_light_grey'><a class=team_link rel=7 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+4&session_id=guest">The Show</a></td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 8.0</td>
+<td align=right class='stats_light_grey'> 2.0</td>
+<td align=right class='stats_light_grey'> 4.0</td>
+<td align=right class='stats_light_grey'> 2.0</td>
+<td align=right class='stats_light_grey'> 5.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 2.0</td>
+<td align = right class='stats_light_grey'><b> 41.0</b></td>
+<td align = right class='stats_light_grey'><font color=red><b> -2.0</b></font></td>
+</tr><tr><td align = left nowrap class='stats_dark_grey'><a class=team_link rel=0 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+5&session_id=guest">Diamond Kings</a></td>
+<td align=right class='stats_dark_grey'> 3.0</td>
+<td align=right class='stats_dark_grey'> 2.0</td>
+<td align=right class='stats_dark_grey'> 2.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 5.0</td>
+<td align=right class='stats_dark_grey'> 6.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align=right class='stats_dark_grey'> 2.0</td>
+<td align=right class='stats_dark_grey'> 4.0</td>
+<td align = right class='stats_dark_grey'><b> 36.0</b></td>
+<td align = right class='stats_dark_grey'><font color=green><b>  1.0</b></font></td>
+</tr><tr><td align = left nowrap class='stats_light_grey'><a class=team_link rel=5 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+6&session_id=guest">Devil Dawgs</a></td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 3.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 3.0</td>
+<td align=right class='stats_light_grey'> 1.0</td>
+<td align=right class='stats_light_grey'> 6.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align=right class='stats_light_grey'> 7.0</td>
+<td align = right class='stats_light_grey'><b> 31.0</b></td>
+<td align = right class='stats_light_grey'><font color=red><b> -0.5</b></font></td>
+</tr><tr><td align = left nowrap class='stats_light_blue'><a class=team_link rel=6 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+7&session_id=guest">Los Doyers</a></td>
+<td align=right class='stats_light_blue'> 2.0</td>
+<td align=right class='stats_light_blue'> 4.5</td>
+<td align=right class='stats_light_blue'> 3.0</td>
+<td align=right class='stats_light_blue'> 1.0</td>
+<td align=right class='stats_light_blue'> 2.0</td>
+<td align=right class='stats_light_blue'> 7.0</td>
+<td align=right class='stats_light_blue'> 3.0</td>
+<td align=right class='stats_light_blue'> 2.0</td>
+<td align=right class='stats_light_blue'> 3.0</td>
+<td align=right class='stats_light_blue'> 1.0</td>
+<td align = right class='stats_light_blue'><b> 28.5</b></td>
+<td align = right class='stats_light_blue'><font color=red><b> -0.5</b></font></td>
+</tr></table><br>
+<p><font color="#484848" size="3"> <b>STANDINGS FOR CURRENT WEEK </b></font> 
+<table width='' cellpadding =2 cellspacing=2 bgcolor=FFFFFF border=0>
+<tr><th class='white_on_grey'>Team</th>
+<th class='white_on_grey'>   R</th>
+<th class='white_on_grey'>  HR</th>
+<th class='white_on_grey'> RBI</th>
+<th class='white_on_grey'>  SB</th>
+<th class='white_on_grey'> AVG</th>
+<th class='white_on_grey'>   W</th>
+<th class='white_on_grey'>  SV</th>
+<th class='white_on_grey'> ERA</th>
+<th class='white_on_grey'>WHIP</th>
+<th class='white_on_grey'>  SO</th>
+<th class='white_on_grey'>TOTAL</th>
+</tr><tr><td class='stats_light_grey' nowrap align=left><a class=team_link rel=0 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+5&session_id=guest">Diamond Kings</a></td>
+<td class='stats_light_grey' align=right>7.5</td>
+<td class='stats_light_grey' align=right>4.5</td>
+<td class='stats_light_grey' align=right>6.5</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>7.0</td>
+<td class='stats_light_grey' align=right>7.5</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>2.0</td>
+<td class='stats_light_grey' align=right>2.0</td>
+<td class='stats_light_grey' align=right>7.5</td>
+<td class='stats_light_grey' align=right><b>52.5</b></td>
+</tr><tr><td class='stats_dark_grey' nowrap align=left><a class=team_link rel=5 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+6&session_id=guest">Devil Dawgs</a></td>
+<td class='stats_dark_grey' align=right>7.5</td>
+<td class='stats_dark_grey' align=right>4.5</td>
+<td class='stats_dark_grey' align=right>5.0</td>
+<td class='stats_dark_grey' align=right>8.0</td>
+<td class='stats_dark_grey' align=right>8.0</td>
+<td class='stats_dark_grey' align=right>3.5</td>
+<td class='stats_dark_grey' align=right>4.0</td>
+<td class='stats_dark_grey' align=right>1.0</td>
+<td class='stats_dark_grey' align=right>3.0</td>
+<td class='stats_dark_grey' align=right>7.5</td>
+<td class='stats_dark_grey' align=right><b>52.0</b></td>
+</tr><tr><td class='stats_light_grey' nowrap align=left><a class=team_link rel=2 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+1&session_id=guest">Dodger Dawgs</a></td>
+<td class='stats_light_grey' align=right>5.5</td>
+<td class='stats_light_grey' align=right>7.5</td>
+<td class='stats_light_grey' align=right>6.5</td>
+<td class='stats_light_grey' align=right>7.0</td>
+<td class='stats_light_grey' align=right>2.0</td>
+<td class='stats_light_grey' align=right>3.5</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>6.5</td>
+<td class='stats_light_grey' align=right>7.5</td>
+<td class='stats_light_grey' align=right>1.5</td>
+<td class='stats_light_grey' align=right><b>51.5</b></td>
+</tr><tr><td class='stats_dark_grey' nowrap align=left><a class=team_link rel=7 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+4&session_id=guest">The Show</a></td>
+<td class='stats_dark_grey' align=right>5.5</td>
+<td class='stats_dark_grey' align=right>7.5</td>
+<td class='stats_dark_grey' align=right>1.0</td>
+<td class='stats_dark_grey' align=right>4.0</td>
+<td class='stats_dark_grey' align=right>1.0</td>
+<td class='stats_dark_grey' align=right>3.5</td>
+<td class='stats_dark_grey' align=right>4.0</td>
+<td class='stats_dark_grey' align=right>6.5</td>
+<td class='stats_dark_grey' align=right>7.5</td>
+<td class='stats_dark_grey' align=right>1.5</td>
+<td class='stats_dark_grey' align=right><b>42.0</b></td>
+</tr><tr><td class='stats_light_grey' nowrap align=left><a class=team_link rel=1 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+0&session_id=guest">Demolition Lumber Co</a></td>
+<td class='stats_light_grey' align=right>3.5</td>
+<td class='stats_light_grey' align=right>1.5</td>
+<td class='stats_light_grey' align=right>3.0</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>3.5</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>6.5</td>
+<td class='stats_light_grey' align=right>6.0</td>
+<td class='stats_light_grey' align=right>5.5</td>
+<td class='stats_light_grey' align=right><b>41.5</b></td>
+</tr><tr><td class='stats_dark_grey' nowrap align=left><a class=team_link rel=4 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+3&session_id=guest">RGing Sluggers</a></td>
+<td class='stats_dark_grey' align=right>1.0</td>
+<td class='stats_dark_grey' align=right>4.5</td>
+<td class='stats_dark_grey' align=right>3.0</td>
+<td class='stats_dark_grey' align=right>4.0</td>
+<td class='stats_dark_grey' align=right>3.0</td>
+<td class='stats_dark_grey' align=right>7.5</td>
+<td class='stats_dark_grey' align=right>4.0</td>
+<td class='stats_dark_grey' align=right>4.0</td>
+<td class='stats_dark_grey' align=right>5.0</td>
+<td class='stats_dark_grey' align=right>5.5</td>
+<td class='stats_dark_grey' align=right><b>41.5</b></td>
+</tr><tr><td class='stats_light_grey' nowrap align=left><a class=team_link rel=3 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+2&session_id=guest">Skunk Dogs</a></td>
+<td class='stats_light_grey' align=right>2.0</td>
+<td class='stats_light_grey' align=right>4.5</td>
+<td class='stats_light_grey' align=right>3.0</td>
+<td class='stats_light_grey' align=right>4.0</td>
+<td class='stats_light_grey' align=right>5.0</td>
+<td class='stats_light_grey' align=right>3.5</td>
+<td class='stats_light_grey' align=right>8.0</td>
+<td class='stats_light_grey' align=right>6.5</td>
+<td class='stats_light_grey' align=right>1.0</td>
+<td class='stats_light_grey' align=right>3.0</td>
+<td class='stats_light_grey' align=right><b>40.5</b></td>
+</tr><tr><td class='stats_light_blue' nowrap align=left><a class=team_link rel=6 href="https://onroto.fangraphs.com/baseball/webnew/display_team_stats.pl?OGBA+6+7&session_id=guest">Los Doyers</a></td>
+<td class='stats_light_blue' align=right>3.5</td>
+<td class='stats_light_blue' align=right>1.5</td>
+<td class='stats_light_blue' align=right>8.0</td>
+<td class='stats_light_blue' align=right>1.0</td>
+<td class='stats_light_blue' align=right>6.0</td>
+<td class='stats_light_blue' align=right>3.5</td>
+<td class='stats_light_blue' align=right>4.0</td>
+<td class='stats_light_blue' align=right>3.0</td>
+<td class='stats_light_blue' align=right>4.0</td>
+<td class='stats_light_blue' align=right>4.0</td>
+<td class='stats_light_blue' align=right><b>38.5</b></td>
+</tr></table>
+<p><font color="#484848" size="3"> <b>  STANDINGS BY CATEGORY </b>
+        </font>  
+<table width='' cellpadding=2 cellspacing=2 border=0 bgcolor=FFFFFF>
+<input type=hidden id='no_cats' value='10' /><tr id='cat_row_0'> <td><input type=hidden id='cat_0' value='RUNS' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_0'><tr><th align = center colspan = "5" class='white_on_grey'>RUNS</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>763</td>
+<td align = right class='stats_light_grey'>5</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Dodger Dawgs</td>
+<td align = right class='stats_dark_grey'>737</td>
+<td align = right class='stats_dark_grey'>5</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Skunk Dogs</td>
+<td align = right class='stats_light_grey'>713</td>
+<td align = right class='stats_light_grey'>3</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_dark_grey'>699</td>
+<td align = right class='stats_dark_grey'>4</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>677</td>
+<td align = right class='stats_light_grey'>2</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Diamond Kings</td>
+<td align = right class='stats_dark_grey'>649</td>
+<td align = right class='stats_dark_grey'>6</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>626</td>
+<td align = right class='stats_light_blue'>4</td>
+<td align = right class='stats_light_blue'><b>2.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>588</td>
+<td align = right class='stats_dark_grey'>6</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td><td>
+<input type=hidden id='cat_1' value='HOME RUNS' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_0'><tr><th align = center colspan = "5" class='white_on_grey'>HOME RUNS</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>230</td>
+<td align = right class='stats_light_grey'>2</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>206</td>
+<td align = right class='stats_dark_grey'>1</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>189</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>178</td>
+<td align = right class='stats_light_blue'>0</td>
+<td align = right class='stats_light_blue'><b>4.5</b></td>
+<td align = right class='stats_light_blue'><font color=red><b>-0.5</b></font></td>
+<tr> <td align = left nowrap class='stats_light_grey'>Dodger Dawgs</td>
+<td align = right class='stats_light_grey'>178</td>
+<td align = right class='stats_light_grey'>2</td>
+<td align = right class='stats_light_grey'><b>4.5</b></td>
+<td align = right class='stats_light_grey'><font color=green><b>0.5</b></font></td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_dark_grey'>167</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>165</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>143</td>
+<td align = right class='stats_dark_grey'>1</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td> </tr>
+<tr id='cat_row_2'> <td><input type=hidden id='cat_2' value='RBIS' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_2'><tr><th align = center colspan = "5" class='white_on_grey'>RBIS</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>768</td>
+<td align = right class='stats_light_grey'>2</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>701</td>
+<td align = right class='stats_dark_grey'>3</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Dodger Dawgs</td>
+<td align = right class='stats_light_grey'>675</td>
+<td align = right class='stats_light_grey'>6</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_dark_grey'>646</td>
+<td align = right class='stats_dark_grey'>3</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>643</td>
+<td align = right class='stats_light_grey'>3</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>623</td>
+<td align = right class='stats_light_blue'>8</td>
+<td align = right class='stats_light_blue'><b>3.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>594</td>
+<td align = right class='stats_light_grey'>6</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>525</td>
+<td align = right class='stats_dark_grey'>4</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td><td>
+<input type=hidden id='cat_3' value='STOLEN BASES' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_2'><tr><th align = center colspan = "5" class='white_on_grey'>STOLEN BASES</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Dodger Dawgs</td>
+<td align = right class='stats_light_grey'>133</td>
+<td align = right class='stats_light_grey'>2</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_dark_grey'>124</td>
+<td align = right class='stats_dark_grey'>1</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>114</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>107</td>
+<td align = right class='stats_dark_grey'>1</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>101</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>99</td>
+<td align = right class='stats_dark_grey'>3</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>87</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>83</td>
+<td align = right class='stats_light_blue'>0</td>
+<td align = right class='stats_light_blue'><b>1.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+</table>
+</td> </tr>
+<tr id='cat_row_4'> <td><input type=hidden id='cat_4' value='AVERAGE' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_4'><tr><th align = center colspan = "5" class='white_on_grey'>AVERAGE</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_light_grey'>.2659</td>
+<td align = right class='stats_light_grey'>.2093</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>.2582</td>
+<td align = right class='stats_dark_grey'>.2105</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Dodger Dawgs</td>
+<td align = right class='stats_light_grey'>.2538</td>
+<td align = right class='stats_light_grey'>.1875</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Diamond Kings</td>
+<td align = right class='stats_dark_grey'>.2531</td>
+<td align = right class='stats_dark_grey'>.2564</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>.2521</td>
+<td align = right class='stats_light_grey'>.1628</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>RGing Sluggers</td>
+<td align = right class='stats_dark_grey'>.2493</td>
+<td align = right class='stats_dark_grey'>.1951</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>.2469</td>
+<td align = right class='stats_light_blue'>.2121</td>
+<td align = right class='stats_light_blue'><b>2.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>.2367</td>
+<td align = right class='stats_dark_grey'>.3333</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td><td>
+<input type=hidden id='cat_5' value='WINS' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_4'><tr><th align = center colspan = "5" class='white_on_grey'>WINS</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_light_grey'>60</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>59</td>
+<td align = right class='stats_light_blue'>0</td>
+<td align = right class='stats_light_blue'><b>7.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>57</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Dodger Dawgs</td>
+<td align = right class='stats_dark_grey'>55</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>54</td>
+<td align = right class='stats_light_grey'>1</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'><font color=green><b>0.5</b></font></td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>53</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'><font color=red><b>-0.5</b></font></td>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>45</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>39</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td> </tr>
+<tr id='cat_row_6'> <td><input type=hidden id='cat_6' value='SAVES' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_6'><tr><th align = center colspan = "5" class='white_on_grey'>SAVES</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_light_grey'>58</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>41</td>
+<td align = right class='stats_dark_grey'>2</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Dodger Dawgs</td>
+<td align = right class='stats_light_grey'>35</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>The Show</td>
+<td align = right class='stats_dark_grey'>33</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>29</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>19</td>
+<td align = right class='stats_light_blue'>0</td>
+<td align = right class='stats_light_blue'><b>3.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>18</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>13</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td><td>
+<input type=hidden id='cat_7' value='ERA' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_6'><tr><th align = center colspan = "5" class='white_on_grey'>ERA</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_light_grey'>3.43</td>
+<td align = right class='stats_light_grey'>0.00</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Dodger Dawgs</td>
+<td align = right class='stats_dark_grey'>3.54</td>
+<td align = right class='stats_dark_grey'>0.00</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Devil Dawgs</td>
+<td align = right class='stats_light_grey'>3.70</td>
+<td align = right class='stats_light_grey'>5.11</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>RGing Sluggers</td>
+<td align = right class='stats_dark_grey'>3.86</td>
+<td align = right class='stats_dark_grey'>1.29</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'><font color=green><b>1.0</b></font></td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>3.87</td>
+<td align = right class='stats_light_grey'>5.06</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'><font color=red><b>-1.0</b></font></td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>4.03</td>
+<td align = right class='stats_dark_grey'>0.00</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>4.11</td>
+<td align = right class='stats_light_blue'>3.00</td>
+<td align = right class='stats_light_blue'><b>2.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>The Show</td>
+<td align = right class='stats_dark_grey'>4.54</td>
+<td align = right class='stats_dark_grey'>0.00</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td> </tr>
+<tr id='cat_row_8'> <td><input type=hidden id='cat_8' value='(W + H) / IP' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_8'><tr><th align = center colspan = "5" class='white_on_grey'>(W + H) / IP</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_light_grey'>1.140</td>
+<td align = right class='stats_light_grey'>0.750</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>1.187</td>
+<td align = right class='stats_dark_grey'>1.216</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Skunk Dogs</td>
+<td align = right class='stats_light_grey'>1.212</td>
+<td align = right class='stats_light_grey'>1.500</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Dodger Dawgs</td>
+<td align = right class='stats_dark_grey'>1.216</td>
+<td align = right class='stats_dark_grey'>0.000</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>1.217</td>
+<td align = right class='stats_light_grey'>1.143</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>1.229</td>
+<td align = right class='stats_light_blue'>1.167</td>
+<td align = right class='stats_light_blue'><b>3.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>1.257</td>
+<td align = right class='stats_light_grey'>1.312</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>The Show</td>
+<td align = right class='stats_dark_grey'>1.336</td>
+<td align = right class='stats_dark_grey'>0.000</td>
+<td align = right class='stats_dark_grey'><b>1.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+</table>
+</td><td>
+<input type=hidden id='cat_9' value='STRIKE OUTS' /><table width='100%' cellspacing=2 border = 0 bgcolor=FFFFFF id='cat_row_8'><tr><th align = center colspan = "5" class='white_on_grey'>STRIKE OUTS</th></tr>
+<tr> <th class='white_on_grey'> Team </th> <th class='white_on_grey'> Year </th> <th class='white_on_grey'>  Wk </th> <th class='white_on_grey'> PTS
+              </th> <th class='white_on_grey'> +/- </th> </tr>
+<tr> <td align = left nowrap class='stats_light_grey'>Demolition Lumber Co</td>
+<td align = right class='stats_light_grey'>907</td>
+<td align = right class='stats_light_grey'>5</td>
+<td align = right class='stats_light_grey'><b>8.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Devil Dawgs</td>
+<td align = right class='stats_dark_grey'>827</td>
+<td align = right class='stats_dark_grey'>15</td>
+<td align = right class='stats_dark_grey'><b>7.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>RGing Sluggers</td>
+<td align = right class='stats_light_grey'>745</td>
+<td align = right class='stats_light_grey'>5</td>
+<td align = right class='stats_light_grey'><b>6.0</b></td>
+<td align = right class='stats_light_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Dodger Dawgs</td>
+<td align = right class='stats_dark_grey'>735</td>
+<td align = right class='stats_dark_grey'>0</td>
+<td align = right class='stats_dark_grey'><b>5.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>Diamond Kings</td>
+<td align = right class='stats_light_grey'>733</td>
+<td align = right class='stats_light_grey'>15</td>
+<td align = right class='stats_light_grey'><b>4.0</b></td>
+<td align = right class='stats_light_grey'><font color=green><b>2.0</b></font></td>
+<tr> <td align = left nowrap class='stats_dark_grey'>Skunk Dogs</td>
+<td align = right class='stats_dark_grey'>729</td>
+<td align = right class='stats_dark_grey'>2</td>
+<td align = right class='stats_dark_grey'><b>3.0</b></td>
+<td align = right class='stats_dark_grey'>0.0</td>
+<tr> <td align = left nowrap class='stats_light_grey'>The Show</td>
+<td align = right class='stats_light_grey'>728</td>
+<td align = right class='stats_light_grey'>0</td>
+<td align = right class='stats_light_grey'><b>2.0</b></td>
+<td align = right class='stats_light_grey'><font color=red><b>-2.0</b></font></td>
+<tr> <td align = left nowrap class='stats_light_blue'>Los Doyers</td>
+<td align = right class='stats_light_blue'>705</td>
+<td align = right class='stats_light_blue'>3</td>
+<td align = right class='stats_light_blue'><b>1.0</b></td>
+<td align = right class='stats_light_blue'>0.0</td>
+</table>
+</td> </tr>
+</table></center><!--Standings End--></td></tr><tr><td class='nav_header_bg' bgcolor="#cccccc" valign=top align=center width=180></td></tr></table>
+<div style="text-align: center;" class=black_on_white10>
+<a href="https://www.fangraphs.com/about/privacy-policy" target="_blank"> Privacy Policy </a> &nbsp;
+<a href="https://www.fangraphs.com/tos.aspx" target="_blank"> Terms of Service </a> &nbsp;
+<a href="https://onroto.fangraphs.com/refund_policy.pl" target="_blank"> Refund Policy </a> &nbsp;
+</div>
+<pre>
+
+
+
+
+
+
+
+</pre>
+</body>
+</html>
