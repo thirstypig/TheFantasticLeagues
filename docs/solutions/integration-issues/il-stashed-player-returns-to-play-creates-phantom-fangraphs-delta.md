@@ -3,33 +3,45 @@ title: "One team diverges from FanGraphs and the IL explanation fit the arithmet
 slug: il-stashed-player-returns-to-play-creates-phantom-fangraphs-delta
 category: integration-issues
 created: 2026-08-03
-updated: 2026-08-03
+updated: 2026-08-04
 component: standings, ilWindows, fangraphs-audit, mlb-data-sync
 problem_type: audit-methodology / attribution-semantics
 symptom: "A single team diverges from FanGraphs on most hitting categories (FBST lower) while the other seven teams reconcile cell-for-cell. Counting stats are off by amounts too large to be sync lag and too small to be a whole-player omission."
-root_cause: "OPEN. The IL-exclusion hypothesis below fit the arithmetic for the affected team but was FALSIFIED the same day: six other teams have IL-at-period-start players with real accumulated stats and show zero divergence. The real mechanism is not yet identified."
+root_cause: "RESOLVED — and it was not an attribution rule at all. The IL-exclusion hypothesis below fit the affected team's arithmetic but was FALSIFIED the same day: six other teams have IL-at-period-start players with real accumulated stats and show zero divergence. The actual cause was a data bug — a mid-period MLB trade stored as zeros because parsePlayerStats took splits[0] instead of the aggregate split (fixed in PR #429). This document is retained as a worked example of an explanation that fits the arithmetic without being the mechanism."
 related_modules: standings, periods, transactions, players, fangraphs-audit
-prs: []
+prs: [429, 431]
 tags: fangraphs, onroto, audit, standings, il, attribution, adr-013, baseball-reference, statsapi, four-way
 ---
 
 # One team diverges from FanGraphs — and the obvious explanation was wrong
 
-> ## ⚠️ STATUS: ROOT CAUSE FALSIFIED AND STILL OPEN
+> ## ⚠️ STATUS: ROOT CAUSE FALSIFIED — REAL CAUSE FOUND ELSEWHERE (PR #429)
 >
 > This document originally concluded that FBST's IL exclusion caused the divergence.
 > **That conclusion is wrong** and was disproved the same day by the audit tool built
 > from it. See [The disconfirming evidence](#the-disconfirming-evidence).
+>
+> **The actual cause was not an attribution rule at all.** Curtis Mead was traded
+> Boston→Washington mid-Period-5. MLB's `byDateRange` returns one split per team plus
+> an aggregate, and `parsePlayerStats` took `splits[0]` — so FBST stored his entire
+> period as zeros across 15 played games. That missing R11/HR3/RBI9/SB2 is exactly
+> the Demolition gap this document tried to explain. Fixed in PR #429; full write-up
+> in `../logic-errors/mlb-multi-team-split-zeroes-traded-player-stats.md`.
 >
 > **What still holds:** every measurement here. Acuña's Period 5 line is R5/HR2/RBI2/AB22
 > in FBST, MLB statsapi, and Baseball Reference — verified three ways. The doubleheader
 > observation, the reproduction recipe, and the Baseball Reference parser keys are all
 > unaffected.
 >
-> **What does not hold:** the causal claim built on top of those measurements.
+> **What does not hold:** the causal claim built on top of those measurements. The
+> `buildIlCandidates` classifier written from it was deleted in PR #431 — while live it
+> manufactured the very gap it claimed to explain, printing `explained` and `residual`
+> as identical columns for every already-reconciling team.
 >
 > Read this as a worked example of an explanation that matched a number without being
-> the mechanism — which is more useful than the wrong answer it originally gave.
+> the mechanism — which is more useful than the wrong answer it originally gave. The
+> rule that killed it in minutes, now step 5 of the `audit-standings` skill: **apply the
+> candidate explanation to the cases that did NOT fail.**
 
 ## Symptom
 

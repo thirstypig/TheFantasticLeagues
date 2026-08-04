@@ -157,8 +157,11 @@ async function main(): Promise<void> {
   const explicitPeriod = periodArgIdx > -1 ? Number(process.argv[periodArgIdx + 1]) : null;
   if (process.argv.includes("--season")) {
     throw new Error(
-      "--season is not implemented by this CLI yet (Task 9 scope is period mode only, " +
-        "per docs/superpowers/plans/2026-08-03-standings-audit-skill.md Task 9). Omit the flag.",
+      "--season is not a mode. Every run emits BOTH legs: the period leg " +
+        "(FBST vs MLB, correctness) and the season leg (FBST vs FanGraphs, " +
+        "reconciliation). --period selects which period the first leg audits; " +
+        "the season leg is always season-to-date because FanGraphs cannot " +
+        "express a per-period slice. Omit the flag.",
     );
   }
 
