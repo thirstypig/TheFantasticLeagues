@@ -80,7 +80,19 @@ jobs:
         run: cd server && npx prisma db push --schema ../prisma/schema.prisma --skip-generate --accept-data-loss
 
       - name: DB integration tests (real Postgres)
-        run: cd server && npx vitest run src/features/draft/__tests__/draftIntegration.test.ts src/features/transactions/services/__tests__/ilFeeService.integration.test.ts
+        # --no-file-parallelism is REQUIRED, not an optimisation. Both suites share
+        # one Postgres, and vitest runs test FILES in parallel by default.
+        #
+        # draftIntegration's beforeEach does an unscoped
+        #   TRUNCATE ... "Player" ... RESTART IDENTITY CASCADE
+        # while ilFeeService cleans up scoped BY ID (player.deleteMany({id: playerId})).
+        # RESTART IDENTITY makes both suites hand out the SAME ids, so ilFeeService's
+        # afterAll deletes a row that now belongs to draftIntegration — surfacing as
+        # `Foreign key constraint violated on DraftPick_playerId_fkey`.
+        #
+        # Observed 2026-08-04: red on one run, green on re-run of the identical commit.
+        # Running the files sequentially removes the interleaving entirely.
+        run: cd server && npx vitest run --no-file-parallelism src/features/draft/__tests__/draftIntegration.test.ts src/features/transactions/services/__tests__/ilFeeService.integration.test.ts
 
   audit:
     runs-on: ubuntu-latest
