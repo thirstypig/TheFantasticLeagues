@@ -145,6 +145,13 @@ only thing that actually settled it was counting rows in the source document.
 
 ## Cross-references
 
+- [`parser-boolean-conflates-membership-with-status-misfiles-stat-total.md`](./parser-boolean-conflates-membership-with-status-misfiles-stat-total.md)
+  — **the next defect found in this same function.** Once the rows stopped being
+  dropped, they turned out to be *misfiled*: `reserved` conflated table membership
+  with player status and moved 50 AB into the wrong team total. Same "all tests
+  green" signature; caught by a different instrument (the page's own `TOTAL:` row
+  rather than an exact row count). Read them as a pair — a count assertion catches
+  a drop but not a misfile.
 - [`il-stashed-player-returns-to-play-creates-phantom-fangraphs-delta.md`](./il-stashed-player-returns-to-play-creates-phantom-fangraphs-delta.md) — the audit case these dropped rows belong to.
 - [`onroto-fangraphs-audit-runbook.md`](./onroto-fangraphs-audit-runbook.md) — the parsing gotcha list this extends.
 - `docs/superpowers/specs/2026-08-03-standings-audit-skill-design.md` (DOC-024) — "Coverage is part of the verdict", the constraint this violated.

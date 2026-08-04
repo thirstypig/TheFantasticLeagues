@@ -172,3 +172,7 @@ Two settled decisions that look like bugs if you forget them (ADR-013):
 - Stale PSP: `docs/solutions/integration-issues/stale-psp-outside-5-day-reconcile-window.md`
 - The falsified IL theory, kept as a worked example of the trap:
   `docs/solutions/integration-issues/il-stashed-player-returns-to-play-creates-phantom-fangraphs-delta.md`
+- Both known defects in the FG per-team parser, a matched pair — rows silently
+  dropped, then rows silently misfiled:
+  `docs/solutions/integration-issues/html-parser-silent-row-drop-passes-its-own-tests.md`
+  and `docs/solutions/integration-issues/parser-boolean-conflates-membership-with-status-misfiles-stat-total.md`
