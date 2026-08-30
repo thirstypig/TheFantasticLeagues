@@ -143,6 +143,18 @@ Session start/end checklists, browser verification, continuous improvement signa
 
 /check, /db, /test-new, /ship, etc. See **[Commands guide](docs/guides/commands.md)**.
 
+## Repo Skills (`.claude/skills/`)
+
+Model-invoked skills committed to the repo, distinct from the user-invoked commands
+above. A skill is loaded automatically when its `description` matches the task.
+
+- **`audit-standings`** — reconciles standings against MLB statsapi + FanGraphs OnRoto.
+  Invoke it for any standings reconciliation instead of re-deriving the method; it
+  carries the check-first ordering of real failure modes (`splits[0]` trades, the
+  reconciler's structural blindness under ADR-014, stale PSP outside the 5-day window)
+  and the falsification rule that has now killed three proposed root causes:
+  **apply the candidate explanation to the cases that did NOT fail.**
+
 ## MCP Servers
 
 MLB Data Proxy (8 tools, caching) + FBST App Tools (24 wire-list/transaction tools). See **[MCP Servers guide](docs/guides/mcp-servers.md)**.
@@ -433,6 +445,6 @@ not summarize the diff. PRs land before session end whenever possible
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-08-04 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-08-30 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->

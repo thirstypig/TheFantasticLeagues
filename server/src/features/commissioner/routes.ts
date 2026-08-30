@@ -1036,6 +1036,10 @@ import { tradeItemSchema } from "../trades/routes.js";
 const executeTradeSchema = z.object({
   items: z.array(tradeItemSchema).min(1),
   note: z.string().max(500).optional(),
+  // Offline trades are often recorded days after they happened. Without this
+  // the move is dated at entry time, which credits the losing team a full
+  // extra scoring period.
+  effectiveDate: effectiveDateSchema,
 });
 
 /**
@@ -1049,11 +1053,11 @@ router.post(
   validateBody(executeTradeSchema),
   asyncHandler(async (req, res) => {
     const leagueId = Number(req.params.leagueId);
-    const { items, note } = req.body;
+    const { items, note, effectiveDate } = req.body;
 
     let trade: { id: number; items: { id: number }[] };
     try {
-      trade = await commissionerService.executeTrade(leagueId, items);
+      trade = await commissionerService.executeTrade(leagueId, items, effectiveDate);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("All teams must belong")) {

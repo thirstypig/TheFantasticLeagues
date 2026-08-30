@@ -193,8 +193,14 @@ async function main(): Promise<void> {
     fgTeamsByNormName.set(normalizeTeamName(name), stats);
   }
 
+  // Completed periods only. Including the ACTIVE period made the season leg
+  // unusable on the first day of a new one: the period opens with zero
+  // PlayerStatsPeriod rows, so every rostered player is reported as a coverage
+  // gap and the verdict is forced to INCOMPLETE — 188 spurious skips on
+  // 2026-08-30, the day Period 7 opened. It also cannot change any total,
+  // because FanGraphs is season-to-date through the last completed day.
   const seasonPeriods = await prisma.period.findMany({
-    where: { leagueId, status: { in: ["active", "completed"] } },
+    where: { leagueId, status: "completed" },
     orderBy: { startDate: "asc" },
   });
 

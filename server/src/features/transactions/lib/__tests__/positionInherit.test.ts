@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isEligibleForSlot, assertAddEligibleForDropSlot, negotiateInheritedSlot } from "../positionInherit.js";
+import { isEligibleForSlot, assertAddEligibleForDropSlot, negotiateInheritedSlot, tradeSlotFor } from "../positionInherit.js";
 import { isRosterRuleError } from "../../../../lib/rosterRuleError.js";
 
 describe("isEligibleForSlot", () => {
@@ -130,5 +130,38 @@ describe("assertAddEligibleForDropSlot", () => {
         expect(err.metadata.dropSlot).toBe("SS");
       }
     }
+  });
+});
+
+describe("tradeSlotFor", () => {
+  it("keeps the sender's slot when there is one", () => {
+    expect(tradeSlotFor({ assignedPosition: "OF", posPrimary: "LF" })).toBe("OF");
+    expect(tradeSlotFor({ assignedPosition: "MI", posPrimary: "SS" })).toBe("MI");
+  });
+
+  it("falls back to the player's primary position when the sender had no slot", () => {
+    expect(tradeSlotFor({ assignedPosition: null, posPrimary: "LF" })).toBe("LF");
+  });
+
+  it("maps every pitcher code to the P slot", () => {
+    for (const code of ["P", "SP", "RP", "CL"]) {
+      expect(tradeSlotFor({ assignedPosition: null, posPrimary: code })).toBe("P");
+    }
+  });
+
+  it("maps a two-way player to P, matching mlbPositionToSlots('TWP')", () => {
+    // TWP is not a slot code — returning it verbatim would make the client's
+    // narrowSlot() fall through to "BN", which is the bug this helper exists
+    // to prevent.
+    expect(tradeSlotFor({ assignedPosition: null, posPrimary: "TWP" })).toBe("P");
+  });
+
+  it("never returns null or empty — an unknown player falls back to UT", () => {
+    expect(tradeSlotFor({ assignedPosition: null, posPrimary: null })).toBe("UT");
+    expect(tradeSlotFor({ assignedPosition: null, posPrimary: "" })).toBe("UT");
+  });
+
+  it("uppercases a lowercased primary position", () => {
+    expect(tradeSlotFor({ assignedPosition: null, posPrimary: "of" })).toBe("OF");
   });
 });

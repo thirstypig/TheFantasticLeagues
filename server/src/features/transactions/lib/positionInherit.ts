@@ -10,9 +10,36 @@
 //   - /transactions/il-activate (activated player takes dropped player's slot)
 //   - Waiver batch processor (same check, re-evaluated at processing time)
 
-import { positionToSlots } from "../../../lib/sports/baseball.js";
+import { positionToSlots, PITCHER_CODES_SET } from "../../../lib/sports/baseball.js";
 import { RosterRuleError } from "../../../lib/rosterRuleError.js";
 import { slotsFor } from "./slotMatcher.js";
+
+/**
+ * The slot a traded player's NEW roster row should take.
+ *
+ * Single definition shared by both trade paths — the owner flow
+ * (`features/trades/routes.ts`) and the commissioner's direct execution
+ * (`CommissionerService.executeTrade`). They previously carried separate
+ * copies of this rule and drifted: the commissioner path wrote `null`, and
+ * because the client narrows an unrecognised slot code to "BN"
+ * (`toHubPlayer.ts` → `narrowSlot`), every traded hitter silently landed on
+ * the bench. Keeping one definition is what stops that recurring.
+ *
+ * Never returns null or an empty string: the caller writes this straight into
+ * `Roster.assignedPosition`, and a blank there is the bug.
+ */
+export function tradeSlotFor(args: {
+  assignedPosition: string | null | undefined;
+  posPrimary: string | null | undefined;
+}): string {
+  if (args.assignedPosition) return args.assignedPosition;
+  const primary = (args.posPrimary ?? "").trim().toUpperCase();
+  if (!primary) return "UT";
+  // "TWP" is a position, not a slot — mlbPositionToSlots("TWP") is ["P"], so
+  // returning it verbatim would fall through to "BN" on the client.
+  if (PITCHER_CODES_SET.has(primary)) return "P";
+  return primary;
+}
 
 /**
  * Does any of the player's `posList` positions map to a slot that includes
