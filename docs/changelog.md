@@ -2,6 +2,17 @@
 
 All notable changes to The Fantastic Leagues will be documented in this file.
 
+## v2.3.0 — 2026-08-31 — fix
+### IL fees are now billed, and two traded hitters came off the bench
+
+- **Fix — traded players landed on the bench.** A commissioner-executed trade wrote the receiving roster row with no lineup slot. The app falls back to the player's primary position, but `"LF"` and `"RF"` are positions, not slot codes, so the client showed them as `BN`. Pitchers looked fine (`"P"` *is* a slot), which is why it read as intermittent. Teoscar Hernández and Dylan Crews were affected and have been restored to `OF`. Both trade paths now share one rule, so they cannot drift apart again.
+- **Fix — commissioner "assign player to team" had the same defect** and would have benched every hitter assigned that way.
+- **Money — IL fees are billed for the first time.** They had never been assessed: a Postgres type mismatch killed the reconcile in April, and the two queued jobs exhausted their retries before the July fix landed, with no way to reset them. Periods 2–6 are now settled at **$200** across seven teams. Four teams' balances went **down** — Dodger Dawgs and Demolition −$20 each, Diamond Kings and Skunk Dogs −$10 — and The Show's went up $35. Every correction is an auditable void plus reversal; nothing was edited in place.
+- **Rules — a stint that ends on a period's first day no longer owes that period.** Backdated IL activations are stamped at 00:00 on a period's first day, and the old "any overlap bills the period" rule charged a full fee for **zero days** of occupancy. Commissioner decision; worth $120 across the league.
+- **Fix — two players stashed in the same transaction were both charged the $15 second-slot rate.** Simultaneous stashes now correctly take one $10 slot and one $15 slot. Los Doyers were refunded $5.
+- **Internal:** four billing defects were only reachable by actually writing — a repricing reported success while writing nothing, three times, because reversal rows are indistinguishable from charges in the query, the unique index, and the return value. Written up at `docs/solutions/logic-errors/repricing-reports-success-and-writes-nothing.md`.
+- **Internal:** new safety nets — a nightly audit of every closed period against MLB, an hourly dead-man's switch for ingestion jobs, an alarm for outbox events that have exhausted their retries, and a drift check between the two IL logs that found 9 discrepancies on its first run.
+
 ## v2.2.1 — 2026-08-03 — fix
 ### Traded players' stats were being silently dropped
 

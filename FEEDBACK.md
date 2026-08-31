@@ -4,6 +4,28 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-08-31 — Executing a 60-day-old todo found four bugs it was hiding
+
+**Suite: 1629 server + 960 client green (was 1519 + 960).** 20 PRs merged, every one verified in prod via the `/api/health` version check rather than assumed from the merge.
+
+**Closed all three P1s from the July staleness audit, plus the one parked longest.** #300 (`syncedAt` on the scoring tables), #299 (JobRun tracking + hourly dead-man's switch), #301 (nightly audit of every closed period vs MLB, alert-only), and #298 — $150 of IL fees that had never been assessed.
+
+**Executing #298 is what found everything else.** The lock bug behind it was fixed in July; what sat for two more months was the money and two outbox rows stuck at `attempts=5` with no reset path. Billing it surfaced four defects in a row, each only reachable by *actually writing*: simultaneous IL stashes both charged the $15 rate (#442); insert-before-void plus reversal rows re-read as charges (#443); reversals squatting the partial unique index while `added` reported intent rather than the inserted count (#444); and periods closed outside the app never enqueuing a fee reconcile (#445). **A repricing reported success and wrote nothing, three times**, across two correct-but-insufficient fixes. Written up at `docs/solutions/logic-errors/repricing-reports-success-and-writes-nothing.md`.
+
+**The dry run was structurally blind to all of it** — it returns before touching the database, which is the exact layer every failure lived in. "Dry run looked right" reassured twice while the money went unbilled. The durable guard is the cheapest line of the four: check `createMany`'s returned count and throw on a short insert. With it, both failed runs would have failed loudly instead of silently under-billing.
+
+**#310 — the drift check found 3× what I did by hand.** `RosterSlotEvent` (what fees bill from) was missing stashes that exist in `TransactionEvent`. I traced it to the 3-way claim path and was about to fix that; the rowHashes proved otherwise — `IL_STASH-correction-pa…`, "IL stash (commissioner correction) — effective period 2 start" — a manual backdating exercise that wrote one log. Not fixable by patching a route, which is why the answer was a drift check rather than a writer fix. It found **9 discrepancies, not the 3** manual inspection had turned up, including two unbillable stints I had missed entirely.
+
+**The chart caught what six hours of scripts didn't.** Every aggregate I produced showed Betts's team and period totals as correct; only listing stints with their dates exposed a duplicate zero-length stint being charged $10. Aggregates hide exactly the anomalies that cancel out.
+
+**A rules question worth more than the repair.** Plan Q17(b) ("any stint overlapping the period → full fee") was decided when stints ended on arbitrary days. Backdating activations to period *starts* turned it into a full charge for zero days of occupancy — a $120 swing. Commissioner chose the exclusive end boundary; ledger settled at **$200**, four teams refunded.
+
+**My own errors, for the record:** merged PR #446 while its check was red (chained the merge instead of gating on it — every merge since gates explicitly); piped a `docs:refresh` to `/dev/null` and trusted its unchecked exit code; wrote a case-sensitive ledger filter that reported an empty table right after a successful $150 write; and read past four IL warnings in every reconcile output for hours before treating them as the finding that became #310.
+
+**Open:** #310 can't close until orphaned IL events alarm instead of swallowing a `logger.warn` · four small items (zero-length stints are billable; drift check should treat DROP as closing a stint; 3-way claim writes no `RosterSlotEvent`; the orphaned-event alarm) · #311 (ledger has no reader, append-only convention unpinned) · 11 open todos, 1 P1 · `planning.json` 104 days stale · local `server tsc` exits 2 forever on `shared/api` zod resolution, which trains you to ignore a typecheck failure.
+
+---
+
 ## Session 2026-08-30 — A benched trade, and the audit residual that wasn't the trade
 
 **Suite: 1529 server + 960 client green; client tsc clean; `npm run build` clean.** Shipped PR #435.

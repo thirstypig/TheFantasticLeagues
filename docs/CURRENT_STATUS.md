@@ -1,6 +1,6 @@
 # Current Product Status
 
-Last updated: 2026-07-10
+Last updated: 2026-08-31
 
 ## Planning Sources
 
@@ -15,7 +15,7 @@ Two planning artifacts exist, with distinct roles (do not create additional `TOD
 
 ## Active Period
 
-**Period 5** (Jul 5 – Aug 1, 2026) is live — rolled over from Period 4 on 2026-07-06, with all 8 teams' Period 5 add/drop moves backdated to the 07-05 period start (late-rollover boundary fix; see FEEDBACK 2026-07-06). Recurring OnRoto/FanGraphs stat audits through 07-09 reconcile: raw counting stats match cell-for-cell; the few small rate residuals are ADR-013 ownership-window attribution on mid-season-dropped players, not data errors (verified four-way against MLB.com statsapi + Baseball Reference). Audit runbook: `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
+**Period 7** (Aug 30 – Sep 30, 2026) is live — rolled over 2026-08-30. Periods 1–6 are closed and all six now PASS against MLB statsapi (1,269 player-period checks, 0 mismatches, verified 2026-08-31), so stored stat data is correct league-wide. Residuals against FanGraphs are **attribution**, not data: they trace to roster moves recorded in FBST later than they happened in OnRoto, which earns a team a full extra period. Every one is attributed to named players; see the runbook's 2026-08-30 row and todo #308 for the three that remain open. Audit runbook: `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
 
 ---
 
@@ -43,7 +43,7 @@ Two planning artifacts exist, with distinct roles (do not create additional `TOD
 ## Current Focus Areas
 
 ### Roster Hub (shipped, in maintenance)
-The Yahoo-style roster hub at `/teams/:code` is the primary roster management entry point. Flows: Add/Drop (`/manage/claim`), Place on IL (`/manage/il-stash`), Activate from IL (`/manage/il-activate`), **Release from IL** (`/manage/il-release`, PR #381 — drops IL player without activating first). Pending: 3-way atomic claim (Add + IL stash + Drop, planned in `docs/superpowers/plans/2026-06-07-three-way-atomic-claim.md`).
+The Yahoo-style roster hub at `/teams/:code` is the primary roster management entry point. Flows: Add/Drop (`/manage/claim`), Place on IL (`/manage/il-stash`), Activate from IL (`/manage/il-activate`), **Release from IL** (`/manage/il-release`, PR #381 — drops IL player without activating first). The 3-way atomic claim (Add + IL stash + Drop in one `$transaction`) **is implemented** — `transactions/routes.ts`, the `ilStashPlayerId` branch. Note it writes a `TransactionEvent` but **no `RosterSlotEvent`**, so an IL stash made through it is invisible to fee billing (todo #310).
 
 ### Standings Accuracy
 Stats attribution uses ownership-window logic (`computeWithDailyStats` for periods with mid-period transactions, `computeWithPeriodStats` for boundary-aligned periods). PR #374 adds the `hasMidPeriodPickup` guard that routes automatically. An audit comparing FBST vs OnRoto/FanGraphs for Period 3 is documented at `docs/reports/onroto-audit-2026-06-08.md` and viewable at `/admin/reports`.
@@ -75,7 +75,7 @@ OGBA uses **period-by-period roto accumulated** scoring:
 
 ## Deferred
 
-- **3-way atomic claim** (Add + IL stash + Drop): plan written at `docs/superpowers/plans/2026-06-07-three-way-atomic-claim.md`, not yet implemented
+- **IL fee billing**: settled 2026-08-31 at $200 across 7 teams after a repricing that surfaced four billing bugs (PRs #442–#445). Open: todo #310 (`RosterSlotEvent` missing stashes; the 3-way claim path writes none) and #311 (`FinanceLedger` has no reader; append-only summing convention unpinned).
 - **SEO and blog expansion**: on hold while roster management and standings accuracy are stabilized
 - **Stripe and growth work**: roadmap items, not displacing in-season correctness work
 - **OnRoto period snapshots**: user contacted OnRoto 2026-06-03 for period-end roster snapshots; IL-slot fix attempted and reverted; waiting on snapshots before re-investigating
