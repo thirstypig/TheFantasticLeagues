@@ -1449,6 +1449,79 @@ describe("POST /transactions/claim — 3-way Add + IL-stash + Drop", () => {
     expect(assertRosterAtExactCap).not.toHaveBeenCalled();
   });
 
+  // ── todo #310: the stash must reach the BILLING log, not just the activity log ──
+  //
+  // `deriveAllStints` (ilFeeService) bills IL fees off RosterSlotEvent, NOT
+  // TransactionEvent. A stash that writes only the TransactionEvent produces a
+  // stint with no opening row — unbillable, and silently so: the reconciler
+  // logs "close event with no open stint — ignoring" and moves on. Four real
+  // stints were under-billed in prod this way (league 20, 2026-08-31).
+
+  it("writes the IL_STASH RosterSlotEvent so the stint is billable (todo #310)", async () => {
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+    mockPrisma.player.findUnique
+      .mockResolvedValueOnce({ mlbId: 999, name: "Stash Guy" })
+      .mockResolvedValueOnce({ mlbId: 545361, name: "Mike Trout" });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" })
+      .mockResolvedValueOnce({ id: 50, teamId: 10, playerId: 200 });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockTx.rosterSlotEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          teamId: 10,
+          leagueId: 1,
+          playerId: 42,
+          event: "IL_STASH",
+        }),
+      }),
+    );
+  });
+
+  it("stamps the MLB evidence captured pre-flight onto the RosterSlotEvent (todo #310)", async () => {
+    const fetchedAt = new Date("2026-06-01T12:00:00Z");
+    mockCheckMlbIlEligibility.mockResolvedValue({
+      status: "Injured 60-Day",
+      cacheFetchedAt: fetchedAt,
+    });
+    mockPrisma.roster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" })
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" });
+    mockPrisma.player.findUnique
+      .mockResolvedValueOnce({ mlbId: 999, name: "Stash Guy" })
+      .mockResolvedValueOnce({ mlbId: 545361, name: "Mike Trout" });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.roster.findFirst
+      .mockResolvedValueOnce({ id: 55, assignedPosition: "1B" })
+      .mockResolvedValueOnce({ id: 50, teamId: 10, playerId: 200 });
+
+    const res = await supertest(app).post("/transactions/claim").send({
+      leagueId: 1, teamId: 10, playerId: 100, dropPlayerId: 200, ilStashPlayerId: 42,
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockTx.rosterSlotEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          playerId: 42,
+          event: "IL_STASH",
+          mlbStatusSnapshot: "Injured 60-Day",
+          mlbStatusFetchedAt: fetchedAt,
+        }),
+      }),
+    );
+  });
+
   it("response envelope includes ilStashedPlayerId and ilStashedPlayerName", async () => {
     mockPrisma.roster.findFirst
       .mockResolvedValueOnce(null)
