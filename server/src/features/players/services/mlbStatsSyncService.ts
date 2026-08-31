@@ -1,5 +1,6 @@
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
+import { classifyPeriodAudit, type PeriodAuditEntry } from "./closedPeriodAudit.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk, parseIP } from "../../../lib/utils.js";
 import * as errorBuffer from "../../../lib/errorBuffer.js";
@@ -551,6 +552,51 @@ export async function reconcilePeriodStats(periodId: number): Promise<PeriodReco
   }
 
   return { periodId, playersChecked: expected.size, fetchErrors: fresh.errors, mismatches };
+}
+
+/**
+ * Audit EVERY closed period against the MLB record — no 5-day window (todo #301).
+ *
+ * `reconcileRecentlyClosedPeriods` stops looking after `windowDays: 5`, so a late
+ * MLB scoring revision to an older period freezes into stored PSP permanently.
+ * Period 4 carried Sean Manaea at ER 17 while three independent sources said 14,
+ * and nothing was watching.
+ *
+ * ALERT-ONLY: never re-syncs. The windowed reconciler heals because a
+ * just-closed period has barely been seen; an old period's standings have been
+ * seen and acted on, so silently rewriting them is worse than reporting the
+ * drift. `reconcile` is injectable for tests; production uses the same
+ * `reconcilePeriodStats` the syncer writes through, per the todo's requirement
+ * to reuse the production fetch path rather than audit_period.ts.
+ */
+export async function auditAllClosedPeriods(
+  opts: { reconcile?: (periodId: number) => Promise<{ mismatches: unknown[]; fetchErrors: number }> } = {},
+): Promise<PeriodAuditEntry[]> {
+  const reconcile = opts.reconcile ?? reconcilePeriodStats;
+  const periods = await prisma.period.findMany({
+    where: { status: "completed" },
+    select: { id: true, name: true },
+    orderBy: { endDate: "asc" },
+  });
+
+  const entries: PeriodAuditEntry[] = [];
+  for (const p of periods) {
+    try {
+      const r = await reconcile(p.id);
+      entries.push({
+        periodId: p.id,
+        periodName: p.name,
+        status: classifyPeriodAudit(r),
+        mismatches: r.mismatches.length,
+      });
+    } catch (err) {
+      // A throw is not a clean period — record it as unchecked so the summary
+      // treats it as needing attention rather than silently shrinking the sweep.
+      logger.error({ error: String(err), periodId: p.id }, "Closed-period audit failed for period");
+      entries.push({ periodId: p.id, periodName: p.name, status: "fetch_error", mismatches: 0 });
+    }
+  }
+  return entries;
 }
 
 export interface ReconcileSweepEntry {

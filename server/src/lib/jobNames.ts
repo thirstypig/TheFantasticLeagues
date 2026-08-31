@@ -13,6 +13,7 @@ export const JOB_CATEGORY_SNAPSHOT = "category-snapshot";
 export const JOB_RECONCILE = "stats-reconcile";
 export const JOB_DAILY_STATS = "daily-stats";
 export const JOB_AAA_PROSPECTS = "aaa-prospects";
+export const JOB_CLOSED_PERIOD_AUDIT = "closed-period-audit";
 
 import type { JobExpectation } from "./jobHealth.js";
 
@@ -35,4 +36,6 @@ export const JOB_EXPECTATIONS: JobExpectation[] = [
   { job: JOB_DAILY_STATS, maxAgeHours: 36 },
   // Weekly, Monday 14:00 UTC — 9 days tolerates one missed week minus slack.
   { job: JOB_AAA_PROSPECTS, maxAgeHours: 9 * 24 },
+  // Nightly at 03:20 UTC.
+  { job: JOB_CLOSED_PERIOD_AUDIT, maxAgeHours: 36 },
 ];

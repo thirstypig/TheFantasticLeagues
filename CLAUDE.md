@@ -437,11 +437,11 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (10 open):
+**Next 3 to-dos** (9 open):
 
-- `301` **P1** — periodic closed period reconcile alarm
 - `310` **P1** — rosterslotevent missing stash events underbills
 - `303` **P2** — retire legacy waiver system
+- `305` **P2** — standings cold compute serialized on single connection
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
