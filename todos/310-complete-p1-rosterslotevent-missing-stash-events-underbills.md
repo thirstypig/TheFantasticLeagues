@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: 310
 tags: [il-fees, roster-rules, payouts, data-integrity, money]
@@ -123,3 +123,27 @@ Do not bill from this estimate; re-run the dry run after the log is repaired.
   Then re-run the IL fee reconcile for the affected periods and verify per-team totals against the
   recomputed dry run — **not** against the +$10–$25 estimate above, which predates the discovery
   that the plan also removes phantom rows Vaughn and Betts were billed on.
+
+### 2026-08-31 (later) — CLOSED. Verified against prod.
+- **The data repair was already fully applied.** The dry run reports all 10 steps satisfied
+  ("Nothing to do"). The "9 discrepancies remain" in the problem statement above is stale — it
+  describes the state when the todo was written, not after the repair ran.
+- **Billing verified current.** New read-only script
+  `server/src/scripts/preview-il-fee-reconcile.ts` dry-runs the fee reconcile across every closed
+  period. All 6 periods clean: **0 to add, 0 to void, 18 stints unchanged, net Δ $0.** Nothing is
+  owed and nothing is over-billed — so no re-bill was needed.
+- **Found and fixed a permanent false positive in the alarm.** The drift check reported one row
+  forever: Quinn Priester's 2026-06-07 `IL_RELEASE`. A player dropped while on IL closes his
+  stint — the transaction log calls it `DROP`, the billing log calls it `IL_RELEASE`. Same event,
+  two vocabularies. `findIlLogDrift` now accepts a same-day `DROP` as the transaction behind an
+  `IL_RELEASE` (narrowly: it never excuses a missing `IL_ACTIVATE` and never creates an
+  expectation of its own).
+- **The pure-function fix alone was not enough, and only prod showed it.** `findIlLogDriftAll`
+  SELECTed `IL_STASH | IL_ACTIVATE | IL_RELEASE`, so DROP rows never reached the function and the
+  new handling was dead code. Unit tests passed — the mock returns whatever rows the test hands
+  it, so it cannot catch a wrong query. A test now asserts the query itself includes `DROP`.
+- **Prod drift is now `0 rows, 0 unbillable`** (was 1).
+
+All acceptance criteria met. Criteria 2 and 4 are satisfied by the #449 drift check plus the
+dead-man's switch at `index.ts:368` (logger.error + email), not by un-swallowing the
+`deriveAllStints` warns — those are a derived symptom of what the drift check catches at source.

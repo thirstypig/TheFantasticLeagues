@@ -129,4 +129,32 @@ describe("findIlLogDriftAll", () => {
     // The one well-formed pair matches; the two null-keyed rows are dropped.
     expect(out).toEqual([]);
   });
+
+  it("fetches DROP rows too, so a drop can close an IL stint", async () => {
+    // findIlLogDrift treats a DROP as the transaction behind an IL_RELEASE, but
+    // it can only do that if the DROP rows are actually SELECTed. Filtering the
+    // query to IL_* only makes the pure function's DROP handling dead code —
+    // which is exactly what happened: unit tests passed while prod still
+    // reported Priester's 2026-06-07 drop as drift on every boot.
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+    mockPrisma.rosterSlotEvent.findMany.mockResolvedValue([]);
+
+    await findIlLogDriftAll();
+
+    const where = mockPrisma.transactionEvent.findMany.mock.calls[0][0].where;
+    expect(where.transactionType.in).toContain("DROP");
+  });
+
+  it("reports no drift when a DROP backs the IL_RELEASE end to end", async () => {
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([
+      { teamId: 146, playerId: 1090, effDate: new Date("2026-04-19"), transactionType: "IL_STASH" },
+      { teamId: 146, playerId: 1090, effDate: new Date("2026-06-07"), transactionType: "DROP" },
+    ]);
+    mockPrisma.rosterSlotEvent.findMany.mockResolvedValue([
+      { teamId: 146, playerId: 1090, effDate: new Date("2026-04-19"), event: "IL_STASH" },
+      { teamId: 146, playerId: 1090, effDate: new Date("2026-06-07"), event: "IL_RELEASE" },
+    ]);
+
+    await expect(findIlLogDriftAll()).resolves.toEqual([]);
+  });
 });

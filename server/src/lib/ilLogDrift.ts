@@ -18,6 +18,23 @@
 
 const IL_EVENTS = new Set(["IL_STASH", "IL_ACTIVATE", "IL_RELEASE"]);
 
+/**
+ * A player dropped while sitting on IL closes his stint. The transaction log
+ * calls that `DROP`; the billing log calls it `IL_RELEASE`. Same event, two
+ * vocabularies — so a DROP on the same (team, player, day) is the transaction
+ * behind an IL_RELEASE.
+ *
+ * Deliberately narrow: a DROP satisfies an IL_RELEASE and nothing else. It
+ * never excuses a missing IL_ACTIVATE, and it never creates an expectation of
+ * its own (a plain drop of a healthy player has no IL event and must stay
+ * invisible here).
+ *
+ * Without this, Quinn Priester's 2026-06-07 drop reports as drift on every
+ * boot, forever — a permanent false positive on the alarm that exists to catch
+ * real under-billing.
+ */
+const CLOSES_IL_STINT = "DROP";
+
 export interface IlLogDrift {
   teamId: number;
   playerId: number;
@@ -59,12 +76,24 @@ export function findIlLogDrift(
       .map((e) => key(e.teamId, e.playerId, e.effDate, e.event)),
   );
 
+  // (team, player, day) triples that carry a DROP — see CLOSES_IL_STINT.
+  const dropDays = new Set(
+    txEvents
+      .filter((e) => e.transactionType === CLOSES_IL_STINT)
+      .map((e) => `${e.teamId}|${e.playerId}|${e.effDate.toISOString().slice(0, 10)}`),
+  );
+
   const out: IlLogDrift[] = [];
   for (const k of txKeys) {
     if (!slotKeys.has(k)) out.push({ ...parse(k), missingFrom: "RosterSlotEvent" });
   }
   for (const k of slotKeys) {
-    if (!txKeys.has(k)) out.push({ ...parse(k), missingFrom: "TransactionEvent" });
+    if (txKeys.has(k)) continue;
+    const row = parse(k);
+    if (row.event === "IL_RELEASE" && dropDays.has(`${row.teamId}|${row.playerId}|${row.effDate}`)) {
+      continue;
+    }
+    out.push({ ...row, missingFrom: "TransactionEvent" });
   }
 
   // Stable order so a diff of two runs is meaningful.

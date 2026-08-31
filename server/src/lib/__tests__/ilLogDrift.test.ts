@@ -88,4 +88,56 @@ describe("findIlLogDrift", () => {
     const b = findIlLogDrift([tx(10, 1, "2026-04-19", "IL_STASH"), tx(10, 2, "2026-04-19", "IL_STASH")], []);
     expect(a).toEqual(b);
   });
+
+  // ── A DROP closes an IL stint (prod, 2026-08-31) ──────────────────
+  //
+  // Quinn Priester was dropped while sitting on IL. The transaction log
+  // records that as `DROP`; the billing log records the stint closing as
+  // `IL_RELEASE`. Both are correct and they describe the same event — but a
+  // literal event-name comparison calls it drift, forever.
+  //
+  // That matters because this check runs on every boot through the dead-man's
+  // switch. A permanent false positive on a money alarm is how the next REAL
+  // under-billing gets scrolled past.
+
+  it("accepts a DROP as the transaction behind an IL_RELEASE", () => {
+    const out = findIlLogDrift(
+      [tx(146, 1090, "2026-04-19", "IL_STASH"), tx(146, 1090, "2026-06-07", "DROP")],
+      [slot(146, 1090, "2026-04-19", "IL_STASH"), slot(146, 1090, "2026-06-07", "IL_RELEASE")],
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("still flags an IL_RELEASE with no transaction of any kind behind it", () => {
+    // The guard must not become "any IL_RELEASE is fine".
+    const out = findIlLogDrift(
+      [tx(146, 1090, "2026-04-19", "IL_STASH")],
+      [slot(146, 1090, "2026-04-19", "IL_STASH"), slot(146, 1090, "2026-06-07", "IL_RELEASE")],
+    );
+    expect(out).toEqual([
+      { teamId: 146, playerId: 1090, effDate: "2026-06-07", event: "IL_RELEASE", missingFrom: "TransactionEvent" },
+    ]);
+  });
+
+  it("does not let a DROP excuse a missing IL_ACTIVATE", () => {
+    // A drop closes a stint; an activation is a different event and a DROP
+    // says nothing about it.
+    const out = findIlLogDrift(
+      [tx(146, 1090, "2026-06-07", "DROP")],
+      [slot(146, 1090, "2026-06-07", "IL_ACTIVATE")],
+    );
+    expect(out).toEqual([
+      { teamId: 146, playerId: 1090, effDate: "2026-06-07", event: "IL_ACTIVATE", missingFrom: "TransactionEvent" },
+    ]);
+  });
+
+  it("a DROP on a different day does not close the stint", () => {
+    const out = findIlLogDrift(
+      [tx(146, 1090, "2026-06-09", "DROP")],
+      [slot(146, 1090, "2026-06-07", "IL_RELEASE")],
+    );
+    expect(out).toEqual([
+      { teamId: 146, playerId: 1090, effDate: "2026-06-07", event: "IL_RELEASE", missingFrom: "TransactionEvent" },
+    ]);
+  });
 });
