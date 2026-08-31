@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "211"
 tags: [code-review, agent-native, mcp, commissioner, position-eligibility]

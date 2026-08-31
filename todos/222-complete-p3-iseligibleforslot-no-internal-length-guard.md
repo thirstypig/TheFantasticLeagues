@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "222"
 tags: [code-review, security, server, position-eligibility, defense-in-depth]

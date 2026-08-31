@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "036"
 tags: [code-review, api, trades]

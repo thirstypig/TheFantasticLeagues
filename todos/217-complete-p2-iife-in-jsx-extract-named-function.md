@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "217"
 tags: [code-review, typescript, roster, position-eligibility, readability]

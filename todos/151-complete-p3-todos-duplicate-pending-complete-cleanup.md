@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "151"
 tags: [code-review, cleanup, todos]

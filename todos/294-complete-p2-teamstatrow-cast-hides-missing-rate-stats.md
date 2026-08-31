@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: 294
 tags: [code-review, types, standings, correctness, week2]

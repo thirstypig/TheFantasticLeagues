@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: 296
 tags: [code-review, tests, standings, coverage]

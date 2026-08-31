@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 304
 tags: [cache, drift, cleanup, mlb-team, vestigial-data]

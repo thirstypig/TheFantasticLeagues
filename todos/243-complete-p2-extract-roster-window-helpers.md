@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "243"
 tags: [code-review, pr-365, standings, refactor, prevention]

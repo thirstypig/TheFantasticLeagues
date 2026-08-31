@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "180"
 tags: [v3-hub, deferred, schema, players, cron, dx]

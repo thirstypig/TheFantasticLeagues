@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "234"
 tags: [code-review, pr-359, yagni, transactions, cleanup]

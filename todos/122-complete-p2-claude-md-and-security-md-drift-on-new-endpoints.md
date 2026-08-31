@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "122"
 tags: [code-review, docs, agent-native, discoverability]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 305
 tags: [performance, standings, connection-pool, capacity, supabase, prisma, cache]

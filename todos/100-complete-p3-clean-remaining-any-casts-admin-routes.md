@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "100"
 tags: [code-review, type-safety, cleanup, admin]

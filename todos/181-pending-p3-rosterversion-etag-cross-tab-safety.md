@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "181"
 tags: [v3-hub, deferred, schema, concurrency, api]
@@ -102,3 +101,34 @@ name and the increment audit.
 
 ### 2026-05-07 — Spun out of #128
 - **By:** consolidation pass (todo #128 → 4 dedicated tracking todos)
+
+### 2026-08-31 — IMPLEMENTED but NOT VERIFIED; scope narrowed to what is left
+
+Audited against the code. **Option 1 shipped in full** — this todo's "Proposed Solutions" and
+"Technical Details" are done and should not be re-designed:
+
+| Piece | Where |
+|---|---|
+| `Team.rosterVersion Int @default(0)` | `prisma/schema.prisma:447` |
+| `checkRosterVersion` / `incrementRosterVersion` | `server/src/features/teams/lib/rosterVersionGuard.ts` |
+| 409 on stale PATCH | `server/src/features/teams/routes.ts:643` |
+| Counter bumped in every mutation tx | `transactions/routes.ts` :739 :860 :1326 :1722, `teams/routes.ts:679` |
+| `rosterVersion` on the hub response | `teams/services/teamService.ts:313` |
+| Client sends `If-Match` | `client/src/features/teams/api.ts:70` |
+| Client handles 409 | `client/src/features/teams/pages/Team.tsx:616` |
+
+**What is genuinely still open — and it is verification, not implementation:**
+
+1. **The conflict-path test does not exist.** The acceptance criteria name
+   `usePendingChanges.atomic.integration.test.tsx`; there is no such file, and no 409/rosterVersion
+   test anywhere under `client/src/features/teams/__tests__/`. The whole optimistic-concurrency
+   path is currently untested.
+2. **The two-tab browser smoke was never run.** Mutate in tab A, attempt in tab B, expect the diff
+   modal.
+3. **`If-Match` is still optional server-side.** `checkRosterVersion` returns `{ stale: false }`
+   when the header is absent ("optional during rollout" — `rosterVersionGuard.ts:28`). Until it is
+   required, a client that forgets the header silently gets the old clobbering behaviour. Decide
+   whether to enforce it now that both callers send it.
+
+**Do not close this as done on the strength of the implementation table above** — an untested
+concurrency guard is the kind that works until the day it matters.

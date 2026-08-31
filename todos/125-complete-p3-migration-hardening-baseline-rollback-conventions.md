@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "125"
 tags: [code-review, db, migrations, hardening]

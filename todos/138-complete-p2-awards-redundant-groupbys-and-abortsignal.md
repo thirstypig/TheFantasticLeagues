@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "138"
 tags: [code-review, performance, awards, agent-native]

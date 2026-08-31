@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "214"
 tags: [code-review, typescript, teams, period-roster, state-management]

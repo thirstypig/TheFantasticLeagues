@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "202"
 tags: [code-review, standings, ilwindows, logging, data-integrity]

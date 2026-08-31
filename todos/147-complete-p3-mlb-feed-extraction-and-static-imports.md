@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "147"
 tags: [code-review, architecture, mlb-feed, simplicity]

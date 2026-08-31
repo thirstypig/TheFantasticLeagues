@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: 287
 tags: [standings, cron, psp, data-integrity, prevention]

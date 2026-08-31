@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "208"
 tags: [code-review, typescript, roster, position-eligibility, type-safety]

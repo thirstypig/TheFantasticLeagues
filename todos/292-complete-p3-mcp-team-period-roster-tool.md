@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 292
 tags: [code-review, mcp, agent-native, teams, roster]

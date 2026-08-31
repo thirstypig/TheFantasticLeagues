@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "083"
 tags: [code-review, simplicity, readability]

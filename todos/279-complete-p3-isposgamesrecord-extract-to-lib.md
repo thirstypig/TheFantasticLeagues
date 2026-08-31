@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 279
 tags: [code-review, architecture, type-safety, posGames]

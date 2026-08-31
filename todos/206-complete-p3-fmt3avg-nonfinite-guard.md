@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "206"
 tags: [code-review, client, formatting, quality]

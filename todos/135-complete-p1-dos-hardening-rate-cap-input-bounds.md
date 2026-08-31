@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "135"
 tags: [code-review, security, dos, input-validation, transactions, players]

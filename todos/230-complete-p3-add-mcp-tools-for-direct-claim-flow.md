@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 230
 tags: [code-review, agent-native, mcp, transactions]

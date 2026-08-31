@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: 267
 tags: [code-review, typescript, schema, rosterMoves, agent-native]

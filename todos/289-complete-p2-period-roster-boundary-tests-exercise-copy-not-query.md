@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 289
 tags: [code-review, testing, roster, teams, regression-risk]

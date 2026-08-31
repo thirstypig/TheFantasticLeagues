@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 306
 tags: [standings, scoring, attribution, fangraphs, live-scoring, bug, position-player-pitching]

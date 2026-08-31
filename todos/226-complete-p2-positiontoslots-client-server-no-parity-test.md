@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 226
 tags: [code-review, architecture, testing, transactions]

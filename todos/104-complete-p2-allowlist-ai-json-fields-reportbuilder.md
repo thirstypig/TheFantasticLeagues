@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "104"
 tags: [code-review, security, reports, ai]

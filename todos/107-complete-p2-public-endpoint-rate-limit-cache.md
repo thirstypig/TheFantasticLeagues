@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "107"
 tags: [code-review, security, performance, public-api]

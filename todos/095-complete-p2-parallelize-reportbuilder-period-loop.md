@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "095"
 tags: [code-review, performance, architecture, reports]

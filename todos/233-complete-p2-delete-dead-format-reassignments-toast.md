@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "233"
 tags: [code-review, pr-359, dead-code, transactions, cleanup]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 257
 tags: [code-review, architecture, ilWindows, rosterWindow, standings]

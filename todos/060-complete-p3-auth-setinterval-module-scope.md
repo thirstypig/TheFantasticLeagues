@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "060"
 tags: [code-review, quality]

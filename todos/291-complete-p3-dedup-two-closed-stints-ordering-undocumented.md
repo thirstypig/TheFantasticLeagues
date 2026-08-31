@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 291
 tags: [code-review, quality, roster, teams]

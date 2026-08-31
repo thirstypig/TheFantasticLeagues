@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "213"
 tags: [code-review, teams, period-roster, correctness, edge-case]

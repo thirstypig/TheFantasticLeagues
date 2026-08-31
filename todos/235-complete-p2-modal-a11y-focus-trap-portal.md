@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "235"
 tags: [code-review, pr-359, a11y, transactions]

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "167"
 tags: [code-review, wire-list, security, rate-limit]

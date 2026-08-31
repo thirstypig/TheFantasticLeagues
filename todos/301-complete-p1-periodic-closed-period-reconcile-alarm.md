@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 301
 tags: [reconciliation, standings, ADR-014, alerting, closed-periods, confirmed-live]

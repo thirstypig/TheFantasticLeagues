@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 309
 tags: [todos, hygiene, docs-system, tooling]
@@ -40,3 +39,22 @@ in sync by machine, which is strictly more machinery than having one source.
 ## Resources
 - Found: 2026-08-30 todo review
 - Related: `feedback_phantom_rename_in_agent_prompts` memory; todo #151 (nominally covers this, marked complete)
+
+## Work Log
+
+### 2026-08-31 — SHIPPED, via the recommended option (delete the second source)
+- **`status:` removed from all 306 todo frontmatters that carried it.** The filename is now the
+  only answer, which is already the only thing the tooling reads
+  (`refresh-docs.mjs:130` and `:423`, both `f.split("-")[1] === "pending"`). Verified nothing else
+  consumes it: the admin todo board reads `todos.json` and uses an entirely different vocabulary
+  (`not_started | in_progress | done`).
+- **Counts identical before and after: 308 files, 7 open.** That was the acceptance criterion.
+- **The 2 "malformed" files were misdiagnosed in the problem statement above.** `205` and `238`
+  did not have empty `status:`/`priority:` — they had **no frontmatter at all**, in two different
+  bespoke formats. `238` was worse than recorded: its body read `**Status:** pending` while its
+  filename said complete, which is the exact contradiction this todo is about. Both now carry
+  proper frontmatter and the contradictory prose is gone.
+- **A guard now stops it growing back.** `scripts/__tests__/refresh-docs.test.mjs` fails if any
+  todo reintroduces a frontmatter `status:`, if one lacks frontmatter or a valid `priority:`, or
+  if a filename's state segment is anything but `pending`/`complete`. **Verified it can fail** by
+  reintroducing the drift on this very file — it named the offender — then reverting.

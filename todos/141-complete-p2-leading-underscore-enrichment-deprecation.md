@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "141"
 tags: [code-review, architecture, teams, transactions, drift, conventions]

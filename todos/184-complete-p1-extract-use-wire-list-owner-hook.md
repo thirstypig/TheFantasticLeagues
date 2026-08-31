@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "184"
 tags: [code-review, wire-list, mobile, architecture, refactor]

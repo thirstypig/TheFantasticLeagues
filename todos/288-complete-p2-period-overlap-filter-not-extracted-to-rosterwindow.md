@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 288
 tags: [code-review, architecture, roster, rosterwindow, teams]

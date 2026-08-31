@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "148"
 tags: [code-review, agent-native, simplicity, players, awards]

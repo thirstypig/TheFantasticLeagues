@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "034"
 tags: [code-review, security, info-disclosure]

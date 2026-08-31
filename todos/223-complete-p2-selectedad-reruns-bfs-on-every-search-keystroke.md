@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 223
 tags: [code-review, performance, react]

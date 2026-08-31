@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "116"
 tags: [code-review, correctness, teams, transactions, v3-hub, drift]

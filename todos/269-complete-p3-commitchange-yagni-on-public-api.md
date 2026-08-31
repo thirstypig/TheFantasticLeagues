@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 269
 tags: [code-review, typescript, usePendingChanges, yagni]

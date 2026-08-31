@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 290
 tags: [code-review, documentation, roster, teams, correctness]

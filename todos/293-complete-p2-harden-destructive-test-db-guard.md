@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: 293
 tags: [code-review, security, data-safety, testing, prisma]

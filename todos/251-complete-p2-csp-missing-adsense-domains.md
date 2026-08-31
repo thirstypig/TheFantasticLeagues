@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 251
 tags: [code-review, security, adsense, csp]

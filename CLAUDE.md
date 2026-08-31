@@ -437,7 +437,7 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (7 open):
+**Next 3 to-dos** (5 open):
 
 - `303` **P2** — retire legacy waiver system
 - `305` **P2** — standings cold compute serialized on single connection

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 262
 tags: [code-review, type-safety, posGames, standings, hub]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 231
 tags: [code-review, testing, architecture, transactions]

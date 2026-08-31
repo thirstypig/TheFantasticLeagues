@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -128,5 +128,52 @@ describe("controlled vocabulary stays in sync with README-DOCS", () => {
   it("the status vocabulary matches the documented five", () => {
     expect([...KNOWN_STATUS].sort()).toEqual(["active", "deprecated", "done", "draft", "locked"]);
     for (const s of KNOWN_STATUS) expect(readme).toContain(`\`${s}\``);
+  });
+});
+
+/**
+ * todo #309 — the filename is the ONLY source of truth for a todo's status.
+ *
+ * Status used to live in two places that disagreed: 87 of 308 files said
+ * `complete` in the filename and `status: pending` in the frontmatter. Nothing
+ * READ the frontmatter key (refresh-docs derives open/closed from the filename
+ * at both call sites), so no count was ever wrong — but every human and agent
+ * that opened one of those files read "pending" on finished work.
+ *
+ * The fix was to delete the second source rather than synchronise it. This
+ * test is what stops it growing back: a template or a copied file that
+ * reintroduces `status:` fails here.
+ */
+describe("todos — one source of truth for status", () => {
+  const todoFiles = readdirSync(join(REPO_ROOT, "todos")).filter((f) => f.endsWith(".md"));
+
+  it("has todo files to check", () => {
+    expect(todoFiles.length).toBeGreaterThan(0);
+  });
+
+  it("no todo carries a frontmatter status: key — the filename decides", () => {
+    const offenders = todoFiles.filter((f) => {
+      const body = rd(join("todos", f));
+      if (!body.startsWith("---")) return false;
+      const end = body.indexOf("\n---", 3);
+      if (end === -1) return false;
+      return /^status:/m.test(body.slice(0, end));
+    });
+    expect(offenders, `status: is not read by anything — the filename is the source of truth. Remove it from: ${offenders.join(", ")}`).toEqual([]);
+  });
+
+  it("every todo has frontmatter and a priority", () => {
+    const bad = todoFiles.filter((f) => {
+      const body = rd(join("todos", f));
+      if (!body.startsWith("---")) return true;
+      const end = body.indexOf("\n---", 3);
+      return end === -1 || !/^priority:\s*p[0-3]\s*$/m.test(body.slice(0, end));
+    });
+    expect(bad, `missing frontmatter or priority: ${bad.join(", ")}`).toEqual([]);
+  });
+
+  it("filename state is always pending or complete", () => {
+    const bad = todoFiles.filter((f) => !["pending", "complete"].includes(f.split("-")[1]));
+    expect(bad, `unexpected state segment: ${bad.join(", ")}`).toEqual([]);
   });
 });

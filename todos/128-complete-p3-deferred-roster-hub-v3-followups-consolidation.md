@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "128"
 tags: [code-review, planning, v3-hub, deferred]

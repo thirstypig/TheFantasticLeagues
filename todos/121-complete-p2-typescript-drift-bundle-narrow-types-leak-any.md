@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "121"
 tags: [code-review, drift, typescript, contracts]

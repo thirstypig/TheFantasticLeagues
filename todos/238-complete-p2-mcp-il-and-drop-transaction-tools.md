@@ -1,7 +1,12 @@
+---
+priority: p2
+issue_id: "238"
+tags: [mcp, roster, transactions, agent-native]
+dependencies: []
+---
+
 # #238 — MCP IL-stash, IL-activate, and drop transaction tools
 
-**Priority:** P2
-**Status:** pending
 **Surfaced by:** PR #359 (Activate-from-IL drawer + commissioner roster tool redesign) — exposed an agent-native gap where the MCP fbst-app server can drive add/drop claims but not IL-stash, IL-activate, or plain drop. An agent acting as a commissioner can't currently perform these roster moves via tools.
 
 ## Goal

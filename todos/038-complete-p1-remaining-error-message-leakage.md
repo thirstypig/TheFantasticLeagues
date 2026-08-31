@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "038"
 tags: [code-review, security]

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "178"
 tags: [code-review, wire-list, type-safety, validation, hardening]

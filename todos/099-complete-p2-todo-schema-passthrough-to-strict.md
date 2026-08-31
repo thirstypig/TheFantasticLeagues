@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "099"
 tags: [code-review, architecture, zod, drift]

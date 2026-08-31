@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "232"
 tags: [code-review, pr-359, typescript, transactions, shared-schemas]

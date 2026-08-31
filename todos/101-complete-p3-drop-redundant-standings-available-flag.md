@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "101"
 tags: [code-review, simplicity, reports, api-surface]

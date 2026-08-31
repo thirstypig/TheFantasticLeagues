@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "160"
 tags: [code-review, wire-list, performance, supabase]
