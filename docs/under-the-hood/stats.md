@@ -21,15 +21,15 @@ updated: 2026-08-31
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-08-31 from 1,784 git-tracked files.*
+*Generated 2026-08-31 from 1,785 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 573 | 101,603 |
+| `.ts` | 574 | 101,895 |
 | `.tsx` | 303 | 89,211 |
-| `.md` | 542 | 67,058 |
+| `.md` | 542 | 67,110 |
 | `.json` | 36 | 40,052 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,761 |
@@ -38,7 +38,7 @@ updated: 2026-08-31
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,780** | **347,804** |
+| **All tracked** | **1,781** | **348,148** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -117,11 +117,10 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**9 open** of 308 total to-dos.
+**8 open** of 308 total to-dos.
 
 | Priority | Open |
 |---|---:|
-| `p1` | 1 |
 | `p2` | 4 |
 | `p3` | 4 |
 

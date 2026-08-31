@@ -189,7 +189,11 @@ export async function requeueOutboxEvent(id: number): Promise<void> {
 export async function findIlLogDriftAll() {
   const [te, rse] = await Promise.all([
     prisma.transactionEvent.findMany({
-      where: { transactionType: { in: ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE"] }, effDate: { not: null } },
+      // DROP is included because a player dropped off IL closes his stint —
+      // the billing log records IL_RELEASE for it. Without DROP in this SELECT,
+      // findIlLogDrift's handling of that pair is unreachable and every such
+      // drop reports as drift forever.
+      where: { transactionType: { in: ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE", "DROP"] }, effDate: { not: null } },
       select: { teamId: true, playerId: true, effDate: true, transactionType: true },
     }),
     prisma.rosterSlotEvent.findMany({
