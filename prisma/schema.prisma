@@ -723,6 +723,9 @@ model TeamStatsSeason {
 
   gamesPlayed Int @default(0)
 
+  // See PlayerStatsPeriod.syncedAt — nullable for the same reason.
+  syncedAt DateTime? @updatedAt
+
   team Team @relation(fields: [teamId], references: [id])
 }
 
@@ -773,11 +776,19 @@ model PlayerStatsPeriod {
   // General
   G Int @default(0) // games played/pitched
 
+  // When the syncer last wrote this row. Deliberately NULLABLE: backfilling
+  // existing rows with now() would stamp every historical row "just synced"
+  // and the staleness alarm would report a clean bill of health on day one,
+  // which is the exact failure this column exists to catch. NULL means
+  // "not written since this column landed" — treat it as unknown, not fresh.
+  syncedAt DateTime? @updatedAt
+
   player Player @relation(fields: [playerId], references: [id])
   period Period @relation(fields: [periodId], references: [id])
 
   @@unique([playerId, periodId])
   @@index([periodId])
+  @@index([syncedAt])
 }
 
 model PlayerStatsDaily {

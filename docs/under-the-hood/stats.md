@@ -33,12 +33,12 @@ updated: 2026-08-31
 | `.json` | 36 | 40,052 |
 | `.sql` | 37 | 2,069 |
 | `.css` | 8 | 1,755 |
-| `.prisma` | 1 | 1,727 |
+| `.prisma` | 1 | 1,738 |
 | `.mjs` | 7 | 1,469 |
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,751** | **345,093** |
+| **All tracked** | **1,751** | **345,104** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -117,11 +117,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**9 open** of 303 total to-dos.
+**8 open** of 303 total to-dos.
 
 | Priority | Open |
 |---|---:|
-| `p1` | 4 |
+| `p1` | 3 |
 | `p2` | 3 |
 | `p3` | 2 |
 
