@@ -395,6 +395,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
   //     the error path is cheap and the happy path locks the team row once.
   let stashRosterPreview: { id: number; assignedPosition: string | null } | null = null;
   let stashPlayerInfo: { mlbId: number | null; name: string | null } | null = null;
+  let stashMlbCheck: Awaited<ReturnType<typeof checkMlbIlEligibility>> | null = null;
   if (ilStashPlayerId) {
     stashRosterPreview = await prisma.roster.findFirst({
       where: { teamId, playerId: ilStashPlayerId, releasedAt: null },
@@ -413,7 +414,9 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
       });
     }
     try {
-      await checkMlbIlEligibility(ilStashPlayerId);
+      // Keep the result: it is the MLB evidence stamped on the RosterSlotEvent
+      // below, matching what POST /transactions/il-stash records (todo #310).
+      stashMlbCheck = await checkMlbIlEligibility(ilStashPlayerId);
     } catch (err) {
       if (isRosterRuleError(err)) {
         return res.status(400).json({ error: err.message, code: err.code });
@@ -518,6 +521,18 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
           playerId: ilStashPlayerId,
           transactionRaw: `Stashed ${stashPlayerInfo?.name ?? `Player #${ilStashPlayerId}`} to IL`,
           transactionType: "IL_STASH",
+        },
+      });
+      // Append-only IL stint log — this is what ilFeeService.deriveAllStints
+      // bills from. TransactionEvent alone is NOT enough: a stint with no
+      // opening RosterSlotEvent is silently unbillable (todo #310).
+      await tx.rosterSlotEvent.create({
+        data: {
+          teamId, playerId: ilStashPlayerId, leagueId,
+          event: "IL_STASH", effDate: effective,
+          createdBy: req.user!.id, reason: null,
+          mlbStatusSnapshot: stashMlbCheck?.status ?? null,
+          mlbStatusFetchedAt: stashMlbCheck?.cacheFetchedAt ?? null,
         },
       });
     }

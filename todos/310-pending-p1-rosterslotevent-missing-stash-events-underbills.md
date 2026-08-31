@@ -95,3 +95,31 @@ Do not bill from this estimate; re-run the dry run after the log is repaired.
 - Found 2026-08-31 while repairing the Los Doyers Period 6 rank bug (PRs #442–#445).
 - `server/src/features/transactions/services/ilFeeService.ts` → `deriveAllStints`
 - Related: [[roster_rules_feature]], [[period_rollover_and_roster_backdate]]
+
+## Work Log
+
+### 2026-08-31 — code half CLOSED; data repair still owed
+- **Fixed the latent write-path gap.** The 3-way claim (`transactions/routes.ts`, the
+  `ilStashPlayerId` branch) wrote a `TransactionEvent` and no `RosterSlotEvent` — every stash
+  through that path would have been unbillable, the same defect as the four prod stints. It now
+  writes the billing-log row inside the same `$transaction`, and the pre-flight
+  `checkMlbIlEligibility` result is captured rather than discarded so the row carries the same
+  `mlbStatusSnapshot` / `mlbStatusFetchedAt` evidence `/transactions/il-stash` records.
+- **Two regression tests, both watched failing first** (`Number of calls: 0` — the log was never
+  written): one pins the row's existence, one pins the MLB evidence. Full server suite 1631 passed.
+- **Acceptance criteria 2 and 4 are met by the shipped drift check**, not by new code. `findIlLogDrift`
+  (#449) compares the two logs directly and escalates through the dead-man's switch at
+  `index.ts:368` with `logger.error` + email — a strictly better signal than un-swallowing the
+  `deriveAllStints` warns, which are a derived symptom of the same condition. A second alarm for
+  one condition was deliberately not built.
+- **STILL OPEN — the prod data repair.** 9 discrepancies remain in prod (league 20). The repair
+  script exists and is dry-run by default; running it needs James (prod writes are classifier-gated,
+  and the dry run is gated too because of the script's name):
+  ```
+  cd server
+  ./scripts/with-prod-db.sh npx tsx src/scripts/repair-il-log-310.ts            # preview
+  ./scripts/with-prod-db.sh npx tsx src/scripts/repair-il-log-310.ts --apply    # write
+  ```
+  Then re-run the IL fee reconcile for the affected periods and verify per-team totals against the
+  recomputed dry run — **not** against the +$10–$25 estimate above, which predates the discovery
+  that the plan also removes phantom rows Vaughn and Betts were billed on.
