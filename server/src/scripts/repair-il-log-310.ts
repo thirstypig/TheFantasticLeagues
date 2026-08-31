@@ -89,6 +89,18 @@ const PLAN: Step[] = [
   { op: "add", who: "Andrew Vaughn", teamName: "Demolition Lumber Co.", playerId: 963,
     event: "IL_STASH", effDate: "2026-04-19",
     why: "the real stash per TransactionEvent; pairs with the existing IL_ACTIVATE 05-17" },
+
+  // 4. Betts: same phantom shape as Vaughn's, missed in the first pass. The pair
+  //    forms a ZERO-LENGTH stint (04-23 → 04-23) that the chart showed being
+  //    billed $10 — a fee for a stint that occupied a slot for no time at all.
+  //    Removing both leaves his real 04-19 → 05-17 stint, which matches
+  //    TransactionEvent exactly and bills Period 2 once.
+  { op: "del", who: "Mookie Betts", teamName: "Los Doyers", playerId: 1,
+    event: "IL_STASH", effDate: "2026-04-23",
+    why: "phantom — opens a zero-length stint no transaction explains" },
+  { op: "del", who: "Mookie Betts", teamName: "Los Doyers", playerId: 1,
+    event: "IL_ACTIVATE", effDate: "2026-04-23",
+    why: "phantom — closes that zero-length stint; commissioner confirmed it should not be charged" },
 ];
 
 async function main() {
@@ -102,6 +114,7 @@ async function main() {
 
   // ── Validate every step before touching anything ──────────────────────────
   const resolved: Array<Step & { teamId: number; rowId?: number }> = [];
+  let skipped = 0;
   for (const s of PLAN) {
     const teamId = teamByName.get(s.teamName.trim());
     if (teamId === undefined) throw new Error(`ABORT: team not found: "${s.teamName}"`);
@@ -111,12 +124,25 @@ async function main() {
       select: { id: true },
     });
 
+    // Idempotent: a step whose end state already holds is SKIPPED, not an
+    // abort. Phase 1 of this repair is already applied in prod, and a script
+    // that cannot be safely re-run is a script nobody dares run twice.
+    // Genuinely unexpected states (unknown team, an added stash with no backing
+    // transaction) still abort below.
     if (s.op === "add") {
-      if (existing) throw new Error(`ABORT: ${s.who} ${s.event} ${s.effDate} already exists (id=${existing.id}) — already repaired?`);
+      if (existing) {
+        skipped++;
+        console.log(`  SKIP ${s.who.padEnd(18)} ${s.event.padEnd(11)} ${s.effDate}  (already present, id=${existing.id})`);
+        continue;
+      }
       resolved.push({ ...s, teamId });
       console.log(`  ADD  ${s.who.padEnd(18)} ${s.event.padEnd(11)} ${s.effDate}  (${s.teamName})`);
     } else {
-      if (!existing) throw new Error(`ABORT: ${s.who} ${s.event} ${s.effDate} not found — already repaired?`);
+      if (!existing) {
+        skipped++;
+        console.log(`  SKIP ${s.who.padEnd(18)} ${s.event.padEnd(11)} ${s.effDate}  (already removed)`);
+        continue;
+      }
       resolved.push({ ...s, teamId, rowId: existing.id });
       console.log(`  DEL  ${s.who.padEnd(18)} ${s.event.padEnd(11)} ${s.effDate}  (${s.teamName}) id=${existing.id}`);
     }
@@ -133,7 +159,13 @@ async function main() {
     });
     if (!te) throw new Error(`ABORT: no TransactionEvent IL_STASH for ${s.who} on ${s.effDate} — refusing to invent a stint`);
   }
-  console.log(`\n  All ${resolved.length} steps validated; every added stash is backed by a TransactionEvent.`);
+  console.log(`\n  ${resolved.length} step(s) to apply, ${skipped} already satisfied; every added stash is backed by a TransactionEvent.`);
+
+  if (resolved.length === 0) {
+    console.log("\n  Nothing to do — repair already fully applied.");
+    await prisma.$disconnect();
+    return;
+  }
 
   if (!APPLY) {
     console.log("\n  DRY RUN — nothing written. Re-run with --apply.");

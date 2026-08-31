@@ -201,14 +201,30 @@ export async function deriveAllStints(
 }
 
 /**
- * Does a stint overlap a period? Presence-based per plan Q17=b.
+ * Does a stint overlap a period? Presence-based per plan Q17=b — with one
+ * boundary correction made 2026-08-31.
+ *
+ * Q17(b) ("any stint overlapping the period → full fee") was decided when
+ * stints began and ended on arbitrary days, where "touched the period" was a
+ * fair proxy for "occupied a slot". Commissioner backdating broke that: an
+ * activation stamped at 00:00 on a period's FIRST day billed the entire period
+ * at ZERO days of occupancy. Three of the four stints repaired that day hit it
+ * exactly — Palencia into P3, Priester into P4, Henderson into P5, worth ~$120
+ * across the league.
+ *
+ * The END boundary is therefore exclusive: activating on day 1 does not owe
+ * that period. The START boundary stays inclusive — a stint beginning on a
+ * period's last day genuinely occupied a slot that day.
+ *
+ * Commissioner decision, not a code preference: either reading is defensible
+ * and only one matches what OGBA's owners agreed to.
  */
-function stintOverlapsPeriod(
+export function stintOverlapsPeriod(
   s: Pick<BillableStint, "startedAt" | "endedAt">,
   period: { startDate: Date; endDate: Date },
 ): boolean {
   const startedBeforeEnd = s.startedAt <= period.endDate;
-  const endedAfterStart = s.endedAt === null || s.endedAt >= period.startDate;
+  const endedAfterStart = s.endedAt === null || s.endedAt > period.startDate;
   return startedBeforeEnd && endedAfterStart;
 }
 
