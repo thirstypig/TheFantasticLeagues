@@ -339,7 +339,33 @@ async function main() {
         select: { job: true, finishedAt: true, ok: true },
       });
       const stale = findStaleJobs(runs, JOB_EXPECTATIONS, new Date());
-      if (stale.length === 0) return;
+
+      // Same tick, two more end-state checks on the outbox (2026-08-31).
+      // Both exist because trusting that an event was enqueued, or that a
+      // failed event would retry, silently lost real money.
+      const { sweepMissingFeeReconciles, findStuckOutboxEvents } = await import("./lib/outboxDrainer.js");
+      try {
+        // A period closed outside PATCH /periods/:id never enqueues a fee
+        // reconcile. Sweep the end state so it still gets billed.
+        await sweepMissingFeeReconciles();
+      } catch (err) {
+        logger.error({ error: String(err) }, "Missing-fee-reconcile sweep failed");
+      }
+
+      // Events past MAX_ATTEMPTS are invisible to the drainer forever. They
+      // must alarm, not sit quietly like rows 1 and 2 did for two months.
+      let stuck: Awaited<ReturnType<typeof findStuckOutboxEvents>> = [];
+      try {
+        stuck = await findStuckOutboxEvents();
+        if (stuck.length > 0) {
+          logger.error({ stuck: stuck.map((e) => ({ id: e.id, kind: e.kind, attempts: e.attempts })) },
+            "Outbox events have exhausted their retries and will never run again");
+        }
+      } catch (err) {
+        logger.error({ error: String(err) }, "Stuck-outbox check failed");
+      }
+
+      if (stale.length === 0 && stuck.length === 0) return;
 
       logger.error({ stale }, "Dead-man's switch: ingestion jobs are not completing");
       const to = process.env.ALERT_EMAIL_TO;
@@ -350,7 +376,14 @@ async function main() {
       const { sendStaleJobAlertEmail } = await import("./lib/emailService.js");
       await sendStaleJobAlertEmail({
         to,
-        stale: stale.map((x) => ({ job: x.job, hoursSince: x.hoursSince, reason: x.reason })),
+        stale: [
+          ...stale.map((x) => ({ job: x.job, hoursSince: x.hoursSince, reason: x.reason })),
+          ...stuck.map((e) => ({
+            job: `outbox #${e.id} (${e.kind})`,
+            hoursSince: null,
+            reason: `exhausted ${e.attempts} attempts — will never retry`,
+          })),
+        ],
       });
     } catch (err) {
       logger.error({ error: String(err) }, "Dead-man's switch check failed");

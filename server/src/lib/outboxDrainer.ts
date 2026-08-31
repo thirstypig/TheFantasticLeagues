@@ -11,6 +11,7 @@
 import { prisma } from "../db/prisma.js";
 import { logger } from "./logger.js";
 import { reconcileIlFeesForPeriods } from "../features/transactions/services/ilFeeService.js";
+import { findPeriodsMissingReconcile, findExhaustedEvents } from "./outboxHealth.js";
 
 type OutboxPayloadFeeReconcile = {
   leagueId: number;
@@ -97,6 +98,82 @@ export async function enqueueIlFeeReconcile(
       payload: { leagueId, periodIds } as any,
     },
   });
+}
+
+/**
+ * Enqueue IL_FEE_RECONCILE for every COMPLETED period that has no successful
+ * reconcile event (todo: P4/P7 missing-enqueue gap, 2026-08-31).
+ *
+ * The transition-based enqueue in `PATCH /api/periods/:id` only fires when a
+ * period is closed *through that route*. OGBA rollovers are sometimes done with
+ * a direct DB write, which skips it silently — Period 4 closed that way and its
+ * $50 sat unbilled for weeks with nothing to notice. This sweeps the end state
+ * instead of trusting the transition, so a period closed by any means still
+ * gets billed.
+ *
+ * Safe to run repeatedly: reconcile is idempotent and a period that owes
+ * nothing simply reports `added: 0`. Returns the number of events enqueued.
+ */
+export async function sweepMissingFeeReconciles(): Promise<number> {
+  const periods = await prisma.period.findMany({
+    where: { status: "completed" },
+    select: { id: true, status: true, leagueId: true },
+  });
+  const events = await prisma.outboxEvent.findMany({
+    where: { kind: "IL_FEE_RECONCILE" },
+    select: { payload: true, completedAt: true },
+  });
+
+  const missing = new Set(
+    findPeriodsMissingReconcile(
+      periods.map((p) => ({ id: p.id, status: p.status })),
+      events as Array<{ payload: { periodIds?: number[] }; completedAt: Date | null }>,
+    ),
+  );
+  if (missing.size === 0) return 0;
+
+  // One event per league, carrying that league's missing period ids.
+  const byLeague = new Map<number, number[]>();
+  for (const p of periods) {
+    if (!missing.has(p.id) || p.leagueId == null) continue;
+    byLeague.set(p.leagueId, [...(byLeague.get(p.leagueId) ?? []), p.id]);
+  }
+
+  let enqueued = 0;
+  for (const [leagueId, periodIds] of byLeague) {
+    await enqueueIlFeeReconcile(null, leagueId, periodIds);
+    enqueued++;
+    logger.warn({ leagueId, periodIds },
+      "outbox: completed period(s) had no successful IL fee reconcile — enqueued by sweeper");
+  }
+  return enqueued;
+}
+
+/**
+ * Outbox events the drainer will never retry: at or past MAX_ATTEMPTS and still
+ * incomplete. They are invisible to `drainOutboxOnce` (which filters
+ * `attempts < MAX_ATTEMPTS`), so without this they fail once and are never
+ * heard from again — rows 1 and 2 sat that way for ~two months.
+ */
+export async function findStuckOutboxEvents() {
+  const rows = await prisma.outboxEvent.findMany({
+    where: { completedAt: null },
+    select: { id: true, kind: true, attempts: true, completedAt: true, lastError: true },
+  });
+  return findExhaustedEvents(rows, MAX_ATTEMPTS);
+}
+
+/**
+ * Reset an exhausted event so the drainer picks it up again. The escape hatch
+ * that did not exist: once a bug was fixed in code, nothing could re-run the
+ * events that had already burned their retries on it.
+ */
+export async function requeueOutboxEvent(id: number): Promise<void> {
+  await prisma.outboxEvent.update({
+    where: { id },
+    data: { attempts: 0, lastError: null },
+  });
+  logger.info({ id }, "outbox: event requeued (attempts reset)");
 }
 
 /**
