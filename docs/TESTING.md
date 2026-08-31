@@ -1,7 +1,7 @@
 # TFL Testing Catalog
 
 Owner: engineering + commissioner/admin visibility
-Last updated: 2026-06-22
+Last updated: 2026-08-03
 
 ## What this document is
 
@@ -40,25 +40,54 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1392 server + 897 client tests, ~25s total); db-integration (7 tests: 4 draft + 3 IL-fee) + MCP suites (83 fbst-app + 50 mlb-data) run as separate CI jobs | Required green baseline. |
+| Before every push / PR | `npm run test` (1519 server + 960 client tests, ~25s total); db-integration (7 tests: 4 draft + 3 IL-fee) + MCP suites (83 fbst-app + 50 mlb-data) run as separate CI jobs | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
-**Current reality (2026-07-07):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2296 tests: 1392 backend main + 7 integration [4 draft + 3 IL-fee] + 897 frontend) + both typechecks clean.
+**Current reality (2026-08-03):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2486 tests: 1519 backend main + 7 integration [4 draft + 3 IL-fee] + 960 frontend) + both typechecks clean.
 
-## Current coverage (2026-06-29 baseline)
+## Current coverage (2026-08-03 baseline)
 
-**Test suite total:** 2296 passing tests (1392 backend main + 7 integration [4 draft + 3 IL-fee] + 897 frontend)
-- Backend: 105 test files, 1392 passing in the main `test` job, 14 skipped, 1 todo
+**Test suite total:** 2486 passing tests (1519 backend main + 7 integration [4 draft + 3 IL-fee] + 960 frontend)
+- Backend: 117 test files, 1519 passing in the main `test` job, 14 skipped, 1 todo
 - Draft integration: 4 tests in the separate `db-integration` CI job (postgres:16 + `prisma db push`)
-- Frontend: 74 test files, 897 passing
+- Frontend: 76 test files, 960 passing
 - MCP servers: tracked separately (83 fbst-app, 50 mlb-data)
 - NOTE: the real-Postgres integration suites (`draft/__tests__/draftIntegration.test.ts` and `transactions/services/__tests__/ilFeeService.integration.test.ts`) are gated by `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1` (fail-closed). They run in CI's `db-integration` job against an ephemeral Postgres and locally only against a throwaway DB — never prod. The IL-fee suite is a regression guard for the `pg_advisory_xact_lock` bug that the unit suite's mocked `$queryRaw` could not catch.
-- TypeScript: both client and server tsc clean
+- TypeScript: both client and server tsc clean. **Local caveat:** `cd server && npx tsc --noEmit` reports 7 phantom `Cannot find module 'zod'` errors for `shared/api/*.ts` — `zod` is installed in `server/node_modules` but `shared/` resolves from the repo root. CI resolves correctly and is the authority for shared schemas.
 - Full run time: ~25 seconds locally, ~35 seconds in CI
 
+### Standings audit module — 71 tests, 9 files (`server/src/lib/audit/`, added 2026-08-03, PR #431)
+
+Fixture-driven with **no network and no DB**: external-source parsers run against
+saved HTML (`__tests__/fixtures/`), and the pure accumulator/classifier against
+hand-built roster stints.
+
+| File | Covers |
+|---|---|
+| `fgTeamParser.test.ts` | OnRoto per-team HTML — carryover stints, table membership, and a sum-vs-the-page's-own-`TOTAL:`-row invariant |
+| `fgStandingsParser.test.ts` | `display_stand.pl` per-category breakdown rows (not the roto-points grid) |
+| `bbrefParser.test.ts` | Baseball Reference game logs; exact row accounting, `skipped[]` |
+| `fbstTotals.test.ts` | Per-team period accumulator + drop-and-re-add dedup + window boundaries |
+| `coverageGaps.test.ts` | `findCoverageGaps` and the shared `isInPeriodWindow` predicate, incl. the differential invariant that the accumulator and gap-finder agree on who is in window |
+| `fgCompare.test.ts` | FG team-name join; the 7-key projection that keeps a season PASS reachable |
+| `classifier.test.ts` | Residual math; the falsification tell (`explained == residual`) |
+| `report.test.ts` | Verdict + render; coverage gaps force INCOMPLETE |
+| `nameMatch.test.ts` | Accent-safe matching that refuses ambiguous matches |
+
+**These are mutation-verified** — each fix was reverted and the suite re-run to confirm
+the intended tests redden, rather than merely pass on fixed code. That mattered: this
+module twice shipped a defect while its whole suite stayed green. See
+`docs/solutions/integration-issues/html-parser-silent-row-drop-passes-its-own-tests.md`
+and `docs/solutions/integration-issues/parser-boolean-conflates-membership-with-status-misfiles-stat-total.md`.
+
 ## Previous coverage (2026-06-10 baseline)
+
+> ⚠️ **The per-file catalogue below is stale** — it was last fully re-walked on
+> 2026-06-10 at 1252 server tests and has not been re-verified since. The headline
+> counts above are current and verified; treat individual per-file numbers below as
+> indicative only until someone does a full pass.
 
 ### Server — 1252 passing, 92 files (last verified 2026-06-10)
 

@@ -4,6 +4,42 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-08-30 — A benched trade, and the audit residual that wasn't the trade
+
+**Suite: 1529 server + 960 client green; client tsc clean; `npm run build` clean.** Shipped PR #435.
+
+**The commissioner trade path had drifted from the owner path in two ways.** `CommissionerService.executeTrade` wrote `assignedPosition: null` and stamped both sides with `new Date()`. The null slot is why OGBA trade 22 benched its hitters — the client narrows an unrecognised slot code to `"BN"`, and `"LF"`/`"RF"` are *positions, not slot codes*. That asymmetry is the whole reason it read as intermittent: `"P"` **is** a valid slot, so the two traded pitchers rendered correctly and only the outfielders broke. Fixed by extracting the slot rule into one `tradeSlotFor` called by both paths — the duplication was the root cause, so removing it was the fix. Prod rows corrected under a guard asserting the exact expected roster ids (not a blind `WHERE assignedPosition IS NULL`), then browser-verified.
+
+**All six closed periods PASS against MLB statsapi — 1,269 checks, 0 mismatches.** That single control reframed the whole audit: the stored data is correct everywhere, so every FanGraphs residual is *attribution*, not bad data.
+
+**The residuals are late-recorded roster moves, and the arithmetic is exact.** Drops entered in FBST dated 2026-08-30 for players OnRoto had already removed, so FBST credits a full extra Period 6. The Show's entire residual across all seven categories = Peralta + Hicks + García's Period 6 lines. Devil Dawgs = Erik Miller alone. RGing Sluggers = Heliot Ramos alone.
+
+**The falsification rule earned its keep again.** The tempting rule — "dropped today ⇒ over-credited" — is **wrong**. Skunk Dogs made 6 moves the same day, including drops carrying real Period 6 stats, and reconciles exactly. The mechanism needs the FBST drop to be late *relative to OnRoto*, not merely recorded today. Checking only the five diverging teams would have shipped the wrong rule with a perfect-looking arithmetic fit — the fourth root cause this rule has killed.
+
+**The instrument was also wrong.** The season leg summed the ACTIVE period; Period 7 opened that morning with zero PSP rows, so all 355 rostered players read as coverage gaps → 188 spurious skips and a false INCOMPLETE. Post-fix: skipped 0, verdict FINDINGS — which is the honest answer, not a clean one.
+
+**Open:** OnRoto's transaction log to confirm the real drop dates · Los Doyers' residual W2 K3 · Demolition's *negative* pitching residual (W−2 SV−4 K−4), a different and still-unidentified mechanism · todo #298's $100 of unassessed IL fees still awaiting a go/no-go · 8 open todos incl. 4 P1.
+
+---
+
+## Session 2026-08-03 (evening) — Finished the audit skill by deleting its centrepiece
+
+Picked up PR #431 where the previous session parked it. **Suite: 1519 server + 960 client = 2479 local green (2486 with the 7-test `db-integration` CI job); 133 MCP separate.** Merged as `672deaa`, prod confirmed 120s later.
+
+**The IL classifier was deleted, not reworked.** `buildIlCandidates` explained FBST-vs-FanGraphs gaps with "FBST drops the stats of a player IL-slotted at period start; OnRoto counts them all season." Six teams hold exactly that IL shape with real accumulated stats and reconcile cell-for-cell — if the rule were operative they would diverge. And the one team that *did* diverge turned out to be this morning's `splits[0]` trade bug (#429). There was no phenomenon left for the code to explain, so "rework it" had nothing to rework toward. `classifyTeamDelta` keeps its `candidates` seam, passed `[]`; its header comment now records the falsification and sets the bar for a replacement — **it must correctly predict the teams that do NOT diverge.**
+
+**The parked "duplicate FgPlayerRow" finding was not load-bearing** — `parseFgTeamPage` has zero production consumers, because Task 9 pivoted to season-scoped `display_stand.pl`. But fixing it surfaced a second, real defect: `reserved` was `reservedSection || status !== "act"`, conflating *table membership* with *player status*, so a released player carried over in the Active table had 50 AB filed under the wrong total. Caught by summing the parse against the page's own `TOTAL:` row — an aggregate OnRoto publishes and the parser never touches, so it can't be curve-fitted the way a hand-written assertion can. Post-fix it reproduces both hitter totals exactly.
+
+**Removed a duplicated predicate rather than testing it.** `findCoverageGaps` hand-copied `computeTeamPeriodTotals`'s three window predicates into another file. Flip one boundary operator in either copy and a player the accumulator counts stops being coverage-checked — a run with missing data then reports PASS, the one outcome the spec forbids. Extracted `isInPeriodWindow` as the single definition. Drift is now impossible rather than merely detectable; mutating `>` to `>=` reddens three tests from one edit.
+
+**The skill shipped with corrected gotchas.** The plan's `SKILL.md` draft led with the falsified IL heuristic as "highest-yield suspect" — it would have aimed every future audit at the ghost this work just killed. Replaced with what actually bit, check-first: `splits[0]` trades, the reconciler's structural blindness, stale PSP outside the 5-day window, and the FG-stale vs real-bug magnitude threshold.
+
+**Method note.** Every fix was mutation-verified — revert it, confirm the intended tests redden, restore. Two subagent claims were wrong on inspection (a mutation "reddens 2 tests" when it reddens 1; "no pitcher carryover coverage" when 8 rows exist). Both would have shipped as fact if I'd transcribed rather than run them. That first correction became the most useful line in the write-up: **an exact row-count assertion catches a dropped row but is blind to a misfiled one.**
+
+**Open:** the end-to-end prod run of `audit-standings.ts` has never executed since the classifier was deleted (blocked by a local permission gate) — `residual` no longer duplicating `explained` is unconfirmed in real output · `docs/TESTING.md` per-file catalog is ~2 sessions stale below the headline · `planning.json` 77 days stale · 11 open INBOX comments incl. C-002 (feature-isolation ratchet still not in CI) · PR #413 a month cold · 4 P1 todos.
+
+---
+
 ## Session 2026-08-03 — Period rollover → an OnRoto audit → a real production stat-loss bug
 
 Started as "can I refresh standings after backdating roster moves?" Ended with a shipped production fix for silently dropped statistics. **Suite: 1448 server + 960 client = 2408 local green (2415 with the 7-test `db-integration` CI job); 133 MCP separate.**

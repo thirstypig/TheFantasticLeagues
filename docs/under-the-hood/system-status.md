@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [deploy]
 links: [DOC-001]
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # System status
@@ -20,7 +20,7 @@ updated: 2026-08-30
 > production. Production env lives only in Railway and is not readable from here.
 > **Key values are never read or printed — only their names.**
 
-*Generated 2026-08-30 · local HEAD `772ecd6` (2026-08-07)*
+*Generated 2026-08-31 · local HEAD `c248ae1` (2026-08-30)*
 
 ## Service configuration (local environment)
 

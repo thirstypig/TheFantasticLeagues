@@ -1,6 +1,6 @@
 # 🗂️ Master Port Registry — All Projects
 > 📍 Canonical location: `~/Projects/MASTER-PORTS.md`
-> 🗓️ Last Updated: 2026-08-07
+> 🗓️ Last Updated: 2026-08-27
 > ⚠️ This is the single source of truth. Update this file first, then mirror to each project's local copy.
 
 Copies of this file live in each active project root (e.g., `~/Projects/bahtzang-trader/MASTER-PORTS.md`). They must stay byte-identical to the root copy.
@@ -34,6 +34,7 @@ Copies of this file live in each active project root (e.g., `~/Projects/bahtzang
 | **rhyschang**                         | 3150     | —    | —         | —          | —     | —     | Static site; GitHub Pages at rhyschang.com |
 | **theresewhite.com**                  | 3160     | —    | —         | —          | —     | —     | Next.js 16 static export; GitHub Pages at theresewhite.bahtzang.com; replaces a Wix site at theresewhite.com |
 | **minmeychang**                       | 3170     | —    | —         | —          | —     | —     | Astro 7 static, bilingual en/zh-hant; GitHub Pages at minmeychang.com (apex, Squarespace DNS) |
+| **pasadenaworks**                     | 3180     | —    | —         | —          | —     | —     | Astro marketing site for Pasadena Works (consultancy); `npm run dev`/`npm run preview` pinned to `-p 3180`; static, GitHub Pages at pasadenaworks.com; repo also carries a `registry/` folder (this file's original canonical home) left over from before the repo was repurposed — see 2026-08-27 changelog entry |
 
 ---
 
@@ -61,11 +62,12 @@ Each product owns a 10-port block (3XX0–3XX9 frontend, 4XX0–4XX9 API). Sub-s
 | 3150 – 3159    | 4150 – 4159 | 5453 | 6392  | rhyschang (static site; no API/PG/Redis in use) |
 | 3160 – 3169    | 4160 – 4169 | 5454 | 6393  | theresewhite.com (Next.js static export; no API/PG/Redis in use) |
 | 3170 – 3179    | 4170 – 4179 | 5455 | 6394  | minmeychang (Astro static; no API/PG/Redis in use) |
-| 3180 – 3189    | 4180 – 4189 | 5456 | 6395  | **AVAILABLE** — reserved for future  |
+| 3180 – 3189    | 4180 – 4189 | 5456 | 6395  | pasadenaworks (Astro marketing site, static; no API/PG/Redis in use) |
+| 3190 – 3199    | 4190 – 4199 | 5457 | 6396  | **AVAILABLE** — reserved for future  |
 | 8040 – 8049    | —           | —    | —     | ktv-singer (WebSocket)               |
 | 24680 – 24689  | —           | —    | —     | Vite HMR (per-project, pick any)     |
 
-**Free capacity:** 1 full product slot (1 reserved block remains: 3180–3189).
+**Free capacity:** 1 full product slot (1 reserved block remains: 3190–3199).
 
 ---
 
@@ -97,6 +99,7 @@ jarrenchang              → FE: 3140 (static; GitHub Pages, jarrenchang.com)
 rhyschang                → FE: 3150 (static; GitHub Pages, rhyschang.com)
 theresewhite.com         → FE: 3160 (Next.js static export; GitHub Pages, theresewhite.bahtzang.com)
 minmeychang              → FE: 3170 (Astro static, bilingual; GitHub Pages, minmeychang.com)
+pasadenaworks            → FE: 3180 (Astro marketing site, static; GitHub Pages, pasadenaworks.com)
 
 Never cross-assign ports between projects. Each product owns its 10-port block
 (e.g., thefantasticleagues owns 3010-3019 and 4010-4019). If a new service
@@ -110,7 +113,7 @@ the AVAILABLE rows in MASTER-PORTS.md before creating any new product.
 Run this anytime to see what's actually listening:
 
 ```bash
-lsof -i -P -n | grep LISTEN | grep -E '3010|3011|3020|3030|3031|3040|3050|3060|3070|3080|3090|3110|3120|3130|3140|3150|3160|3170|4010|4030|4040|4050|4051|4060|4070|4100|4321|5442|5444|5445|5446|5448|6381|6383|6384|6385|6387|8040|24680|24681'
+lsof -i -P -n | grep LISTEN | grep -E '3010|3011|3020|3030|3031|3040|3050|3060|3070|3080|3090|3110|3120|3130|3140|3150|3160|3170|3180|4010|4030|4040|4050|4051|4060|4070|4100|4321|5442|5444|5445|5446|5448|6381|6383|6384|6385|6387|8040|24680|24681'
 ```
 
 ---
@@ -128,6 +131,8 @@ lsof -i -P -n | grep LISTEN | grep -E '3010|3011|3020|3030|3031|3040|3050|3060|3
 
 ## 📝 Changelog
 
+- **2026-08-27** — **Corrected the pasadenaworks row, which described a repo purpose that no longer applies.** The 2026-08-24 entry named it a "docs/registry repo (this file's canonical source)" — accurate at the time, since the `registry/` folder (holding this file, PORTS.md, and a README) was committed in the repo's very first commit alongside the Astro scaffold. Since then the repo became the actual live Astro marketing site for Pasadena Works (pasadenaworks.com), and nothing about that transition touched this registry — the description just went stale in place, the same failure mode as the shengchangmd row on 2026-08-07. Port stays FE 3180, unchanged; `npm run dev`/`npm run preview` are now pinned to `-p 3180` in the repo's `package.json` rather than left on Astro's default 4321, which collides with **thirstypig**'s reserved slot. Also found: no root-level mirror existed in the pasadenaworks repo at all — the only copy lived nested at `registry/MASTER-PORTS.md`, not the repo root like every other project, so it was invisible to a `ls`/`find` at the expected location. Added proper root-level `MASTER-PORTS.md` + `PORTS.md` copies. **Left `registry/` in place rather than deleting it** — pasadenaworks is a *public* repo (per its own `CLAUDE.md`), and that folder contains details about every other project in this registry (names, stacks, Stripe/Supabase/Retell usage, Railway hosts); worth the owner's own call on whether to remove it, not something to delete unasked while just fixing a stale description.
+- **2026-08-24** — Added **pasadenaworks** (docs/registry repo — the canonical home of this file — connected to `github.com/thirstypig/pasadenaworks`) on **FE 3180**, claiming the FUTURE-6 block (3180–3189 / 4180–4189, PG 5456, Redis 6395). Static only, so API/PG/Redis stay unassigned within the block. Opened a fresh **FUTURE-7** block (3190–3199 / 4190–4199, PG 5457, Redis 6396) to hold the "always one slot free" invariant. Re-synced all 19 project mirrors (18 existing + the pasadenaworks repo itself) from this root copy.
 - **2026-08-07** — **Corrected the shengchangmd row, which named a dead host in all 37 copies of this file.** The registry said `shengchangmd.bahtzang.com`; that host has 404'd since the migration to **shengchangmd.com** completed on 2026-08-05 (apex on Squarespace nameservers, four GitHub Pages A records, `www` redirecting to apex, one Let's Encrypt certificate covering both). Ports are unchanged at FE 3120.
   - **The mirroring worked and the correctness did not.** The 2026-08-05 minmeychang sync propagated cleanly to every copy — all 37 were byte-identical when this was found — and not one of them was right. Mirroring guarantees the copies agree with each other; it guarantees nothing about whether they agree with reality, and a fact nobody is looking at goes stale in every copy simultaneously.
   - **Nothing pointed at the stale row, because nothing was broken.** The migration was completed, verified and documented inside the `shengchangmd` repo, whose own `CLAUDE.md` and runbook were updated the same day. This registry sits outside that repo, so it was never in view. Cross-repo facts have no owner unless one is named.
