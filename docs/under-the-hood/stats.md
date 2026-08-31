@@ -29,7 +29,7 @@ updated: 2026-08-31
 |---|---:|---:|
 | `.ts` | 565 | 100,631 |
 | `.tsx` | 303 | 89,211 |
-| `.md` | 541 | 66,736 |
+| `.md` | 541 | 66,768 |
 | `.json` | 36 | 40,052 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,761 |
@@ -38,7 +38,7 @@ updated: 2026-08-31
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,771** | **346,510** |
+| **All tracked** | **1,771** | **346,542** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -117,11 +117,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**11 open** of 308 total to-dos.
+**10 open** of 308 total to-dos.
 
 | Priority | Open |
 |---|---:|
-| `p1` | 3 |
+| `p1` | 2 |
 | `p2` | 4 |
 | `p3` | 4 |
 
