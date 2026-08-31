@@ -5,6 +5,7 @@ import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, isTeamOwner } from "../../middleware/auth.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { assertRosterLimit } from "../../lib/rosterGuard.js";
+import { tradeSlotFor } from "../transactions/lib/positionInherit.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
@@ -495,11 +496,14 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
              excludeRosterIds: [rosterEntry.id],
            });
 
-           // Carry over assignedPosition from sender, or default to player's primary
+           // Carry over assignedPosition from sender, or default to player's primary.
+           // Shared with CommissionerService.executeTrade — one definition, so the
+           // two trade paths cannot drift apart again.
            const tradedPlayer = await tx.player.findUnique({ where: { id: item.playerId }, select: { posPrimary: true } });
-           const PITCHER_POS = new Set(["P", "SP", "RP", "CL"]);
-           const tradePos = rosterEntry.assignedPosition
-             || (PITCHER_POS.has((tradedPlayer?.posPrimary ?? "").toUpperCase()) ? "P" : (tradedPlayer?.posPrimary ?? "UT").toUpperCase());
+           const tradePos = tradeSlotFor({
+             assignedPosition: rosterEntry.assignedPosition,
+             posPrimary: tradedPlayer?.posPrimary,
+           });
 
            await tx.roster.create({
              data: {

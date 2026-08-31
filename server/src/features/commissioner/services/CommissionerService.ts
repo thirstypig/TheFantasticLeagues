@@ -2,6 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { norm, slugify } from "../../../lib/utils.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
+import { tradeSlotFor } from "../../transactions/lib/positionInherit.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../../lib/rosterWindow.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
@@ -1076,6 +1077,13 @@ export class CommissionerService {
 
   /**
    * Execute Trade — commissioner direct trade (no proposal/accept flow)
+   *
+   * Mirrors the owner flow in `features/trades/routes.ts`: the receiving Roster
+   * row inherits the sender's slot (falling back to the player's primary
+   * position) and both sides of the move are dated from a resolved effective
+   * date. Writing `assignedPosition: null` here used to bench every traded
+   * hitter, because the client narrows an unknown slot code to "BN"; stamping
+   * `new Date()` misdated offline trades recorded after the fact.
    */
   async executeTrade(
     leagueId: number,
@@ -1088,7 +1096,9 @@ export class CommissionerService {
       pickRound?: number | null;
       season?: number | null;
     }>,
+    effectiveDate?: string,
   ) {
+    const effective = resolveEffectiveDate(effectiveDate);
     // Verify all teams belong to this league
     const involvedTeamIds = [...new Set<number>(items.flatMap((i) => [i.senderId, i.recipientId]))];
     const teams = await prisma.team.findMany({
@@ -1127,24 +1137,30 @@ export class CommissionerService {
         if (item.assetType === "PLAYER" && item.playerId) {
           const rosterEntry = await tx.roster.findFirst({
             where: { teamId: item.senderId, playerId: item.playerId, releasedAt: null },
+            include: { player: { select: { posPrimary: true } } },
           });
 
           if (rosterEntry) {
             await tx.roster.update({
               where: { id: rosterEntry.id },
-              data: { releasedAt: new Date(), source: "TRADE_OUT" },
+              data: { releasedAt: effective, source: "TRADE_OUT" },
             });
 
             await assertPlayerAvailable(tx, item.playerId, leagueId);
+
+            const tradePos = tradeSlotFor({
+              assignedPosition: rosterEntry.assignedPosition,
+              posPrimary: rosterEntry.player?.posPrimary,
+            });
 
             await tx.roster.create({
               data: {
                 teamId: item.recipientId,
                 playerId: item.playerId,
                 source: "TRADE_IN",
-                acquiredAt: new Date(),
+                acquiredAt: effective,
                 price: rosterEntry.price,
-                assignedPosition: null,
+                assignedPosition: tradePos,
               },
             });
           }
