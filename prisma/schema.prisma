@@ -931,6 +931,12 @@ model FinanceLedger {
   // Required in application layer when type == "il_fee".
   periodId   Int?
   playerId   Int?
+  // AUDIT MARKER, NOT A FILTER. This table is append-only: a correction stamps
+  // `voidedAt` on the original row AND appends a negated contra-entry pointing
+  // at it via `reversalOf`. The contra-entry already cancels the charge, so a
+  // `voidedAt: null` filter removes the same money twice and silently
+  // under-reports. Sum EVERY row — always through `lib/financeLedger.ts`
+  // (`netBalance` / `teamBalance` / `leagueBalances`), never ad hoc. (todo #311)
   voidedAt   DateTime?
   reversalOf Int?
   createdBy  Int?

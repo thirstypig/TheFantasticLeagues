@@ -50,3 +50,31 @@ for display/audit; it is NOT a filter for totals, because the reversal already c
 - Found 2026-08-31 during the Los Doyers Period 6 repair (PRs #442–#445).
 - `client/src/features/commissioner/pages/Commissioner.tsx` — the "coming soon" stub
 - Related: [[roster_rules_feature]]
+
+## Work Log
+
+### 2026-08-31 — SHIPPED
+- **`server/src/lib/financeLedger.ts`** is now the single sanctioned way to sum the ledger:
+  `netBalance(rows)` (pure), plus `teamBalance` / `leagueBalances` wrappers. Modelled on
+  `ilLogDrift.ts` — the arithmetic is a pure function tested with plain rows, no prisma mocking.
+- **10 tests**, written first and watched failing. The load-bearing one pins the Los Doyers shape:
+  a `+10` voided charge, its `−10` contra-entry, and a `+25` replacement must net to **25**. A
+  `voidedAt IS NULL` implementation returns 15 and fails it, so the wrong reading cannot be
+  reintroduced silently. `leagueBalances` also pins that a team with NO ledger rows still appears
+  at 0 — omitting it reads as "still loading" on the commissioner's screen.
+- **`voidedAt` semantics documented on the Prisma model** (comment only — no migration).
+- **The ledger has a reader.** `GET /api/commissioner/:leagueId/balances` (shared zod schemas in
+  `shared/api/commissioner.ts`) backs the Commissioner → Finances → **Balances** tab, which is no
+  longer a "coming soon" stub. Ledger and Payouts remain stubs and now say so accurately.
+- **Audited for ad-hoc summing: none exists.** `ilFeeService.ts:320`'s
+  `voidedAt: null, reversalOf: null` filter was deliberately left alone — reconcile is asking a
+  different question ("which charges are currently active?"), not computing a balance.
+
+**Browser-verified** (staging, `OGBA Staging` league): the Balances tab renders all 10 teams,
+sorted by name, each at $0. Only console error is an unrelated AdSense 403 on localhost.
+
+**Verification gap, stated per CLAUDE.md:** staging has **zero** FinanceLedger rows, so the
+void+reversal netting could not be exercised in the browser — only in the unit tests. Seeding a
+temporary fixture was blocked by the auto-mode classifier (DB writes are gated even against
+staging). The end-to-end wiring, the every-team-appears behaviour, and the render are verified;
+the arithmetic on real rows is not. Running the tab against prod's real ledger would close it.

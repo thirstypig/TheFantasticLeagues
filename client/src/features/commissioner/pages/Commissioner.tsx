@@ -22,6 +22,8 @@ import {
 } from "../api";
 import type { PendingInvite } from "../api";
 import { getGhostIlSummary, type GhostIlSummary } from "../api";
+import { getLeagueBalances } from "../api";
+import type { TeamBalanceRow } from "@shared/api/commissioner";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import { getTransactions, type TransactionEvent } from "../../transactions/api";
 import CommissionerRosterTool from "../components/CommissionerRosterTool";
@@ -373,6 +375,9 @@ export default function Commissioner() {
   type FinancesSubTab = 'entry-fees' | 'ledger' | 'payouts' | 'balances';
   const [financesSubTab, setFinancesSubTab] = useState<FinancesSubTab>('entry-fees');
 
+  const [balances, setBalances] = useState<TeamBalanceRow[] | null>(null);
+  const [balancesError, setBalancesError] = useState<string | null>(null);
+
   // Archive sub-tab
   type ArchiveSubTab = 'prior-seasons' | 'champions' | 'lifecycle' | 'finalize';
   const [archiveSubTab, setArchiveSubTab] = useState<ArchiveSubTab>('finalize');
@@ -413,6 +418,17 @@ export default function Commissioner() {
       .catch(() => { if (ok) setGhostIl({ teams: [], totalTeamsWithGhosts: 0, totalGhosts: 0 }); });
     return () => { ok = false; };
   }, [activeTab, lid, ghostIl]);
+
+  // Load ledger balances when the Finances → Balances sub-tab is first opened.
+  useEffect(() => {
+    if (activeTab !== 'finances' || financesSubTab !== 'balances' || !lid) return;
+    if (balances !== null) return;
+    let ok = true;
+    getLeagueBalances(lid)
+      .then(rows => { if (ok) { setBalances(rows); setBalancesError(null); } })
+      .catch(err => { if (ok) setBalancesError(err?.message || "Could not load balances."); });
+    return () => { ok = false; };
+  }, [activeTab, financesSubTab, lid, balances]);
 
   // Lazy-load recent activity when Overview tab is first opened.
   useEffect(() => {
@@ -1694,9 +1710,56 @@ export default function Commissioner() {
                     ]}
                   />
                 )}
-                {(financesSubTab === 'ledger' || financesSubTab === 'payouts' || financesSubTab === 'balances') && (
+                {financesSubTab === 'balances' && (
+                  <div className="cm-card">
+                    <div className="cm-row">
+                      <div className="cm-h2">Balances</div>
+                    </div>
+                    {/*
+                      Net of every ledger row, voided ones included — the ledger
+                      is append-only and a correction is a void PLUS a negated
+                      contra-entry, so the void is already cancelled (todo #311).
+                      Positive = the team owes the league.
+                    */}
+                    {balancesError && (
+                      <div className="cm-note" style={{ color: "var(--am-danger, #b3261e)" }}>{balancesError}</div>
+                    )}
+                    {!balancesError && balances === null && (
+                      <div className="cm-note" style={{ color: "var(--am-text-muted)" }}>Loading balances…</div>
+                    )}
+                    {!balancesError && balances !== null && balances.length === 0 && (
+                      <div className="cm-note" style={{ color: "var(--am-text-muted)" }}>No teams in this league yet.</div>
+                    )}
+                    {!balancesError && balances !== null && balances.length > 0 && (
+                      <table className="cm-table">
+                        <thead>
+                          <tr>
+                            <th>Team</th>
+                            <th style={{ textAlign: "right" }}>Balance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {balances.map((b) => (
+                            <tr key={b.teamId}>
+                              <td>
+                                <div className="cm-row" style={{ gap: 8 }}>
+                                  <div className="cm-avatar">{initials(b.teamName)}</div>
+                                  <span style={{ fontWeight: 600 }}>{b.teamName}</span>
+                                </div>
+                              </td>
+                              <td className="cm-mono" style={{ textAlign: "right" }}>
+                                {b.balance < 0 ? `-$${Math.abs(b.balance)}` : `$${b.balance}`}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+                {(financesSubTab === 'ledger' || financesSubTab === 'payouts') && (
                   <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
-                    Financial ledger, payout calculator, and balance tracking — coming soon.
+                    Financial ledger and payout calculator — coming soon.
                   </div>
                 )}
               </div>
