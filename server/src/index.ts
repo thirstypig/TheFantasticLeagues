@@ -65,7 +65,7 @@ import { attachAuctionWs } from './features/auction/services/auctionWsService.js
 import { attachDraftWs } from './features/draft/services/draftWsService.js';
 import { syncAllActivePeriods, syncDailyStats, reconcileRecentlyClosedPeriods } from './features/players/services/mlbStatsSyncService.js';
 import { runTrackedJob } from './lib/runTrackedJob.js';
-import { JOB_STATS_SYNC, JOB_PLAYER_SYNC, JOB_CATEGORY_SNAPSHOT, JOB_RECONCILE, JOB_DAILY_STATS, JOB_AAA_PROSPECTS, JOB_EXPECTATIONS } from './lib/jobNames.js';
+import { JOB_STATS_SYNC, JOB_PLAYER_SYNC, JOB_CATEGORY_SNAPSHOT, JOB_RECONCILE, JOB_DAILY_STATS, JOB_AAA_PROSPECTS, JOB_CLOSED_PERIOD_AUDIT, JOB_EXPECTATIONS } from './lib/jobNames.js';
 import { findStaleJobs } from './lib/jobHealth.js';
 import { snapshotAllActiveLeaguesCategoryDaily } from './features/standings/services/categoryDailySnapshotService.js';
 import * as errorBuffer from './lib/errorBuffer.js';
@@ -415,6 +415,56 @@ async function main() {
     }
   });
   logger.info({}, "Scheduled ingestion dead-man's switch hourly at :07");
+
+  // Nightly audit of EVERY closed period against the MLB record (todo #301).
+  // The 14:00 reconciler only looks back 5 days, so a late MLB scoring revision
+  // to an older period freezes into stored PSP permanently — Period 4 carried
+  // Manaea at ER 17 while three sources said 14, and nothing was watching.
+  //
+  // ALERT-ONLY: never re-syncs. A just-closed period can be healed silently; an
+  // old period's standings have been seen and acted on by owners, so drift there
+  // is reported and a human decides. 03:20 UTC — after the 02:00 stats sync.
+  cron.schedule("20 3 * * *", async () => {
+    await runTrackedJob(JOB_CLOSED_PERIOD_AUDIT, async () => {
+      const { auditAllClosedPeriods } = await import("./features/players/services/mlbStatsSyncService.js");
+      const { summarizeClosedPeriodAudit } = await import("./features/players/services/closedPeriodAudit.js");
+      const entries = await auditAllClosedPeriods();
+      const sum = summarizeClosedPeriodAudit(entries);
+
+      if (!sum.needsAttention) {
+        logger.info({ checked: sum.checked }, "Closed-period audit: all periods match the MLB record");
+        return { rowsWritten: sum.checked };
+      }
+
+      logger.error(
+        { checked: sum.checked, drifted: sum.drifted, unchecked: sum.unchecked, totalMismatches: sum.totalMismatches },
+        "Closed-period audit: stored stats disagree with the MLB record",
+      );
+
+      const to = process.env.ALERT_EMAIL_TO;
+      if (to) {
+        const { sendStaleJobAlertEmail } = await import("./lib/emailService.js");
+        await sendStaleJobAlertEmail({
+          to,
+          stale: [
+            ...sum.drifted.map((d) => ({
+              job: `${d.periodName} (id ${d.periodId})`,
+              hoursSince: null,
+              reason: `${d.mismatches} player(s) disagree with the MLB record`,
+            })),
+            ...sum.unchecked.map((d) => ({
+              job: `${d.periodName} (id ${d.periodId})`,
+              hoursSince: null,
+              reason: "could not be checked — MLB unreachable (not a pass)",
+            })),
+          ],
+        });
+      }
+      // expectsRows counts periods CHECKED, so a sweep that reached nothing fails.
+      return { rowsWritten: sum.checked };
+    }, { expectsRows: true });
+  });
+  logger.info({}, "Scheduled closed-period MLB audit nightly at 03:20 UTC");
 
   cron.schedule('0 13 * * *', runStatsSyncJob);
   cron.schedule('0 18 * * *', runStatsSyncJob);

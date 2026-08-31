@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: 301
 tags: [reconciliation, standings, ADR-014, alerting, closed-periods, confirmed-live]
@@ -60,3 +60,35 @@ the re-sync touched. MLB revised them mid-session. Without this todo's nightly a
 diff, those drifts are now permanent too.
 
 Full write-up: `docs/reports/onroto-audit-2026-07-24.md`.
+
+
+## Resolution — 2026-08-31
+
+**Closed.** `auditAllClosedPeriods` diffs EVERY closed period against the MLB record nightly at
+03:20 UTC (after the 02:00 stats sync), with no 5-day window. Drift raises a durable alert through
+the same Resend path and `ALERT_EMAIL_TO` as the #299 dead-man's switch, and the job itself is
+tracked as a `JobRun` so a sweep that stops running is caught by that switch in turn.
+
+**Alert-only, deliberately.** The 14:00 windowed reconciler auto-heals because a period closed in
+the last five days has barely been looked at. An older period's standings have been seen and acted
+on by owners — silently rewriting them is a worse failure than reporting the drift, so a human
+decides. That is a behavioural difference from `reconcileRecentlyClosedPeriods`, not an oversight.
+
+**Uses the production fetch path** (`reconcilePeriodStats`), per the AC — never `audit_period.ts`,
+which classifies by *current* `assignedPosition` and double-counts drop-and-re-adds.
+
+**`fetch_error` is not `clean`.** An unreachable MLB means we learned nothing, which is not the
+same as learning the data is fine; unchecked periods count as needing attention. Same rule the
+audit skill applies to INCOMPLETE. Mutation-verified: making fetch_error benign, or letting it
+outrank real drift, each reddens exactly the test that guards it.
+
+**Known limitation, recorded honestly:** `reconcilePeriodStats` shares `fetchFreshPeriodStats` with
+the syncer by design (ADR-014 — it must compare against exactly what the syncer would write). So
+this alarm catches *late MLB revisions to stored data*, which is what the todo was filed for, but
+it structurally CANNOT catch a fetch-layer bug — it would re-read the same wrong value and report
+clean. That is the `splits[0]` class (PR #429), and only an independent path (`gameLog`, i.e. the
+`audit-standings` skill) reconciles it. Do not treat a clean nightly sweep as proof the data is
+right.
+
+**First prod run: 6 periods checked, 0 drift, 0 unchecked** — consistent with the same-day
+standings audit, which passed all six against MLB across 1,269 player-period checks.
