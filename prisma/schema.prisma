@@ -941,6 +941,8 @@ model FinanceLedger {
   reverses   FinanceLedger?  @relation("FinanceLedgerReversal", fields: [reversalOf], references: [id])
   reversedBy FinanceLedger[] @relation("FinanceLedgerReversal")
   // Note: partial unique index scoped to type='il_fee' AND voidedAt IS NULL
+  // AND reversalOf IS NULL (a reversal contra-entry is not a charge, and must
+  // not occupy the slot its replacement charge needs)
   // is expressed in the migration SQL only (Prisma @@unique can't express
   // WHERE clauses). See migration 20260421000000_roster_rules_foundation.
 
