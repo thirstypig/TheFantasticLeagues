@@ -9,6 +9,7 @@
  *   - GET  /api/commissioner/:leagueId/il-audit
  *   - POST /api/commissioner/:leagueId/bulk-il-stash
  *   - POST /api/commissioner/:leagueId/cleanup-dropped
+ *   - GET  /api/commissioner/:leagueId/balances
  */
 import { z } from "zod";
 
@@ -92,3 +93,27 @@ export const CleanupDroppedResponseSchema = z.object({
   cutoff: z.string(),
 });
 export type CleanupDroppedResponse = z.infer<typeof CleanupDroppedResponseSchema>;
+
+// ── Finance balances (todo #311) ─────────────────────────────────────
+
+/**
+ * One team's net FinanceLedger balance.
+ *
+ * `balance` is the sum of EVERY ledger row for the team — voided rows
+ * included. The ledger is append-only: a correction stamps `voidedAt` on the
+ * original AND appends a negated contra-entry, so filtering voided rows
+ * removes the same money twice. See `server/src/lib/financeLedger.ts`.
+ *
+ * Whole dollars, matching `FinanceLedger.amount` (Int). Negative = credit.
+ */
+export const TeamBalanceRowSchema = z.object({
+  teamId: z.number().int().positive(),
+  teamName: z.string(),
+  balance: z.number().int(),
+});
+export type TeamBalanceRow = z.infer<typeof TeamBalanceRowSchema>;
+
+export const LeagueBalancesResponseSchema = z.object({
+  balances: z.array(TeamBalanceRowSchema),
+});
+export type LeagueBalancesResponse = z.infer<typeof LeagueBalancesResponseSchema>;

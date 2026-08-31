@@ -1,4 +1,5 @@
 import { fetchJsonApi, API_BASE } from "../../api/base";
+import type { TeamBalanceRow, LeagueBalancesResponse } from "@shared/api/commissioner";
 
 // --- Types ---
 
@@ -76,6 +77,16 @@ export async function getCommissionerOverview(leagueId: number): Promise<Commiss
 export async function getAvailableUsers(leagueId: number): Promise<AvailableUser[]> {
   const resp = await fetchJsonApi<{ users: AvailableUser[] }>(`${API_BASE}/commissioner/${leagueId}/available-users`);
   return resp.users ?? [];
+}
+
+/**
+ * Net FinanceLedger balance per team. Every team appears, at 0 when it has no
+ * ledger rows. The server sums voided rows on purpose (todo #311) — the
+ * balance here is already the correct net; do not post-process it.
+ */
+export async function getLeagueBalances(leagueId: number): Promise<TeamBalanceRow[]> {
+  const resp = await fetchJsonApi<LeagueBalancesResponse>(`${API_BASE}/commissioner/${leagueId}/balances`);
+  return resp.balances;
 }
 
 export async function getPriorTeams(leagueId: number): Promise<PriorTeam[]> {

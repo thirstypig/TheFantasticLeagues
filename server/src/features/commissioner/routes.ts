@@ -17,6 +17,7 @@ import { resolveEffectiveDate } from "../../lib/rosterWindow.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
 import { clearStandingsCache } from "../standings/services/standingsService.js";
 import { listGhostIlPlayersForTeam } from "../../lib/ilSlotGuard.js";
+import { leagueBalances } from "../../lib/financeLedger.js";
 import { invalidateLeagueRules } from "../../lib/leagueRuleCache.js";
 import {
   auditLeagueIlPlayers,
@@ -249,6 +250,25 @@ router.get("/commissioner/:leagueId/available-users", requireAuth, requireCommis
       orderBy: [{ name: "asc" }, { email: "asc" }],
     });
     return res.json({ users });
+}));
+
+/**
+ * GET /api/commissioner/:leagueId/balances
+ *
+ * Net FinanceLedger balance per team. Every team in the league appears, at 0
+ * if it has no ledger rows.
+ *
+ * The sum deliberately includes voided rows — see `lib/financeLedger.ts` for
+ * why filtering them double-removes a correction (todo #311). Do not add a
+ * `voidedAt` filter here.
+ */
+router.get("/commissioner/:leagueId/balances", requireAuth, requireCommissionerOrAdmin(), asyncHandler(async (req, res) => {
+    const leagueId = Number(req.params.leagueId);
+    if (!Number.isInteger(leagueId) || leagueId <= 0) {
+      return res.status(400).json({ error: "Invalid leagueId" });
+    }
+    const balances = await leagueBalances(prisma, leagueId);
+    return res.json({ balances });
 }));
 
 /**
