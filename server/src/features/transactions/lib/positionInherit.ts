@@ -15,20 +15,25 @@ import { RosterRuleError } from "../../../lib/rosterRuleError.js";
 import { slotsFor } from "./slotMatcher.js";
 
 /**
- * The slot a traded player's NEW roster row should take.
+ * The slot a newly-created Roster row should take.
  *
- * Single definition shared by both trade paths — the owner flow
- * (`features/trades/routes.ts`) and the commissioner's direct execution
- * (`CommissionerService.executeTrade`). They previously carried separate
- * copies of this rule and drifted: the commissioner path wrote `null`, and
- * because the client narrows an unrecognised slot code to "BN"
- * (`toHubPlayer.ts` → `narrowSlot`), every traded hitter silently landed on
- * the bench. Keeping one definition is what stops that recurring.
+ * The invariant: **every path that inserts a Roster row must write a valid
+ * slot code.** The client narrows an unrecognised code to "BN"
+ * (`toHubPlayer.ts` → `narrowSlot`), so a null — or a position that is not a
+ * slot, like "LF" or "TWP" — silently benches the player.
+ *
+ * Single definition shared by all three roster-insert paths: the owner trade
+ * flow (`features/trades/routes.ts`), the commissioner's direct trade
+ * (`CommissionerService.executeTrade`), and commissioner assignment
+ * (`CommissionerService.assignPlayer`). Each previously carried its own copy
+ * of the rule, or none at all — the two commissioner paths both wrote null,
+ * and were found and fixed a PR apart because the first search was scoped to
+ * trades rather than to the invariant.
  *
  * Never returns null or an empty string: the caller writes this straight into
  * `Roster.assignedPosition`, and a blank there is the bug.
  */
-export function tradeSlotFor(args: {
+export function rosterSlotFor(args: {
   assignedPosition: string | null | undefined;
   posPrimary: string | null | undefined;
 }): string {

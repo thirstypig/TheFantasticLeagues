@@ -2,7 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { norm, slugify } from "../../../lib/utils.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
-import { tradeSlotFor } from "../../transactions/lib/positionInherit.js";
+import { rosterSlotFor } from "../../transactions/lib/positionInherit.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../../lib/rosterWindow.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
@@ -825,6 +825,13 @@ export class CommissionerService {
           source,
           price: Number(price),
           acquiredAt: effective,
+          // Must be a real slot code. Omitting this left the column NULL, and
+          // the client narrows an unknown slot to "BN" — silently benching
+          // every assigned hitter. Same defect as the two trade paths.
+          assignedPosition: rosterSlotFor({
+            assignedPosition: null,
+            posPrimary: player.posPrimary,
+          }),
         },
         include: {
           player: true,
@@ -1148,7 +1155,7 @@ export class CommissionerService {
 
             await assertPlayerAvailable(tx, item.playerId, leagueId);
 
-            const tradePos = tradeSlotFor({
+            const tradePos = rosterSlotFor({
               assignedPosition: rosterEntry.assignedPosition,
               posPrimary: rosterEntry.player?.posPrimary,
             });

@@ -437,7 +437,7 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (6 open):
+**Next 3 to-dos** (9 open):
 
 - `298` **P1** — il fee reconcile advisory lock type bug
 - `301` **P1** — periodic closed period reconcile alarm
