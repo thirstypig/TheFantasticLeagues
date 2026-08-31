@@ -20,6 +20,7 @@ function stint(p: Partial<RosterStint> & { playerId: number }): RosterStint {
     releasedAt: null,
     assignedPosition: "OF",
     posPrimary: "OF",
+    isTwoWay: false,
     ...p,
   };
 }

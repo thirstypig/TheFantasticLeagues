@@ -11,7 +11,7 @@ function stint(p: Partial<RosterStint>): RosterStint {
   return {
     teamId: 1, playerId: 10,
     acquiredAt: new Date("2026-03-22T00:00:00Z"), releasedAt: null,
-    assignedPosition: "OF", posPrimary: "OF", ...p,
+    assignedPosition: "OF", posPrimary: "OF", isTwoWay: false, ...p,
   };
 }
 function psp(p: Partial<StatLine>): StatLine {
@@ -27,6 +27,54 @@ describe("computeTeamPeriodTotals", () => {
     });
     expect(got.get(1)!.R).toBe(12);
     expect(got.get(1)!.AB).toBe(80);
+  });
+
+  // ── todo #307: classify exactly like production ──────────────────
+  //
+  // Production `playerStatRoles` keys a non-two-way player on `posPrimary`
+  // ALONE — a benched pitcher is still a pitcher. The audit used
+  // `assignedPosition ?? posPrimary`, so a pitcher parked on BN or IL had his
+  // pitching silently dropped BY THE AUDIT ONLY, and his hitting counted
+  // instead. That reports a phantom divergence and sends someone chasing a
+  // production bug that does not exist — the measuring-instrument trap.
+
+  it("counts a benched pitcher's PITCHING, keyed on posPrimary not the slot", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ assignedPosition: "BN", posPrimary: "SP" })],
+      pspByPlayer: new Map([[10, psp({ W: 2, SV: 1, K: 30, ER: 8, IP: 40, BB_H: 45 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.W).toBe(2);
+    expect(got.get(1)!.K).toBe(30);
+    expect(got.get(1)!.IP).toBe(40);
+  });
+
+  it("does not leak a benched pitcher's line into the hitting categories", () => {
+    // The old code counted him as a hitter, so his (zero) hitting was added and
+    // his real pitching vanished. Pin both halves.
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ assignedPosition: "BN", posPrimary: "SP" })],
+      pspByPlayer: new Map([[10, psp({ K: 30, IP: 40, R: 1, H: 2, AB: 9 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.K).toBe(30);
+    expect(got.get(1)!.R).toBe(0);
+    expect(got.get(1)!.AB).toBe(0);
+  });
+
+  it("a position player's mop-up pitching does NOT count toward team pitching", () => {
+    // Matches OnRoto scoring: a catcher who throws an inning is not on your staff.
+    const got = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ assignedPosition: "C", posPrimary: "C" })],
+      pspByPlayer: new Map([[10, psp({ R: 5, H: 10, AB: 40, IP: 1, ER: 3, K: 1 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(5);
+    expect(got.get(1)!.IP).toBe(0);
+    expect(got.get(1)!.ER).toBe(0);
   });
 
   it("counts a same-period drop-and-re-add ONCE", () => {
@@ -100,12 +148,18 @@ describe("computeTeamPeriodTotals", () => {
     expect(got.get(1)!.R).toBe(7);
   });
 
-  it("routes pitcher slots to pitching cats and hitters to hitting cats", () => {
+  it("routes pitchers to pitching cats and hitters to hitting cats", () => {
+    // NOTE (todo #307): this test used to give the "pitcher" only
+    // `assignedPosition: "P"`, leaving the helper's default `posPrimary: "OF"`.
+    // That passed under the old slot-based split and encoded the very bug #307
+    // fixes — production keys a non-two-way player on `posPrimary`, so an OF
+    // sitting in a P slot is a position player doing mop-up and his pitching
+    // must NOT count. The fixture now says what it means.
     const got = computeTeamPeriodTotals({
       teams: TEAMS,
       rosters: [
-        stint({ playerId: 10, assignedPosition: "OF" }),
-        stint({ playerId: 11, assignedPosition: "P" }),
+        stint({ playerId: 10, assignedPosition: "OF", posPrimary: "OF" }),
+        stint({ playerId: 11, assignedPosition: "P", posPrimary: "SP" }),
       ],
       pspByPlayer: new Map([
         [10, psp({ R: 7, K: 999 })],   // hitter: K must be ignored
@@ -116,5 +170,28 @@ describe("computeTeamPeriodTotals", () => {
     expect(got.get(1)!.R).toBe(7);
     expect(got.get(1)!.K).toBe(40);
     expect(got.get(1)!.W).toBe(3);
+  });
+
+  it("follows the SLOT for a two-way player (the documented exception)", () => {
+    // Ohtani is slotted per period, so his contribution follows
+    // assignedPosition. Production pre-splits him into two rows; the rule here
+    // is the same one production applies.
+    const asPitcher = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ assignedPosition: "P", posPrimary: "DH", isTwoWay: true })],
+      pspByPlayer: new Map([[10, psp({ K: 25, W: 2, R: 999 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(asPitcher.get(1)!.K).toBe(25);
+    expect(asPitcher.get(1)!.R).toBe(0);
+
+    const asHitter = computeTeamPeriodTotals({
+      teams: TEAMS,
+      rosters: [stint({ assignedPosition: "DH", posPrimary: "DH", isTwoWay: true })],
+      pspByPlayer: new Map([[10, psp({ R: 30, HR: 8, K: 999 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(asHitter.get(1)!.R).toBe(30);
+    expect(asHitter.get(1)!.K).toBe(0);
   });
 });

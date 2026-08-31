@@ -27,9 +27,9 @@ updated: 2026-08-31
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 574 | 101,895 |
+| `.ts` | 574 | 101,991 |
 | `.tsx` | 303 | 89,211 |
-| `.md` | 542 | 67,110 |
+| `.md` | 542 | 67,137 |
 | `.json` | 36 | 40,052 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,761 |
@@ -38,7 +38,7 @@ updated: 2026-08-31
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,781** | **348,148** |
+| **All tracked** | **1,781** | **348,271** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -117,12 +117,12 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**8 open** of 308 total to-dos.
+**7 open** of 308 total to-dos.
 
 | Priority | Open |
 |---|---:|
 | `p2` | 4 |
-| `p3` | 4 |
+| `p3` | 3 |
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 

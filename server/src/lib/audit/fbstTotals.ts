@@ -1,8 +1,6 @@
 // server/src/lib/audit/fbstTotals.ts
 import { emptyStatLine, type StatLine } from "./types.js";
-
-/** Slot codes that score as pitching. Mirrors audit_period.ts PITCHER_CODES. */
-const PITCHER_CODES = new Set(["P", "SP", "RP", "CL", "TWP"]);
+import { playerStatRoles } from "../sportConfig.js";
 
 export interface RosterStint {
   teamId: number;
@@ -11,6 +9,13 @@ export interface RosterStint {
   releasedAt: Date | null;
   assignedPosition: string | null;
   posPrimary: string | null;
+  /**
+   * Two-way players (Ohtani) are slotted per period, so their contribution
+   * follows `assignedPosition`; everyone else is keyed on `posPrimary` alone.
+   * Source it the same way production does:
+   * `mlbId ? TWO_WAY_PLAYERS.has(mlbId) : false`.
+   */
+  isTwoWay: boolean;
 }
 
 /**
@@ -74,11 +79,21 @@ export function computeTeamPeriodTotals(args: {
 
     counted.add(key);
 
-    const pos = (r.assignedPosition ?? r.posPrimary ?? "").toUpperCase();
-    if (PITCHER_CODES.has(pos)) {
+    // Classify through the PRODUCTION rule rather than re-deriving it (todo
+    // #307). The audit previously split on `assignedPosition ?? posPrimary`,
+    // which drops a benched pitcher's pitching — an under-report by the
+    // instrument only, reported as if production were wrong. Same reasoning as
+    // `rosterSlotFor` (PR #435/#440): delete the second copy, don't sync it.
+    const roles = playerStatRoles({
+      posPrimary: r.posPrimary,
+      assignedPosition: r.assignedPosition,
+      isTwoWay: r.isTwoWay,
+    });
+    if (roles.countPitching) {
       a.W += ps.W; a.SV += ps.SV; a.K += ps.K;
       a.ER += ps.ER; a.IP += ps.IP; a.BB_H += ps.BB_H;
-    } else {
+    }
+    if (roles.countHitting) {
       a.R += ps.R; a.HR += ps.HR; a.RBI += ps.RBI;
       a.SB += ps.SB; a.H += ps.H; a.AB += ps.AB;
     }
