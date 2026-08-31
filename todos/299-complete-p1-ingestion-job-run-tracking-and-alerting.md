@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p1
 issue_id: 299
 tags: [ingestion, cron, observability, alerting, reliability, outbox]

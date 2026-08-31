@@ -241,19 +241,35 @@ export function parsePlayerStats(person: any) {
 /**
  * Sync stats for all active periods (status = "active").
  */
-export async function syncAllActivePeriods(): Promise<void> {
+export async function syncAllActivePeriods(): Promise<{
+  rowsWritten: number;
+  periods: number;
+  errors: number;
+}> {
   const periods = await prisma.period.findMany({
     where: { status: "active" },
     orderBy: { id: "asc" },
   });
 
+  // Per todo #299: this used to return void, so a run that wrote nothing (MLB
+  // circuit breaker open) was indistinguishable from a healthy one and the
+  // caller logged "complete" either way. Aggregate and hand the counts back so
+  // runTrackedJob can treat a zero-row run as the failure it is.
+  let rowsWritten = 0;
+  let errors = 0;
+
   for (const period of periods) {
     try {
-      await syncPeriodStats(period.id);
+      const r = await syncPeriodStats(period.id);
+      rowsWritten += r.synced;
+      errors += r.errors;
     } catch (err) {
+      errors++;
       logger.error({ error: String(err), periodId: period.id }, "Failed to sync period stats");
     }
   }
+
+  return { rowsWritten, periods: periods.length, errors };
 }
 
 /**

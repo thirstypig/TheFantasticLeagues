@@ -1735,3 +1735,24 @@ model Subscriber {
 
   @@index([status])
 }
+
+/// Persisted record of every scheduled-job execution (todo #299).
+///
+/// Before this, no "last successful run" existed anywhere in the schema and the
+/// only alert channel was an in-memory ring buffer wiped on restart — so a
+/// silently dead cron was indistinguishable from a healthy one. Rows are written
+/// on both success and failure; the dead-man's switch in lib/jobHealth.ts reads
+/// the latest SUCCESSFUL finishedAt per job.
+model JobRun {
+  id          Int       @id @default(autoincrement())
+  job         String
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  ok          Boolean   @default(false)
+  /// Rows the job wrote. 0 on a job that declares expectsRows is a FAILURE.
+  rowsWritten Int?
+  error       String?
+
+  /// Serves the dead-man's-switch query: latest successful run per job.
+  @@index([job, finishedAt])
+}
