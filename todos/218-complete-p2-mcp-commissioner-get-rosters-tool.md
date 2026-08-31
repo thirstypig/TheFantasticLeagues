@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "218"
 tags: [code-review, agent-native, mcp, commissioner]

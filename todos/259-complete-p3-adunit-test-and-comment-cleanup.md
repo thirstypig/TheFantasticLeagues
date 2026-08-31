@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 259
 tags: [code-review, adsense, test-coverage]

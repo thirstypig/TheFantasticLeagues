@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "154"
 tags: [code-review, simplicity, architecture, aurora]

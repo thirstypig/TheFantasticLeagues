@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 277
 tags: [code-review, testing, posGames, cron]

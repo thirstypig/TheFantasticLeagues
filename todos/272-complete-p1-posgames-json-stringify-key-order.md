@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 272
 tags: [code-review, posGames, cron, performance, correctness]

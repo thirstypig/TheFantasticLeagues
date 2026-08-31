@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 260
 tags: [standings, attribution, computeWithPeriodStats, ownership-window, ADR-013]

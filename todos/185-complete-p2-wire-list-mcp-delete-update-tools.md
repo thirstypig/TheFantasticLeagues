@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "185"
 tags: [code-review, wire-list, mcp, agent-native]

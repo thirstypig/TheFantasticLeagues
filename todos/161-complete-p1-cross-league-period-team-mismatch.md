@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "161"
 tags: [code-review, wire-list, security, idor]

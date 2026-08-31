@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "043"
 tags: [code-review, api, quality]

@@ -1,6 +1,11 @@
-# 205 · standings MCP tools [P3]
+---
+priority: p3
+issue_id: "205"
+tags: [mcp, standings, agent-native]
+dependencies: []
+---
 
-## Status: COMPLETE
+# 205 · standings MCP tools [P3]
 
 ## What
 Add 3 standings tools to the fbst-app MCP server so agents can query waiver priority,

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "132"
 tags: [code-review, type-safety, drift, shared-api, teams]

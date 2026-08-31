@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "126"
 tags: [code-review, agent-native, hardening]

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "124"
 tags: [code-review, cleanup, aurora, dead-code]

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "117"
 tags: [code-review, correctness, teams, v3-hub, react]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "209"
 tags: [code-review, security, commissioner, position-eligibility, correctness]

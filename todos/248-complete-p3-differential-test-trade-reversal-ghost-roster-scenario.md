@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 246
 tags: [code-review, test-coverage, standings]

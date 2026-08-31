@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "210"
 tags: [code-review, typescript, teams, period-roster, dead-code]

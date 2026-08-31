@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 261
 tags: [code-review, standings, type-safety, testing]

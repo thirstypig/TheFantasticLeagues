@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "207"
 tags: [code-review, standings, ilwindows, testing]

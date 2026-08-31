@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "197"
 tags: [code-review, standings, attribution, correctness, documentation]

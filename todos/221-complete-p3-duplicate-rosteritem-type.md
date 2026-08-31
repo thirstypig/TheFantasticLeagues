@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "221"
 tags: [code-review, typescript, commissioner, type-duplication]

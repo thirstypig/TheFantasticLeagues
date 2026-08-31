@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: 286
 tags: [standings, code-fix, attribution, ADR-013, wire-list]

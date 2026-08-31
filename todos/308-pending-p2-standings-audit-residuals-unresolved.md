@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 308
 tags: [audit, standings, onroto, reconciliation, roster]
@@ -73,3 +72,33 @@ move is entered with an effDate in a period that has already closed.
 - `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md` (2026-08-30 row)
 - `docs/reports/standings-audit-period-6-2026-08-31.md`
 - Memory: `fangraphs_vs_tfl_audit_findings`
+
+### 2026-08-31 — the investigative half is CLOSED; only the instrument fix remains
+
+**All three "genuinely unresolved" items in the Problem Statement above are resolved.** They were
+answered by the per-team OnRoto diff on 2026-08-31 and recorded in the
+`fangraphs_vs_tfl_audit_findings` memory, but never written back here:
+
+1. **Confirmation of late-recorded drops** — confirmed via the per-team OnRoto pages (Playwright;
+   they are Cloudflare-gated to curl).
+2. **Los Doyers `W2 K3`** — **Foster Griffin** (W3 K23, exactly his P6 line, dropped in FBST 08-30)
+   plus **Paul Sewald** (K4). Note the earlier attribution in this file (Pallante + Wrobleski) was
+   **WRONG** — both match OnRoto exactly.
+3. **Demolition's negative pitching residual** — **Jacob Webb**, who is on OnRoto's roster with no
+   FBST roster row at all (a missing ADD: −W2 −SV4 −K9), partly offset by **Emmet Sheehan** (+K4).
+
+statsapi and Baseball Reference agree cell-for-cell on Sheehan, Webb and Sewald, so **no residual
+is a stat-data error — every one is roster state.** Sewald's K+4 is the lone unproven case (W and
+SV match exactly, only K differs — the FG-stale signature, unprovable because FG has no per-period
+slice).
+
+**What actually remains is the third mechanism: the audit double-counts mid-period trades.**
+`isInPeriodWindow` is binary per period and `counted` is keyed `teamId:playerId`, so it never
+dedups ACROSS teams — a player traded mid-period is credited in FULL to both. Production
+`computeTeamStatsFromDb` clamps such moves through daily stats (ADR-013 / todo #286), so standings
+are right; only the instrument over-counts.
+
+**Scope note for whoever picks this up:** the fix means giving the accumulator the same clamping,
+which requires plumbing `PlayerStatsDaily` into a function that today sees only
+`PlayerStatsPeriod`. **Unlike todo #307, this WILL move audit numbers.** Ship it with a before/after
+prod differential across every closed period so the movement is inspected, not discovered.

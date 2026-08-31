@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "164"
 tags: [code-review, wire-list, performance, mobile]

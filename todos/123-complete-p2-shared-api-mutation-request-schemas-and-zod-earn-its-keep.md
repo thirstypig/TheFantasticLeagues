@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "123"
 tags: [code-review, contract, shared-api, zod, transactions]

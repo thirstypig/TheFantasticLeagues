@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "105"
 tags: [code-review, correctness, mlb-feed, player-matching]

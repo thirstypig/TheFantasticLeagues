@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: "198"
 tags: [code-review, standings, performance, cache, database]

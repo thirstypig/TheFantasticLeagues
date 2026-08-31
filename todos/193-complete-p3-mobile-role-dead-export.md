@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "193"
 tags: [code-review, mobile, cleanup]

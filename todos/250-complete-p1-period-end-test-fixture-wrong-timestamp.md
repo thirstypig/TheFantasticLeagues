@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p1
 issue_id: 250
 tags: [code-review, test-coverage, standings, rosterWindow]

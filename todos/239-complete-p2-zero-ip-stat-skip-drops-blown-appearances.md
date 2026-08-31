@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "239"
 tags: [stats-sync, mlb-api, audit, standings]

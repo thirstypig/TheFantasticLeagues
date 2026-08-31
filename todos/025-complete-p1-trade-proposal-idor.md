@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "025"
 tags: [code-review, security, idor]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 276
 tags: [code-review, migration, documentation, rollback]

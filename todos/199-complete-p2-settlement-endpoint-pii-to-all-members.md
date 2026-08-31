@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "199"
 tags: [code-review, security, standings, pii, authorization]

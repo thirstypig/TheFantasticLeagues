@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "090"
 tags: [code-review, dead-code, architecture]

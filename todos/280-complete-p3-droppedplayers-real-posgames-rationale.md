@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 280
 tags: [code-review, architecture, posGames, teamService]

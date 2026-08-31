@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "079"
 tags: [code-review, quality, react]

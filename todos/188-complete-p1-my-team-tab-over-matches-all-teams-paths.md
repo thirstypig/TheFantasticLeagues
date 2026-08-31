@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "188"
 tags: [code-review, mobile, navigation, active-state]

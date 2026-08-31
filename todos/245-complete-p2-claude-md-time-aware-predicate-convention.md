@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "245"
 tags: [code-review, pr-365, claude-md, conventions, prevention]

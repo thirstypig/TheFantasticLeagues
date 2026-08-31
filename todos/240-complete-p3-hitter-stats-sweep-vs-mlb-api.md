@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: "240"
 tags: [stats-sync, mlb-api, audit, standings, hitters]

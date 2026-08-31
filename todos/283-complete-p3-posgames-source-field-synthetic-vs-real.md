@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 283
 tags: [code-review, agent-native, posGames, hub, schema]

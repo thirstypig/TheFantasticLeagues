@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 255
 tags: [code-review, documentation, rosterWindow]

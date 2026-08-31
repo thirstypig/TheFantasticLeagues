@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "156"
 tags: [code-review, wire-list, correctness, races, finalize]

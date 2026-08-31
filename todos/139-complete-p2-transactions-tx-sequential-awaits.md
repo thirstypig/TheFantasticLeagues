@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "139"
 tags: [code-review, performance, transactions]

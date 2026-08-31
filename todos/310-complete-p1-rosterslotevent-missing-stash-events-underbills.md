@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 310
 tags: [il-fees, roster-rules, payouts, data-integrity, money]

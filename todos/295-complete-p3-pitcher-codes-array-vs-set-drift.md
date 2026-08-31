@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: 295
 tags: [code-review, quality, standings, dry]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "194"
 tags: [code-review, wire-list, mobile, simplicity]

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "120"
 tags: [code-review, performance, dashboard, prisma]

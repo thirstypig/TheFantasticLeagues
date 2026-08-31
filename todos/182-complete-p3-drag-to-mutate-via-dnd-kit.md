@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: "182"
 tags: [v3-hub, deferred, dnd-kit, ux, mutations]

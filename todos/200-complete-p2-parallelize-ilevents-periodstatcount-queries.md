@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "200"
 tags: [code-review, standings, performance, database]

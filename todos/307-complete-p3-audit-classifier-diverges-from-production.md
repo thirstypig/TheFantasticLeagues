@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p3
 issue_id: 307
 tags: [audit, standings, drift, testing, instrument]

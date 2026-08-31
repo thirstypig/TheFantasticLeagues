@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: 298
 tags: [outbox, il-fees, roster-rules, payouts, bug, postgres, advisory-lock]

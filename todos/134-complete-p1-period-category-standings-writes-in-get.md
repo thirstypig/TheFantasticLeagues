@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "134"
 tags: [code-review, performance, standings, side-effects-on-get]

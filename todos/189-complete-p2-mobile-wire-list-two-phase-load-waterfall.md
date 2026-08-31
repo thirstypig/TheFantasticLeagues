@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "189"
 tags: [code-review, mobile, wire-list, performance]

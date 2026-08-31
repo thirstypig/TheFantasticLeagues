@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 225
 tags: [code-review, testing, type-safety]

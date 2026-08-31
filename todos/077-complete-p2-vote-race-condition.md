@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: "077"
 tags: [code-review, security, data-integrity]

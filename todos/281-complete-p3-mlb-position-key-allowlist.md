@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p3
 issue_id: 281
 tags: [code-review, security, posGames, mlbSyncService]

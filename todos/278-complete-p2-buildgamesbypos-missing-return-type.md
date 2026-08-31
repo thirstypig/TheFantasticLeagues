@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 278
 tags: [code-review, type-safety, teamService]

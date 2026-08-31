@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p1
 issue_id: "102"
 tags: [code-review, performance, correctness, standings]

@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: 311
 tags: [payouts, league-admin, database, testing]
@@ -78,3 +77,8 @@ void+reversal netting could not be exercised in the browser — only in the unit
 temporary fixture was blocked by the auto-mode classifier (DB writes are gated even against
 staging). The end-to-end wiring, the every-team-appears behaviour, and the render are verified;
 the arithmetic on real rows is not. Running the tab against prod's real ledger would close it.
+
+### 2026-08-31 — renamed to complete (PR #457 merged)
+Shipped in PR #457 (`c969494`). The rename was missed at merge time — the work log landed but the
+`git mv` did not, which is precisely the phantom-rename failure mode recorded in
+`feedback_phantom_rename_in_agent_prompts`. Corrected here.

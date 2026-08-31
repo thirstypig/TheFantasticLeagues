@@ -1,5 +1,4 @@
 ---
-status: pending
 priority: p2
 issue_id: "216"
 tags: [code-review, performance, roster, position-eligibility, react]
