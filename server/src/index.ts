@@ -64,6 +64,9 @@ import { syncAllPlayers, syncAAARosters } from './features/players/services/mlbS
 import { attachAuctionWs } from './features/auction/services/auctionWsService.js';
 import { attachDraftWs } from './features/draft/services/draftWsService.js';
 import { syncAllActivePeriods, syncDailyStats, reconcileRecentlyClosedPeriods } from './features/players/services/mlbStatsSyncService.js';
+import { runTrackedJob } from './lib/runTrackedJob.js';
+import { JOB_STATS_SYNC, JOB_PLAYER_SYNC, JOB_CATEGORY_SNAPSHOT, JOB_RECONCILE, JOB_DAILY_STATS, JOB_AAA_PROSPECTS, JOB_EXPECTATIONS } from './lib/jobNames.js';
+import { findStaleJobs } from './lib/jobHealth.js';
 import { snapshotAllActiveLeaguesCategoryDaily } from './features/standings/services/categoryDailySnapshotService.js';
 import * as errorBuffer from './lib/errorBuffer.js';
 import { isRosterRuleError, type RosterRuleErrorCode } from "./lib/rosterRuleError.js";
@@ -277,8 +280,7 @@ async function main() {
   // Using 12:00 UTC as a reasonable default for PT mornings
   cron.schedule('0 12 * * *', async () => {
     const season = new Date().getFullYear();
-    logger.info({ season }, "Starting scheduled MLB player sync");
-    try {
+    await runTrackedJob(JOB_PLAYER_SYNC, async () => {
       const result = await syncAllPlayers(season);
       logger.info({ created: result.created, updated: result.updated, teams: result.teams, teamChanges: result.teamChanges.length }, "Scheduled MLB player sync complete");
 
@@ -288,9 +290,9 @@ async function main() {
       const { syncPositionEligibility } = await import("./features/players/services/mlbSyncService.js");
       const posResult = await syncPositionEligibility(season, 3);
       logger.info({ updated: posResult.updated, unchanged: posResult.unchanged }, "Scheduled position eligibility sync complete");
-    } catch (err) {
-      logger.error({ error: String(err) }, "Scheduled MLB player sync failed");
-    }
+
+      return { rowsWritten: result.created + result.updated };
+    }, { expectsRows: true });
   });
   logger.info({}, "Scheduled daily MLB player sync at 12:00 UTC (~5 AM PT)");
 
@@ -301,12 +303,11 @@ async function main() {
   // (Gap 2). Idempotent — re-runs upsert into the same row.
   cron.schedule('0 11 * * *', async () => {
     logger.info({}, "Starting scheduled category daily snapshot");
-    try {
+    await runTrackedJob(JOB_CATEGORY_SNAPSHOT, async () => {
       const result = await snapshotAllActiveLeaguesCategoryDaily();
       logger.info(result, "Category daily snapshot complete");
-    } catch (err) {
-      logger.error({ error: String(err) }, "Category daily snapshot failed");
-    }
+      return { rowsWritten: Number((result as { snapshotted?: number })?.snapshotted ?? 0) };
+    }, { expectsRows: true });
   });
   logger.info({}, "Scheduled category daily snapshot at 11:00 UTC (~4 AM PT)");
 
@@ -316,14 +317,47 @@ async function main() {
   //   22:00 UTC (6 PM EDT)  — day games done, before evening games
   //   02:00 UTC (10 PM EDT) — East Coast night games wrapping up
   async function runStatsSyncJob() {
-    logger.info({}, "Starting scheduled player stats sync");
-    try {
-      await syncAllActivePeriods();
-      logger.info({}, "Scheduled player stats sync complete");
-    } catch (err) {
-      logger.error({ error: String(err) }, "Scheduled player stats sync failed");
-    }
+    // expectsRows: an active-period sync that writes nothing means the MLB
+    // fetch failed or the circuit breaker is open — a failure, not a success
+    // (todo #299). runTrackedJob records the attempt either way and never
+    // rethrows into node-cron.
+    await runTrackedJob(JOB_STATS_SYNC, () => syncAllActivePeriods(), { expectsRows: true });
   }
+  // Dead-man's switch (todo #299) — hourly. Asks the JobRun table whether every
+  // expected ingestion job has had a SUCCESSFUL run inside its window, and emails
+  // on drift. Keyed on success, never on execution: a job failing every five
+  // minutes has run very recently and is still completely broken.
+  //
+  // Email rather than errorBuffer because errorBuffer is a 100-entry in-memory
+  // ring wiped on restart — it loses exactly the alert a crash-looping process
+  // would raise. Silent by design when everything is healthy.
+  cron.schedule("7 * * * *", async () => {
+    try {
+      const since = new Date(Date.now() - 7 * 24 * 3600_000);
+      const runs = await prisma.jobRun.findMany({
+        where: { finishedAt: { gte: since } },
+        select: { job: true, finishedAt: true, ok: true },
+      });
+      const stale = findStaleJobs(runs, JOB_EXPECTATIONS, new Date());
+      if (stale.length === 0) return;
+
+      logger.error({ stale }, "Dead-man's switch: ingestion jobs are not completing");
+      const to = process.env.ALERT_EMAIL_TO;
+      if (!to) {
+        logger.warn({}, "ALERT_EMAIL_TO unset — stale-job alert logged only, not emailed");
+        return;
+      }
+      const { sendStaleJobAlertEmail } = await import("./lib/emailService.js");
+      await sendStaleJobAlertEmail({
+        to,
+        stale: stale.map((x) => ({ job: x.job, hoursSince: x.hoursSince, reason: x.reason })),
+      });
+    } catch (err) {
+      logger.error({ error: String(err) }, "Dead-man's switch check failed");
+    }
+  });
+  logger.info({}, "Scheduled ingestion dead-man's switch hourly at :07");
+
   cron.schedule('0 13 * * *', runStatsSyncJob);
   cron.schedule('0 18 * * *', runStatsSyncJob);
   cron.schedule('0 22 * * *', runStatsSyncJob);
@@ -336,13 +370,13 @@ async function main() {
   // stat corrections, and missed syncs that would otherwise stay silent forever
   // (precedent: P1 carried April 19's games for seven weeks).
   cron.schedule('0 14 * * *', async () => {
-    logger.info({}, "Starting stats integrity reconciliation");
-    try {
+    // expectsRows: false — a reconciler finding no drift legitimately heals
+    // nothing. Zero here is the healthy case, not a silent failure.
+    await runTrackedJob(JOB_RECONCILE, async () => {
       const entries = await reconcileRecentlyClosedPeriods();
       logger.info({ entries }, "Stats integrity reconciliation complete");
-    } catch (err) {
-      logger.error({ error: String(err) }, "Stats integrity reconciliation failed");
-    }
+      return { rowsWritten: Array.isArray(entries) ? entries.length : Number(entries ?? 0) };
+    }, { expectsRows: false });
   });
   logger.info({}, "Scheduled stats integrity reconciliation at 14:00 UTC (daily)");
 
@@ -351,13 +385,11 @@ async function main() {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const dateStr = yesterday.toISOString().split("T")[0];
-    logger.info({ dateStr }, "Starting daily stats sync (per-day)");
-    try {
-      await syncDailyStats(dateStr);
-      logger.info({ dateStr }, "Daily stats sync (per-day) complete");
-    } catch (err) {
-      logger.error({ error: String(err), dateStr }, "Daily stats sync (per-day) failed");
-    }
+    await runTrackedJob(JOB_DAILY_STATS, async () => {
+      const r = await syncDailyStats(dateStr);
+      logger.info({ dateStr, ...r }, "Daily stats sync (per-day) complete");
+      return { rowsWritten: r.synced };
+    }, { expectsRows: true });
   });
   logger.info({}, "Scheduled daily per-day stats sync at 13:30 UTC (~6:30 AM PT)");
 
@@ -365,13 +397,12 @@ async function main() {
   // 2hrs after daily MLB sync to avoid Player table write conflicts
   cron.schedule('0 14 * * 1', async () => {
     const season = new Date().getFullYear();
-    logger.info({ season }, "Starting weekly AAA prospects sync");
-    try {
+    await runTrackedJob(JOB_AAA_PROSPECTS, async () => {
       const result = await syncAAARosters(season);
       logger.info(result, "AAA prospects sync complete");
-    } catch (err) {
-      logger.error({ error: String(err) }, "AAA prospects sync failed");
-    }
+      const r = result as { created?: number; updated?: number };
+      return { rowsWritten: Number(r?.created ?? 0) + Number(r?.updated ?? 0) };
+    }, { expectsRows: true });
   });
   logger.info({}, "Scheduled weekly AAA prospects sync (Monday 14:00 UTC)");
 

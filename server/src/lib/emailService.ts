@@ -104,6 +104,53 @@ async function sendEmail(to: string, subject: string, html: string, tag: string)
 /**
  * Send a league invite email. Fire-and-forget — never throws.
  */
+/**
+ * Dead-man's-switch alert: one or more ingestion jobs have had no SUCCESSFUL
+ * run inside their window (todo #299).
+ *
+ * This is the durable half of the alerting the todo asks for. `lib/errorBuffer.ts`
+ * is a 100-entry in-memory ring wiped on every restart, so an alarm raised there
+ * disappears exactly when a crash-looping process would raise it. Email survives
+ * the restart.
+ */
+export async function sendStaleJobAlertEmail(opts: {
+  to: string;
+  stale: { job: string; hoursSince: number | null; reason: string }[];
+}) {
+  const { to, stale } = opts;
+  const rows = stale
+    .map(
+      (s) => `<tr>
+        <td style="padding:6px 12px 6px 0; font-family:monospace;">${escapeHtml(s.job)}</td>
+        <td style="padding:6px 12px 6px 0;">${escapeHtml(s.reason)}</td>
+        <td style="padding:6px 0;">${s.hoursSince === null ? "never" : `${s.hoursSince.toFixed(1)}h ago`}</td>
+      </tr>`,
+    )
+    .join("");
+  await sendEmail(
+    to,
+    sanitizeSubject(`[FBST] ${stale.length} ingestion job(s) not running`),
+    emailWrapper(`
+      <h2 style="margin: 0 0 16px; font-size: 20px;">Ingestion jobs are not completing</h2>
+      <p style="margin: 0 0 12px; font-size: 15px; color: #444; line-height: 1.5;">
+        The following scheduled jobs have had no <strong>successful</strong> run
+        inside their expected window. A job that is failing repeatedly still counts
+        as stale — recent execution is not the same as recent success.
+      </p>
+      <table style="border-collapse:collapse; font-size:14px; margin:0 0 16px;">
+        <tr style="text-align:left; color:#888;">
+          <th style="padding:0 12px 6px 0;">Job</th><th style="padding:0 12px 6px 0;">Reason</th><th style="padding:0 0 6px;">Last success</th>
+        </tr>
+        ${rows}
+      </table>
+      <p style="margin: 0 0 12px; font-size: 13px; color: #888;">
+        Stored data may be stale. Check the JobRun table and the Railway logs.
+      </p>
+    `),
+    "stale-job-alert",
+  );
+}
+
 export async function sendInviteEmail(opts: {
   to: string;
   leagueName: string;

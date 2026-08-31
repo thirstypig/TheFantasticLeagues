@@ -21,24 +21,24 @@ updated: 2026-08-31
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-08-31 from 1,755 git-tracked files.*
+*Generated 2026-08-31 from 1,758 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 553 | 99,616 |
+| `.ts` | 555 | 99,913 |
 | `.tsx` | 303 | 89,211 |
 | `.md` | 536 | 66,452 |
 | `.json` | 36 | 40,052 |
-| `.sql` | 37 | 2,069 |
+| `.sql` | 38 | 2,093 |
+| `.prisma` | 1 | 1,759 |
 | `.css` | 8 | 1,755 |
-| `.prisma` | 1 | 1,738 |
 | `.mjs` | 7 | 1,469 |
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,751** | **345,104** |
+| **All tracked** | **1,754** | **345,446** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -47,8 +47,8 @@ updated: 2026-08-31
 | Measure | Count |
 |---|---:|
 | API routes | 291 |
-| Prisma models | 65 |
-| Prisma migrations | 35 |
+| Prisma models | 66 |
+| Prisma migrations | 36 |
 | Server feature modules | 34 |
 | Client feature modules | 29 |
 | Cross-feature imports (ADR-015 baseline) | 95 |
@@ -117,11 +117,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**8 open** of 303 total to-dos.
+**7 open** of 303 total to-dos.
 
 | Priority | Open |
 |---|---:|
-| `p1` | 3 |
+| `p1` | 2 |
 | `p2` | 3 |
 | `p3` | 2 |
 

@@ -437,11 +437,11 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (8 open):
+**Next 3 to-dos** (7 open):
 
 - `298` **P1** — il fee reconcile advisory lock type bug
-- `299` **P1** — ingestion job run tracking and alerting
 - `301` **P1** — periodic closed period reconcile alarm
+- `302` **P2** — delete dead divergent scoring engine
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
