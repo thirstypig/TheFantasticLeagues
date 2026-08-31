@@ -386,8 +386,9 @@ export async function reconcileIlFeesForPeriod(
         },
       });
     }
+    let actuallyAdded = 0;
     if (toAdd.length > 0) {
-      await tx.financeLedger.createMany({
+      const res = await tx.financeLedger.createMany({
         data: toAdd.map(s => ({
           teamId: s.teamId,
           periodId,
@@ -399,6 +400,20 @@ export async function reconcileIlFeesForPeriod(
         })),
         skipDuplicates: true, // guards a genuine double-fire of the same reconcile
       });
+      actuallyAdded = res?.count ?? 0;
+
+      // `skipDuplicates` drops a colliding row with no error. Discarding this
+      // count is what let two prod repricings report `added: 1` while writing
+      // nothing — the money silently went unbilled. Intent is not an outcome:
+      // if the database took fewer rows than we asked it to, fail the whole
+      // transaction so the reconcile is retried rather than believed.
+      if (actuallyAdded < toAdd.length) {
+        throw new Error(
+          `ilFeeService: insert lost ${toAdd.length - actuallyAdded} of ${toAdd.length} il_fee row(s) ` +
+          `for period ${periodId} — a live row (possibly a reversal contra-entry) is occupying the ` +
+          `partial unique index slot. Refusing to report success.`,
+        );
+      }
     }
 
     // AuditLog requires a non-null userId. System-initiated reconciles
@@ -414,7 +429,7 @@ export async function reconcileIlFeesForPeriod(
         metadata: {
           leagueId, periodId,
           stintCount: billable.length,
-          added: toAdd.length,
+          added: actuallyAdded,
           voided: toVoid.length,
           unchanged,
         },
@@ -423,7 +438,7 @@ export async function reconcileIlFeesForPeriod(
 
     return {
       leagueId, periodId,
-      added: toAdd.length,
+      added: actuallyAdded,
       voided: toVoid.length,
       unchanged,
       dryRun: false,

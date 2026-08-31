@@ -10,7 +10,7 @@ const mockTx = {
   rosterSlotEvent: { findMany: vi.fn().mockResolvedValue([]) },
   financeLedger: {
     findMany: vi.fn().mockResolvedValue([]),
-    createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    createMany: vi.fn(async (args: any) => ({ count: args?.data?.length ?? 0 })),
     update: vi.fn(),
     create: vi.fn(),
   },
@@ -40,7 +40,7 @@ beforeEach(() => {
   mockTx.leagueRule.findMany.mockResolvedValue([]);
   mockTx.rosterSlotEvent.findMany.mockResolvedValue([]);
   mockTx.financeLedger.findMany.mockResolvedValue([]);
-  mockTx.financeLedger.createMany.mockResolvedValue({ count: 0 });
+  mockTx.financeLedger.createMany.mockImplementation(async (args: any) => ({ count: args?.data?.length ?? 0 }));
 });
 
 // ── deriveAllStints ──────────────────────────────────────────────
@@ -377,5 +377,43 @@ describe("reconcileIlFeesForPeriod — amount corrections", () => {
     await reconcileIlFeesForPeriod(1, 7, { actorUserId: 42 });
     const where = (mockTx.financeLedger.findMany as any).mock.calls[0][0].where;
     expect(where).toMatchObject({ reversalOf: null });
+  });
+});
+
+describe("reconcileIlFeesForPeriod — silent-insert-loss guard", () => {
+  const period = {
+    id: 7, leagueId: 1,
+    startDate: new Date("2026-04-01Z"), endDate: new Date("2026-04-14Z"),
+    name: "Period 1",
+  };
+
+  beforeEach(() => {
+    mockTx.period.findUnique.mockResolvedValue(period);
+    mockTx.leagueRule.findMany.mockResolvedValue([
+      { key: "il_slot_1_cost", value: "10" },
+      { key: "il_slot_2_cost", value: "15" },
+    ]);
+    mockTx.rosterSlotEvent.findMany.mockResolvedValue([
+      { id: 1, teamId: 10, playerId: 100, event: "IL_STASH", effDate: new Date("2026-04-05Z"), player: { name: "Alpha" } },
+    ]);
+    mockTx.financeLedger.findMany.mockResolvedValue([]);
+  });
+
+  it("throws when createMany inserts fewer rows than intended", async () => {
+    // `skipDuplicates: true` silently drops a row that collides with the
+    // partial unique index — including a live reversal contra-entry squatting
+    // the (teamId, periodId, playerId) slot. Twice in prod this reported
+    // `added: 1` while writing nothing, because the createMany count was
+    // discarded. Reporting intent as if it were reality is what made the
+    // failure invisible.
+    mockTx.financeLedger.createMany.mockResolvedValue({ count: 0 });
+    await expect(reconcileIlFeesForPeriod(1, 7, { actorUserId: 42 }))
+      .rejects.toThrow(/insert/i);
+  });
+
+  it("reports the ACTUAL inserted count, not the intended count", async () => {
+    const r = await reconcileIlFeesForPeriod(1, 7, { actorUserId: 42 });
+    expect(r.added).toBe(1);
+    expect(mockTx.financeLedger.createMany).toHaveBeenCalledOnce();
   });
 });
