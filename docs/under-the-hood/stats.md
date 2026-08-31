@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-08-30
+updated: 2026-08-31
 ---
 
 # Repo statistics
@@ -21,15 +21,15 @@ updated: 2026-08-30
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-08-30 from 1,753 git-tracked files.*
+*Generated 2026-08-31 from 1,755 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 552 | 99,448 |
+| `.ts` | 553 | 99,616 |
 | `.tsx` | 303 | 89,211 |
-| `.md` | 535 | 66,398 |
+| `.md` | 536 | 66,452 |
 | `.json` | 36 | 40,052 |
 | `.sql` | 37 | 2,069 |
 | `.css` | 8 | 1,755 |
@@ -38,7 +38,7 @@ updated: 2026-08-30
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,749** | **344,871** |
+| **All tracked** | **1,751** | **345,093** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,12 +55,12 @@ updated: 2026-08-30
 
 ## Docs
 
-**195** board-scope markdown files (`docs/` plus the four root docs), of which **131** carry frontmatter.
+**196** board-scope markdown files (`docs/` plus the four root docs), of which **131** carry frontmatter.
 
-*539 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*540 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
-> **64 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
+> **65 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
 > or cross-linked. Retrofitting them is the largest single piece of remaining docs work.
 
 | Type | Docs | In vocabulary? |
@@ -127,7 +127,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (103 days ago).
+`server/data/planning.json` last updated **2026-05-19** (104 days ago).
 
-> ⚠️ The canonical roadmap source is **103 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **104 days stale**. Numbers above are honest; the *plan* they describe may not be.
 
