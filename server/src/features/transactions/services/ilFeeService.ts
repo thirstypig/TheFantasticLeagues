@@ -65,6 +65,59 @@ async function loadIlFeeRates(tx: TxClient, leagueId: number): Promise<{ slot1: 
 }
 
 /**
+ * Assign each stint its IL slot rank (1 or 2), which selects the fee tier.
+ *
+ * A stint is rank 2 when another stint on the SAME team was already occupying a
+ * slot when it started. Ties matter: two players stashed in one transaction share
+ * an identical `startedAt`, and a plain `other.startedAt <= s.startedAt` is true
+ * in both directions — so each saw the other as already open, both were ranked 2,
+ * and the team paid slot-2 twice with no slot-1 charge. Los Doyers were billed
+ * $15 + $15 instead of $10 + $15 for Period 6 that way.
+ *
+ * The tie is broken on `playerId`, which is arbitrary but *stable*: the same input
+ * always yields the same ranks regardless of row order, so a re-run cannot silently
+ * re-price a period.
+ *
+ * Pure and exported for tests — no DB access.
+ */
+export function assignIlRanks(
+  rawStints: Array<Omit<BillableStint, "rankAtEntry">>,
+): BillableStint[] {
+  const stintsByTeam = new Map<number, Array<Omit<BillableStint, "rankAtEntry">>>();
+  for (const s of rawStints) {
+    const arr = stintsByTeam.get(s.teamId) ?? [];
+    arr.push(s);
+    stintsByTeam.set(s.teamId, arr);
+  }
+
+  const out: BillableStint[] = [];
+  for (const [, teamStints] of stintsByTeam) {
+    for (const s of teamStints) {
+      // How many other stints on this team held a slot when s started?
+      const concurrent = teamStints.filter((other) => {
+        if (other === s) return false;
+        const startsFirst =
+          other.startedAt.getTime() < s.startedAt.getTime() ||
+          // Deterministic tie-break on identical timestamps — exactly one of any
+          // simultaneous pair counts as "already there".
+          (other.startedAt.getTime() === s.startedAt.getTime() && other.playerId < s.playerId);
+        if (!startsFirst) return false;
+        return other.endedAt === null || other.endedAt.getTime() > s.startedAt.getTime();
+      }).length;
+
+      const rank: 1 | 2 = concurrent === 0 ? 1 : 2;
+      out.push({ ...s, rankAtEntry: rank });
+      if (concurrent >= 2) {
+        logger.warn({ teamId: s.teamId, playerId: s.playerId, concurrent },
+          "ilFeeService: more than 2 concurrent IL stints for team — rank capped at 2.");
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
  * Derive the stints (start/end windows) for every IL occupancy in the
  * league's history up to `upTo`. Stints are built by pairing IL_STASH
  * events with the next IL_ACTIVATE or IL_RELEASE event for the same
@@ -144,25 +197,7 @@ export async function deriveAllStints(
     stintsByTeam.set(s.teamId, arr);
   }
 
-  const out: BillableStint[] = [];
-  for (const [, teamStints] of stintsByTeam) {
-    for (const s of teamStints) {
-      // How many other stints on this team were OPEN at s.startedAt?
-      const concurrent = teamStints.filter(other =>
-        other !== s
-        && other.startedAt <= s.startedAt
-        && (other.endedAt === null || other.endedAt > s.startedAt),
-      ).length;
-      const rank: 1 | 2 = concurrent === 0 ? 1 : 2;
-      out.push({ ...s, rankAtEntry: rank });
-      if (concurrent >= 2) {
-        logger.warn({ teamId: s.teamId, playerId: s.playerId, concurrent },
-          "ilFeeService: more than 2 concurrent IL stints for team — rank capped at 2.");
-      }
-    }
-  }
-
-  return out;
+  return assignIlRanks(rawStints);
 }
 
 /**
