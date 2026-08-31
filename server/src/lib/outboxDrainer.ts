@@ -12,6 +12,7 @@ import { prisma } from "../db/prisma.js";
 import { logger } from "./logger.js";
 import { reconcileIlFeesForPeriods } from "../features/transactions/services/ilFeeService.js";
 import { findPeriodsMissingReconcile, findExhaustedEvents } from "./outboxHealth.js";
+import { findIlLogDrift } from "./ilLogDrift.js";
 
 type OutboxPayloadFeeReconcile = {
   leagueId: number;
@@ -174,6 +175,33 @@ export async function requeueOutboxEvent(id: number): Promise<void> {
     data: { attempts: 0, lastError: null },
   });
   logger.info({ id }, "outbox: event requeued (attempts reset)");
+}
+
+/**
+ * IL events present in one log but not the other (todo #310).
+ *
+ * A stash missing from `RosterSlotEvent` is unbillable — the fee service reads
+ * that log — so the charge is silently never made. A row present only in
+ * `RosterSlotEvent` is a billing event no recorded transaction explains.
+ *
+ * Deliberately not scoped to a league: drift anywhere is a data-integrity fault.
+ */
+export async function findIlLogDriftAll() {
+  const [te, rse] = await Promise.all([
+    prisma.transactionEvent.findMany({
+      where: { transactionType: { in: ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE"] }, effDate: { not: null } },
+      select: { teamId: true, playerId: true, effDate: true, transactionType: true },
+    }),
+    prisma.rosterSlotEvent.findMany({
+      select: { teamId: true, playerId: true, effDate: true, event: true },
+    }),
+  ]);
+  return findIlLogDrift(
+    te
+      .filter((e) => e.teamId != null && e.playerId != null && e.effDate != null && e.transactionType != null)
+      .map((e) => ({ teamId: e.teamId!, playerId: e.playerId!, effDate: e.effDate!, transactionType: e.transactionType! })),
+    rse,
+  );
 }
 
 /**

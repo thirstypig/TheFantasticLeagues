@@ -365,7 +365,24 @@ async function main() {
         logger.error({ error: String(err) }, "Stuck-outbox check failed");
       }
 
-      if (stale.length === 0 && stuck.length === 0) return;
+      // IL log drift (todo #310). A stash missing from RosterSlotEvent is an
+      // unbillable stint — real money never charged. Four such stints were
+      // sitting in prod when this check was written, two of which manual
+      // inspection had missed entirely.
+      let drift: Awaited<ReturnType<typeof import("./lib/outboxDrainer.js").findIlLogDriftAll>> = [];
+      try {
+        const { findIlLogDriftAll } = await import("./lib/outboxDrainer.js");
+        drift = await findIlLogDriftAll();
+        const unbillable = drift.filter((d) => d.missingFrom === "RosterSlotEvent");
+        if (drift.length > 0) {
+          logger.error({ total: drift.length, unbillable: unbillable.length, sample: drift.slice(0, 10) },
+            "IL logs disagree — stints missing from the billing log are never charged");
+        }
+      } catch (err) {
+        logger.error({ error: String(err) }, "IL log drift check failed");
+      }
+
+      if (stale.length === 0 && stuck.length === 0 && drift.length === 0) return;
 
       logger.error({ stale }, "Dead-man's switch: ingestion jobs are not completing");
       const to = process.env.ALERT_EMAIL_TO;
@@ -383,6 +400,14 @@ async function main() {
             hoursSince: null,
             reason: `exhausted ${e.attempts} attempts — will never retry`,
           })),
+          ...(drift.length > 0
+            ? [{
+                job: "IL log drift",
+                hoursSince: null,
+                reason: `${drift.length} event(s) disagree between TransactionEvent and RosterSlotEvent; ` +
+                  `${drift.filter((d) => d.missingFrom === "RosterSlotEvent").length} unbillable stint(s)`,
+              }]
+            : []),
         ],
       });
     } catch (err) {

@@ -28,6 +28,39 @@ teamId=147 playerId=1    IL_STASH     "IL_STASH while prior stint still open —
 teamId=147 playerId=1    IL_ACTIVATE  "close event with no open stint — ignoring."
 ```
 
+## 2026-08-31 UPDATE — scope is larger, and the cause is NOT a route
+
+Running the drift check (`findIlLogDrift`, shipped with this todo) against prod found
+**9 discrepancies, not 3** — manual inspection had missed two thirds of it:
+
+| Missing from RosterSlotEvent (UNBILLABLE) | effDate |
+|---|---|
+| Daniel Palencia — RGing | 2026-04-19 |
+| Logan Henderson — The Show | 2026-06-07 |
+| **Quinn Priester — The Show** | 2026-04-19 |
+| **Andrew Vaughn — Demolition** | 2026-04-19 |
+
+| Present only in RosterSlotEvent (phantom billing rows) | effDate |
+|---|---|
+| Mookie Betts — Los Doyers | 04-23 STASH + 04-23 ACTIVATE |
+| Andrew Vaughn — Demolition | 04-23 STASH + 04-23 ACTIVATE, 05-03 STASH |
+
+**Vaughn matters most: he WAS billed (P2 and P3, $10 each) — but on the phantom rows, not on
+his real 04-19 stint.** So an existing charge rests on events no transaction explains.
+
+**Root cause is NOT a code path.** The rowHashes are hand-written:
+- Palencia: `IL_STASH-correction-pa…` / *"IL stash (commissioner correction) — effective period 2 start"*
+- Henderson: `IL-STASH-COMM-9a82a1de` / *"Commissioner stash — Logan Henderson to IL (6/7)"*
+
+Neither matches the 3-way claim (`IL-STASH-CLAIM-<uuid>`) or `/il-stash` (`IL_STASH-<uuid>`). These
+were **manual corrections written straight to TransactionEvent**, skipping the billing log — the
+same family as the direct-DB period closes that caused P4's missing enqueue.
+
+**A real latent code gap exists too, separately:** the 3-way claim
+(`transactions/routes.ts:511`, the `ilStashPlayerId` branch) sets `assignedPosition="IL"` and
+writes a TransactionEvent but **no RosterSlotEvent**. It did not cause these four, but it would
+cause the same bug the first time someone stashes through it. Still worth fixing.
+
 ## Estimated financial impact — VERIFY BEFORE BILLING
 Both missing stints align exactly to one period each, so each is one billable stint:
 - **Palencia** 04-19 → 05-17 spans all of Period 2 (04-19 → 05-16). RGing has **no** P2 charge today.
