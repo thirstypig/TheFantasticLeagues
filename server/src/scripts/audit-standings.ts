@@ -193,14 +193,23 @@ async function main(): Promise<void> {
     fgTeamsByNormName.set(normalizeTeamName(name), stats);
   }
 
-  // Completed periods only. Including the ACTIVE period made the season leg
-  // unusable on the first day of a new one: the period opens with zero
-  // PlayerStatsPeriod rows, so every rostered player is reported as a coverage
-  // gap and the verdict is forced to INCOMPLETE — 188 spurious skips on
-  // 2026-08-30, the day Period 7 opened. It also cannot change any total,
-  // because FanGraphs is season-to-date through the last completed day.
+  // Totals span ACTIVE + completed; coverage gaps are checked on COMPLETED only.
+  //
+  // These are two different questions and conflating them broke the leg twice in
+  // two days:
+  //   - Summing active+completed and gap-checking both: on the first day of a new
+  //     period it holds zero PlayerStatsPeriod rows, so every rostered player reads
+  //     as a coverage gap → 188 spurious skips and a false INCOMPLETE (2026-08-30).
+  //   - Dropping the active period entirely (the first fix, PR #435): FanGraphs is
+  //     season-to-date through TODAY, not through the last completed day, so once
+  //     the active period accumulates real games FBST is short by exactly those
+  //     days and every team shows a uniform negative residual (2026-08-31: the
+  //     three previously-exact teams all went negative by one day).
+  //
+  // A missing PSP row in an in-flight period is not a gap — that player simply has
+  // not played yet. In a closed period it is a genuine hole.
   const seasonPeriods = await prisma.period.findMany({
-    where: { leagueId, status: "completed" },
+    where: { leagueId, status: { in: ["active", "completed"] } },
     orderBy: { startDate: "asc" },
   });
 
@@ -215,9 +224,12 @@ async function main(): Promise<void> {
     const pspByPlayerQ = buildPspMap(pspQ);
     const isOnIlAtQStart = (playerId: number): boolean => wasOnIlAtPeriodStart(playerId, q.startDate, ilWindowsByPlayer);
 
-    const gaps = findCoverageGaps({ rosters, period: q, pspByPlayer: pspByPlayerQ, isOnIlAtPeriodStart: isOnIlAtQStart, playerNameById });
-    seasonPlayersSkipped += gaps.playersSkipped;
-    seasonSkipReasons.push(...gaps.skipReasons);
+    // Only a CLOSED period can have a real coverage gap (see above).
+    if (q.status === "completed") {
+      const gaps = findCoverageGaps({ rosters, period: q, pspByPlayer: pspByPlayerQ, isOnIlAtPeriodStart: isOnIlAtQStart, playerNameById });
+      seasonPlayersSkipped += gaps.playersSkipped;
+      seasonSkipReasons.push(...gaps.skipReasons);
+    }
 
     // The ONE accumulator (Task 8.5), called once per period and summed —
     // not a second accumulator, just repeated calls to the same pure fn.

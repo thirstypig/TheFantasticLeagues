@@ -29,6 +29,23 @@ predicate (`releasedAt > period.startDate`), so FBST credits the team a full ext
    someone FBST does not — a different mechanism entirely, and unidentified. Its hitting side
    (R+7 HR+2 RBI+12) is close to but NOT exactly Nathaniel Lowe's P6 line.
 
+### 2026-08-31 — a THIRD mechanism, confirmed: the audit double-counts mid-period trades
+
+`isInPeriodWindow` (`lib/audit/fbstTotals.ts:32`) is binary per period — a stint that overlaps the
+period at all earns the player's WHOLE period line. It has no intra-period clamping, and its
+`counted` dedup is keyed `teamId:playerId`, so it never dedups ACROSS teams. A player traded
+mid-period is therefore credited in full to **both** teams.
+
+Confirmed on Trade 22 (2026-08-30, Diamond Kings ↔ Dodger Dawgs). Teoscar Hernández and Braxton
+Ashcraft were released by Diamond Kings at `2026-08-30T15:41:33Z` and acquired by Dodger Dawgs at
+the same instant. Period 7 starts `2026-08-30T00:00:00Z`, so `releasedAt <= startDate` is false and
+BOTH stints pass the predicate. Diamond Kings' entire new residual — `R+2 HR+1 RBI+2 W+1 K+3` — is
+exactly Teoscar (R2 HR1 RBI2) + Ashcraft (W1 K3)'s Period 7 lines.
+
+**This is the instrument, not production.** `computeTeamStatsFromDb` windows mid-period moves through
+daily stats via `clampToPeriod` (ADR-013 / todo #286), so production attributes correctly. Fixing it
+means giving the audit accumulator the same clamping, not patching the dedup.
+
 **Do not adopt the naive rule.** "Dropped today ⇒ over-credited" is FALSIFIED: Skunk Dogs made 6
 same-day moves including drops carrying real Period 6 stats and reconciles exactly. The mechanism
 requires the FBST drop to be late *relative to OnRoto*, not merely recorded today.
