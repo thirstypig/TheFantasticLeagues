@@ -319,3 +319,63 @@ describe("reconcileIlFeesForPeriod", () => {
     expect(mockTx.$queryRaw).not.toHaveBeenCalled();
   });
 });
+
+// ── Reconcile repair bugs (found in prod 2026-08-31) ─────────────
+//
+// Applying a rank correction to Los Doyers' Period 6 reversed the old $15 but
+// silently lost the replacement $10, leaving the team under-billed. Two
+// independent defects produced that.
+
+describe("reconcileIlFeesForPeriod — amount corrections", () => {
+  const period = {
+    id: 7, leagueId: 1,
+    startDate: new Date("2026-04-01Z"), endDate: new Date("2026-04-14Z"),
+    name: "Period 1",
+  };
+  const RULES = [
+    { key: "il_slot_1_cost", value: "10" },
+    { key: "il_slot_2_cost", value: "15" },
+  ];
+
+  beforeEach(() => {
+    mockTx.period.findUnique.mockResolvedValue(period);
+    mockTx.leagueRule.findMany.mockResolvedValue(RULES);
+    // One lone stint → desired rank 1 = $10.
+    mockTx.rosterSlotEvent.findMany.mockResolvedValue([
+      { id: 1, teamId: 10, playerId: 100, event: "IL_STASH", effDate: new Date("2026-04-05Z"), player: { name: "Alpha" } },
+    ]);
+    // But an existing LIVE row has the wrong amount ($15) — the correction case.
+    mockTx.financeLedger.findMany.mockResolvedValue([
+      { id: 55, teamId: 10, playerId: 100, amount: 15 },
+    ]);
+  });
+
+  it("voids the stale row BEFORE inserting the replacement", async () => {
+    // The partial unique index is (teamId, periodId, playerId) WHERE
+    // type='il_fee' AND voidedAt IS NULL. Inserting first collides with the
+    // row about to be voided, and `skipDuplicates: true` drops the
+    // replacement without error — the row is reversed and never re-added.
+    await reconcileIlFeesForPeriod(1, 7, { actorUserId: 42 });
+
+    const voidOrder = (mockTx.financeLedger.update as any).mock.invocationCallOrder[0];
+    const addOrder = (mockTx.financeLedger.createMany as any).mock.invocationCallOrder[0];
+    expect(voidOrder).toBeLessThan(addOrder);
+  });
+
+  it("actually writes the corrected amount", async () => {
+    await reconcileIlFeesForPeriod(1, 7, { actorUserId: 42 });
+    const call = (mockTx.financeLedger.createMany as any).mock.calls[0][0];
+    expect(call.data).toEqual([
+      expect.objectContaining({ teamId: 10, playerId: 100, amount: 10, type: "il_fee" }),
+    ]);
+  });
+
+  it("excludes reversal contra-entries when reading existing charges", async () => {
+    // Reversal rows are written as type='il_fee' with voidedAt=null, so they
+    // re-enter `existing` on the next run and get "corrected" themselves —
+    // producing a reversal-of-a-reversal cascade instead of converging.
+    await reconcileIlFeesForPeriod(1, 7, { actorUserId: 42 });
+    const where = (mockTx.financeLedger.findMany as any).mock.calls[0][0].where;
+    expect(where).toMatchObject({ reversalOf: null });
+  });
+});
