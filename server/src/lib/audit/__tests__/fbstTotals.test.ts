@@ -194,4 +194,98 @@ describe("computeTeamPeriodTotals", () => {
     expect(asHitter.get(1)!.R).toBe(30);
     expect(asHitter.get(1)!.K).toBe(0);
   });
+
+  // ── todo #308: mid-period moves must be CLAMPED, not credited whole ──
+  //
+  // `isInPeriodWindow` is binary per period and the dedup key is
+  // `teamId:playerId`, so it never dedups ACROSS teams. A player traded
+  // mid-period passed the predicate for BOTH stints and earned his WHOLE
+  // period line twice.
+  //
+  // Confirmed on prod Trade 22 (2026-08-30): Teoscar Hernandez and Braxton
+  // Ashcraft were released by Diamond Kings and acquired by Dodger Dawgs at the
+  // same instant, and Diamond Kings' entire residual was exactly those two
+  // players' full Period 7 lines.
+  //
+  // Production clamps such players through DAILY stats (ADR-013 / todo #286),
+  // so standings were always right — only the instrument over-counted.
+
+  const TWO_TEAMS = [{ id: 1, name: "Diamond Kings" }, { id: 2, name: "Dodger Dawgs" }];
+  const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
+  /** playerId -> dateMs -> line */
+  const daily = (rows: [string, Partial<StatLine>][]) =>
+    new Map([[10, new Map(rows.map(([d, l]) => [day(d).getTime(), psp(l)]))]]);
+
+  it("splits a mid-period trade across both teams by ownership day", () => {
+    const traded = day("2026-07-20");
+    const got = computeTeamPeriodTotals({
+      teams: TWO_TEAMS,
+      rosters: [
+        stint({ teamId: 1, playerId: 10, acquiredAt: day("2026-07-05"), releasedAt: traded }),
+        stint({ teamId: 2, playerId: 10, acquiredAt: traded, releasedAt: null }),
+      ],
+      // Whole-period PSP line is R6 — 2 before the trade, 4 after.
+      pspByPlayer: new Map([[10, psp({ R: 6, HR: 2 })]]),
+      dailyByPlayer: daily([
+        ["2026-07-10", { R: 2, HR: 1 }],
+        ["2026-07-25", { R: 4, HR: 1 }],
+      ]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+
+    expect(got.get(1)!.R).toBe(2);
+    expect(got.get(2)!.R).toBe(4);
+    // The whole point: the league total must equal the player's real line, once.
+    expect(got.get(1)!.R + got.get(2)!.R).toBe(6);
+    expect(got.get(1)!.HR + got.get(2)!.HR).toBe(2);
+  });
+
+  it("gives the trade day itself to the ACQUIRING team (half-open releasedAt)", () => {
+    // Matches production: `d < roster.releasedAt`, so the release day belongs to
+    // the next owner, never the dropper.
+    const traded = day("2026-07-20");
+    const got = computeTeamPeriodTotals({
+      teams: TWO_TEAMS,
+      rosters: [
+        stint({ teamId: 1, playerId: 10, acquiredAt: day("2026-07-05"), releasedAt: traded }),
+        stint({ teamId: 2, playerId: 10, acquiredAt: traded, releasedAt: null }),
+      ],
+      pspByPlayer: new Map([[10, psp({ R: 5 })]]),
+      dailyByPlayer: daily([["2026-07-20", { R: 5 }]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(0);
+    expect(got.get(2)!.R).toBe(5);
+  });
+
+  it("leaves a boundary-aligned player on the PSP path (doubleheader-safe)", () => {
+    // Only players who MOVED strictly inside the period go through dailies.
+    // PSP is authoritative otherwise — playerStatsDaily collapses doubleheaders.
+    const got = computeTeamPeriodTotals({
+      teams: TWO_TEAMS,
+      rosters: [stint({ teamId: 1, playerId: 10 })],
+      pspByPlayer: new Map([[10, psp({ R: 9 })]]),
+      dailyByPlayer: daily([["2026-07-10", { R: 1 }]]), // deliberately disagrees
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(9);
+  });
+
+  it("still counts a same-team drop-and-re-add once, by ownership day", () => {
+    const got = computeTeamPeriodTotals({
+      teams: TWO_TEAMS,
+      rosters: [
+        stint({ teamId: 1, playerId: 10, acquiredAt: day("2026-07-05"), releasedAt: day("2026-07-15") }),
+        stint({ teamId: 1, playerId: 10, acquiredAt: day("2026-07-20"), releasedAt: null }),
+      ],
+      pspByPlayer: new Map([[10, psp({ R: 100 })]]),
+      dailyByPlayer: daily([
+        ["2026-07-10", { R: 3 }],  // owned
+        ["2026-07-17", { R: 50 }], // NOT owned — the gap between stints
+        ["2026-07-25", { R: 4 }],  // owned again
+      ]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(7);
+  });
 });

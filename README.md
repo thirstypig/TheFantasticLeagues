@@ -180,11 +180,11 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (5 open):
+**Next 3 to-dos** (4 open):
 
 - `303` **P2** — retire legacy waiver system
 - `305` **P2** — standings cold compute serialized on single connection
-- `308` **P2** — standings audit residuals unresolved
+- `181` **P3** — rosterversion etag cross tab safety
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 

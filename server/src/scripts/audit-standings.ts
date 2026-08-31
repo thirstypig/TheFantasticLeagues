@@ -23,7 +23,7 @@ import { reconcilePeriodStats } from "../features/players/services/mlbStatsSyncS
 import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
 import { parseFgStandings } from "../lib/audit/fgStandingsParser.js";
 import { classifyTeamDelta } from "../lib/audit/classifier.js";
-import { computeTeamPeriodTotals, findCoverageGaps, type RosterStint } from "../lib/audit/fbstTotals.js";
+import { computeTeamPeriodTotals, findCoverageGaps, findMidPeriodPlayers, type RosterStint, type DailyByPlayer } from "../lib/audit/fbstTotals.js";
 import { FG_COUNTING_KEYS, normalizeTeamName, toFgComparableStatLine } from "../lib/audit/fgCompare.js";
 import { decideVerdict, renderReport, type Coverage, type Verdict } from "../lib/audit/report.js";
 import { emptyStatLine, type StatLine, type ClassifyResult } from "../lib/audit/types.js";
@@ -227,16 +227,41 @@ async function main(): Promise<void> {
     const pspByPlayerQ = buildPspMap(pspQ);
     const isOnIlAtQStart = (playerId: number): boolean => wasOnIlAtPeriodStart(playerId, q.startDate, ilWindowsByPlayer);
 
+    // Daily lines for players whose ownership changed INSIDE this period, so
+    // the accumulator can clamp them to the days each team actually owned
+    // (todo #308). Only those players are fetched — everyone else stays on
+    // PSP, which is doubleheader-safe. Mirrors standingsService's hybrid.
+    const midIds = [...findMidPeriodPlayers(rosters, q)];
+    const dailyByPlayerQ: DailyByPlayer = new Map();
+    if (midIds.length > 0) {
+      const dailyRows = await prisma.playerStatsDaily.findMany({
+        where: { playerId: { in: midIds }, gameDate: { gte: q.startDate, lte: q.endDate } },
+        select: {
+          playerId: true, gameDate: true,
+          AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
+          W: true, SV: true, K: true, IP: true, ER: true, BB_H: true,
+        },
+      });
+      for (const d of dailyRows) {
+        let perDay = dailyByPlayerQ.get(d.playerId);
+        if (!perDay) { perDay = new Map(); dailyByPlayerQ.set(d.playerId, perDay); }
+        perDay.set(d.gameDate.getTime(), {
+          AB: d.AB, H: d.H, R: d.R, HR: d.HR, RBI: d.RBI, SB: d.SB,
+          W: d.W, SV: d.SV, K: d.K, IP: d.IP, ER: d.ER, BB_H: d.BB_H,
+        });
+      }
+    }
+
     // Only a CLOSED period can have a real coverage gap (see above).
     if (q.status === "completed") {
-      const gaps = findCoverageGaps({ rosters, period: q, pspByPlayer: pspByPlayerQ, isOnIlAtPeriodStart: isOnIlAtQStart, playerNameById });
+      const gaps = findCoverageGaps({ rosters, period: q, pspByPlayer: pspByPlayerQ, isOnIlAtPeriodStart: isOnIlAtQStart, playerNameById, dailyByPlayer: dailyByPlayerQ });
       seasonPlayersSkipped += gaps.playersSkipped;
       seasonSkipReasons.push(...gaps.skipReasons);
     }
 
     // The ONE accumulator (Task 8.5), called once per period and summed —
     // not a second accumulator, just repeated calls to the same pure fn.
-    const totalsQ = computeTeamPeriodTotals({ teams, rosters, pspByPlayer: pspByPlayerQ, period: q, isOnIlAtPeriodStart: isOnIlAtQStart });
+    const totalsQ = computeTeamPeriodTotals({ teams, rosters, pspByPlayer: pspByPlayerQ, period: q, isOnIlAtPeriodStart: isOnIlAtQStart, dailyByPlayer: dailyByPlayerQ });
 
     for (const t of teams) {
       const acc = seasonTotalsByTeam.get(t.id)!;
