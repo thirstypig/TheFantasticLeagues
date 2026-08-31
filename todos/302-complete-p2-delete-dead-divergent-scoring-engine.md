@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: 302
 tags: [dead-code, scoring, cleanup, risk-reduction]
@@ -15,3 +15,7 @@ Delete the dead exports (keep only `getDefaultScoringRules`, the one live export
 ## Acceptance Criteria
 - Dead `calculateStandings`/NFL/NBA exports removed; tests + tsc green; no runtime importer broken.
 - `git mv` this todo from pending → complete.
+
+## Resolution (2026-07-03)
+Deleted from `server/src/services/scoringEngine.ts`: `calculateStandings` (H2H over the never-written `H2HMatchup` table), `calculateNFLPoints`, `calculateNBACategories`, `compareNBACategories`, and the 3 interfaces only they used (`NBACategory`, `NBAMatchupComparison`, `StandingsRow`) + now-unused imports (`PrismaClient`, `ScoringRule`, `prisma`). Kept `getDefaultScoringRules` (+ `ScoringRuleInput`) — the one live export (used by `features/scoring/routes.ts`). Verified zero non-test importers of the deleted symbols first. tsc clean; full server suite green (1347). PR on `chore/delete-dead-scoring-engine-302`.
+Note: the `audit_period.ts` header-guard sub-item is deferred — it's a separate script not touched here.
