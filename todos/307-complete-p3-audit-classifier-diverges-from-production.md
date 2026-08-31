@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: 307
 tags: [audit, standings, drift, testing, instrument]
@@ -40,3 +40,30 @@ The accumulator would need `isTwoWay`, which it can source from the same `TWO_WA
 ## Resources
 - Found: 2026-08-30 standings audit session
 - Memory: `fangraphs_vs_tfl_audit_findings`, `standings_audit_skill_in_flight`
+
+## Work Log
+
+### 2026-08-31 — SHIPPED
+- `computeTeamPeriodTotals` now classifies through **`playerStatRoles`** — the production rule —
+  instead of its own `assignedPosition ?? posPrimary` split against a local `PITCHER_CODES`. The
+  second copy is deleted, not synced (same reasoning as `rosterSlotFor`, PR #435/#440).
+- `RosterStint` gained `isTwoWay`, sourced in `audit-standings.ts` exactly as `standingsService`
+  does it: `mlbId ? TWO_WAY_PLAYERS.has(mlbId) : false`.
+- Both role flags are honoured independently rather than as an if/else, so the accumulator can
+  never credit a player to both halves or neither.
+
+**Tests, mutation-verified.** Two new tests failed before the change (`expected +0 to be 2`,
+`expected +0 to be 30`) — a benched pitcher's pitching was being dropped entirely and his hitting
+counted in its place. Also pinned: a position player's mop-up pitching still does NOT count, and a
+two-way player still follows his SLOT.
+
+**One existing test had to be corrected, and that is worth recording.** "routes pitcher slots to
+pitching cats" gave its pitcher only `assignedPosition: "P"`, leaving the helper default
+`posPrimary: "OF"`. It passed under the old slot-based split — i.e. it was **pinning the bug**.
+Under the production rule an OF in a P slot is a position player doing mop-up whose pitching must
+not count, so the fixture now says what it means.
+
+**Prod verification — the acceptance criterion.** A read-only differential ran BOTH classifiers
+over real prod data across every closed period: **IDENTICAL across 6 periods x 8 teams, zero cells
+moved.** Exactly the expected result — this is a latent correctness fix, not a numbers change.
+Had anything moved, that would have been a finding.

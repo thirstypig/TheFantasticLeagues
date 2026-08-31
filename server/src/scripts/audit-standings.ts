@@ -27,6 +27,7 @@ import { computeTeamPeriodTotals, findCoverageGaps, type RosterStint } from "../
 import { FG_COUNTING_KEYS, normalizeTeamName, toFgComparableStatLine } from "../lib/audit/fgCompare.js";
 import { decideVerdict, renderReport, type Coverage, type Verdict } from "../lib/audit/report.js";
 import { emptyStatLine, type StatLine, type ClassifyResult } from "../lib/audit/types.js";
+import { TWO_WAY_PLAYERS } from "../lib/sportConfig.js";
 
 const PROD_REF = "oaogpsshewmcazhehryl";
 const STAT_KEYS = Object.keys(emptyStatLine()) as (keyof StatLine)[];
@@ -125,7 +126,7 @@ async function main(): Promise<void> {
       acquiredAt: true,
       releasedAt: true,
       assignedPosition: true,
-      player: { select: { posPrimary: true, name: true } },
+      player: { select: { posPrimary: true, name: true, mlbId: true } },
     },
   });
   const rosters: RosterStint[] = rosterRows.map((r) => ({
@@ -135,6 +136,8 @@ async function main(): Promise<void> {
     releasedAt: r.releasedAt,
     assignedPosition: r.assignedPosition,
     posPrimary: r.player.posPrimary,
+    // Sourced exactly as standingsService does (todo #307).
+    isTwoWay: r.player.mlbId ? TWO_WAY_PLAYERS.has(r.player.mlbId) : false,
   }));
   const playerNameById = new Map<number, string>(rosterRows.map((r) => [r.playerId, r.player.name]));
   const rosterPlayerIds = [...new Set(rosterRows.map((r) => r.playerId))];
