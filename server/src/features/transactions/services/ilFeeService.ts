@@ -296,8 +296,13 @@ export async function reconcileIlFeesForPeriod(
     }
 
     // Current active il_fee rows for this period.
+    // `reversalOf: null` matters: reversal contra-entries are themselves written
+    // as type='il_fee' with voidedAt=null, so without this they re-enter as
+    // "existing charges" on the next run, get judged the wrong amount, and are
+    // voided in turn — a reversal-of-a-reversal cascade instead of convergence.
+    // A reversal is a contra-entry, never a charge.
     const existing = await tx.financeLedger.findMany({
-      where: { type: "il_fee", periodId, voidedAt: null },
+      where: { type: "il_fee", periodId, voidedAt: null, reversalOf: null },
       select: { id: true, teamId: true, playerId: true, amount: true },
     });
     const existingByKey = new Map(existing.map(r => [`${r.teamId}:${r.playerId}`, r]));
@@ -353,20 +358,16 @@ export async function reconcileIlFeesForPeriod(
     }
 
     // Apply changes — append-only. Never DELETE.
-    if (toAdd.length > 0) {
-      await tx.financeLedger.createMany({
-        data: toAdd.map(s => ({
-          teamId: s.teamId,
-          periodId,
-          playerId: s.playerId,
-          type: "il_fee",
-          amount: s.rankAtEntry === 1 ? rates.slot1 : rates.slot2,
-          reason: `IL rank ${s.rankAtEntry} — period ${period.name}`,
-          createdBy: actorUserId,
-        })),
-        skipDuplicates: true, // partial unique protects against double-fire
-      });
-    }
+    //
+    // ORDER MATTERS: void first, then insert.
+    //
+    // The partial unique index is (teamId, periodId, playerId) WHERE
+    // type='il_fee' AND voidedAt IS NULL. Inserting first makes the replacement
+    // row collide with the very row we are about to void — and because the
+    // insert uses `skipDuplicates`, that collision is swallowed with no error.
+    // The stale amount gets reversed and the corrected amount is never written,
+    // silently under-billing the team. That is exactly what happened to Los
+    // Doyers' Period 6 on 2026-08-31. Voiding first frees the index slot.
     for (const row of toVoid) {
       await tx.financeLedger.update({
         where: { id: row.id },
@@ -383,6 +384,20 @@ export async function reconcileIlFeesForPeriod(
           reversalOf: row.id,
           createdBy: actorUserId,
         },
+      });
+    }
+    if (toAdd.length > 0) {
+      await tx.financeLedger.createMany({
+        data: toAdd.map(s => ({
+          teamId: s.teamId,
+          periodId,
+          playerId: s.playerId,
+          type: "il_fee",
+          amount: s.rankAtEntry === 1 ? rates.slot1 : rates.slot2,
+          reason: `IL rank ${s.rankAtEntry} — period ${period.name}`,
+          createdBy: actorUserId,
+        })),
+        skipDuplicates: true, // guards a genuine double-fire of the same reconcile
       });
     }
 
