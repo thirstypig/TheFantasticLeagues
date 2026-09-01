@@ -3,7 +3,7 @@
 ## Overview
 
 - **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Coverage**: 1519 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 960 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
+- **Coverage**: 1664 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 962 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
 - **Approach**: Unit tests per feature + integration tests for cross-feature interactions
 
 Run all: `npm run test` | Server only: `npm run test:server` | Client only: `npm run test:client`
