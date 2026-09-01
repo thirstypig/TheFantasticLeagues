@@ -1,6 +1,39 @@
 // server/src/lib/audit/fbstTotals.ts
 import { emptyStatLine, type StatLine } from "./types.js";
 import { playerStatRoles } from "../sportConfig.js";
+import { clampToPeriod } from "../rosterWindow.js";
+
+/** playerId -> (UTC-midnight ms of the game date) -> that day's line. */
+export type DailyByPlayer = Map<number, Map<number, StatLine>>;
+
+/**
+ * Players whose ownership CHANGED strictly inside the period — the set
+ * production routes through daily stats (todo #286 hybrid, ADR-013).
+ *
+ * THE SINGLE DEFINITION, for the same reason `isInPeriodWindow` is: the
+ * accumulator uses it to decide which source to read, and `findCoverageGaps`
+ * uses it to decide which source's absence is a gap. If they disagree, a
+ * player counted from dailies gets reported missing for lacking a PSP row —
+ * or worse, a genuinely missing line is never reported at all.
+ *
+ * Keyed per PLAYER, not per row: a drop-and-re-add is two rows for one player,
+ * and splitting one player across both paths would double-credit him. Mirrors
+ * `standingsService`'s `midPeriodPlayerIds` exactly.
+ */
+export function findMidPeriodPlayers(
+  rosters: Pick<RosterStint, "playerId" | "acquiredAt" | "releasedAt">[],
+  period: { startDate: Date; endDate: Date },
+): Set<number> {
+  const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const startDay = utcDay(period.startDate);
+  const endDay = utcDay(period.endDate);
+  const strictlyInside = (d: Date) => utcDay(d) > startDay && utcDay(d) < endDay;
+  return new Set(
+    rosters
+      .filter((r) => strictlyInside(r.acquiredAt) || (r.releasedAt !== null && strictlyInside(r.releasedAt)))
+      .map((r) => r.playerId),
+  );
+}
 
 export interface RosterStint {
   teamId: number;
@@ -59,36 +92,20 @@ export function computeTeamPeriodTotals(args: {
   pspByPlayer: Map<number, StatLine>;
   period: { startDate: Date; endDate: Date };
   isOnIlAtPeriodStart: (playerId: number) => boolean;
+  /**
+   * Daily lines for players who moved mid-period (todo #308). Omit and those
+   * players fall back to whole-period PSP — which is the double-count this
+   * parameter exists to remove, so callers auditing real data must pass it.
+   */
+  dailyByPlayer?: DailyByPlayer;
 }): Map<number, StatLine> {
-  const { teams, rosters, pspByPlayer, period, isOnIlAtPeriodStart } = args;
+  const { teams, rosters, pspByPlayer, period, isOnIlAtPeriodStart, dailyByPlayer } = args;
 
   const acc = new Map<number, StatLine>(teams.map((t) => [t.id, emptyStatLine()]));
   const counted = new Set<string>(); // `${teamId}:${playerId}` — the PR #402 guard
+  const midPeriod = dailyByPlayer ? findMidPeriodPlayers(rosters, period) : new Set<number>();
 
-  for (const r of rosters) {
-    if (!isInPeriodWindow({ stint: r, period, isOnIlAtPeriodStart })) continue;
-
-    const key = `${r.teamId}:${r.playerId}`;
-    if (counted.has(key)) continue;
-
-    const ps = pspByPlayer.get(r.playerId);
-    if (!ps) continue;
-
-    const a = acc.get(r.teamId);
-    if (!a) continue;
-
-    counted.add(key);
-
-    // Classify through the PRODUCTION rule rather than re-deriving it (todo
-    // #307). The audit previously split on `assignedPosition ?? posPrimary`,
-    // which drops a benched pitcher's pitching — an under-report by the
-    // instrument only, reported as if production were wrong. Same reasoning as
-    // `rosterSlotFor` (PR #435/#440): delete the second copy, don't sync it.
-    const roles = playerStatRoles({
-      posPrimary: r.posPrimary,
-      assignedPosition: r.assignedPosition,
-      isTwoWay: r.isTwoWay,
-    });
+  const addLine = (a: StatLine, ps: StatLine, roles: { countHitting: boolean; countPitching: boolean }) => {
     if (roles.countPitching) {
       a.W += ps.W; a.SV += ps.SV; a.K += ps.K;
       a.ER += ps.ER; a.IP += ps.IP; a.BB_H += ps.BB_H;
@@ -97,6 +114,53 @@ export function computeTeamPeriodTotals(args: {
       a.R += ps.R; a.HR += ps.HR; a.RBI += ps.RBI;
       a.SB += ps.SB; a.H += ps.H; a.AB += ps.AB;
     }
+  };
+
+  for (const r of rosters) {
+    if (!isInPeriodWindow({ stint: r, period, isOnIlAtPeriodStart })) continue;
+
+    const a = acc.get(r.teamId);
+    if (!a) continue;
+
+    const roles = playerStatRoles({
+      posPrimary: r.posPrimary,
+      assignedPosition: r.assignedPosition,
+      isTwoWay: r.isTwoWay,
+    });
+
+    // ── Daily path: this player's ownership changed inside the period ──
+    //
+    // `isInPeriodWindow` is binary and `counted` is keyed per TEAM, so without
+    // this a traded player earned his whole period line from BOTH teams (prod
+    // Trade 22, 2026-08-30). Clamp to each stint's ownership days instead —
+    // exactly what production does. No dedup here on purpose: a player's
+    // stints are disjoint windows, so each one contributes its own days.
+    if (dailyByPlayer && midPeriod.has(r.playerId)) {
+      const perDay = dailyByPlayer.get(r.playerId);
+      if (!perDay) continue;
+      const { from, to } = clampToPeriod(r, period);
+      for (const [ms, ds] of perDay) {
+        const d = new Date(ms);
+        // releasedAt is EXCLUSIVE (half-open): the release day belongs to the
+        // next owner, never the dropper. Mirrors standingsService (todo #286).
+        if (d >= from && d <= to && (r.releasedAt === null || d < r.releasedAt)) {
+          addLine(a, ds, roles);
+        }
+      }
+      continue;
+    }
+
+    // ── PSP path: boundary-aligned player. PSP is authoritative because
+    //    playerStatsDaily collapses doubleheaders.
+    const key = `${r.teamId}:${r.playerId}`;
+    if (counted.has(key)) continue;
+
+    const ps = pspByPlayer.get(r.playerId);
+    if (!ps) continue;
+
+    counted.add(key);
+
+    addLine(a, ps, roles);
   }
 
   return acc;
@@ -121,12 +185,20 @@ export function findCoverageGaps(args: {
   pspByPlayer: Map<number, StatLine>;
   isOnIlAtPeriodStart: (playerId: number) => boolean;
   playerNameById: Map<number, string>;
+  /**
+   * Same map the accumulator gets. Pass it whenever the accumulator gets it:
+   * a mid-period player is now counted from DAILY rows, so his missing PSP row
+   * is not a gap — but missing daily rows are (todo #308).
+   */
+  dailyByPlayer?: DailyByPlayer;
 }): { playersSkipped: number; skipReasons: string[] } {
-  const { rosters, period, pspByPlayer, isOnIlAtPeriodStart, playerNameById } = args;
+  const { rosters, period, pspByPlayer, isOnIlAtPeriodStart, playerNameById, dailyByPlayer } = args;
 
   let playersSkipped = 0;
   const skipReasons: string[] = [];
   const seen = new Set<string>(); // mirrors the accumulator's PR #402 guard
+  // Must match the accumulator's routing exactly — see findMidPeriodPlayers.
+  const midPeriod = dailyByPlayer ? findMidPeriodPlayers(rosters, period) : new Set<number>();
 
   for (const r of rosters) {
     if (!isInPeriodWindow({ stint: r, period, isOnIlAtPeriodStart })) continue;
@@ -134,6 +206,16 @@ export function findCoverageGaps(args: {
     const key = `${r.teamId}:${r.playerId}`;
     if (seen.has(key)) continue;
     seen.add(key);
+
+    // A mid-period player is read from dailies; absence THERE is the gap.
+    if (dailyByPlayer && midPeriod.has(r.playerId)) {
+      if (!dailyByPlayer.has(r.playerId)) {
+        playersSkipped++;
+        const nm = playerNameById.get(r.playerId) ?? `playerId ${r.playerId}`;
+        skipReasons.push(`${nm} — no PlayerStatsDaily rows in ${period.name} (moved mid-period)`);
+      }
+      continue;
+    }
 
     if (!pspByPlayer.has(r.playerId)) {
       playersSkipped++;

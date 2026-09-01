@@ -102,3 +102,28 @@ are right; only the instrument over-counts.
 which requires plumbing `PlayerStatsDaily` into a function that today sees only
 `PlayerStatsPeriod`. **Unlike todo #307, this WILL move audit numbers.** Ship it with a before/after
 prod differential across every closed period so the movement is inspected, not discovered.
+
+### 2026-08-31 (later) — CLOSED. Instrument fixed and verified against prod.
+
+- **The accumulator now clamps mid-period moves through daily stats**, mirroring `standingsService`'s
+  hybrid (todo #286 / ADR-013) rather than inventing a third rule. `findMidPeriodPlayers` is the
+  single shared definition — `findCoverageGaps` consumes it too, so a player counted from dailies is
+  no longer reported missing for lacking a PSP row. `clampToPeriod` is reused from `lib/rosterWindow`,
+  not copied.
+- **Four tests, three watched failing first**: `expected 6 to be 2` (whole line to one team),
+  `expected 5 to be +0` (dropper kept the trade day), `expected 100 to be 7` (PSP instead of clamped
+  dailies). The fourth — a boundary-aligned player staying on PSP — passed throughout, confirming the
+  doubleheader-safe path is untouched.
+- **Before/after prod differential across all 6 closed periods: NO MOVEMENT.** Explained, not assumed:
+  the only closed-period mid-period players are Carson Spiers and Chase Dollander (PSP all zeros,
+  zero daily rows — they contribute nothing either way) and Aaron Ashby, whose three stints are all
+  Diamond Kings and contiguous, so clamping yields the whole period regardless. **Trade 22 sits in
+  Period 7, which is still ACTIVE** and therefore outside the completed-only season leg (#435) — the
+  fix lands before that period closes, which is the point.
+- **Verified clamping loses nothing:** Ashby's 7 daily rows reconstruct his PSP exactly
+  (W1 K9 IP9.333 ER3 BB_H13; IP differs by 2e-15, float noise).
+
+**Surfaced but NOT fixed — needs a decision.** Chase Dollander has a `Roster` row with
+`acquiredAt 2026-06-03` and `releasedAt 2026-05-17` — **released before acquired**. It is harmless
+today (he has no stats in the window) but it is nonsense data that every window predicate has to
+survive. Worth its own todo: either a DB-level check constraint or a repair, plus how it got written.
