@@ -40,12 +40,12 @@ Many unit tests, fewer integration tests, few E2E tests — and only the most im
 | Trigger | What runs | Why |
 |---|---|---|
 | Before every commit | `cd client && npx tsc --noEmit` + `cd server && npx tsc --noEmit` | Fast — catches type errors that Vite dev hides. |
-| Before every push / PR | `npm run test` (1629 server + 960 client tests, ~25s total); db-integration (7 tests: 4 draft + 3 IL-fee) + MCP suites (83 fbst-app + 50 mlb-data) run as separate CI jobs | Required green baseline. |
+| Before every push / PR | `npm run test` (1664 server + 962 client tests, ~25s total); db-integration (7 tests: 4 draft + 3 IL-fee) + MCP suites (83 fbst-app + 50 mlb-data) run as separate CI jobs | Required green baseline. |
 | After UI change in a feature module | `/feature-test <name>` slash command | Fast iteration on the area you're editing. |
 | Before deploy to Railway | Full `npm run test` + Playwright smoke on prod domain | Protects production. |
 | Ad-hoc during development | Playwright MCP interactive flows | Used today in place of formal E2E. |
 
-**Current reality (2026-08-31):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2596 tests: 1629 backend main + 7 integration [4 draft + 3 IL-fee] + 960 frontend) + both typechecks clean.
+**Current reality (2026-08-31):** we have limited formal Playwright E2E and still rely on targeted browser smoke checks for visual/layout regressions. Full unit test suite is green (2633 tests: 1664 backend main + 7 integration [4 draft + 3 IL-fee] + 962 frontend) + both typechecks clean.
 
 ## Current coverage (2026-08-31 baseline)
 

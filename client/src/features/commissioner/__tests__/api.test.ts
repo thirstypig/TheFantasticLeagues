@@ -14,6 +14,7 @@ import {
   getIlAudit,
   postBulkIlStash,
   postCleanupDropped,
+  getLeagueBalances,
 } from "../api";
 
 beforeEach(() => {
@@ -152,5 +153,40 @@ describe("postCleanupDropped", () => {
     await postCleanupDropped(1, 365);
     const options = vi.mocked(fetchJsonApi).mock.calls[0][1];
     expect(JSON.parse(options?.body as string)).toEqual({ olderThanDays: 365 });
+  });
+});
+
+describe("getLeagueBalances", () => {
+  it("GETs /api/commissioner/:leagueId/balances and unwraps the balances array", async () => {
+    // The wrapper returns `resp.balances`, not the envelope. If the server
+    // shape changes (or someone returns the array bare), this returns
+    // undefined and the Balances tab renders nothing with no error.
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      balances: [
+        { teamId: 147, teamName: "Los Doyers", balance: 25 },
+        { teamId: 148, teamName: "Demolition", balance: 0 },
+      ],
+    });
+
+    const rows = await getLeagueBalances(20);
+
+    expect(fetchJsonApi).toHaveBeenCalledWith("/api/commissioner/20/balances");
+    expect(rows).toEqual([
+      { teamId: 147, teamName: "Los Doyers", balance: 25 },
+      { teamId: 148, teamName: "Demolition", balance: 0 },
+    ]);
+  });
+
+  it("passes a negative balance through untouched", async () => {
+    // Negative = the league owes the team. The ledger is append-only and the
+    // server already returns the NET, so any clamping or Math.abs here would
+    // be a second opinion about money (todo #311).
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      balances: [{ teamId: 147, teamName: "Los Doyers", balance: -40 }],
+    });
+
+    await expect(getLeagueBalances(20)).resolves.toEqual([
+      { teamId: 147, teamName: "Los Doyers", balance: -40 },
+    ]);
   });
 });
