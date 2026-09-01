@@ -15,7 +15,7 @@ Two planning artifacts exist, with distinct roles (do not create additional `TOD
 
 ## Active Period
 
-**Period 7** (Aug 30 – Sep 30, 2026) is live — rolled over 2026-08-30. Periods 1–6 are closed and all six now PASS against MLB statsapi (1,269 player-period checks, 0 mismatches, verified 2026-08-31), so stored stat data is correct league-wide. Residuals against FanGraphs are **attribution**, not data: they trace to roster moves recorded in FBST later than they happened in OnRoto, which earns a team a full extra period. Every one is attributed to named players; see the runbook's 2026-08-30 row and todo #308 for the three that remain open. Audit runbook: `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
+**Period 7** (Aug 30 – Sep 30, 2026) is live — rolled over 2026-08-30. Periods 1–6 are closed and all six now PASS against MLB statsapi (1,269 player-period checks, 0 mismatches, verified 2026-08-31), so stored stat data is correct league-wide. Residuals against FanGraphs are **attribution**, not data: they trace to roster moves recorded in FBST later than they happened in OnRoto, which earns a team a full extra period. Every one is attributed to named players, and **all three formerly-open residuals were resolved 2026-08-31** (Los Doyers = Foster Griffin + Paul Sewald; Demolition's negative pitching = a missing Jacob Webb ADD, partly offset by Emmet Sheehan). statsapi and Baseball Reference agree cell-for-cell, so no residual is a stat-data error — every one is roster state. Todo #308 is closed; see the runbook's 2026-08-30 and 2026-08-31 rows. Audit runbook: `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
 
 ---
 
@@ -43,7 +43,7 @@ Two planning artifacts exist, with distinct roles (do not create additional `TOD
 ## Current Focus Areas
 
 ### Roster Hub (shipped, in maintenance)
-The Yahoo-style roster hub at `/teams/:code` is the primary roster management entry point. Flows: Add/Drop (`/manage/claim`), Place on IL (`/manage/il-stash`), Activate from IL (`/manage/il-activate`), **Release from IL** (`/manage/il-release`, PR #381 — drops IL player without activating first). The 3-way atomic claim (Add + IL stash + Drop in one `$transaction`) **is implemented** — `transactions/routes.ts`, the `ilStashPlayerId` branch. Note it writes a `TransactionEvent` but **no `RosterSlotEvent`**, so an IL stash made through it is invisible to fee billing (todo #310).
+The Yahoo-style roster hub at `/teams/:code` is the primary roster management entry point. Flows: Add/Drop (`/manage/claim`), Place on IL (`/manage/il-stash`), Activate from IL (`/manage/il-activate`), **Release from IL** (`/manage/il-release`, PR #381 — drops IL player without activating first). The 3-way atomic claim (Add + IL stash + Drop in one `$transaction`) **is implemented** — `transactions/routes.ts`, the `ilStashPlayerId` branch. It writes both a `TransactionEvent` and a `RosterSlotEvent` as of 2026-08-31 (PR #456) — previously it wrote only the former, so an IL stash made through it would have been invisible to fee billing. Nothing was ever mis-billed through this path; the gap was latent (todo #310, closed).
 
 ### Standings Accuracy
 Stats attribution uses ownership-window logic (`computeWithDailyStats` for periods with mid-period transactions, `computeWithPeriodStats` for boundary-aligned periods). PR #374 adds the `hasMidPeriodPickup` guard that routes automatically. An audit comparing FBST vs OnRoto/FanGraphs for Period 3 is documented at `docs/reports/onroto-audit-2026-06-08.md` and viewable at `/admin/reports`.
@@ -75,7 +75,7 @@ OGBA uses **period-by-period roto accumulated** scoring:
 
 ## Deferred
 
-- **IL fee billing**: settled 2026-08-31 at $200 across 7 teams after a repricing that surfaced four billing bugs (PRs #442–#445). Open: todo #310 (`RosterSlotEvent` missing stashes; the 3-way claim path writes none) and #311 (`FinanceLedger` has no reader; append-only summing convention unpinned).
+- **IL fee billing**: settled 2026-08-31 at $200 across 7 teams after a repricing that surfaced four billing bugs (PRs #442–#445). **Todos #310 and #311 both closed 2026-08-31.** The log repair is fully applied in prod, the two IL logs now agree (drift 0), and a read-only reconcile preview across all six closed periods reports 0 to add / 0 to void / $0 net — nothing is owed. `FinanceLedger` now has a sanctioned reader: `server/src/lib/financeLedger.ts` (`netBalance` / `teamBalance` / `leagueBalances`), wired to Commissioner → Finances → Balances. **The ledger is append-only: sum EVERY row; `voidedAt` is an audit marker, never a filter.**
 - **SEO and blog expansion**: on hold while roster management and standings accuracy are stabilized
 - **Stripe and growth work**: roadmap items, not displacing in-season correctness work
 - **OnRoto period snapshots**: user contacted OnRoto 2026-06-03 for period-end roster snapshots; IL-slot fix attempted and reverted; waiting on snapshots before re-investigating
