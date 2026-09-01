@@ -66,11 +66,26 @@ describe("self-reference / convergence", () => {
 describe("applyBlock — the README/CLAUDE marker block", () => {
   const block = statusBlock(trackedFiles());
 
-  it("is idempotent: re-applying a current block reports no change", () => {
+  it("is idempotent apart from its generated date", () => {
     // Assumes `npm run docs:refresh` has been run (CI runs --check, which enforces it).
+    //
+    // The block embeds a UTC generation date, so a strict `changed === false`
+    // assertion fails on that line ALONE whenever a branch is refreshed just
+    // before UTC midnight and tested just after. That is a real landmine, not a
+    // hypothetical: hit on 2026-09-01T00:01Z, where the only diff between the
+    // committed block and the regenerated one was
+    // `Generated 2026-08-31` -> `Generated 2026-09-01`.
+    //
+    // So: still fail on any SUBSTANTIVE staleness (a wrong open-todo count, a
+    // changed "Next 3" list), but do not fail on the clock.
+    const undate = (t) => t.replace(/Generated \d{4}-\d{2}-\d{2}/g, "Generated <date>");
     for (const f of ["README.md", "CLAUDE.md"]) {
-      const r = applyBlock(f, block);
-      expect(r.changed, `${f} would change — run npm run docs:refresh`).toBe(false);
+      const { changed, next } = applyBlock(f, block);
+      if (!changed) continue;
+      expect(
+        undate(next),
+        `${f} would change beyond its generated date — run npm run docs:refresh`,
+      ).toBe(undate(rd(f)));
     }
   });
 
