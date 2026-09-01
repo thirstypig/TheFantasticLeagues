@@ -4,6 +4,26 @@ This file tracks session-over-session progress, pending work, and concerns. Revi
 
 ---
 
+## Session 2026-08-31 (evening) — Every todo I closed was partly a lie about itself
+
+**Suite: 1664 server + 962 client green (was 1629 + 960).** 7 PRs merged (#456–#462), each CI-gated before merge, and prod version-verified at `8b1dbe4` after the last one. **Open todos 9 → 4, zero P1s.**
+
+**Closed #310 (the only P1), #311, #307, #308, #309.** Every fix was verified against prod rather than asserted: IL drift `1 → 0`; fee reconcile `0 add / 0 void / $0` across six closed periods; the audit classifier change moved **zero** cells across 6 periods × 8 teams; #308's differential explained player-by-player.
+
+**The recurring theme: the todos were stale about their own state, and I repeated their claims before checking.** #310 said "9 discrepancies remain" — James ran the dry run and the repair had **already been fully applied**; I had passed that claim on twice. #308's three "genuinely unresolved" residuals had been resolved the previous day and recorded only in memory. #181 I twice called "effectively done" on the strength of the implementation being present — its acceptance criteria also require a 409 conflict-path test (does not exist) and a two-tab browser smoke (never run), so it stays open, now annotated. **Reading a todo is not the same as verifying it.**
+
+**A mock cannot catch a wrong query — three times in one session.** #310's drift fix taught `findIlLogDrift` to accept a `DROP` as closing a stint; tests green, prod still reported drift, because `findIlLogDriftAll`'s SELECT filtered to `IL_*` and the DROP rows never arrived. The new branch was dead code. Same trap at the end: the balances test I wrote *for the money bug* — the `+10 voided / −10 contra / +25` shape — **still passes** with `voidedAt: null` added to the query. Only a separate assertion on the query itself catches it. Both are now pinned with comments explaining why they aren't redundant.
+
+**Two red CIs, identical error text, opposite causes.** `README.md would change — run npm run docs:refresh` was genuine staleness on #458 (I hadn't run it) and a UTC-midnight false positive on #461 (I had). The generated block embeds a UTC date; refreshed at 23:5x UTC, tested at 00:0x UTC. Applying the first fix to the second turns CI green *by accident* and leaves the landmine armed for the next person — for a Pacific author that window is open 17:00–24:00 every day. Fixed the test to ignore the date and re-verified it still fails on a wrong count. Written up at `docs/solutions/test-failures/generated-doc-date-stamp-fails-ci-across-utc-midnight.md`.
+
+**"No movement" needed explaining, not accepting.** #308's prod differential showed three players changing code path and zero change in totals — the shape of a differential that silently did nothing. Two have no stats and no daily rows; Ashby's three stints are all one team and contiguous. The real case, Trade 22, is in **Period 7, still open**, which the completed-only season leg never sees. Then checked that clamping loses nothing: Ashby's 7 daily rows reconstruct his PSP exactly.
+
+**My own errors, for the record:** pushed an **empty commit** — `git add` aborted on a path I'd already renamed and `2>/dev/null` hid it, so PR #458 went up with a description matching code that wasn't in it (caught only by `gh`'s "7 uncommitted changes" warning); pushed without `docs:refresh` after closing a todo, which is the one thing the docs memory says in capitals; and called #181 done twice without checking its tests existed. Same root each time — trusted a signal instead of reading the artifact. The UTC diagnosis only went right because I read the diff first.
+
+**Open:** #303 needs a product decision (legacy `/api/waivers` vs Wire List — both live and client-reachable) · #305 (cold standings ~3s, needs a prod config change + before/after measurement) · #304 · #181 (implementation done, verification never run) · **new finding:** a `Roster` row for Chase Dollander has `releasedAt` 2026-05-17 *before* `acquiredAt` 2026-06-03 — harmless today, but something wrote it · `planning.json` still 105 days stale (`updatedAt` 2026-05-19) · **local `server tsc` still exits 2 forever** on 7 `shared/api` zod resolution errors — I read past it with `grep -v` all session, which is exactly the habit it trains; a real error there would be invisible until 7 became 8.
+
+---
+
 ## Session 2026-08-31 — Executing a 60-day-old todo found four bugs it was hiding
 
 **Suite: 1629 server + 960 client green (was 1519 + 960).** 20 PRs merged, every one verified in prod via the `/api/health` version check rather than assumed from the merge.

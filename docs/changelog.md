@@ -2,6 +2,18 @@
 
 All notable changes to The Fantastic Leagues will be documented in this file.
 
+## v2.4.0 — 2026-08-31 — feature
+### Commissioner balances, and the last of the IL-fee correctness work
+
+- **Feature — Commissioner → Finances → Balances shows real numbers.** The tab read *"coming soon"*; it now lists every team's net ledger balance, including teams with no charges at $0. Ledger and Payouts remain stubs and now say so accurately instead of hiding behind a shared placeholder.
+- **Money — a bug that would have under-billed the next IL stash.** The 3-way move (add + stash to IL + drop, all in one transaction) recorded the stash in the activity log but not in the log fees are billed from, so that stint would never have been charged. Nothing was mis-billed because nobody had used that path yet; the fix closes it before anyone does.
+- **Fix — the IL drift alarm stopped crying wolf.** It flagged one player forever: a drop taken while on IL closes the stint, but the two logs name that event differently (`DROP` vs `IL_RELEASE`). A permanent false alarm on a money check is how the next real one gets ignored. Prod drift is now zero.
+- **Verified, not assumed — nothing is owed.** A new read-only preview re-ran the fee reconcile across all six closed periods: **0 charges to add, 0 to void, $0 net**. The IL log repair from the previous session had already been applied in full; the ledger matches it.
+
+- **Internal:** the standings audit no longer disagrees with production about who counts as a pitcher, and no longer credits a mid-period-traded player's full line to *both* teams. Both were instrument bugs — production always scored correctly. Verified against prod: the first moved zero numbers across 6 periods × 8 teams, and the second moves none on closed periods (the affected trade sits in the still-open Period 7, which is where it will matter).
+- **Internal:** todo status lived in two places that disagreed on 87 of 308 files. Deleted the second source rather than syncing it; a test now fails if it grows back.
+- **Internal:** a CI check failed on the clock rather than on staleness — the generated docs block embeds a UTC date, so a branch refreshed before UTC midnight and tested after failed with the *same error text* as a genuine staleness failure. Written up at `docs/solutions/test-failures/generated-doc-date-stamp-fails-ci-across-utc-midnight.md`.
+
 ## v2.3.0 — 2026-08-31 — fix
 ### IL fees are now billed, and two traded hitters came off the bench
 
