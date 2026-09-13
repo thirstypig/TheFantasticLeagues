@@ -49,7 +49,7 @@ See [`CLAUDE.md`](./CLAUDE.md) for the full module table + cross-feature depende
 | PostgreSQL | 5442 |
 | Redis | 6381 |
 
-See [`MASTER-PORTS.md`](./MASTER-PORTS.md) for details.
+See `~/Projects/MASTER-PORTS.md` for details (kept out of this public repo).
 
 ## Quick Start
 
