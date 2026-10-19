@@ -21,7 +21,7 @@ updated: 2026-10-19
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-10-19 from 1,789 git-tracked files.*
+*Generated 2026-10-19 from 1,784 git-tracked files.*
 
 ## Code
 
@@ -29,7 +29,7 @@ updated: 2026-10-19
 |---|---:|---:|
 | `.ts` | 575 | 101,206 |
 | `.tsx` | 300 | 88,500 |
-| `.md` | 546 | 68,371 |
+| `.md` | 543 | 67,139 |
 | `.json` | 36 | 40,137 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,767 |
@@ -38,7 +38,7 @@ updated: 2026-10-19
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,785** | **348,166** |
+| **All tracked** | **1,780** | **346,934** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,12 +55,12 @@ updated: 2026-10-19
 
 ## Docs
 
-**204** board-scope markdown files (`docs/` plus the four root docs), of which **135** carry frontmatter.
+**199** board-scope markdown files (`docs/` plus the four root docs), of which **134** carry frontmatter.
 
-*552 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*547 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
-> **69 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
+> **65 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
 > or cross-linked. Retrofitting them is the largest single piece of remaining docs work.
 
 | Type | Docs | In vocabulary? |
@@ -68,8 +68,8 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `feat` | 20 | ❌ off-vocabulary |
 | `fix` | 6 | ❌ off-vocabulary |
 | `refactor` | 3 | ❌ off-vocabulary |
-| `stats` | 3 | ✅ |
 | `tech-spec` | 2 | ✅ |
+| `report` | 2 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
@@ -89,7 +89,6 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `prd` | 1 | ✅ |
 | `roadmap` | 1 | ✅ |
 | `todos` | 1 | ✅ |
-| `report` | 1 | ✅ |
 | `build-config-issue` | 1 | ❌ off-vocabulary |
 | `changelog` | 1 | ✅ |
 | `costs` | 1 | ✅ |
@@ -97,13 +96,14 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `privacy` | 1 | ✅ |
 | `risk` | 1 | ✅ |
 | `runbook` | 1 | ✅ |
+| `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
 **35 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 47 | ✅ |
+| `active` | 46 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
