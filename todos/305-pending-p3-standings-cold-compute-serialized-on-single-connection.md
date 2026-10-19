@@ -1,5 +1,5 @@
 ---
-priority: p2
+priority: p3
 issue_id: 305
 tags: [performance, standings, connection-pool, capacity, supabase, prisma, cache]
 dependencies: []
@@ -49,3 +49,20 @@ serializes the whole app. This is the capacity ceiling, not user count.
 - Query fan-out: `standingsService.ts:824 getSeasonStandingsUncached` → per-period
   `computeTeamStatsFromDb` (`:403`), ~6 queries each. Discovered during the capacity/load
   stress-test investigation.
+
+## Work Log
+
+### 2026-10-19 — Solutions 1 and 3 done; narrowed to solution 2, downgraded P2 → P3
+
+- **Solution 1 is already live.** Prod `DATABASE_URL` carries `connection_limit=5` (verified via
+  `railway variables`, 2026-10-19). Nobody recorded when it changed. Per the measurements above that
+  is the ~3000ms → ~1300ms step.
+- **Solution 3 shipped (cache invalidated on stats write).** `syncPeriodStats` / `syncDailyStats`
+  call `notifyStatsChanged` (`server/src/lib/statsChanged.ts`); `standingsService` subscribes and
+  clears. A lib-level signal rather than a direct import because `players → standings` would be a
+  new ADR-015 violation. A generation counter stops a compute that was in flight during the clear
+  from writing its pre-sync result back. Tests: `standingsCache.test.ts` (both fixes mutation-checked),
+  `mlbStatsSyncNotifies.test.ts`, `statsChanged.test.ts`.
+- **What is left: solution 2 (batch the per-period fan-out).** Cold computes are now rare (after each
+  of ~5 daily syncs, plus the 120s TTL backstop) but each one is still ~1.3s. The "< 500ms" acceptance
+  criterion is NOT met and only batching meets it. P3 because the every-120s capacity hit is gone.

@@ -439,9 +439,9 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Next 3 to-dos** (3 open):
 
-- `305` **P2** — standings cold compute serialized on single connection
 - `181` **P3** — rosterversion etag cross tab safety
 - `304` **P3** — cache refresh and vestigial cleanup
+- `305` **P3** — standings cold compute serialized on single connection
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 

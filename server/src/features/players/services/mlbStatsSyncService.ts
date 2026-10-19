@@ -4,6 +4,7 @@ import { classifyPeriodAudit, type PeriodAuditEntry } from "./closedPeriodAudit.
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk, parseIP } from "../../../lib/utils.js";
 import * as errorBuffer from "../../../lib/errorBuffer.js";
+import { notifyStatsChanged } from "../../../lib/statsChanged.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 
@@ -75,6 +76,7 @@ export async function syncPeriodStats(periodId: number): Promise<{
   // The synthetic pitcher entry (mlbId 1660271) gets no MLB API data, so we copy
   // pitching stats from the real player (mlbId 660271) to the pitcher-only entry.
   await mirrorTwoWayPitcherStats(periodId);
+  notifyStatsChanged(period.leagueId ?? undefined);
 
   logger.info({ synced, skipped, errors, periodId }, "Period stats sync complete");
   return { synced, skipped, errors };
@@ -362,6 +364,8 @@ export async function syncDailyStats(dateStr: string): Promise<{
 
   // Mirror daily pitching stats for two-way player split entries
   await mirrorTwoWayDailyPitcherStats(targetDate);
+  // Daily rows are not league-scoped — every league's standings may read them.
+  notifyStatsChanged();
 
   logger.info({ synced, skipped, errors, dateStr }, "Daily stats sync complete");
   return { synced, skipped, errors };
