@@ -137,7 +137,6 @@ const featureModules = [
   { name: "roster", desc: "Roster grid, controls, CSV import" },
   { name: "standings", desc: "Standings computation engine" },
   { name: "trades", desc: "Trade proposals & voting" },
-  { name: "waivers", desc: "FAAB waiver claims workflow" },
   { name: "transactions", desc: "Transaction history & activity feed" },
   { name: "auction", desc: "Live auction draft with WebSocket, chat, sounds, settings" },
   { name: "keeper-prep", desc: "Keeper selection workflows" },
@@ -769,15 +768,6 @@ const apiModules: ApiModule[] = [
       { method: "POST", path: "/", auth: "requireAuth", description: "Propose trade" },
       { method: "POST", path: "/:id/vote", auth: "requireAuth", description: "Vote on trade" },
       { method: "POST", path: "/:id/process", auth: "requireAdmin", description: "Process trade" },
-    ],
-  },
-  {
-    name: "waivers", prefix: "/api/waivers",
-    routes: [
-      { method: "GET", path: "/", auth: "requireLeagueMember", description: "List claims" },
-      { method: "POST", path: "/", auth: "requireAuth", description: "Submit claim" },
-      { method: "POST", path: "/process", auth: "requireAdmin", description: "Process claims" },
-      { method: "DELETE", path: "/:id", auth: "requireAuth", description: "Cancel claim" },
     ],
   },
   {

@@ -1,8 +1,8 @@
 /**
  * /api/wire-list — Two-list waiver model (owner CRUD + commissioner period mgmt).
  *
- * Coexists with the legacy /api/waivers (paired-row WaiverClaim auto-engine).
- * Processor + commissioner-override endpoints + UI ship in follow-up PRs.
+ * The only waiver system: the legacy /api/waivers (paired-row WaiverClaim)
+ * was retired in todo #303. The WaiverClaim table remains, read-only.
  *
  * Spec: memory `waiver_wire_list_feature.md`, ADR-012 in `docs/decisions.md`.
  */

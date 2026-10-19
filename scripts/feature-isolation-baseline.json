@@ -1,7 +1,7 @@
 {
   "_comment": "Grandfathered cross-feature imports — see docs/engineering/adrs/ADR-015-feature-module-boundaries.md. This list may SHRINK but must never grow. Regenerate only after legitimately removing a violation. Entries are DISTINCT side|file|specifier keys; a file importing one specifier twice counts once.",
   "generated": "2026-07-24",
-  "count": 95,
+  "count": 91,
   "allowed": [
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../commissioner/api",
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../leagues/api",
@@ -47,14 +47,12 @@
     "client|client/src/features/trades/pages/TradesPage.tsx|../../teams/components/TeamRosterView",
     "client|client/src/features/transactions/__tests__/api.test.ts|../../players/api",
     "client|client/src/features/transactions/components/ActivityHistoryTab.tsx|../../trades/api",
-    "client|client/src/features/transactions/components/ActivityWaiversTab.tsx|../../waivers/api",
     "client|client/src/features/transactions/components/__tests__/ActivityHistoryTab.test.tsx|../../../trades/api",
     "client|client/src/features/transactions/lib/__tests__/loadRosterMovePlayers.test.ts|../../../teams/api",
     "client|client/src/features/transactions/lib/loadRosterMovePlayers.ts|../../teams/api",
     "client|client/src/features/transactions/pages/ActivityPage.tsx|../../teams/components/TeamRosterView",
     "client|client/src/features/transactions/pages/ActivityPage.tsx|../../trades/api",
     "client|client/src/features/transactions/pages/ActivityPage.tsx|../../trades/pages/TradesPage",
-    "client|client/src/features/transactions/pages/ActivityPage.tsx|../../waivers/components/WaiverClaimForm",
     "client|client/src/features/wire-list/__tests__/useWireListOwner.test.ts|../../teams/api",
     "client|client/src/features/wire-list/hooks/useWireListOwner.ts|../../teams/api",
     "server|server/src/features/admin/__tests__/routes.test.ts|../../commissioner/services/CommissionerService.js",
@@ -94,8 +92,6 @@
     "server|server/src/features/transactions/routes.ts|../players/services/playersListCache.js",
     "server|server/src/features/transactions/routes.ts|../standings/services/standingsService.js",
     "server|server/src/features/transactions/routes.ts|../teams/lib/rosterVersionGuard.js",
-    "server|server/src/features/waivers/routes.ts|../standings/services/standingsService.js",
-    "server|server/src/features/waivers/routes.ts|../transactions/lib/positionInherit.js",
     "server|server/src/features/wire-list/routes.ts|../transactions/lib/freeAgent.js",
     "server|server/src/features/wire-list/services/processorService.ts|../../transactions/lib/positionInherit.js"
   ]

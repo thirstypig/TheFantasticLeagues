@@ -27,7 +27,6 @@ import { draftRouter } from "./features/draft/index.js";
 import { matchupsRouter } from "./features/matchups/index.js";
 import { commissionerRouter } from "./features/commissioner/index.js";
 import { tradesRouter } from "./features/trades/index.js";
-import { waiversRouter } from "./features/waivers/index.js";
 import { wireListRouter } from "./features/wire-list/index.js";
 import { transactionsRouter } from "./features/transactions/index.js";
 import { testSportsApiRouter } from "./features/test/testSportsApiRoutes.js";
@@ -242,7 +241,6 @@ async function main() {
   app.use("/api", adminRouter);
   app.use("/api", commissionerRouter);
   app.use("/api/trades", tradesRouter);
-  app.use("/api/waivers", waiversRouter);
   app.use("/api/wire-list", wireListRouter);
   app.use("/api", transactionsRouter);
   app.use("/api", standingsRouter);

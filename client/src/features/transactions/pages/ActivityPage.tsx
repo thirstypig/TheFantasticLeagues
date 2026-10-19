@@ -5,7 +5,7 @@
  * wrappers here — the shell provides them. Page-level chrome moves to
  * Aurora atoms (Glass hero, IridText display heading, segmented tab
  * pills, footer escape link). Tab content delegates to the existing
- * children (ActivityWaiversTab, RosterMovesTab, ActivityHistoryTab,
+ * children (RosterMovesTab, ActivityHistoryTab,
  * TradeCard) which keep their legacy `--lg-*` token styling — those
  * tokens stay globally defined so legacy children render acceptably
  * inside the Aurora wrapper. Deeper Aurora ports of those children
@@ -22,7 +22,6 @@ import {
   getPlayerSeasonStats,
   getLeague,
   PlayerSeasonStat,
-  getSeasonStandings,
 } from "../../../api";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import {
@@ -32,22 +31,22 @@ import {
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague, findMyTeam } from "../../../contexts/LeagueContext";
 import { useToast } from "../../../contexts/ToastContext";
-import WaiverClaimForm from "../../waivers/components/WaiverClaimForm";
 import RosterMovesTab from "../components/RosterMovesTab";
 import { canManageRoster, REASON_COPY } from "../lib/permissions";
 import { loadRosterMovePlayers } from "../lib/loadRosterMovePlayers";
 import { TradeCard, LeagueTradeCard, CreateTradeForm } from "../../trades/pages/TradesPage";
 import TeamRosterView from "../../teams/components/TeamRosterView";
-import ActivityWaiversTab from "../components/ActivityWaiversTab";
 import ActivityHistoryTab from "../components/ActivityHistoryTab";
 import { Plus, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { Glass, IridText, SectionLabel } from "../../../components/aurora/atoms";
 
-type ActivityTab = "add_drop" | "trades" | "waivers" | "history";
+// The legacy "Waivers" tab (WaiverClaim / `/api/waivers`) was retired in
+// todo #303 — waivers live on each team's Wire List (`/teams/:code/wire-list`).
+// Old `?tab=waivers` links fall through to the default tab.
+type ActivityTab = "add_drop" | "trades" | "history";
 
 const TABS: { key: ActivityTab; label: string }[] = [
-  { key: "waivers", label: "Waivers" },
   { key: "add_drop", label: "Roster Moves" },
   { key: "trades", label: "Trades" },
   { key: "history", label: "History" },
@@ -70,16 +69,15 @@ export default function ActivityPage() {
   );
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const VALID_TABS: ActivityTab[] = ["waivers", "add_drop", "trades", "history"];
+  const VALID_TABS: ActivityTab[] = ["add_drop", "trades", "history"];
   const tabParam = searchParams.get("tab") as ActivityTab | null;
-  const activeTab: ActivityTab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : "waivers";
+  const activeTab: ActivityTab = tabParam && VALID_TABS.includes(tabParam) ? tabParam : "add_drop";
   const setActiveTab = (tab: ActivityTab) => setSearchParams({ tab }, { replace: true });
   const [loading, setLoading] = useState(true);
 
   const [transactions, setTransactions] = useState<TransactionEvent[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
-  const [standings, setStandings] = useState<any[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [claimInFlight, setClaimInFlight] = useState(false);
 
@@ -106,15 +104,13 @@ export default function ActivityPage() {
         getTransactions({ leagueId: currentLeagueId, take: 100 }),
         getPlayerSeasonStats(currentLeagueId),
         getLeague(currentLeagueId),
-        getSeasonStandings(currentLeagueId),
         getTrades(currentLeagueId, "all"),
       ]);
 
-      const [txResult, playersResult, leagueResult, standingsResult, tradesResult] = results;
+      const [txResult, playersResult, leagueResult, tradesResult] = results;
 
       if (txResult.status === "fulfilled") setTransactions(txResult.value.transactions);
       if (playersResult.status === "fulfilled") setPlayers(playersResult.value || []);
-      if (standingsResult.status === "fulfilled") setStandings(standingsResult.value.rows || []);
       if (tradesResult.status === "fulfilled") setTrades(tradesResult.value.trades || []);
 
       if (leagueResult.status === "fulfilled") {
@@ -226,18 +222,6 @@ export default function ActivityPage() {
   void handleClaim;
   void handleDrop;
 
-  const sortedWaiverOrder = useMemo(() => {
-    const standingMap = new Map(standings.map((s) => [s.teamId, s]));
-    const teamsWithPoints = teams.map((t) => {
-      const s = standingMap.get(t.id);
-      return { ...t, rank: 0, points: s?.totalPoints || s?.points || 0 };
-    });
-    teamsWithPoints.sort((a, b) => a.points - b.points);
-    const byPointsDesc = [...teamsWithPoints].sort((a, b) => b.points - a.points);
-    byPointsDesc.forEach((t, i) => { t.rank = i + 1; });
-    return teamsWithPoints;
-  }, [teams, standings]);
-
   const activeTrades = useMemo(
     () => trades.filter((t) => ["PROPOSED", "ACCEPTED"].includes(t.status)),
     [trades]
@@ -258,7 +242,7 @@ export default function ActivityPage() {
               Manage roster moves.
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
-              Roster moves, trades, waivers, and a full transaction history — all in one place.
+              Roster moves, trades, and a full transaction history — all in one place.
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
@@ -306,18 +290,6 @@ export default function ActivityPage() {
         </Glass>
       ) : (
         <>
-          {activeTab === "waivers" && (
-            <Glass padded={false}>
-              <div style={{ padding: 16 }}>
-                <ActivityWaiversTab
-                  sortedWaiverOrder={sortedWaiverOrder}
-                  leagueId={currentLeagueId}
-                  isCommissioner={isCommissioner}
-                />
-              </div>
-            </Glass>
-          )}
-
           {activeTab === "add_drop" && (() => {
             const permission = canManageRoster({
               leagueId: currentLeagueId || null,
@@ -358,27 +330,25 @@ export default function ActivityPage() {
             }
 
             if (permission.kind === "deny" && selectedTeamId) {
+              // In a commissioner-only league an owner can still queue
+              // waiver moves through their own team's Wire List.
+              const myCode =
+                permission.reason === "COMMISSIONER_ONLY"
+                  ? teams.find((t) => t.id === myTeamId)?.code
+                  : undefined;
               return (
                 <Glass>
-                  <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginBottom: 14 }}>
-                    {REASON_COPY[permission.reason]} You can still submit a waiver claim below.
+                  <div style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                    {REASON_COPY[permission.reason]}
                   </div>
-                  <WaiverClaimForm
-                    players={players}
-                    myTeamId={selectedTeamId}
-                    myTeamBudget={teams.find(t => t.id === selectedTeamId)?.budget ?? 400}
-                    myRoster={players.filter((p: any) => {
-                      // _dbTeamId is populated by loadRosterMovePlayers for
-                      // the selected team's roster rows. Fall back to the
-                      // ogba_team_name lookup when an older payload (no
-                      // enrichment yet) is mid-flight — keeps the waiver
-                      // form populated during the first render before the
-                      // loader effect resolves.
-                      const tid = p._dbTeamId ?? teams.find(t => t.name === p.ogba_team_name)?.id;
-                      return tid === selectedTeamId;
-                    })}
-                    onComplete={loadData}
-                  />
+                  {myCode && (
+                    <Link
+                      to={`/teams/${myCode}/wire-list`}
+                      style={{ display: "inline-block", marginTop: 12, fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}
+                    >
+                      Queue waiver moves on your Wire List →
+                    </Link>
+                  )}
                 </Glass>
               );
             }
