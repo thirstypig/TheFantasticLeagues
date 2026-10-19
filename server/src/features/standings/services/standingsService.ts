@@ -5,6 +5,7 @@ import { TWO_WAY_PLAYERS, playerStatRoles } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
+import { onStatsChanged } from "../../../lib/statsChanged.js";
 
 import type { PeriodStatRow } from "../../../types/stats.js";
 
@@ -775,11 +776,19 @@ async function computeWithPeriodStats(
   });
 }
 
-// In-memory TTL cache — stats change only on daily cron syncs (12:00 + 13:00 UTC).
-// `pending` enables stampede prevention: if a second request arrives while the
-// first is still computing, both share the same in-flight Promise rather than
-// firing parallel `getSeasonStandingsUncached()` calls (mirrors the dashboard
-// service cache pattern).
+// In-memory cache, invalidated on every stats write (todo #305) with a TTL as a
+// backstop. `pending` enables stampede prevention: if a second request arrives
+// while the first is still computing, both share the same in-flight Promise
+// rather than firing parallel `getSeasonStandingsUncached()` calls (mirrors the
+// dashboard service cache pattern).
+//
+// Clear-during-compute: a compute that started before a clear read pre-clear
+// data, so it must not write its result back. Each compute only touches the
+// entry while that entry still holds ITS `pending` — a clear deletes the entry,
+// and a newer compute replaces it, so a stale compute finds nothing it owns.
+// (An earlier global generation counter got this wrong: a clear for ANY league
+// left this league's settled `pending` in place, served forever — or, if the
+// compute had failed, rejected forever.)
 type StandingsCore = Awaited<ReturnType<typeof getSeasonStandingsUncached>>;
 type StandingsResult = StandingsCore & { computedAt: string };
 interface StandingsCacheEntry {
@@ -794,6 +803,8 @@ export function clearStandingsCache(leagueId?: number): void {
   if (leagueId !== undefined) standingsCache.delete(leagueId);
   else standingsCache.clear();
 }
+
+onStatsChanged(clearStandingsCache);
 
 /**
  * Season-level standings: sum roto points across all active/completed periods.
@@ -813,12 +824,15 @@ export async function getSeasonStandings(leagueId: number): Promise<StandingsRes
     return { ...core, computedAt: new Date().toISOString() };
   })();
   standingsCache.set(leagueId, { data: cached?.data, expiry: 0, pending });
+  const stillOurs = () => standingsCache.get(leagueId)?.pending === pending;
   try {
     const result = await pending;
-    standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
+    if (stillOurs()) {
+      standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
+    }
     return result;
   } catch (err) {
-    standingsCache.delete(leagueId);
+    if (stillOurs()) standingsCache.delete(leagueId);
     throw err;
   }
 }

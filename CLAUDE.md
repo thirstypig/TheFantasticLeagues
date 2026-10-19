@@ -440,11 +440,11 @@ not summarize the diff. PRs land before session end whenever possible
 **Next 3 to-dos** (4 open):
 
 - `303` **P2** — retire legacy waiver system
-- `305` **P2** — standings cold compute serialized on single connection
 - `181` **P3** — rosterversion etag cross tab safety
+- `304` **P3** — cache refresh and vestigial cleanup
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-09-01 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-10-19 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->
