@@ -437,11 +437,11 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (4 open):
+**Next 3 to-dos** (3 open):
 
-- `303` **P2** — retire legacy waiver system
 - `181` **P3** — rosterversion etag cross tab safety
 - `304` **P3** — cache refresh and vestigial cleanup
+- `305` **P3** — standings cold compute serialized on single connection
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 

@@ -3,8 +3,8 @@
  *
  * Source-of-truth Zod schemas for the two-list Wire List feature shipped
  * after PRs #255 (preview) + #256 (schema). This is the owner-facing CRUD
- * surface. The legacy `/api/waivers` endpoints (paired-row WaiverClaim) are
- * untouched and run side-by-side until the legacy auto-engine is retired.
+ * surface. The legacy `/api/waivers` endpoints (paired-row WaiverClaim) were
+ * retired in todo #303; this is the only waiver system.
  *
  * Spec reference: memory entry `waiver_wire_list_feature.md` (8 direction-locks)
  *   and `docs/decisions.md` ADR-012 (two-list vs paired vs polymorphic).

@@ -7,7 +7,6 @@ vi.mock("../../../api", () => ({
   getTransactions: vi.fn(),
   getPlayerSeasonStats: vi.fn(),
   getLeague: vi.fn(),
-  getSeasonStandings: vi.fn(),
 }));
 
 // Mock trades API
@@ -30,8 +29,11 @@ vi.mock("../../../auth/AuthProvider", () => ({
 }));
 
 // Mock LeagueContext
+// Mutable per test: self-serve on by default; set `leagueRules: {}` for a
+// commissioner-only league.
+let leagueCtx: Record<string, unknown> = {};
 vi.mock("../../../contexts/LeagueContext", () => ({
-  useLeague: () => ({ leagueId: 1 }),
+  useLeague: () => leagueCtx,
   findMyTeam: <T extends { ownerUserId?: number | null; ownerships?: { userId: number }[] }>(teams: T[], userId: number): T | null =>
     teams.find(t => t.ownerUserId === userId || (t.ownerships ?? []).some(o => o.userId === userId)) ?? null,
 }));
@@ -45,14 +47,11 @@ vi.mock("../../../contexts/ToastContext", () => ({
 vi.mock("../../../components/ui/button", () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
 }));
-// AddDropTab is no longer rendered from ActivityPage — the tab now routes
-// authorized users through RosterMovesTab. Non-commissioner owners still
-// see WaiverClaimForm as a fallback when their league is commissioner-only.
+// Authorized users get RosterMovesTab. In a commissioner-only league an
+// owner instead gets a link to their own Wire List (the legacy
+// WaiverClaimForm fallback was retired in todo #303).
 vi.mock("../components/RosterMovesTab", () => ({
   default: () => <div data-testid="roster-moves-tab">RosterMovesTab</div>,
-}));
-vi.mock("../../waivers/components/WaiverClaimForm", () => ({
-  default: () => <div data-testid="waiver-claim-form">WaiverClaimForm</div>,
 }));
 vi.mock("../../trades/pages/TradesPage", () => ({
   TradeCard: () => <div data-testid="trade-card" />,
@@ -61,9 +60,6 @@ vi.mock("../../trades/pages/TradesPage", () => ({
 }));
 vi.mock("../../teams/components/TeamRosterView", () => ({
   default: () => <div data-testid="team-roster-view" />,
-}));
-vi.mock("../components/ActivityWaiversTab", () => ({
-  default: () => <div data-testid="waivers-tab">WaiversTab</div>,
 }));
 vi.mock("../components/ActivityHistoryTab", () => ({
   default: () => <div data-testid="history-tab">HistoryTab</div>,
@@ -82,7 +78,7 @@ vi.mock("lucide-react", () => ({
   ArrowLeftRight: () => <span>ArrowLeftRight</span>,
 }));
 
-import { getTransactions, getPlayerSeasonStats, getLeague, getSeasonStandings } from "../../../api";
+import { getTransactions, getPlayerSeasonStats, getLeague } from "../../../api";
 import ActivityPage from "../pages/ActivityPage";
 
 function renderPage() {
@@ -95,12 +91,12 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  leagueCtx = { leagueId: 1, myTeamId: 10, leagueRules: { transactions: { owner_self_serve: "true" } } };
   vi.mocked(getTransactions).mockResolvedValue({ transactions: [] });
   vi.mocked(getPlayerSeasonStats).mockResolvedValue([]);
   vi.mocked(getLeague).mockResolvedValue({
-    league: { teams: [{ id: 10, name: "Aces", ownerUserId: 1, ownerships: [] }] },
+    league: { teams: [{ id: 10, name: "Aces", code: "ACE", ownerUserId: 1, ownerships: [] }] },
   } as any);
-  vi.mocked(getSeasonStandings).mockResolvedValue({ rows: [] } as any);
 });
 
 describe("ActivityPage", () => {
@@ -122,23 +118,35 @@ describe("ActivityPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Roster Moves")).toBeInTheDocument();
       expect(screen.getByText("Trades")).toBeInTheDocument();
-      expect(screen.getByText("Waivers")).toBeInTheDocument();
       expect(screen.getByText("History")).toBeInTheDocument();
     });
+    // The legacy Waivers tab is gone (todo #303).
+    expect(screen.queryByText("Waivers")).not.toBeInTheDocument();
   });
 
-  it("defaults to waivers tab", async () => {
+  it("defaults to the Roster Moves tab", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId("waivers-tab")).toBeInTheDocument();
+      expect(screen.getByTestId("roster-moves-tab")).toBeInTheDocument();
     });
   });
 
-  it("does not show roster-moves tab content by default", async () => {
+  it("commissioner-only league: an owner is pointed to their own Wire List", async () => {
+    leagueCtx = { leagueId: 1, myTeamId: 10, leagueRules: {} };
     renderPage();
-    await waitFor(() => {
-      expect(screen.queryByTestId("roster-moves-tab")).not.toBeInTheDocument();
-    });
+    const link = await screen.findByRole("link", { name: /wire list/i });
+    expect(link).toHaveAttribute("href", "/teams/ACE/wire-list");
+    expect(screen.queryByTestId("roster-moves-tab")).not.toBeInTheDocument();
+  });
+
+  it("a viewer with no team of their own gets no Wire List link", async () => {
+    leagueCtx = { leagueId: 1, myTeamId: null, leagueRules: {} };
+    vi.mocked(getLeague).mockResolvedValue({
+      league: { teams: [{ id: 11, name: "Bats", code: "BAT", ownerUserId: 2, ownerships: [] }] },
+    } as any);
+    renderPage();
+    await screen.findByText(/commissioner-only/i);
+    expect(screen.queryByRole("link", { name: /wire list/i })).not.toBeInTheDocument();
   });
 
   it("calls all APIs on mount", async () => {
@@ -147,7 +155,6 @@ describe("ActivityPage", () => {
       expect(getTransactions).toHaveBeenCalled();
       expect(getPlayerSeasonStats).toHaveBeenCalled();
       expect(getLeague).toHaveBeenCalled();
-      expect(getSeasonStandings).toHaveBeenCalled();
     });
   });
 });

@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
- * Integration tests: Transaction Claim / Drop / Waiver Flow
+ * Integration tests: Transaction Claim / Drop Flow
  *
- * Validates the POST /api/transactions/claim flow and its interaction
- * with waiver processing:
+ * Validates the POST /api/transactions/claim flow:
  *   1. Basic claims: free agent pickup, claim+drop combos, auth/validation guards
  *   2. Concurrent/race conditions: two teams claiming same player, rapid sequential claims
  *   3. Drop scenarios: standalone drops, atomic add+drop, invalid drop attempts
- *   4. Waiver processing: FAAB ordering, outbid status, budget checks, roster creation
- *   5. History/audit: TransactionEvent creation, ordered history
+ *   4. History/audit: TransactionEvent creation, ordered history
  */
 
 vi.mock("../../db/prisma.js", () => {
@@ -17,7 +15,6 @@ vi.mock("../../db/prisma.js", () => {
     roster: { create: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
     player: { findFirst: vi.fn(), findUnique: vi.fn() },
     transactionEvent: { create: vi.fn() },
-    waiverClaim: { update: vi.fn() },
     team: { findUnique: vi.fn(), update: vi.fn() },
   };
   return {
@@ -26,7 +23,6 @@ vi.mock("../../db/prisma.js", () => {
       roster: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
       league: { findUnique: vi.fn() },
       transactionEvent: { create: vi.fn(), count: vi.fn(), findMany: vi.fn() },
-      waiverClaim: { findMany: vi.fn(), update: vi.fn() },
       $transaction: vi.fn(async (fn: any) => fn(mockTx)),
       __mockTx: mockTx,
     },
@@ -172,98 +168,6 @@ async function simulateClaim(input: ClaimInput, userId = "user-1"): Promise<Clai
   });
 
   return { status: 200, body: { success: true, playerId } };
-}
-
-/**
- * Simulates waiver processing (POST /api/waivers/process/:leagueId).
- */
-interface WaiverClaim {
-  id: number;
-  teamId: number;
-  playerId: number;
-  bidAmount: number;
-  dropPlayerId: number | null;
-  team: { budget: number; leagueId: number };
-}
-
-async function simulateProcessWaivers(claims: WaiverClaim[]) {
-  const logs: string[] = [];
-  const processedPlayerIds = new Set<number>();
-  const teamDropMap = new Map<number, Set<number>>();
-
-  await prisma.$transaction(async (tx: any) => {
-    for (const claim of claims) {
-      if (processedPlayerIds.has(claim.playerId)) {
-        await tx.waiverClaim.update({
-          where: { id: claim.id },
-          data: { status: "FAILED_OUTBID", processedAt: expect.any(Date) },
-        });
-        logs.push(`Claim ${claim.id} FAILED_OUTBID`);
-        continue;
-      }
-
-      const currentTeam = await tx.team.findUnique({ where: { id: claim.teamId } });
-      if (!currentTeam || currentTeam.budget < claim.bidAmount) {
-        await tx.waiverClaim.update({
-          where: { id: claim.id },
-          data: { status: "FAILED_INVALID", processedAt: expect.any(Date) },
-        });
-        logs.push(`Claim ${claim.id} FAILED_INVALID: Insufficient budget`);
-        continue;
-      }
-
-      if (claim.dropPlayerId) {
-        const teamDrops = teamDropMap.get(claim.teamId) || new Set();
-        if (teamDrops.has(claim.dropPlayerId)) {
-          await tx.waiverClaim.update({
-            where: { id: claim.id },
-            data: { status: "FAILED_INVALID", processedAt: expect.any(Date) },
-          });
-          logs.push(`Claim ${claim.id} FAILED_INVALID: Drop player already processed`);
-          continue;
-        }
-      }
-
-      processedPlayerIds.add(claim.playerId);
-
-      await tx.team.update({
-        where: { id: claim.teamId },
-        data: { budget: { decrement: claim.bidAmount } },
-      });
-
-      await assertPlayerAvailable(tx, claim.playerId, claim.team.leagueId);
-
-      await tx.roster.create({
-        data: {
-          teamId: claim.teamId,
-          playerId: claim.playerId,
-          source: "WAIVER",
-          price: claim.bidAmount,
-          acquiredAt: expect.any(Date),
-        },
-      });
-
-      if (claim.dropPlayerId) {
-        const rosterEntry = await tx.roster.findFirst({
-          where: { teamId: claim.teamId, playerId: claim.dropPlayerId, releasedAt: null },
-        });
-        if (rosterEntry) {
-          await tx.roster.delete({ where: { id: rosterEntry.id } });
-          if (!teamDropMap.has(claim.teamId)) teamDropMap.set(claim.teamId, new Set());
-          teamDropMap.get(claim.teamId)!.add(claim.dropPlayerId);
-        }
-      }
-
-      await tx.waiverClaim.update({
-        where: { id: claim.id },
-        data: { status: "SUCCESS", processedAt: expect.any(Date) },
-      });
-
-      logs.push(`Claim ${claim.id} SUCCESS: Team ${claim.teamId} gets Player ${claim.playerId} for $${claim.bidAmount}`);
-    }
-  });
-
-  return { success: true, logs };
 }
 
 // ---------------------------------------------------------------------------
@@ -558,201 +462,6 @@ describe("integration: drop scenarios", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests: Waiver Processing
-// ---------------------------------------------------------------------------
-
-describe("integration: waiver processing with multiple claims", () => {
-  it("processes waivers — highest bid wins, roster entry created, budget deducted", async () => {
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 20, dropPlayerId: null, team: { budget: 50, leagueId: 1 } },
-      { id: 2, teamId: 2, playerId: 100, bidAmount: 10, dropPlayerId: null, team: { budget: 40, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
-    mockTx.team.update.mockResolvedValue({});
-    mockTx.roster.create.mockResolvedValue({});
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    const result = await simulateProcessWaivers(claims);
-
-    expect(result.success).toBe(true);
-    expect(result.logs).toHaveLength(2);
-    expect(result.logs[0]).toContain("SUCCESS");
-    expect(result.logs[1]).toContain("FAILED_OUTBID");
-
-    // Only one roster entry created (winner)
-    expect(mockTx.roster.create).toHaveBeenCalledTimes(1);
-    expect(mockTx.roster.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        teamId: 1,
-        playerId: 100,
-        source: "WAIVER",
-        price: 20,
-      }),
-    });
-
-    // Budget deducted only for winner
-    expect(mockTx.team.update).toHaveBeenCalledTimes(1);
-    expect(mockTx.team.update).toHaveBeenCalledWith({
-      where: { id: 1 },
-      data: { budget: { decrement: 20 } },
-    });
-  });
-
-  it("losing bidders get FAILED_OUTBID status", async () => {
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 25, dropPlayerId: null, team: { budget: 50, leagueId: 1 } },
-      { id: 2, teamId: 2, playerId: 100, bidAmount: 15, dropPlayerId: null, team: { budget: 40, leagueId: 1 } },
-      { id: 3, teamId: 3, playerId: 100, bidAmount: 5, dropPlayerId: null, team: { budget: 30, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
-    mockTx.team.update.mockResolvedValue({});
-    mockTx.roster.create.mockResolvedValue({});
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    const result = await simulateProcessWaivers(claims);
-
-    // First wins, next two fail
-    expect(result.logs[0]).toContain("SUCCESS");
-    expect(result.logs[1]).toContain("FAILED_OUTBID");
-    expect(result.logs[2]).toContain("FAILED_OUTBID");
-
-    // Losing claims updated with FAILED_OUTBID
-    expect(mockTx.waiverClaim.update).toHaveBeenCalledWith({
-      where: { id: 2 },
-      data: expect.objectContaining({ status: "FAILED_OUTBID" }),
-    });
-    expect(mockTx.waiverClaim.update).toHaveBeenCalledWith({
-      where: { id: 3 },
-      data: expect.objectContaining({ status: "FAILED_OUTBID" }),
-    });
-  });
-
-  it("team with insufficient budget gets FAILED_INVALID", async () => {
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 100, dropPlayerId: null, team: { budget: 5, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique.mockResolvedValue({ budget: 5 }); // only $5 available
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    const result = await simulateProcessWaivers(claims);
-
-    expect(result.logs[0]).toContain("FAILED_INVALID");
-    expect(result.logs[0]).toContain("Insufficient budget");
-
-    // No roster or budget mutations
-    expect(mockTx.roster.create).not.toHaveBeenCalled();
-    expect(mockTx.team.update).not.toHaveBeenCalled();
-
-    expect(mockTx.waiverClaim.update).toHaveBeenCalledWith({
-      where: { id: 1 },
-      data: expect.objectContaining({ status: "FAILED_INVALID" }),
-    });
-  });
-
-  it("verifies roster entries created and budgets deducted for multiple winning claims", async () => {
-    // Three claims for three different players — all should succeed
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 15, dropPlayerId: null, team: { budget: 50, leagueId: 1 } },
-      { id: 2, teamId: 2, playerId: 200, bidAmount: 10, dropPlayerId: null, team: { budget: 40, leagueId: 1 } },
-      { id: 3, teamId: 3, playerId: 300, bidAmount: 5, dropPlayerId: null, team: { budget: 30, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique
-      .mockResolvedValueOnce({ budget: 50 })
-      .mockResolvedValueOnce({ budget: 40 })
-      .mockResolvedValueOnce({ budget: 30 });
-    mockTx.team.update.mockResolvedValue({});
-    mockTx.roster.create.mockResolvedValue({});
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    const result = await simulateProcessWaivers(claims);
-
-    expect(result.logs.filter((l) => l.includes("SUCCESS"))).toHaveLength(3);
-
-    // Three roster entries
-    expect(mockTx.roster.create).toHaveBeenCalledTimes(3);
-    expect(mockTx.roster.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ teamId: 1, playerId: 100, price: 15 }),
-    });
-    expect(mockTx.roster.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ teamId: 2, playerId: 200, price: 10 }),
-    });
-    expect(mockTx.roster.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ teamId: 3, playerId: 300, price: 5 }),
-    });
-
-    // Three budget deductions
-    expect(mockTx.team.update).toHaveBeenCalledTimes(3);
-    expect(mockTx.team.update).toHaveBeenCalledWith({
-      where: { id: 1 },
-      data: { budget: { decrement: 15 } },
-    });
-    expect(mockTx.team.update).toHaveBeenCalledWith({
-      where: { id: 2 },
-      data: { budget: { decrement: 10 } },
-    });
-    expect(mockTx.team.update).toHaveBeenCalledWith({
-      where: { id: 3 },
-      data: { budget: { decrement: 5 } },
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Tests: Waiver Drop Handling in Batch
-// ---------------------------------------------------------------------------
-
-describe("integration: waiver processing — drop player in batch", () => {
-  it("successful waiver claim with drop releases the dropped player", async () => {
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 5, dropPlayerId: 200, team: { budget: 50, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
-    mockTx.team.update.mockResolvedValue({});
-    mockTx.roster.create.mockResolvedValue({});
-    mockTx.roster.findFirst.mockResolvedValue({ id: 77 }); // drop player roster found
-    mockTx.roster.delete.mockResolvedValue({});
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    const result = await simulateProcessWaivers(claims);
-
-    expect(result.logs[0]).toContain("SUCCESS");
-    expect(mockTx.roster.findFirst).toHaveBeenCalledWith({
-      where: { teamId: 1, playerId: 200, releasedAt: null },
-    });
-    expect(mockTx.roster.delete).toHaveBeenCalledWith({ where: { id: 77 } });
-  });
-
-  it("two claims from same team trying to drop same player — second fails", async () => {
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 10, dropPlayerId: 500, team: { budget: 50, leagueId: 1 } },
-      { id: 2, teamId: 1, playerId: 200, bidAmount: 5, dropPlayerId: 500, team: { budget: 50, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique
-      .mockResolvedValueOnce({ budget: 50 })
-      .mockResolvedValueOnce({ budget: 40 });
-    mockTx.team.update.mockResolvedValue({});
-    mockTx.roster.create.mockResolvedValue({});
-    mockTx.roster.findFirst.mockResolvedValue({ id: 66 });
-    mockTx.roster.delete.mockResolvedValue({});
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    const result = await simulateProcessWaivers(claims);
-
-    expect(result.logs[0]).toContain("SUCCESS");
-    expect(result.logs[1]).toContain("FAILED_INVALID");
-    expect(result.logs[1]).toContain("Drop player already processed");
-
-    expect(mockTx.roster.create).toHaveBeenCalledTimes(1);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Tests: History / Audit
 // ---------------------------------------------------------------------------
 
@@ -861,25 +570,5 @@ describe("integration: claim atomicity", () => {
     await expect(
       simulateClaim({ leagueId: 1, teamId: 1, playerId: 100 })
     ).rejects.toThrow("Serialization failure");
-  });
-
-  it("waiver processing runs all mutations inside a single $transaction", async () => {
-    const claims: WaiverClaim[] = [
-      { id: 1, teamId: 1, playerId: 100, bidAmount: 10, dropPlayerId: null, team: { budget: 50, leagueId: 1 } },
-      { id: 2, teamId: 2, playerId: 200, bidAmount: 8, dropPlayerId: 300, team: { budget: 40, leagueId: 1 } },
-    ];
-
-    mockTx.team.findUnique
-      .mockResolvedValueOnce({ budget: 50 })
-      .mockResolvedValueOnce({ budget: 40 });
-    mockTx.team.update.mockResolvedValue({});
-    mockTx.roster.create.mockResolvedValue({});
-    mockTx.roster.findFirst.mockResolvedValue({ id: 99 });
-    mockTx.roster.delete.mockResolvedValue({});
-    mockTx.waiverClaim.update.mockResolvedValue({});
-
-    await simulateProcessWaivers(claims);
-
-    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
   });
 });
