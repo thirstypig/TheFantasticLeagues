@@ -5,6 +5,7 @@ import { TWO_WAY_PLAYERS, playerStatRoles } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
+import { onStatsChanged } from "../../../lib/statsChanged.js";
 
 import type { PeriodStatRow } from "../../../types/stats.js";
 
@@ -775,11 +776,14 @@ async function computeWithPeriodStats(
   });
 }
 
-// In-memory TTL cache — stats change only on daily cron syncs (12:00 + 13:00 UTC).
-// `pending` enables stampede prevention: if a second request arrives while the
-// first is still computing, both share the same in-flight Promise rather than
-// firing parallel `getSeasonStandingsUncached()` calls (mirrors the dashboard
-// service cache pattern).
+// In-memory cache, invalidated on every stats write (todo #305) with a TTL as a
+// backstop. `pending` enables stampede prevention: if a second request arrives
+// while the first is still computing, both share the same in-flight Promise
+// rather than firing parallel `getSeasonStandingsUncached()` calls (mirrors the
+// dashboard service cache pattern).
+//
+// `generation` closes the clear-during-compute race: a compute that started
+// before a clear read pre-clear data, so it must not write its result back.
 type StandingsCore = Awaited<ReturnType<typeof getSeasonStandingsUncached>>;
 type StandingsResult = StandingsCore & { computedAt: string };
 interface StandingsCacheEntry {
@@ -789,11 +793,15 @@ interface StandingsCacheEntry {
 }
 const standingsCache = new Map<number, StandingsCacheEntry>();
 const STANDINGS_CACHE_TTL = 120_000; // 2 minutes
+let generation = 0;
 
 export function clearStandingsCache(leagueId?: number): void {
+  generation++;
   if (leagueId !== undefined) standingsCache.delete(leagueId);
   else standingsCache.clear();
 }
+
+onStatsChanged(clearStandingsCache);
 
 /**
  * Season-level standings: sum roto points across all active/completed periods.
@@ -808,6 +816,7 @@ export async function getSeasonStandings(leagueId: number): Promise<StandingsRes
   if (cached?.data && cached.expiry > Date.now()) return cached.data;
   if (cached?.pending) return cached.pending;
 
+  const startedAt = generation;
   const pending = (async (): Promise<StandingsResult> => {
     const core = await getSeasonStandingsUncached(leagueId);
     return { ...core, computedAt: new Date().toISOString() };
@@ -815,10 +824,12 @@ export async function getSeasonStandings(leagueId: number): Promise<StandingsRes
   standingsCache.set(leagueId, { data: cached?.data, expiry: 0, pending });
   try {
     const result = await pending;
-    standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
+    if (generation === startedAt) {
+      standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
+    }
     return result;
   } catch (err) {
-    standingsCache.delete(leagueId);
+    if (generation === startedAt) standingsCache.delete(leagueId);
     throw err;
   }
 }
