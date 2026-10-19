@@ -782,8 +782,13 @@ async function computeWithPeriodStats(
 // rather than firing parallel `getSeasonStandingsUncached()` calls (mirrors the
 // dashboard service cache pattern).
 //
-// `generation` closes the clear-during-compute race: a compute that started
-// before a clear read pre-clear data, so it must not write its result back.
+// Clear-during-compute: a compute that started before a clear read pre-clear
+// data, so it must not write its result back. Each compute only touches the
+// entry while that entry still holds ITS `pending` — a clear deletes the entry,
+// and a newer compute replaces it, so a stale compute finds nothing it owns.
+// (An earlier global generation counter got this wrong: a clear for ANY league
+// left this league's settled `pending` in place, served forever — or, if the
+// compute had failed, rejected forever.)
 type StandingsCore = Awaited<ReturnType<typeof getSeasonStandingsUncached>>;
 type StandingsResult = StandingsCore & { computedAt: string };
 interface StandingsCacheEntry {
@@ -793,10 +798,8 @@ interface StandingsCacheEntry {
 }
 const standingsCache = new Map<number, StandingsCacheEntry>();
 const STANDINGS_CACHE_TTL = 120_000; // 2 minutes
-let generation = 0;
 
 export function clearStandingsCache(leagueId?: number): void {
-  generation++;
   if (leagueId !== undefined) standingsCache.delete(leagueId);
   else standingsCache.clear();
 }
@@ -816,20 +819,20 @@ export async function getSeasonStandings(leagueId: number): Promise<StandingsRes
   if (cached?.data && cached.expiry > Date.now()) return cached.data;
   if (cached?.pending) return cached.pending;
 
-  const startedAt = generation;
   const pending = (async (): Promise<StandingsResult> => {
     const core = await getSeasonStandingsUncached(leagueId);
     return { ...core, computedAt: new Date().toISOString() };
   })();
   standingsCache.set(leagueId, { data: cached?.data, expiry: 0, pending });
+  const stillOurs = () => standingsCache.get(leagueId)?.pending === pending;
   try {
     const result = await pending;
-    if (generation === startedAt) {
+    if (stillOurs()) {
       standingsCache.set(leagueId, { data: result, expiry: Date.now() + STANDINGS_CACHE_TTL });
     }
     return result;
   } catch (err) {
-    if (generation === startedAt) standingsCache.delete(leagueId);
+    if (stillOurs()) standingsCache.delete(leagueId);
     throw err;
   }
 }
