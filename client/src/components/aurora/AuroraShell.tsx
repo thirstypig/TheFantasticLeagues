@@ -7,8 +7,8 @@
  *   - Account popover anchored below the top bar
  *   - More popover anchored below the "More" tab
  *
- * All navigation items, route config, commissioner gating, league
- * switching, and theme toggle are preserved exactly as they were.
+ * All navigation items, route config, commissioner gating and league
+ * switching are preserved. The theme toggle moved to Profile → Appearance.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";

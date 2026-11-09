@@ -4,7 +4,7 @@
  * Mounted by `MobileLayoutGate` whenever `(max-width: 767px)` matches.
  *
  * Chrome:
- *   - 50px fixed top app bar: hamburger (left) → title (center) → theme toggle (right)
+ *   - 50px fixed top app bar: hamburger (left) → title (center) → spacer (right; theme lives in Profile → Appearance)
  *   - Left-slide drawer (260px, always in DOM, slides with transform) + dark overlay
  *   - MobileTabBar rendered inside the drawer as a vertical nav list; all
  *     data-testid / data-tab-key / aria-current attributes are preserved so
