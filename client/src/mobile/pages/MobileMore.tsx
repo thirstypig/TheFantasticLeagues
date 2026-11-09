@@ -12,7 +12,6 @@ import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
-import { useTheme } from "../../contexts/ThemeContext";
 import type { LeagueListItem } from "../../api";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard } from "../atoms/MCard";
@@ -155,7 +154,6 @@ function MoreItemRow({ item, isFirst }: MoreItemProps) {
 export function MobileMore() {
   const { user, me, logout } = useAuth();
   const { leagueId, leagues, currentLeagueName } = useLeague();
-  const { theme, toggleTheme } = useTheme();
 
   const isCommish = useMemo(() => {
     if (user?.isAdmin) return true;
@@ -190,8 +188,8 @@ export function MobileMore() {
       key: "appearance",
       icon: "cog",
       title: "Appearance",
-      sub: theme === "dark" ? "Aurora · Dark" : "Aurora · Light",
-      onClick: toggleTheme,
+      sub: "System, light or dark",
+      to: "/profile#appearance",
     },
     { key: "profile", icon: "me", title: "Profile", sub: "Edit name, photo, email", to: "/profile" },
   ];

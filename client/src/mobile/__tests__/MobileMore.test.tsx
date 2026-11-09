@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { MobileMore } from "../pages/MobileMore";
 
 const logoutMock = vi.fn();
-const toggleThemeMock = vi.fn();
 
 vi.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({
@@ -15,7 +14,7 @@ vi.mock("../../auth/AuthProvider", () => ({
 }));
 
 vi.mock("../../contexts/ThemeContext", () => ({
-  useTheme: () => ({ theme: "dark", toggleTheme: toggleThemeMock }),
+  useTheme: () => ({ theme: "dark", preference: "dark", setPreference: vi.fn(), toggleTheme: vi.fn() }),
 }));
 
 const useLeagueMock = vi.fn();
@@ -66,7 +65,7 @@ describe("MobileMore", () => {
     expect(screen.getByText(/Commissioner · OGBA/)).toBeInTheDocument();
   });
 
-  it("calls toggleTheme when the appearance row is clicked", () => {
+  it("links the Appearance row to /profile#appearance", () => {
     useLeagueMock.mockReturnValue({
       leagueId: 20,
       currentLeagueName: "OGBA",
@@ -77,8 +76,8 @@ describe("MobileMore", () => {
       .getAllByTestId("mobile-more-item")
       .find((el) => el.getAttribute("data-item-key") === "appearance");
     expect(appearance).toBeTruthy();
-    fireEvent.click(appearance!);
-    expect(toggleThemeMock).toHaveBeenCalledOnce();
+    expect(appearance!.tagName).toBe("A");
+    expect(appearance!.getAttribute("href")).toBe("/profile#appearance");
   });
 
   it("calls logout when sign out is clicked", () => {

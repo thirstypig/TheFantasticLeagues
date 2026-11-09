@@ -35,7 +35,7 @@ interface MoreSection {
 export default function AuroraShell({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { user, logout } = useAuth();
   const { leagueId, setLeagueId, leagues, draftMode, myTeamCode, currentSeason } = useLeague();
   const gating = useSeasonGating();
@@ -455,9 +455,6 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <button type="button" onClick={() => { setAccountOpen(false); nav("/profile"); }} style={popoverRowStyle(false)}>
                 Profile
-              </button>
-              <button type="button" onClick={toggleTheme} style={popoverRowStyle(false)}>
-                {theme === "dark" ? "Light theme" : "Dark theme"}
               </button>
               <button type="button" onClick={handleLogout} style={popoverRowStyle(false)}>
                 Sign out

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useToast } from "../../../contexts/ToastContext";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
@@ -12,6 +12,7 @@ import {
   type UserProfileData,
 } from "../api";
 import { NotificationSettings } from "../../notifications";
+import { useTheme, type ThemePreference } from "../../../contexts/ThemeContext";
 
 const MLB_TEAMS = [
   "AZ", "ATL", "BAL", "BOS", "CHC", "CWS", "CIN", "CLE", "COL", "DET",
@@ -44,10 +45,65 @@ function Initials({ name, size = 64 }: { name: string | null; size?: number }) {
   );
 }
 
+const APPEARANCE_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+function AppearanceSection() {
+  const { preference, setPreference } = useTheme();
+  return (
+    <div id="appearance" className="lg-card p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-[var(--lg-text-heading)] uppercase tracking-tight">
+        Appearance
+      </h2>
+      <p className="text-xs text-[var(--lg-text-muted)]">
+        System follows your device setting.
+      </p>
+      <div
+        role="radiogroup"
+        aria-label="Appearance"
+        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+      >
+        {APPEARANCE_OPTIONS.map((o) => {
+          const selected = preference === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setPreference(o.value)}
+              style={{
+                flex: "1 1 0",
+                minWidth: 88,
+                minHeight: 44,
+                padding: "0 16px",
+                fontSize: 16,
+                fontWeight: 600,
+                fontFamily: "inherit",
+                borderRadius: 8,
+                cursor: "pointer",
+                border: "1px solid var(--am-border-strong)",
+                background: selected ? "var(--am-accent)" : "var(--am-surface)",
+                color: selected ? "var(--am-on-accent)" : "var(--am-text)",
+              }}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { userId: paramUserId } = useParams<{ userId?: string }>();
   const { me, isAdmin } = useAuth();
   const { toast } = useToast();
+  const { hash } = useLocation();
 
   const meId = me?.user?.id; // string | undefined
   const isOwnProfile = !paramUserId || (meId != null && paramUserId === String(meId));
@@ -105,6 +161,12 @@ export default function ProfilePage() {
     })();
     return () => { mounted = false; };
   }, [targetUserId, isOwnProfile]);
+
+  // Deep link (/profile#appearance): the section only exists once data has loaded.
+  useEffect(() => {
+    if (loading || !hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView?.();
+  }, [loading, hash]);
 
   async function handleSave() {
     setSaving(true);
@@ -352,6 +414,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <AppearanceSection />
 
         {/* Payment Methods */}
         <div className="lg-card p-6 space-y-4">
