@@ -195,7 +195,7 @@ export class PointsScoringEngine implements ScoringEngine {
     for (const [stat, weight] of Object.entries(this.pointsConfig)) {
       // Map SV key to S (DB column name)
       const key = stat === "SV" ? "S" : stat;
-      const val = (teamStats as any)[key] ?? 0;
+      const val = teamStats.stats[key] ?? 0;
       total += val * weight;
     }
     return Math.round(total * 10) / 10;

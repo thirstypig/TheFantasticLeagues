@@ -91,8 +91,8 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
       const result = await computeTeamStatsFromDb(20, 36);
 
       expect(result).toHaveLength(1);
-      expect(result[0].HR).toBe(1); // only the active player's 1 HR
-      expect(result[0].R).toBe(2);
+      expect(result[0].stats.HR).toBe(1); // only the active player's 1 HR
+      expect(result[0].stats.R).toBe(2);
     });
 
     it("includes player stats when IL_STASH effDate is AFTER period start (mid-period stash)", async () => {
@@ -113,8 +113,8 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       // IL'd mid-period → stats still counted for whole period
-      expect(result[0].HR).toBe(3);
-      expect(result[0].R).toBe(5);
+      expect(result[0].stats.HR).toBe(3);
+      expect(result[0].stats.R).toBe(5);
     });
 
     it("does NOT exclude players with no IL events regardless of assignedPosition", async () => {
@@ -132,8 +132,8 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
-      expect(result[0].HR).toBe(4);
-      expect(result[0].R).toBe(3);
+      expect(result[0].stats.HR).toBe(4);
+      expect(result[0].stats.R).toBe(3);
     });
 
     it("does not divide by zero when all pitchers are IL'd (ERA/WHIP)", async () => {
@@ -152,10 +152,10 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
       ]);
 
       const result = await computeTeamStatsFromDb(20, 36);
-      expect(result[0].ERA).toBe(0);
-      expect(result[0].WHIP).toBe(0);
-      expect(result[0].W).toBe(0);
-      expect(result[0].K).toBe(0);
+      expect(result[0].stats.ERA).toBe(0);
+      expect(result[0].stats.WHIP).toBe(0);
+      expect(result[0].stats.W).toBe(0);
+      expect(result[0].stats.K).toBe(0);
     });
   });
 
@@ -190,9 +190,9 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       expect(result).toHaveLength(1);
-      expect(result[0].HR).toBe(2); // only 1086 contributes
-      expect(result[0].R).toBe(8);
-      expect(result[0].RBI).toBe(10);
+      expect(result[0].stats.HR).toBe(2); // only 1086 contributes
+      expect(result[0].stats.R).toBe(8);
+      expect(result[0].stats.RBI).toBe(10);
     });
 
     it("includes player stats for periods BEFORE the IL_STASH effDate", async () => {
@@ -219,8 +219,8 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 35);
       // Period 1: IL stash effDate (2026-04-19) > period1Start (2026-03-25) → not on IL during period 1 → stats count
-      expect(result[0].HR).toBe(2);
-      expect(result[0].R).toBe(7);
+      expect(result[0].stats.HR).toBe(2);
+      expect(result[0].stats.R).toBe(7);
     });
 
     it("restores stats when IL_ACTIVATE closes a stint before the period starts", async () => {
@@ -245,8 +245,8 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       // Activated before period 36 started → not on IL at period start → stats count
-      expect(result[0].HR).toBe(3);
-      expect(result[0].R).toBe(8);
+      expect(result[0].stats.HR).toBe(3);
+      expect(result[0].stats.R).toBe(8);
     });
 
     it("correctly handles multiple IL stints — excludes period overlapping second stint", async () => {
@@ -271,8 +271,8 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       // Second stash starts exactly at period 36 start → excluded
-      expect(result[0].HR).toBe(0);
-      expect(result[0].R).toBe(0);
+      expect(result[0].stats.HR).toBe(0);
+      expect(result[0].stats.R).toBe(0);
     });
 
     it("PSP path: pitcher stashed mid-period with W > 0 — pitching stats count (pre-stash stats locked in)", async () => {
@@ -297,9 +297,9 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       // Mid-period stash → wasOnIlAtPeriodStart = false → stats count
-      expect(result[0].W).toBe(1);
-      expect(result[0].K).toBe(10);
-      expect(result[0].IP).toBe(6);
+      expect(result[0].stats.W).toBe(1);
+      expect(result[0].stats.K).toBe(10);
+      expect(result[0].stats.IP).toBe(6);
     });
 
     it("PSP path: pitcher IL'd at period start — pitching stats excluded", async () => {
@@ -321,10 +321,10 @@ describe("computeTeamStatsFromDb — IL slot exclusion (todo #155)", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       // Period-start IL → excluded entirely
-      expect(result[0].W).toBe(0);
-      expect(result[0].K).toBe(0);
-      expect(result[0].IP).toBe(0);
-      expect(result[0].ERA).toBe(0);
+      expect(result[0].stats.W).toBe(0);
+      expect(result[0].stats.K).toBe(0);
+      expect(result[0].stats.IP).toBe(0);
+      expect(result[0].stats.ERA).toBe(0);
     });
   });
 });

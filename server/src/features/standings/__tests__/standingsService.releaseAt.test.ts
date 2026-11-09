@@ -96,8 +96,8 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      expect(rgs.R).toBe(0);
-      expect(rgs.HR).toBe(0);
+      expect(rgs.stats.R).toBe(0);
+      expect(rgs.stats.HR).toBe(0);
     });
 
     it("does NOT credit stats when player was released BEFORE period.startDate", async () => {
@@ -110,7 +110,7 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      expect(rgs.R).toBe(0); // no roster entry → no credit
+      expect(rgs.stats.R).toBe(0); // no roster entry → no credit
     });
 
     it("credits CLOSED-period stats to END-of-period owner, not current owner (todo #242)", async () => {
@@ -153,13 +153,13 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
       // End-of-period (4/18) owner is RGS — they get P1 credit.
-      expect(rgs.R).toBe(12);
-      expect(rgs.HR).toBe(4);
-      expect(rgs.RBI).toBe(9);
+      expect(rgs.stats.R).toBe(12);
+      expect(rgs.stats.HR).toBe(4);
+      expect(rgs.stats.RBI).toBe(9);
       // DLC acquired the player AFTER P1 ended; gets 0 P1 credit.
-      expect(dlc.R).toBe(0);
-      expect(dlc.HR).toBe(0);
-      expect(dlc.RBI).toBe(0);
+      expect(dlc.stats.R).toBe(0);
+      expect(dlc.stats.HR).toBe(0);
+      expect(dlc.stats.RBI).toBe(0);
     });
 
     it("credits stats to new team when player moved mid-period (releasedAt > startDate)", async () => {
@@ -190,8 +190,8 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
       // DLC holds on game date → gets credit; RGS window ended before the game.
-      expect(dlc.R).toBe(10);
-      expect(rgs.R).toBe(0);
+      expect(dlc.stats.R).toBe(10);
+      expect(rgs.stats.R).toBe(0);
     });
 
     it("picks LATEST acquisition on drop-and-re-add within a period (orderBy contract)", async () => {
@@ -224,9 +224,9 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       // RGS gets credit for the game in their re-acquisition window.
-      expect(rgs.R).toBe(15);
-      expect(rgs.HR).toBe(4);
-      expect(rgs.RBI).toBe(11);
+      expect(rgs.stats.R).toBe(15);
+      expect(rgs.stats.HR).toBe(4);
+      expect(rgs.stats.RBI).toBe(11);
     });
 
     it("does not double-count stats when both releasing and acquiring team entries exist at period start", async () => {
@@ -253,12 +253,12 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
-      const totalR = rgs.R + dlc.R;
+      const totalR = rgs.stats.R + dlc.stats.R;
       // Stats must count exactly once, not doubled
       expect(totalR).toBe(8);
       // Active team (DLC) takes priority
-      expect(dlc.R).toBe(8);
-      expect(rgs.R).toBe(0);
+      expect(dlc.stats.R).toBe(8);
+      expect(rgs.stats.R).toBe(0);
     });
 
     it("does NOT credit pitching stats (W, K, SV) to team that released a pitcher as free agent", async () => {
@@ -279,9 +279,9 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
 
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
-      expect(rgs.W).toBe(0);
-      expect(rgs.K).toBe(0);
-      expect(rgs.S).toBe(0);
+      expect(rgs.stats.W).toBe(0);
+      expect(rgs.stats.K).toBe(0);
+      expect(rgs.stats.S).toBe(0);
     });
 
     it("does NOT credit stats from any of multiple simultaneous free agents", async () => {
@@ -318,10 +318,10 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
       // No free-agent stats should appear anywhere
-      expect(rgs.W).toBe(0);
-      expect(rgs.K).toBe(0);
-      expect(dlc.W).toBe(0);
-      expect(dlc.K).toBe(0);
+      expect(rgs.stats.W).toBe(0);
+      expect(rgs.stats.K).toBe(0);
+      expect(dlc.stats.W).toBe(0);
+      expect(dlc.stats.K).toBe(0);
     });
 
     it("credits stats exactly once when player is released and re-acquired by same team — active entry returned first (normal order)", async () => {
@@ -353,10 +353,10 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       // Stats credited exactly once — no double-count across the two roster rows
-      expect(rgs.R).toBe(7);
-      expect(rgs.HR).toBe(2);
+      expect(rgs.stats.R).toBe(7);
+      expect(rgs.stats.HR).toBe(2);
       const dlc = result.find(r => r.team.code === "DLC")!;
-      expect(rgs.R + dlc.R).toBe(7);
+      expect(rgs.stats.R + dlc.stats.R).toBe(7);
     });
 
     it("credits stats exactly once when player is released and re-acquired by same team — released entry returned FIRST (ordering bug scenario)", async () => {
@@ -388,10 +388,10 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const result = await computeTeamStatsFromDb(20, 36);
       const rgs = result.find(r => r.team.code === "RGS")!;
       // Stats credited exactly once — no double-count regardless of row ordering
-      expect(rgs.R).toBe(7);
-      expect(rgs.HR).toBe(2);
+      expect(rgs.stats.R).toBe(7);
+      expect(rgs.stats.HR).toBe(2);
       const dlc = result.find(r => r.team.code === "DLC")!;
-      expect(rgs.R + dlc.R).toBe(7);
+      expect(rgs.stats.R + dlc.stats.R).toBe(7);
     });
 
     it("splits stats by ownership window for mid-period trade (daily-stats path, PR #374)", async () => {
@@ -424,12 +424,12 @@ describe("computeTeamStatsFromDb — releasedAt boundary + attribution", () => {
       const rgs = result.find(r => r.team.code === "RGS")!;
       const dlc = result.find(r => r.team.code === "DLC")!;
       // RGS gets pre-trade game; DLC gets both post-trade games
-      expect(rgs.R).toBe(5);
-      expect(rgs.HR).toBe(2);
-      expect(dlc.R).toBe(10);
-      expect(dlc.HR).toBe(2);
+      expect(rgs.stats.R).toBe(5);
+      expect(rgs.stats.HR).toBe(2);
+      expect(dlc.stats.R).toBe(10);
+      expect(dlc.stats.HR).toBe(2);
       // Zero-sum: combined totals match raw
-      expect(rgs.R + dlc.R).toBe(15);
+      expect(rgs.stats.R + dlc.stats.R).toBe(15);
     });
   });
 });

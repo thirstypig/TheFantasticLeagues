@@ -194,11 +194,13 @@ async function main() {
     const a = teamAccum.get(t.id)!;
     return {
       team: { id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() },
-      R: a.R, HR: a.HR, RBI: a.RBI, SB: a.SB,
-      AVG: a.AB > 0 ? a.H / a.AB : 0,
-      W: a.W, S: a.S, K: a.K,
-      ERA: a.IP > 0 ? (a.ER / a.IP) * 9 : 0,
-      WHIP: a.IP > 0 ? a.BB_H / a.IP : 0,
+      stats: {
+        R: a.R, HR: a.HR, RBI: a.RBI, SB: a.SB,
+        AVG: a.AB > 0 ? a.H / a.AB : 0,
+        W: a.W, S: a.S, K: a.K,
+        ERA: a.IP > 0 ? (a.ER / a.IP) * 9 : 0,
+        WHIP: a.IP > 0 ? a.BB_H / a.IP : 0,
+      },
     };
   });
 
@@ -242,7 +244,7 @@ async function main() {
     const name = ts.team.name.slice(0, 24).padEnd(26);
     const values = cats
       .map((c) => {
-        const v = (ts as Record<string, unknown>)[c] as number;
+        const v = ts.stats[c] ?? 0;
         if (c === "AVG") return v.toFixed(4).padStart(8);
         if (c === "WHIP") return v.toFixed(3).padStart(8);
         if (c === "ERA") return v.toFixed(2).padStart(8);
