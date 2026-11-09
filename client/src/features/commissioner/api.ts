@@ -499,7 +499,7 @@ export async function getAcceptedTradeCount(leagueId: number): Promise<number> {
 }
 
 /** Shape of GET /standings/period-category-standings (standings/routes.ts res.json). */
-export interface PeriodCategoryStandingsResponse {
+export interface PeriodStandingsPreviewResponse {
   periodId: number;
   categories: Array<{
     key: string;
@@ -516,12 +516,12 @@ export interface PeriodCategoryStandingsResponse {
 export async function getPeriodStandingsPreview(
   leagueId: number,
   periodId: number,
-): Promise<PeriodCategoryStandingsResponse> {
+): Promise<PeriodStandingsPreviewResponse> {
   return fetchJsonApi(`${API_BASE}/standings/period-category-standings?leagueId=${leagueId}&periodId=${periodId}`);
 }
 
 /** Sum each team's category points; highest first. */
-export function toTeamTotals(resp: PeriodCategoryStandingsResponse): { teamName: string; points: number }[] {
+export function toTeamTotals(resp: PeriodStandingsPreviewResponse): { teamName: string; points: number }[] {
   const totals = new Map<number, { teamName: string; points: number }>();
   for (const cat of resp.categories) {
     for (const row of cat.rows) {
