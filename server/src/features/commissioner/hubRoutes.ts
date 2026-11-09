@@ -1,5 +1,6 @@
 // Commissioner hub read endpoints: roster check, close readiness, moves since
-// period start. Read-only; mounted on the commissioner router via index.ts.
+// period start, recent changes, unbilled periods. Read-only; mounted on the
+// commissioner router via index.ts.
 import { Router } from "express";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireCommissionerOrAdmin } from "../../middleware/auth.js";
@@ -130,5 +131,95 @@ hubRouter.get(
         effDate: e.effDate ? e.effDate.toISOString() : "",
       })),
     });
+  }),
+);
+
+function metaLeagueId(metadata: unknown): number | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const n = Number((metadata as Record<string, unknown>).leagueId);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * GET /api/commissioner/:leagueId/recent-changes?limit=N (default 50, max 100)
+ * Latest AuditLog rows for this league. Filters in memory on metadata.leagueId
+ * over the newest 500 rows (portable; no JSON-path query or migration).
+ */
+hubRouter.get(
+  "/commissioner/:leagueId/recent-changes",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  asyncHandler(async (req, res) => {
+    const leagueId = parseId(req.params.leagueId);
+    if (leagueId === null) return res.status(400).json({ error: "Invalid leagueId" });
+
+    const rawLimit = Math.floor(Number(req.query.limit));
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 50;
+
+    const rows = await prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 500,
+      include: { user: { select: { name: true } } },
+    });
+
+    const changes = rows
+      .filter((r) => metaLeagueId(r.metadata) === leagueId)
+      .slice(0, limit)
+      .map((r) => ({
+        id: r.id,
+        action: r.action,
+        resourceType: r.resourceType,
+        resourceId: r.resourceId ?? null,
+        createdAt: r.createdAt.toISOString(),
+        userName: r.user?.name ?? null,
+        metadata: (r.metadata as Record<string, unknown> | null) ?? null,
+      }));
+
+    res.json({ changes });
+  }),
+);
+
+/**
+ * GET /api/commissioner/:leagueId/unbilled-periods
+ * A period is unbilled when its latest PERIOD_CLOSE has metadata.billed === false
+ * and no IL_FEE_RECONCILE for the same period was recorded after that close.
+ */
+hubRouter.get(
+  "/commissioner/:leagueId/unbilled-periods",
+  requireAuth,
+  requireCommissionerOrAdmin(),
+  asyncHandler(async (req, res) => {
+    const leagueId = parseId(req.params.leagueId);
+    if (leagueId === null) return res.status(400).json({ error: "Invalid leagueId" });
+
+    const rows = await prisma.auditLog.findMany({
+      where: { action: { in: ["PERIOD_CLOSE", "IL_FEE_RECONCILE"] }, resourceType: "Period" },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const latestClose = new Map<string, (typeof rows)[number]>();
+    const latestReconcile = new Map<string, Date>();
+    for (const r of rows) {
+      if (r.resourceId == null || metaLeagueId(r.metadata) !== leagueId) continue;
+      if (r.action === "PERIOD_CLOSE") {
+        const prev = latestClose.get(r.resourceId);
+        if (!prev || r.createdAt >= prev.createdAt) latestClose.set(r.resourceId, r);
+      } else {
+        const prev = latestReconcile.get(r.resourceId);
+        if (!prev || r.createdAt > prev) latestReconcile.set(r.resourceId, r.createdAt);
+      }
+    }
+
+    const periods: { periodId: number; closedAt: string }[] = [];
+    for (const [resourceId, close] of latestClose) {
+      const billed = (close.metadata as Record<string, unknown> | null)?.billed;
+      if (billed !== false) continue;
+      const reconciledAt = latestReconcile.get(resourceId);
+      if (reconciledAt && reconciledAt > close.createdAt) continue;
+      periods.push({ periodId: Number(resourceId), closedAt: close.createdAt.toISOString() });
+    }
+    periods.sort((a, b) => a.periodId - b.periodId);
+
+    res.json({ periods });
   }),
 );

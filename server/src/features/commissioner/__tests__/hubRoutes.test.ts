@@ -11,6 +11,7 @@ vi.mock("../../../db/prisma.js", () => ({
     period: { findUnique: vi.fn() },
     playerStatsDaily: { aggregate: vi.fn() },
     transactionEvent: { findMany: vi.fn() },
+    auditLog: { findMany: vi.fn() },
   },
 }));
 
@@ -53,8 +54,8 @@ afterEach(() => {
 });
 
 describe("auth wiring", () => {
-  it("registers requireCommissionerOrAdmin once per route (3 routes)", () => {
-    expect(authFactoryCallsAfterImport).toBe(3);
+  it("registers requireCommissionerOrAdmin once per route (5 routes)", () => {
+    expect(authFactoryCallsAfterImport).toBe(5);
   });
 });
 
@@ -223,5 +224,127 @@ describe("GET /api/commissioner/:leagueId/periods/:periodId/moves-since-start", 
       { id: 1, teamName: "Aces", playerName: "Juan Soto", transactionType: "ADD", effDate: "2026-09-16T00:00:00.000Z" },
       { id: 2, teamName: "Raw Team", playerName: "Raw Player", transactionType: null, effDate: "2026-09-17T00:00:00.000Z" },
     ]);
+  });
+});
+
+describe("GET /api/commissioner/:leagueId/recent-changes", () => {
+  const row = (id: number, leagueId: number, over: Record<string, unknown> = {}) => ({
+    id,
+    action: "PERIOD_START",
+    resourceType: "Period",
+    resourceId: String(id),
+    metadata: { leagueId },
+    createdAt: new Date(Date.UTC(2026, 9, 1, 0, id)),
+    user: { name: "Commish" },
+    ...over,
+  });
+
+  it("400s on a non-numeric leagueId", async () => {
+    expect((await supertest(app).get("/api/commissioner/x/recent-changes")).status).toBe(400);
+  });
+
+  it("reads the latest 500 rows newest first with user name, keeps only this league, maps fields", async () => {
+    m.auditLog.findMany.mockResolvedValue([
+      row(5, 20),
+      row(4, 21),
+      row(3, 20, { user: null, metadata: { leagueId: "20" } }),
+      row(2, 20, { metadata: null }),
+      row(1, 20, { metadata: { leagueId: 20, billed: true } }),
+    ]);
+    const res = await supertest(app).get("/api/commissioner/20/recent-changes");
+    expect(res.status).toBe(200);
+
+    const args = m.auditLog.findMany.mock.calls[0][0];
+    expect(args.take).toBe(500);
+    expect(args.orderBy).toEqual({ createdAt: "desc" });
+    expect(args.include).toEqual({ user: { select: { name: true } } });
+
+    expect(res.body.changes.map((c: any) => c.id)).toEqual([5, 3, 1]);
+    expect(res.body.changes[0]).toEqual({
+      id: 5,
+      action: "PERIOD_START",
+      resourceType: "Period",
+      resourceId: "5",
+      createdAt: "2026-10-01T00:05:00.000Z",
+      userName: "Commish",
+      metadata: { leagueId: 20 },
+    });
+    expect(res.body.changes[1].userName).toBeNull();
+  });
+
+  it("limit=2 returns 2; default caps at 50; max 100", async () => {
+    m.auditLog.findMany.mockResolvedValue(Array.from({ length: 120 }, (_, i) => row(i + 1, 20)));
+    expect((await supertest(app).get("/api/commissioner/20/recent-changes?limit=2")).body.changes).toHaveLength(2);
+    expect((await supertest(app).get("/api/commissioner/20/recent-changes")).body.changes).toHaveLength(50);
+    expect((await supertest(app).get("/api/commissioner/20/recent-changes?limit=1000")).body.changes).toHaveLength(100);
+  });
+});
+
+describe("GET /api/commissioner/:leagueId/unbilled-periods", () => {
+  const ev = (id: number, action: string, periodId: number, iso: string, metadata: any) => ({
+    id,
+    action,
+    resourceType: "Period",
+    resourceId: String(periodId),
+    metadata,
+    createdAt: new Date(iso),
+  });
+  const T0 = "2026-10-01T00:00:00Z";
+  const T1 = "2026-10-02T00:00:00Z";
+  const T2 = "2026-10-03T00:00:00Z";
+  const close = (id: number, p: number, iso: string, billed: boolean, leagueId = 20) =>
+    ev(id, "PERIOD_CLOSE", p, iso, { leagueId, periodId: p, billed });
+  const reconcile = (id: number, p: number, iso: string, leagueId = 20) =>
+    ev(id, "IL_FEE_RECONCILE", p, iso, { leagueId });
+
+  it("400s on a non-numeric leagueId", async () => {
+    expect((await supertest(app).get("/api/commissioner/x/unbilled-periods")).status).toBe(400);
+  });
+
+  it("queries Period close/reconcile rows and lists a billed:false close with nothing after", async () => {
+    m.auditLog.findMany.mockResolvedValue([close(1, 6, T1, false)]);
+    const res = await supertest(app).get("/api/commissioner/20/unbilled-periods");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ periods: [{ periodId: 6, closedAt: "2026-10-02T00:00:00.000Z" }] });
+    const args = m.auditLog.findMany.mock.calls[0][0];
+    expect(args.where).toEqual({
+      action: { in: ["PERIOD_CLOSE", "IL_FEE_RECONCILE"] },
+      resourceType: "Period",
+    });
+  });
+
+  it("a later IL_FEE_RECONCILE clears the period", async () => {
+    m.auditLog.findMany.mockResolvedValue([close(1, 6, T1, false), reconcile(2, 6, T2)]);
+    const res = await supertest(app).get("/api/commissioner/20/unbilled-periods");
+    expect(res.body.periods).toEqual([]);
+  });
+
+  it("an earlier IL_FEE_RECONCILE does not clear a later billed:false close", async () => {
+    m.auditLog.findMany.mockResolvedValue([reconcile(1, 6, T0), close(2, 6, T1, false)]);
+    const res = await supertest(app).get("/api/commissioner/20/unbilled-periods");
+    expect(res.body.periods).toEqual([{ periodId: 6, closedAt: "2026-10-02T00:00:00.000Z" }]);
+  });
+
+  it("billed:true is not unbilled", async () => {
+    m.auditLog.findMany.mockResolvedValue([close(1, 6, T1, true)]);
+    expect((await supertest(app).get("/api/commissioner/20/unbilled-periods")).body.periods).toEqual([]);
+  });
+
+  it("uses the latest close per period, ignores other leagues and reconciles for other periods", async () => {
+    m.auditLog.findMany.mockResolvedValue([
+      close(1, 6, T0, false),
+      close(2, 6, T1, true), // latest close is billed -> not unbilled
+      close(3, 7, T1, false, 21), // other league
+      close(4, 8, T1, false),
+      reconcile(5, 9, T2), // different period; does not clear 8
+    ]);
+    const res = await supertest(app).get("/api/commissioner/20/unbilled-periods");
+    expect(res.body.periods).toEqual([{ periodId: 8, closedAt: "2026-10-02T00:00:00.000Z" }]);
+  });
+
+  it("a reconcile in another league for the same period id does not clear it", async () => {
+    m.auditLog.findMany.mockResolvedValue([close(1, 6, T1, false), reconcile(2, 6, T2, 21)]);
+    const res = await supertest(app).get("/api/commissioner/20/unbilled-periods");
+    expect(res.body.periods).toHaveLength(1);
   });
 });
