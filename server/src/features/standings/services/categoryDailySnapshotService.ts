@@ -72,8 +72,7 @@ export async function snapshotLeagueCategoryDaily(
       // CATEGORY_CONFIG keys map to different field names; cfg.key is
       // the API contract while dbField is what's on TeamStatRow).
       const teamRow = teamStats.find((t) => t.team.id === r.teamId);
-      const rawValue =
-        (teamRow as unknown as Record<string, number>)?.[dbField] ?? r.value ?? 0;
+      const rawValue = teamRow?.stats[dbField] ?? r.value ?? 0;
       rows.push({
         teamId: r.teamId,
         leagueId,

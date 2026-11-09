@@ -56,8 +56,8 @@ beforeEach(() => {
 });
 
 const sampleTeamStats = [
-  { team: { id: 1, name: "Team A" }, R: 50, HR: 10, ERA: 3.5 },
-  { team: { id: 2, name: "Team B" }, R: 45, HR: 12, ERA: 4.1 },
+  { team: { id: 1, name: "Team A" }, stats: { R: 50, HR: 10, ERA: 3.5 } },
+  { team: { id: 2, name: "Team B" }, stats: { R: 45, HR: 12, ERA: 4.1 } },
 ];
 
 describe("snapshotLeagueCategoryDaily — period selection", () => {

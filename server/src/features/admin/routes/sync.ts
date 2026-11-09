@@ -117,45 +117,16 @@ router.post("/admin/recompute-period-cache", requireAuth, requireAdmin, validate
 
   const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
   if (teamStats.length > 0) {
-    // Safe accessor for generic TeamStatRow stats
-    const getStatValue = (row: typeof teamStats[0], key: string): number => {
-      const val = row[key];
-      if (typeof val === "number") return val;
-      return 0;
-    };
-
+    const CACHED_CATEGORIES = ["R", "HR", "RBI", "SB", "AVG", "W", "S", "ERA", "WHIP", "K"] as const;
     await prisma.$transaction(
-      teamStats.map(t =>
-        prisma.teamStatsPeriod.upsert({
-          where: { teamId_periodId: { teamId: t.team.id, periodId } },
-          update: {
-            R: getStatValue(t, "R"),
-            HR: getStatValue(t, "HR"),
-            RBI: getStatValue(t, "RBI"),
-            SB: getStatValue(t, "SB"),
-            AVG: getStatValue(t, "AVG"),
-            W: getStatValue(t, "W"),
-            S: getStatValue(t, "S"),
-            ERA: getStatValue(t, "ERA"),
-            WHIP: getStatValue(t, "WHIP"),
-            K: getStatValue(t, "K"),
-          },
-          create: {
-            teamId: t.team.id,
-            periodId,
-            R: getStatValue(t, "R"),
-            HR: getStatValue(t, "HR"),
-            RBI: getStatValue(t, "RBI"),
-            SB: getStatValue(t, "SB"),
-            AVG: getStatValue(t, "AVG"),
-            W: getStatValue(t, "W"),
-            S: getStatValue(t, "S"),
-            ERA: getStatValue(t, "ERA"),
-            WHIP: getStatValue(t, "WHIP"),
-            K: getStatValue(t, "K"),
-          },
-        })
-      )
+      teamStats.map(({ team, stats }) => {
+        const values = Object.fromEntries(CACHED_CATEGORIES.map(k => [k, stats[k] ?? 0])) as Record<typeof CACHED_CATEGORIES[number], number>;
+        return prisma.teamStatsPeriod.upsert({
+          where: { teamId_periodId: { teamId: team.id, periodId } },
+          update: values,
+          create: { teamId: team.id, periodId, ...values },
+        });
+      })
     );
   }
 
@@ -173,7 +144,7 @@ router.post("/admin/recompute-period-cache", requireAuth, requireAdmin, validate
     leagueId,
     periodName: period.name,
     teamsUpdated: teamStats.length,
-    stats: teamStats.map(t => ({ code: t.team.code, W: t.W, K: t.K, R: t.R })),
+    stats: teamStats.map(({ team, stats }) => ({ code: team.code, W: stats.W, K: stats.K, R: stats.R })),
   });
 }));
 

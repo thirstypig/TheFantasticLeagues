@@ -1,7 +1,9 @@
 # Plan: TeamStatRow → nested `stats` (sport-agnostic standings end-state)
 
-> Status: PLANNED (not started) · Created 2026-06-29 · Risk: **HIGH (live real-money scoring path)**
-> Closes: review todo #294 (retained cast + MLB-pin debt); completes Phase 3.5 / Week-2 standings refactor.
+> Status: **DONE 2026-11-09** (branch `refactor/standings-nested-stats`) · Created 2026-06-29 · Risk: **HIGH (live real-money scoring path)**
+> Closes: review todo #294's remaining debt (cast + MLB-pin). Does NOT complete Phase 3.5 — loading categories from `league.scoringSettings` and sport plumbing through the routes are still open (see `docs/WEEK2_PROGRESS.md`).
+>
+> **Outcome:** Gate run as a deterministic read-only dump of `computeTeamStatsFromDb` + standings + category rows + season totals for every period of league 20 against prod — byte-identical before/after (sha `ee0122c`, and re-confirmed against a fresh `main` run). The FanGraphs audit was not used as the gate (it fetches FG live, so it is not deterministic). The scope table below was incomplete: `standings/routes.ts`, `digestService.ts` and `routes/public.ts` also consume the rows, and five reads were tsc-invisible (`as any` / cast / spread) — each is now pinned by a test.
 
 ## Goal
 
@@ -63,14 +65,14 @@ Also: `routes.ts` season-total accumulation (`prev.R += t.R`) and `client/` stan
 
 ## Step-by-step
 
-- [ ] **0. Baseline**: run + save the FanGraphs audit output (prod). Confirm differential test + full suite green on `main`.
-- [ ] **1. Type + constructors**: change `TeamStatRow` to `{ team, stats }`. Update the 4 constructors to build `stats: { R, HR, …, AVG, ERA, WHIP, H, AB, ER, IP, BB_H }` with explicit 0-fallbacks. Drop the index signature and the `as TeamStatRow` cast.
-- [ ] **2. Engine readers**: `computeCategoryRows` `s[dbField]` → `s.stats[dbField]`; `getTeamStatValue` likewise.
-- [ ] **3. Consumers**: migrate `teams/routes.ts`, `periodAwardsService.ts`, `scoringEngine.ts`, `admin/sync.ts`, `categoryDailySnapshotService.ts` — `row.R` → `row.stats.R`, accumulation loops accordingly.
-- [ ] **4. API DTO check**: ensure the standings route's response shape to the client is unchanged (flatten `stats` if the old DTO was flat). Add a contract assertion if missing.
-- [ ] **5. Audit script**: update `fangraphs-audit.ts`'s row build to nested shape.
-- [ ] **6. Tests**: update fixtures in both standings test files to nested shape; keep assertions.
-- [ ] **7. Verify**: server tsc clean; full suite green; differential test green; **re-run audit → identical to baseline**.
+- [x] **0. Baseline**: run + save the FanGraphs audit output (prod). Confirm differential test + full suite green on `main`.
+- [x] **1. Type + constructors**: change `TeamStatRow` to `{ team, stats }`. Update the 4 constructors to build `stats: { R, HR, …, AVG, ERA, WHIP, H, AB, ER, IP, BB_H }` with explicit 0-fallbacks. Drop the index signature and the `as TeamStatRow` cast.
+- [x] **2. Engine readers**: `computeCategoryRows` `s[dbField]` → `s.stats[dbField]`; `getTeamStatValue` likewise.
+- [x] **3. Consumers**: migrate `teams/routes.ts`, `periodAwardsService.ts`, `scoringEngine.ts`, `admin/sync.ts`, `categoryDailySnapshotService.ts` — `row.R` → `row.stats.R`, accumulation loops accordingly.
+- [x] **4. API DTO check**: ensure the standings route's response shape to the client is unchanged (flatten `stats` if the old DTO was flat). Add a contract assertion if missing.
+- [x] **5. Audit script**: update `fangraphs-audit.ts`'s row build to nested shape.
+- [x] **6. Tests**: update fixtures in both standings test files to nested shape; keep assertions.
+- [x] **7. Verify**: server tsc clean; full suite green; differential test green; **re-run audit → identical to baseline**.
 - [ ] **8. Ship**: single focused PR. After merge + deploy, browser-verify `/season` on prod and re-run the audit against prod one more time.
 
 ## Out of scope

@@ -57,7 +57,7 @@ vi.mock("../services/standingsService.js", () => ({
 
 import { prisma } from "../../../db/prisma.js";
 import express from "express";
-import { standingsRouter } from "../routes.js";
+import { standingsRouter, persistTeamStatsPeriodSnapshot } from "../routes.js";
 import supertest from "supertest";
 
 const mockPrisma = prisma as any;
@@ -80,8 +80,8 @@ beforeEach(() => {
 // ── Sample data ─────────────────────────────────────────────────
 
 const sampleTeamStats = [
-  { team: { id: 1, name: "Team A", code: "TMA" }, R: 50, HR: 10, RBI: 40, SB: 5, AVG: 0.280, W: 8, S: 3, ERA: 3.50, WHIP: 1.20, K: 80 },
-  { team: { id: 2, name: "Team B", code: "TMB" }, R: 45, HR: 12, RBI: 38, SB: 8, AVG: 0.265, W: 6, S: 5, ERA: 4.10, WHIP: 1.35, K: 70 },
+  { team: { id: 1, name: "Team A", code: "TMA" }, stats: { R: 50, HR: 10, RBI: 40, SB: 5, AVG: 0.280, W: 8, S: 3, ERA: 3.50, WHIP: 1.20, K: 80 } },
+  { team: { id: 2, name: "Team B", code: "TMB" }, stats: { R: 45, HR: 12, RBI: 38, SB: 8, AVG: 0.265, W: 6, S: 5, ERA: 4.10, WHIP: 1.35, K: 70 } },
 ];
 
 const sampleStandings = [
@@ -174,6 +174,33 @@ describe("GET /period-category-standings", () => {
     expect(res.body.categories[0].rows).toHaveLength(2);
   });
 
+  it("ranks the previous standings from the persisted snapshot values (points delta)", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({
+      periodIds: [5],
+      periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }],
+      seasonRows: [],
+    });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeStandingsFromStats.mockReturnValue(sampleStandings);
+    mockComputeCategoryRows.mockReturnValue([]);
+    // Team 1 has a snapshot; team 2 does not (keeps its live stats).
+    const snap = { teamId: 1, R: 7, HR: 1, RBI: 6, SB: 0, AVG: 0.2, W: 1, S: 0, ERA: 5.0, WHIP: 1.5, K: 9 };
+    mockPrisma.teamStatsPeriod.findMany.mockResolvedValueOnce([snap]);
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+    expect(res.status).toBe(200);
+
+    // Call 0 = current standings, call 1 = previous (snapshot-overridden) standings.
+    expect(mockComputeStandingsFromStats).toHaveBeenCalledTimes(2);
+    const prevRows = mockComputeStandingsFromStats.mock.calls[1][0];
+    const { teamId: _ignored, ...snapStats } = snap;
+    expect(prevRows).toEqual([
+      { team: sampleTeamStats[0].team, stats: { ...sampleTeamStats[0].stats, ...snapStats } },
+      sampleTeamStats[1],
+    ]);
+  });
+
   it("accepts explicit periodId param", async () => {
     mockGetSeasonStandings.mockResolvedValue({
       periodIds: [7],
@@ -199,8 +226,8 @@ describe("GET /period-category-standings", () => {
     // (populated by getSeasonStandings from TeamStatsPeriod), computeTeamStatsFromDb
     // was bypassed entirely. That created a circular read→write-back that kept
     // TeamStatsPeriod stale forever after being first written with incomplete data.
-    const staleCacheStats = [{ team: { id: 1, name: "Old", code: "OLD" }, W: 9, K: 102, R: 100, HR: 10, RBI: 50, SB: 5, AVG: 0.250, S: 2, ERA: 4.00, WHIP: 1.300 }];
-    const freshStats = [{ team: { id: 1, name: "Old", code: "OLD" }, W: 15, K: 166, R: 100, HR: 10, RBI: 50, SB: 5, AVG: 0.250, S: 2, ERA: 4.00, WHIP: 1.300 }];
+    const staleCacheStats = [{ team: { id: 1, name: "Old", code: "OLD" }, stats: { W: 9, K: 102, R: 100, HR: 10, RBI: 50, SB: 5, AVG: 0.250, S: 2, ERA: 4.00, WHIP: 1.300 } }];
+    const freshStats = [{ team: { id: 1, name: "Old", code: "OLD" }, stats: { W: 15, K: 166, R: 100, HR: 10, RBI: 50, SB: 5, AVG: 0.250, S: 2, ERA: 4.00, WHIP: 1.300 } }];
 
     mockGetSeasonStandings.mockResolvedValue({
       periodIds: [36], // period IS in the seasonal cache
@@ -266,23 +293,27 @@ describe("GET /period-category-standings — season-to-date weighted averaging",
   const periodOneStats = [
     {
       team: { id: 1, name: "Team A", code: "TMA" },
-      R: 10, HR: 2, RBI: 8, SB: 1,
-      AVG: 0.300, // 30 H / 100 AB
-      W: 1, S: 0, ERA: 9.00, // 10 ER, 10 IP
-      WHIP: 1.50, // BB_H = 15, IP = 10
-      K: 5,
-      H: 30, AB: 100, ER: 10, IP: 10, BB_H: 15,
+      stats: {
+        R: 10, HR: 2, RBI: 8, SB: 1,
+        AVG: 0.300, // 30 H / 100 AB
+        W: 1, S: 0, ERA: 9.00, // 10 ER, 10 IP
+        WHIP: 1.50, // BB_H = 15, IP = 10
+        K: 5,
+        H: 30, AB: 100, ER: 10, IP: 10, BB_H: 15,
+      },
     },
   ];
   const periodTwoStats = [
     {
       team: { id: 1, name: "Team A", code: "TMA" },
-      R: 40, HR: 8, RBI: 32, SB: 4,
-      AVG: 0.200, // 80 H / 400 AB
-      W: 4, S: 0, ERA: 1.00, // 10 ER, 90 IP
-      WHIP: 1.00, // BB_H = 90, IP = 90
-      K: 20,
-      H: 80, AB: 400, ER: 10, IP: 90, BB_H: 90,
+      stats: {
+        R: 40, HR: 8, RBI: 32, SB: 4,
+        AVG: 0.200, // 80 H / 400 AB
+        W: 4, S: 0, ERA: 1.00, // 10 ER, 90 IP
+        WHIP: 1.00, // BB_H = 90, IP = 90
+        K: 20,
+        H: 80, AB: 400, ER: 10, IP: 90, BB_H: 90,
+      },
     },
   ];
 
@@ -371,9 +402,11 @@ describe("GET /period-category-standings — season-to-date weighted averaging",
     const emptyHittingPitching = [
       {
         team: { id: 1, name: "Team A", code: "TMA" },
-        R: 0, HR: 0, RBI: 0, SB: 0,
-        AVG: 0, W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
-        H: 0, AB: 0, ER: 0, IP: 0, BB_H: 0,
+        stats: {
+          R: 0, HR: 0, RBI: 0, SB: 0,
+          AVG: 0, W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
+          H: 0, AB: 0, ER: 0, IP: 0, BB_H: 0,
+        },
       },
     ];
     mockGetSeasonStandings.mockReset();
@@ -469,6 +502,15 @@ describe("GET /season", () => {
 
     // Sorted by totalPoints descending
     expect(res.body.rows[0].teamId).toBe(1);
+
+    // Per-period raw category values come from each period's teamStats rows.
+    // "S" is the DB field for saves. A wrong accessor here silently renders
+    // every value as 0 on /season (the read is dynamic, so tsc can't see it).
+    expect(teamA.periodStats.R).toEqual([50, 50]);
+    expect(teamA.periodStats.S).toEqual([3, 3]);
+    expect(teamA.periodStats.AVG).toEqual([0.28, 0.28]);
+    expect(teamB.periodStats.K).toEqual([70, 70]);
+    expect(teamB.periodStats.WHIP).toEqual([1.35, 1.35]);
   });
 
   it("returns empty rows when no periods exist", async () => {
@@ -552,5 +594,23 @@ describe("GET /standings/settlement/:leagueId", () => {
     expect(res.status).toBe(200);
     expect(res.body.totalPot).toBe(0);
     expect(res.body.teams).toHaveLength(0);
+  });
+});
+
+// ── persistTeamStatsPeriodSnapshot ──────────────────────────────
+
+describe("persistTeamStatsPeriodSnapshot", () => {
+  it("upserts each team's 10 category values from row.stats", async () => {
+    mockPrisma.teamStatsPeriod.upsert.mockImplementation((args: unknown) => args);
+
+    await persistTeamStatsPeriodSnapshot(9, sampleTeamStats);
+
+    const teamA = { R: 50, HR: 10, RBI: 40, SB: 5, AVG: 0.280, W: 8, S: 3, ERA: 3.50, WHIP: 1.20, K: 80 };
+    expect(mockPrisma.teamStatsPeriod.upsert).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.teamStatsPeriod.upsert).toHaveBeenCalledWith({
+      where: { teamId_periodId: { teamId: 1, periodId: 9 } },
+      update: teamA,
+      create: { teamId: 1, periodId: 9, ...teamA },
+    });
   });
 });
