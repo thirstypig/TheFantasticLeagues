@@ -409,7 +409,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                           fontVariantNumeric: "tabular-nums",
                           fontWeight: 600,
                           flexShrink: 0,
-                          color: isWinning ? "var(--am-text)" : "var(--am-accent)",
+                          color: isWinning ? "var(--am-text)" : "var(--am-text-muted)",
                         }}
                       >
                         ${bid.amount}

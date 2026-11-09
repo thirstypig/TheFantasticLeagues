@@ -15,6 +15,7 @@
 .cm-chip.accent { background: color-mix(in srgb, var(--am-accent) 14%, var(--am-surface)); color: var(--am-accent); border-color: color-mix(in srgb, var(--am-accent) 35%, var(--am-border)); }
 .cm-chip.warn { background: color-mix(in srgb, var(--am-warning) 18%, var(--am-surface)); color: var(--am-warning); border-color: color-mix(in srgb, var(--am-warning) 40%, var(--am-border)); }
 .cm-chip.neg { background: color-mix(in srgb, var(--am-negative) 14%, var(--am-surface)); color: var(--am-negative); border-color: color-mix(in srgb, var(--am-negative) 35%, var(--am-border)); }
+.cm-chip.pos { background: color-mix(in srgb, var(--am-positive) 14%, var(--am-surface)); color: var(--am-positive); border-color: color-mix(in srgb, var(--am-positive) 35%, var(--am-border)); }
 
 .cm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; background: var(--am-surface); color: var(--am-text); border: 1px solid var(--am-border); cursor: pointer; font-family: inherit; transition: background .12s, border-color .12s, color .12s; white-space: nowrap; }
 .cm-btn:hover { background: var(--am-chip); border-color: var(--am-border-strong); }

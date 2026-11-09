@@ -181,7 +181,7 @@ export function IridText({
         fontSize: size,
         fontWeight: weight,
         lineHeight: 1,
-        color: "var(--am-accent)",
+        color: "var(--am-text)",
         fontVariantNumeric: "tabular-nums",
         ...style,
       }}

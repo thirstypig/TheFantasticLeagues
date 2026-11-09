@@ -729,7 +729,7 @@ export default function Commissioner() {
 
   // Season status chip variant
   function statusChipClass(s: string | null | undefined): string {
-    if (s === "IN_SEASON") return "cm-chip accent";
+    if (s === "IN_SEASON") return "cm-chip pos";
     if (s === "DRAFT") return "cm-chip warn";
     if (s === "SETUP") return "cm-chip";
     return "cm-chip";
@@ -1077,7 +1077,7 @@ export default function Commissioner() {
                               txType === 'IL_ACTIVATE' ? 'IL−' :
                               txType || '—';
                             const chipClass =
-                              txType === 'ADD' || txType === 'CLAIM' || txType === 'IL_ACTIVATE' ? "cm-chip accent" :
+                              txType === 'ADD' || txType === 'CLAIM' || txType === 'IL_ACTIVATE' ? "cm-chip pos" :
                               txType === 'DROP' || txType === 'IL_STASH' ? "cm-chip warn" :
                               "cm-chip";
                             const ts = ev.submittedAt || ev.effDate || '';

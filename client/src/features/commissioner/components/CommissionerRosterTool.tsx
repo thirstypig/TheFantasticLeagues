@@ -428,7 +428,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                               ? <span className="cm-chip warn">IL</span>
                               : isMlbIlStatus(mlbStatus)
                                 ? <span className="cm-chip warn">MLB IL</span>
-                                : <span className="cm-chip accent">Active</span>}
+                                : <span className="cm-chip pos">Active</span>}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>

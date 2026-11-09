@@ -448,7 +448,7 @@ export function ScoringSettings() {
                   <p className="text-sm text-[var(--am-text-muted)]">
                     Total Roster Spots
                   </p>
-                  <p className="text-2xl font-bold text-[var(--am-accent)]">
+                  <p className="text-2xl font-bold text-[var(--am-text)]">
                     {totalSlots}
                   </p>
                 </div>

@@ -376,7 +376,7 @@ function FreeAgentRow({ fa, top, height }: FreeAgentRowProps) {
           {fa.statSnapshot ? ` · ${fa.statSnapshot}` : ""}
         </div>
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-accent)" }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
         {fa.projectedDollars > 0 ? `$${fa.projectedDollars}` : "—"}
       </div>
     </div>

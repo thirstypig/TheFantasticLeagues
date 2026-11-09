@@ -263,8 +263,8 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                           // Aurora tones: filled = cyan-tinted via accent, full = stronger irid background, empty = muted
                           const filledStyle: React.CSSProperties = isFull
                             ? {
-                                background: "rgba(34, 211, 238, 0.15)",
-                                color: "var(--am-accent)",
+                                background: "color-mix(in srgb, var(--am-accent-2) 15%, transparent)",
+                                color: "var(--am-text)",
                                 fontWeight: 700,
                               }
                             : filled > 0
@@ -406,7 +406,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                         >
                                             Max
                                         </span>
-                                        <span style={{ fontWeight: 600, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums" }}>
+                                        <span style={{ fontWeight: 600, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
                                             ${team.maxBid}
                                         </span>
                                     </div>

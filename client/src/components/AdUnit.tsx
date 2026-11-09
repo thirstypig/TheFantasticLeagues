@@ -19,7 +19,7 @@ export default function AdUnit({ slot, format = "auto", style }: AdUnitProps) {
   return (
     <ins
       className="adsbygoogle"
-      style={{ display: "block", overflow: "hidden", ...style }}
+      style={{ display: "block", overflow: "hidden", background: "var(--am-surface)", ...style }}
       data-ad-client="ca-pub-7103672049879516"
       data-ad-slot={slot}
       data-ad-format={format}

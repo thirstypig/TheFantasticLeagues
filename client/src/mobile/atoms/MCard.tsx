@@ -90,11 +90,7 @@ export function MIridText({ children, size = 20, weight = 600 }: { children: Rea
         fontSize: size,
         fontWeight: weight,
         lineHeight: 1,
-        backgroundImage: "var(--am-irid)",
-        WebkitBackgroundClip: "text",
-        backgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        color: "transparent",
+        color: "var(--am-text)",
         fontVariantNumeric: "tabular-nums",
         letterSpacing: -0.5,
       }}

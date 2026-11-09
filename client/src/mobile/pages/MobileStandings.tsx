@@ -353,7 +353,7 @@ export function MobileStandings() {
                       </div>
                     ))}
                     <div style={{ textAlign: "right", paddingLeft: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                         {t.total}
                       </span>
                     </div>
@@ -470,7 +470,7 @@ export function MobileStandings() {
                     );
                   })}
                   <div style={{ textAlign: "right", paddingLeft: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                       {totalForView.toFixed(1)}
                     </span>
                   </div>

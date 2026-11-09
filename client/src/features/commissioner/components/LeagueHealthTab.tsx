@@ -72,7 +72,7 @@ export default function LeagueHealthTab({ leagueId }: { leagueId: number }) {
     <div className="space-y-6">
       {/* Headline Score */}
       <div className="flex items-center gap-6">
-        <div className="lg-card p-6 flex items-center gap-4">
+        <div className="p-6 flex items-center gap-4 rounded-lg border border-[var(--am-border)] bg-[var(--am-surface-alt)]">
           <Activity size={28} className="text-[var(--lg-accent)]" />
           <div>
             <div className="text-3xl font-bold text-[var(--lg-text-heading)]">{leagueHealthScore}</div>
@@ -81,15 +81,15 @@ export default function LeagueHealthTab({ leagueId }: { leagueId: number }) {
         </div>
         <div className="flex gap-4">
           <div className="text-center">
-            <div className="text-xl font-bold text-emerald-400">{activeCount}</div>
+            <div className="text-xl font-bold text-[var(--am-positive)]">{activeCount}</div>
             <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Active</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-amber-400">{atRiskCount}</div>
+            <div className="text-xl font-bold text-[var(--am-warning)]">{atRiskCount}</div>
             <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">At Risk</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-rose-400">{inactiveCount}</div>
+            <div className="text-xl font-bold text-[var(--am-negative)]">{inactiveCount}</div>
             <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Inactive</div>
           </div>
         </div>

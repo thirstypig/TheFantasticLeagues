@@ -88,7 +88,7 @@ function enclosingString(text: string, index: number): string {
 
 // style object: background / backgroundColor whose value (possibly a ternary
 // branch) is exactly the string "var(--am-accent)".
-const STYLE_BG = /\bbackground(?:Color|Image)?\s*:\s*[^,\n]*?["'`]var\(--am-(?:accent|irid)\)["'`]/g;
+const STYLE_BG = /\bbackground(?:Color|Image)?\s*:\s*[^,{}]*?["'`]var\(--am-(?:accent|irid)\)["'`]/g;
 // Tailwind arbitrary class, solid (not a /opacity variant).
 const CLASS_BG = /\bbg-\[var\(--am-(?:accent|irid)\)\](?!\/)/g;
 // CSS rule: background / background-color whose whole value is var(--am-accent).

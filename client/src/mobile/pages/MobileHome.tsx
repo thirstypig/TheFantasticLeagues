@@ -371,7 +371,7 @@ export function MobileHome() {
                     </span>
                   </div>
                   <div style={{ textAlign: "right", minWidth: 36 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                       {t.totalPoints.toFixed(1)}
                     </span>
                   </div>

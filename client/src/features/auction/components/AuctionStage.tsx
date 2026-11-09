@@ -370,7 +370,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         style={{ background: "var(--am-chip)", borderColor: "var(--am-border)" }}
                     >
                         <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", color: "var(--am-text-muted)", opacity: 0.7 }}>+$5</span>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--am-accent)" }}>${jumpRaise}</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--am-text)" }}>${jumpRaise}</span>
                     </Button>
                 </div>
                 {/* AI Bid Advice */}

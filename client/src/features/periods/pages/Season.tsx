@@ -298,7 +298,7 @@ export default function Season() {
                                       borderRadius: 6,
                                       fontSize: 11.5,
                                       fontWeight: 600,
-                                      color: isPeak ? "#fff" : "var(--am-text-muted)",
+                                      color: isPeak ? "var(--am-on-accent)" : "var(--am-text-muted)",
                                       background: isPeak
                                         ? "var(--am-irid)"
                                         : isStrong
