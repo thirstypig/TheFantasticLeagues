@@ -21,24 +21,24 @@ updated: 2026-11-09
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-09 from 1,788 git-tracked files.*
+*Generated 2026-11-09 from 1,795 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 576 | 101,387 |
-| `.tsx` | 300 | 88,500 |
-| `.md` | 546 | 67,344 |
+| `.ts` | 579 | 101,911 |
+| `.tsx` | 303 | 88,858 |
+| `.md` | 547 | 67,587 |
 | `.json` | 36 | 40,137 |
 | `.sql` | 40 | 2,153 |
+| `.css` | 8 | 1,772 |
 | `.prisma` | 1 | 1,767 |
-| `.css` | 8 | 1,755 |
 | `.mjs` | 7 | 1,531 |
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,784** | **347,320** |
+| **All tracked** | **1,791** | **348,462** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,9 +55,9 @@ updated: 2026-11-09
 
 ## Docs
 
-**202** board-scope markdown files (`docs/` plus the four root docs), of which **135** carry frontmatter.
+**203** board-scope markdown files (`docs/` plus the four root docs), of which **136** carry frontmatter.
 
-*550 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*551 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -69,6 +69,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `fix` | 6 | ❌ off-vocabulary |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `report` | 3 | ✅ |
+| `plan` | 2 | ✅ |
 | `tech-spec` | 2 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
@@ -76,7 +77,6 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `doc` | 1 | ✅ |
 | `brainstorm` | 1 | ❌ off-vocabulary |
 | `test` | 1 | ❌ off-vocabulary |
-| `plan` | 1 | ✅ |
 | `test-infra` | 1 | ❌ off-vocabulary |
 | `adr` | 1 | ✅ |
 | `api-docs` | 1 | ✅ |
@@ -103,7 +103,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 47 | ✅ |
+| `active` | 48 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
