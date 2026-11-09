@@ -1,11 +1,22 @@
 // server/src/lib/audit/report.ts
 import type { ClassifyResult, StatLine } from "./types.js";
 
+export type AuditSource = "fbst" | "mlb" | "fg" | "bbref";
+
 export interface Coverage {
   playersChecked: number;
   playersSkipped: number;
   skipReasons: string[];
-  sourcesReached: { fbst: boolean; mlb: boolean; fg: boolean; bbref: boolean };
+  /**
+   * ONLY the sources this leg actually consulted. Never mark a source true
+   * because it "isn't a participant" — the 2026-11-09 audit found
+   * `bbref: true` hard-coded while the BBRef leg was unwired, so every report
+   * claimed a Baseball Reference check that never ran. List non-participants
+   * in `sourcesNotChecked` instead.
+   */
+  sourcesReached: Partial<Record<AuditSource, boolean>>;
+  /** Sources this leg did not consult, with the reason. Not a failure. */
+  sourcesNotChecked?: Partial<Record<AuditSource, string>>;
   fgLegLevel: "per-player" | "team-level";
 }
 
@@ -59,8 +70,12 @@ export function renderReport(args: {
       Object.entries(coverage.sourcesReached)
         .map(([k, v]) => `${k}=${v ? "yes" : "NO"}`)
         .join(" · "),
-    "",
   );
+  const notChecked = Object.entries(coverage.sourcesNotChecked ?? {});
+  if (notChecked.length) {
+    lines.push(`Not checked by this leg: ${notChecked.map(([k, why]) => `${k} (${why})`).join(" · ")}`);
+  }
+  lines.push("");
 
   lines.push("| Team | Explained by model difference | Unexplained residual |", "|---|---|---|");
   for (const r of results) {

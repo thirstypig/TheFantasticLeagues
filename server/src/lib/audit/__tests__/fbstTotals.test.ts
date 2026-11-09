@@ -111,6 +111,26 @@ describe("computeTeamPeriodTotals", () => {
     expect(got.get(1)!.R).toBe(0);
   });
 
+  // Trade 22 (prod, 2026-08-30): a trade processed at 15:41 on the period's
+  // FIRST DAY. Production compares UTC calendar days (todo #285), treats it as
+  // boundary-aligned and credits only the end-of-period owner. Comparing raw
+  // timestamps kept the old team's stint in the period too, so the audit
+  // credited BOTH teams with the whole period.
+  it("credits a trade stamped mid-day on the period's first day only to the acquiring team", () => {
+    const tradeAt = new Date("2026-07-05T15:41:33Z");
+    const got = computeTeamPeriodTotals({
+      teams: [{ id: 1, name: "Old" }, { id: 2, name: "New" }],
+      rosters: [
+        stint({ teamId: 1, releasedAt: tradeAt }),
+        stint({ teamId: 2, acquiredAt: tradeAt }),
+      ],
+      pspByPlayer: new Map([[10, psp({ R: 11, HR: 3 })]]),
+      period: PERIOD, isOnIlAtPeriodStart: noIl,
+    });
+    expect(got.get(1)!.R).toBe(0);
+    expect(got.get(2)!.R).toBe(11);
+  });
+
   it("excludes a stint acquired after the period end", () => {
     const got = computeTeamPeriodTotals({
       teams: TEAMS, rosters: [stint({ acquiredAt: new Date("2026-08-02T00:00:00Z") })],

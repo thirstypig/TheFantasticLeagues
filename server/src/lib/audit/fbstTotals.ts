@@ -64,8 +64,14 @@ export interface RosterStint {
  *
  * Boundary semantics, pinned by tests in fbstTotals.test.ts:
  *   - acquiredAt EXACTLY on endDate   -> in window  (`>` excludes, not `>=`)
- *   - releasedAt EXACTLY on startDate -> out        (`<=` excludes)
+ *   - releasedAt on the startDate's UTC DAY -> out, at ANY time of day
  *   - releasedAt EXACTLY on endDate   -> in window
+ *
+ * The release check is day-granular because production's is (todo #285): a
+ * trade stamped 15:41 on a period's first day is boundary-aligned, so only the
+ * end-of-period owner is credited. Comparing raw timestamps kept the old
+ * team's stint in the period too and credited both teams (Trade 22,
+ * 2026-08-30 — the whole Diamond Kings / Dodger Dawgs "residual").
  */
 export function isInPeriodWindow(args: {
   stint: Pick<RosterStint, "playerId" | "acquiredAt" | "releasedAt">;
@@ -73,8 +79,9 @@ export function isInPeriodWindow(args: {
   isOnIlAtPeriodStart: (playerId: number) => boolean;
 }): boolean {
   const { stint, period, isOnIlAtPeriodStart } = args;
+  const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   if (stint.acquiredAt > period.endDate) return false;
-  if (stint.releasedAt && stint.releasedAt <= period.startDate) return false;
+  if (stint.releasedAt && utcDay(stint.releasedAt) <= utcDay(period.startDate)) return false;
   if (isOnIlAtPeriodStart(stint.playerId)) return false;
   return true;
 }

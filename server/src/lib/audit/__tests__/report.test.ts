@@ -118,4 +118,18 @@ describe("renderReport", () => {
     expect(md).toContain("partial_ownership");
     expect(md).toContain("acquired 2026-07-01, 9 of 28 period days, txn #991");
   });
+
+  it("never reports a source it did not consult as reached", () => {
+    const seasonLeg: Coverage = {
+      ...fullCoverage,
+      sourcesReached: { fbst: true, fg: true },
+      sourcesNotChecked: { bbref: "not wired — run the four-way tie-break by hand", mlb: "checked by the period leg" },
+    };
+    const md = renderReport({ periodName: "Season", results: [clean], coverage: seasonLeg });
+    expect(md).toContain("Sources reached: fbst=yes · fg=yes");
+    expect(md).not.toMatch(/bbref=yes|mlb=yes/);
+    expect(md).toContain("Not checked by this leg: bbref (not wired — run the four-way tie-break by hand) · mlb (checked by the period leg)");
+    // Not-consulted is not a failure: the leg can still PASS.
+    expect(decideVerdict({ results: [clean], coverage: seasonLeg })).toBe("PASS");
+  });
 });

@@ -95,6 +95,12 @@ teams, something always adds up.
   splits (single-team players get two, both tagged with the team → double-count)
   and do **not** key off a missing `team` field (the aggregate carries `team`
   when only one club is involved).
+- **The script's own legs are not an independent audit.** Its "MLB reconcile"
+  line is the consistency check below (and it covers rostered players only), and
+  it does not consult Baseball Reference at all. For a real cross-check, sum the
+  statsapi `gameLog` per period window against every PSP row, and compare BBRef's
+  `leagues/majors/2026-standard-{batting,pitching}.shtml` with MLB (2026-11-09:
+  1,578 rows and 354 players took about 20 seconds).
 - **"Reconcile says 0 mismatches" is NOT evidence the data is right.**
   `reconcilePeriodStats` shares `fetchFreshPeriodStats` with the syncer *by
   design* (ADR-014: it must compare against exactly what the syncer would
@@ -141,6 +147,16 @@ teams, something always adds up.
   FG publishes no player id here. Filter and aggregate; `.find(p => p.name === X)`
   returns an arbitrary stint. A table's `TOTAL:` row is the self-check: summing
   parsed rows must reproduce it.
+- **FG standings exclude reserved-table rows.** A page's per-table `TOTAL:` sums
+  every row, but `display_stand.pl` drops every `reserved: true` row. For a
+  per-player diff, filter `!p.reserved` and check that the page sums to the
+  standings value for every team before trusting any delta (2026-11-09: the check
+  failed on 5 teams until reserved rows were dropped).
+- **Per-player attribution without a hand-rolled sum:** call
+  `computeTeamPeriodTotals` once per player with only that player's stints.
+  Summed over players it reproduces the season leg exactly. To get OnRoto's
+  effective add or drop date for a residual player, find the MLB `gameLog` window
+  whose sum reproduces OnRoto's number (DOC-026).
 - **The team-index map drifts — re-verify every audit.** Identify a
   `display_team_stats.pl?OGBA+6+{n}` page by which team name is over-represented
   versus the uniform nav baseline (every page lists all 8 in the nav);
