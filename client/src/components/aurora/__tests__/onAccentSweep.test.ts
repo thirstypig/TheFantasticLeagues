@@ -151,18 +151,29 @@ describe("text on the accent uses --am-on-accent", () => {
   });
 
   it("the sweep actually finds accent backgrounds (guards against a vacuous pass)", () => {
-    // If the regexes break, findOffenders() would silently return [] — make sure
-    // the scanner still sees the known accent-background sites.
+    // If a regex breaks, findOffenders() would silently return [] — so each
+    // matcher must still see roughly today's number of known sites. Minimums
+    // sit a little below the current counts, so deleting a site or two is fine
+    // but a dead regex (count -> 0) fails.
     const files = walk(SRC);
-    let hits = 0;
+    const counts = { style: 0, className: 0, css: 0, lgAccent: 0 };
     for (const file of files) {
       const text = readFileSync(file, "utf8");
-      const re = file.endsWith(".css") ? CSS_BG : file.endsWith(".tsx") ? STYLE_BG : null;
-      if (!re) continue;
-      hits += [...text.matchAll(re)].length;
-      if (file.endsWith(".tsx")) hits += [...text.matchAll(CLASS_BG)].length;
+      const isCss = file.endsWith(".css");
+      if (!isCss && !file.endsWith(".tsx")) continue;
+      const style = isCss ? [] : [...text.matchAll(STYLE_BG)];
+      const className = isCss ? [] : [...text.matchAll(CLASS_BG)];
+      const css = isCss ? [...text.matchAll(CSS_BG)] : [];
+      counts.style += style.length;
+      counts.className += className.length;
+      counts.css += css.length;
+      counts.lgAccent += [...style, ...className, ...css].filter((m) => m[0].includes("--lg-accent")).length;
     }
-    expect(hits).toBeGreaterThanOrEqual(15);
+    // Counts on 2026-11-09: style 61, className 85, css 7, --lg-accent 82.
+    expect(counts.style, "style-object matches").toBeGreaterThanOrEqual(55);
+    expect(counts.className, "className matches").toBeGreaterThanOrEqual(75);
+    expect(counts.css, "CSS rule matches").toBeGreaterThanOrEqual(5);
+    expect(counts.lgAccent, "--lg-accent matches").toBeGreaterThanOrEqual(72);
     expect(files.some((f) => f.endsWith("commissioner.css"))).toBe(true);
   });
 
