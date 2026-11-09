@@ -54,6 +54,7 @@
     --lg-accent: #990000;
     --lg-accent-hover: #990000;
     --lg-accent-active: #990000;
+    --lg-on-accent: #ffffff;   /* text/icons on --lg-accent fills */
 
     /* Tables */
     --lg-table-header-bg: rgba(0, 45, 114, 0.10);
@@ -187,6 +188,7 @@
     --lg-accent: #ffcc00;
     --lg-accent-hover: #ffcc00;
     --lg-accent-active: #ffcc00;
+    --lg-on-accent: #2a1a00;   /* text/icons on --lg-accent fills */
 
     /* Tables - Dark */
     --lg-table-header-bg: rgba(26, 117, 255, 0.08);
@@ -470,7 +472,7 @@
 
   .lg-button-primary {
     background: var(--lg-accent);
-    color: white;
+    color: var(--lg-on-accent);
     box-shadow: 0 2px 8px rgba(0, 45, 114, 0.25);
   }
 

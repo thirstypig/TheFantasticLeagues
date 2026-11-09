@@ -129,7 +129,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               </button>
               <button
                 onClick={() => handleConfirm(true)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-all shadow-lg shadow-blue-500/20"
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:bg-[var(--lg-accent-hover)] transition-all shadow-lg shadow-blue-500/20"
               >
                 Confirm
               </button>

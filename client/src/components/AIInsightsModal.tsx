@@ -77,7 +77,7 @@ export default function AIInsightsModal({ isOpen, onClose, year, teamCode, teamN
             disabled={loading}
             className={`flex-1 px-4 py-3 rounded-[var(--lg-radius-xl)] text-xs font-bold uppercase tracking-wide transition-all duration-300 ${
               analysisType === 'trends' && analysis
-                ? 'bg-[var(--lg-accent)] text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
+                ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg shadow-blue-500/20 scale-[1.02]'
                 : 'bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:bg-[var(--lg-tint-hover)] hover:text-[var(--lg-text-primary)]'
             } disabled:opacity-50 flex items-center justify-center gap-2`}
           >

@@ -79,7 +79,7 @@ export default function MyNominationQueueLegacy({ players, queueIds, onRemove, o
                             {onNominate && isMyTurn && (
                                 <button
                                     onClick={() => onNominate(p)}
-                                    className="p-1.5 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/90 text-white rounded shadow-sm"
+                                    className="p-1.5 bg-[var(--lg-accent)] hover:bg-[var(--lg-accent)]/90 text-[var(--lg-on-accent)] rounded shadow-sm"
                                     title="Nominate Now"
                                 >
                                     <Gavel size={14} />

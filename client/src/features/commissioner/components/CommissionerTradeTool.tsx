@@ -182,9 +182,9 @@ export default function CommissionerTradeTool({ leagueId, teams }: Props) {
         <button
           onClick={() => setConfirmOpen(true)}
           disabled={!canExecute || busy}
-          className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white ${
+          className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-[var(--lg-on-accent)] ${
             canExecute && !busy
-              ? "bg-[var(--lg-accent)] hover:opacity-90"
+              ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90"
               : "bg-[var(--lg-accent)]/40 cursor-not-allowed"
           }`}
         >

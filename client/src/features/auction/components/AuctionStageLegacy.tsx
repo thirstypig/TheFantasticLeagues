@@ -199,7 +199,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                     className="object-cover h-full w-full"
                     onError={(e) => (e.currentTarget.src = 'https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/generic/headshot/67/current')}
                 />
-                <div className="absolute bottom-1 left-1 bg-[var(--lg-accent)] text-white px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">
+                <div className="absolute bottom-1 left-1 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">
                     {nomination.positions || (nomination.isPitcher ? 'P' : 'UT')}
                 </div>
             </div>

@@ -222,7 +222,7 @@ export const PeriodSummaryTable: React.FC<PeriodSummaryTableProps> = ({
   return (
     <div className="mb-12">
       <h2 className="text-xl font-semibold tracking-tight text-[var(--lg-text-heading)] mb-4 flex items-center gap-4">
-        <span className="w-1.5 h-6 bg-[var(--lg-accent)] rounded-full"></span>
+        <span className="w-1.5 h-6 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] rounded-full"></span>
         Period Totals – {periodId}
       </h2>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
@@ -307,7 +307,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
   return (
     <div className="mt-8">
       <h3 className="text-xs font-medium tracking-wide text-[var(--lg-text-muted)] mb-4 flex items-center gap-3 opacity-60">
-        <span className="w-4 h-[1px] bg-[var(--lg-accent)] opacity-40"></span>
+        <span className="w-4 h-[1px] bg-[var(--lg-accent)] text-[var(--lg-on-accent)] opacity-40"></span>
         {label} – {periodId}
       </h3>
       <div className="lg-card p-0 overflow-hidden bg-transparent">
@@ -379,7 +379,7 @@ export const SeasonTable: React.FC<SeasonTableProps> = ({
   return (
     <div className="mb-12">
       <h2 className="text-xl font-semibold tracking-tight text-[var(--lg-text-heading)] mb-4 flex items-center gap-4">
-        <span className="w-1.5 h-6 bg-[var(--lg-accent)] rounded-full"></span>
+        <span className="w-1.5 h-6 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] rounded-full"></span>
         Season Stats
       </h2>
       <div className="lg-card p-0 overflow-hidden bg-transparent">

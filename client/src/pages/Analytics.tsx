@@ -106,7 +106,7 @@ function VelocityChart() {
               </span>
               <div className="flex-1 h-4 rounded bg-[var(--lg-tint)] overflow-hidden relative">
                 <div
-                  className="h-full rounded bg-[var(--lg-accent)] transition-all"
+                  className="h-full rounded bg-[var(--lg-accent)] text-[var(--lg-on-accent)] transition-all"
                   style={{ width: `${pct}%` }}
                 />
                 <span className="absolute inset-y-0 left-2 flex items-center text-[10px] font-semibold text-white mix-blend-difference">

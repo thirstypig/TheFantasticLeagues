@@ -55,9 +55,9 @@ export default function NominationQueueLegacy({ teams, queue, queueIndex, myTeam
                 >
                     <span className={`text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                       isMe
-                        ? 'bg-[var(--lg-accent)] text-white'
+                        ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]'
                         : isCurrent
-                          ? 'bg-[var(--lg-accent)] text-white'
+                          ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]'
                           : 'bg-[var(--lg-tint)] text-[var(--lg-text-muted)]'
                     }`}>
                         {idx + 1}

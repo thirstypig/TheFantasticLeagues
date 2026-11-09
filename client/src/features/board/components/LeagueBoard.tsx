@@ -324,7 +324,7 @@ function CardDetailPanel({
               type="submit"
               disabled={!replyText.trim() || submitting}
               className="self-end px-3 py-2 min-h-[40px] rounded-lg text-xs font-medium
-                bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity
+                bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity
                 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
@@ -397,7 +397,7 @@ function InlineReplySection({
           type="submit"
           disabled={!replyText.trim() || submitting}
           className="px-3 py-2 min-h-[40px] rounded-lg text-xs font-medium
-            bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity
+            bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity
             disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send className="w-3.5 h-3.5" />
@@ -676,7 +676,7 @@ function NewCardForm({
           type="submit"
           disabled={!title.trim() || submitting}
           className="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-lg text-xs font-medium
-            bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity
+            bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity
             disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send className="w-3.5 h-3.5" />
@@ -705,7 +705,7 @@ function MobileFAB({
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-6 right-6 z-30 md:hidden
-            w-14 h-14 rounded-full bg-[var(--lg-accent)] text-white shadow-lg
+            w-14 h-14 rounded-full bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg
             flex items-center justify-center hover:opacity-90 transition-opacity
             active:scale-95"
           aria-label="New post"
@@ -929,7 +929,7 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
               ${showDesktopForm
                 ? "bg-[var(--lg-tint)] text-[var(--lg-text-primary)]"
-                : "bg-[var(--lg-accent)] text-white hover:opacity-90"
+                : "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90"
               }`}
           >
             {showDesktopForm ? (

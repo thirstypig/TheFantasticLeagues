@@ -351,7 +351,7 @@ export default function AuctionLegacy() {
       <p className="text-sm text-[var(--lg-text-muted)]">Initialize the auction to begin the live draft.</p>
       <button
         onClick={() => actions.initAuction(activeLeagueId!)}
-        className="px-8 py-4 bg-[var(--lg-accent)] text-white font-semibold rounded-[var(--lg-radius-lg)] text-lg hover:opacity-90 transition-opacity"
+        className="px-8 py-4 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] font-semibold rounded-[var(--lg-radius-lg)] text-lg hover:opacity-90 transition-opacity"
       >
         Start Auction
       </button>

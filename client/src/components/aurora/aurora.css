@@ -135,10 +135,16 @@
   --lg-accent:         var(--am-accent);
   --lg-accent-hover:   var(--am-accent);
   --lg-accent-active:  var(--am-accent);
+  --lg-on-accent:      var(--am-on-accent);
 
   --lg-border-subtle:  var(--am-border);
   --lg-border-faint:   var(--am-border);
   --lg-border-strong:  var(--am-border-strong);
+
+  --lg-glass-bg:            var(--am-surface);
+  --lg-glass-bg-hover:      var(--am-surface-alt);
+  --lg-glass-border:        var(--am-border);
+  --lg-glass-border-subtle: var(--am-border);
 
   --lg-bg-card:        var(--am-surface);
   --lg-bg-page:        var(--am-bg);

@@ -192,7 +192,7 @@ export default function ProductBoard() {
                       {spotsLeft > 0 ? (
                         <button
                           onClick={() => navigate(`/join/${lg.id}`)}
-                          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-white hover:bg-[var(--lg-accent-hover)] transition-colors"
+                          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:bg-[var(--lg-accent-hover)] transition-colors"
                         >
                           {lg.visibility === "OPEN" ? "Join Now" : "Request"}
                         </button>

@@ -112,7 +112,7 @@ const bodyCls = "flex-1 overflow-y-auto px-8 py-6 custom-scrollbar";
 const tabWrapCls = "flex gap-1 bg-[var(--lg-tint)] p-1 rounded-[var(--lg-radius-lg)] border border-[var(--lg-glass-border)]";
 const tabBtnBase =
   "px-4 py-1.5 rounded-[var(--lg-radius-md)] text-xs font-medium uppercase transition-all duration-200";
-const tabBtnActive = "bg-[var(--lg-accent)] text-white shadow-lg shadow-blue-500/20";
+const tabBtnActive = "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg shadow-blue-500/20";
 const tabBtnInactive = "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]";
 
 const sectionCls = "rounded-[var(--lg-radius-xl)] border border-[var(--lg-glass-border)] bg-[var(--lg-tint)] overflow-hidden";

@@ -9,7 +9,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[var(--lg-accent)] text-white shadow-lg shadow-blue-500/20",
+          "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg shadow-blue-500/20",
         secondary:
           "bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]",
         destructive:

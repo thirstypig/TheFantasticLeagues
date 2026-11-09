@@ -229,7 +229,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`min-h-screen scrollbar-hide ${isDragging ? 'cursor-col-resize select-none' : ''}`}>
       {/* Skip to main content — accessibility */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:p-3 focus:bg-[var(--lg-accent)] focus:text-white focus:rounded-lg focus:top-2 focus:left-2">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:p-3 focus:bg-[var(--lg-accent)] focus:text-[var(--lg-on-accent)] focus:rounded-lg focus:top-2 focus:left-2">
         Skip to main content
       </a>
 
@@ -289,7 +289,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {!sidebarVisible && (
               <button
                 onClick={() => setSidebarVisible(true)}
-                className="fixed bottom-20 lg:bottom-8 left-8 z-50 p-4 rounded-2xl bg-[var(--lg-accent)] text-white shadow-2xl shadow-blue-500/40 hover:scale-110 active:scale-95 transition-all animate-in slide-in-from-left-4"
+                className="fixed bottom-20 lg:bottom-8 left-8 z-50 p-4 rounded-2xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-2xl shadow-blue-500/40 hover:scale-110 active:scale-95 transition-all animate-in slide-in-from-left-4"
                 title="Restore Navigation"
                 aria-label="Restore navigation sidebar"
               >

@@ -149,7 +149,7 @@ export default function AdminLeagueTools() {
                       <div className="flex items-center gap-3">
                         <Link
                           to={`/commissioner/${l.id}`}
-                          className="px-4 py-2 rounded-lg bg-[var(--lg-accent)] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                          className="px-4 py-2 rounded-lg bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-xs font-semibold hover:opacity-90 transition-opacity"
                         >
                           Commissioner Page →
                         </Link>

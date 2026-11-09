@@ -37,7 +37,7 @@ export default function About() {
         <div className="flex justify-center gap-3 pt-2">
           <Link
             to="/guide"
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold rounded-xl bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold rounded-xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity"
           >
             How It Works <ArrowRight size={14} />
           </Link>

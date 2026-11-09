@@ -81,7 +81,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
             <div className="text-xs font-semibold text-[var(--lg-text-primary)]">{s.label}</div>
             <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">{s.desc}</div>
           </div>
-          <div className={`w-8 h-4.5 rounded-full p-0.5 transition-colors shrink-0 ${prefs[s.key] ? 'bg-[var(--lg-accent)]' : 'bg-[var(--lg-border-subtle)]'}`}>
+          <div className={`w-8 h-4.5 rounded-full p-0.5 transition-colors shrink-0 ${prefs[s.key] ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'bg-[var(--lg-border-subtle)]'}`}>
             <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${prefs[s.key] ? 'translate-x-3.5' : 'translate-x-0'}`} />
           </div>
         </button>
@@ -100,7 +100,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
               key={f}
               onClick={() => onUpdate('defaultLeagueFilter', f)}
               className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${
-                prefs.defaultLeagueFilter === f ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'
+                prefs.defaultLeagueFilter === f ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'
               }`}
             >
               {f}
@@ -141,7 +141,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity"
               >
                 <Upload size={12} />
                 Upload CSV
@@ -180,7 +180,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
                 <button
                   onClick={handlePasteImport}
                   disabled={!pasteText.trim()}
-                  className="px-4 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-4 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Import
                 </button>

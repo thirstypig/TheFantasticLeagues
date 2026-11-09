@@ -68,7 +68,7 @@ function ChatMessage({
         <div
           className={`px-3 py-1.5 rounded-2xl text-sm leading-relaxed break-words ${
             isOwn
-              ? "bg-[var(--lg-accent)] text-white rounded-br-md"
+              ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] rounded-br-md"
               : "bg-[var(--lg-tint)] text-[var(--lg-text-primary)] rounded-bl-md"
           }`}
         >
@@ -240,7 +240,7 @@ export default function ChatPanel({ isOpen, onClose, onMarkRead, isCommissioner 
           <button
             onClick={handleSend}
             disabled={!input.trim() || !isConnected}
-            className="p-2 rounded-xl bg-[var(--lg-accent)] text-white disabled:opacity-40 hover:opacity-90 transition-all flex-shrink-0"
+            className="p-2 rounded-xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] disabled:opacity-40 hover:opacity-90 transition-all flex-shrink-0"
             aria-label="Send message"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

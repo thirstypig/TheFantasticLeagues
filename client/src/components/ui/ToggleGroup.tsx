@@ -20,7 +20,7 @@ export function ToggleGroup({ options, value, onChange, className }: ToggleGroup
             className={cn(
               "px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-all duration-200",
               isActive
-                ? "bg-[var(--lg-accent)] text-white shadow-lg shadow-blue-500/20"
+                ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg shadow-blue-500/20"
                 : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]"
             )}
           >

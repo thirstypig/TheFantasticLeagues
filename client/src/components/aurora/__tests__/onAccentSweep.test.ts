@@ -12,6 +12,9 @@ import { describe, expect, it } from "vitest";
  * className, or a CSS rule — and asserts that the same object / className /
  * rule sets its text color to var(--am-on-accent).
  *
+ * --lg-accent (legacy token, also cardinal/gold) requires --lg-on-accent
+ * (or --am-on-accent).
+ *
  * --am-irid is a legacy alias defined as var(--am-accent) in aurora.css, so
  * fills that use it are held to the same rule.
  *
@@ -88,11 +91,13 @@ function enclosingString(text: string, index: number): string {
 
 // style object: background / backgroundColor whose value (possibly a ternary
 // branch) is exactly the string "var(--am-accent)".
-const STYLE_BG = /\bbackground(?:Color|Image)?\s*:\s*[^,{}]*?["'`]var\(--am-(?:accent|irid)\)["'`]/g;
+const STYLE_BG = /\bbackground(?:Color|Image)?\s*:\s*[^,{}]*?["'`]var\(--(?:am-accent|am-irid|lg-accent)\)["'`]/g;
 // Tailwind arbitrary class, solid (not a /opacity variant).
-const CLASS_BG = /\bbg-\[var\(--am-(?:accent|irid)\)\](?!\/)/g;
+const CLASS_BG = /\bbg-\[var\(--(?:am-accent|am-irid|lg-accent)\)\](?![\/\w-])/g;
 // CSS rule: background / background-color whose whole value is var(--am-accent).
-const CSS_BG = /\bbackground(?:-color|-image)?\s*:\s*var\(--am-(?:accent|irid)\)\s*(?:!important\s*)?[;}]/g;
+const CSS_BG = /\bbackground(?:-color|-image)?\s*:\s*var\(--(?:am-accent|am-irid|lg-accent)\)\s*(?:!important\s*)?[;}]/g;
+
+const ON_ACCENT = /var\(--(?:am|lg)-on-accent\)/;
 
 const TEXT_CLIP = /[bB]ackgroundClip\s*:\s*["'`]text/;
 
@@ -112,7 +117,7 @@ function findOffenders(): string[] {
       for (const m of stripped.matchAll(CSS_BG)) {
         const block = enclosingBlock(stripped, m.index!);
         const color = CSS_COLOR.exec(block.slice(1));
-        if (!color || !color[1].includes("var(--am-on-accent)")) {
+        if (!color || !ON_ACCENT.test(color[1])) {
           report(m.index!, `rule color is ${color ? color[1].trim() : "unset"}`);
         }
       }
@@ -125,14 +130,14 @@ function findOffenders(): string[] {
       // accent-as-text-color, not a fill behind text.
       if (TEXT_CLIP.test(block)) continue;
       const color = STYLE_COLOR.exec(block.slice(1));
-      if (!color || !color[1].includes("var(--am-on-accent)")) {
+      if (!color || !ON_ACCENT.test(color[1])) {
         report(m.index!, `style color is ${color ? color[1].trim() : "unset"}`);
       }
     }
     for (const m of text.matchAll(CLASS_BG)) {
       const cls = enclosingString(text, m.index!);
-      if (!cls.includes("text-[var(--am-on-accent)]")) {
-        report(m.index!, `className lacks text-[var(--am-on-accent)]`);
+      if (!/text-\[var\(--(?:am|lg)-on-accent\)\]/.test(cls)) {
+        report(m.index!, `className lacks text-[var(--am-on-accent)] / text-[var(--lg-on-accent)]`);
       }
     }
   }
@@ -159,5 +164,22 @@ describe("text on the accent uses --am-on-accent", () => {
     }
     expect(hits).toBeGreaterThanOrEqual(15);
     expect(files.some((f) => f.endsWith("commissioner.css"))).toBe(true);
+  });
+
+  it("legacy --lg-* tokens provide on-accent and theme-following glass", () => {
+    const indexCss = readFileSync(join(SRC, "index.css"), "utf8");
+    const auroraCss = readFileSync(join(SRC, "components", "aurora", "aurora.css"), "utf8");
+    // Outside .aurora-theme (pre-auth / legacy pages): light white, dark ink.
+    expect(indexCss).toMatch(/--lg-accent:\s*#990000;[\s\S]*?--lg-on-accent:\s*#ffffff;/);
+    expect(indexCss).toMatch(/--lg-accent:\s*#ffcc00;[\s\S]*?--lg-on-accent:\s*#2a1a00;/);
+    // Inside .aurora-theme the legacy tokens redirect to --am-*.
+    for (const decl of [
+      /--lg-on-accent:\s*var\(--am-on-accent\);/,
+      /--lg-glass-bg:\s*var\(--am-surface\);/,
+      /--lg-glass-bg-hover:\s*var\(--am-surface-alt\);/,
+      /--lg-glass-border:\s*var\(--am-border\);/,
+    ]) {
+      expect(auroraCss).toMatch(decl);
+    }
   });
 });
