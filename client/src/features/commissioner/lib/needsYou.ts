@@ -74,9 +74,9 @@ export function deriveNeedsYou({
   const bill: NeedsYouItem[] = unbilled.map((u) => ({
     key: `bill-${u.periodId}`,
     kind: "bill" as const,
-    title: `Bill IL fees · period ${u.periodId}`,
+    title: `Bill IL fees · ${periods.find((p) => p.id === u.periodId)?.name ?? `period ${u.periodId}`}`,
     detail: "Closed without billing IL fees.",
-    to: "money",
+    to: `bill/${u.periodId}`,
     urgent: false,
   }));
 

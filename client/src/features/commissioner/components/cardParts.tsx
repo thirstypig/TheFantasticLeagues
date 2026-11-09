@@ -33,6 +33,36 @@ export const ROW: React.CSSProperties = {
   fontSize: 16,
 };
 
+/** Full-width primary action button for the guided job pages. */
+export const PRIMARY: React.CSSProperties = {
+  minHeight: 48,
+  width: "100%",
+  padding: "0 16px",
+  borderRadius: 6,
+  border: "1px solid var(--am-accent)",
+  background: "var(--am-accent)",
+  color: "var(--am-surface)",
+  fontSize: 16,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+export const SECONDARY: React.CSSProperties = {
+  ...PRIMARY,
+  border: "1px solid var(--am-border-strong)",
+  background: "transparent",
+  color: "var(--am-text)",
+};
+
+/** Inline text link with a 44px tap target. */
+export const LINK: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 44,
+  fontSize: 16,
+  color: "var(--am-accent)",
+};
+
 export const MUTED: React.CSSProperties = { fontSize: 16, color: "var(--am-text-muted)" };
 
 export function Skeleton() {

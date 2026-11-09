@@ -6,29 +6,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useToast } from "../../../contexts/ToastContext";
-import { CardError, MUTED, ROW, Skeleton, useLoad } from "../components/cardParts";
+import { CardError, LINK, MUTED, PRIMARY, ROW, Skeleton, useLoad } from "../components/cardParts";
 import { getLeaguePeriods, getMovesSinceStart, setPeriodStatus } from "../api";
-
-const PRIMARY: React.CSSProperties = {
-  minHeight: 48,
-  width: "100%",
-  padding: "0 16px",
-  borderRadius: 6,
-  border: "1px solid var(--am-accent)",
-  background: "var(--am-accent)",
-  color: "var(--am-surface)",
-  fontSize: 16,
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-const LINK: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  minHeight: 44,
-  fontSize: 16,
-  color: "var(--am-accent)",
-};
 
 const DAY_MS = 86_400_000;
 

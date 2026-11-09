@@ -86,16 +86,19 @@ describe("deriveNeedsYou", () => {
     expect(items[1].to).toBe("trades");
   });
 
-  it("two unbilled -> two bill items pointing at money", () => {
+  it("two unbilled -> two bill items pointing at the bill page, titled by period name", () => {
     const items = deriveNeedsYou({
       ...base,
+      periods: [p(3, "completed", "2026-05-01T00:00:00Z", "2026-05-14T00:00:00Z")],
       unbilled: [
         { periodId: 3, closedAt: "x" },
         { periodId: 4, closedAt: "y" },
       ],
     });
     expect(items.map((i) => i.kind)).toEqual(["bill", "bill"]);
-    expect(items.every((i) => i.to === "money")).toBe(true);
+    expect(items.map((i) => i.to)).toEqual(["bill/3", "bill/4"]);
+    // Name when the period is known; "period <id>" when it isn't.
+    expect(items.map((i) => i.title)).toEqual(["Bill IL fees · P3", "Bill IL fees · period 4"]);
     expect(new Set(items.map((i) => i.key)).size).toBe(2);
   });
 
