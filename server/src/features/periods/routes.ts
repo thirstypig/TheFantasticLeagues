@@ -6,7 +6,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
 import { computePeriodAwards } from "../../services/periodAwardsService.js";
 import { logger } from "../../lib/logger.js";
-import { writeAuditLog } from "../../lib/auditLog.js";
+import { writeAuditLog, writeAuditLogAwait } from "../../lib/auditLog.js";
 
 const router = Router();
 
@@ -155,13 +155,22 @@ router.patch("/:id", requireAuth, validateBody(updatePeriodSchema), asyncHandler
 
   if (period.leagueId) {
     if (closing) {
-      writeAuditLog({
-        userId: req.user!.id,
-        action: "PERIOD_CLOSE",
-        resourceType: "Period",
-        resourceId: String(periodId),
-        metadata: { leagueId: period.leagueId, periodId, billed: billFees },
-      });
+      // Load-bearing: a billed:false close is the "bill later" record that
+      // stops automatic billing (lib/deferredBilling). Awaited so a failure is
+      // seen; the period stays closed either way, and without the row it is
+      // simply not deferred — the drainer bills it (the safe fallback).
+      try {
+        await writeAuditLogAwait({
+          userId: req.user!.id,
+          action: "PERIOD_CLOSE",
+          resourceType: "Period",
+          resourceId: String(periodId),
+          metadata: { leagueId: period.leagueId, periodId, billed: billFees },
+        });
+      } catch (err) {
+        logger.error({ error: String(err), periodId, billed: billFees },
+          "Failed to write PERIOD_CLOSE audit — period closed but not recorded as deferred");
+      }
     } else if (req.body.status === "active" && period.status === "pending") {
       writeAuditLog({
         userId: req.user!.id,
