@@ -15,6 +15,13 @@ function parseId(raw: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+/**
+ * A period is ready to close at this hour (UTC) on the day after its end date.
+ * The stats sync cron STARTS at 13:00 UTC; 14:00 leaves it time to land.
+ * Must match CLOSE_READY_HOUR_UTC in client needsYou.ts.
+ */
+const CLOSE_READY_HOUR_UTC = 14;
+
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -61,7 +68,7 @@ hubRouter.get(
 
 /**
  * GET /api/commissioner/:leagueId/periods/:periodId/close-readiness
- * ready = period is active AND now >= 13:00 UTC the day after endDate
+ * ready = period is active AND now >= CLOSE_READY_HOUR_UTC (14:00 UTC) the day after endDate
  * (stat sync for the final day has landed).
  */
 hubRouter.get(
@@ -78,7 +85,7 @@ hubRouter.get(
     if (!period) return res.status(404).json({ error: "Period not found" });
 
     const end = period.endDate;
-    const readyAt = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() + 1, 13);
+    const readyAt = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() + 1, CLOSE_READY_HOUR_UTC);
     const ready = period.status === "active" && Date.now() >= readyAt;
 
     const agg = await prisma.playerStatsDaily.aggregate({

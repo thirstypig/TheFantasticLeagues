@@ -43,7 +43,7 @@ updated: 2026-11-09
 ## Review Focus
 
 1. **Double tap on "Close period"** must produce one close. The button is disabled while the request is in flight, and the server's existing `period.status !== "completed"` guard prevents a second enqueue. Test in Task 8.
-2. **Closing too early in the evening (Pacific).** A Sunday 7pm PT game ends after UTC midnight. "Ready to close" must stay false until **13:00 UTC on the day after `endDate`** (after the ~6am PT sync). Test in Task 3.
+2. **Closing too early in the evening (Pacific).** A Sunday 7pm PT game ends after UTC midnight. "Ready to close" must stay false until **14:00 UTC on the day after `endDate`** (the stats sync cron starts at 13:00 UTC). Test in Task 3.
 3. **Back and reload inside the close flow.** Back goes to the previous step, not the hub. Reloading `?step=4` stays on step 4 and re-fetches the fee preview, never showing a stale one. Test in Task 8.
 4. **"Bill later," then billing later:** the period must leave the unbilled list once a manual reconcile has run (an `IL_FEE_RECONCILE` audit row for that period, created after the `PERIOD_CLOSE`). Test in Task 4.
 5. **Owner (non-commissioner) access.** Every new hub endpoint uses `requireCommissionerOrAdmin()`. Test in Task 3 by asserting the factory was applied to each route.
@@ -110,15 +110,15 @@ updated: 2026-11-09
 - Produces (all `requireAuth, requireCommissionerOrAdmin()`; all 400 on a non-numeric id; all 404 when the period's `leagueId` ≠ `:leagueId`):
   - `GET /commissioner/:leagueId/roster-check` → `{ cap: number; teams: { teamId: number; teamName: string; activeCount: number; over: boolean }[] }`. `activeCount` counts `Roster` rows with `releasedAt: null` and `assignedPosition` not `"IL"`, the same definition as `assertRosterLimit`.
   - `GET /commissioner/:leagueId/periods/:periodId/close-readiness` → `{ periodId: number; name: string; status: string; endDate: string; lastStatDate: string | null; ready: boolean }`.
-    - `ready` = `status === "active"` **and** `now >= Date.UTC(endY, endM, endD + 1, 13)`, where endY/M/D are the UTC date parts of `endDate`.
+    - `ready` = `status === "active"` **and** `now >= Date.UTC(endY, endM, endD + 1, 14)`, where endY/M/D are the UTC date parts of `endDate`.
     - `lastStatDate` = the max `PlayerStatsDaily.gameDate` within `[startDate, endDate]`, as `YYYY-MM-DD`, or `null`.
   - `GET /commissioner/:leagueId/periods/:periodId/moves-since-start` → `{ moves: { id: number; teamName: string | null; playerName: string | null; transactionType: string | null; effDate: string }[] }`. These are `TransactionEvent` rows with `leagueId` and `effDate >= period.startDate`, ordered by `effDate` asc. Use `team.name` / `player.name` via `include`, falling back to `ogbaTeamName` / `playerAliasRaw`.
 
 - [ ] **Step 1: Write the failing tests:**
   - roster-check: cap 23 (mock `leagueRule.findMany` returning `roster.pitcher_count`=9 and `roster.batter_count`=14). A team with 24 active rows → `over:true`. The count query's `where` equals `{ teamId, releasedAt: null, assignedPosition: { not: "IL" } }` (assert the args, not just the result).
   - close-readiness:
-    - `endDate 2026-09-28T12:00:00Z`, active, `vi.setSystemTime("2026-09-29T12:59:00Z")` → `ready:false`.
-    - `"2026-09-29T13:00:00Z"` → `ready:true`.
+    - `endDate 2026-09-28T12:00:00Z`, active, `vi.setSystemTime("2026-09-29T13:59:00Z")` → `ready:false`.
+    - `"2026-09-29T14:00:00Z"` → `ready:true`.
     - status `"pending"` at any time → `ready:false`.
   - moves-since-start: the `findMany` `where` includes `{ leagueId: 20, effDate: { gte: <startDate> } }`. A period from another league → 404.
   - auth: `requireCommissionerOrAdmin` (mocked factory) was called once per route registration (3 calls).

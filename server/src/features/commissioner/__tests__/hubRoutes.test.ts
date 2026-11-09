@@ -127,18 +127,18 @@ describe("GET /api/commissioner/:leagueId/periods/:periodId/close-readiness", ()
     expect(m.period.findUnique.mock.calls[0][0].where).toEqual({ id: 5 });
   });
 
-  it("not ready one minute before 13:00 UTC the day after endDate", async () => {
+  it("not ready one minute before 14:00 UTC the day after endDate (sync cron starts 13:00)", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-29T12:59:00Z"));
+    vi.setSystemTime(new Date("2026-09-29T13:59:00Z"));
     m.period.findUnique.mockResolvedValue(period());
     const res = await supertest(app).get("/api/commissioner/20/periods/5/close-readiness");
     expect(res.status).toBe(200);
     expect(res.body.ready).toBe(false);
   });
 
-  it("ready at 13:00 UTC the day after endDate; reports lastStatDate and queries the period window", async () => {
+  it("ready at 14:00 UTC the day after endDate; reports lastStatDate and queries the period window", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-29T13:00:00Z"));
+    vi.setSystemTime(new Date("2026-09-29T14:00:00Z"));
     const p = period();
     m.period.findUnique.mockResolvedValue(p);
     const res = await supertest(app).get("/api/commissioner/20/periods/5/close-readiness");
@@ -158,7 +158,7 @@ describe("GET /api/commissioner/:leagueId/periods/:periodId/close-readiness", ()
 
   it("lastStatDate is null when no stats exist", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-29T13:00:00Z"));
+    vi.setSystemTime(new Date("2026-09-29T14:00:00Z"));
     m.period.findUnique.mockResolvedValue(period());
     m.playerStatsDaily.aggregate.mockResolvedValue({ _max: { gameDate: null } });
     const res = await supertest(app).get("/api/commissioner/20/periods/5/close-readiness");

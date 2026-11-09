@@ -51,11 +51,11 @@ describe("deriveNeedsYou", () => {
     expect(items[0].detail).toBe("Review rosters, then activate the period.");
   });
 
-  it("close uses the server threshold: 12:59 UTC the day after end -> no close", () => {
+  it("close uses the server threshold: 13:59 UTC the day after end -> no close, 14:00 -> close", () => {
     const periods = [p(7, "active", "2026-06-03T00:00:00Z", "2026-06-09T00:00:00Z")];
-    expect(deriveNeedsYou({ ...base, periods, now: new Date("2026-06-10T12:59:00Z") })).toEqual([]);
+    expect(deriveNeedsYou({ ...base, periods, now: new Date("2026-06-10T13:59:00Z") })).toEqual([]);
     expect(
-      deriveNeedsYou({ ...base, periods, now: new Date("2026-06-10T13:00:00Z") }).map((i) => i.kind),
+      deriveNeedsYou({ ...base, periods, now: new Date("2026-06-10T14:00:00Z") }).map((i) => i.kind),
     ).toEqual(["close"]);
   });
 
@@ -86,6 +86,25 @@ describe("deriveNeedsYou", () => {
     expect(items).toHaveLength(1);
     expect(items[0].title).toContain("2 days late");
     expect(items[0].urgent).toBe(true);
+  });
+
+  it("start 1 day late -> singular '1 day late'", () => {
+    const items = deriveNeedsYou({
+      ...base,
+      periods: [p(8, "pending", "2026-06-09T00:00:00Z", "2026-06-16T00:00:00Z")],
+    });
+    expect(items[0].title).toBe("Start P8 · 1 day late");
+  });
+
+  it("only the EARLIEST past-start pending period gets a start item", () => {
+    const items = deriveNeedsYou({
+      ...base,
+      periods: [
+        p(9, "pending", "2026-06-09T00:00:00Z", "2026-06-16T00:00:00Z"),
+        p(8, "pending", "2026-06-02T00:00:00Z", "2026-06-08T00:00:00Z"),
+      ],
+    });
+    expect(items.map((i) => i.to)).toEqual(["start/8"]);
   });
 
   it("ghostIlTotal: 1 -> one roster item", () => {
