@@ -193,4 +193,14 @@ describe("text on the accent uses --am-on-accent", () => {
       expect(auroraCss).toMatch(decl);
     }
   });
+
+  it("the commissioner toggle knob uses --am-on-accent on the accent track", () => {
+    // A #fff knob on the dark-mode gold track is ~1.4:1; --am-on-accent is
+    // guaranteed >= 4.5:1 against --am-accent by tokenContrast.test.ts.
+    const css = readFileSync(join(SRC, "features", "commissioner", "commissioner.css"), "utf8");
+    const rule = /\.cm-toggle\.on::after\s*\{([^}]*)\}/.exec(css);
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toMatch(/background:\s*var\(--am-on-accent\)/);
+  });
 });
+
