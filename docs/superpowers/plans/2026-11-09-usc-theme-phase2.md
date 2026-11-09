@@ -83,7 +83,8 @@ The `theme-color` meta tag is set to `#e0d3ae` (light) and `#3a1f22` (dark).
 2. **Existing users stuck on a theme.** The old `ThemeProvider` wrote `fbst-theme` to localStorage on *every* render, so every past visitor has a stored value they never chose. That key must be ignored (and removed), so everyone starts on "System". Test in Task 1.
 3. **The OS switches while the app is open** (iOS auto dark mode at sunset). With preference "System", the app must follow it live, without a reload. Test in Task 1.
 4. **Logged-out pages.** Login, Signup and the password pages live outside `.aurora-theme` and read `--lg-*` tokens from `index.css`, so a token change in `aurora.css` alone leaves them on the old palette. Task 3 covers them, and Task 5's browser pass checks them.
-5. **Red error vs. red brand.** Error and negative-delta text using `--am-negative` must stay distinguishable from brand-cardinal buttons in light mode. That's why `#8a3a00` (rust), not red. Task 5 checks a standings page with negative deltas.
+5. **Red numbers that read as losses.** A trial run of these tokens in the browser on 2026-11-09 showed the TOTAL column on `/season`, and the team score on Home, rendered in `--am-accent`. Every total turned cardinal red in light mode, which reads as "negative". Data values must use `--am-text`; the accent is only for interactive or brand elements (links, the active tab, buttons). Task 4 owns this.
+6. **Red error vs. red brand.** Error and negative-delta text using `--am-negative` must stay distinguishable from brand-cardinal buttons in light mode. That's why `#8a3a00` (rust), not red. Task 5 checks a standings page with negative deltas.
 
 ---
 
@@ -179,7 +180,16 @@ The `theme-color` meta tag is set to `#e0d3ae` (light) and `#3a1f22` (dark).
   - `pages/Home.tsx`, `pages/Roadmap.tsx`, `App.tsx`
 
   **Leave and list in the report:** `mobile/atoms/MSparkline.tsx` chart series colors, the NBA/NFL dashboards, and any brand color. Leave one only if converting it would change meaning, and list each one left with its reason.
-- Test: `client/src/components/aurora/__tests__/onAccentSweep.test.ts` (create). It walks `client/src` (excluding `pages/design`, `__tests__`, `nba`, `nfl`), finds every style object or className that sets the background to `var(--am-accent)`, and asserts its nearest `color` is `var(--am-on-accent)`. A line-window heuristic is fine (same object literal, or the same className string). The failure message prints `file:line`.
+- **Also from the browser trial (2026-11-09), fix these:**
+  - **CSS files:** the sweep must include `*.css`. For example, `features/commissioner/commissioner.css` has `.cm-btn.primary` and `.cm-tab.active .cm-count` with `color: #fff` on `var(--am-accent)`.
+  - **Accent used as a text color:** about 64 sites use `color: var(--am-accent)`. Classify each one.
+    - Links, the active tab or nav item, and selected state keep the accent.
+    - **Data values** (scores, totals, stat numbers, such as the `/season` TOTAL column and the Home team score) change to `color: var(--am-text)` with their existing weight. List each change in the report.
+  - **Hard-coded panel colors:**
+    - The `AdUnit` placeholder (`components/AdUnit.tsx`, also on `/season` and Home) renders a pure-white block. Use `--am-surface`.
+    - The commissioner Overview "League health" score card is hard-coded white in light mode and navy in dark. Find its rule and use the surface tokens.
+  - **Status chip:** the `IN_SEASON` status chip (`Commissioner.tsx` ~line 732, class `cm-chip accent`) renders cardinal red, which looks like an error. Use a neutral or positive chip style.
+- Test: `client/src/components/aurora/__tests__/onAccentSweep.test.ts` (create). Scan `*.css` as well as `*.tsx`. It walks `client/src` (excluding `pages/design`, `__tests__`, `nba`, `nfl`), finds every style object or className that sets the background to `var(--am-accent)`, and asserts its nearest `color` is `var(--am-on-accent)`. A line-window heuristic is fine (same object literal, or the same className string). The failure message prints `file:line`.
 
 **Interfaces:**
 - Consumes: `--am-on-accent` (Task 2).
