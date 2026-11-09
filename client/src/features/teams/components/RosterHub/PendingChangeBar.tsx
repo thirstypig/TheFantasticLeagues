@@ -82,13 +82,13 @@ const BADGE_LABELS: Record<PendingChangeBarItemKind, string> = {
 
 const BADGE_TONES: Record<PendingChangeBarItemKind, { fg: string; mix: number }> = {
   // Cyan = "pending swap" (matches direction-lock #7 dot).
-  swap: { fg: "#22d3ee", mix: 22 },
+  swap: { fg: "var(--am-accent-2)", mix: 22 },
   // Green = additive (FA add).
-  fa_add: { fg: "#22c55e", mix: 22 },
+  fa_add: { fg: "var(--am-positive)", mix: 22 },
   // Amber = IL semantics (mirrors IL section red/amber palette).
-  il_stash: { fg: "#f59e0b", mix: 22 },
+  il_stash: { fg: "var(--am-warning)", mix: 22 },
   // Cyan = activation back to active roster.
-  il_activate: { fg: "#22d3ee", mix: 22 },
+  il_activate: { fg: "var(--am-accent-2)", mix: 22 },
 };
 
 interface PendingChangeBarProps {
@@ -156,7 +156,7 @@ export function PendingChangeBar({
             padding: "10px 14px",
             // Cyan tinted background per direction-lock #7 — distinct
             // from IL-amber and the in-season warning yellow.
-            background: "color-mix(in srgb, #22d3ee 8%, transparent)",
+            background: "color-mix(in srgb, var(--am-accent-2) 8%, transparent)",
             border: "1px solid var(--am-border-strong)",
             borderRadius: 14,
           }}
@@ -172,8 +172,8 @@ export function PendingChangeBar({
                 // Cyan dot per direction-lock #7. Replaces the prior
                 // iridescent gradient — cyan is reserved for "pending"
                 // semantics across the v3 hub.
-                background: "#22d3ee",
-                boxShadow: "0 0 8px rgba(34, 211, 238, 0.55)",
+                background: "var(--am-accent-2)",
+                boxShadow: "0 0 8px color-mix(in srgb, var(--am-accent-2) 55%, transparent)",
               }}
             />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
@@ -215,7 +215,7 @@ export function PendingChangeBar({
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.7 : 1,
                 minHeight: 36,
-                boxShadow: "0 8px 22px rgba(214, 43, 155, 0.18)",
+                boxShadow: "0 8px 22px color-mix(in srgb, var(--am-accent) 18%, transparent)",
               }}
             >
               {saving ? "Saving…" : "Save"}
@@ -232,8 +232,8 @@ export function PendingChangeBar({
             alignItems: "center",
             gap: 10,
             padding: "8px 14px",
-            background: "color-mix(in srgb, #f59e0b 8%, transparent)",
-            border: "1px solid color-mix(in srgb, #f59e0b 32%, transparent)",
+            background: "color-mix(in srgb, var(--am-warning) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--am-warning) 32%, transparent)",
             borderRadius: 12,
             fontSize: 12.5,
             color: "var(--am-text)",
@@ -259,7 +259,7 @@ export function PendingChangeBar({
               padding: "4px 8px",
               borderRadius: 8,
               border: "1px solid var(--am-border-strong)",
-              background: "var(--am-card)",
+              background: "var(--am-surface)",
               color: "var(--am-text)",
               cursor: saving ? "not-allowed" : "pointer",
               opacity: saving ? 0.5 : 1,
@@ -280,7 +280,7 @@ export function PendingChangeBar({
             listStyle: "none",
             padding: "8px 10px",
             margin: 0,
-            background: "var(--am-card)",
+            background: "var(--am-surface)",
             border: "1px solid var(--am-border)",
             borderRadius: 12,
             display: "flex",
@@ -310,8 +310,8 @@ export function PendingChangeBar({
             justifyContent: "space-between",
             gap: 12,
             padding: "10px 14px",
-            background: "color-mix(in srgb, #c41a85 12%, transparent)",
-            border: "1px solid #c41a85",
+            background: "color-mix(in srgb, var(--am-negative) 12%, transparent)",
+            border: "1px solid var(--am-negative)",
             borderRadius: 14,
             color: "var(--am-text)",
             fontSize: 12.5,

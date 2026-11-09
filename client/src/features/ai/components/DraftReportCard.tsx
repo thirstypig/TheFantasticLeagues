@@ -44,7 +44,7 @@ function statLine(p: PlayerPick): string {
 }
 
 function PickRow({ p, kind }: { p: PlayerPick; kind: "value" | "bust" }) {
-  const accent = kind === "value" ? "var(--am-positive, #16a34a)" : "var(--am-negative, #b45309)";
+  const accent = kind === "value" ? "var(--am-positive)" : "var(--am-negative)";
   return (
     <div
       style={{
@@ -192,7 +192,7 @@ export default function DraftReportCard() {
           </button>
         </div>
         {showMethodology && (
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 6, background: "var(--am-surface-faint, rgba(0,0,0,0.03))", border: "1px solid var(--am-border)", fontSize: 12, color: "var(--am-text-muted)", lineHeight: 1.55 }}>
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 6, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)", fontSize: 12, color: "var(--am-text-muted)", lineHeight: 1.55 }}>
             <div style={{ fontWeight: 700, color: "var(--am-text)", marginBottom: 6 }}>
               How surplus is computed
             </div>
@@ -276,7 +276,7 @@ export default function DraftReportCard() {
 
       {error && !loading && (
         <Glass>
-          <div style={{ color: "var(--am-negative, #b45309)", fontSize: 13 }}>{error}</div>
+          <div style={{ color: "var(--am-negative)", fontSize: 13 }}>{error}</div>
         </Glass>
       )}
 
@@ -294,7 +294,7 @@ export default function DraftReportCard() {
       {!loading && card && card.isPreview && (
         <Glass>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--am-text)", fontWeight: 600 }}>
-            <Chip strong color="var(--am-accent, #2563eb)">PREVIEW</Chip>
+            <Chip strong color="var(--am-accent)">PREVIEW</Chip>
             <span>
               {card.checkpointLabel} period still in flight — finalizes{" "}
               {new Date(card.periodRange.lastEnd).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.

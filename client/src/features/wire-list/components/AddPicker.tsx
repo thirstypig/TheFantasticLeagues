@@ -128,8 +128,8 @@ export default function AddPicker({ periodId, teamId, leagueId, excludePlayerIds
       {error && (
         <div style={{
           marginTop: 8, padding: "6px 10px", borderRadius: 6, fontSize: 12,
-          background: "color-mix(in srgb, #f87171 12%, transparent)",
-          border: "1px solid color-mix(in srgb, #f87171 40%, transparent)",
+          background: "color-mix(in srgb, var(--am-negative) 12%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--am-negative) 40%, transparent)",
           color: "var(--am-text)",
         }}>
           {error}{errorCode ? ` (${errorCode})` : ""}

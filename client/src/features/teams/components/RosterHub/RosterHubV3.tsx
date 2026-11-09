@@ -440,7 +440,7 @@ export function RosterHubV3({
                 marginBottom: 12,
                 borderRadius: 12,
                 border: "1px solid var(--am-border-strong)",
-                background: "color-mix(in srgb, #00b894 8%, transparent)",
+                background: "color-mix(in srgb, var(--am-positive) 8%, transparent)",
                 fontSize: 12.5,
                 color: "var(--am-text)",
                 display: "flex",

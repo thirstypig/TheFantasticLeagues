@@ -286,7 +286,7 @@ export default function Home() {
         <Chip>{wireAddCount} {wireAddCount === 1 ? "Add" : "Adds"}</Chip>
         <Chip>{wireDropCount} {wireDropCount === 1 ? "Drop" : "Drops"}</Chip>
         {wireAddCount > wireDropCount && wirePeriod.status === "PENDING" && (
-          <Chip color="#fbbf24">⚠ More Adds than Drops</Chip>
+          <Chip color="var(--am-warning)">⚠ More Adds than Drops</Chip>
         )}
       </div>
     </Glass>

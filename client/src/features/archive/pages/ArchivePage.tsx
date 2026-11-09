@@ -487,11 +487,11 @@ export default function ArchivePage() {
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
                 className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-colors"
               >
-                <option value="" className="bg-[#0c0c0c] border-none">Select Year...</option>
+                <option value="" className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">Select Year...</option>
                 {seasons.map((s) => {
                   const year = typeof s === 'number' ? s : s.year;
                   return (
-                    <option key={year} value={year} className="bg-[#0c0c0c] border-none">{year}</option>
+                    <option key={year} value={year} className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">{year}</option>
                   );
                 })}
               </select>
@@ -505,7 +505,7 @@ export default function ArchivePage() {
                 disabled={!selectedYear}
                 className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <option value="0" className="bg-[#0c0c0c] border-none">Full Season</option>
+                <option value="0" className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">Full Season</option>
                 {periods.map((p) => {
                   const formatDate = (dateStr: string | null) => {
                     if (!dateStr) return '';
@@ -516,7 +516,7 @@ export default function ArchivePage() {
                   const endLabel = formatDate(p.endDate);
                   const dateRange = startLabel && endLabel ? ` [${startLabel} → ${endLabel}]` : '';
                   return (
-                    <option key={p.id} value={p.periodNumber} className="bg-[#0c0c0c] border-none">
+                    <option key={p.id} value={p.periodNumber} className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">
                       Period {p.periodNumber}{dateRange}
                     </option>
                   );

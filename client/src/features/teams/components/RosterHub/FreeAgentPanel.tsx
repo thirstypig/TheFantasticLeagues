@@ -143,7 +143,7 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
       aria-label="Free agent panel"
       className="fa-panel"
       style={{
-        background: "var(--am-card)",
+        background: "var(--am-surface)",
         border: "1px solid var(--am-border-strong)",
         borderRadius: 18,
         padding: 16,
@@ -211,8 +211,8 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
                 fontWeight: 600,
                 padding: "6px 10px",
                 borderRadius: 99,
-                border: `1px solid ${active ? "#22d3ee" : "var(--am-border)"}`,
-                background: active ? "color-mix(in srgb, #22d3ee 14%, transparent)" : "var(--am-chip)",
+                border: `1px solid ${active ? "var(--am-accent-2)" : "var(--am-border)"}`,
+                background: active ? "color-mix(in srgb, var(--am-accent-2) 14%, transparent)" : "var(--am-chip)",
                 color: "var(--am-text)",
                 cursor: "pointer",
                 minHeight: 28,
@@ -269,7 +269,7 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
           <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: 8 }}>Loading…</div>
         )}
         {error && (
-          <div role="alert" style={{ fontSize: 12, color: "#ff6b8a", padding: 8 }}>{error}</div>
+          <div role="alert" style={{ fontSize: 12, color: "var(--am-negative)", padding: 8 }}>{error}</div>
         )}
         {!loading && !error && filtered.length === 0 && (
           <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: 8 }}>

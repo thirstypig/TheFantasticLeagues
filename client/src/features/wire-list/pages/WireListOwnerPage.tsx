@@ -61,7 +61,7 @@ export default function WireListOwnerPage() {
     return (
       <Glass>
         <div style={{ padding: 24 }}>
-          <div style={{ color: "#f87171", marginBottom: 8 }}>Error: {error}</div>
+          <div style={{ color: "var(--am-negative)", marginBottom: 8 }}>Error: {error}</div>
           <button onClick={reload} style={btnStyle}>Retry</button>
         </div>
       </Glass>
@@ -88,8 +88,8 @@ export default function WireListOwnerPage() {
   const overflow = adds.length - drops.length;
   const statusChip =
     period.status === "PENDING" ? null :
-    period.status === "LOCKED" ? <Chip color="#fbbf24">LOCKED — read only</Chip> :
-    period.status === "PROCESSED" ? <Chip color="#34d399">PROCESSED</Chip> :
+    period.status === "LOCKED" ? <Chip color="var(--am-warning)">LOCKED — read only</Chip> :
+    period.status === "PROCESSED" ? <Chip color="var(--am-positive)">PROCESSED</Chip> :
     <Chip>CANCELLED</Chip>;
 
   return (
@@ -113,8 +113,8 @@ export default function WireListOwnerPage() {
         {showWarning && (
           <div style={{
             marginTop: 16, padding: "10px 14px",
-            background: "color-mix(in srgb, #fbbf24 8%, transparent)",
-            border: "1px dashed color-mix(in srgb, #fbbf24 40%, transparent)",
+            background: "color-mix(in srgb, var(--am-warning) 8%, transparent)",
+            border: "1px dashed color-mix(in srgb, var(--am-warning) 40%, transparent)",
             borderRadius: 10, fontSize: 13, color: "var(--am-text)",
           }}>
             <strong>Heads up:</strong> {overflow} more {overflow === 1 ? "Add" : "Adds"} than {drops.length === 1 ? "Drop" : "Drops"}.

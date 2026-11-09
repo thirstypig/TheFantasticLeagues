@@ -776,7 +776,7 @@ export default function Commissioner() {
           </Glass>
         ) : error ? (
           <Glass>
-            <div style={{ padding: 8, color: "rgb(248, 113, 113)", fontSize: 13, textAlign: "center" }}>
+            <div style={{ padding: 8, color: "var(--am-negative)", fontSize: 13, textAlign: "center" }}>
               {error}
             </div>
           </Glass>
@@ -1722,7 +1722,7 @@ export default function Commissioner() {
                       Positive = the team owes the league.
                     */}
                     {balancesError && (
-                      <div className="cm-note" style={{ color: "var(--am-danger, #b3261e)" }}>{balancesError}</div>
+                      <div className="cm-note" style={{ color: "var(--am-negative)" }}>{balancesError}</div>
                     )}
                     {!balancesError && balances === null && (
                       <div className="cm-note" style={{ color: "var(--am-text-muted)" }}>Loading balances…</div>
