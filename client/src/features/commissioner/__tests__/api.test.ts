@@ -290,7 +290,7 @@ describe("hub wrappers", () => {
     const r = { periodId: 7, categories: [], teamCount: 0, totalDelta: {}, computedAt: "x" };
     vi.mocked(fetchJsonApi).mockResolvedValue(r);
     await expect(getPeriodStandingsPreview(20, 7)).resolves.toBe(r);
-    expect(lastCall()[0]).toBe("/api/standings/period-category-standings?leagueId=20&periodId=7");
+    expect(lastCall()[0]).toBe("/api/period-category-standings?leagueId=20&periodId=7");
   });
 });
 

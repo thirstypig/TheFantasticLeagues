@@ -498,7 +498,7 @@ export async function getAcceptedTradeCount(leagueId: number): Promise<number> {
   return resp.trades.length;
 }
 
-/** Shape of GET /standings/period-category-standings (standings/routes.ts res.json). */
+/** Shape of GET /period-category-standings (standings/routes.ts res.json; mounted at /api). */
 export interface PeriodStandingsPreviewResponse {
   periodId: number;
   categories: Array<{
@@ -517,7 +517,7 @@ export async function getPeriodStandingsPreview(
   leagueId: number,
   periodId: number,
 ): Promise<PeriodStandingsPreviewResponse> {
-  return fetchJsonApi(`${API_BASE}/standings/period-category-standings?leagueId=${leagueId}&periodId=${periodId}`);
+  return fetchJsonApi(`${API_BASE}/period-category-standings?leagueId=${leagueId}&periodId=${periodId}`);
 }
 
 /** Sum each team's category points; highest first. */
