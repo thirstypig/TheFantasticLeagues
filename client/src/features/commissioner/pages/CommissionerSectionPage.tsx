@@ -27,7 +27,7 @@ export default function CommissionerSectionPage() {
       >
         ‹ Commissioner
       </Link>
-      <Commissioner {...props} hideTabs />
+      <Commissioner key={section} {...props} hideTabs />
     </>
   );
 }

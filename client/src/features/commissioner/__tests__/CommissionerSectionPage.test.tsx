@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation, Link } from "react-router-dom";
 
 // ── Commissioner API mock ─────────────────────────────────────────────────────
 vi.mock("../api", () => ({
@@ -161,5 +161,33 @@ describe("CommissionerSectionPage", () => {
     renderAt("/commissioner/20/bogus");
     await waitFor(() => expect(screen.getByTestId("loc")).toHaveTextContent("/commissioner/20"));
     expect(screen.getByTestId("loc").textContent).toBe("/commissioner/20");
+  });
+
+  // Slug-only navigation matches the same <Route>; the page must remount.
+  function renderWithNav(path: string) {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <Link to="/commissioner/20/trades">go-trades</Link>
+        <Routes>
+          <Route path="/commissioner/:leagueId/:section" element={<CommissionerSectionPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+  }
+
+  it("money -> trades slug change switches to the trades sub-pane", async () => {
+    renderWithNav("/commissioner/20/money");
+    await waitFor(() => expect(screen.getByText("Prize Pool")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("go-trades"));
+    await waitFor(() => expect(screen.getByTestId("trade-tool")).toBeInTheDocument());
+    expect(screen.queryByText("Prize Pool")).toBeNull();
+  });
+
+  it("rosters -> trades slug change (same section, different sub-tab) switches sub-pane", async () => {
+    renderWithNav("/commissioner/20/rosters");
+    await waitFor(() => expect(screen.getByTestId("roster-tool")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("go-trades"));
+    await waitFor(() => expect(screen.getByTestId("trade-tool")).toBeInTheDocument());
+    expect(screen.queryByTestId("roster-tool")).toBeNull();
   });
 });
