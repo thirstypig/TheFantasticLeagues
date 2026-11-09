@@ -1,9 +1,10 @@
 /*
  * Score Sheet — design tokens.
  *
- * Scorebook / scoreboard aesthetic: sans-serif (Inter only), soft taupe
- * paper in light mode, medium-gray page + near-black card in dark mode,
- * dark-green primary accent.
+ * USC palette (colors only, no marks): medium-tone gold paper with cardinal
+ * (#990000) accent in light mode; deep cardinal-brown page with gold
+ * (#ffcc00) accent in dark mode. Sans-serif (Inter only), flat surfaces.
+ * Contrast is enforced by __tests__/tokenContrast.test.ts.
  *
  * Tokens are scoped to `.aurora-theme` (unchanged from the Aurora era so
  * every existing className just picks up the new values automatically).
@@ -19,30 +20,31 @@
   --am-display: "Inter", system-ui, sans-serif;
   --am-body:    "Inter", system-ui, sans-serif;
 
-  /* ── Light mode: soft taupe paper (not pure white) ── */
-  --am-bg:             #ebe6db;   /* page background */
-  --am-surface:        #f6f2e6;   /* card / table background */
-  --am-surface-alt:    #e3ddcd;   /* zebra row, table header bg */
-  --am-surface-strong: #e3ddcd;   /* alias: used by older atoms that reference surface-strong */
-  --am-surface-faint:  #f6f2e6;   /* compat alias: same as surface */
+  /* ── Light mode: USC gold paper (medium tone, not pure white) ── */
+  --am-bg:             #e0d3ae;   /* page background */
+  --am-surface:        #ece2c6;   /* card / table background */
+  --am-surface-alt:    #e5d9b8;   /* zebra row, table header bg */
+  --am-surface-strong: #e5d9b8;   /* alias: used by older atoms that reference surface-strong */
+  --am-surface-faint:  #ece2c6;   /* compat alias: same as surface */
 
-  --am-border:         #c2bbab;   /* hairline borders */
-  --am-border-strong:  #8e8775;   /* nav underline, divider above tables */
+  --am-border:         #c9b98c;   /* hairline borders */
+  --am-border-strong:  #8a7a4f;   /* nav underline, divider above tables */
 
-  --am-text:           #1c1f1a;
-  --am-text-muted:     #4a4d44;
-  --am-text-faint:     #60635a;   /* darkened: 3.7→5.0:1 on light surfaces, WCAG AA for small text */
+  --am-text:           #15171a;
+  --am-text-muted:     #33373b;
+  --am-text-faint:     #4f4a3d;   /* AA for small text — enforced by tokenContrast test */
 
-  --am-accent:         #1f5a3d;   /* outfield green — primary */
-  --am-accent-2:       #1a3a5a;   /* navy — secondary, activity tags */
-  --am-cardinal:       #1a3a5a;   /* compat alias → accent-2 */
+  --am-accent:         #990000;   /* USC cardinal — primary */
+  --am-on-accent:     #ffffff;   /* text/icons placed on --am-accent fills */
+  --am-accent-2:       #6b4e00;   /* dark gold — secondary, activity tags */
+  --am-cardinal:       #6b4e00;   /* compat alias → accent-2 */
 
-  --am-chip:           #dad3bf;   /* filter pills / chips */
-  --am-chip-strong:    #c8c0a8;
+  --am-chip:           #dccb98;   /* filter pills / chips */
+  --am-chip-strong:    #cfbb80;
 
-  --am-positive:       #2e6a2e;   /* +stat deltas */
-  --am-negative:       #9b2c2c;   /* −stat deltas */
-  --am-warning:        #8a5a00;   /* lock icons, warn chips, ghost-IL */
+  --am-positive:       #2a5f2a;   /* +stat deltas */
+  --am-negative:       #8a3a00;   /* −stat deltas */
+  --am-warning:        #5e3400;   /* lock icons, warn chips, ghost-IL */
 
   /* Gradient tokens removed (Score Sheet is flat) — neutral fallbacks
      so any atom that still interpolates them renders gracefully. */
@@ -56,30 +58,31 @@
 
 .aurora-theme.dark,
 .dark .aurora-theme {
-  /* ── Dark mode: medium-gray page, near-black cards ── */
-  --am-bg:             #3d434b;   /* medium gray page — not black */
-  --am-surface:        #222630;   /* lifted from #1c1f24 — reduces harsh contrast with page */
-  --am-surface-alt:    #292d35;   /* zebra row, table header bg */
-  --am-surface-strong: #292d35;
-  --am-surface-faint:  #222630;
+  /* ── Dark mode: deep cardinal-brown page and cards ── */
+  --am-bg:             #3a1f22;   /* page background */
+  --am-surface:        #4a2a2e;   /* card / table background */
+  --am-surface-alt:    #553236;   /* zebra row, table header bg */
+  --am-surface-strong: #553236;
+  --am-surface-faint:  #4a2a2e;
 
-  --am-border:         #4a5058;
-  --am-border-strong:  #6a7079;
+  --am-border:         #6a3d42;
+  --am-border-strong:  #a07a7e;
 
-  --am-text:           #f1f2ec;
-  --am-text-muted:     #d0d2c8;   /* brightened from #c8cac0 for cleaner hierarchy */
-  --am-text-faint:     #c0c5cb;   /* lightened: 5.8→7.5:1 on dark surfaces, legible small text */
+  --am-text:           #f6f7f4;
+  --am-text-muted:     #dde1dc;
+  --am-text-faint:     #cfc6c0;   /* AA for small text — enforced by tokenContrast test */
 
-  --am-accent:         #82c896;   /* softened green for dark */
-  --am-accent-2:       #8ec1e6;
-  --am-cardinal:       #8ec1e6;
+  --am-accent:         #ffcc00;   /* USC gold — primary */
+  --am-on-accent:     #2a1a00;   /* text/icons placed on --am-accent fills */
+  --am-accent-2:       #f0c8a8;
+  --am-cardinal:       #f0c8a8;
 
-  --am-chip:           #303640;   /* lifted to sit on raised surface */
-  --am-chip-strong:    #3b4047;
+  --am-chip:           #5a3a30;   /* lifted to sit on raised surface */
+  --am-chip-strong:    #6a4636;
 
-  --am-positive:       #92d292;
-  --am-negative:       #e89a9a;
-  --am-warning:        #e8c98a;   /* lock icons, warn chips, ghost-IL (dark) */
+  --am-positive:       #a6e3b0;
+  --am-negative:       #ffb38a;
+  --am-warning:        #f8db9c;   /* lock icons, warn chips, ghost-IL (dark) */
 
   --am-glow-1:  none;
   --am-glow-2:  none;

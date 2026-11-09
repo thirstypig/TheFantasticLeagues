@@ -1,0 +1,86 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+/**
+ * Contrast guard for the USC palette. Parses the --am-* tokens straight out of
+ * the CSS so the test fails if a token drifts below WCAG thresholds.
+ * Helpers are exported-shaped (plain functions) so other CSS files can reuse them.
+ */
+
+type Tokens = Record<string, string>;
+
+/** Returns the custom properties declared in the first rule whose selector equals `selector`. */
+function parseBlock(css: string, selector: string): Tokens {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const rules = stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g);
+  for (const [, sel, body] of rules) {
+    if (sel.trim().replace(/\s+/g, " ") === selector) {
+      const tokens: Tokens = {};
+      for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) tokens[m[1]] = m[2].trim();
+      return tokens;
+    }
+  }
+  throw new Error(`selector not found: ${selector}`);
+}
+
+function luminance(hex: string): number {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) throw new Error(`not a 6-digit hex color: ${hex}`);
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(m[1].slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function expectRatio(tokens: Tokens, fg: string, bg: string, min: number): void {
+  const ratio = contrast(tokens[fg], tokens[bg]);
+  expect(
+    ratio,
+    `${fg} (${tokens[fg]}) on ${bg} (${tokens[bg]}) = ${ratio.toFixed(2)}:1, need >= ${min}`,
+  ).toBeGreaterThanOrEqual(min);
+}
+
+const css = readFileSync(resolve(__dirname, "../aurora.css"), "utf8");
+const modes: Record<string, Tokens> = {
+  light: parseBlock(css, ".aurora-theme"),
+  dark: parseBlock(css, ".aurora-theme.dark, .dark .aurora-theme"),
+};
+
+const TEXT_TOKENS = [
+  "--am-text", "--am-text-muted", "--am-text-faint",
+  "--am-accent", "--am-accent-2", "--am-positive", "--am-negative", "--am-warning",
+];
+const BACKGROUNDS = ["--am-bg", "--am-surface", "--am-surface-alt", "--am-chip"];
+
+describe.each(Object.entries(modes))("aurora tokens (%s)", (_mode, tokens) => {
+  for (const fg of TEXT_TOKENS) {
+    for (const bg of BACKGROUNDS) {
+      it(`${fg} on ${bg} >= 4.5:1`, () => expectRatio(tokens, fg, bg, 4.5));
+    }
+  }
+  it("--am-on-accent on --am-accent >= 4.5:1", () =>
+    expectRatio(tokens, "--am-on-accent", "--am-accent", 4.5));
+  it("--am-border-strong on --am-surface >= 3:1", () =>
+    expectRatio(tokens, "--am-border-strong", "--am-surface", 3));
+});
+
+describe("USC spec values", () => {
+  it("light bg/accent", () => {
+    expect(modes.light["--am-bg"]).toBe("#e0d3ae");
+    expect(modes.light["--am-accent"]).toBe("#990000");
+  });
+  it("dark bg/accent", () => {
+    expect(modes.dark["--am-bg"]).toBe("#3a1f22");
+    expect(modes.dark["--am-accent"]).toBe("#ffcc00");
+  });
+  it("light negative is distinct from the brand accent", () => {
+    expect(modes.light["--am-negative"]).not.toBe(modes.light["--am-accent"]);
+  });
+});
