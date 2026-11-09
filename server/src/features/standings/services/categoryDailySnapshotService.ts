@@ -15,7 +15,7 @@
  */
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
-import { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../../../lib/sportConfig.js";
+import { CATEGORY_CONFIG } from "../../../lib/sportConfig.js";
 import { computeCategoryRows, computeTeamStatsFromDb } from "./standingsService.js";
 
 /**
@@ -65,21 +65,16 @@ export async function snapshotLeagueCategoryDaily(
 
   for (const cfg of CATEGORY_CONFIG) {
     const catRows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
-    const dbField = KEY_TO_DB_FIELD[cfg.key] || cfg.key;
     for (const r of catRows) {
-      // computeCategoryRows returns {teamId, value, rank, points} — we
-      // re-derive value from the team-stats row to be safe (different
-      // CATEGORY_CONFIG keys map to different field names; cfg.key is
-      // the API contract while dbField is what's on TeamStatRow).
-      const teamRow = teamStats.find((t) => t.team.id === r.teamId);
-      const rawValue =
-        (teamRow as unknown as Record<string, number>)?.[dbField] ?? r.value ?? 0;
+      // `r.value` is the exact number the rank was computed from —
+      // computeCategoryRows already maps the category key (e.g. SV) to its
+      // stats field (S) — so value and rank can never disagree.
       rows.push({
         teamId: r.teamId,
         leagueId,
         date,
         category: cfg.key,
-        value: Number(rawValue) || 0,
+        value: Number(r.value) || 0,
         rank: r.rank,
         rankPoints: r.points,
       });

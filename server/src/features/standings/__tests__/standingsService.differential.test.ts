@@ -200,8 +200,8 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       expect(pspRgs, "PSP: RGS not found in result").toBeDefined();
       if (!psdRgs || !pspRgs) return;
 
-      expect(psdRgs.K).toBe(0);
-      expect(pspRgs.K).toBe(0);
+      expect(psdRgs.stats.K).toBe(0);
+      expect(pspRgs.stats.K).toBe(0);
     });
   });
 
@@ -302,8 +302,8 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       // TeamStatRow uses S (not SV) for saves; rate stats AVG/ERA/WHIP are excluded.
       const COUNTING_STATS = ["R", "HR", "RBI", "SB", "W", "S", "K", "H", "AB", "ER", "IP", "BB_H"] as const;
       for (const key of COUNTING_STATS) {
-        const psdTotal = psdResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
-        const pspTotal = pspResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
+        const psdTotal = psdResult.reduce((s, t) => s + (Number(t.stats[key]) || 0), 0);
+        const pspTotal = pspResult.reduce((s, t) => s + (Number(t.stats[key]) || 0), 0);
         expect(psdTotal, `zero-sum invariant failed for ${key}`).toBe(pspTotal);
       }
     });
@@ -382,14 +382,14 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       if (!pspAlpha || !pspBravo) return;
 
       // Alpha (active owner) gets the stats
-      expect(pspAlpha.S).toBe(2);
-      expect(pspAlpha.K).toBe(5);
+      expect(pspAlpha.stats.S).toBe(2);
+      expect(pspAlpha.stats.K).toBe(5);
       // Bravo (ghost) gets nothing — it did not hold the player at period.endDate
-      expect(pspBravo.S).toBe(0);
-      expect(pspBravo.K).toBe(0);
+      expect(pspBravo.stats.S).toBe(0);
+      expect(pspBravo.stats.K).toBe(0);
       // Zero-sum: league total equals the player's actual stats, not double
-      expect(pspAlpha.S + pspBravo.S).toBe(2);
-      expect(pspAlpha.K + pspBravo.K).toBe(5);
+      expect(pspAlpha.stats.S + pspBravo.stats.S).toBe(2);
+      expect(pspAlpha.stats.K + pspBravo.stats.K).toBe(5);
     });
 
     it("PSD path: ghost-team (Bravo) gets zero credit; active team (Alpha) gets full credit", async () => {
@@ -406,14 +406,14 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       if (!psdAlpha || !psdBravo) return;
 
       // Alpha's ownership window covers Apr 27 (after reversal); Alpha gets the stats.
-      expect(psdAlpha.S).toBe(2);
-      expect(psdAlpha.K).toBe(5);
+      expect(psdAlpha.stats.S).toBe(2);
+      expect(psdAlpha.stats.K).toBe(5);
       // Bravo's ghost window ended at REVERSAL_AT (Apr 25); Apr 27 is outside it.
-      expect(psdBravo.S).toBe(0);
-      expect(psdBravo.K).toBe(0);
+      expect(psdBravo.stats.S).toBe(0);
+      expect(psdBravo.stats.K).toBe(0);
       // Zero-sum: total across both teams equals the player's stats exactly once
-      expect(psdAlpha.S + psdBravo.S).toBe(2);
-      expect(psdAlpha.K + psdBravo.K).toBe(5);
+      expect(psdAlpha.stats.S + psdBravo.stats.S).toBe(2);
+      expect(psdAlpha.stats.K + psdBravo.stats.K).toBe(5);
     });
 
     it("both paths agree: player stats credited exactly once, zero double-counting", async () => {
@@ -426,8 +426,8 @@ describe("computeTeamStatsFromDb — PSD ↔ PSP differential", () => {
       // looking up the upper bound in ghostPsp (which mirrors the DB shape).
       const TEAMROW_TO_PSP: Partial<Record<string, keyof typeof ZERO_STATS>> = { S: "SV" };
       for (const key of COUNTING_STATS) {
-        const psdTotal = psdResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
-        const pspTotal = pspResult.reduce((s, t) => s + (Number(t[key]) || 0), 0);
+        const psdTotal = psdResult.reduce((s, t) => s + (Number(t.stats[key]) || 0), 0);
+        const pspTotal = pspResult.reduce((s, t) => s + (Number(t.stats[key]) || 0), 0);
         const rawKey = (TEAMROW_TO_PSP[key] ?? key) as keyof typeof ZERO_STATS;
         const rawMax = ghostPsp.reduce((s, p) => s + (p[rawKey] || 0), 0);
         // Neither path should inflate league totals beyond the raw player stats.
@@ -472,13 +472,13 @@ describe("computeTeamStatsFromDb — hybrid attribution (todo #286)", () => {
     const alpha = (rows as any[]).find(r => r.team.id === 1001);
     const bravo = (rows as any[]).find(r => r.team.id === 1002);
     // Alpha: 10 (player 1 via PSP — not 99) + 2 (player 3 pre-trade window)
-    expect(alpha.R).toBe(12);
+    expect(alpha.stats.R).toBe(12);
     // Bravo: player 3 post-trade window only
-    expect(bravo.R).toBe(4);
+    expect(bravo.stats.R).toBe(4);
     // Conservation: nothing lost or double-counted across the league
-    expect(alpha.R + bravo.R).toBe(16);
+    expect(alpha.stats.R + bravo.stats.R).toBe(16);
     // Merged rate components survive for weighted cross-period averaging (Issue #109)
-    expect(alpha.AB).toBe(44); // 40 (PSP) + 4 (daily window)
-    expect(alpha.H).toBe(14);  // 12 + 2
+    expect(alpha.stats.AB).toBe(44); // 40 (PSP) + 4 (daily window)
+    expect(alpha.stats.H).toBe(14);  // 12 + 2
   });
 });

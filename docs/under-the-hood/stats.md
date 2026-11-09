@@ -21,15 +21,15 @@ updated: 2026-11-09
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-09 from 1,786 git-tracked files.*
+*Generated 2026-11-09 from 1,788 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 575 | 101,206 |
+| `.ts` | 576 | 101,387 |
 | `.tsx` | 300 | 88,500 |
-| `.md` | 545 | 67,215 |
+| `.md` | 546 | 67,344 |
 | `.json` | 36 | 40,137 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,767 |
@@ -38,7 +38,7 @@ updated: 2026-11-09
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,782** | **347,010** |
+| **All tracked** | **1,784** | **347,320** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,9 +55,9 @@ updated: 2026-11-09
 
 ## Docs
 
-**201** board-scope markdown files (`docs/` plus the four root docs), of which **134** carry frontmatter.
+**202** board-scope markdown files (`docs/` plus the four root docs), of which **135** carry frontmatter.
 
-*549 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*550 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -68,8 +68,8 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `feat` | 20 | ❌ off-vocabulary |
 | `fix` | 6 | ❌ off-vocabulary |
 | `refactor` | 3 | ❌ off-vocabulary |
+| `report` | 3 | ✅ |
 | `tech-spec` | 2 | ✅ |
-| `report` | 2 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
@@ -103,7 +103,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 46 | ✅ |
+| `active` | 47 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
