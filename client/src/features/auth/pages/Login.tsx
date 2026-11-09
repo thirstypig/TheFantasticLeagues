@@ -16,8 +16,10 @@ import { supabase } from "../../../lib/supabase";
 import { track } from "../../../lib/posthog";
 import { AmbientBg, Glass } from "../../../components/aurora/atoms";
 import "../../../components/aurora/aurora.css";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function Login() {
+  const { theme } = useTheme();
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
 
@@ -91,7 +93,7 @@ export default function Login() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{
         position: "relative",
         minHeight: "100svh",

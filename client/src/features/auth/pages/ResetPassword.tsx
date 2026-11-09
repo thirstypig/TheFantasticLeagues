@@ -4,8 +4,10 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import "../../../components/aurora/aurora.css";
 import { AmbientBg, Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function ResetPassword() {
+  const { theme } = useTheme();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -124,7 +126,7 @@ export default function ResetPassword() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
     >
       <AmbientBg />

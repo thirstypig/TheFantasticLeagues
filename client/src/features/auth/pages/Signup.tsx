@@ -2,7 +2,7 @@
  * Signup — Aurora pre-auth port.
  *
  * Pre-auth pages (Login/Signup/etc.) sit OUTSIDE AuroraShell, so this
- * page mounts its own `.aurora-theme dark` wrapper + AmbientBg. All
+ * page mounts its own `.aurora-theme` wrapper (+ `dark` per the resolved theme) + AmbientBg. All
  * hooks, callbacks, supabase auth calls, and validation/error handling
  * are preserved verbatim from the legacy implementation.
  */
@@ -14,8 +14,10 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { track } from "../../../lib/posthog";
 import "../../../components/aurora/aurora.css";
 import { AmbientBg, Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function Signup() {
+  const { theme } = useTheme();
   const { loginWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -95,7 +97,7 @@ export default function Signup() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
     >
       <AmbientBg />

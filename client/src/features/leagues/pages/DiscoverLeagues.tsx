@@ -4,8 +4,10 @@ import { getPublicLeagues, type PublicLeagueListItem } from "../api";
 import { useAuth } from "../../../auth/AuthProvider";
 import "../../../components/aurora/aurora.css";
 import { AmbientBg, Glass, IridText, SectionLabel, Chip } from "../../../components/aurora/atoms";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function DiscoverLeagues() {
+  const { theme } = useTheme();
   const { user } = useAuth();
   const [leagues, setLeagues] = useState<PublicLeagueListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ export default function DiscoverLeagues() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
     >
       <AmbientBg />

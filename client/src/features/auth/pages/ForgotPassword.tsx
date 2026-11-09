@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import "../../../components/aurora/aurora.css";
 import { AmbientBg, Glass } from "../../../components/aurora/atoms";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 function mapSupabaseError(msg: string): string {
   if (msg.includes("rate_limit") || msg.includes("over_email_send_rate_limit"))
@@ -13,6 +14,7 @@ function mapSupabaseError(msg: string): string {
 }
 
 export default function ForgotPassword() {
+  const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +47,7 @@ export default function ForgotPassword() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
     >
       <AmbientBg />
