@@ -12,7 +12,7 @@
 
 import { positionToSlots, PITCHER_CODES_SET } from "./sports/baseball.js";
 import { RosterRuleError } from "./rosterRuleError.js";
-import { slotsFor } from "../features/transactions/lib/slotMatcher.js";
+import { slotsFor } from "./slotMatcher.js";
 
 /**
  * The slot a newly-created Roster row should take.
