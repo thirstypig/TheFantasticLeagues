@@ -84,3 +84,25 @@ describe("USC spec values", () => {
     expect(modes.light["--am-negative"]).not.toBe(modes.light["--am-accent"]);
   });
 });
+
+describe("index.css legacy --lg-* tokens (logged-out pages)", () => {
+  const indexCss = readFileSync(resolve(__dirname, "../../../index.css"), "utf8");
+  const lg: Record<string, Tokens> = {
+    light: parseBlock(indexCss, ":root"),
+    dark: parseBlock(indexCss, ".dark"),
+  };
+
+  it.each(Object.entries(lg))("%s --lg-text-primary on --lg-bg-card >= 4.5:1", (_m, t) =>
+    expectRatio(t, "--lg-text-primary", "--lg-bg-card", 4.5));
+  it.each(Object.entries(lg))("%s --lg-text-muted on --lg-bg-page >= 4.5:1", (_m, t) =>
+    expectRatio(t, "--lg-text-muted", "--lg-bg-page", 4.5));
+
+  it("page backgrounds equal the spec values", () => {
+    expect(lg.light["--lg-bg-page"]).toBe("#e0d3ae");
+    expect(lg.dark["--lg-bg-page"]).toBe("#3a1f22");
+  });
+  it("accent equals the spec values", () => {
+    expect(lg.light["--lg-accent"]).toBe("#990000");
+    expect(lg.dark["--lg-accent"]).toBe("#ffcc00");
+  });
+});

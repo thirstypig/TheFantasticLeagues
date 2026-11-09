@@ -69,7 +69,7 @@ export default function ForgotPassword() {
                 height: 30,
                 borderRadius: 9,
                 background: "var(--am-irid)",
-                boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                 flexShrink: 0,
               }}
             />
@@ -135,7 +135,7 @@ export default function ForgotPassword() {
                     height: 22,
                     borderRadius: 99,
                     background: "var(--am-positive)",
-                    color: "#0a0a0a",
+                    color: "var(--am-on-accent)",
                     display: "grid",
                     placeItems: "center",
                     fontSize: 13,
@@ -242,12 +242,12 @@ export default function ForgotPassword() {
                   borderRadius: 999,
                   background: "var(--am-irid)",
                   border: "1px solid var(--am-border-strong)",
-                  color: "#fff",
+                  color: "var(--am-on-accent)",
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.5 : 1,
-                  boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                  boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                   marginTop: 4,
                 }}
               >
