@@ -2,11 +2,12 @@
 // moving forward pushes history, so browser Back returns to the previous step.
 // Each step fetches its own data on mount (no cross-step cache) so a reload on
 // any step is safe. Nothing is written until the confirm sheet on step 5.
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useToast } from "../../../contexts/ToastContext";
+import { CardError, MUTED, ROW, Skeleton, useLoad, type Load } from "../components/cardParts";
 import {
   getCloseReadiness,
   getGhostIlSummary,
@@ -18,38 +19,6 @@ import {
   type CloseReadiness,
   type IlFeeReconcileResult,
 } from "../api";
-
-type Load<T> = { state: "loading" } | { state: "error" } | { state: "ready"; data: T };
-
-function useLoad<T>(fn: () => Promise<T>, deps: unknown[]): Load<T> {
-  const [s, setS] = useState<Load<T>>({ state: "loading" });
-  useEffect(() => {
-    let live = true;
-    setS({ state: "loading" });
-    fn().then(
-      (data) => live && setS({ state: "ready", data }),
-      () => live && setS({ state: "error" }),
-    );
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return s;
-}
-
-const ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  minHeight: 48,
-  padding: "10px 16px",
-  borderBottom: "1px solid var(--am-border)",
-  color: "var(--am-text)",
-  textDecoration: "none",
-  fontSize: 16,
-};
-
-const MUTED: React.CSSProperties = { fontSize: 14, color: "var(--am-text-muted)" };
 
 const PRIMARY: React.CSSProperties = {
   minHeight: 48,
@@ -80,20 +49,6 @@ const LINK: React.CSSProperties = {
 };
 
 const STEP_LABELS = ["nothing is final until step 5", "rosters", "standings preview", "IL fees", "confirm"];
-
-function Skeleton() {
-  return (
-    <div aria-busy="true" style={{ padding: 16 }}>
-      {[0, 1].map((i) => (
-        <div key={i} style={{ height: 16, marginBottom: 10, borderRadius: 4, background: "var(--am-surface-alt)" }} />
-      ))}
-    </div>
-  );
-}
-
-function CardError({ children }: { children: React.ReactNode }) {
-  return <p style={{ padding: 16, margin: 0, fontSize: 16, color: "var(--am-negative)" }}>{children}</p>;
-}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "none yet";

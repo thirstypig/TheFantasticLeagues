@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { CardError, MUTED, ROW, Skeleton, useLoad } from "../components/cardParts";
 import {
   getAcceptedTradeCount,
   getGhostIlSummary,
@@ -15,52 +16,6 @@ import {
 } from "../api";
 import { deriveNeedsYou, type NeedsYouItem } from "../lib/needsYou";
 import { describeChange } from "../lib/recentChangeCopy";
-
-type Load<T> = { state: "loading" } | { state: "error" } | { state: "ready"; data: T };
-
-function useLoad<T>(fn: () => Promise<T>, deps: unknown[]): Load<T> {
-  const [s, setS] = useState<Load<T>>({ state: "loading" });
-  useEffect(() => {
-    let live = true;
-    setS({ state: "loading" });
-    fn().then(
-      (data) => live && setS({ state: "ready", data }),
-      () => live && setS({ state: "error" }),
-    );
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return s;
-}
-
-const ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  minHeight: 48,
-  padding: "10px 16px",
-  borderBottom: "1px solid var(--am-border)",
-  color: "var(--am-text)",
-  textDecoration: "none",
-  fontSize: 16,
-};
-
-const MUTED: React.CSSProperties = { fontSize: 14, color: "var(--am-text-muted)" };
-
-function Skeleton() {
-  return (
-    <div aria-busy="true" style={{ padding: 16 }}>
-      {[0, 1].map((i) => (
-        <div key={i} style={{ height: 16, marginBottom: 10, borderRadius: 4, background: "var(--am-surface-alt)" }} />
-      ))}
-    </div>
-  );
-}
-
-function CardError({ children }: { children: React.ReactNode }) {
-  return <p style={{ padding: 16, margin: 0, fontSize: 16, color: "var(--am-negative)" }}>{children}</p>;
-}
 
 function JobRow({ to, label, hint }: { to: string | null; label: string; hint?: string }) {
   const body = (
