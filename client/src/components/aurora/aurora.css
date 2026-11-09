@@ -44,6 +44,8 @@
   --am-negative:       #9b2c2c;   /* −stat deltas */
   --am-warning:        #8a5a00;   /* lock icons, warn chips, ghost-IL */
 
+  --am-scrim:          rgba(0, 0, 0, 0.45);   /* dims the page behind the confirm sheet */
+
   /* Gradient tokens removed (Score Sheet is flat) — neutral fallbacks
      so any atom that still interpolates them renders gracefully. */
   --am-glow-1:  none;
@@ -80,6 +82,8 @@
   --am-positive:       #92d292;
   --am-negative:       #e89a9a;
   --am-warning:        #e8c98a;   /* lock icons, warn chips, ghost-IL (dark) */
+
+  --am-scrim:          rgba(0, 0, 0, 0.6);    /* must DARKEN in dark mode too (never mix from --am-text) */
 
   --am-glow-1:  none;
   --am-glow-2:  none;

@@ -93,6 +93,7 @@ export default function StartPeriodPage() {
   } else {
     const badge = lateBadge(period.startDate);
     const list = moves.state === "ready" ? moves.data : [];
+    const movesReady = moves.state === "ready";
     // Start-day overlap: warn (don't block) while the previous period is open.
     const stillActive = periods.data.find((p) => p.status === "active" && p.id !== period.id);
     content = (
@@ -142,9 +143,20 @@ export default function StartPeriodPage() {
           )}
         </Glass>
 
-        <button type="button" style={PRIMARY} onClick={() => setSheetOpen(true)} disabled={busy}>
+        {/* The moves list is the sanity check before starting — no start without it. */}
+        <button
+          type="button"
+          style={{ ...PRIMARY, opacity: movesReady ? 1 : 0.6, cursor: movesReady ? "pointer" : "not-allowed" }}
+          onClick={() => setSheetOpen(true)}
+          disabled={busy || !movesReady}
+        >
           Start {period.name}
         </button>
+        {!movesReady && (
+          <p style={{ margin: 0, ...MUTED }}>
+            {moves.state === "error" ? "Couldn’t load moves — reload before starting" : "Loading moves…"}
+          </p>
+        )}
         <ConfirmSheet
           open={sheetOpen}
           title={`Start ${period.name}?`}

@@ -66,7 +66,7 @@ export function ConfirmSheet({
         display: "flex",
         alignItems: desktop ? "center" : "flex-end",
         justifyContent: "center",
-        background: "color-mix(in srgb, var(--am-text) 45%, transparent)",
+        background: "var(--am-scrim, rgba(0, 0, 0, 0.45))",
       }}
     >
       <div

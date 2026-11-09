@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { getLeaguePeriods, getRecentChanges, type HubPeriod, type RecentChange } from "../api";
 import { describeChange } from "../lib/recentChangeCopy";
+import { MUTED } from "../components/cardParts";
 
 export default function RecentChangesPage() {
   const leagueId = Number(useParams().leagueId);
@@ -39,14 +40,14 @@ export default function RecentChangesPage() {
           changes.map((c) => (
             <div key={c.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--am-border)", minHeight: 44 }}>
               <div style={{ fontSize: 16, color: "var(--am-text)" }}>{describeChange(c, periods)}</div>
-              <div style={{ fontSize: 14, color: "var(--am-text-muted)" }}>
+              <div style={MUTED}>
                 {c.userName ?? "System"} · {new Date(c.createdAt).toLocaleString()}
               </div>
             </div>
           ))
         )}
       </Glass>
-      <p style={{ fontSize: 14, color: "var(--am-text-faint)", marginTop: 12 }}>
+      <p style={{ ...MUTED, marginTop: 12 }}>
         Older actions from before this feature may not appear.
       </p>
     </div>

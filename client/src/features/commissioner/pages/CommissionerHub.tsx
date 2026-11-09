@@ -123,8 +123,17 @@ export default function CommissionerHub() {
             <Skeleton />
           ) : (
             <>
-              <JobRow label="Close a period" to={closeTarget ? `${base}/close/${closeTarget.id}` : null} hint={closeTarget?.name} />
-              <JobRow label="Start next period" to={startTarget ? `${base}/start/${startTarget.id}` : null} hint={startTarget?.name} />
+              <JobRow
+                label="Close a period"
+                to={closeTarget ? `${base}/close/${closeTarget.id}` : null}
+                hint={closeTarget ? closeTarget.name : "No active period"}
+              />
+              {/* No pending period: send the commissioner to set one up rather than a dead row. */}
+              <JobRow
+                label="Start next period"
+                to={startTarget ? `${base}/start/${startTarget.id}` : `${base}/settings`}
+                hint={startTarget ? startTarget.name : "No next period set up"}
+              />
               <JobRow label="Fix a roster" to={`${base}/rosters`} />
               <JobRow label="Trades" to={`${base}/trades`} />
               <JobRow label="Money" to={`${base}/money`} />
@@ -134,8 +143,13 @@ export default function CommissionerHub() {
             </>
           )}
         </Glass></div>
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          {[["Overview", "overview"], ["Archive", "archive"]].map(([label, slug]) => (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+          {[
+            ["Overview", "overview"],
+            ["Archive", "archive"],
+            ["Scoring categories", "scoring"],
+            ["Wire List settings", "wire-list"],
+          ].map(([label, slug]) => (
             <Link
               key={slug}
               to={`${base}/${slug}`}

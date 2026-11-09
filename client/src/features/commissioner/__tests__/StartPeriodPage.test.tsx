@@ -93,9 +93,28 @@ describe("StartPeriodPage", () => {
     expect(screen.getByText(/Set up periods/).closest("a")?.getAttribute("href")).toBe("/commissioner/20/settings");
   });
 
+  it("Start is disabled with a reload hint when moves fail to load", async () => {
+    m.getMovesSinceStart.mockRejectedValue(new Error("boom"));
+    renderAt(URL);
+    expect(await screen.findByText("Couldn’t load moves — reload before starting")).toBeTruthy();
+    const start = screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement;
+    expect(start.disabled).toBe(true);
+    fireEvent.click(start);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(m.setPeriodStatus).not.toHaveBeenCalled();
+  });
+
+  it("Start is disabled while moves are still loading", async () => {
+    m.getMovesSinceStart.mockReturnValue(new Promise(() => {}));
+    renderAt(URL);
+    expect(await screen.findByText("Loading moves…")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("confirming calls setPeriodStatus(8, active) once, toasts, and goes to the hub", async () => {
     renderAt(URL);
-    fireEvent.click(await screen.findByRole("button", { name: "Start Period 8" }));
+    await screen.findByText("No moves since the start date.");
+    fireEvent.click(screen.getByRole("button", { name: "Start Period 8" }));
     const sheet = await screen.findByRole("dialog");
     const confirmBtn = within(sheet).getByRole("button", { name: "Start period" });
     fireEvent.click(confirmBtn);
@@ -118,8 +137,9 @@ describe("StartPeriodPage — another period still active", () => {
       await screen.findByText("Period 7 is still active — close it first so standings and moves land in the right period."),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: /Close Period 7/ }).getAttribute("href")).toBe("/commissioner/20/close/7");
-    const start = screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement;
-    expect(start.disabled).toBe(false);
+    await waitFor(() =>
+      expect((screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement).disabled).toBe(false),
+    );
   });
 
   it("no warning when nothing else is active", async () => {

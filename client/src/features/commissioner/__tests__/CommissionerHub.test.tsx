@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -31,6 +31,10 @@ function renderHub() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Pinned to the morning (before the 14:00 UTC close threshold) so Needs-you
+  // ordering doesn't depend on the wall clock.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-29T10:00:00.000Z"));
   m.getLeaguePeriods.mockResolvedValue([
     { id: 7, name: "Period 7", startDate: day(-14), endDate: day(-1), status: "active" },
     { id: 8, name: "Period 8", startDate: day(0), endDate: day(14), status: "pending" },
@@ -44,6 +48,10 @@ beforeEach(() => {
     { id: 2, action: "TRADE_PROCESS", resourceType: "Trade", resourceId: "55", createdAt: new Date().toISOString(), userName: "Jim", metadata: null },
     { id: 3, action: "SOME_OTHER_THING", resourceType: "X", resourceId: null, createdAt: new Date().toISOString(), userName: null, metadata: null },
   ]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("CommissionerHub", () => {
@@ -73,6 +81,46 @@ describe("CommissionerHub", () => {
     ]);
     expect(screen.getByRole("link", { name: /Overview/ }).getAttribute("href")).toBe("/commissioner/20/overview");
     expect(screen.getByRole("link", { name: /Archive/ }).getAttribute("href")).toBe("/commissioner/20/archive");
+    expect(screen.getByRole("link", { name: "Scoring categories" }).getAttribute("href")).toBe("/commissioner/20/scoring");
+    expect(screen.getByRole("link", { name: "Wire List settings" }).getAttribute("href")).toBe("/commissioner/20/wire-list");
+  });
+
+  it("after the close threshold on start day, Close Period 7 is listed before Start Period 8", async () => {
+    vi.setSystemTime(new Date("2026-09-29T15:00:00.000Z"));
+    m.getLeaguePeriods.mockResolvedValue([
+      { id: 7, name: "Period 7", startDate: day(-14), endDate: day(-1), status: "active" },
+      { id: 8, name: "Period 8", startDate: day(0), endDate: day(14), status: "pending" },
+    ]);
+    renderHub();
+    const start = await screen.findByRole("link", { name: /Start Period 8 · today/ });
+    const needs = start.closest("[data-testid='needs-you']") as HTMLElement;
+    const links = within(needs).getAllByRole("link");
+    expect(links[0].getAttribute("href")).toBe("/commissioner/20/close/7");
+    expect(links[1]).toBe(start);
+    expect(within(start).getByText("Close Period 7 first, then start Period 8.")).toBeTruthy();
+  });
+
+  it("with no pending period, 'Start next period' links to settings with a hint", async () => {
+    m.getLeaguePeriods.mockResolvedValue([
+      { id: 7, name: "Period 7", startDate: day(-14), endDate: day(3), status: "active" },
+    ]);
+    renderHub();
+    const row = await screen.findByRole("link", { name: /Start next period/ });
+    expect(row.getAttribute("href")).toBe("/commissioner/20/settings");
+    expect(within(row).getByText("No next period set up")).toBeTruthy();
+  });
+
+  it("with no closeable period, 'Close a period' stays disabled with a reason", async () => {
+    m.getLeaguePeriods.mockResolvedValue([
+      { id: 8, name: "Period 8", startDate: day(3), endDate: day(14), status: "pending" },
+    ]);
+    renderHub();
+    const jobs = await screen.findByTestId("jobs");
+    const row = await within(jobs).findByText("Close a period");
+    const disabled = row.closest("[aria-disabled='true']") as HTMLElement;
+    expect(disabled).toBeTruthy();
+    expect(within(disabled).getByText("No active period")).toBeTruthy();
+    expect(within(jobs).queryByRole("link", { name: /Close a period/ })).toBeNull();
   });
 
   it("shows recent changes with audit copy and an All link", async () => {

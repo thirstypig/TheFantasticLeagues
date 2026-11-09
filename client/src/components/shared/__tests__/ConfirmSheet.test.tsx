@@ -35,6 +35,14 @@ describe("ConfirmSheet", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close period" }));
   });
 
+  it("the scrim uses the --am-scrim token (dims in both themes), not a mix of --am-text", () => {
+    // --am-text is near-white in dark mode, so mixing from it LIGHTENED the page.
+    setup();
+    const bg = (screen.getByTestId("confirm-sheet-scrim") as HTMLElement).style.background;
+    expect(bg).toContain("var(--am-scrim");
+    expect(bg).not.toContain("--am-text");
+  });
+
   it("Esc calls onCancel", () => {
     const { onCancel, onConfirm } = setup();
     fireEvent.keyDown(document, { key: "Escape" });
