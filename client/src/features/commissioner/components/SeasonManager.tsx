@@ -14,6 +14,7 @@
  * `var(--am-negative)`.
  */
 import React, { useEffect, useState, type CSSProperties } from "react";
+import { Link } from "react-router-dom";
 import { Check, Trash2 } from "lucide-react";
 import {
   getSeasons,
@@ -614,8 +615,20 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                             >
                               <option value="pending">Pending</option>
                               <option value="active">Active</option>
-                              <option value="completed">Completed</option>
+                              {/* Closing goes through the guided flow; the option only exists so a
+                                  completed period still displays its status. */}
+                              {p.status === "completed" && (
+                                <option value="completed" disabled>Completed</option>
+                              )}
                             </select>
+                            {p.status === "active" && (
+                              <Link
+                                to={`/commissioner/${leagueId}/close/${p.id}`}
+                                style={{ ...CHIP_BTN, padding: "4px 10px", fontSize: 11, textDecoration: "none" }}
+                              >
+                                Close…
+                              </Link>
+                            )}
                             {p.status === "pending" && (
                               <button
                                 type="button"
