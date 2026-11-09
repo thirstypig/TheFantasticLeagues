@@ -198,7 +198,7 @@ export default function AdminLeagueTools() {
                                   </div>
                                   <div className="text-right shrink-0 ml-3">
                                     {t.budget != null && (
-                                      <div className="text-xs font-mono text-[var(--lg-accent)]">${t.budget}</div>
+                                      <div className="text-xs font-mono text-[var(--lg-text-primary)]">${t.budget}</div>
                                     )}
                                     {t.code && (
                                       <div className="text-xs text-[var(--lg-text-muted)] opacity-40">{t.code}</div>

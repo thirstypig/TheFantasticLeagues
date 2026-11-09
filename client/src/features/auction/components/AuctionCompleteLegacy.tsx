@@ -346,7 +346,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
         </div>
         <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
           <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Spent</div>
-          <div className="text-2xl font-bold text-[var(--lg-accent)] tabular-nums">${totalSpent}</div>
+          <div className="text-2xl font-bold text-[var(--lg-text-primary)] tabular-nums">${totalSpent}</div>
         </div>
         <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center col-span-2 md:col-span-1">
           <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Teams</div>
@@ -480,7 +480,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                     )}
                     <div className="flex flex-col">
                       <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">{team.keeperSpend > 0 ? 'Auction' : 'Spent'}</span>
-                      <span className="font-semibold text-[var(--lg-accent)] tabular-nums">${team.auctionSpend}</span>
+                      <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">${team.auctionSpend}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Total</span>
@@ -575,7 +575,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                                 </span>
                               </ThemedTd>
                               <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
-                              <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-accent)]'}`}>${player.price}</ThemedTd>
+                              <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-text-primary)]'}`}>${player.price}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
@@ -635,7 +635,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                               </ThemedTd>
                               <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
                               <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
-                              <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-accent)]'}`}>${player.price}</ThemedTd>
+                              <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-text-primary)]'}`}>${player.price}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
                               <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.K) || '—'}</ThemedTd>

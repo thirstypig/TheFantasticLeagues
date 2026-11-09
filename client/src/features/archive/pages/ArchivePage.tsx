@@ -599,7 +599,7 @@ export default function ArchivePage() {
                             <ThemedTr key={i} className="group border-none">
                                 <ThemedTd className="py-2.5">
                                     <div className="flex items-center gap-3">
-                                        <div className="bg-[var(--lg-tint)] px-3 py-1 rounded-xl text-xs font-bold tabular-nums text-[var(--lg-accent)] border border-[var(--lg-border-faint)]">${trade.amount}</div>
+                                        <div className="bg-[var(--lg-tint)] px-3 py-1 rounded-xl text-xs font-bold tabular-nums text-[var(--lg-text-primary)] border border-[var(--lg-border-faint)]">${trade.amount}</div>
                                         <div className="font-semibold">{trade.fromTeamName} <span className="text-[var(--lg-text-muted)] opacity-30">→</span> {trade.toTeamName}</div>
                                     </div>
                                 </ThemedTd>
@@ -909,7 +909,7 @@ export default function ArchivePage() {
                               );
                             })}
                             <ThemedTd align="center" className="px-8">
-                              <span className="font-bold text-[var(--lg-accent)]">{finalScore.toFixed(1)}</span>
+                              <span className="font-bold text-[var(--lg-text-primary)]">{finalScore.toFixed(1)}</span>
                             </ThemedTd>
                           </ThemedTr>
                         );

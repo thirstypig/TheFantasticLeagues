@@ -127,7 +127,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
                         <ThemedTd className="px-2 text-[var(--lg-text-secondary)]">
                           {winner?.name || '—'}
                         </ThemedTd>
-                        <ThemedTd align="center" className="font-semibold text-[var(--lg-accent)] px-2">
+                        <ThemedTd align="center" className="font-semibold text-[var(--lg-text-primary)] px-2">
                           ${lot.finalPrice}
                         </ThemedTd>
                         <ThemedTd align="center" className="text-xs text-[var(--lg-text-muted)] px-1">

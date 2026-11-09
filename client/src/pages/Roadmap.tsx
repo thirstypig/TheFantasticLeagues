@@ -971,7 +971,7 @@ export default function Roadmap() {
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-4 text-center">
-          <div className="text-2xl font-semibold text-[var(--lg-accent)] tabular-nums">
+          <div className="text-2xl font-semibold text-[var(--lg-text-primary)] tabular-nums">
             {plannedCount}
           </div>
           <div className="text-xs text-[var(--lg-text-muted)] font-medium uppercase mt-1">

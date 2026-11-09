@@ -516,7 +516,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                                 <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
                                                             <ThemedTd align="right" className="py-2 pr-6">
-                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-accent)]"}>${entry.price}</span>
+                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (

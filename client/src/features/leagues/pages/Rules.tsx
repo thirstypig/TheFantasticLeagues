@@ -185,7 +185,7 @@ export default function Rules() {
                 {Object.entries(rosterPositions).map(([pos, count]) => (
                   <div key={pos} className="flex items-center gap-2 px-4 py-2 bg-[var(--lg-tint)] rounded-xl border border-[var(--lg-border-subtle)]">
                     <span className="text-xs font-bold text-[var(--lg-text-primary)] uppercase">{pos}</span>
-                    <span className="text-xs font-bold text-[var(--lg-accent)]">{count}</span>
+                    <span className="text-xs font-bold text-[var(--lg-text-primary)]">{count}</span>
                   </div>
                 ))}
               </div>

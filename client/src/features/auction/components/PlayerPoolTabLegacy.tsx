@@ -445,7 +445,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                     return (
                                         <ThemedTd align="center" className="px-1 w-8">
                                             {myRank ? (
-                                                <span className="text-[10px] font-bold tabular-nums text-[var(--lg-accent)]">{myRank}</span>
+                                                <span className="text-[10px] font-bold tabular-nums text-[var(--lg-text-primary)]">{myRank}</span>
                                             ) : (
                                                 <span className="text-[10px] text-[var(--lg-text-muted)] opacity-20">-</span>
                                             )}

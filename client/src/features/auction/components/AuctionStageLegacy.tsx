@@ -288,7 +288,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                         className="h-14 flex flex-col items-center justify-center gap-0.5 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)]"
                     >
                         <span className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)] opacity-70">+$5</span>
-                        <span className="text-lg font-bold text-[var(--lg-accent)]">${jumpRaise}</span>
+                        <span className="text-lg font-bold text-[var(--lg-text-primary)]">${jumpRaise}</span>
                     </Button>
                 </div>
                 {/* AI Bid Advice */}
