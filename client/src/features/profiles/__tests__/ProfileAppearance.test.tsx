@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "../pages/ProfilePage";
+import { getMyProfile } from "../api";
 
 const setPreferenceMock = vi.fn();
 
@@ -42,7 +43,10 @@ async function renderProfile() {
       <ProfilePage />
     </MemoryRouter>,
   );
-  return screen.findByRole("radiogroup", { name: "Appearance" });
+  // The control also renders during loading; wait for the loaded page so the
+  // queried node is the one that stays mounted.
+  await screen.findByRole("heading", { name: "My Profile" });
+  return screen.getByRole("radiogroup", { name: "Appearance" });
 }
 
 describe("Profile appearance control", () => {
@@ -68,5 +72,28 @@ describe("Profile appearance control", () => {
     expect(setPreferenceMock).toHaveBeenCalledTimes(1);
     expect(setPreferenceMock).toHaveBeenCalledWith("dark");
     await waitFor(() => expect(setPreferenceMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("stays available when the profile fetch fails", async () => {
+    vi.mocked(getMyProfile).mockRejectedValueOnce(new Error("500"));
+    render(
+      <MemoryRouter initialEntries={["/profile"]}>
+        <ProfilePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Profile not found.")).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Appearance" })).toBeInTheDocument();
+    expect(getMyProfile).toHaveBeenCalled();
+  });
+
+  it("is available while the profile is still loading", () => {
+    vi.mocked(getMyProfile).mockReturnValueOnce(new Promise(() => {}));
+    render(
+      <MemoryRouter initialEntries={["/profile"]}>
+        <ProfilePage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Loading profile…")).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Appearance" })).toBeInTheDocument();
   });
 });

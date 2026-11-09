@@ -162,7 +162,7 @@ export default function ProfilePage() {
     return () => { mounted = false; };
   }, [targetUserId, isOwnProfile]);
 
-  // Deep link (/profile#appearance): the section only exists once data has loaded.
+  // Deep link (/profile#appearance): wait for the load to settle so the layout is final.
   useEffect(() => {
     if (loading || !hash) return;
     document.getElementById(hash.slice(1))?.scrollIntoView?.();
@@ -197,18 +197,13 @@ export default function ProfilePage() {
     );
   }
 
-  if (loading) {
+  // The appearance control is device-local, so on your own profile it must not
+  // depend on the profile fetch succeeding.
+  if (loading || !data?.user) {
     return (
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
-        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Loading profile…</div></Glass>
-      </div>
-    );
-  }
-
-  if (!data?.user) {
-    return (
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
-        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>Profile not found.</div></Glass>
+      <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <Glass><div style={{ padding: 32, textAlign: "center", color: "var(--am-text-muted)", fontSize: 13 }}>{loading ? "Loading profile…" : "Profile not found."}</div></Glass>
+        {isOwnProfile && <AppearanceSection />}
       </div>
     );
   }
