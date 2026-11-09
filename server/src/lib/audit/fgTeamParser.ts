@@ -10,10 +10,16 @@
  * carryover rows (AB 50 active-table, AB 27 reserved-table). FanGraphs
  * publishes no player id on these pages, so there is no better key to offer.
  *
- * A team's category total is the sum over ALL rows in a table, carryover
- * included — confirmed against the page's own `TOTAL:` row: the Reserved
- * Hitters total (AB 49 / H 11 / R 10 / HR 3) is exactly Acuna's 22/3/5/2
- * plus Vaughn's 27/8/5/1.
+ * A TABLE's `TOTAL:` row is the sum over ALL rows in that table, carryover
+ * included: the Reserved Hitters total (AB 49 / H 11 / R 10 / HR 3) is exactly
+ * Acuna's 22/3/5/2 plus Vaughn's 27/8/5/1.
+ *
+ * ⚠️ But the team's STANDINGS value (`display_stand.pl`) EXCLUDES every
+ * `reserved: true` row — stats earned while on the reserve list do not score.
+ * Verified 2026-11-09 on all 8 OGBA teams: summing every row overshot the
+ * standings on 5 teams, and each gap equalled that team's reserved rows
+ * exactly (Acuna + Vaughn, Chourio, Ramos + Palencia, Betts, Pagan). Any
+ * per-player comparison against standings must filter `!p.reserved`.
  */
 export interface FgPlayerRow {
   name: string;

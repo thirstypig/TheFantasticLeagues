@@ -152,7 +152,7 @@ async function main(): Promise<void> {
   // ===================== CORRECTNESS LEG: target period only =====================
   const recon = await reconcilePeriodStats(period.id);
   console.log(
-    `MLB reconcile: ${recon.playersChecked} checked, ${recon.mismatches.length} mismatches, ${recon.fetchErrors} fetch errors`,
+    `MLB reconcile (consistency check — same byDateRange path as the syncer, rostered players only; NOT an independent audit): ${recon.playersChecked} checked, ${recon.mismatches.length} mismatches, ${recon.fetchErrors} fetch errors`,
   );
 
   const pspTarget = await prisma.playerStatsPeriod.findMany({
@@ -292,10 +292,11 @@ async function main(): Promise<void> {
     playersChecked: rosterPlayerIds.length,
     playersSkipped: seasonPlayersSkipped,
     skipReasons: seasonSkipReasons,
-    // mlb/bbref aren't participants in this leg (mlb backs the correctness
-    // leg above; bbref is the still-unwired four-way tie-break) — vacuously
-    // true here rather than a false signal of "source failed".
-    sourcesReached: { fbst: true, mlb: true, fg: fgReached, bbref: true },
+    sourcesReached: { fbst: true, fg: fgReached },
+    sourcesNotChecked: {
+      mlb: "this leg compares against FanGraphs; MLB backs the period leg",
+      bbref: "not wired — run the four-way tie-break by hand (see the skill)",
+    },
     fgLegLevel: "team-level", // FG has no per-player slice at all (spike 2026-08-03)
   };
   const seasonVerdict = decideVerdict({ results: seasonResults, coverage: seasonCoverage });
