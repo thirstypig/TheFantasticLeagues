@@ -35,15 +35,20 @@ function readPreference(): ThemePreference {
   return 'system';
 }
 
+// index.html ships media-scoped theme-color metas, and browsers use the first
+// matching one — so an appended meta would be ignored. Recolor every one so an
+// explicit choice wins over the OS-matched tag.
 function syncThemeColorMeta(theme: Theme) {
   const color = theme === 'dark' ? '#3a1f22' : '#e0d3ae';
-  let meta = document.querySelector('meta[name="theme-color"]:not([media])') as HTMLMetaElement | null;
-  if (!meta) {
-    meta = document.createElement('meta');
-    meta.name = 'theme-color';
+  const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+  if (metas.length === 0) {
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    meta.setAttribute('content', color);
     document.head.appendChild(meta);
+    return;
   }
-  meta.content = color;
+  metas.forEach((meta) => meta.setAttribute('content', color));
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

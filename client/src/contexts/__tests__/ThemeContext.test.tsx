@@ -59,17 +59,29 @@ function renderProvider() {
   );
 }
 
+// Browsers use the FIRST matching theme-color meta in document order.
 const metaContent = () =>
-  (document.querySelector('meta[name="theme-color"]:not([media])') as HTMLMetaElement | null)
-    ?.content;
+  (document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null)?.content;
+
+/** Mirror client/index.html: two media-scoped theme-color metas. */
+function installIndexHtmlMetas() {
+  for (const [content, scheme] of [
+    ["#3a1f22", "dark"],
+    ["#e0d3ae", "light"],
+  ]) {
+    const m = document.createElement("meta");
+    m.setAttribute("name", "theme-color");
+    m.setAttribute("content", content);
+    m.setAttribute("media", `(prefers-color-scheme: ${scheme})`);
+    document.head.appendChild(m);
+  }
+}
 
 beforeEach(() => {
   osDark = true;
   installMatchMedia();
   localStorage.clear();
-  document
-    .querySelectorAll('meta[name="theme-color"]:not([media])')
-    .forEach((m) => m.remove());
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
   document.documentElement.classList.remove("dark", "light");
 });
 
@@ -157,6 +169,24 @@ describe("ThemeContext preference model", () => {
     document.head.appendChild(existing);
     renderProvider();
     const metas = document.querySelectorAll('meta[name="theme-color"]:not([media])');
+    expect(metas.length).toBe(1);
+    expect((metas[0] as HTMLMetaElement).content).toBe("#3a1f22");
+  });
+
+  it("an explicit Light on a dark OS recolors the first theme-color meta (index.html metas)", () => {
+    installIndexHtmlMetas();
+    renderProvider();
+    act(() => screen.getByRole("button", { name: "set-light" }).click());
+    const metas = [...document.querySelectorAll('meta[name="theme-color"]')] as HTMLMetaElement[];
+    expect(metas.length).toBe(2); // no third, ignored meta appended
+    expect(metas[0].getAttribute("media")).toContain("dark"); // the one a dark-OS browser would pick
+    expect(metas[0].content).toBe("#e0d3ae");
+    expect(metas.every((m) => m.content === "#e0d3ae")).toBe(true);
+  });
+
+  it("creates a theme-color meta when none exist", () => {
+    renderProvider();
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
     expect(metas.length).toBe(1);
     expect((metas[0] as HTMLMetaElement).content).toBe("#3a1f22");
   });
