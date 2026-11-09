@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-10-19
+updated: 2026-11-09
 ---
 
 # Repo statistics
@@ -21,15 +21,15 @@ updated: 2026-10-19
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-10-19 from 1,784 git-tracked files.*
+*Generated 2026-11-09 from 1,785 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 575 | 101,206 |
+| `.ts` | 576 | 101,324 |
 | `.tsx` | 300 | 88,500 |
-| `.md` | 543 | 67,139 |
+| `.md` | 543 | 67,141 |
 | `.json` | 36 | 40,137 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,767 |
@@ -38,7 +38,7 @@ updated: 2026-10-19
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,780** | **346,934** |
+| **All tracked** | **1,781** | **347,054** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -125,7 +125,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (153 days ago).
+`server/data/planning.json` last updated **2026-05-19** (174 days ago).
 
-> ⚠️ The canonical roadmap source is **153 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **174 days stale**. Numbers above are honest; the *plan* they describe may not be.
 
