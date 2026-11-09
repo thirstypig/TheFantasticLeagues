@@ -8,7 +8,7 @@ import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useToast } from "../../../contexts/ToastContext";
 import { CardError, LINK, MUTED, PRIMARY, ROW, SECONDARY, Skeleton, useLoad, type Load } from "../components/cardParts";
-import { FeePreviewRows, money, useFeePreview } from "../components/feePreview";
+import { FeePreviewRows, NO_FEES, dollars, feeHeadline, money, useFeePreview } from "../components/feePreview";
 import {
   getCloseReadiness,
   getGhostIlSummary,
@@ -151,7 +151,7 @@ function Step4({ leagueId, periodId, onChoose }: { leagueId: number; periodId: n
         ) : fees.state === "error" ? (
           <CardError>Couldn’t load the IL fee preview.</CardError>
         ) : (
-          <FeePreviewRows preview={fees.data} headline={`This close would bill ${money(fees.data.total)}`} />
+          <FeePreviewRows preview={fees.data} headline={feeHeadline(fees.data.total, "This close would bill")} />
         )}
       </Glass>
       {fees.state !== "loading" && (
@@ -239,9 +239,14 @@ function Step5({
   const total = fees.state === "ready" ? fees.data.total : null;
   // Billing now must state the dollar amount before the commissioner confirms.
   const canClose = !billNow || total !== null;
-  const body = billNow
-    ? `Standings lock and ${money(total ?? 0)} in IL fees are billed. You can't undo this.`
-    : "Standings lock — IL fees stay unbilled until you bill them. You can't undo this.";
+  const net = total ?? 0;
+  const body = !billNow
+    ? "Standings lock — IL fees stay unbilled until you bill them. You can't undo this."
+    : net > 0
+      ? `Standings lock and ${money(net)} in IL fees are billed. You can't undo this.`
+      : net === 0
+        ? "Standings lock. There are no IL fees to bill. You can't undo this."
+        : `Standings lock and a ${dollars(net)} IL fee credit is applied. You can't undo this.`;
 
   async function confirm() {
     if (inFlight.current) return;
@@ -271,9 +276,9 @@ function Step5({
               ? "…"
               : fees.state === "error"
                 ? "couldn’t load"
-                : billNow
-                  ? `${money(fees.data.total)} billed now`
-                  : `${money(fees.data.total)} left unbilled`}
+                : fees.data.total === 0
+                  ? NO_FEES
+                  : `${money(fees.data.total)} ${!billNow ? "left unbilled" : fees.data.total < 0 ? "applied now" : "billed now"}`}
           </span>
         </div>
       </Glass>

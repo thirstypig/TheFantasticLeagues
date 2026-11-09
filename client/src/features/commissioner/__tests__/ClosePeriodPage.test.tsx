@@ -232,6 +232,24 @@ describe("ClosePeriodPage — step 4", () => {
     expect(within(screen.getByTestId("fee-team-1")).getByText("$10")).toBeTruthy();
   });
 
+  it("a zero net total says 'No IL fees to bill', never '$0' or '-$0'", async () => {
+    m.previewIlFees.mockResolvedValue({ leagueId: 20, periodId: 7, added: 0, voided: 0, unchanged: 2, dryRun: true, preview: [] });
+    renderAt([`${URL}?step=4`]);
+    expect(await screen.findByText("No IL fees to bill")).toBeTruthy();
+    expect(screen.queryByText(/This close would bill/)).toBeNull();
+  });
+
+  it("a negative net total reads as a credit, not '-$X' (team row too)", async () => {
+    m.previewIlFees.mockResolvedValue({
+      leagueId: 20, periodId: 7, added: 0, voided: 1, unchanged: 0, dryRun: true,
+      preview: [{ action: "void", teamId: 3, playerId: 104, playerName: "Old", rank: 1, amount: -10 }],
+    });
+    renderAt([`${URL}?step=4`]);
+    expect(await screen.findByText("IL fees net to a $10 credit")).toBeTruthy();
+    expect(within(screen.getByTestId("fee-team-3")).getByText("$10 credit")).toBeTruthy();
+    expect(screen.queryByText(/-\$/)).toBeNull();
+  });
+
   it("'Close & bill now' goes to step 5 with bill=now", async () => {
     renderAt([`${URL}?step=4`]);
     fireEvent.click(await screen.findByRole("button", { name: "Close & bill now" }));
@@ -274,6 +292,27 @@ describe("ClosePeriodPage — step 5", () => {
     ).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "Close period" }));
     await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: true }));
+  });
+
+  it("bill now with a negative net: the sheet states a credit, not '-$X'", async () => {
+    m.previewIlFees.mockResolvedValue({
+      leagueId: 20, periodId: 7, added: 0, voided: 1, unchanged: 0, dryRun: true,
+      preview: [{ action: "void", teamId: 3, playerId: 104, playerName: "Old", rank: 1, amount: -10 }],
+    });
+    renderAt([`${URL}?step=5&bill=now`]);
+    expect(await screen.findByText("$10 credit applied now")).toBeTruthy();
+    const dialog = await openSheet();
+    expect(
+      within(dialog).getByText("Standings lock and a $10 IL fee credit is applied. You can't undo this."),
+    ).toBeTruthy();
+  });
+
+  it("bill now with a zero net: summary and sheet say there are no IL fees to bill", async () => {
+    m.previewIlFees.mockResolvedValue({ leagueId: 20, periodId: 7, added: 0, voided: 0, unchanged: 0, dryRun: true, preview: [] });
+    renderAt([`${URL}?step=5&bill=now`]);
+    expect(await screen.findByText("No IL fees to bill")).toBeTruthy();
+    const dialog = await openSheet();
+    expect(within(dialog).getByText("Standings lock. There are no IL fees to bill. You can't undo this.")).toBeTruthy();
   });
 
   it("double-clicking confirm calls setPeriodStatus exactly once", async () => {

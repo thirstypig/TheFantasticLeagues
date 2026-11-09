@@ -110,6 +110,28 @@ describe("BillPeriodPage", () => {
     expect(mockToast).toHaveBeenCalledWith("Period 6 billed", "success");
   });
 
+  it("a negative net reads as a credit everywhere (headline, button, sheet)", async () => {
+    m.previewIlFees.mockResolvedValue({
+      leagueId: 20, periodId: 6, added: 0, voided: 1, unchanged: 0, dryRun: true,
+      preview: [{ action: "void", teamId: 2, playerId: 101, playerName: "Webb", rank: 1, amount: -10 }],
+    });
+    renderAt(BILL_URL);
+    expect(await screen.findByText("IL fees net to a $10 credit")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Bill IL fees" }));
+    expect(within(screen.getByRole("dialog")).getByText("A $10 IL fee credit is applied. You can't undo this.")).toBeTruthy();
+    expect(screen.queryByText(/-\$/)).toBeNull();
+  });
+
+  it("a zero net says 'No IL fees to bill' and billing just clears the reminder", async () => {
+    m.previewIlFees.mockResolvedValue({ leagueId: 20, periodId: 6, added: 0, voided: 0, unchanged: 0, dryRun: true, preview: [] });
+    renderAt(BILL_URL);
+    expect(await screen.findByText("No IL fees to bill")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Bill IL fees" }));
+    expect(
+      within(screen.getByRole("dialog")).getByText("There are no IL fees to bill; this clears the reminder. You can't undo this."),
+    ).toBeTruthy();
+  });
+
   it("a 429 cooldown shows the inline cooling-down message and stays on the page", async () => {
     m.billIlFees.mockRejectedValue(
       new ApiError({ message: "cooling down", status: 429, url: "/x", requestId: null, body: null }),

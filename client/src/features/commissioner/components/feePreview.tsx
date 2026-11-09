@@ -5,10 +5,27 @@ import React from "react";
 import { getRosterCheck, previewIlFees, type IlFeeReconcileResult } from "../api";
 import { MUTED, ROW, useLoad } from "./cardParts";
 
-export function money(n: number): string {
+/** Unsigned dollar amount: "$10" for 10 or -10. */
+export function dollars(n: number): string {
   const abs = Math.abs(n);
-  const s = Number.isInteger(abs) ? String(abs) : abs.toFixed(2);
-  return n < 0 ? `-$${s}` : `$${s}`;
+  return `$${Number.isInteger(abs) ? String(abs) : abs.toFixed(2)}`;
+}
+
+/** "$40", or "$10 credit" for a negative net (never a minus sign). */
+export function money(n: number): string {
+  return n < 0 ? `${dollars(n)} credit` : dollars(n);
+}
+
+export const NO_FEES = "No IL fees to bill";
+
+/**
+ * Headline for a preview total: "<billPrefix> $40", "No IL fees to bill",
+ * or "IL fees net to a $10 credit".
+ */
+export function feeHeadline(total: number, billPrefix: string): string {
+  if (total > 0) return `${billPrefix} ${dollars(total)}`;
+  if (total === 0) return NO_FEES;
+  return `IL fees net to a ${money(total)}`;
 }
 
 export interface FeeTotals {
@@ -51,7 +68,6 @@ export function FeePreviewRows({ preview, headline }: { preview: FeePreview; hea
   return (
     <>
       <div style={{ ...ROW, fontWeight: 700 }}>{headline}</div>
-      {preview.teams.length === 0 && <p style={{ ...ROW, margin: 0, ...MUTED }}>No IL fees for this period.</p>}
       {preview.teams.map((t) => (
         <div key={t.teamId} data-testid={`fee-team-${t.teamId}`} style={ROW}>
           <span>

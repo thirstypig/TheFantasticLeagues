@@ -8,7 +8,7 @@ import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { ApiError } from "../../../api/base";
 import { useToast } from "../../../contexts/ToastContext";
 import { CardError, LINK, PRIMARY, Skeleton, useLoad } from "../components/cardParts";
-import { FeePreviewRows, money, useFeePreview } from "../components/feePreview";
+import { FeePreviewRows, dollars, feeHeadline, money, useFeePreview } from "../components/feePreview";
 import { billIlFees, getLeaguePeriods, getUnbilledPeriods } from "../api";
 
 function BillPreview({ leagueId, periodId, name, base }: { leagueId: number; periodId: number; name: string; base: string }) {
@@ -48,16 +48,22 @@ function BillPreview({ leagueId, periodId, name, base }: { leagueId: number; per
   return (
     <>
       <Glass padded={false}>
-        <FeePreviewRows preview={fees.data} headline={`This would bill ${money(total)}`} />
+        <FeePreviewRows preview={fees.data} headline={feeHeadline(total, "This would bill")} />
       </Glass>
       {coolingDown && <CardError>Billing is cooling down — try again in a minute.</CardError>}
       <button type="button" style={PRIMARY} onClick={() => setSheetOpen(true)} disabled={busy}>
-        Bill {money(total)}
+        {total > 0 ? `Bill ${money(total)}` : "Bill IL fees"}
       </button>
       <ConfirmSheet
         open={sheetOpen}
         title={`Bill IL fees for ${name}?`}
-        body={`${money(total)} in IL fees are billed. You can't undo this.`}
+        body={
+          total > 0
+            ? `${money(total)} in IL fees are billed. You can't undo this.`
+            : total === 0
+              ? "There are no IL fees to bill; this clears the reminder. You can't undo this."
+              : `A ${dollars(total)} IL fee credit is applied. You can't undo this.`
+        }
         confirmLabel="Bill IL fees"
         busy={busy}
         onConfirm={confirm}
