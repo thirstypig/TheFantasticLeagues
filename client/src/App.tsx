@@ -24,6 +24,7 @@ import Login from "./features/auth/pages/Login";
 
 // Non-critical routes — lazy-loaded (code-split chunks)
 const Commissioner = React.lazy(() => import("./features/commissioner/pages/Commissioner"));
+const CommissionerSectionPage = React.lazy(() => import("./features/commissioner/pages/CommissionerSectionPage"));
 const ScoringSettings = React.lazy(() => import("./features/commissioner/pages/ScoringSettings").then(m => ({ default: m.ScoringSettings })));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
@@ -181,6 +182,8 @@ export default function App() {
                     <Route path="/teams/:teamCode/wire-list" element={<WireListOwnerPage />} />
                     <Route path="/commissioner/:leagueId/wire-list" element={<WireListCommissionerPage />} />
                     <Route path="/commissioner/:leagueId/scoring" element={<Suspense fallback={<div>Loading...</div>}><ScoringSettings /></Suspense>} />
+                    {/* Section pages. Literal sub-routes (recent, close/:periodId, start/:periodId, ...) must be declared ABOVE this catch. */}
+                    <Route path="/commissioner/:leagueId/:section" element={<ErrorBoundary name="commissioner-section"><CommissionerSectionPage /></ErrorBoundary>} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team
                         shortcut (PR #132) and external bookmarks both land here. */}

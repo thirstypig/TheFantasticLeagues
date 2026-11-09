@@ -279,7 +279,19 @@ function initials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export default function Commissioner() {
+export type CommissionerTabKey = 'overview' | 'people' | 'settings' | 'ops' | 'finances' | 'archive';
+export type CommissionerOpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
+
+export interface CommissionerProps {
+  /** Seeds the initial top-level tab (section pages render one pane). */
+  section?: CommissionerTabKey;
+  /** Seeds the initial Operations sub-tab. */
+  opsSubTab?: CommissionerOpsSubTab;
+  /** Suppresses the top-level tab strip; in-pane sub-tabs stay visible. */
+  hideTabs?: boolean;
+}
+
+export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hideTabs = false }: CommissionerProps = {}) {
   const { leagueId } = useParams();
   const lid = Number(leagueId);
   const { toast, confirm } = useToast();
@@ -342,7 +354,7 @@ export default function Commissioner() {
   // Season gating
   const gating = useSeasonGating();
 
-  type TabKey = 'overview' | 'people' | 'settings' | 'ops' | 'finances' | 'archive';
+  type TabKey = CommissionerTabKey;
   const TABS: { key: TabKey; label: string; icon: string; enabled: boolean; reason?: string }[] = [
     { key: 'overview',  label: 'Overview',       icon: 'activity', enabled: true },
     { key: 'people',    label: 'Teams & People', icon: 'users',    enabled: true },
@@ -353,15 +365,15 @@ export default function Commissioner() {
   ];
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [activeTab, setActiveTab] = useState<TabKey>(section ?? 'overview');
 
   // ghost-IL summary — lazy-loaded when Operations tab is first opened
   const [ghostIl, setGhostIl] = useState<GhostIlSummary | null>(null);
   const [recentActivity, setRecentActivity] = useState<TransactionEvent[] | null>(null);
 
   // Operations sub-tab
-  type OpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
-  const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>('roster');
+  type OpsSubTab = CommissionerOpsSubTab;
+  const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>(initialOpsSubTab ?? 'roster');
 
   // Teams & People sub-tab
   type PeopleSubTab = 'teams' | 'members' | 'invites' | 'invite-code';
@@ -384,6 +396,8 @@ export default function Commissioner() {
 
   // Hash listener — handles tab nav AND legacy redirects from old tab names.
   useEffect(() => {
+     // A section page is pinned to its pane; a stale #hash must not switch it.
+     if (section) return;
      const raw = window.location.hash.replace('#', '');
      const LEGACY_REDIRECTS: Record<string, TabKey> = {
        league:            'settings',
@@ -865,7 +879,8 @@ export default function Commissioner() {
             </div>
 
             {/* Tab strip */}
-            <div className="cm-tabs">
+            {!hideTabs && (
+            <div className="cm-tabs" role="tablist" aria-label="Commissioner sections">
               {TABS.map((tab) => {
                 const isActive = activeTab === tab.key && tab.enabled;
                 const badge = tab.key === 'ops' ? tabBadges.ops : tab.key === 'people' ? tabBadges.people : 0;
@@ -906,6 +921,7 @@ export default function Commissioner() {
                 );
               })}
             </div>
+            )}
 
             {/* ══════════════════════════════════════════════════ */}
             {/* Tab: Overview */}
