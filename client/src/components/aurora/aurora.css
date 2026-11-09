@@ -152,14 +152,20 @@
   --lg-tint:           var(--am-chip);
   --lg-tint-hover:     var(--am-chip-strong);
 
+  --lg-input-bg:       var(--am-surface);
+  --lg-input-border:   var(--am-border);
+  --lg-input-focus:    var(--am-accent);
+
   --lg-success:        var(--am-positive);
   --lg-error:          var(--am-negative);
+  --lg-warning:        var(--am-warning);
 
   --lg-table-header-bg:        var(--am-surface-alt);
   --lg-table-header-sticky-bg: var(--am-surface-alt);
   --lg-table-sticky-col-bg:    var(--am-surface);
   --lg-table-border:           var(--am-border);
   --lg-table-row-hover:        var(--am-chip);
+  --lg-table-row-alt:          var(--am-surface-alt);
 
   --lg-divide:         var(--am-border);
 }

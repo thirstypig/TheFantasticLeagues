@@ -513,7 +513,7 @@
   .lg-input:focus {
     outline: none;
     border-color: var(--lg-input-focus);
-    box-shadow: 0 0 0 3px rgba(26, 117, 255, 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-input-focus) 25%, transparent);
   }
 
   .lg-input::placeholder {

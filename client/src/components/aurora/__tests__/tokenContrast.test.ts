@@ -106,3 +106,17 @@ describe("index.css legacy --lg-* tokens (logged-out pages)", () => {
     expect(lg.dark["--lg-accent"]).toBe("#ffcc00");
   });
 });
+
+describe("aurora.css --lg-* redirect block", () => {
+  const redirect = parseBlock(css, ".aurora-theme, .aurora-theme.dark, .dark .aurora-theme");
+
+  it.each([
+    ["--lg-input-bg", "var(--am-surface)"],
+    ["--lg-input-border", "var(--am-border)"],
+    ["--lg-input-focus", "var(--am-accent)"],
+    ["--lg-table-row-alt", "var(--am-surface-alt)"],
+    ["--lg-warning", "var(--am-warning)"],
+  ])("%s redirects to %s (no navy/slate leak inside the app)", (token, value) => {
+    expect(redirect[token]).toBe(value);
+  });
+});
