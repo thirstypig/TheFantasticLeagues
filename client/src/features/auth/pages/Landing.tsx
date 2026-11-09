@@ -83,7 +83,7 @@ export default function Landing() {
           <div className="flex items-center gap-3">
             <button onClick={toggleTheme} className="p-2 text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">{theme === "dark" ? "☀️" : "🌙"}</button>
             <Link to="/login" className="text-xs font-semibold text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]">Sign In</Link>
-            <Link to="/signup" className="px-4 py-2 rounded-xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-xs font-bold shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all">
+            <Link to="/signup" className="px-4 py-2 rounded-xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-xs font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all">
               Start Free
             </Link>
           </div>
@@ -104,7 +104,7 @@ export default function Landing() {
             The only fantasy platform with league-context AI. Draft grades, trade analysis, weekly insights — all tailored to your league.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/signup" className="px-8 py-3.5 rounded-2xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-sm font-bold shadow-2xl shadow-blue-500/30 hover:scale-[1.02] active:scale-95 transition-all w-full sm:w-auto">
+            <Link to="/signup" className="px-8 py-3.5 rounded-2xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-sm font-bold shadow-2xl hover:scale-[1.02] active:scale-95 transition-all w-full sm:w-auto">
               Create Your League
             </Link>
             <a href="#features" className="flex items-center gap-1.5 px-6 py-3.5 rounded-2xl text-sm font-semibold text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] transition-colors">
@@ -185,7 +185,7 @@ export default function Landing() {
           {pricingTiers.map(tier => (
             <div key={tier.name} className={`relative rounded-2xl border p-6 flex flex-col ${
               tier.highlight
-                ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/5 shadow-lg shadow-blue-500/10"
+                ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/5 shadow-lg"
                 : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)]"
             }`}>
               {tier.badge && (
@@ -213,7 +213,7 @@ export default function Landing() {
                 to={tier.ctaTo}
                 className={`block text-center py-2.5 rounded-xl text-xs font-bold transition-all ${
                   tier.highlight
-                    ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg shadow-blue-500/20 hover:scale-[1.02]"
+                    ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg hover:scale-[1.02]"
                     : tier.cta === "Coming Soon"
                       ? "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] cursor-default"
                       : "bg-[var(--lg-bg-card)] text-[var(--lg-text-primary)] border border-[var(--lg-border-faint)] hover:border-[var(--lg-accent)]/30"
@@ -233,7 +233,7 @@ export default function Landing() {
       <section className="max-w-3xl mx-auto px-4 pb-20 text-center">
         <h2 className="text-2xl md:text-3xl font-bold text-[var(--lg-text-heading)] mb-4">Ready to Dominate Your League?</h2>
         <p className="text-sm text-[var(--lg-text-muted)] mb-8">Create your league in under 60 seconds. No credit card required.</p>
-        <Link to="/signup" className="inline-block px-10 py-4 rounded-2xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-sm font-bold shadow-2xl shadow-blue-500/30 hover:scale-[1.02] active:scale-95 transition-all">
+        <Link to="/signup" className="inline-block px-10 py-4 rounded-2xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-sm font-bold shadow-2xl hover:scale-[1.02] active:scale-95 transition-all">
           Create Your League
         </Link>
       </section>

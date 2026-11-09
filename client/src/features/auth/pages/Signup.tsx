@@ -134,7 +134,7 @@ export default function Signup() {
                 borderRadius: 10,
                 background: "var(--am-irid)",
                 color: "var(--am-on-accent)",
-                boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                 flexShrink: 0,
               }}
             />
