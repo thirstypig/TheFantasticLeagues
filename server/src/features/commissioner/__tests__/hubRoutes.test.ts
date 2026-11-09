@@ -342,9 +342,13 @@ describe("GET /api/commissioner/:leagueId/unbilled-periods", () => {
     expect(res.body.periods).toEqual([{ periodId: 8, closedAt: "2026-10-02T00:00:00.000Z" }]);
   });
 
-  it("a reconcile in another league for the same period id does not clear it", async () => {
+  it("matches reconciles by period id alone (period ids are global), same as the drainer's skip rule", async () => {
+    // The hub list and the automatic-billing skip share one predicate
+    // (lib/deferredBilling). A reconcile row for period 6 ends 6's deferral
+    // whatever its metadata says — so the hub can never show a period as
+    // unbilled that the drainer would bill.
     m.auditLog.findMany.mockResolvedValue([close(1, 6, T1, false), reconcile(2, 6, T2, 21)]);
     const res = await supertest(app).get("/api/commissioner/20/unbilled-periods");
-    expect(res.body.periods).toHaveLength(1);
+    expect(res.body.periods).toEqual([]);
   });
 });

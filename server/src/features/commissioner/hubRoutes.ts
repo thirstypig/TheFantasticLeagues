@@ -6,6 +6,7 @@ import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireCommissionerOrAdmin } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { loadLeagueRosterCap } from "../../lib/rosterGuard.js";
+import { findDeferredPeriods } from "../../lib/deferredBilling.js";
 
 export const hubRouter = Router();
 
@@ -181,8 +182,9 @@ hubRouter.get(
 
 /**
  * GET /api/commissioner/:leagueId/unbilled-periods
- * A period is unbilled when its latest PERIOD_CLOSE has metadata.billed === false
- * and no IL_FEE_RECONCILE for the same period was recorded after that close.
+ * Periods whose billing is deferred ("bill later") — the same predicate the
+ * outbox drainer and sweeper use to skip automatic billing (lib/deferredBilling).
+ * Scoped to this league by the deferring PERIOD_CLOSE row's metadata.leagueId.
  */
 hubRouter.get(
   "/commissioner/:leagueId/unbilled-periods",
@@ -192,33 +194,10 @@ hubRouter.get(
     const leagueId = parseId(req.params.leagueId);
     if (leagueId === null) return res.status(400).json({ error: "Invalid leagueId" });
 
-    const rows = await prisma.auditLog.findMany({
-      where: { action: { in: ["PERIOD_CLOSE", "IL_FEE_RECONCILE"] }, resourceType: "Period" },
-      orderBy: { createdAt: "asc" },
-    });
-
-    const latestClose = new Map<string, (typeof rows)[number]>();
-    const latestReconcile = new Map<string, Date>();
-    for (const r of rows) {
-      if (r.resourceId == null || metaLeagueId(r.metadata) !== leagueId) continue;
-      if (r.action === "PERIOD_CLOSE") {
-        const prev = latestClose.get(r.resourceId);
-        if (!prev || r.createdAt >= prev.createdAt) latestClose.set(r.resourceId, r);
-      } else {
-        const prev = latestReconcile.get(r.resourceId);
-        if (!prev || r.createdAt > prev) latestReconcile.set(r.resourceId, r.createdAt);
-      }
-    }
-
-    const periods: { periodId: number; closedAt: string }[] = [];
-    for (const [resourceId, close] of latestClose) {
-      const billed = (close.metadata as Record<string, unknown> | null)?.billed;
-      if (billed !== false) continue;
-      const reconciledAt = latestReconcile.get(resourceId);
-      if (reconciledAt && reconciledAt > close.createdAt) continue;
-      periods.push({ periodId: Number(resourceId), closedAt: close.createdAt.toISOString() });
-    }
-    periods.sort((a, b) => a.periodId - b.periodId);
+    const deferred = await findDeferredPeriods();
+    const periods = deferred
+      .filter((d) => d.leagueId === leagueId)
+      .map((d) => ({ periodId: d.periodId, closedAt: d.closedAt.toISOString() }));
 
     res.json({ periods });
   }),
