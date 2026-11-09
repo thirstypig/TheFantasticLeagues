@@ -131,6 +131,7 @@ export default function Signup() {
                 height: 36,
                 borderRadius: 10,
                 background: "var(--am-irid)",
+                color: "var(--am-on-accent)",
                 boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
                 flexShrink: 0,
               }}
@@ -362,7 +363,7 @@ export default function Signup() {
                       borderRadius: 99,
                       border: "1px solid var(--am-border-strong)",
                       background: "var(--am-irid)",
-                      color: "#fff",
+                      color: "var(--am-on-accent)",
                       fontSize: 14,
                       fontWeight: 600,
                       letterSpacing: 0.2,

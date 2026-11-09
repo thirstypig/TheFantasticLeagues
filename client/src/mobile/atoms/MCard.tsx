@@ -209,7 +209,7 @@ export function MAICard({ icon = "✦", title, body, cta, onCtaClick }: MAICardP
           borderRadius: 8,
           flexShrink: 0,
           background: "var(--am-irid)",
-          color: "#fff",
+          color: "var(--am-on-accent)",
           display: "grid",
           placeItems: "center",
           fontSize: 13,

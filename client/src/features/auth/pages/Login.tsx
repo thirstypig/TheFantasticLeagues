@@ -125,6 +125,7 @@ export default function Login() {
                 height: 36,
                 borderRadius: 10,
                 background: "var(--am-irid)",
+                color: "var(--am-on-accent)",
                 boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                 marginBottom: 14,
               }}

@@ -211,7 +211,7 @@ export function PendingChangeBar({
                 borderRadius: 10,
                 border: "1px solid transparent",
                 background: "var(--am-irid)",
-                color: "#fff",
+                color: "var(--am-on-accent)",
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.7 : 1,
                 minHeight: 36,

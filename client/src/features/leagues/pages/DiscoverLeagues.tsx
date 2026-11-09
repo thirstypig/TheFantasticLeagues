@@ -67,6 +67,7 @@ export default function DiscoverLeagues() {
                 height: 26,
                 borderRadius: 8,
                 background: "var(--am-irid)",
+                color: "var(--am-on-accent)",
                 boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
                 flexShrink: 0,
               }}

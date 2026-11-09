@@ -149,6 +149,7 @@ export function SlotCell({
             borderRadius: 16,
             padding: 2,
             background: "var(--am-irid)",
+            color: "var(--am-on-accent)",
             // mask-composite trick to create a gradient ring border
             WebkitMask:
               "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",

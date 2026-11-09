@@ -149,6 +149,7 @@ export default function ResetPassword() {
                 height: 36,
                 borderRadius: 10,
                 background: "var(--am-irid)",
+                color: "var(--am-on-accent)",
                 boxShadow: "0 8px 24px color-mix(in srgb, var(--am-accent) 25%, transparent)",
                 flexShrink: 0,
               }}

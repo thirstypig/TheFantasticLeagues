@@ -651,7 +651,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                       padding: "3px 7px",
                                                       borderRadius: 999,
                                                       background: "var(--am-irid)",
-                                                      color: "#fff",
+                                                      color: "var(--am-on-accent)",
                                                       border: "1px solid var(--am-border-strong)",
                                                       cursor: "pointer",
                                                     }}

@@ -1750,7 +1750,7 @@ export default function Team() {
                       style={{
                         fontSize: 12, fontWeight: 600, padding: "6px 14px",
                         borderRadius: 8, border: "1px solid transparent",
-                        background: "var(--am-irid)", color: "#fff", cursor: "pointer",
+                        background: "var(--am-irid)", color: "var(--am-on-accent)", cursor: "pointer",
                       }}
                     >
                       Restore
@@ -1827,7 +1827,7 @@ export default function Team() {
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: "8px 14px", borderRadius: 99,
-                      background: "var(--am-irid)", color: "#fff",
+                      background: "var(--am-irid)", color: "var(--am-on-accent)",
                       fontSize: 12, fontWeight: 600, textDecoration: "none",
                     }}
                   >
@@ -1862,7 +1862,7 @@ export default function Team() {
                           fontSize: 11, fontWeight: 600,
                           border: "1px solid " + (isActive ? "transparent" : "var(--am-border)"),
                           background: isActive ? "var(--am-irid)" : "var(--am-chip)",
-                          color: isActive ? "#fff" : "var(--am-text-muted)",
+                          color: isActive ? "var(--am-on-accent)" : "var(--am-text-muted)",
                           cursor: "pointer",
                         }}
                       >

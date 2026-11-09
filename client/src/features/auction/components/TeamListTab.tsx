@@ -439,6 +439,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                             borderRadius: 99,
                                             width: `${spentPct}%`,
                                             background: "var(--am-irid)",
+                                            color: "var(--am-on-accent)",
                                             transition: "width 300ms",
                                         }}
                                     />

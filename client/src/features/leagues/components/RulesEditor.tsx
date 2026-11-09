@@ -291,7 +291,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                       ...AURORA_BTN_BASE,
                       background: "var(--am-irid)",
                       border: "1px solid var(--am-border-strong)",
-                      color: "#fff",
+                      color: "var(--am-on-accent)",
                       opacity: saving ? 0.6 : 1,
                       boxShadow: "0 6px 20px rgba(255,80,80,0.18)",
                     }}
@@ -307,7 +307,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                     ...AURORA_BTN_BASE,
                     background: "var(--am-irid)",
                     border: "1px solid var(--am-border-strong)",
-                    color: "#fff",
+                    color: "var(--am-on-accent)",
                     boxShadow: "0 6px 20px rgba(255,80,80,0.18)",
                   }}
                 >
@@ -574,7 +574,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
                 cursor: "pointer",
                 background: active ? "var(--am-irid)" : "var(--am-surface-faint)",
                 border: `1px solid ${active ? "var(--am-border-strong)" : "var(--am-border)"}`,
-                color: active ? "#fff" : "var(--am-text-muted)",
+                color: active ? "var(--am-on-accent)" : "var(--am-text-muted)",
               }}
             >
               {opt}

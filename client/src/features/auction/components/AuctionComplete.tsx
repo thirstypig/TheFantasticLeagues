@@ -529,6 +529,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                         left: 0,
                         width: 3,
                         background: "var(--am-irid)",
+                        color: "var(--am-on-accent)",
                       }}
                     />
                   )}

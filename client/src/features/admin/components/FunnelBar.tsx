@@ -96,6 +96,7 @@ function FunnelBarInner({ label, stages }: FunnelBarProps) {
                     height: "100%",
                     width: `${Math.max(stage.percent, 2)}%`,
                     background: "var(--am-irid)",
+                    color: "var(--am-on-accent)",
                     borderRadius: 99,
                     transition: "width 240ms ease",
                   }}

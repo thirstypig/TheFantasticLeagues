@@ -12,6 +12,11 @@ import { describe, expect, it } from "vitest";
  * className, or a CSS rule — and asserts that the same object / className /
  * rule sets its text color to var(--am-on-accent).
  *
+ * --am-irid is a legacy alias defined as var(--am-accent) in aurora.css, so
+ * fills that use it are held to the same rule.
+ *
+ * Blocks with background-clip: text are skipped (the accent colors the glyphs).
+ *
  * Tints (color-mix(... var(--am-accent) N% ...)) and inset shadows are not
  * solid backgrounds and are ignored.
  */
@@ -83,11 +88,13 @@ function enclosingString(text: string, index: number): string {
 
 // style object: background / backgroundColor whose value (possibly a ternary
 // branch) is exactly the string "var(--am-accent)".
-const STYLE_BG = /\bbackground(?:Color)?\s*:\s*[^,\n]*?["'`]var\(--am-accent\)["'`]/g;
+const STYLE_BG = /\bbackground(?:Color|Image)?\s*:\s*[^,\n]*?["'`]var\(--am-(?:accent|irid)\)["'`]/g;
 // Tailwind arbitrary class, solid (not a /opacity variant).
-const CLASS_BG = /\bbg-\[var\(--am-accent\)\](?!\/)/g;
+const CLASS_BG = /\bbg-\[var\(--am-(?:accent|irid)\)\](?!\/)/g;
 // CSS rule: background / background-color whose whole value is var(--am-accent).
-const CSS_BG = /\bbackground(?:-color)?\s*:\s*var\(--am-accent\)\s*(?:!important\s*)?[;}]/g;
+const CSS_BG = /\bbackground(?:-color|-image)?\s*:\s*var\(--am-(?:accent|irid)\)\s*(?:!important\s*)?[;}]/g;
+
+const TEXT_CLIP = /[bB]ackgroundClip\s*:\s*["'`]text/;
 
 // The block's own `color` property (not borderColor / background-color etc.).
 const STYLE_COLOR = /(?:^|[\s,{])color\s*:\s*([^,\n}]+)/;
@@ -114,6 +121,9 @@ function findOffenders(): string[] {
 
     for (const m of text.matchAll(STYLE_BG)) {
       const block = enclosingBlock(text, m.index!);
+      // background-clip: text paints the GLYPHS with the accent — that is
+      // accent-as-text-color, not a fill behind text.
+      if (TEXT_CLIP.test(block)) continue;
       const color = STYLE_COLOR.exec(block.slice(1));
       if (!color || !color[1].includes("var(--am-on-accent)")) {
         report(m.index!, `style color is ${color ? color[1].trim() : "unset"}`);

@@ -509,7 +509,7 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
     textTransform: "uppercase",
     border: active ? "1px solid var(--am-border-strong)" : "1px solid var(--am-border)",
     background: active ? "var(--am-irid)" : "var(--am-chip)",
-    color: active ? "#fff" : "var(--am-text-muted)",
+    color: active ? "var(--am-on-accent)" : "var(--am-text-muted)",
     cursor: "pointer",
     transition: "all 200ms ease",
   };

@@ -65,6 +65,7 @@ export function SwapActionBar({ pendingCount, onReset, onSave, busy }: SwapActio
             height: 8,
             borderRadius: 99,
             background: hasPending ? "var(--am-irid)" : "var(--am-chip-strong)",
+            color: "var(--am-on-accent)",
           }}
         />
         <span style={{ fontWeight: hasPending ? 600 : 500 }}>
@@ -96,7 +97,7 @@ export function SwapActionBar({ pendingCount, onReset, onSave, busy }: SwapActio
           style={{
             ...buttonBase,
             background: "var(--am-irid)",
-            color: "#fff",
+            color: "var(--am-on-accent)",
             border: "1px solid var(--am-border-strong)",
             opacity: hasPending && !busy ? 1 : 0.5,
             cursor: hasPending && !busy ? "pointer" : "not-allowed",

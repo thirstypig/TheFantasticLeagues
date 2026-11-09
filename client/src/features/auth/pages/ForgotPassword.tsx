@@ -69,6 +69,7 @@ export default function ForgotPassword() {
                 height: 30,
                 borderRadius: 9,
                 background: "var(--am-irid)",
+                color: "var(--am-on-accent)",
                 boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                 flexShrink: 0,
               }}

@@ -264,7 +264,7 @@ export default function Season() {
                                     placeItems: "center",
                                     fontSize: 9.5,
                                     fontWeight: 700,
-                                    color: rank === 1 ? "#fff" : "var(--am-text)",
+                                    color: rank === 1 ? "var(--am-on-accent)" : "var(--am-text)",
                                     border: "1px solid var(--am-border)",
                                   }}
                                 >

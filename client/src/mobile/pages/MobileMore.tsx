@@ -106,7 +106,7 @@ function MoreItemRow({ item, isFirst }: MoreItemProps) {
             fontSize: 10,
             fontWeight: 700,
             background: "var(--am-irid)",
-            color: "#fff",
+            color: "var(--am-on-accent)",
           }}
         >
           {item.badge}
@@ -219,7 +219,7 @@ export function MobileMore() {
                   height: 48,
                   borderRadius: 14,
                   background: "var(--am-irid)",
-                  color: "#fff",
+                  color: "var(--am-on-accent)",
                   display: "grid",
                   placeItems: "center",
                   fontFamily: "var(--am-display)",
