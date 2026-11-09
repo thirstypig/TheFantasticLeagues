@@ -2,7 +2,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { norm, slugify } from "../../../lib/utils.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
-import { rosterSlotFor } from "../../transactions/lib/positionInherit.js";
+import { rosterSlotFor } from "../../../lib/positionInherit.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../../lib/rosterWindow.js";
 import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";

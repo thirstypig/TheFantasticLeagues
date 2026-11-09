@@ -44,7 +44,7 @@ import {
   type AppliedReassignment,
 } from "./lib/autoResolveLineup.js";
 import { slotsFor } from "./lib/slotMatcher.js";
-import { negotiateInheritedSlot } from "./lib/positionInherit.js";
+import { negotiateInheritedSlot } from "../../lib/positionInherit.js";
 import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
 import { clearStandingsCache } from "../standings/services/standingsService.js";

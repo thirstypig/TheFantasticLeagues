@@ -82,7 +82,7 @@ vi.mock("../services/CommissionerService.js", () => {
   }
   return { CommissionerService };
 });
-vi.mock("../../transactions/lib/positionInherit.js", () => ({
+vi.mock("../../../lib/positionInherit.js", () => ({
   isEligibleForSlot: vi.fn(() => true),
 }));
 vi.mock("../../transactions/services/ilFeeService.js", () => ({
