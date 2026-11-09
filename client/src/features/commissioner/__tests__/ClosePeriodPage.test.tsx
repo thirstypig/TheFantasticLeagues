@@ -317,3 +317,49 @@ describe("ClosePeriodPage — step 5", () => {
     expect(screen.queryByRole("button", { name: "Close Period 7" })).toBeNull();
   });
 });
+
+describe("ClosePeriodPage — readiness gate on steps 4 and 5", () => {
+  const notReady = () =>
+    m.getCloseReadiness.mockResolvedValue({
+      periodId: 7,
+      name: "Period 7",
+      status: "active",
+      endDate: "2026-09-28T00:00:00.000Z",
+      lastStatDate: "2026-09-27T00:00:00.000Z",
+      ready: false,
+    });
+
+  it("?step=5&bill=now on a not-ready period shows the come-back copy and no close button", async () => {
+    notReady();
+    renderAt([`${URL}?step=5&bill=now`]);
+    expect(await screen.findByText("Come back after tomorrow morning's stats sync.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Back to Commissioner/ }).getAttribute("href")).toBe("/commissioner/20");
+    expect(screen.queryByRole("button", { name: "Close Period 7" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(m.setPeriodStatus).not.toHaveBeenCalled();
+  });
+
+  it("?step=4 on a not-ready period offers no close choices and runs no fee preview", async () => {
+    notReady();
+    renderAt([`${URL}?step=4`]);
+    expect(await screen.findByText("Come back after tomorrow morning's stats sync.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Close & bill now/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close, bill later" })).toBeNull();
+    expect(m.previewIlFees).not.toHaveBeenCalled();
+  });
+
+  it("?step=5 on a pending period (never started) is gated too", async () => {
+    m.getCloseReadiness.mockResolvedValue({
+      periodId: 7,
+      name: "Period 7",
+      status: "pending",
+      endDate: "2026-09-28T00:00:00.000Z",
+      lastStatDate: null,
+      ready: false,
+    });
+    renderAt([`${URL}?step=5&bill=later`]);
+    expect(await screen.findByText("Come back after tomorrow morning's stats sync.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Close Period 7" })).toBeNull();
+    expect(m.setPeriodStatus).not.toHaveBeenCalled();
+  });
+});

@@ -168,17 +168,54 @@ function Step4({ leagueId, periodId, onChoose }: { leagueId: number; periodId: n
   );
 }
 
+/**
+ * Steps 4 and 5 lead to the irreversible close, so they re-check readiness
+ * instead of trusting the URL: a deep link to ?step=5 on a period whose final
+ * stats aren't in (or that never started) gets the step-1 copy, not a button.
+ */
+function ReadinessGate({
+  readiness,
+  base,
+  children,
+}: {
+  readiness: Load<CloseReadiness>;
+  base: string;
+  children: (r: CloseReadiness) => React.ReactNode;
+}) {
+  if (readiness.state === "loading") return <Glass padded={false}><Skeleton /></Glass>;
+  if (readiness.state === "error") {
+    return (
+      <Glass padded={false}>
+        <CardError>Couldn’t load this period.</CardError>
+        <div style={{ padding: "0 16px 8px" }}><Link to={base} style={LINK}>Back to Commissioner</Link></div>
+      </Glass>
+    );
+  }
+  const r = readiness.data;
+  if (r.status === "completed" || !r.ready) {
+    return (
+      <Glass padded>
+        <p style={{ margin: "0 0 4px", fontSize: 16 }}>
+          {r.status === "completed" ? "This period is already closed." : "Come back after tomorrow morning's stats sync."}
+        </p>
+        <Link to={base} style={LINK}>Back to Commissioner</Link>
+      </Glass>
+    );
+  }
+  return <>{children(r)}</>;
+}
+
 function Step5({
   leagueId,
   periodId,
   base,
-  readiness,
+  period: r,
   bill,
 }: {
   leagueId: number;
   periodId: number;
   base: string;
-  readiness: Load<CloseReadiness>;
+  period: CloseReadiness;
   bill: "now" | "later" | null;
 }) {
   const navigate = useNavigate();
@@ -194,18 +231,6 @@ function Step5({
       <Glass padded>
         <p style={{ margin: "0 0 4px", fontSize: 16 }}>Pick whether to bill IL fees now or later first.</p>
         <Link to="?step=4" style={LINK}>Choose how to bill ›</Link>
-      </Glass>
-    );
-  }
-
-  if (readiness.state === "loading") return <Glass padded={false}><Skeleton /></Glass>;
-  if (readiness.state === "error") return <Glass padded={false}><CardError>Couldn’t load this period.</CardError></Glass>;
-  const r = readiness.data;
-  if (r.status === "completed") {
-    return (
-      <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 16 }}>This period is already closed.</p>
-        <Link to={base} style={LINK}>Back to Commissioner</Link>
       </Glass>
     );
   }
@@ -290,7 +315,7 @@ export default function ClosePeriodPage() {
   const bill = billParam === "now" || billParam === "later" ? billParam : null;
 
   // Re-fetched on every step change: it carries the period name for the header
-  // and the readiness/status checks steps 1 and 5 act on.
+  // and the readiness/status checks steps 1, 4 and 5 act on.
   const readiness = useLoad(() => getCloseReadiness(leagueId, periodId), [leagueId, periodId, step]);
   const name = readiness.state === "ready" ? readiness.data.name : "period";
 
@@ -320,8 +345,16 @@ export default function ClosePeriodPage() {
       {step === 1 && <Step1 key={step} readiness={readiness} base={base} onNext={() => go(2)} />}
       {step === 2 && <Step2 key={step} leagueId={leagueId} base={base} onNext={() => go(3)} />}
       {step === 3 && <Step3 key={step} leagueId={leagueId} periodId={periodId} name={readiness.state === "ready" ? readiness.data.name : "Period"} onNext={() => go(4)} />}
-      {step === 4 && <Step4 key={step} leagueId={leagueId} periodId={periodId} onChoose={(b) => go(5, `&bill=${b}`)} />}
-      {step === 5 && <Step5 key={step} leagueId={leagueId} periodId={periodId} base={base} readiness={readiness} bill={bill} />}
+      {step === 4 && (
+        <ReadinessGate key={step} readiness={readiness} base={base}>
+          {() => <Step4 leagueId={leagueId} periodId={periodId} onChoose={(b) => go(5, `&bill=${b}`)} />}
+        </ReadinessGate>
+      )}
+      {step === 5 && (
+        <ReadinessGate key={step} readiness={readiness} base={base}>
+          {(r) => <Step5 leagueId={leagueId} periodId={periodId} base={base} period={r} bill={bill} />}
+        </ReadinessGate>
+      )}
     </div>
   );
 }
