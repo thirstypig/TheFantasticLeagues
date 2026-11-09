@@ -56,8 +56,8 @@ beforeEach(() => {
 });
 
 const sampleTeamStats = [
-  { team: { id: 1, name: "Team A" }, R: 50, HR: 10, ERA: 3.5 },
-  { team: { id: 2, name: "Team B" }, R: 45, HR: 12, ERA: 4.1 },
+  { team: { id: 1, name: "Team A" }, stats: { R: 50, HR: 10, ERA: 3.5 } },
+  { team: { id: 2, name: "Team B" }, stats: { R: 45, HR: 12, ERA: 4.1 } },
 ];
 
 describe("snapshotLeagueCategoryDaily — period selection", () => {
@@ -133,6 +133,24 @@ describe("snapshotLeagueCategoryDaily — row generation", () => {
       (c) => c[0].create.category as string
     );
     expect(new Set(categories)).toEqual(new Set(["R", "HR", "ERA"]));
+  });
+
+  it("persists the ranked category value, so value and rank always describe the same number", async () => {
+    mockPrisma.period.findFirst.mockResolvedValueOnce({ id: 5, status: "active" });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    // Deliberately differs from sampleTeamStats' stats.R (50/45): the snapshot
+    // must store the value the rank was computed from, not re-read the row.
+    mockComputeCategoryRows.mockImplementation(() => [
+      { teamId: 1, value: 77, rank: 1, points: 2 },
+      { teamId: 2, value: 33, rank: 2, points: 1 },
+    ]);
+
+    await snapshotLeagueCategoryDaily(99, new Date("2026-04-29"));
+
+    const rCalls = mockPrisma.teamStatsCategoryDaily.upsert.mock.calls
+      .map((c) => c[0].create)
+      .filter((row) => row.category === "R");
+    expect(rCalls.map((row) => [row.teamId, row.value, row.rank])).toEqual([[1, 77, 1], [2, 33, 2]]);
   });
 
   it("upserts (not inserts) keyed on (teamId, leagueId, date, category) — idempotent re-runs", async () => {

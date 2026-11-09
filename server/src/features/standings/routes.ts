@@ -10,6 +10,7 @@ import {
   getSeasonStandings,
   CATEGORY_CONFIG,
   KEY_TO_DB_FIELD,
+  type TeamStatRow,
 } from "./services/standingsService.js";
 import { createScoringEngine } from "./services/scoringEngine.js";
 import { readLeagueSnapshotForDate } from "./services/categoryDailySnapshotService.js";
@@ -27,19 +28,18 @@ const router = Router();
  */
 export async function persistTeamStatsPeriodSnapshot(
   periodId: number,
-  teamStats: Array<{
-    team: { id: number };
-    R: number; HR: number; RBI: number; SB: number; AVG: number;
-    W: number; S: number; ERA: number; WHIP: number; K: number;
-  }>,
+  teamStats: TeamStatRow[],
 ): Promise<void> {
   if (teamStats.length === 0) return;
   await prisma.$transaction(
-    teamStats.map(t => prisma.teamStatsPeriod.upsert({
-      where: { teamId_periodId: { teamId: t.team.id, periodId } },
-      update: { R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
-      create: { teamId: t.team.id, periodId, R: t.R, HR: t.HR, RBI: t.RBI, SB: t.SB, AVG: t.AVG, W: t.W, S: t.S, ERA: t.ERA, WHIP: t.WHIP, K: t.K },
-    }))
+    teamStats.map(({ team, stats: s }) => {
+      const values = { R: s.R, HR: s.HR, RBI: s.RBI, SB: s.SB, AVG: s.AVG, W: s.W, S: s.S, ERA: s.ERA, WHIP: s.WHIP, K: s.K };
+      return prisma.teamStatsPeriod.upsert({
+        where: { teamId_periodId: { teamId: team.id, periodId } },
+        update: values,
+        create: { teamId: team.id, periodId, ...values },
+      });
+    })
   );
 }
 
@@ -177,14 +177,15 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
         H: 0, AB: 0, ER: 0, IP: 0, BB_H: 0,
         AVG: 0, ERA: 0, WHIP: 0,
       };
-      prev.R += t.R; prev.HR += t.HR; prev.RBI += t.RBI; prev.SB += t.SB;
-      prev.W += t.W; prev.S += t.S; prev.K += t.K;
+      const s = t.stats;
+      prev.R += s.R; prev.HR += s.HR; prev.RBI += s.RBI; prev.SB += s.SB;
+      prev.W += s.W; prev.S += s.S; prev.K += s.K;
       // Accumulate rate-stat components for weighted averaging.
-      prev.H += t.H ?? 0;
-      prev.AB += t.AB ?? 0;
-      prev.ER += t.ER ?? 0;
-      prev.IP += t.IP ?? 0;
-      prev.BB_H += t.BB_H ?? 0;
+      prev.H += s.H ?? 0;
+      prev.AB += s.AB ?? 0;
+      prev.ER += s.ER ?? 0;
+      prev.IP += s.IP ?? 0;
+      prev.BB_H += s.BB_H ?? 0;
       seasonTotals.set(t.team.id, prev);
     }
   }
@@ -207,11 +208,14 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
   const snapshotMap = new Map(snapshots.map(s => [s.teamId, s]));
 
   let prevStandingsMap = new Map<number, number>();
-  const prevTeamStats = snapshots.length > 0
+  const prevTeamStats: TeamStatRow[] | null = snapshots.length > 0
     ? teamStats.map(t => {
         const snap = snapshotMap.get(t.team.id);
         if (!snap) return t;
-        return { ...t, R: snap.R, HR: snap.HR, RBI: snap.RBI, SB: snap.SB, AVG: snap.AVG, W: snap.W, S: snap.S, ERA: snap.ERA, WHIP: snap.WHIP, K: snap.K };
+        return {
+          team: t.team,
+          stats: { ...t.stats, R: snap.R, HR: snap.HR, RBI: snap.RBI, SB: snap.SB, AVG: snap.AVG, W: snap.W, S: snap.S, ERA: snap.ERA, WHIP: snap.WHIP, K: snap.K },
+        };
       })
     : null;
 
@@ -328,7 +332,7 @@ router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler
     for (const key of categoryKeys) {
       periodStatValues[key] = periodData.map(({ teamStats }) => {
         const team = teamStats.find((ts) => ts.team.id === t.id);
-        return team ? (team as any)[key] ?? 0 : 0;
+        return team?.stats[key] ?? 0;
       });
     }
 

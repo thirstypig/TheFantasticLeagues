@@ -192,9 +192,11 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     // Adapt Prisma rows to TeamStatRow for the standings service
     const teamStatRows: TeamStatRow[] = allTeamStats.map(ts => ({
       team: { id: ts.team.id, name: ts.team.name, code: (ts.team as any).code ?? "" },
-      R: Number(ts.R), HR: Number(ts.HR), RBI: Number(ts.RBI), SB: Number(ts.SB),
-      AVG: Number(ts.AVG), W: Number(ts.W), S: Number(ts.S), K: Number(ts.K),
-      ERA: Number(ts.ERA), WHIP: Number(ts.WHIP),
+      stats: {
+        R: Number(ts.R), HR: Number(ts.HR), RBI: Number(ts.RBI), SB: Number(ts.SB),
+        AVG: Number(ts.AVG), W: Number(ts.W), S: Number(ts.S), K: Number(ts.K),
+        ERA: Number(ts.ERA), WHIP: Number(ts.WHIP),
+      },
     }));
 
     // Compute real roto standings with proper tie-handling

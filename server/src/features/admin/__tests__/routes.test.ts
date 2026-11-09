@@ -522,8 +522,8 @@ describe("GET /admin/users", () => {
 
 describe("POST /admin/recompute-period-cache", () => {
   const sampleTeamStats = [
-    { team: { id: 1, name: "Los Doyers", code: "LDY" }, W: 15, K: 166, R: 159, HR: 46, RBI: 147, SB: 22, AVG: 0.247, S: 2, ERA: 4.40, WHIP: 1.293 },
-    { team: { id: 2, name: "Demolition", code: "DLC" }, W: 14, K: 209, R: 154, HR: 28, RBI: 155, SB: 24, AVG: 0.271, S: 15, ERA: 3.41, WHIP: 1.130 },
+    { team: { id: 1, name: "Los Doyers", code: "LDY" }, stats: { W: 15, K: 166, R: 159, HR: 46, RBI: 147, SB: 22, AVG: 0.247, S: 2, ERA: 4.40, WHIP: 1.293 } },
+    { team: { id: 2, name: "Demolition", code: "DLC" }, stats: { W: 14, K: 209, R: 154, HR: 28, RBI: 155, SB: 24, AVG: 0.271, S: 15, ERA: 3.41, WHIP: 1.130 } },
   ];
 
   it("returns 404 when period does not exist in the league", async () => {
@@ -552,6 +552,14 @@ describe("POST /admin/recompute-period-cache", () => {
     expect(mockComputeTeamStatsFromDb).toHaveBeenCalledWith(20, 36);
     // One upsert per team (2 teams in sample)
     expect(mockPrisma.$transaction).toHaveBeenCalled();
+    // The persisted values must be the row's real stats — a wrong accessor
+    // silently writes zeros into the TeamStatsPeriod delta cache.
+    const ldyStats = { R: 159, HR: 46, RBI: 147, SB: 22, AVG: 0.247, W: 15, S: 2, ERA: 4.40, WHIP: 1.293, K: 166 };
+    expect(mockPrisma.teamStatsPeriod.upsert).toHaveBeenCalledWith({
+      where: { teamId_periodId: { teamId: 1, periodId: 36 } },
+      update: ldyStats,
+      create: { teamId: 1, periodId: 36, ...ldyStats },
+    });
   });
 
   it("returns correct response shape with W/K/R spot-check", async () => {

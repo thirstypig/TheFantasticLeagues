@@ -11,6 +11,7 @@ import {
   computeStandingsFromStats,
   rankPoints,
   aggregatePeriodStatsFromCsv,
+  getTeamStatValue,
 } from "../services/standingsService.js";
 
 describe("buildTeamNameMap", () => {
@@ -89,10 +90,12 @@ describe("CATEGORY_CONFIG", () => {
 import type { TeamStatRow } from "../services/standingsService.js";
 
 function makeStats(teams: Array<Record<string, number | string>>): TeamStatRow[] {
-  return teams.map((t) => ({
-    R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
-    ...t,
-    team: { id: Number(t.id), name: String(t.name), code: String(t.code || t.name) },
+  return teams.map(({ id, name, code, ...stats }) => ({
+    team: { id: Number(id), name: String(name), code: String(code || name) },
+    stats: {
+      R: 0, HR: 0, RBI: 0, SB: 0, AVG: 0, W: 0, S: 0, ERA: 0, WHIP: 0, K: 0,
+      ...(stats as Record<string, number>),
+    },
   }));
 }
 
@@ -292,16 +295,16 @@ describe("aggregatePeriodStatsFromCsv", () => {
     const ldy = result.find((r) => r.team.code === "LDY")!;
 
     // Counting stats are summed
-    expect(dmk.R).toBe(15);
-    expect(dmk.HR).toBe(8);
-    expect(dmk.RBI).toBe(12);
-    expect(dmk.SB).toBe(3);
-    expect(dmk.W).toBe(3);
-    expect(dmk.S).toBe(2); // SV in CSV → S in output
-    expect(dmk.K).toBe(30);
+    expect(dmk.stats.R).toBe(15);
+    expect(dmk.stats.HR).toBe(8);
+    expect(dmk.stats.RBI).toBe(12);
+    expect(dmk.stats.SB).toBe(3);
+    expect(dmk.stats.W).toBe(3);
+    expect(dmk.stats.S).toBe(2); // SV in CSV → S in output
+    expect(dmk.stats.K).toBe(30);
 
-    expect(ldy.R).toBe(20);
-    expect(ldy.HR).toBe(10);
+    expect(ldy.stats.R).toBe(20);
+    expect(ldy.stats.HR).toBe(10);
   });
 
   it("computes rate stats (AVG, ERA, WHIP) from components", () => {
@@ -309,11 +312,11 @@ describe("aggregatePeriodStatsFromCsv", () => {
     const dmk = result.find((r) => r.team.code === "DMK")!;
 
     // AVG = H/AB = 35/140 = 0.25
-    expect(dmk.AVG).toBeCloseTo(35 / 140, 5);
+    expect(dmk.stats.AVG).toBeCloseTo(35 / 140, 5);
     // ERA = (ER/IP)*9 = (10/40)*9 = 2.25
-    expect(dmk.ERA).toBeCloseTo(2.25, 5);
+    expect(dmk.stats.ERA).toBeCloseTo(2.25, 5);
     // WHIP = BB_H/IP = 50/40 = 1.25
-    expect(dmk.WHIP).toBeCloseTo(1.25, 5);
+    expect(dmk.stats.WHIP).toBeCloseTo(1.25, 5);
   });
 
   it("filters by period key", () => {
@@ -326,6 +329,23 @@ describe("aggregatePeriodStatsFromCsv", () => {
   it("returns empty array for unknown period", () => {
     const result = aggregatePeriodStatsFromCsv(csvRows, "P99");
     expect(result).toEqual([]);
+  });
+
+  it("emits rows shaped { team, stats } with no stat keys at the top level", () => {
+    const result = aggregatePeriodStatsFromCsv(csvRows, "P1");
+    for (const row of result) {
+      expect(Object.keys(row).sort()).toEqual(["stats", "team"]);
+      expect(Object.keys(row.stats).sort()).toEqual(
+        ["AB", "AVG", "BB_H", "ER", "ERA", "H", "HR", "IP", "K", "R", "RBI", "S", "SB", "W", "WHIP"],
+      );
+    }
+  });
+
+  it("getTeamStatValue reads from row.stats and returns 0 for an absent key", () => {
+    const [dmk] = aggregatePeriodStatsFromCsv(csvRows, "P1").filter((r) => r.team.code === "DMK");
+    expect(getTeamStatValue(dmk, "R")).toBe(15);
+    expect(getTeamStatValue(dmk, "S")).toBe(2);
+    expect(getTeamStatValue(dmk, "TD")).toBe(0);
   });
 
   it("works with computeCategoryRows for ranking", () => {

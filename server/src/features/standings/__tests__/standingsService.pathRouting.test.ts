@@ -228,7 +228,7 @@ describe("computeTeamStatsFromDb — path routing (todo #260)", () => {
     expect(mockPeriodStatsFindMany).toHaveBeenCalledTimes(1);
     expect(mockDailyFindMany).toHaveBeenCalledTimes(1);
     const team = (rows as any[]).find(r => r.team.id === 1001);
-    expect(team.R).toBe(13); // 10 (PSP, player 1) + 3 (post-acquisition daily, player 2)
+    expect(team.stats.R).toBe(13); // 10 (PSP, player 1) + 3 (post-acquisition daily, player 2)
   });
 
   it("hybrid (todo #286): same-team same-day drop-and-re-add counts the boundary day exactly once", async () => {
@@ -250,7 +250,7 @@ describe("computeTeamStatsFromDb — path routing (todo #260)", () => {
     const rows = await computeTeamStatsFromDb(20, 36);
 
     const team = (rows as any[]).find(r => r.team.id === 1001);
-    expect(team.K).toBe(5); // 2 + 3, never 7
+    expect(team.stats.K).toBe(5); // 2 + 3, never 7
   });
 
   it("hybrid (todo #286): mid-period release to free agency credits the dropper only before the release day", async () => {
@@ -271,6 +271,6 @@ describe("computeTeamStatsFromDb — path routing (todo #260)", () => {
     const rows = await computeTeamStatsFromDb(20, 36);
 
     const team = (rows as any[]).find(r => r.team.id === 1001);
-    expect(team.R).toBe(1); // 5/1 counts; the 5/2 release day does not
+    expect(team.stats.R).toBe(1); // 5/1 counts; the 5/2 release day does not
   });
 });

@@ -22,26 +22,42 @@ export type CsvPlayerRow = PeriodStatRow & {
 };
 
 /** Team-level aggregated stat row — output of aggregation, input to ranking.
- * Sport-agnostic: stats keyed by category ID, computed on-demand via categoryEngine.
- * All stats stored by key (e.g., "R", "HR", "AVG", "W", "ERA", etc. per sport).
- * Rate stats (AVG, ERA, WHIP) computed from components via getCategoryValue().
+ * Sport-agnostic: every stat lives in `stats`, keyed by its DB field name
+ * ("R", "HR", "S", "AVG", … for baseball; whatever a sport defines otherwise).
+ * Keeping the stats nested — rather than flat beside `team` — means the
+ * `team` object never widens a stat read, so dynamic reads (`stats[key]`) and
+ * named arithmetic (`stats.R`) are both plain `number` access (todo #294).
+ *
+ * Baseball rows always carry all 15 keys: the 10 scoring categories plus the
+ * rate-stat components H/AB/ER/IP/BB_H used for weighted cross-period
+ * averaging (Issue #109). Use `getTeamStatValue` when a key may be absent.
  */
 export interface TeamStatRow {
   team: { id: number; name: string; code: string };
-  // Known MLB scoring categories — always present for baseball rows, so they
-  // are typed as `number` (not the widened index-signature union). Without
-  // these explicit members every `row.R`/`row.K` access would widen to
-  // `number | {team} | undefined` and break arithmetic at every call site.
-  R: number; HR: number; RBI: number; SB: number; AVG: number;
-  W: number; S: number; K: number; ERA: number; WHIP: number;
-  // Rate-stat components for weighted cross-period averaging — optional
-  // because the CSV-aggregation path doesn't populate them.
-  H?: number; AB?: number; ER?: number; IP?: number; BB_H?: number;
-  // Sport-agnostic escape hatch: additional category keys (NFL/NBA, etc.)
-  // read dynamically via `computeCategoryRows(stats, key)`. The object branch
-  // carries the `team` member above.
-  [statKey: string]: number | { id: number; name: string; code: string } | undefined;
+  stats: Record<string, number>;
 }
+
+/** Baseball counting stats + rate-stat components, before rates are derived. */
+interface BaseballAccum {
+  R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
+  W: number; S: number; K: number; ER: number; IP: number; BB_H: number;
+}
+
+const emptyBaseballAccum = (): BaseballAccum =>
+  ({ R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 });
+
+/** Derive AVG/ERA/WHIP from summed components (0 when the denominator is 0). */
+function baseballStats(a: BaseballAccum): Record<string, number> {
+  return {
+    ...a,
+    AVG: a.AB > 0 ? a.H / a.AB : 0,
+    ERA: a.IP > 0 ? (a.ER / a.IP) * 9 : 0,
+    WHIP: a.IP > 0 ? a.BB_H / a.IP : 0,
+  };
+}
+
+const teamRef = (t: { id: number; name: string; code: string | null }) =>
+  ({ id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() });
 
 /** A single category ranking row */
 export interface CategoryRow {
@@ -135,7 +151,7 @@ export function computeCategoryRows(
     teamId: s.team.id,
     teamName: s.team.name,
     teamCode: s.team.code || s.team.name.substring(0, 3).toUpperCase(),
-    value: typeof s[dbField] === "number" ? (s[dbField] as number) : 0,
+    value: getTeamStatValue(s, dbField),
   }));
 
   const n = rows.length;
@@ -297,20 +313,14 @@ export function aggregatePeriodStatsFromCsv(
       rateStats["WHIP"] = ip > 0 ? bb_h / ip : 0;
     }
 
-    // The cast bridges the dynamic `...team.stats` (Record<string, number>) to
-    // TeamStatRow's named MLB members — a type-system limitation, NOT a runtime
-    // absence: counting stats are populated by accumulation above and rate stats
-    // are always emitted (0-fallback). Full cast removal awaits the sport-agnostic
-    // nested `stats: Record<string, number>` shape (Week 2 — see todo 294).
     result.push({
       team: {
         id: idx + 1,
         name: team.teamName,
         code: team.teamCode,
       },
-      ...team.stats,  // Spread accumulated counting stats
-      ...rateStats,   // Pre-computed rate stats (always present for baseball)
-    } as TeamStatRow);
+      stats: { ...team.stats, ...rateStats },
+    });
     idx++;
   }
 
@@ -334,9 +344,8 @@ export function aggregateSeasonStatsFromCsv(periodStats: CsvPlayerRow[], sport: 
  * Used by tests and callers that need to extract numeric stats by key.
  */
 export function getTeamStatValue(row: TeamStatRow, key: string): number {
-  const val = row[key];
-  if (typeof val === "number") return val;
-  return 0;
+  const val = row.stats[key];
+  return typeof val === "number" ? val : 0;
 }
 
 export function rankPoints(
@@ -552,26 +561,11 @@ function mergeTeamStatRows(
   return teams.map(t => {
     const x = aById.get(t.id);
     const y = bById.get(t.id);
-    const n = (v: number | undefined) => v ?? 0;
-    const H = n(x?.H) + n(y?.H);
-    const AB = n(x?.AB) + n(y?.AB);
-    const ER = n(x?.ER) + n(y?.ER);
-    const IP = n(x?.IP) + n(y?.IP);
-    const BB_H = n(x?.BB_H) + n(y?.BB_H);
-    return {
-      team: { id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() },
-      R: n(x?.R) + n(y?.R),
-      HR: n(x?.HR) + n(y?.HR),
-      RBI: n(x?.RBI) + n(y?.RBI),
-      SB: n(x?.SB) + n(y?.SB),
-      AVG: AB > 0 ? H / AB : 0,
-      W: n(x?.W) + n(y?.W),
-      S: n(x?.S) + n(y?.S),
-      K: n(x?.K) + n(y?.K),
-      ERA: IP > 0 ? (ER / IP) * 9 : 0,
-      WHIP: IP > 0 ? BB_H / IP : 0,
-      H, AB, ER, IP, BB_H,
-    };
+    const sum = emptyBaseballAccum();
+    for (const key of Object.keys(sum) as (keyof BaseballAccum)[]) {
+      sum[key] = (x?.stats[key] ?? 0) + (y?.stats[key] ?? 0);
+    }
+    return { team: teamRef(t), stats: baseballStats(sum) };
   });
 }
 
@@ -610,7 +604,7 @@ async function computeWithDailyStats(
   }
 
   // For each roster entry, sum daily stats within ownership window
-  const teamAccum = new Map<number, { R: number; HR: number; RBI: number; SB: number; H: number; AB: number; W: number; S: number; K: number; ER: number; IP: number; BB_H: number }>();
+  const teamAccum = new Map<number, BaseballAccum>();
 
   for (const roster of rosters) {
     // Skip players who were on IL at the period's start date.
@@ -633,7 +627,7 @@ async function computeWithDailyStats(
     });
 
     if (!teamAccum.has(roster.teamId)) {
-      teamAccum.set(roster.teamId, { R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 });
+      teamAccum.set(roster.teamId, emptyBaseballAccum());
     }
     const acc = teamAccum.get(roster.teamId)!;
 
@@ -657,19 +651,10 @@ async function computeWithDailyStats(
     }
   }
 
-  return teams.map((t) => {
-    const acc = teamAccum.get(t.id) ?? { R: 0, HR: 0, RBI: 0, SB: 0, H: 0, AB: 0, W: 0, S: 0, K: 0, ER: 0, IP: 0, BB_H: 0 };
-    return {
-      team: { id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() },
-      R: acc.R, HR: acc.HR, RBI: acc.RBI, SB: acc.SB,
-      AVG: acc.AB > 0 ? acc.H / acc.AB : 0,
-      W: acc.W, S: acc.S, K: acc.K,
-      ERA: acc.IP > 0 ? (acc.ER / acc.IP) * 9 : 0,
-      WHIP: acc.IP > 0 ? acc.BB_H / acc.IP : 0,
-      // Components for weighted cross-period averaging (Issue #109)
-      H: acc.H, AB: acc.AB, ER: acc.ER, IP: acc.IP, BB_H: acc.BB_H,
-    };
-  });
+  return teams.map((t) => ({
+    team: teamRef(t),
+    stats: baseballStats(teamAccum.get(t.id) ?? emptyBaseballAccum()),
+  }));
 }
 
 /** Fallback path: use cumulative PlayerStatsPeriod (pre-daily-data periods). */
@@ -764,14 +749,8 @@ async function computeWithPeriodStats(
     }
 
     return {
-      team: { id: t.id, name: t.name, code: t.code ?? t.name.substring(0, 3).toUpperCase() },
-      R, HR, RBI, SB,
-      AVG: AB > 0 ? H / AB : 0,
-      W, S, K,
-      ERA: IP > 0 ? (ER / IP) * 9 : 0,
-      WHIP: IP > 0 ? BB_H / IP : 0,
-      // Components for weighted cross-period averaging (Issue #109)
-      H, AB, ER, IP, BB_H,
+      team: teamRef(t),
+      stats: baseballStats({ R, HR, RBI, SB, H, AB, W, S, K, ER, IP, BB_H }),
     };
   });
 }
