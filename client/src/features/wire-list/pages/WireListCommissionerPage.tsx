@@ -575,7 +575,7 @@ const btn: React.CSSProperties = {
   background: "var(--am-chip)", color: "var(--am-text)",
   border: "1px solid var(--am-border)", cursor: "pointer",
 };
-const btnPrimary: React.CSSProperties = { ...btn, background: "var(--am-accent)", color: "var(--am-bg)", border: "none" };
+const btnPrimary: React.CSSProperties = { ...btn, background: "var(--am-accent)", color: "var(--am-on-accent)", border: "none" };
 const btnDisabled: React.CSSProperties = { ...btn, opacity: 0.4, cursor: "not-allowed" };
 const btnSmall: React.CSSProperties = { ...btn, padding: "2px 8px", fontSize: 11 };
 const btnGreen: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, #34d399 20%, var(--am-chip))" };

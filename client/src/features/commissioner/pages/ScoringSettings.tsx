@@ -189,7 +189,7 @@ export function ScoringSettings() {
             <h1 className="text-2xl font-semibold text-[var(--am-text-primary)]">
               Scoring Settings
             </h1>
-            <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-[var(--am-accent)] text-white">
+            <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-[var(--am-accent)] text-[var(--am-on-accent)]">
               {sport}
             </span>
           </div>
@@ -326,7 +326,7 @@ export function ScoringSettings() {
                     <button
                       disabled={!rulesChanged || rulesSaving}
                       onClick={saveRules}
-                      className="ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
+                      className="ml-auto px-6 py-2 text-sm font-medium text-[var(--am-on-accent)] rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
                     >
                       {rulesSaving ? "Saving..." : "Save Changes"}
                     </button>
@@ -373,7 +373,7 @@ export function ScoringSettings() {
                     <button
                       disabled={!rulesChanged || rulesSaving}
                       onClick={saveRules}
-                      className="ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
+                      className="ml-auto px-6 py-2 text-sm font-medium text-[var(--am-on-accent)] rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
                     >
                       {rulesSaving ? "Saving..." : "Save Changes"}
                     </button>
@@ -447,7 +447,7 @@ export function ScoringSettings() {
                 </div>
 
                 {/* Total Display */}
-                <div className="p-4 rounded-lg bg-[var(--am-accent)] bg-opacity-10 border border-[var(--am-accent)] border-opacity-30 mb-6">
+                <div className="p-4 rounded-lg bg-[color-mix(in_srgb,var(--am-accent)_10%,transparent)] border border-[color-mix(in_srgb,var(--am-accent)_30%,transparent)] mb-6">
                   <p className="text-sm text-[var(--am-text-muted)]">
                     Total Roster Spots
                   </p>
@@ -460,7 +460,7 @@ export function ScoringSettings() {
                 <button
                   disabled={!rosterChanged || rosterSaving}
                   onClick={saveRoster}
-                  className="w-full px-6 py-3 text-sm font-medium text-white rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
+                  className="w-full px-6 py-3 text-sm font-medium text-[var(--am-on-accent)] rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
                 >
                   {rosterSaving ? "Saving..." : "Save Roster Config"}
                 </button>

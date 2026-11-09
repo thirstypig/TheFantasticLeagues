@@ -210,7 +210,7 @@ export function MobileShell({ children }: MobileShellProps) {
               placeItems: "center",
               fontSize: 15,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--am-on-accent)",
               flexShrink: 0,
             }}
           >

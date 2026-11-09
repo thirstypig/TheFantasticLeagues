@@ -201,7 +201,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
               border: "none",
               borderRadius: 8,
               background: "var(--am-accent)",
-              color: "white",
+              color: "var(--am-on-accent)",
               fontWeight: 600,
               fontSize: 13,
               cursor: "pointer",

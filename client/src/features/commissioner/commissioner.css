@@ -18,7 +18,7 @@
 
 .cm-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; background: var(--am-surface); color: var(--am-text); border: 1px solid var(--am-border); cursor: pointer; font-family: inherit; transition: background .12s, border-color .12s, color .12s; white-space: nowrap; }
 .cm-btn:hover { background: var(--am-chip); border-color: var(--am-border-strong); }
-.cm-btn.primary { background: var(--am-accent); color: #fff; border-color: var(--am-accent); }
+.cm-btn.primary { background: var(--am-accent); color: var(--am-on-accent); border-color: var(--am-accent); }
 .cm-btn.primary:hover { background: color-mix(in srgb, var(--am-accent) 88%, #000); }
 .cm-btn.ghost { background: transparent; border-color: transparent; color: var(--am-text-muted); }
 .cm-btn.ghost:hover { background: var(--am-chip); color: var(--am-text); }
@@ -69,7 +69,7 @@
 .cm-avatar.sm { width: 22px; height: 22px; font-size: 9.5px; }
 
 .cm-bar { height: 6px; background: var(--am-chip); border-radius: 3px; overflow: hidden; }
-.cm-bar-fill { display: block; height: 100%; background: var(--am-accent); border-radius: 3px; }
+.cm-bar-fill { display: block; height: 100%; background: var(--am-accent); color: var(--am-on-accent); border-radius: 3px; }
 .cm-bar-fill.warn { background: var(--am-warning); }
 .cm-bar-fill.neg { background: var(--am-negative); }
 
@@ -81,9 +81,9 @@
 .cm-tab { position: relative; padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--am-text-muted); background: transparent; border: 0; cursor: pointer; font-family: inherit; letter-spacing: 0.02em; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .cm-tab:hover { color: var(--am-text); }
 .cm-tab.active { color: var(--am-text); }
-.cm-tab.active::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -1px; height: 2px; background: var(--am-accent); }
+.cm-tab.active::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -1px; height: 2px; background: var(--am-accent); color: var(--am-on-accent); }
 .cm-tab .cm-count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0 5px; border-radius: 9px; background: var(--am-chip); color: var(--am-text-muted); font-size: 10.5px; font-weight: 700; }
-.cm-tab.active .cm-count { background: var(--am-accent); color: #fff; }
+.cm-tab.active .cm-count { background: var(--am-accent); color: var(--am-on-accent); }
 
 .cm-subtabs { display: flex; gap: 0; border: 1px solid var(--am-border); border-radius: 6px; overflow: hidden; background: var(--am-surface); }
 .cm-subtabs .cm-tab { font-size: 12px; padding: 9px 14px; border-right: 1px solid var(--am-border); }
@@ -92,7 +92,7 @@
 
 .cm-toggle { width: 32px; height: 18px; background: var(--am-chip-strong, var(--am-chip)); border-radius: 9px; position: relative; cursor: pointer; border: 1px solid var(--am-border); transition: background .15s; flex: 0 0 auto; }
 .cm-toggle::after { content: ""; position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform .15s; border: 1px solid var(--am-border); }
-.cm-toggle.on { background: var(--am-accent); border-color: var(--am-accent); }
+.cm-toggle.on { background: var(--am-accent); color: var(--am-on-accent); border-color: var(--am-accent); }
 .cm-toggle.on::after { transform: translateX(14px); }
 
 .cm-fade-in { animation: cmFade .15s ease-out; }

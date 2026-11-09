@@ -820,7 +820,7 @@ function EligibilityChips({ player }: { player: RosterHubPlayer }) {
               borderRadius: 999,
               fontSize: 11,
               fontWeight: 700,
-              color: slot === player.assignedSlot ? "white" : "var(--am-text-muted)",
+              color: slot === player.assignedSlot ? "var(--am-on-accent)" : "var(--am-text-muted)",
               background: slot === player.assignedSlot ? "var(--am-accent)" : "var(--am-chip)",
               border: "1px solid var(--am-border)",
               fontVariantNumeric: "tabular-nums",

@@ -264,7 +264,7 @@ const btnStyle: React.CSSProperties = {
 const addBtnStyle: React.CSSProperties = {
   padding: "4px 10px", fontSize: 11, fontWeight: 600,
   borderRadius: 6, background: "var(--am-accent)",
-  color: "var(--am-bg)", border: "none", cursor: "pointer",
+  color: "var(--am-on-accent)", border: "none", cursor: "pointer",
 };
 const inlineLinkBtn: React.CSSProperties = {
   background: "none", border: "none", padding: 0,

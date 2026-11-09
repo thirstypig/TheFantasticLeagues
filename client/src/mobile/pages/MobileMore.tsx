@@ -39,7 +39,7 @@ function MoreGroup({ label, accent, children }: MoreGroupProps) {
     <div style={{ padding: "0 14px 14px" }}>
       <div style={{ padding: "0 4px 6px", display: "flex", alignItems: "center", gap: 6 }}>
         {accent && (
-          <span style={{ width: 4, height: 4, borderRadius: 99, background: "var(--am-accent)" }} />
+          <span style={{ width: 4, height: 4, borderRadius: 99, background: "var(--am-accent)", color: "var(--am-on-accent)" }} />
         )}
         <div
           style={{

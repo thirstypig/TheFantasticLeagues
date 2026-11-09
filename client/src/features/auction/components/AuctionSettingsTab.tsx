@@ -141,6 +141,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                     borderRadius: 99,
                     padding: 2,
                     background: on ? "var(--am-accent)" : "var(--am-chip)",
+                    color: "var(--am-on-accent)",
                     border: "1px solid var(--am-border)",
                     flexShrink: 0,
                     transition: "background 160ms",
@@ -194,7 +195,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                       textTransform: "uppercase",
                       borderRadius: 6,
                       background: active ? "var(--am-accent)" : "transparent",
-                      color: active ? "#fff" : "var(--am-text-muted)",
+                      color: active ? "var(--am-on-accent)" : "var(--am-text-muted)",
                       border: "none",
                       cursor: "pointer",
                       transition: "background 160ms, color 160ms",
@@ -266,7 +267,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                     style={{
                       ...PILL_BTN_BASE,
                       background: "var(--am-accent)",
-                      color: "#fff",
+                      color: "var(--am-on-accent)",
                       border: "1px solid var(--am-accent)",
                     }}
                   >
@@ -343,7 +344,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                         alignSelf: "flex-start",
                         padding: "6px 14px",
                         background: "var(--am-accent)",
-                        color: "#fff",
+                        color: "var(--am-on-accent)",
                         border: "1px solid var(--am-accent)",
                         opacity: !pasteText.trim() ? 0.3 : 1,
                         cursor: !pasteText.trim() ? "not-allowed" : "pointer",

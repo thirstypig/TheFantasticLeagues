@@ -223,7 +223,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
               placeItems: "center",
               fontSize: 15,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--am-on-accent)",
               flexShrink: 0,
             }}
           >
