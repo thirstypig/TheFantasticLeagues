@@ -38,6 +38,22 @@ export function deriveNeedsYou({
   // An active period still running (end date today or later) blocks starting the next one.
   const activeStillRunning = active.some((p) => utcDay(new Date(p.endDate)) >= today);
 
+  // Same threshold as the server's close-readiness endpoint: 13:00 UTC the day
+  // after the end date (final-day stat sync has landed).
+  const closeDue = active.filter((p) => {
+    const e = new Date(p.endDate);
+    return now.getTime() >= Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate() + 1, 13);
+  });
+  const closeFirst = closeDue[0];
+  const close: NeedsYouItem[] = closeDue.map((p) => ({
+    key: `close-${p.id}`,
+    kind: "close" as const,
+    title: `Close ${p.name}`,
+    detail: "The period has ended and its final stats are in.",
+    to: `close/${p.id}`,
+    urgent: false,
+  }));
+
   const start: NeedsYouItem[] = [];
   if (!activeStillRunning) {
     for (const p of periods) {
@@ -48,28 +64,14 @@ export function deriveNeedsYou({
         key: `start-${p.id}`,
         kind: "start",
         title: daysLate === 0 ? `Start ${p.name} · today` : `Start ${p.name} · ${daysLate} days late`,
-        detail: "Review rosters, then activate the period.",
+        // Start day overlap: the old period must close first so standings
+        // and moves land in the right period (Close is listed first).
+        detail: closeFirst ? `Close ${closeFirst.name} first, then start ${p.name}.` : "Review rosters, then activate the period.",
         to: `start/${p.id}`,
         urgent: true,
       });
     }
   }
-
-  // Same threshold as the server's close-readiness endpoint: 13:00 UTC the day
-  // after the end date (final-day stat sync has landed).
-  const close: NeedsYouItem[] = active
-    .filter((p) => {
-      const e = new Date(p.endDate);
-      return now.getTime() >= Date.UTC(e.getUTCFullYear(), e.getUTCMonth(), e.getUTCDate() + 1, 13);
-    })
-    .map((p) => ({
-      key: `close-${p.id}`,
-      kind: "close" as const,
-      title: `Close ${p.name}`,
-      detail: "The period has ended and its final stats are in.",
-      to: `close/${p.id}`,
-      urgent: false,
-    }));
 
   const bill: NeedsYouItem[] = unbilled.map((u) => ({
     key: `bill-${u.periodId}`,
@@ -80,7 +82,7 @@ export function deriveNeedsYou({
     urgent: false,
   }));
 
-  const out: NeedsYouItem[] = [...start, ...close, ...bill];
+  const out: NeedsYouItem[] = [...close, ...start, ...bill];
 
   const rosterIssues = ghostIlTotal + teamsOverCap;
   if (rosterIssues > 0) {

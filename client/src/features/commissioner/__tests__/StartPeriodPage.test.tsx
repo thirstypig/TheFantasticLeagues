@@ -106,3 +106,25 @@ describe("StartPeriodPage", () => {
     expect(mockToast).toHaveBeenCalledWith("Period 8 started", "success");
   });
 });
+
+describe("StartPeriodPage — another period still active", () => {
+  it("shows a warning card linking to the active period's close job, and Start stays allowed", async () => {
+    m.getLeaguePeriods.mockResolvedValue([
+      period({ id: 7, name: "Period 7", startDate: "2026-09-15T00:00:00.000Z", endDate: "2026-09-28T00:00:00.000Z", status: "active" }),
+      period(),
+    ]);
+    renderAt(URL);
+    expect(
+      await screen.findByText("Period 7 is still active — close it first so standings and moves land in the right period."),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Close Period 7/ }).getAttribute("href")).toBe("/commissioner/20/close/7");
+    const start = screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement;
+    expect(start.disabled).toBe(false);
+  });
+
+  it("no warning when nothing else is active", async () => {
+    renderAt(URL);
+    await screen.findByRole("button", { name: "Start Period 8" });
+    expect(screen.queryByText(/is still active/)).toBeNull();
+  });
+});

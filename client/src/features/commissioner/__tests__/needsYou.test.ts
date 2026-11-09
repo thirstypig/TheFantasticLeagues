@@ -23,18 +23,32 @@ describe("deriveNeedsYou", () => {
     expect(deriveNeedsYou(base)).toEqual([]);
   });
 
-  it("pending P8 starting today with active P7 ended yesterday -> [start(urgent), close]", () => {
+  it("start day with both due: Close P7 comes FIRST and the start item says to close first", () => {
     const items = deriveNeedsYou({
       ...base,
       periods: [
         p(7, "active", "2026-06-03T00:00:00Z", "2026-06-09T00:00:00Z"),
         p(8, "pending", "2026-06-10T00:00:00Z", "2026-06-16T00:00:00Z"),
       ],
-      now: new Date("2026-06-10T13:00:00Z"),
+      now: new Date("2026-06-10T15:00:00Z"),
     });
-    expect(items.map((i) => i.kind)).toEqual(["start", "close"]);
-    expect(items[0]).toMatchObject({ urgent: true, to: "start/8", title: "Start P8 · today" });
-    expect(items[1]).toMatchObject({ to: "close/7" });
+    expect(items.map((i) => i.kind)).toEqual(["close", "start"]);
+    expect(items[0]).toMatchObject({ to: "close/7", title: "Close P7" });
+    expect(items[1]).toMatchObject({
+      urgent: true,
+      to: "start/8",
+      title: "Start P8 · today",
+      detail: "Close P7 first, then start P8.",
+    });
+  });
+
+  it("start alone (no close due) keeps the normal detail", () => {
+    const items = deriveNeedsYou({
+      ...base,
+      periods: [p(8, "pending", "2026-06-10T00:00:00Z", "2026-06-16T00:00:00Z")],
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0].detail).toBe("Review rosters, then activate the period.");
   });
 
   it("close uses the server threshold: 12:59 UTC the day after end -> no close", () => {
@@ -102,7 +116,7 @@ describe("deriveNeedsYou", () => {
     expect(new Set(items.map((i) => i.key)).size).toBe(2);
   });
 
-  it("orders urgent, close, bill, roster, trade", () => {
+  it("orders close, start, bill, roster, trade", () => {
     const items = deriveNeedsYou({
       ...base,
       periods: [
@@ -113,6 +127,6 @@ describe("deriveNeedsYou", () => {
       acceptedTrades: 1,
       unbilled: [{ periodId: 3, closedAt: "x" }],
     });
-    expect(items.map((i) => i.kind)).toEqual(["start", "close", "bill", "roster", "trade"]);
+    expect(items.map((i) => i.kind)).toEqual(["close", "start", "bill", "roster", "trade"]);
   });
 });

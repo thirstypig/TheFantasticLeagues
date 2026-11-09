@@ -93,8 +93,18 @@ export default function StartPeriodPage() {
   } else {
     const badge = lateBadge(period.startDate);
     const list = moves.state === "ready" ? moves.data : [];
+    // Start-day overlap: warn (don't block) while the previous period is open.
+    const stillActive = periods.data.find((p) => p.status === "active" && p.id !== period.id);
     content = (
       <>
+        {stillActive && (
+          <Glass padded>
+            <p style={{ margin: "0 0 4px", fontSize: 16, color: "var(--am-warning)" }}>
+              {stillActive.name} is still active — close it first so standings and moves land in the right period.
+            </p>
+            <Link to={`${base}/close/${stillActive.id}`} style={LINK}>Close {stillActive.name} ›</Link>
+          </Glass>
+        )}
         <Glass padded={false}>
           <div style={{ ...ROW, borderBottom: "none" }}>
             <span>{fmtDate(period.startDate)} – {fmtDate(period.endDate)}</span>
