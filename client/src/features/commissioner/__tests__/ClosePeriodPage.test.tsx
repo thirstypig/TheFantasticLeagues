@@ -7,7 +7,10 @@ vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
 }));
 
-vi.mock("../api", () => ({
+vi.mock("../api", async () => ({
+  // Pure helpers stay real so the card logic is exercised end to end.
+  teamsUnderInnings: (await vi.importActual<typeof import("../api")>("../api")).teamsUnderInnings,
+  formatInnings: (await vi.importActual<typeof import("../api")>("../api")).formatInnings,
   getCloseReadiness: vi.fn(),
   getGhostIlSummary: vi.fn(),
   getRosterCheck: vi.fn(),
@@ -210,6 +213,38 @@ describe("ClosePeriodPage — step 3", () => {
     expect(screen.getByText(/not final/)).toBeTruthy();
     expect(m.getPeriodStandingsPreview).toHaveBeenCalledWith(20, 7);
     expect(m.toTeamTotals).toHaveBeenCalledWith(await m.getPeriodStandingsPreview.mock.results[0].value);
+  });
+});
+
+describe("ClosePeriodPage — step 3 innings minimum", () => {
+  const withInnings = (teamInnings: Array<{ teamId: number; teamName: string; ip: number }>, minInnings: number | null) =>
+    m.getPeriodStandingsPreview.mockResolvedValue({
+      periodId: 7, categories: [], teamCount: 2, totalDelta: {}, teamInnings, minInnings,
+      computedAt: "2026-09-29T00:00:00.000Z",
+    });
+
+  it("lists teams under the minimum and leaves Next enabled", async () => {
+    withInnings([{ teamId: 1, teamName: "Bombers", ip: 46.3333 }, { teamId: 2, teamName: "Devil Dawgs", ip: 61 }], 50);
+    renderAt([`${URL}?step=3`]);
+    expect(await screen.findByText("Innings minimum")).toBeTruthy();
+    expect(screen.getByText("Bombers · 46⅓ of 50 IP")).toBeTruthy();
+    expect(screen.queryByText(/Devil Dawgs · /)).toBeNull();
+    expect(screen.getByText("Review")).toBeTruthy();
+    expect(screen.getByText("You decide what happens; closing isn't blocked.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("shows no card when nobody is under, or there is no rule", async () => {
+    withInnings([{ teamId: 1, teamName: "Bombers", ip: 50 }], 50);
+    const first = renderAt([`${URL}?step=3`]);
+    await screen.findByText("Demolition Lumber");
+    expect(screen.queryByText("Innings minimum")).toBeNull();
+    first.unmount();
+
+    withInnings([{ teamId: 1, teamName: "Bombers", ip: 10 }], null);
+    renderAt([`${URL}?step=3`]);
+    await screen.findByText("Demolition Lumber");
+    expect(screen.queryByText("Innings minimum")).toBeNull();
   });
 });
 
