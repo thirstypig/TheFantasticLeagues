@@ -16,9 +16,9 @@
  */
 
 .aurora-theme {
-  /* Typeface — Inter only; no separate display face */
-  --am-display: "Inter", system-ui, sans-serif;
-  --am-body:    "Inter", system-ui, sans-serif;
+  /* Typeface — Sofia Sans for text, Sofia Sans Condensed for headings and big numbers (DOC-032) */
+  --am-display: "Sofia Sans Condensed", "Sofia Sans", system-ui, sans-serif;
+  --am-body:    "Sofia Sans", system-ui, sans-serif;
 
   /* ── Light mode: USC gold paper (medium tone, not pure white) ── */
   --am-bg:             #ded0a8;   /* page */
