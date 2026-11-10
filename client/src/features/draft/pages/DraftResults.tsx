@@ -133,7 +133,7 @@ export default function DraftResults() {
             }`}
           >
             {team.teamName}
-            <span className="ml-2 text-[10px]">({team.picks.length})</span>
+            <span className="ml-2 text-xs">({team.picks.length})</span>
           </button>
         ))}
       </div>
@@ -161,7 +161,7 @@ export default function DraftResults() {
                   <ThemedTd className="tabular-nums">{p.round}</ThemedTd>
                   <ThemedTd className="font-semibold text-[var(--lg-text-primary)]">{p.playerName || "SKIPPED"}</ThemedTd>
                   <ThemedTd className="text-[var(--lg-text-muted)]">{p.position || "--"}</ThemedTd>
-                  <ThemedTd>{p.isAutoPick ? <span className="text-[10px] text-amber-400 font-bold">AUTO</span> : ""}</ThemedTd>
+                  <ThemedTd>{p.isAutoPick ? <span className="text-xs text-amber-400 font-bold">AUTO</span> : ""}</ThemedTd>
                 </ThemedTr>
               ))}
             </tbody>

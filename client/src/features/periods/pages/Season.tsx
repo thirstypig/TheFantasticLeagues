@@ -137,10 +137,10 @@ export default function Season() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
                 <div>
                   <SectionLabel>Standings · Roto points</SectionLabel>
-                  <div style={{ fontFamily: "var(--am-display)", fontSize: 36, lineHeight: 1, letterSpacing: -0.4 }}>
+                  <div style={{ fontFamily: "var(--am-display)", fontSize: 32, lineHeight: 1, letterSpacing: -0.4 }}>
                     {currentLeagueName || "League"}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     {rows.length > 0 && <span>{rows.length} teams · {periodNames.length} period{periodNames.length === 1 ? "" : "s"}</span>}
                     {computedAt && <><span aria-hidden="true">·</span><DataFreshness computedAt={computedAt} className="text-xs" /></>}
                   </div>
@@ -165,7 +165,7 @@ export default function Season() {
                       style={{
                         padding: "6px 14px",
                         borderRadius: 99,
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 700,
                         letterSpacing: 0.6,
                         textTransform: "uppercase",
@@ -196,17 +196,17 @@ export default function Season() {
           <div style={{ gridColumn: "span 12" }}>
             <Glass padded={false}>
               {loading && (
-                <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 12, textAlign: "center" }}>
+                <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 13, textAlign: "center" }}>
                   Loading standings…
                 </div>
               )}
               {error && (
-                <div style={{ padding: 24, color: "var(--am-negative)", fontSize: 12 }}>
+                <div style={{ padding: 24, color: "var(--am-negative)", fontSize: 13 }}>
                   {error}
                 </div>
               )}
               {!loading && !error && rows.length === 0 && (
-                <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 12, textAlign: "center" }}>
+                <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 13, textAlign: "center" }}>
                   No standings yet — periods may not have completed.
                 </div>
               )}
@@ -221,7 +221,7 @@ export default function Season() {
                     }}
                   >
                     <thead>
-                      <tr style={{ fontSize: 10, color: "var(--am-text-faint)", letterSpacing: 1, fontWeight: 600 }}>
+                      <tr style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 1, fontWeight: 600 }}>
                         <th style={{ padding: "12px 14px", textAlign: "left" }}>#</th>
                         <th style={{ padding: "12px 14px", textAlign: "left" }}>TEAM</th>
                         {periodNames.map((name, i) => (
@@ -246,7 +246,7 @@ export default function Season() {
                               background: isMine ? "color-mix(in oklab, var(--am-accent) 7%, transparent)" : "transparent",
                             }}
                           >
-                            <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--am-text-muted)" }}>
+                            <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--am-text-muted)" }}>
                               {String(rank).padStart(2, "0")}
                             </td>
                             <td style={{ padding: "10px 14px" }}>
@@ -262,7 +262,7 @@ export default function Season() {
                                     background: rank === 1 ? "var(--am-irid)" : "var(--am-chip-strong)",
                                     display: "grid",
                                     placeItems: "center",
-                                    fontSize: 9.5,
+                                    fontSize: 13,
                                     fontWeight: 700,
                                     color: rank === 1 ? "var(--am-on-accent)" : "var(--am-text)",
                                     border: "1px solid var(--am-border)",
@@ -273,10 +273,10 @@ export default function Season() {
                                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                                   <span style={{ fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
                                     {t.teamName}
-                                    {isMine && <Chip strong style={{ fontSize: 9, padding: "1px 6px" }}>You</Chip>}
+                                    {isMine && <Chip strong style={{ fontSize: 13, padding: "1px 6px" }}>You</Chip>}
                                   </span>
                                   {t.owner && (
-                                    <span style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>{t.owner}</span>
+                                    <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{t.owner}</span>
                                   )}
                                 </div>
                               </Link>
@@ -296,7 +296,7 @@ export default function Season() {
                                       minWidth: 30,
                                       padding: "3px 8px",
                                       borderRadius: 6,
-                                      fontSize: 11.5,
+                                      fontSize: 13,
                                       fontWeight: 600,
                                       color: isPeak ? "var(--am-on-accent)" : "var(--am-text-muted)",
                                       background: isPeak
@@ -318,7 +318,7 @@ export default function Season() {
                               style={{
                                 padding: "10px 14px",
                                 textAlign: "right",
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: 600,
                                 color: delta > 0 ? "var(--am-positive)" : delta < 0 ? "var(--am-negative)" : "var(--am-text-faint)",
                               }}

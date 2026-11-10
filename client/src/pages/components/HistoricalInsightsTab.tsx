@@ -164,7 +164,7 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
       >
         <SectionLabel>✦ Weekly Insights</SectionLabel>
         {selectedWeekKey && currentWeekKey && selectedWeekKey !== currentWeekKey && (
-          <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
+          <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
             Viewing past digest · read-only
           </span>
         )}
@@ -189,7 +189,7 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
                 style={{
                   padding: "8px 14px",
                   borderRadius: 99,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: 0.2,
                   background: isActive
@@ -228,13 +228,13 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
         }}
       >
         {loading && (
-          <div style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+          <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
             Loading digest…
           </div>
         )}
 
         {!loading && !digest && (
-          <div style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+          <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
             No digest available for this week.
           </div>
         )}
@@ -253,7 +253,7 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
               <div
                 style={{
                   fontFamily: "var(--am-display)",
-                  fontSize: 16,
+                  fontSize: 17,
                   lineHeight: 1.35,
                   color: "var(--am-text)",
                   flex: 1,
@@ -276,7 +276,7 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
             </div>
 
             {digest.generatedAt && (
-              <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
+              <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                 Generated {new Date(digest.generatedAt).toLocaleString()}
                 {isOlderThanHours(digest.generatedAt, 6)
                   ? " · AI copy may lag standings changes since generation"
@@ -287,14 +287,14 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
             {digest.boldPrediction && (
               <div
                 style={{
-                  fontSize: 12.5,
+                  fontSize: 13,
                   color: "var(--am-text-muted)",
                   lineHeight: 1.5,
                 }}
               >
                 <span
                   style={{
-                    fontSize: 10,
+                    fontSize: 13,
                     color: "var(--am-text-faint)",
                     fontWeight: 700,
                     letterSpacing: 1,
@@ -346,7 +346,7 @@ export default function HistoricalInsightsTab({ leagueId }: Props) {
                   display: "inline-block",
                   padding: "8px 14px",
                   borderRadius: 99,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: 0.2,
                   background: "var(--am-chip-strong)",
@@ -390,8 +390,8 @@ function DigestPowerRankings({ rows }: { rows: PowerRanking[] }) {
             </div>
             <Movement value={pr.movement} />
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 750, color: "var(--am-text)" }}>{pr.teamName}</div>
-              <div style={{ marginTop: 2, fontSize: 11.5, lineHeight: 1.45, color: "var(--am-text-muted)" }}>{pr.commentary}</div>
+              <div style={{ fontSize: 13, fontWeight: 750, color: "var(--am-text)" }}>{pr.teamName}</div>
+              <div style={{ marginTop: 2, fontSize: 13, lineHeight: 1.45, color: "var(--am-text-muted)" }}>{pr.commentary}</div>
             </div>
           </div>
         ))}
@@ -407,7 +407,7 @@ function Movement({ value }: { value: string }) {
   return (
     <span
       style={{
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: 750,
         color: up ? "var(--am-positive)" : down ? "var(--am-negative)" : "var(--am-text-faint)",
       }}
@@ -423,7 +423,7 @@ function DigestCategoryMovers({ rows }: { rows: CategoryMover[] }) {
       <DigestSectionLabel>Category movers</DigestSectionLabel>
       <div style={{ display: "grid", gap: 4 }}>
         {rows.map((row, index) => (
-          <div key={`${row.team}-${row.category}-${index}`} style={{ fontSize: 11.5, color: "var(--am-text-muted)", lineHeight: 1.45 }}>
+          <div key={`${row.team}-${row.category}-${index}`} style={{ fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.45 }}>
             <strong style={{ color: row.direction === "up" ? "var(--am-positive)" : "var(--am-negative)" }}>
               {row.direction === "up" ? "Up" : "Down"} {row.category}
             </strong>
@@ -459,11 +459,11 @@ function DigestCallout({
         background: "var(--am-surface-faint)",
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 750, letterSpacing: 0.9, textTransform: "uppercase", color }}>
+      <div style={{ fontSize: 13, fontWeight: 750, letterSpacing: 0.9, textTransform: "uppercase", color }}>
         {label}
       </div>
-      {title && <div style={{ marginTop: 3, fontSize: 12.5, fontWeight: 750, color: "var(--am-text)" }}>{title}</div>}
-      <div style={{ marginTop: title ? 3 : 0, fontSize: 11.5, lineHeight: 1.45, color: "var(--am-text-muted)" }}>{body}</div>
+      {title && <div style={{ marginTop: 3, fontSize: 13, fontWeight: 750, color: "var(--am-text)" }}>{title}</div>}
+      <div style={{ marginTop: title ? 3 : 0, fontSize: 13, lineHeight: 1.45, color: "var(--am-text-muted)" }}>{body}</div>
     </div>
   );
 }
@@ -473,7 +473,7 @@ function DigestSectionLabel({ children }: { children: React.ReactNode }) {
     <div
       style={{
         marginBottom: 6,
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: 750,
         letterSpacing: 1,
         textTransform: "uppercase",

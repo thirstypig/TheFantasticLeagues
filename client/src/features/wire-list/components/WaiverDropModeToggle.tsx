@@ -22,7 +22,7 @@ export function WaiverDropModeToggle({ value, disabled, onChange, compact = fals
           disabled={disabled}
           style={{
             padding: compact ? "5px 8px" : "4px 8px",
-            fontSize: 10, fontWeight: 600, lineHeight: 1,
+            fontSize: 13, fontWeight: 600, lineHeight: 1,
             background: value === m ? "var(--am-accent)" : "transparent",
             color: value === m ? "var(--am-on-accent)" : "var(--am-text-muted)",
             border: "none",

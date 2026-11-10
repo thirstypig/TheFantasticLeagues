@@ -1274,7 +1274,7 @@ export default function Team() {
       <SectionLabel>
         ✦ Lineup intelligence
         {activeInsightWeekKey && selectedWeekKey && (
-          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 500, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+          <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
             · {activeInsightWeekKey}
           </span>
         )}
@@ -1283,7 +1283,7 @@ export default function Team() {
         <>
           {activeInsight.overallGrade && (
             <div style={{ marginTop: 4, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>Overall grade</span>
+              <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>Overall grade</span>
               <IridText size={20}>{activeInsight.overallGrade}</IridText>
             </div>
           )}
@@ -1304,12 +1304,12 @@ export default function Team() {
                   border: "1px solid var(--am-border)",
                 }}
               >
-                <div style={{ fontSize: 10, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600, marginBottom: 2 }}>
+                <div style={{ fontSize: 13, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600, marginBottom: 2 }}>
                   {r.category}
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--am-text)" }}>{r.title}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--am-text)" }}>{r.title}</div>
                 {r.detail && (
-                  <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2, lineHeight: 1.45 }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2, lineHeight: 1.45 }}>
                     {r.detail}
                   </div>
                 )}
@@ -1318,7 +1318,7 @@ export default function Team() {
           </div>
         </>
       ) : (
-        <div style={{ marginTop: 4, fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+        <div style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
           AI insights for this team haven't been generated this week.
         </div>
       )}
@@ -1372,10 +1372,10 @@ export default function Team() {
                     {isMyTeam && <Chip strong>Your team</Chip>}
                     {teamMeta?.ownerName && <Chip>{teamMeta.ownerName}</Chip>}
                   </div>
-                  <div style={{ fontFamily: "var(--am-display)", fontSize: 38, lineHeight: 1, letterSpacing: -0.4 }}>
+                  <div style={{ fontFamily: "var(--am-display)", fontSize: 32, lineHeight: 1, letterSpacing: -0.4 }}>
                     {teamMeta?.name ?? (loading ? "Loading…" : "Team not found")}
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
+                  <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
                     {hitters.length} hitter{hitters.length === 1 ? "" : "s"} · {pitchers.length} pitcher{pitchers.length === 1 ? "" : "s"} · {ilCount} IL
                     {periodMode !== "season" && (
                       <> · <span style={{ color: "var(--am-accent)" }}>{periodOptions.find(p => p.id === periodMode)?.name ?? "Period"}</span></>
@@ -1386,7 +1386,7 @@ export default function Team() {
                 <Link
                   to="/teams"
                   style={{
-                    fontSize: 11, color: "var(--am-text-muted)", textDecoration: "none",
+                    fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none",
                     padding: "6px 10px", borderRadius: 99,
                     border: "1px solid var(--am-border)", background: "var(--am-chip)",
                   }}
@@ -1415,7 +1415,7 @@ export default function Team() {
               {/* Period selector pills */}
               {periodOptions.length > 0 && (
                 <div style={{ marginTop: 14, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)", marginRight: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)", marginRight: 4 }}>
                     View
                   </span>
                   {[{ key: "season" as const, label: "Season" }, ...periodOptions.map(p => ({ key: p.id as PeriodMode, label: p.name }))].map((opt) => {
@@ -1427,7 +1427,7 @@ export default function Team() {
                         onClick={() => setPeriodMode(opt.key)}
                         style={{
                           padding: "5px 12px", borderRadius: 99,
-                          fontSize: 11, fontWeight: 600, letterSpacing: 0.2,
+                          fontSize: 13, fontWeight: 600, letterSpacing: 0.2,
                           background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
                           color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
                           border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
@@ -1440,7 +1440,7 @@ export default function Team() {
                     );
                   })}
                   {periodLoading && (
-                    <span style={{ fontSize: 11, color: "var(--am-text-faint)", marginLeft: 6 }}>loading…</span>
+                    <span style={{ fontSize: 13, color: "var(--am-text-faint)", marginLeft: 6 }}>loading…</span>
                   )}
                 </div>
               )}
@@ -1450,7 +1450,7 @@ export default function Team() {
           {error && (
             <div style={{ gridColumn: "span 12" }}>
               <Glass>
-                <div style={{ padding: 16, color: "var(--am-negative)", fontSize: 12 }}>
+                <div style={{ padding: 16, color: "var(--am-negative)", fontSize: 13 }}>
                   {error}
                 </div>
               </Glass>
@@ -1496,12 +1496,12 @@ export default function Team() {
                       borderRadius: 12,
                       background: "color-mix(in srgb, var(--am-warning) 10%, transparent)",
                       border: "1px solid color-mix(in srgb, var(--am-warning) 38%, transparent)",
-                      fontSize: 12.5,
+                      fontSize: 13,
                       color: "var(--am-text)",
                     }}
                   >
                     <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                      <span aria-hidden style={{ fontSize: 14 }}>🛡️</span>
+                      <span aria-hidden style={{ fontSize: 15 }}>🛡️</span>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
                         Commissioner mode — managing for{" "}
                         <strong>{teamMeta?.name ?? code}</strong>
@@ -1511,7 +1511,7 @@ export default function Team() {
                       <Link
                         to={`/teams/${myTeamCode}`}
                         style={{
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: 600,
                           color: "var(--am-warning)",
                           textDecoration: "none",
@@ -1535,7 +1535,7 @@ export default function Team() {
                       disabled={pending.state.saving}
                       aria-pressed={faPanelOpen}
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 600,
                         padding: "8px 14px",
                         borderRadius: 10,
@@ -1616,7 +1616,7 @@ export default function Team() {
                         borderRadius: 10,
                         background: "color-mix(in srgb, var(--am-warning) 8%, transparent)",
                         border: "1px solid color-mix(in srgb, var(--am-warning) 28%, transparent)",
-                        fontSize: 12,
+                        fontSize: 13,
                         color: "var(--am-text)",
                       }}
                     >
@@ -1631,7 +1631,7 @@ export default function Team() {
                         onClick={() => onResync(g.playerId)}
                         disabled={resyncing === g.playerId}
                         style={{
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: 600,
                           padding: "4px 10px",
                           borderRadius: 8,
@@ -1665,7 +1665,7 @@ export default function Team() {
                       data-testid="fa-suggestion-chip"
                       onClick={() => setFaPanelOpen(true)}
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 600,
                         padding: "6px 12px",
                         borderRadius: 99,
@@ -1720,7 +1720,7 @@ export default function Team() {
                       style={{
                         display: "block",
                         marginTop: 4,
-                        fontSize: 11.5,
+                        fontSize: 13,
                         color: "var(--am-text-muted)",
                       }}
                     >
@@ -1732,7 +1732,7 @@ export default function Team() {
                       type="button"
                       onClick={onDiscardPersisted}
                       style={{
-                        fontSize: 12, fontWeight: 600, padding: "6px 12px",
+                        fontSize: 13, fontWeight: 600, padding: "6px 12px",
                         borderRadius: 8, border: "1px solid var(--am-border)",
                         background: "transparent", color: "var(--am-text-muted)", cursor: "pointer",
                       }}
@@ -1743,7 +1743,7 @@ export default function Team() {
                       type="button"
                       onClick={onRestorePending}
                       style={{
-                        fontSize: 12, fontWeight: 600, padding: "6px 14px",
+                        fontSize: 13, fontWeight: 600, padding: "6px 14px",
                         borderRadius: 8, border: "1px solid transparent",
                         background: "var(--am-irid)", color: "var(--am-on-accent)", cursor: "pointer",
                       }}
@@ -1823,7 +1823,7 @@ export default function Team() {
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: "8px 14px", borderRadius: 99,
                       background: "var(--am-irid)", color: "var(--am-on-accent)",
-                      fontSize: 12, fontWeight: 600, textDecoration: "none",
+                      fontSize: 13, fontWeight: 600, textDecoration: "none",
                     }}
                   >
                     Open wire list →
@@ -1854,7 +1854,7 @@ export default function Team() {
                           flexShrink: 0,
                           padding: "6px 12px",
                           borderRadius: 99,
-                          fontSize: 11, fontWeight: 600,
+                          fontSize: 13, fontWeight: 600,
                           border: "1px solid " + (isActive ? "transparent" : "var(--am-border)"),
                           background: isActive ? "var(--am-irid)" : "var(--am-chip)",
                           color: isActive ? "var(--am-on-accent)" : "var(--am-text-muted)",
@@ -1875,7 +1875,7 @@ export default function Team() {
           <div style={{ gridColumn: "span 12", textAlign: "center", marginTop: 4 }}>
             <Link
               to={`/teams/${code}/classic`}
-              style={{ fontSize: 11, color: "var(--am-text-faint)", textDecoration: "none", letterSpacing: 0.5 }}
+              style={{ fontSize: 13, color: "var(--am-text-faint)", textDecoration: "none", letterSpacing: 0.5 }}
             >
               View classic Team page →
             </Link>

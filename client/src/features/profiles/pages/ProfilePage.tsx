@@ -38,7 +38,7 @@ function Initials({ name, size = 64 }: { name: string | null; size?: number }) {
   return (
     <div
       className="rounded-xl bg-[var(--lg-accent)]/15 text-[var(--lg-accent)] font-semibold flex items-center justify-center"
-      style={{ width: size, height: size, fontSize: size * 0.35 }}
+      style={{ width: size, height: size, fontSize: size * 13 }}
     >
       {letters}
     </div>
@@ -80,7 +80,7 @@ function AppearanceSection() {
                 minWidth: 88,
                 minHeight: 44,
                 padding: "0 16px",
-                fontSize: 16,
+                fontSize: 17,
                 fontWeight: 600,
                 fontFamily: "inherit",
                 borderRadius: 8,
@@ -217,7 +217,7 @@ export default function ProfilePage() {
       <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         <Glass strong>
           <SectionLabel>✦ Profile</SectionLabel>
-          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>{user.name || "User Profile"}</h1>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>{user.name || "User Profile"}</h1>
           <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Fantasy league member</div>
         </Glass>
 
@@ -240,7 +240,7 @@ export default function ProfilePage() {
           {isAdmin && profile && (profile as any).isPublic === false && (
             <div className="lg-card p-3 border-amber-500/30 bg-amber-500/5">
               <div className="text-xs text-amber-300 font-semibold mb-0.5">Admin override — private profile</div>
-              <div className="text-[11px] text-[var(--lg-text-muted)]">
+              <div className="text-xs text-[var(--lg-text-muted)]">
                 This user marked their profile private. You can see it because you&rsquo;re an admin.
                 Regular users see only the name + avatar.
               </div>
@@ -317,7 +317,7 @@ export default function ProfilePage() {
     <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Profile</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>My Profile</h1>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>My Profile</h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Manage your public profile and payment methods.</div>
       </Glass>
 

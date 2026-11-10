@@ -131,7 +131,7 @@ export default function Status() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Activity size={11} /> System Status</span></SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>System Status</h1>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>System Status</h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Live health checks across the FBST stack.</div>
           </div>
           <div className="flex items-center gap-3">

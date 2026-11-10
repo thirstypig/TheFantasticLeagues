@@ -34,13 +34,13 @@ function MobileChatMessage({ msg, isOwn }: { msg: ChatMessageItem; isOwn: boolea
   return (
     <div className={`flex gap-2 py-1 ${isOwn ? "flex-row-reverse" : ""}`}>
       {!isOwn && (
-        <div className="w-7 h-7 rounded-full bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-[10px] font-bold text-[var(--lg-text-muted)] flex-shrink-0 mt-0.5">
+        <div className="w-7 h-7 rounded-full bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)] flex-shrink-0 mt-0.5">
           {initial}
         </div>
       )}
       <div className={`max-w-[75%] ${isOwn ? "text-right" : ""}`}>
         {!isOwn && (
-          <div className="text-[10px] font-semibold text-[var(--lg-text-muted)] mb-0.5 px-1">
+          <div className="text-xs font-semibold text-[var(--lg-text-muted)] mb-0.5 px-1">
             {msg.userName}
           </div>
         )}
@@ -53,7 +53,7 @@ function MobileChatMessage({ msg, isOwn }: { msg: ChatMessageItem; isOwn: boolea
         >
           {msg.text}
         </div>
-        <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5 px-1">
+        <div className="text-xs text-[var(--lg-text-muted)] mt-0.5 px-1">
           {formatTime(msg.createdAt)}
         </div>
       </div>

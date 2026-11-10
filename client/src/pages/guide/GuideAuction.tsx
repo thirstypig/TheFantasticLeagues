@@ -86,7 +86,7 @@ export default function GuideAuction() {
                 <f.icon size={16} className="text-[var(--lg-accent)] shrink-0 mt-0.5" />
                 <div>
                   <div className="text-xs font-semibold text-[var(--lg-text-primary)] mb-0.5">{f.title}</div>
-                  <div className="text-[11px] text-[var(--lg-text-muted)] leading-relaxed">{f.desc}</div>
+                  <div className="text-xs text-[var(--lg-text-muted)] leading-relaxed">{f.desc}</div>
                 </div>
               </div>
             ))}

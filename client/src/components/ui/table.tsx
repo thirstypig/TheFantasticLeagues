@@ -17,15 +17,15 @@ export function TableDensityProvider({ density, children }: { density: TableDens
 
 
 const headStyles: Record<TableDensity, string> = {
-  compact: "px-1 py-0.5 text-left align-middle text-[8px] font-bold uppercase text-[var(--lg-text-muted)]",
-  default: "px-1.5 py-1 text-left align-middle text-[9px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-  comfortable: "px-2 py-1.5 text-left align-middle text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  compact: "px-1 py-0.5 text-left align-middle text-xs font-bold uppercase text-[var(--lg-text-muted)]",
+  default: "px-1.5 py-1 text-left align-middle text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  comfortable: "px-2 py-1.5 text-left align-middle text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
 };
 
 const cellStyles: Record<TableDensity, string> = {
-  compact: "px-1 py-px align-middle text-[11px] text-[var(--lg-text-primary)] tabular-nums",
+  compact: "px-1 py-px align-middle text-xs text-[var(--lg-text-primary)] tabular-nums",
   default: "px-1.5 py-0.5 align-middle text-xs text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-  comfortable: "px-2 py-1 align-middle text-[13px] leading-5 text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  comfortable: "px-2 py-1 align-middle text-xs leading-5 text-[var(--lg-text-primary)] tabular-nums [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
 };
 
 const Table = React.forwardRef<

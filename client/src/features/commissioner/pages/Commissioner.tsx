@@ -193,7 +193,7 @@ function SettingsSection({
             </div>
             <div className="cm-field-ctrl">
               {f.type === "readonly" ? (
-                <span className="cm-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
+                <span className="cm-num" style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
                   {f.format ? f.format(value) : String(value ?? "—")}
                 </span>
               ) : f.type === "select" ? (
@@ -758,7 +758,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ League Tools</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               Commissioner
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -766,7 +766,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Link to="/" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none" }}>
+            <Link to="/" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none" }}>
               ← Back to Home
             </Link>
             <button
@@ -829,7 +829,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       <input
                         autoFocus
                         className="cm-input"
-                        style={{ fontSize: 16, fontWeight: 700, maxWidth: 260 }}
+                        style={{ fontSize: 17, fontWeight: 700, maxWidth: 260 }}
                         value={draftName}
                         onChange={(e) => setDraftName(e.target.value)}
                         onKeyDown={(e) => {
@@ -841,7 +841,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       />
                     ) : (
                       <>
-                        <span className="cm-h2" style={{ fontSize: 16 }}>{league.name}</span>
+                        <span className="cm-h2" style={{ fontSize: 17 }}>{league.name}</span>
                         <button
                           onClick={() => { setDraftName(league.name); setEditingName(true); }}
                           className="cm-btn ghost sm"
@@ -860,12 +860,12 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     </span>
                   </div>
                   <div className="cm-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <span className="cm-faint" style={{ fontSize: 12 }}>{league.season} Season · {league.draftMode}{league.draftMode === "DRAFT" ? ` (${league.draftOrder ?? "—"})` : ""}</span>
+                    <span className="cm-faint" style={{ fontSize: 13 }}>{league.season} Season · {league.draftMode}{league.draftMode === "DRAFT" ? ` (${league.draftOrder ?? "—"})` : ""}</span>
                     <span className="cm-chip">{accessRole ?? "—"}</span>
                     {me.isAdmin && <span className="cm-chip accent">Admin</span>}
                   </div>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--am-text-faint)", textAlign: "right" }}>
+                <div style={{ fontSize: 13, color: "var(--am-text-faint)", textAlign: "right" }}>
                   <div>Public: {league.isPublic ? "Yes" : "No"}</div>
                   <div>Slug: {league.publicSlug ?? "—"}</div>
                 </div>
@@ -874,8 +874,8 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
 
             {/* Phase guidance */}
             <div className="cm-alert info">
-              <span className="cm-faint" style={{ fontSize: 12 }}>Phase:</span>
-              <span style={{ fontSize: 12, color: "var(--am-text)" }}>{gating.phaseGuidance}</span>
+              <span className="cm-faint" style={{ fontSize: 13 }}>Phase:</span>
+              <span style={{ fontSize: 13, color: "var(--am-text)" }}>{gating.phaseGuidance}</span>
             </div>
 
             {/* Tab strip */}
@@ -994,7 +994,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                         <div className="cm-h2">Needs your attention</div>
                       </div>
                       {ownerlessTeams.length === 0 && (ghostIl?.totalGhosts ?? 0) === 0 && pendingInvites.length === 0 ? (
-                        <div style={{ padding: "14px", fontSize: 12, color: "var(--am-text-faint)" }}>
+                        <div style={{ padding: "14px", fontSize: 13, color: "var(--am-text-faint)" }}>
                           Everything looks good.
                         </div>
                       ) : (
@@ -1005,8 +1005,8 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--am-warning)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                               </div>
                               <div className="cm-grow">
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{ownerlessTeams.length} unowned team{ownerlessTeams.length !== 1 ? "s" : ""}</div>
-                                <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>{ownerlessTeams.map(t => t.name).join(", ")}</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{ownerlessTeams.length} unowned team{ownerlessTeams.length !== 1 ? "s" : ""}</div>
+                                <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{ownerlessTeams.map(t => t.name).join(", ")}</div>
                               </div>
                               <button className="cm-btn sm warn" onClick={() => { setActiveTab("people"); setPeopleSubTab("teams"); }}>Assign</button>
                             </div>
@@ -1017,8 +1017,8 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--am-negative)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                               </div>
                               <div className="cm-grow">
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{ghostIl!.totalGhosts} player{ghostIl!.totalGhosts !== 1 ? "s" : ""} need activation</div>
-                                <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>MLB activated — still in fantasy IL slot</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{ghostIl!.totalGhosts} player{ghostIl!.totalGhosts !== 1 ? "s" : ""} need activation</div>
+                                <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>MLB activated — still in fantasy IL slot</div>
                               </div>
                               <button className="cm-btn sm danger" onClick={() => { setActiveTab("ops"); setOpsSubTab("ghost-il"); }}>Fix</button>
                             </div>
@@ -1029,8 +1029,8 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--am-accent)" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                               </div>
                               <div className="cm-grow">
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{pendingInvites.length} pending invite{pendingInvites.length !== 1 ? "s" : ""}</div>
-                                <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>Awaiting acceptance</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{pendingInvites.length} pending invite{pendingInvites.length !== 1 ? "s" : ""}</div>
+                                <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>Awaiting acceptance</div>
                               </div>
                               <button className="cm-btn sm" onClick={() => { setActiveTab("people"); setPeopleSubTab("invites"); }}>View</button>
                             </div>
@@ -1081,9 +1081,9 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       </div>
                       <div style={{ padding: "0 0 4px" }}>
                         {recentActivity === null ? (
-                          <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--am-text-faint)" }}>Loading…</div>
+                          <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--am-text-faint)" }}>Loading…</div>
                         ) : recentActivity.length === 0 ? (
-                          <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--am-text-faint)" }}>No activity yet.</div>
+                          <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--am-text-faint)" }}>No activity yet.</div>
                         ) : (
                           recentActivity.slice(0, 12).map(ev => {
                             const txType = (ev.transactionType || ev.type || "").toUpperCase();
@@ -1108,13 +1108,13 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                             })() : '';
                             return (
                               <div key={ev.id} className="cm-row" style={{ padding: "7px 14px", borderBottom: "1px solid var(--am-border)", gap: 8, alignItems: "flex-start" }}>
-                                <span className={chipClass} style={{ fontSize: 10, padding: "2px 6px", flexShrink: 0 }}>{typeLabel}</span>
-                                <div className="cm-grow" style={{ fontSize: 12, minWidth: 0 }}>
+                                <span className={chipClass} style={{ fontSize: 13, padding: "2px 6px", flexShrink: 0 }}>{typeLabel}</span>
+                                <div className="cm-grow" style={{ fontSize: 13, minWidth: 0 }}>
                                   {ev.team?.name && <span style={{ fontWeight: 600 }}>{ev.team.name}</span>}
                                   {ev.player?.name && <span className="cm-muted"> · {ev.player.name}</span>}
                                   {!ev.team?.name && !ev.player?.name && <span className="cm-faint">{ev.transactionRaw || ev.ogbaTeamName || '—'}</span>}
                                 </div>
-                                <span className="cm-faint" style={{ fontSize: 10, flexShrink: 0 }}>{relTime}</span>
+                                <span className="cm-faint" style={{ fontSize: 13, flexShrink: 0 }}>{relTime}</span>
                               </div>
                             );
                           })
@@ -1181,22 +1181,22 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                   <span style={{ fontWeight: 600 }}>{t.name}</span>
                                 </div>
                               </td>
-                              <td><span className="cm-mono" style={{ fontSize: 11 }}>{t.code ?? "—"}</span></td>
+                              <td><span className="cm-mono" style={{ fontSize: 13 }}>{t.code ?? "—"}</span></td>
                               <td>
                                 {t.ownerships && t.ownerships.length > 0 ? (
                                   t.ownerships.map((o: any) => (
                                     <div key={o.id} className="cm-row" style={{ gap: 6, marginBottom: 2 }}>
-                                      <span style={{ fontSize: 12 }}>{o.user?.name || o.user?.email || `User ${o.userId}`}</span>
-                                      <button className="cm-btn ghost sm" style={{ padding: "1px 5px", fontSize: 10, color: "var(--am-negative)" }} onClick={() => onRemoveOwner(t.id, o.userId)} disabled={busy} title="Remove owner">×</button>
+                                      <span style={{ fontSize: 13 }}>{o.user?.name || o.user?.email || `User ${o.userId}`}</span>
+                                      <button className="cm-btn ghost sm" style={{ padding: "1px 5px", fontSize: 13, color: "var(--am-negative)" }} onClick={() => onRemoveOwner(t.id, o.userId)} disabled={busy} title="Remove owner">×</button>
                                     </div>
                                   ))
                                 ) : !hasOwner ? (
                                   <span className="cm-chip warn">unassigned</span>
                                 ) : (
-                                  <span className="cm-muted" style={{ fontSize: 12 }}>{t.owner ?? `User ${t.ownerUserId}`}</span>
+                                  <span className="cm-muted" style={{ fontSize: 13 }}>{t.owner ?? `User ${t.ownerUserId}`}</span>
                                 )}
                               </td>
-                              <td><span className="cm-num" style={{ fontSize: 12 }}>{t.budget != null ? `$${t.budget}` : "—"}</span></td>
+                              <td><span className="cm-num" style={{ fontSize: 13 }}>{t.budget != null ? `$${t.budget}` : "—"}</span></td>
                               <td>
                                 <button className="cm-btn sm danger" onClick={() => onDeleteTeam(t.id)} disabled={busy} title="Delete team">Delete</button>
                               </td>
@@ -1210,11 +1210,11 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     {showCreateTeamForm && (
                       <>
                         <div style={{ padding: 14, borderTop: "1px solid var(--am-border)" }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Create team</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Create team</div>
                           <form onSubmit={(e) => { onCreateTeam(e); setShowCreateTeamForm(false); }} className="cm-col" style={{ gap: 8 }}>
                             {priorTeams.length > 0 && (
                               <div>
-                                <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginBottom: 4 }}>Link to prior year team (optional)</div>
+                                <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginBottom: 4 }}>Link to prior year team (optional)</div>
                                 <select className="cm-select full" value={selectedPriorTeamId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ""; setSelectedPriorTeamId(id); if (id) { const pt = priorTeams.find((t) => t.id === id); if (pt) { setTeamName(pt.name); setTeamCode(pt.code || ""); } } }}>
                                   <option value="">Create new team…</option>
                                   {priorTeams.map((pt) => (<option key={pt.id} value={pt.id}>{pt.name} — from last year</option>))}
@@ -1231,7 +1231,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                         </div>
 
                         <div style={{ padding: 14, borderTop: "1px solid var(--am-border)" }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Assign team owner</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: "var(--am-text)" }}>Assign team owner</div>
                           <form onSubmit={onAssignOwner} className="cm-row" style={{ gap: 8, flexWrap: "wrap" }}>
                             <select className="cm-select" value={ownerTeamId} onChange={(e) => setOwnerTeamId(e.target.value ? Number(e.target.value) : "")}>
                               <option value="">Select team…</option>
@@ -1244,7 +1244,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                             <input className="cm-input" placeholder="Display name (optional)" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
                             <button type="submit" className="cm-btn primary" disabled={busy}>Assign</button>
                           </form>
-                          <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 6 }}>Teams can have up to 2 owners.</div>
+                          <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 6 }}>Teams can have up to 2 owners.</div>
                         </div>
                       </>
                     )}
@@ -1258,7 +1258,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       <div className="cm-section-head">
                         <div className="cm-h2">Members</div>
                         <div className="cm-spacer" />
-                        <span className="cm-faint" style={{ fontSize: 12 }}>{overview.memberships.length} total</span>
+                        <span className="cm-faint" style={{ fontSize: 13 }}>{overview.memberships.length} total</span>
                       </div>
                       <table className="cm-table">
                         <thead>
@@ -1280,8 +1280,8 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                   <div className="cm-row" style={{ gap: 8 }}>
                                     <div className="cm-avatar sm">{initials(memberName)}</div>
                                     <div>
-                                      <div style={{ fontSize: 12, fontWeight: 600 }}>{memberName}</div>
-                                      <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>{m.user?.email}</div>
+                                      <div style={{ fontSize: 13, fontWeight: 600 }}>{memberName}</div>
+                                      <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{m.user?.email}</div>
                                     </div>
                                   </div>
                                 </td>
@@ -1299,9 +1299,9 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                 <td>
                                   {teamNames.length > 0 ? (
                                     <div className="cm-row" style={{ gap: 4, flexWrap: "wrap" }}>
-                                      {teamNames.map(n => <span key={n} className="cm-chip" style={{ fontSize: 10 }}>{n}</span>)}
+                                      {teamNames.map(n => <span key={n} className="cm-chip" style={{ fontSize: 13 }}>{n}</span>)}
                                     </div>
-                                  ) : <span className="cm-faint" style={{ fontSize: 12 }}>—</span>}
+                                  ) : <span className="cm-faint" style={{ fontSize: 13 }}>—</span>}
                                 </td>
                                 <td>
                                   {!isMe && (
@@ -1329,7 +1329,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                           </select>
                           <button type="submit" className="cm-btn primary" disabled={busy}>Add</button>
                         </form>
-                        <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 6 }}>If not yet signed up, they'll receive a pending invite and be auto-added on login.</div>
+                        <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 6 }}>If not yet signed up, they'll receive a pending invite and be auto-added on login.</div>
                       </div>
                     </div>
                   </div>
@@ -1345,7 +1345,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     <div className="cm-card flush">
                       <div className="cm-section-head">
                         <div className="cm-h2">Pending Invites</div>
-                        <span className="cm-faint" style={{ fontSize: 12 }}>{pendingInvites.length}</span>
+                        <span className="cm-faint" style={{ fontSize: 13 }}>{pendingInvites.length}</span>
                       </div>
                       <table className="cm-table">
                         <thead>
@@ -1360,10 +1360,10 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                         <tbody>
                           {pendingInvites.map((inv) => (
                             <tr key={inv.id}>
-                              <td style={{ fontSize: 12 }}>{inv.email}</td>
-                              <td><span className="cm-chip" style={{ fontSize: 10 }}>{inv.role}</span></td>
-                              <td className="cm-faint cm-num" style={{ fontSize: 11 }}>{new Date(inv.createdAt).toLocaleDateString()}</td>
-                              <td className="cm-faint cm-num" style={{ fontSize: 11 }}>{inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "—"}</td>
+                              <td style={{ fontSize: 13 }}>{inv.email}</td>
+                              <td><span className="cm-chip" style={{ fontSize: 13 }}>{inv.role}</span></td>
+                              <td className="cm-faint cm-num" style={{ fontSize: 13 }}>{new Date(inv.createdAt).toLocaleDateString()}</td>
+                              <td className="cm-faint cm-num" style={{ fontSize: 13 }}>{inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "—"}</td>
                               <td>
                                 <button className="cm-btn sm danger" onClick={() => onCancelInvite(inv.id)} disabled={busy}>Cancel</button>
                               </td>
@@ -1384,7 +1384,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     <div style={{ padding: 14 }}>
                       {inviteCodeValue ? (
                         <div className="cm-row" style={{ gap: 8 }}>
-                          <code className="cm-mono" style={{ flex: 1, fontSize: 16, letterSpacing: "0.2em", padding: "10px 14px", background: "var(--am-surface-alt, var(--am-chip))", border: "1px solid var(--am-border)", borderRadius: 4 }}>{inviteCodeValue}</code>
+                          <code className="cm-mono" style={{ flex: 1, fontSize: 17, letterSpacing: "0.2em", padding: "10px 14px", background: "var(--am-surface-alt, var(--am-chip))", border: "1px solid var(--am-border)", borderRadius: 4 }}>{inviteCodeValue}</code>
                           <button className="cm-btn" onClick={() => { navigator.clipboard.writeText(inviteCodeValue); toast("Invite code copied!", "success"); }}>Copy</button>
                           <button className="cm-btn" onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code regenerated", "success"); } catch { toast("Failed to regenerate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading}>{inviteCodeLoading ? "..." : "Regenerate"}</button>
                         </div>
@@ -1394,7 +1394,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                           <button className="cm-btn primary" onClick={async () => { setInviteCodeLoading(true); try { const res = await regenerateInviteCode(lid); setInviteCodeValue(res.inviteCode); toast("Invite code generated!", "success"); } catch { toast("Failed to generate code", "error"); } finally { setInviteCodeLoading(false); } }} disabled={inviteCodeLoading}>{inviteCodeLoading ? "Generating..." : "Generate Code"}</button>
                         </div>
                       )}
-                      <p style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 8 }}>Share this code with users so they can join your league.</p>
+                      <p style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 8 }}>Share this code with users so they can join your league.</p>
                     </div>
                   </div>
                 )}
@@ -1487,7 +1487,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                             <div className="cm-h2">Live Auction Draft</div>
                           </div>
                           <div style={{ padding: 14 }}>
-                            <p className="cm-muted" style={{ fontSize: 12, marginBottom: 10 }}>Start and manage the live auction draft from the Auction page.</p>
+                            <p className="cm-muted" style={{ fontSize: 13, marginBottom: 10 }}>Start and manage the live auction draft from the Auction page.</p>
                             <Link to={`/leagues/${lid}/auction`} className="cm-btn primary" style={{ textDecoration: "none", display: "inline-flex" }}>Go to Auction Draft</Link>
                           </div>
                         </div>
@@ -1507,7 +1507,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                 {/* Ghost-IL urgent alert */}
                 {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && opsSubTab !== 'ghost-il' && (
                   <div className="cm-alert warn cm-row" style={{ justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 12 }}>
+                    <span style={{ fontSize: 13 }}>
                       <strong>{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
                       {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} player{ghostIl.totalGhosts === 1 ? "" : "s"} needing activation — MLB has activated them but they're still in a fantasy IL slot.
                     </span>
@@ -1586,7 +1586,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                           <button className="cm-btn sm" onClick={() => setOpsSubTab('roster')}>Fix in Roster tab →</button>
                         </div>
                         <div style={{ padding: "6px 0" }}>
-                          <p style={{ padding: "0 14px 8px", fontSize: 12, color: "var(--am-text-muted)" }}>
+                          <p style={{ padding: "0 14px 8px", fontSize: 13, color: "var(--am-text-muted)" }}>
                             These players are in fantasy IL slots but their MLB status no longer qualifies them. New IL stashes are blocked until resolved.
                           </p>
                           <table className="cm-table">
@@ -1603,7 +1603,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                   <tr key={`${t.teamId}-${g.playerId}`}>
                                     <td style={{ fontWeight: 600 }}>{t.teamName}</td>
                                     <td>{g.playerName}</td>
-                                    <td><span className="cm-chip neg" style={{ fontSize: 10 }}>{g.currentMlbStatus}</span></td>
+                                    <td><span className="cm-chip neg" style={{ fontSize: 13 }}>{g.currentMlbStatus}</span></td>
                                   </tr>
                                 ))
                               )}
@@ -1634,7 +1634,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                           <div className="cm-h2">Roster Setup</div>
                         </div>
                         <div style={{ padding: 14 }}>
-                          <p className="cm-muted" style={{ fontSize: 12, marginBottom: 10 }}>Bulk import rosters via CSV or add a single player by name.</p>
+                          <p className="cm-muted" style={{ fontSize: 13, marginBottom: 10 }}>Bulk import rosters via CSV or add a single player by name.</p>
                           <RosterControls leagueId={lid} teams={overview.teams} onUpdate={refreshOverviewOnly} />
                         </div>
                       </div>
@@ -1805,7 +1805,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     <div className="cm-section-head">
                       <div className="cm-h2">Prior Seasons</div>
                     </div>
-                    <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--am-text-faint)" }}>
+                    <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--am-text-faint)" }}>
                       Prior season archive data will appear here. Use the Archive section of the Admin panel to import historical data.
                     </div>
                   </div>
@@ -1820,8 +1820,8 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       {[1, 2, 3].map(i => (
                         <div key={i} className="cm-card alt" style={{ textAlign: "center", padding: 20 }}>
                           <div className="cm-cap" style={{ marginBottom: 8 }}>Season {league.season - (3 - i)}</div>
-                          <div style={{ fontSize: 28, marginBottom: 4 }}>{i === 1 ? "🏆" : i === 2 ? "🥈" : "🥉"}</div>
-                          <div style={{ fontSize: 12, color: "var(--am-text-faint)" }}>—</div>
+                          <div style={{ fontSize: 24, marginBottom: 4 }}>{i === 1 ? "🏆" : i === 2 ? "🥈" : "🥉"}</div>
+                          <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>—</div>
                         </div>
                       ))}
                     </div>
@@ -1837,7 +1837,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                         return (
                           <React.Fragment key={phase}>
                             <div style={{
-                              padding: "8px 14px", borderRadius: 4, fontSize: 11, fontWeight: 700,
+                              padding: "8px 14px", borderRadius: 4, fontSize: 13, fontWeight: 700,
                               background: isCurrent ? "color-mix(in srgb, var(--am-accent) 14%, var(--am-surface))" : "var(--am-surface-alt, var(--am-chip))",
                               color: isCurrent ? "var(--am-accent)" : "var(--am-text-faint)",
                               border: isCurrent ? "1px solid color-mix(in srgb, var(--am-accent) 35%, var(--am-border))" : "1px solid var(--am-border)",
@@ -1852,7 +1852,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                         );
                       })}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--am-text-faint)", marginTop: 12 }}>
+                    <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 12 }}>
                       Current phase: <strong style={{ color: "var(--am-text)" }}>{gating.seasonStatus ?? "No season"}</strong>
                     </div>
                   </div>

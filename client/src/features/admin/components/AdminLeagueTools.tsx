@@ -228,7 +228,7 @@ export default function AdminLeagueTools() {
                                 <span className="text-xs text-[var(--lg-text-primary)]">
                                   {m.user?.name || m.user?.email}
                                 </span>
-                                <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${
+                                <span className={`text-xs font-semibold uppercase px-1.5 py-0.5 rounded ${
                                   m.role === "COMMISSIONER"
                                     ? "bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]"
                                     : "bg-[var(--lg-tint)] text-[var(--lg-text-muted)]"
@@ -293,7 +293,7 @@ function RulesSnapshot({ rules }: { rules: LeagueRule[] }) {
             key={item.label}
             className="rounded-lg border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] px-3 py-1.5"
           >
-            <span className="text-[10px] uppercase tracking-wide text-[var(--lg-text-muted)]">{item.label}: </span>
+            <span className="text-xs uppercase tracking-wide text-[var(--lg-text-muted)]">{item.label}: </span>
             <span className="text-xs font-medium text-[var(--lg-text-primary)]">{item.value}</span>
           </div>
         ))}

@@ -33,7 +33,7 @@ export default function NominationQueueLegacy({ teams, queue, queueIndex, myTeam
 
   return (
     <div className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--lg-border-subtle)] text-[10px] font-semibold text-[var(--lg-text-muted)] uppercase tracking-wide">
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--lg-border-subtle)] text-xs font-semibold text-[var(--lg-text-muted)] uppercase tracking-wide">
           <Users size={10} className="text-[var(--lg-accent)]" />
           <span>Nomination Order</span>
       </div>
@@ -53,7 +53,7 @@ export default function NominationQueueLegacy({ teams, queue, queueIndex, myTeam
                         : ''
                   }`}
                 >
-                    <span className={`text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                    <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                       isMe
                         ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]'
                         : isCurrent
@@ -72,7 +72,7 @@ export default function NominationQueueLegacy({ teams, queue, queueIndex, myTeam
                         {team.name}
                     </span>
                     {isCurrent && (
-                       <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 ${isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-accent)] animate-pulse'}`}>
+                       <span className={`text-xs font-bold uppercase tracking-wide shrink-0 ${isMe ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-accent)] animate-pulse'}`}>
                            {isMe ? 'You' : 'Now'}
                        </span>
                     )}

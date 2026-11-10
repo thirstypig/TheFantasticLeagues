@@ -102,7 +102,7 @@
   min-height: 36px;
   padding: 6px 12px;
   border-radius: 99px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.4px;
@@ -203,7 +203,7 @@
   border: 0;
   background: transparent;
   color: var(--am-text-faint);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -1px;
   cursor: grab;
@@ -253,7 +253,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--am-text);
   backdrop-filter: blur(20px) saturate(160%);
@@ -304,7 +304,7 @@
 
 .am-roster-action-menu button {
   text-align: left;
-  font-size: 12.5px;
+  font-size: 13px;
   padding: 8px 10px;
   border-radius: 8px;
   border: 0;
@@ -347,7 +347,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 1px;
 }
@@ -372,7 +372,7 @@
  */
 .am-roster-v3-table .am-roster-section-thead .am-roster-section-label {
   padding: 14px 12px 6px;
-  font-size: 10.5px;
+  font-size: 13px;
   letter-spacing: 1.6px;
   text-transform: uppercase;
   color: var(--am-text-muted);
@@ -435,7 +435,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--am-text);
 }
 
@@ -448,7 +448,7 @@
 
 .am-pending-row-meta {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--am-text-muted);
   margin-top: 2px;
   line-height: 1.4;
@@ -456,7 +456,7 @@
 
 .am-pending-row-error {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   color: #fca5a5;
   margin-top: 2px;
   line-height: 1.4;
@@ -464,7 +464,7 @@
 
 .am-pending-row-dependson {
   display: inline-block;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--am-text-muted);
   background: var(--am-chip);
   border: 1px solid var(--am-border);

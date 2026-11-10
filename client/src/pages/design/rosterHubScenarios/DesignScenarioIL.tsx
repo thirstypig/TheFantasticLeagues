@@ -266,7 +266,7 @@ export function DesignScenarioIL() {
         <Glass padded={false} style={{ overflow: "visible" }}>
           <div style={{ padding: 16, paddingBottom: 6 }}>
             <SectionLabel>✦ IL management · stash + activate</SectionLabel>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
               IL-eligible players show a red <strong>INJURED</strong> badge sourced from the real MLB
               status string (e.g. "Injured 10-Day"). Drag them onto an IL slot to stash. Drag an
               IL player onto an active row to activate them — the displaced active player gets
@@ -400,7 +400,7 @@ function ILFooter() {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
       <Glass>
         <SectionLabel>✦ How it works</SectionLabel>
-        <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li>Trea Turner + Juan Soto are pre-flagged IL-eligible (red INJURED badge).</li>
           <li>Yoshinobu Yamamoto sits in the IL section — drag him onto a P slot to activate.</li>
           <li>Drag an injured player onto an empty IL row to stash.</li>
@@ -410,7 +410,7 @@ function ILFooter() {
       </Glass>
       <Glass>
         <SectionLabel>✦ Open questions — IL management</SectionLabel>
-        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li><strong>Status string handling</strong> — show real MLB string verbatim ("Injured 10-Day") or normalize to "IL-10"?</li>
           <li><strong>Retroactive IL date</strong> — is there a date picker for backdating, or always "today"?</li>
           <li><strong>Ghost-IL</strong> — players still on roster but missing MLB IL status (post-activation lag). Surface a warning chip?</li>

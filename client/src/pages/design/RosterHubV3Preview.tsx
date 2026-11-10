@@ -459,7 +459,7 @@ export default function RosterHubV3Preview() {
           <h1
             style={{
               fontFamily: "var(--am-display)",
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: 300,
               color: "var(--am-text)",
               margin: 0,
@@ -532,7 +532,7 @@ export default function RosterHubV3Preview() {
           preserved, (5) Yahoo copy permission. <strong>No business logic</strong> — all
           data is mocked. Use the floating panel to cycle nine canonical states.
         </p>
-        <p style={{ marginTop: 8, fontSize: 12, color: "var(--am-text-faint)" }}>
+        <p style={{ marginTop: 8, fontSize: 13, color: "var(--am-text-faint)" }}>
           Comparing iterations:{" "}
           <Link to="/design/swap-mode" style={{ color: "var(--am-text-muted)" }}>
             v1 (cards) at /design/swap-mode
@@ -551,7 +551,7 @@ export default function RosterHubV3Preview() {
               width: 64, height: 64, borderRadius: 16,
               background: "var(--am-irid)",
               display: "grid", placeItems: "center",
-              fontFamily: "var(--am-display)", fontSize: 22, fontWeight: 600, color: "#fff",
+              fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 600, color: "#fff",
               boxShadow: "0 12px 30px rgba(0,0,0,0.25)",
             }}
           >
@@ -563,10 +563,10 @@ export default function RosterHubV3Preview() {
               <Chip strong>Your team</Chip>
               <Chip>jcdesign</Chip>
             </div>
-            <div style={{ fontFamily: "var(--am-display)", fontSize: 30, lineHeight: 1, letterSpacing: -0.4 }}>
+            <div style={{ fontFamily: "var(--am-display)", fontSize: 32, lineHeight: 1, letterSpacing: -0.4 }}>
               <IridText>Design Test Squad</IridText>
             </div>
-            <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
+            <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
               {hitters.length} hitters · {pitchers.length} pitchers · {MOCK_IL.length} IL
             </div>
           </div>
@@ -575,7 +575,7 @@ export default function RosterHubV3Preview() {
         <div style={{ padding: "0 24px 20px", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <span
             style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase",
+              fontSize: 13, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase",
               color: "var(--am-text-faint)", marginRight: 4,
             }}
           >
@@ -593,7 +593,7 @@ export default function RosterHubV3Preview() {
                 key={opt.key}
                 style={{
                   padding: "5px 12px", borderRadius: 99,
-                  fontSize: 11, fontWeight: 600, letterSpacing: 0.2,
+                  fontSize: 13, fontWeight: 600, letterSpacing: 0.2,
                   background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
                   color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
                   border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
@@ -707,7 +707,7 @@ function StateToggler({
     >
       <div
         style={{
-          fontSize: 10,
+          fontSize: 13,
           letterSpacing: 1.4,
           textTransform: "uppercase",
           color: "var(--am-text-faint)",
@@ -726,7 +726,7 @@ function StateToggler({
               onClick={() => onChange(s.value)}
               style={{
                 textAlign: "left",
-                fontSize: 12,
+                fontSize: 13,
                 padding: "7px 10px",
                 borderRadius: 10,
                 border: "1px solid " + (active ? "var(--am-border-strong)" : "transparent"),
@@ -741,7 +741,7 @@ function StateToggler({
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: "var(--am-text-faint)", lineHeight: 1.4, marginTop: 4 }}>
+      <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.4, marginTop: 4 }}>
         {current.blurb}
       </div>
     </div>

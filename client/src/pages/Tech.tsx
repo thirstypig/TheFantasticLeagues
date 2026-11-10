@@ -888,19 +888,19 @@ function ApiExplorer() {
                   className="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-[var(--lg-tint)] transition-colors"
                 >
                   <code className="text-xs font-medium text-[var(--lg-accent)]">{mod.name}</code>
-                  <span className="text-[10px] text-[var(--lg-text-muted)] flex-1">{mod.prefix}</span>
-                  <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums">{mod.routes.length} routes</span>
+                  <span className="text-xs text-[var(--lg-text-muted)] flex-1">{mod.prefix}</span>
+                  <span className="text-xs text-[var(--lg-text-muted)] tabular-nums">{mod.routes.length} routes</span>
                   {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-[var(--lg-text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--lg-text-muted)]" />}
                 </button>
                 {isExpanded && (
                   <div className="px-3 pb-2 space-y-1">
                     {mod.routes.map((route, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-xs py-1 px-2 rounded bg-[var(--lg-tint)]">
-                        <span className={`font-semibold w-12 text-center px-1 py-0.5 rounded text-[10px] ${methodColor[route.method]}`}>
+                        <span className={`font-semibold w-12 text-center px-1 py-0.5 rounded text-xs ${methodColor[route.method]}`}>
                           {route.method}
                         </span>
                         <code className="text-[var(--lg-text-primary)] font-mono flex-1">{mod.prefix}{route.path}</code>
-                        <span className="text-[10px] text-[var(--lg-text-muted)] bg-[var(--lg-bg-card)] px-1.5 py-0.5 rounded border border-[var(--lg-border-faint)]">
+                        <span className="text-xs text-[var(--lg-text-muted)] bg-[var(--lg-bg-card)] px-1.5 py-0.5 rounded border border-[var(--lg-border-faint)]">
                           {route.auth}
                         </span>
                       </div>
@@ -956,7 +956,7 @@ function BundleSize() {
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center gap-4 text-[10px] text-[var(--lg-text-muted)]">
+          <div className="mt-3 flex items-center gap-4 text-xs text-[var(--lg-text-muted)]">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Good</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Watch</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Optimize</span>
@@ -1008,7 +1008,7 @@ function DependencyHealth() {
                   <span className="text-xs text-[var(--lg-text-muted)] tabular-nums w-12 shrink-0">{dep.current}</span>
                   <span className="text-[var(--lg-text-muted)]">→</span>
                   <span className="text-xs text-[var(--lg-text-primary)] tabular-nums w-12 shrink-0">{dep.latest}</span>
-                  <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${cfg.color}`}>
+                  <span className={`text-xs font-semibold uppercase px-1.5 py-0.5 rounded border ${cfg.color}`}>
                     {cfg.label}
                   </span>
                   <span className="text-xs text-[var(--lg-text-muted)] flex-1 text-right">{dep.category}</span>
@@ -1016,7 +1016,7 @@ function DependencyHealth() {
               );
             })}
           </div>
-          <p className="mt-3 text-[10px] text-[var(--lg-text-muted)] leading-relaxed">
+          <p className="mt-3 text-xs text-[var(--lg-text-muted)] leading-relaxed">
             Major version upgrades are tracked but not urgent — the current versions are stable and well-tested.
             React 19, Vite 6, and Prisma 6 upgrades planned for off-season.
           </p>
@@ -1058,7 +1058,7 @@ function CostEstimate() {
           <div className="grid gap-3 md:grid-cols-3">
             {/* AI */}
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-              <div className="text-[10px] font-semibold uppercase text-emerald-400 tracking-wide mb-2">
+              <div className="text-xs font-semibold uppercase text-emerald-400 tracking-wide mb-2">
                 AI-Assisted (Claude Code)
               </div>
               <div className="text-2xl font-semibold text-emerald-400 tabular-nums mb-1">
@@ -1067,14 +1067,14 @@ function CostEstimate() {
               <div className="text-xs text-[var(--lg-text-muted)] mb-3">
                 {c.aiCost.tokens} tokens &middot; 57 sessions &middot; 6 months
               </div>
-              <div className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">
+              <div className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">
                 {c.aiCost.note}
               </div>
             </div>
 
             {/* US Dev Shop */}
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <div className="text-[10px] font-semibold uppercase text-amber-400 tracking-wide mb-2">
+              <div className="text-xs font-semibold uppercase text-amber-400 tracking-wide mb-2">
                 US Dev Shop
               </div>
               <div className="text-2xl font-semibold text-amber-400 tabular-nums mb-1">
@@ -1083,14 +1083,14 @@ function CostEstimate() {
               <div className="text-xs text-[var(--lg-text-muted)] mb-3">
                 {c.usDevShop.rateRange} &middot; {c.usDevShop.hoursLow}–{c.usDevShop.hoursHigh} hrs &middot; {c.usDevShop.timeline}
               </div>
-              <div className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">
+              <div className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">
                 {c.usDevShop.note}
               </div>
             </div>
 
             {/* Offshore */}
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
-              <div className="text-[10px] font-semibold uppercase text-blue-400 tracking-wide mb-2">
+              <div className="text-xs font-semibold uppercase text-blue-400 tracking-wide mb-2">
                 Offshore (India/China)
               </div>
               <div className="text-2xl font-semibold text-blue-400 tabular-nums mb-1">
@@ -1099,7 +1099,7 @@ function CostEstimate() {
               <div className="text-xs text-[var(--lg-text-muted)] mb-3">
                 {c.offshore.rateRange} &middot; {c.offshore.hoursLow}–{c.offshore.hoursHigh} hrs &middot; {c.offshore.timeline}
               </div>
-              <div className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">
+              <div className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">
                 {c.offshore.note}
               </div>
             </div>
@@ -1107,7 +1107,7 @@ function CostEstimate() {
 
           {/* Scope */}
           <div>
-            <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-2 tracking-wide">
+            <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-2 tracking-wide">
               Scope Used for Estimates
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
@@ -1121,7 +1121,7 @@ function CostEstimate() {
           </div>
 
           {/* Disclaimer */}
-          <p className="text-[10px] text-[var(--lg-text-muted)] leading-relaxed border-t border-[var(--lg-border-faint)] pt-3">
+          <p className="text-xs text-[var(--lg-text-muted)] leading-relaxed border-t border-[var(--lg-border-faint)] pt-3">
             These are rough estimates based on industry rates (2025-2026). Actual costs vary significantly based on team
             experience, project management overhead, design requirements, and iteration cycles. The AI-assisted approach
             required domain expertise to direct — Claude Code wrote ~95% of the code, but architectural decisions,
@@ -1189,13 +1189,13 @@ export default function Tech() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ Under the Hood</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Under the Hood</h1>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Under the Hood</h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)", maxWidth: 720 }}>
               A look at what it took to build The Fantastic Leagues — the tools, the process, the decisions, and the numbers. Built from November 2025 to present across 80+ sessions, 100,000+ lines of TypeScript, and 100 million+ AI tokens.
             </div>
-            <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>Last updated: April 28, 2026</div>
+            <div style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-faint)" }}>Last updated: April 28, 2026</div>
           </div>
-          <Link to="/roadmap" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Link to="/roadmap" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
             Roadmap <ArrowRight className="w-3 h-3" />
           </Link>
         </div>

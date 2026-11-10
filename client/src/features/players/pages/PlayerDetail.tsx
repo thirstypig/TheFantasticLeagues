@@ -198,7 +198,7 @@ export default function PlayerDetail() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              fontSize: 12,
+              fontSize: 13,
               color: "var(--am-text-muted)",
               textDecoration: "none",
             }}
@@ -273,7 +273,7 @@ export default function PlayerDetail() {
                   marginBottom: 12,
                 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
                 Loading…
               </div>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -282,7 +282,7 @@ export default function PlayerDetail() {
         ) : tab === "stats" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 16 }}>
             {computedAt && (
-              <div style={{ gridColumn: "span 12", fontSize: 12, color: "var(--am-text-muted)" }}>
+              <div style={{ gridColumn: "span 12", fontSize: 13, color: "var(--am-text-muted)" }}>
                 <DataFreshness computedAt={computedAt} className="text-xs" />
               </div>
             )}
@@ -307,7 +307,7 @@ export default function PlayerDetail() {
               <Glass padded={false}>
                 <div style={{ padding: "16px 16px 8px" }}>
                   <SectionLabel style={{ marginBottom: 4 }}>Recent · 7 / 14 / 21 Days &amp; YTD</SectionLabel>
-                  <div style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                     Source: MLB · {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                   </div>
                 </div>
@@ -392,7 +392,7 @@ export default function PlayerDetail() {
               <Glass>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <SectionLabel style={{ marginBottom: 0 }}>Recent Transactions</SectionLabel>
-                  <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>Last 3</span>
+                  <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>Last 3</span>
                 </div>
                 {newsRows.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -415,7 +415,7 @@ export default function PlayerDetail() {
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: 13, color: "var(--am-text)", lineHeight: 1.5 }}>{t.description}</div>
                           {t.date && (
-                            <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 4 }}>
+                            <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 4 }}>
                               {formatTransactionDate(t.date)}
                             </div>
                           )}
@@ -434,7 +434,7 @@ export default function PlayerDetail() {
               <Glass>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <SectionLabel style={{ marginBottom: 0 }}>Recent News</SectionLabel>
-                  {feedLoading && <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>Loading…</span>}
+                  {feedLoading && <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>Loading…</span>}
                 </div>
                 {feedArticles.length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -456,7 +456,7 @@ export default function PlayerDetail() {
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                           <Chip strong>{item.source}</Chip>
                           {item.pubDate && (
-                            <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
+                            <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                               {formatRelativeDate(item.pubDate)}
                             </span>
                           )}
@@ -478,7 +478,7 @@ export default function PlayerDetail() {
                   href={`https://www.mlb.com/player/${mlbId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "underline" }}
+                  style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "underline" }}
                 >
                   View on MLB.com
                 </a>
@@ -486,7 +486,7 @@ export default function PlayerDetail() {
                   href={`https://www.baseball-reference.com/redirect.fcgi?player=1&mlb_ID=${mlbId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "underline" }}
+                  style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "underline" }}
                 >
                   View on Baseball Reference
                 </a>
@@ -503,7 +503,7 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
   return {
     padding: "8px 16px",
     borderRadius: 999,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 600,
     letterSpacing: 0.4,
     textTransform: "uppercase",

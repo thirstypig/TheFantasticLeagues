@@ -69,11 +69,11 @@ export function ManagePanel() {
   return (
     <SubrouteContainer title={TITLES[mode]} blurb={BLURBS[mode]} onBack={ctx.onBack}>
       {!ctx.canManage ? (
-        <div style={{ padding: 16, color: "var(--am-text-muted)", fontSize: 12 }}>
+        <div style={{ padding: 16, color: "var(--am-text-muted)", fontSize: 13 }}>
           Roster transactions on this team are not available to you.
         </div>
       ) : !ctx.leagueId || !ctx.teamId ? (
-        <div style={{ padding: 16, color: "var(--am-text-faint)", fontSize: 12 }}>Loading…</div>
+        <div style={{ padding: 16, color: "var(--am-text-faint)", fontSize: 13 }}>Loading…</div>
       ) : mode === "claim" ? (
         <AddDropPanel
           leagueId={ctx.leagueId}

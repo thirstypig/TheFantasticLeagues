@@ -111,7 +111,7 @@ export default function Rules() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ League Rules</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               League Rules
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -129,7 +129,7 @@ export default function Rules() {
                     onClick={() => setTab(t)}
                     style={{
                       padding: "6px 14px", borderRadius: 99,
-                      fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase",
+                      fontSize: 13, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase",
                       background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
                       color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
                       border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
@@ -170,7 +170,7 @@ export default function Rules() {
                 { label: "Pos. Eligibility", value: `${posEligGp} GP` },
               ].map((item) => (
                 <div key={item.label} className="bg-[var(--lg-tint)] p-3 md:p-4 rounded-2xl border border-[var(--lg-border-faint)]">
-                  <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{item.label}</div>
+                  <div className="text-xs uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{item.label}</div>
                   <div className="text-sm font-bold text-[var(--lg-text-primary)]">{item.value}</div>
                 </div>
               ))}
@@ -239,7 +239,7 @@ export default function Rules() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {bonusRules.map((r) => (
                   <div key={r.id} className="bg-[var(--lg-tint)] p-3 rounded-xl border border-[var(--lg-border-faint)]">
-                    <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{r.label}</div>
+                    <div className="text-xs uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{r.label}</div>
                     <div className="text-sm font-bold text-[var(--lg-text-primary)]">${r.value}</div>
                   </div>
                 ))}
@@ -254,7 +254,7 @@ export default function Rules() {
               <div className="grid grid-cols-2 gap-3">
                 {ilRules.map((r) => (
                   <div key={r.id} className="bg-[var(--lg-tint)] p-3 rounded-xl border border-[var(--lg-border-faint)]">
-                    <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{r.label}</div>
+                    <div className="text-xs uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{r.label}</div>
                     <div className="text-sm font-bold text-[var(--lg-text-primary)]">${r.value}</div>
                   </div>
                 ))}
@@ -269,7 +269,7 @@ export default function Rules() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {payoutRules.map((r) => (
                   <div key={r.id} className="bg-[var(--lg-tint)] p-3 rounded-xl border border-[var(--lg-border-faint)]">
-                    <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{r.label}</div>
+                    <div className="text-xs uppercase tracking-wide font-bold text-[var(--lg-text-muted)] mb-1 opacity-40">{r.label}</div>
                     <div className="text-sm font-bold text-[var(--lg-text-primary)]">{r.value}%</div>
                   </div>
                 ))}

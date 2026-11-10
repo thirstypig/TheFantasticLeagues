@@ -82,7 +82,7 @@ export default function ErrorToast({ error, onDismiss }: ErrorToastProps) {
           <p className="mt-0.5 text-xs text-[var(--lg-text-secondary)] break-words">
             {error.message}
           </p>
-          <div className="mt-2 flex items-center gap-2 text-[10px]">
+          <div className="mt-2 flex items-center gap-2 text-xs">
             {displayCode ? (
               <button
                 onClick={onCopy}

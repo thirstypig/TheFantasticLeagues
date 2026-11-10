@@ -130,7 +130,7 @@ export default function Draft() {
             Set the team order and start the snake draft. Teams pick in order, reversing each round.
           </p>
           <div className="mb-4">
-            <label className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)] mb-1 block">Draft Order</label>
+            <label className="text-xs font-bold uppercase text-[var(--lg-text-muted)] mb-1 block">Draft Order</label>
             <p className="text-xs text-[var(--lg-text-secondary)]">
               {teamList.map(t => t.name).join(" -> ") || "Loading teams..."}
             </p>
@@ -198,7 +198,7 @@ export default function Draft() {
           title="Snake Draft"
           subtitle={`${state.config.totalRounds} rounds · ${state.config.teamOrder.length} teams · ${state.config.orderType}`}
         />
-        <div className="flex items-center gap-1.5 text-[10px]">
+        <div className="flex items-center gap-1.5 text-xs">
           {connectionStatus === "connected" ? (
             <><Wifi size={12} className="text-emerald-400" /><span className="text-emerald-400 font-medium">Live</span></>
           ) : (
@@ -211,7 +211,7 @@ export default function Draft() {
       <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="text-center">
-            <div className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Status</div>
+            <div className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">Status</div>
             <div className={`text-sm font-bold uppercase ${
               state.status === "active" ? "text-emerald-400" :
               state.status === "paused" ? "text-amber-400" :
@@ -219,25 +219,25 @@ export default function Draft() {
             }`}>{state.status}</div>
           </div>
           <div className="text-center">
-            <div className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">On the Clock</div>
+            <div className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">On the Clock</div>
             <div className={`text-sm font-semibold ${isMyTurn ? "text-[var(--lg-accent)]" : "text-[var(--lg-text-primary)]"}`}>
               {isMyTurn ? "YOUR PICK!" : currentTeamName}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Round</div>
+            <div className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">Round</div>
             <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{currentRound} of {state.config.totalRounds}</div>
           </div>
           {timeLeft !== null && state.status === "active" && (
             <div className="text-center">
-              <div className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Timer</div>
+              <div className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">Timer</div>
               <div className={`text-lg font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400 animate-pulse" : timeLeft <= 30 ? "text-amber-400" : "text-[var(--lg-text-primary)]"}`}>
                 <Clock size={14} className="inline -mt-0.5 mr-1" />{timeLeft}s
               </div>
             </div>
           )}
           <div className="text-center">
-            <div className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Picks</div>
+            <div className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">Picks</div>
             <div className="text-sm font-semibold text-[var(--lg-text-primary)]">{state.picks.length} / {state.pickOrder.length}</div>
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function Draft() {
                           <ThemedTd className="font-medium">{teams[p.teamId] || `Team ${p.teamId}`}</ThemedTd>
                           <ThemedTd className="font-semibold text-[var(--lg-text-primary)]">{p.playerName || "SKIPPED"}</ThemedTd>
                           <ThemedTd className="text-[var(--lg-text-muted)]">{p.position || "--"}</ThemedTd>
-                          <ThemedTd>{p.isAutoPick ? <span className="text-[10px] text-amber-400 font-bold">AUTO</span> : ""}</ThemedTd>
+                          <ThemedTd>{p.isAutoPick ? <span className="text-xs text-amber-400 font-bold">AUTO</span> : ""}</ThemedTd>
                         </ThemedTr>
                       ))}
                     </tbody>
@@ -399,7 +399,7 @@ export default function Draft() {
                 <button
                   key={pos}
                   onClick={() => setPosFilter(pos)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors ${
+                  className={`px-2 py-1 rounded-lg text-xs font-bold uppercase transition-colors ${
                     posFilter === pos
                       ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                       : "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
@@ -419,12 +419,12 @@ export default function Draft() {
                 className="w-full flex items-center justify-between px-3 py-2 text-xs border-b border-[var(--lg-border-faint)] last:border-0 hover:bg-[var(--lg-tint)] disabled:opacity-40 transition-colors text-left"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-[10px] text-[var(--lg-text-muted)] w-6 text-center flex-shrink-0">{p.posPrimary}</span>
+                  <span className="font-mono text-xs text-[var(--lg-text-muted)] w-6 text-center flex-shrink-0">{p.posPrimary}</span>
                   <span className="font-medium text-[var(--lg-text-primary)] truncate">{p.name}</span>
-                  {p.mlbTeam && <span className="text-[10px] text-[var(--lg-text-muted)]">{p.mlbTeam}</span>}
+                  {p.mlbTeam && <span className="text-xs text-[var(--lg-text-muted)]">{p.mlbTeam}</span>}
                 </div>
                 {state.status === "active" && isMyTurn && (
-                  <span className="text-[10px] font-semibold text-[var(--lg-accent)] flex-shrink-0 ml-2">PICK</span>
+                  <span className="text-xs font-semibold text-[var(--lg-accent)] flex-shrink-0 ml-2">PICK</span>
                 )}
               </button>
             ))}

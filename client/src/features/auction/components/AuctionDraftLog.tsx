@@ -61,19 +61,19 @@ export default function AuctionDraftLog({ log, teams }: Props) {
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)]">
           <button
             onClick={() => setView('board')}
-            className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${view === 'board' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
+            className={`px-2.5 py-1 text-xs font-semibold uppercase rounded transition-all ${view === 'board' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
           >
             Draft Board
           </button>
           <button
             onClick={() => setView('feed')}
-            className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${view === 'feed' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
+            className={`px-2.5 py-1 text-xs font-semibold uppercase rounded transition-all ${view === 'feed' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
           >
             Live Feed
           </button>
         </div>
         {view === 'board' && (
-          <span className="text-[10px] text-[var(--lg-text-muted)] ml-auto tabular-nums">
+          <span className="text-xs text-[var(--lg-text-muted)] ml-auto tabular-nums">
             {completedLots.length} player{completedLots.length !== 1 ? 's' : ''} drafted
           </span>
         )}
@@ -118,7 +118,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
                           <div className="font-semibold text-sm text-[var(--lg-text-primary)] leading-tight">
                             {lot.playerName}
                           </div>
-                          <div className="text-[10px] text-[var(--lg-text-muted)] font-medium uppercase">
+                          <div className="text-xs text-[var(--lg-text-muted)] font-medium uppercase">
                             <span className="text-[var(--lg-accent)]">{mapPosition(lot.position || '', outfieldMode)}</span>
                             <span className="opacity-30 mx-1">·</span>
                             <span>{lot.mlbTeam || 'FA'}</span>
@@ -144,7 +144,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
                       {isExpanded && (
                         <ThemedTr>
                           <ThemedTd colSpan={5} className="bg-[var(--lg-bg-secondary)]/30 px-4 py-2">
-                            <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1.5 tracking-wide">
+                            <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1.5 tracking-wide">
                               Bid History
                             </div>
                             <div className="space-y-0.5">
@@ -157,7 +157,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
                                   >
                                     <span className="w-16 text-right tabular-nums font-semibold">${bid.amount}</span>
                                     <span className="flex-1">{bid.teamName}</span>
-                                    <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums">
+                                    <span className="text-xs text-[var(--lg-text-muted)] tabular-nums">
                                       {new Date(bid.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                     </span>
                                   </div>

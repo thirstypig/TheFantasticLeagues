@@ -63,7 +63,7 @@ const TRANSITION_WARNINGS: Record<string, string> = {
 // ─── Aurora chrome helpers ───
 const SECTION_HEADING: CSSProperties = {
   fontFamily: "var(--am-display)",
-  fontSize: 18,
+  fontSize: 17,
   fontWeight: 400,
   color: "var(--am-text)",
   margin: 0,
@@ -83,7 +83,7 @@ const INPUT_STYLE: CSSProperties = {
 
 const LABEL_STYLE: CSSProperties = {
   display: "block",
-  fontSize: 10,
+  fontSize: 13,
   letterSpacing: 1.2,
   textTransform: "uppercase",
   color: "var(--am-text-faint)",
@@ -96,7 +96,7 @@ const CHIP_BTN: CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "6px 12px",
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 600,
   borderRadius: 99,
   background: "var(--am-chip)",
@@ -364,7 +364,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                         gap: 6,
                         padding: "6px 12px",
                         borderRadius: 99,
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 600,
                         background: isCurrent ? "var(--am-chip-strong)" : "transparent",
                         border: "1px solid " + (isCurrent ? "var(--am-border-strong)" : "transparent"),
@@ -387,7 +387,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: 10,
+                            fontSize: 13,
                             color: isCurrent ? "var(--am-text)" : "var(--am-text-muted)",
                           }}
                         >
@@ -471,7 +471,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                       style={{
                         ...IRIDESCENT_PILL,
                         padding: "8px 14px",
-                        fontSize: 12,
+                        fontSize: 13,
                         opacity: busy || !periodName || !periodStart || !periodEnd ? 0.5 : 1,
                         cursor: busy || !periodName || !periodStart || !periodEnd ? "not-allowed" : "pointer",
                       }}
@@ -551,7 +551,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                               style={{
                                 ...IRIDESCENT_PILL,
                                 padding: "6px 14px",
-                                fontSize: 12,
+                                fontSize: 13,
                                 opacity: busy || !editName || !editStart || !editEnd ? 0.5 : 1,
                                 cursor:
                                   busy || !editName || !editStart || !editEnd ? "not-allowed" : "pointer",
@@ -579,7 +579,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
                               {p.name}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2 }}>
+                            <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>
                               {new Date(p.startDate).toLocaleDateString("en-US", { timeZone: "UTC" })} –{" "}
                               {new Date(p.endDate).toLocaleDateString("en-US", { timeZone: "UTC" })}
                             </div>
@@ -593,7 +593,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                                 style={{
                                   ...CHIP_BTN,
                                   padding: "4px 10px",
-                                  fontSize: 11,
+                                  fontSize: 13,
                                   background: "transparent",
                                   border: "1px solid transparent",
                                   color: "var(--am-accent)",
@@ -610,7 +610,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                                 ...INPUT_STYLE,
                                 width: "auto",
                                 padding: "4px 8px",
-                                fontSize: 11,
+                                fontSize: 13,
                                 borderRadius: 99,
                               }}
                             >
@@ -625,7 +625,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                             {p.status === "active" && (
                               <Link
                                 to={`/commissioner/${leagueId}/close/${p.id}`}
-                                style={{ ...CHIP_BTN, padding: "4px 10px", fontSize: 11, textDecoration: "none" }}
+                                style={{ ...CHIP_BTN, padding: "4px 10px", fontSize: 13, textDecoration: "none" }}
                               >
                                 Close…
                               </Link>
@@ -697,7 +697,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                   }}
                 >
                   <span style={{ fontSize: 13, color: "var(--am-text)" }}>{s.year}</span>
-                  <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+                  <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                     {s.periods.length} periods
                   </span>
                 </div>
@@ -722,7 +722,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
         </div>
 
         {!showCreateForm && currentSeason ? (
-          <p style={{ fontSize: 12, color: "var(--am-text-muted)", margin: 0 }}>
+          <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: 0 }}>
             Create a new league season with fresh teams and settings. Optionally clone from an
             existing season.
           </p>
@@ -778,7 +778,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                   ))}
                 </select>
                 {copyFromId && (
-                  <p style={{ marginTop: 4, fontSize: 11, color: "var(--am-accent)" }}>
+                  <p style={{ marginTop: 4, fontSize: 13, color: "var(--am-accent)" }}>
                     Teams, members, rules, and rosters will be copied from the source season.
                   </p>
                 )}
@@ -801,7 +801,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                   required
                 />
                 {copyFromId && (
-                  <p style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-muted)" }}>
+                  <p style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-muted)" }}>
                     Inherited from source league.
                   </p>
                 )}

@@ -144,7 +144,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
           id="transaction-result-title"
           style={{
             margin: 0,
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: 700,
             fontFamily: "var(--am-display)",
           }}
@@ -152,7 +152,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
           ✓ {result.title}
         </h2>
 
-        <p style={{ margin: "12px 0 0 0", fontSize: 13.5, lineHeight: 1.5 }}>
+        <p style={{ margin: "12px 0 0 0", fontSize: 13, lineHeight: 1.5 }}>
           {result.primaryLine}
         </p>
 
@@ -169,7 +169,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
           >
             <div
               style={{
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
@@ -179,7 +179,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
             >
               Auto-resolve also moved
             </div>
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5, lineHeight: 1.6 }}>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 1.6 }}>
               {result.cascadeMoves.map((m) => (
                 <li key={m.playerId}>
                   <strong>{m.playerName}</strong>: <code>{m.oldSlot}</code> → <code>{m.newSlot}</code>

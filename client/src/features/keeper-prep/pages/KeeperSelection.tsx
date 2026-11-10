@@ -117,7 +117,7 @@ export default function KeeperSelection() {
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Keeper Selection</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
           Keeper Selection
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -176,7 +176,7 @@ export default function KeeperSelection() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-[var(--lg-text-primary)]">{rec.playerName}</span>
-                          <span className="text-[10px] font-mono text-[var(--lg-text-muted)]">${rec.keeperCost}</span>
+                          <span className="text-xs font-mono text-[var(--lg-text-muted)]">${rec.keeperCost}</span>
                         </div>
                         <p className="text-xs text-[var(--lg-text-secondary)] mt-0.5 leading-relaxed">{rec.reasoning}</p>
                       </div>
@@ -185,7 +185,7 @@ export default function KeeperSelection() {
                 </div>
                 {aiResult.strategy && (
                   <div className="pt-2 border-t border-[var(--lg-divide)]">
-                    <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Strategy</div>
+                    <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Strategy</div>
                     <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed italic">{aiResult.strategy}</p>
                   </div>
                 )}

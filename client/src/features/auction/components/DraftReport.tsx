@@ -59,7 +59,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
       {sub && (
         <div
           style={{
-            fontSize: 10,
+            fontSize: 13,
             color: "var(--am-text-faint)",
             marginTop: 6,
             whiteSpace: "nowrap",
@@ -79,7 +79,7 @@ const AURORA_BTN_BASE: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "6px 12px",
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 600,
   borderRadius: 99,
   background: "var(--am-chip-strong)",
@@ -127,7 +127,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
           </button>
         </div>
         {error && (
-          <div style={{ marginTop: 10, fontSize: 12, color: "var(--am-negative)" }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: "var(--am-negative)" }}>
             {error}
           </div>
         )}
@@ -184,7 +184,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                     <TrendingUp size={14} style={{ color: "var(--am-positive)" }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--am-positive)", letterSpacing: 0.4, textTransform: "uppercase" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-positive)", letterSpacing: 0.4, textTransform: "uppercase" }}>
                       Top Bargains
                     </span>
                   </div>
@@ -202,7 +202,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                         <ThemedTr key={b.playerName}>
                           <ThemedTd>
                             <span className="font-medium text-[var(--lg-text-primary)]">{b.playerName}</span>
-                            <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{b.position}</span>
+                            <span className="text-xs text-[var(--lg-text-muted)] ml-1">{b.position}</span>
                           </ThemedTd>
                           <ThemedTd className="text-right tabular-nums">${b.price}</ThemedTd>
                           <ThemedTd className="text-right tabular-nums">${b.projectedValue}</ThemedTd>
@@ -225,7 +225,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                     <TrendingDown size={14} style={{ color: "var(--am-negative)" }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--am-negative)", letterSpacing: 0.4, textTransform: "uppercase" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-negative)", letterSpacing: 0.4, textTransform: "uppercase" }}>
                       Top Overpays
                     </span>
                   </div>
@@ -243,7 +243,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                         <ThemedTr key={o.playerName}>
                           <ThemedTd>
                             <span className="font-medium text-[var(--lg-text-primary)]">{o.playerName}</span>
-                            <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{o.position}</span>
+                            <span className="text-xs text-[var(--lg-text-muted)] ml-1">{o.position}</span>
                           </ThemedTd>
                           <ThemedTd className="text-right tabular-nums">${o.price}</ThemedTd>
                           <ThemedTd className="text-right tabular-nums">${o.projectedValue}</ThemedTd>
@@ -305,7 +305,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                   <ThemedTr key={mc.playerName}>
                     <ThemedTd>
                       <span className="font-medium text-[var(--lg-text-primary)]">{mc.playerName}</span>
-                      <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{mc.position}</span>
+                      <span className="text-xs text-[var(--lg-text-muted)] ml-1">{mc.position}</span>
                     </ThemedTd>
                     <ThemedTd className="text-right tabular-nums font-semibold">
                       <span style={{ color: "var(--am-text)" }}>${mc.price}</span>
@@ -380,7 +380,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                     {trend === "up" && <ArrowUpRight size={14} style={{ color: "var(--am-negative)" }} />}
                     {trend === "down" && <ArrowDownRight size={14} style={{ color: "var(--am-positive)" }} />}
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--am-text-faint)", marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 4 }}>
                     avg · ${q.totalSpent} total
                   </div>
                 </Glass>

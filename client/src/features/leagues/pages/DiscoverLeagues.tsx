@@ -135,7 +135,7 @@ export default function DiscoverLeagues() {
           <IridText size={40} weight={300}>
             Public leagues
           </IridText>
-          <div style={{ marginTop: 8, fontSize: 14, color: "var(--am-text-muted)" }}>
+          <div style={{ marginTop: 8, fontSize: 15, color: "var(--am-text-muted)" }}>
             Browse open and public fantasy baseball leagues. Find a league, request to join, and start drafting.
           </div>
 
@@ -172,7 +172,7 @@ export default function DiscoverLeagues() {
           <Glass>
             <div style={{ textAlign: "center", padding: "40px 16px" }}>
               <SectionLabel style={{ marginBottom: 8 }}>✦ Empty</SectionLabel>
-              <div style={{ fontSize: 16, color: "var(--am-text)", marginBottom: 6 }}>
+              <div style={{ fontSize: 17, color: "var(--am-text)", marginBottom: 6 }}>
                 {search ? "No leagues match your search." : "No public leagues yet."}
               </div>
               <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginBottom: 18 }}>
@@ -221,7 +221,7 @@ export default function DiscoverLeagues() {
                       <div
                         style={{
                           fontFamily: "var(--am-display)",
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: 400,
                           color: "var(--am-text)",
                           lineHeight: 1.2,
@@ -229,7 +229,7 @@ export default function DiscoverLeagues() {
                       >
                         {league.name}
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 4 }}>
+                      <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 4 }}>
                         {league.season} season · {league.scoringFormat || "Roto"} · {league.draftMode || "Auction"}
                       </div>
                     </div>
@@ -239,7 +239,7 @@ export default function DiscoverLeagues() {
                   {league.description && (
                     <div
                       style={{
-                        fontSize: 12.5,
+                        fontSize: 13,
                         color: "var(--am-text-muted)",
                         lineHeight: 1.5,
                         display: "-webkit-box",
@@ -270,7 +270,7 @@ export default function DiscoverLeagues() {
                   >
                     <span
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 600,
                         color: "var(--am-text-muted)",
                       }}

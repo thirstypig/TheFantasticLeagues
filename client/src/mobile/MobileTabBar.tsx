@@ -60,7 +60,7 @@ export function MobileTabBar({ myTeamCode }: MobileTabBarProps) {
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: on ? 700 : 500,
               color: on ? "var(--am-accent)" : "var(--am-text-muted)",
             }}

@@ -71,7 +71,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               {this.state.error.message || "An unexpected error occurred."}
             </p>
             {this.state.requestId && (
-              <div className="mb-4 text-[10px] flex items-center justify-center gap-2">
+              <div className="mb-4 text-xs flex items-center justify-center gap-2">
                 <span className="text-[var(--lg-text-muted)]">Last request:</span>
                 <button
                   onClick={this.handleCopy}

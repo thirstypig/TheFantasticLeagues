@@ -165,7 +165,7 @@ export default function WeeklyReport() {
               {report?.meta.leagueName ?? "Weekly Report"}
             </h1>
             {report && (
-              <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
+              <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
                 {report.meta.label}
                 {report.meta.isCurrentWeek && <Chip strong style={{ marginLeft: 10 }}>Current</Chip>}
               </div>
@@ -210,7 +210,7 @@ export default function WeeklyReport() {
                   marginBottom: 12,
                 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>Loading…</div>
+              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>Loading…</div>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           </Glass>
@@ -233,7 +233,7 @@ export default function WeeklyReport() {
               <div style={{ gridColumn: "span 12" }}>
                 <Glass strong>
                   <SectionLabel>Week in one sentence</SectionLabel>
-                  <p style={{ margin: 0, fontFamily: "var(--am-display)", fontSize: 22, lineHeight: 1.4, fontWeight: 300, color: "var(--am-text)" }}>
+                  <p style={{ margin: 0, fontFamily: "var(--am-display)", fontSize: 24, lineHeight: 1.4, fontWeight: 300, color: "var(--am-text)" }}>
                     {weekInOneSentence}
                   </p>
                 </Glass>
@@ -271,7 +271,7 @@ export default function WeeklyReport() {
                             {rank === 1 ? (
                               <IridText size={20}>{rank}</IridText>
                             ) : (
-                              <span style={{ fontFamily: "var(--am-display)", fontSize: 18, color: "var(--am-text-muted)" }}>{rank}</span>
+                              <span style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text-muted)" }}>{rank}</span>
                             )}
                           </div>
                           <div
@@ -279,7 +279,7 @@ export default function WeeklyReport() {
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 4,
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: 600,
                               color: !hasPrior
                                 ? "var(--am-text-faint)"
@@ -292,7 +292,7 @@ export default function WeeklyReport() {
                             title={hasPrior ? (delta === 0 ? "No change" : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} from prior week`) : "No prior week data"}
                           >
                             {!hasPrior ? (
-                              <span style={{ fontSize: 10, fontStyle: "italic" }}>new</span>
+                              <span style={{ fontSize: 13, fontStyle: "italic" }}>new</span>
                             ) : delta > 0 ? (
                               <>
                                 <ArrowUp size={12} />
@@ -308,9 +308,9 @@ export default function WeeklyReport() {
                             )}
                           </div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)" }}>{teamName || "—"}</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--am-text)" }}>{teamName || "—"}</div>
                             {row.blurb && (
-                              <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.5 }}>{asString(row.blurb)}</div>
+                              <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.5 }}>{asString(row.blurb)}</div>
                             )}
                           </div>
                         </div>
@@ -326,9 +326,9 @@ export default function WeeklyReport() {
               <div style={{ gridColumn: "span 6" }}>
                 <Glass>
                   <SectionLabel>🔥 Hot Team</SectionLabel>
-                  {asString(hotTeam.teamName) && <div style={{ fontSize: 16, fontWeight: 600, color: "var(--am-text)" }}>{asString(hotTeam.teamName)}</div>}
+                  {asString(hotTeam.teamName) && <div style={{ fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{asString(hotTeam.teamName)}</div>}
                   {hotTeam.reason && (
-                    <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, lineHeight: 1.5 }}>{asString(hotTeam.reason)}</div>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, lineHeight: 1.5 }}>{asString(hotTeam.reason)}</div>
                   )}
                 </Glass>
               </div>
@@ -337,9 +337,9 @@ export default function WeeklyReport() {
               <div style={{ gridColumn: "span 6" }}>
                 <Glass>
                   <SectionLabel>❄ Cold Team</SectionLabel>
-                  {asString(coldTeam.teamName) && <div style={{ fontSize: 16, fontWeight: 600, color: "var(--am-text)" }}>{asString(coldTeam.teamName)}</div>}
+                  {asString(coldTeam.teamName) && <div style={{ fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{asString(coldTeam.teamName)}</div>}
                   {coldTeam.reason && (
-                    <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, lineHeight: 1.5 }}>{asString(coldTeam.reason)}</div>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, lineHeight: 1.5 }}>{asString(coldTeam.reason)}</div>
                   )}
                 </Glass>
               </div>
@@ -352,10 +352,10 @@ export default function WeeklyReport() {
                   <SectionLabel>Stat of the Week</SectionLabel>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     {statOfTheWeek.value != null && <IridText size={28}>{asString(statOfTheWeek.value)}</IridText>}
-                    {statOfTheWeek.stat && <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>{asString(statOfTheWeek.stat)}</span>}
+                    {statOfTheWeek.stat && <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{asString(statOfTheWeek.stat)}</span>}
                   </div>
                   {statOfTheWeek.teamName && <div style={{ fontSize: 13, color: "var(--am-text)", marginTop: 6 }}>{asString(statOfTheWeek.teamName)}</div>}
-                  {statOfTheWeek.context && <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.5 }}>{asString(statOfTheWeek.context)}</div>}
+                  {statOfTheWeek.context && <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 4, lineHeight: 1.5 }}>{asString(statOfTheWeek.context)}</div>}
                 </Glass>
               </div>
             )}
@@ -363,9 +363,9 @@ export default function WeeklyReport() {
               <div style={{ gridColumn: "span 6" }}>
                 <Glass>
                   <SectionLabel>Bold Prediction</SectionLabel>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)", lineHeight: 1.4 }}>{asString(boldPrediction.prediction) || "—"}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--am-text)", lineHeight: 1.4 }}>{asString(boldPrediction.prediction) || "—"}</div>
                   {boldPrediction.rationale && (
-                    <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, lineHeight: 1.5 }}>{asString(boldPrediction.rationale)}</div>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, lineHeight: 1.5 }}>{asString(boldPrediction.rationale)}</div>
                   )}
                 </Glass>
               </div>
@@ -385,7 +385,7 @@ export default function WeeklyReport() {
                           borderRadius: 12,
                           background: "var(--am-surface-faint)",
                           border: "1px solid var(--am-border)",
-                          fontSize: 12,
+                          fontSize: 13,
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
@@ -412,7 +412,7 @@ export default function WeeklyReport() {
                     <TradeSide name={asString(proposedTrade.teamB) || "—"} gives={asArray<string>(proposedTrade.bGives)} align="left" />
                   </div>
                   {proposedTrade.rationale && (
-                    <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
                       {asString(proposedTrade.rationale)}
                     </div>
                   )}
@@ -425,8 +425,8 @@ export default function WeeklyReport() {
               <div style={{ gridColumn: "span 6" }}>
                 <Glass>
                   <SectionLabel>Fantasy MVP</SectionLabel>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: "var(--am-text)" }}>{asString(fantasyMVP.playerName) || asString(fantasyMVP.name) || "—"}</div>
-                  {fantasyMVP.line != null && <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6 }}>{asString(fantasyMVP.line)}</div>}
+                  <div style={{ fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{asString(fantasyMVP.playerName) || asString(fantasyMVP.name) || "—"}</div>
+                  {fantasyMVP.line != null && <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6 }}>{asString(fantasyMVP.line)}</div>}
                 </Glass>
               </div>
             )}
@@ -434,8 +434,8 @@ export default function WeeklyReport() {
               <div style={{ gridColumn: "span 6" }}>
                 <Glass>
                   <SectionLabel>Fantasy Cy Young</SectionLabel>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: "var(--am-text)" }}>{asString(fantasyCyYoung.playerName) || asString(fantasyCyYoung.name) || "—"}</div>
-                  {fantasyCyYoung.line != null && <div style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6 }}>{asString(fantasyCyYoung.line)}</div>}
+                  <div style={{ fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{asString(fantasyCyYoung.playerName) || asString(fantasyCyYoung.name) || "—"}</div>
+                  {fantasyCyYoung.line != null && <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6 }}>{asString(fantasyCyYoung.line)}</div>}
                 </Glass>
               </div>
             )}
@@ -460,7 +460,7 @@ export default function WeeklyReport() {
                           borderTop: s.rank === 1 ? "none" : "1px solid var(--am-border)",
                         }}
                       >
-                        <span style={{ fontSize: 11, color: "var(--am-text-faint)", textAlign: "center" }}>{s.rank}</span>
+                        <span style={{ fontSize: 13, color: "var(--am-text-faint)", textAlign: "center" }}>{s.rank}</span>
                         <span style={{ fontSize: 13, color: "var(--am-text)", fontWeight: s.rank === 1 ? 600 : 500 }}>{s.teamName}</span>
                         {s.rank === 1 ? (
                           <IridText size={16}>{s.totalPoints}</IridText>
@@ -489,7 +489,7 @@ export default function WeeklyReport() {
                       style={{
                         padding: "8px 8px",
                         borderTop: "1px solid var(--am-border)",
-                        fontSize: 12,
+                        fontSize: 13,
                         display: "grid",
                         gridTemplateColumns: "auto 1fr auto",
                         gap: 8,
@@ -501,7 +501,7 @@ export default function WeeklyReport() {
                         <span style={{ fontWeight: 600 }}>{a.teamName ?? "—"}</span>
                         {a.playerName && <span style={{ color: "var(--am-text-muted)" }}> · {a.playerName}</span>}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
+                      <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                         {new Date(a.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
                     </div>
@@ -535,7 +535,7 @@ export default function WeeklyReport() {
 
         {/* Footer attribution */}
         {report?.meta.generatedAt && (
-          <div style={{ marginTop: 16, textAlign: "center", fontSize: 11, color: "var(--am-text-faint)" }}>
+          <div style={{ marginTop: 16, textAlign: "center", fontSize: 13, color: "var(--am-text-faint)" }}>
             Digest generated {new Date(report.meta.generatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · Powered by Google Gemini & Anthropic Claude
           </div>
         )}
@@ -547,12 +547,12 @@ export default function WeeklyReport() {
 function TradeSide({ name, gives, align }: { name: string; gives: string[]; align: "left" | "right" }) {
   return (
     <div style={{ textAlign: align }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)", marginBottom: 6 }}>{name}</div>
+      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--am-text)", marginBottom: 6 }}>{name}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: align === "right" ? "flex-end" : "flex-start" }}>
         {gives.length === 0 ? (
-          <span style={{ fontSize: 11, color: "var(--am-text-faint)", fontStyle: "italic" }}>—</span>
+          <span style={{ fontSize: 13, color: "var(--am-text-faint)", fontStyle: "italic" }}>—</span>
         ) : gives.map((g, i) => (
-          <span key={i} style={{ fontSize: 12, color: "var(--am-text-muted)" }}>{g}</span>
+          <span key={i} style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{g}</span>
         ))}
       </div>
     </div>
@@ -603,9 +603,9 @@ function TeamInsightCard({
             <div key={i} style={{ padding: "8px 10px", background: "var(--am-surface-faint)", border: "1px solid var(--am-border)", borderRadius: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 {it.category && <Chip>{asString(it.category)}</Chip>}
-                {it.title && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{asString(it.title)}</span>}
+                {it.title && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{asString(it.title)}</span>}
               </div>
-              {it.detail && <div style={{ fontSize: 12, color: "var(--am-text-muted)", lineHeight: 1.5 }}>{asString(it.detail)}</div>}
+              {it.detail && <div style={{ fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.5 }}>{asString(it.detail)}</div>}
             </div>
           ))}
         </div>
@@ -618,7 +618,7 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
   return {
     padding: "6px 12px",
     borderRadius: 99,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 600,
     letterSpacing: 0.4,
     textTransform: "uppercase",

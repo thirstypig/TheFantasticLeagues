@@ -89,9 +89,9 @@ function surplusColor(surplus: number | null): string {
 function StatPill({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] rounded-lg px-3 py-2 text-center min-w-0">
-      <div className="text-[10px] uppercase tracking-wide font-bold text-[var(--lg-text-muted)] opacity-60">{label}</div>
+      <div className="text-xs uppercase tracking-wide font-bold text-[var(--lg-text-muted)] opacity-60">{label}</div>
       <div className="text-sm font-bold text-[var(--lg-text-primary)] tabular-nums">{value}</div>
-      {sub && <div className="text-[10px] text-[var(--lg-text-muted)] truncate">{sub}</div>}
+      {sub && <div className="text-xs text-[var(--lg-text-muted)] truncate">{sub}</div>}
     </div>
   );
 }
@@ -175,10 +175,10 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
             <span className={`text-3xl font-black tabular-nums ${gradeColor(team.grade)}`}>{team.grade}</span>
             <div>
               <h3 className="text-base font-bold text-[var(--lg-text-primary)]">{team.teamName}</h3>
-              <div className="text-[11px] text-[var(--lg-text-muted)] tabular-nums mt-0.5 flex items-center gap-2 flex-wrap">
+              <div className="text-xs text-[var(--lg-text-muted)] tabular-nums mt-0.5 flex items-center gap-2 flex-wrap">
                 <span>Auction: ${team.auctionSpend} · {team.keeperCount} keepers: ${team.keeperSpend} · Surplus: <span className={surplusColor(team.auctionSurplus)}>{team.auctionSurplus >= 0 ? "+" : ""}${team.auctionSurplus}</span></span>
                 {team.favMlbTeam && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-[10px] font-bold">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-xs font-bold">
                     {team.favMlbTeam.team} ×{team.favMlbTeam.count}
                   </span>
                 )}
@@ -199,11 +199,11 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
         <div className="mb-3">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Users size={13} className="text-[var(--lg-accent)]" />
-            <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Keepers</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Keepers</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {team.keepers.map(k => (
-              <span key={k.playerName} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-[11px]">
+              <span key={k.playerName} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-xs">
                 <span className="font-medium text-[var(--lg-text-primary)]">{k.playerName}</span>
                 <span className="text-[var(--lg-text-muted)]">{k.position}</span>
                 <span className="tabular-nums text-[var(--lg-text-secondary)]">${k.price}</span>
@@ -223,7 +223,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
           {team.bestBargain && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5">
               <TrendingUp size={14} className="text-emerald-500 flex-shrink-0" />
-              <div className="text-[11px] min-w-0">
+              <div className="text-xs min-w-0">
                 <span className="font-bold text-emerald-500">Best Bargain: </span>
                 <span className="font-medium text-[var(--lg-text-primary)]">{team.bestBargain.playerName}</span>
                 <span className="text-[var(--lg-text-muted)]"> ({team.bestBargain.position})</span>
@@ -235,7 +235,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
           {team.worstOverpay && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5">
               <TrendingDown size={14} className="text-red-400 flex-shrink-0" />
-              <div className="text-[11px] min-w-0">
+              <div className="text-xs min-w-0">
                 <span className="font-bold text-red-400">Worst Overpay: </span>
                 <span className="font-medium text-[var(--lg-text-primary)]">{team.worstOverpay.playerName}</span>
                 <span className="text-[var(--lg-text-muted)]"> ({team.worstOverpay.position})</span>
@@ -254,21 +254,21 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
             {team.categoryStrengths && (
               <div className="px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-500 mb-1">Projected Strengths</div>
-                <div className="text-[11px] text-[var(--lg-text-secondary)] leading-relaxed">{team.categoryStrengths}</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-emerald-500 mb-1">Projected Strengths</div>
+                <div className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{team.categoryStrengths}</div>
               </div>
             )}
             {team.categoryWeaknesses && (
               <div className="px-3 py-2 rounded-lg bg-red-500/5 border border-red-500/20">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-red-400 mb-1">Projected Weaknesses</div>
-                <div className="text-[11px] text-[var(--lg-text-secondary)] leading-relaxed">{team.categoryWeaknesses}</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-red-400 mb-1">Projected Weaknesses</div>
+                <div className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{team.categoryWeaknesses}</div>
               </div>
             )}
           </div>
         )}
 
         {/* Projected Stats */}
-        <div className="text-[11px] text-[var(--lg-text-muted)] bg-[var(--lg-tint)] rounded-md px-3 py-2 font-mono leading-relaxed">
+        <div className="text-xs text-[var(--lg-text-muted)] bg-[var(--lg-tint)] rounded-md px-3 py-2 font-mono leading-relaxed">
           {team.projectedStats}
         </div>
       </div>
@@ -276,7 +276,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
       {/* Expandable roster */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-center gap-1.5 py-2 text-[11px] font-medium text-[var(--lg-accent)] border-t border-[var(--lg-border-faint)] hover:bg-[var(--lg-tint)] transition-colors"
+        className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-[var(--lg-accent)] border-t border-[var(--lg-border-faint)] hover:bg-[var(--lg-tint)] transition-colors"
       >
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         {expanded ? "Hide Roster" : "Show Full Roster"}
@@ -290,7 +290,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
               <button
                 key={g}
                 onClick={() => setViewGroup(g)}
-                className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase transition-colors ${
+                className={`px-3 py-1 rounded-md text-xs font-bold uppercase transition-colors ${
                   viewGroup === g
                     ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                     : "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
@@ -299,7 +299,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
                 {g === "hitters" ? "H" : "P"}
               </button>
             ))}
-            <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{filteredRoster.length} players</span>
+            <span className="text-xs text-[var(--lg-text-muted)] ml-1">{filteredRoster.length} players</span>
           </div>
 
           <ThemedTable>
@@ -345,10 +345,10 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
                   >
                     <ThemedTd className="px-2">
                       <span className="font-medium text-[var(--lg-text-primary)]">{r.playerName}</span>
-                      {r.isKeeper && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">K</span>}
+                      {r.isKeeper && <span className="ml-1.5 px-1 py-0.5 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">K</span>}
                     </ThemedTd>
                     <ThemedTd align="center" className="px-1">
-                      <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">{pos || "—"}</span>
+                      <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">{pos || "—"}</span>
                     </ThemedTd>
                     {viewGroup === "hitters" ? (
                       <>
@@ -491,7 +491,7 @@ export default function DraftReportPage() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ AI · Draft Report</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               Draft Report
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -504,7 +504,7 @@ export default function DraftReportPage() {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
                 padding: "6px 12px", borderRadius: 99,
-                fontSize: 12, fontWeight: 600,
+                fontSize: 13, fontWeight: 600,
                 background: "var(--am-chip)", color: "var(--am-text)",
                 border: "1px solid var(--am-border)",
                 cursor: "pointer",
@@ -553,7 +553,7 @@ export default function DraftReportPage() {
             <div className="flex items-center gap-2 mb-3">
               <Target size={15} className="text-[var(--lg-accent)]" />
               <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Value Efficiency Ranking</h3>
-              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60 ml-1">(auction surplus = projected value − price paid)</span>
+              <span className="text-xs text-[var(--lg-text-muted)] opacity-60 ml-1">(auction surplus = projected value − price paid)</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {report.surplusRanking.map((t, i) => (
@@ -598,15 +598,15 @@ export default function DraftReportPage() {
                 <strong className="text-[var(--lg-text-primary)]">Projected stats:</strong> Team stat projections are AI-estimated based on each player's realistic 2026 outlook assuming health. These are directional estimates, not precise forecasts — actual results will vary based on playing time, injuries, and breakout/decline trajectories.
               </p>
               <div className="flex items-center gap-3 pt-2 border-t border-[var(--lg-border-faint)] mt-2">
-                <span className="text-[10px] text-[var(--lg-text-muted)]">
+                <span className="text-xs text-[var(--lg-text-muted)]">
                   Generated {report.generatedAt ? new Date(report.generatedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—"}
                 </span>
-                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-40">·</span>
-                <span className="text-[10px] text-[var(--lg-text-muted)]">
+                <span className="text-xs text-[var(--lg-text-muted)] opacity-40">·</span>
+                <span className="text-xs text-[var(--lg-text-muted)]">
                   Powered by <strong className="text-[var(--lg-text-secondary)]">Google Gemini</strong> & <strong className="text-[var(--lg-text-secondary)]">Anthropic Claude</strong>
                 </span>
-                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-40">·</span>
-                <span className="text-[10px] text-[var(--lg-text-muted)]">Projected values from OGBA auction values engine</span>
+                <span className="text-xs text-[var(--lg-text-muted)] opacity-40">·</span>
+                <span className="text-xs text-[var(--lg-text-muted)]">Projected values from OGBA auction values engine</span>
               </div>
             </div>
           </div>

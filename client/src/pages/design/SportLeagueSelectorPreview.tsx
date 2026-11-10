@@ -48,7 +48,7 @@ export function SportLeagueSelectorPreview() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div style={{ marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "30px", fontWeight: 700, color: "var(--am-text)", marginBottom: "8px" }}>
+          <h1 style={{ fontSize: 32, fontWeight: 700, color: "var(--am-text)", marginBottom: "8px" }}>
             Create a League
           </h1>
           <p style={{ color: "var(--am-text-muted)" }}>
@@ -117,7 +117,7 @@ export function SportLeagueSelectorPreview() {
                 />
                 <div style={{ marginLeft: "16px", flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "var(--am-text)" }}>Major League Baseball</div>
-                  <div style={{ fontSize: "14px", color: "var(--am-text-muted)", marginTop: "4px" }}>30 teams • Active season</div>
+                  <div style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: "4px" }}>30 teams • Active season</div>
                 </div>
               </label>
 
@@ -156,7 +156,7 @@ export function SportLeagueSelectorPreview() {
                 />
                 <div style={{ marginLeft: "16px", flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "var(--am-text)" }}>National Football League</div>
-                  <div style={{ fontSize: "14px", color: "var(--am-text-muted)", marginTop: "4px" }}>32 teams • Regular season</div>
+                  <div style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: "4px" }}>32 teams • Regular season</div>
                 </div>
               </label>
 
@@ -195,7 +195,7 @@ export function SportLeagueSelectorPreview() {
                 />
                 <div style={{ marginLeft: "16px", flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "var(--am-text)" }}>National Basketball Association</div>
-                  <div style={{ fontSize: "14px", color: "var(--am-text-muted)", marginTop: "4px" }}>30 teams • Regular season</div>
+                  <div style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: "4px" }}>30 teams • Regular season</div>
                 </div>
               </label>
             </div>
@@ -237,7 +237,7 @@ export function SportLeagueSelectorPreview() {
             {/* Coming Soon notice for NFL/NBA */}
             {(selectedSport === "NFL" || selectedSport === "NBA") && (
               <div style={{ padding: "16px", backgroundColor: "var(--am-surface-alt)", border: "1px solid var(--am-border)", borderRadius: "8px" }}>
-                <p style={{ fontSize: "14px", color: "var(--am-text-muted)" }}>
+                <p style={{ fontSize: 15, color: "var(--am-text-muted)" }}>
                   <strong>{selectedSport} league creation</strong> is coming soon.
                   You can view the {selectedSport} dashboard now, or check back later to create a league.
                 </p>
@@ -285,10 +285,10 @@ export function SportLeagueSelectorPreview() {
                 />
                 <div style={{ marginLeft: "16px", flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "var(--am-text)" }}>Snake Draft</div>
-                  <div style={{ fontSize: "14px", color: "var(--am-text-muted)", marginTop: "4px" }}>Traditional draft order alternating each round</div>
+                  <div style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: "4px" }}>Traditional draft order alternating each round</div>
                 </div>
                 {(selectedSport === "NFL" || selectedSport === "NBA") && (
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", backgroundColor: "var(--am-surface-alt)", color: "var(--am-text-faint)", padding: "4px 8px", borderRadius: "4px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 13, backgroundColor: "var(--am-surface-alt)", color: "var(--am-text-faint)", padding: "4px 8px", borderRadius: "4px" }}>
                     <Lock style={{ width: "12px", height: "12px" }} /> Coming Soon
                   </span>
                 )}
@@ -334,10 +334,10 @@ export function SportLeagueSelectorPreview() {
                 />
                 <div style={{ marginLeft: "16px", flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "var(--am-text)" }}>Auction Draft</div>
-                  <div style={{ fontSize: "14px", color: "var(--am-text-muted)", marginTop: "4px" }}>Bid for players with a shared salary cap budget</div>
+                  <div style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: "4px" }}>Bid for players with a shared salary cap budget</div>
                 </div>
                 {(selectedSport === "NFL" || selectedSport === "NBA") && (
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", backgroundColor: "var(--am-surface-alt)", color: "var(--am-text-faint)", padding: "4px 8px", borderRadius: "4px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 13, backgroundColor: "var(--am-surface-alt)", color: "var(--am-text-faint)", padding: "4px 8px", borderRadius: "4px" }}>
                     <Lock style={{ width: "12px", height: "12px" }} /> Coming Soon
                   </span>
                 )}
@@ -355,11 +355,11 @@ export function SportLeagueSelectorPreview() {
                 <div style={{ marginLeft: "16px", flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "var(--am-text-faint)", display: "flex", alignItems: "center", gap: "8px" }}>
                     Head-to-Head
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", backgroundColor: "var(--am-surface-alt)", color: "var(--am-text-faint)", padding: "4px 8px", borderRadius: "4px" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: 13, backgroundColor: "var(--am-surface-alt)", color: "var(--am-text-faint)", padding: "4px 8px", borderRadius: "4px" }}>
                       <Lock style={{ width: "12px", height: "12px" }} /> Coming Soon
                     </span>
                   </div>
-                  <div style={{ fontSize: "14px", color: "var(--am-text-muted)", marginTop: "4px" }}>Weekly matchups with category scoring</div>
+                  <div style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: "4px" }}>Weekly matchups with category scoring</div>
                 </div>
               </div>
             </div>
@@ -443,7 +443,7 @@ export function SportLeagueSelectorPreview() {
       </div>
 
       {/* Debug Info (remove in production) */}
-      <div style={{ marginTop: "64px", maxWidth: "640px", margin: "64px auto 0", padding: "16px", backgroundColor: "var(--am-surface-alt)", borderRadius: "8px", border: "1px solid var(--am-border)", fontSize: "14px", fontFamily: "monospace", color: "var(--am-text-muted)" }}>
+      <div style={{ marginTop: "64px", maxWidth: "640px", margin: "64px auto 0", padding: "16px", backgroundColor: "var(--am-surface-alt)", borderRadius: "8px", border: "1px solid var(--am-border)", fontSize: 15, fontFamily: "monospace", color: "var(--am-text-muted)" }}>
         <div>Sport: {selectedSport || "none"}</div>
         <div>Format: {selectedFormat || "none"}</div>
         <div>Step: {step}</div>

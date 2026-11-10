@@ -153,7 +153,7 @@ export default function CommissionerHub() {
             <Link
               key={slug}
               to={`${base}/${slug}`}
-              style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 12px", fontSize: 16, color: "var(--am-accent)" }}
+              style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 12px", fontSize: 17, color: "var(--am-accent)" }}
             >
               {label}
             </Link>
@@ -164,7 +164,7 @@ export default function CommissionerHub() {
       <section data-testid="recent">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <SectionLabel>Recent changes</SectionLabel>
-          <Link to={`${base}/recent`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 16, color: "var(--am-accent)" }}>
+          <Link to={`${base}/recent`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 17, color: "var(--am-accent)" }}>
             All ›
           </Link>
         </div>

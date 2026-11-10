@@ -50,13 +50,13 @@ export default function ChatTabLegacy({ messages, onSend, myUserId }: ChatTabPro
                   : 'bg-[var(--lg-tint)] text-[var(--lg-text-primary)]'
               }`}>
                 {!isMe && (
-                  <div className="text-[9px] font-semibold uppercase tracking-wide opacity-60 mb-0.5">
+                  <div className="text-xs font-semibold uppercase tracking-wide opacity-60 mb-0.5">
                     {msg.userName}
                   </div>
                 )}
                 <div className="text-sm leading-snug break-words">{msg.text}</div>
               </div>
-              <span className="text-[9px] text-[var(--lg-text-muted)] opacity-40 mt-0.5 px-1">
+              <span className="text-xs text-[var(--lg-text-muted)] opacity-40 mt-0.5 px-1">
                 {formatTime(msg.timestamp)}
               </span>
             </div>

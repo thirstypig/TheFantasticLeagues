@@ -79,7 +79,7 @@ export default function ForgotPassword() {
             <div
               style={{
                 fontFamily: "var(--am-display)",
-                fontSize: 14,
+                fontSize: 15,
                 color: "var(--am-text-muted)",
                 letterSpacing: -0.1,
               }}
@@ -91,7 +91,7 @@ export default function ForgotPassword() {
           <h1
             style={{
               fontFamily: "var(--am-display)",
-              fontSize: 28,
+              fontSize: 24,
               fontWeight: 300,
               lineHeight: 1.1,
               color: "var(--am-text)",
@@ -183,7 +183,7 @@ export default function ForgotPassword() {
                 <label
                   style={{
                     display: "block",
-                    fontSize: 10,
+                    fontSize: 13,
                     letterSpacing: 1.4,
                     textTransform: "uppercase",
                     color: "var(--am-text-faint)",
@@ -207,7 +207,7 @@ export default function ForgotPassword() {
                     background: "var(--am-surface-faint)",
                     border: "1px solid var(--am-border)",
                     color: "var(--am-text)",
-                    fontSize: 14,
+                    fontSize: 15,
                     outline: "none",
                     boxSizing: "border-box",
                   }}
@@ -228,7 +228,7 @@ export default function ForgotPassword() {
                     background: "var(--am-surface-faint)",
                     border: "1px solid var(--am-border)",
                     color: "var(--am-cardinal)",
-                    fontSize: 12,
+                    fontSize: 13,
                     lineHeight: 1.4,
                   }}
                 >
@@ -246,7 +246,7 @@ export default function ForgotPassword() {
                   background: "var(--am-irid)",
                   border: "1px solid var(--am-border-strong)",
                   color: "var(--am-on-accent)",
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.5 : 1,
@@ -261,7 +261,7 @@ export default function ForgotPassword() {
                 <Link
                   to="/login"
                   style={{
-                    fontSize: 12,
+                    fontSize: 13,
                     color: "var(--am-text-muted)",
                     textDecoration: "none",
                   }}

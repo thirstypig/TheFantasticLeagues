@@ -155,7 +155,7 @@ export default function ProductBoard() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           lg.visibility === "OPEN"
                             ? "bg-green-500/15 text-green-600 dark:text-green-400"
                             : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
@@ -163,7 +163,7 @@ export default function ProductBoard() {
                           {lg.visibility === "OPEN" ? "Open — Join Now" : "Public — Request to Join"}
                         </span>
                         {lg.entryFee != null && lg.entryFee > 0 && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
                             ${lg.entryFee} entry
                           </span>
                         )}
@@ -179,7 +179,7 @@ export default function ProductBoard() {
                         </p>
                       )}
 
-                      <div className="flex flex-wrap gap-3 text-[10px] text-[var(--lg-text-muted)]">
+                      <div className="flex flex-wrap gap-3 text-xs text-[var(--lg-text-muted)]">
                         <span className="capitalize">{lg.sport}</span>
                         <span>{lg.scoringFormat?.replace("_", " ")}</span>
                         <span>{lg.draftMode}</span>
@@ -220,12 +220,12 @@ export default function ProductBoard() {
             >
               <div className="flex items-center gap-2 mb-2">
                 {card.type === "league_listing" && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                     League Listing
                   </span>
                 )}
                 {card.type === "announcement" && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
                     Announcement
                   </span>
                 )}
@@ -239,7 +239,7 @@ export default function ProductBoard() {
               </p>
 
               {card.metadata && (
-                <div className="flex flex-wrap gap-3 text-[10px] text-[var(--lg-text-muted)]">
+                <div className="flex flex-wrap gap-3 text-xs text-[var(--lg-text-muted)]">
                   {card.metadata.sport && (
                     <span className="flex items-center gap-1">
                       <Users className="w-3 h-3" />

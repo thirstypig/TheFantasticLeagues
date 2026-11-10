@@ -73,7 +73,7 @@ export default function WireListOwnerPage() {
       <Glass>
         <div style={{ padding: 24 }}>
           <SectionLabel>Waiver Wire</SectionLabel>
-          <div style={{ marginTop: 12, fontSize: 14, color: "var(--am-text-muted)" }}>
+          <div style={{ marginTop: 12, fontSize: 15, color: "var(--am-text-muted)" }}>
             No active waiver period. Your commissioner will open one before the next deadline.
           </div>
           <Link to={`/teams/${teamCode}`} style={{ display: "inline-block", marginTop: 16, color: "var(--am-accent)" }}>
@@ -98,7 +98,7 @@ export default function WireListOwnerPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <div>
             <SectionLabel>Waiver Wire List</SectionLabel>
-            <div style={{ fontFamily: "var(--am-display)", fontSize: 18, color: "var(--am-text)", marginTop: 4 }}>
+            <div style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text)", marginTop: 4 }}>
               Locks {formatDeadline(period.deadlineAt)}
             </div>
           </div>
@@ -262,7 +262,7 @@ const btnStyle: React.CSSProperties = {
   border: "1px solid var(--am-border)", cursor: "pointer",
 };
 const addBtnStyle: React.CSSProperties = {
-  padding: "4px 10px", fontSize: 11, fontWeight: 600,
+  padding: "4px 10px", fontSize: 13, fontWeight: 600,
   borderRadius: 6, background: "var(--am-accent)",
   color: "var(--am-on-accent)", border: "none", cursor: "pointer",
 };

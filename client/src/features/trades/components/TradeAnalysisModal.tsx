@@ -144,7 +144,7 @@ export function TradeAnalysisModal({ leagueId, items, onClose }: TradeAnalysisMo
               </div>
 
               {/* Attribution */}
-              <div className="text-[9px] text-[var(--lg-text-muted)] opacity-40">
+              <div className="text-xs text-[var(--lg-text-muted)] opacity-40">
                 Powered by <strong>Google Gemini</strong> & <strong>Anthropic Claude</strong>
               </div>
             </>

@@ -5,7 +5,7 @@ export function Screenshot({ src, alt, caption }: { src: string; alt: string; ca
   return (
     <figure className="my-3 rounded-lg overflow-hidden border border-[var(--lg-border-subtle)] shadow-sm">
       <img src={src} alt={alt} className="w-full" loading="lazy" width={1280} height={800} style={{ aspectRatio: "16 / 10" }} />
-      {caption && <figcaption className="text-[10px] text-[var(--lg-text-muted)] text-center py-1.5 bg-[var(--lg-tint)] border-t border-[var(--lg-border-subtle)]">{caption}</figcaption>}
+      {caption && <figcaption className="text-xs text-[var(--lg-text-muted)] text-center py-1.5 bg-[var(--lg-tint)] border-t border-[var(--lg-border-subtle)]">{caption}</figcaption>}
     </figure>
   );
 }
@@ -34,7 +34,7 @@ export function Section({ title, icon: Icon, defaultOpen, children }: { title: s
 export function Step({ num, title, children }: { num: number; title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3">
-      <div className="shrink-0 w-6 h-6 rounded-full bg-[var(--lg-accent)] text-[var(--lg-on-accent)] flex items-center justify-center text-[10px] font-bold print:bg-gray-800">{num}</div>
+      <div className="shrink-0 w-6 h-6 rounded-full bg-[var(--lg-accent)] text-[var(--lg-on-accent)] flex items-center justify-center text-xs font-bold print:bg-gray-800">{num}</div>
       <div className="flex-1">
         <div className="font-semibold text-[var(--lg-text-primary)] text-sm mb-0.5">{title}</div>
         <div className="text-[var(--lg-text-secondary)] text-sm leading-relaxed">{children}</div>

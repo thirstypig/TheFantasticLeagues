@@ -71,7 +71,7 @@ export default function AuctionLayout({ stage, context, isMuted, onToggleMute, c
             background: "rgba(251, 191, 36, 0.10)",
             borderBottom: "1px solid rgba(251, 191, 36, 0.30)",
             color: "rgb(251, 191, 36)",
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 500,
             flexShrink: 0,
           }}

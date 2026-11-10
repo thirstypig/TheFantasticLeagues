@@ -451,7 +451,7 @@ export default function Team() {
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <Sparkles size={14} className="text-[var(--lg-accent)] flex-shrink-0" />
                   <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Weekly Insights</span>
-                  <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
+                  <span className="text-xs text-[var(--lg-text-muted)] opacity-60">Updated Every Monday</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {activeGrade && (
@@ -464,7 +464,7 @@ export default function Team() {
               </button>
               <Link
                 to={activeWeekKey ? `/report/${activeWeekKey}` : "/report"}
-                className="flex items-center gap-1.5 px-3 md:px-4 border-l border-[var(--lg-border-faint)] text-[11px] font-semibold uppercase tracking-wider text-[var(--lg-accent)] hover:bg-[var(--lg-bg-card)]/30 transition-colors"
+                className="flex items-center gap-1.5 px-3 md:px-4 border-l border-[var(--lg-border-faint)] text-xs font-semibold uppercase tracking-wider text-[var(--lg-accent)] hover:bg-[var(--lg-bg-card)]/30 transition-colors"
                 title="Open This Week in Baseball — full weekly report"
               >
                 Full Report
@@ -500,7 +500,7 @@ export default function Team() {
                         <button
                           key={week.weekKey}
                           onClick={(e) => { e.stopPropagation(); setSelectedWeekKey(week.weekKey); }}
-                          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                             isActive
                               ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                               : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-accent)]/30"
@@ -528,7 +528,7 @@ export default function Team() {
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]">
+                            <span className="px-1.5 py-0.5 rounded text-xs font-bold uppercase bg-[var(--lg-accent)]/10 text-[var(--lg-accent)]">
                               {insight.category}
                             </span>
                             <span className="text-xs font-semibold text-[var(--lg-text-primary)] leading-tight">{insight.title}</span>
@@ -539,7 +539,7 @@ export default function Team() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 text-center text-[10px] text-[var(--lg-text-muted)] opacity-50">
+                <div className="mt-3 text-center text-xs text-[var(--lg-text-muted)] opacity-50">
                   Powered by <strong>Google Gemini</strong> & <strong>Anthropic Claude</strong>
                 </div>
               </div>
@@ -563,7 +563,7 @@ export default function Team() {
               ))}
             </select>
             {selectedPeriodId && (
-              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-60">
+              <span className="text-xs text-[var(--lg-text-muted)] opacity-60">
                 Showing all players on this team during the selected period
               </span>
             )}
@@ -594,7 +594,7 @@ export default function Team() {
                       className={!r.isActive ? "opacity-50" : ""}
                     >
                       <ThemedTd align="center">
-                        <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                        <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">
                           {r.assignedPosition || mapPosition(r.posPrimary, outfieldMode)}
                         </span>
                       </ThemedTd>
@@ -602,23 +602,23 @@ export default function Team() {
                         <span className="text-xs font-medium text-[var(--lg-text-primary)]">{r.name}</span>
                       </ThemedTd>
                       <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">{r.mlbTeam || "—"}</span>
+                        <span className="text-xs text-[var(--lg-text-muted)]">{r.mlbTeam || "—"}</span>
                       </ThemedTd>
                       <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">${r.price}</span>
+                        <span className="text-xs text-[var(--lg-text-muted)]">${r.price}</span>
                       </ThemedTd>
                       <ThemedTd align="center">
                         {r.isActive ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                          <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
                             {r.source === "TRADE_OUT" ? "Traded" : r.source === "WAIVER_DROP" ? "Waived" : "Dropped"}{" "}
                             {r.releasedAt ? new Date(r.releasedAt).toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) : ""}
                           </span>
                         )}
                       </ThemedTd>
                       <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">{r.source}</span>
+                        <span className="text-xs text-[var(--lg-text-muted)]">{r.source}</span>
                       </ThemedTd>
                     </ThemedTr>
                   ))}
@@ -706,7 +706,7 @@ export default function Team() {
 
                                 if (positionsLocked || !rosterId || !dbTeamId) {
                                   // During season: fixed position label, no dropdown
-                                  return <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>;
+                                  return <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>;
                                 }
 
                                 // During draft/setup: allow position changes
@@ -720,7 +720,7 @@ export default function Team() {
                                 })();
                                 return posSlots.length > 1 ? (
                                   <select
-                                    className="appearance-none bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all outline-none text-[10px] font-mono"
+                                    className="appearance-none bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-all outline-none text-xs font-mono"
                                     value={assignedPos}
                                     onChange={(e) => { e.stopPropagation(); handlePositionSwap(dbTeamId, rosterId, e.target.value); }}
                                     onClick={(e) => e.stopPropagation()}
@@ -728,16 +728,16 @@ export default function Team() {
                                     {posSlots.map(pos => <option key={pos} value={pos} className="text-black">{pos}</option>)}
                                   </select>
                                 ) : (
-                                  <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>
+                                  <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">{assignedPos || "—"}</span>
                                 );
                               })()}
                             </ThemedTd>
                             <ThemedTd align="center">
                               <span className="inline-flex items-center gap-1.5">
                                 {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
-                                {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                                {(p as any)?.isKeeper && <span className="text-xs font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
                                 {tradeBlockIds.has((p as any)?._dbPlayerId) && (
-                                  <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
+                                  <span className="text-xs font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
                                     <ArrowLeftRight size={10} className="inline -mt-px" /> TB
                                   </span>
                                 )}
@@ -789,7 +789,7 @@ export default function Team() {
                     const teamAvg = totAB > 0 ? totH / totAB : 0;
                     return (
                       <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
-                        <ThemedTd align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
+                        <ThemedTd align="center"><span className="text-xs font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
                         <ThemedTd align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></ThemedTd>
                         <ThemedTd align="center">{""}</ThemedTd>
                         <ThemedTd align="center"><span className="font-bold">{totAB}</span></ThemedTd>
@@ -854,14 +854,14 @@ export default function Team() {
                           >
                             <ThemedTd align="center">
                               {/* Pitchers always show P — locked during season */}
-                              <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">P</span>
+                              <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">P</span>
                             </ThemedTd>
                             <ThemedTd align="center">
                               <span className="inline-flex items-center gap-1.5">
                                 {p?.player_name ?? p?.name ?? p?.playerName ?? ""}
-                                {(p as any)?.isKeeper && <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
+                                {(p as any)?.isKeeper && <span className="text-xs font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>}
                                 {tradeBlockIds.has((p as any)?._dbPlayerId) && (
-                                  <span className="text-[10px] font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
+                                  <span className="text-xs font-semibold uppercase text-orange-400 bg-orange-500/10 border border-orange-500/20 px-1 py-px rounded" title="On trade block">
                                     <ArrowLeftRight size={10} className="inline -mt-px" /> TB
                                   </span>
                                 )}
@@ -931,7 +931,7 @@ export default function Team() {
                     const teamWHIP = totIP > 0 ? weightedBBH / totIP : 0;
                     return (
                       <tr className="border-t-2 border-[var(--lg-accent)]/30 bg-[var(--lg-tint)]">
-                        <ThemedTd align="center"><span className="text-[10px] font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
+                        <ThemedTd align="center"><span className="text-xs font-bold text-[var(--lg-accent)]">TOT</span></ThemedTd>
                         <ThemedTd align="center"><span className="font-bold text-xs text-[var(--lg-text-heading)]">Team Totals</span></ThemedTd>
                         <ThemedTd align="center">{""}</ThemedTd>
                         <ThemedTd align="center"><span className="font-bold">{totW}</span></ThemedTd>
@@ -954,7 +954,7 @@ export default function Team() {
             Ghost-IL badge when the player's MLB status is no longer an "Injured …-Day" designation. */}
         {ilSlotted.length > 0 && (
           <section className="mt-10">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-[var(--lg-text-muted)] mb-2">
               {dbTeamId && myTeamId === dbTeamId ? "Your IL Slots" : "IL Slots"} ({ilSlotted.length})
             </p>
             <ThemedTable density="compact" aria-label="Fantasy IL slots">
@@ -976,17 +976,17 @@ export default function Team() {
                   return (
                     <ThemedTr key={rowKey(p)} className="border-t border-[var(--lg-border-faint)]">
                       <ThemedTd align="center">
-                        <span className="text-[10px] font-mono font-semibold text-red-400">IL</span>
+                        <span className="text-xs font-mono font-semibold text-red-400">IL</span>
                       </ThemedTd>
                       <ThemedTd align="center">
                         <span className="inline-flex items-center gap-1.5">
                           {p?.player_name ?? p?.name ?? ""}
                           {(p as any)?.isKeeper && (
-                            <span className="text-[10px] font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>
+                            <span className="text-xs font-semibold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-px rounded" title="Keeper">K</span>
                           )}
                           {isGhost && (
                             <span
-                              className="text-[9px] font-bold uppercase text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-px rounded"
+                              className="text-xs font-bold uppercase text-red-400 bg-red-500/10 border border-red-500/30 px-1.5 py-px rounded"
                               title={mlbStatus ? `MLB status: ${mlbStatus}` : "No active MLB IL designation — activate or drop"}
                             >
                               Ghost IL
@@ -997,7 +997,7 @@ export default function Team() {
                       <ThemedTd align="center">{tm || "—"}</ThemedTd>
                       <ThemedTd align="center">${asNum(p?.price)}</ThemedTd>
                       <ThemedTd align="center">
-                        <span className="text-[10px] text-[var(--lg-text-muted)]">{mlbStatus || "Unknown"}</span>
+                        <span className="text-xs text-[var(--lg-text-muted)]">{mlbStatus || "Unknown"}</span>
                       </ThemedTd>
                     </ThemedTr>
                   );

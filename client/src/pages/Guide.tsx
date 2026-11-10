@@ -50,7 +50,7 @@ export default function Guide() {
       </div>
 
       <div className="mt-8 text-center">
-        <p className="text-[10px] text-[var(--lg-text-muted)] opacity-40">
+        <p className="text-xs text-[var(--lg-text-muted)] opacity-40">
           <Link to="/about" className="hover:text-[var(--lg-accent)]">About TFL</Link>
           {' · '}
           <Link to="/rules" className="hover:text-[var(--lg-accent)]">League Rules</Link>

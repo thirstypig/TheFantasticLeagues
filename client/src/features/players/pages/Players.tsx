@@ -439,11 +439,11 @@ export default function Players() {
                         )}
                         <ThemedTd align="center">
                           {isTaken ? (
-                            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: isMine ? 'var(--am-cardinal)' : 'var(--am-accent)' }}>
+                            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: isMine ? 'var(--am-cardinal)' : 'var(--am-accent)' }}>
                               {teamLabel}
                             </span>
                           ) : (
-                            <span className="text-[10px] font-medium uppercase opacity-50 group-hover:opacity-80 transition-opacity" style={{ color: 'var(--am-text-faint)' }}>
+                            <span className="text-xs font-medium uppercase opacity-50 group-hover:opacity-80 transition-opacity" style={{ color: 'var(--am-text-faint)' }}>
                               Available
                             </span>
                           )}

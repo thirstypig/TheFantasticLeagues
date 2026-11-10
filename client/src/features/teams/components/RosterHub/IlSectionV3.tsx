@@ -65,7 +65,7 @@ export function IlSectionV3({
     <Glass padded={false} style={{ overflow: "visible" }}>
       <div style={{ padding: 16, paddingBottom: 6 }}>
         <SectionLabel>✦ Injured List · {totalSlots} slots</SectionLabel>
-        <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
           IL slots are out-of-band — players here don't count toward the 23-active limit.
         </p>
       </div>
@@ -128,7 +128,7 @@ export function IlSectionV3({
                       style={{
                         textAlign: idx === 3 ? "right" : "left",
                         padding: "8px 12px",
-                        fontSize: 10,
+                        fontSize: 13,
                         letterSpacing: 1.2,
                         textTransform: "uppercase",
                         color: "var(--am-text-muted)",
@@ -272,7 +272,7 @@ function IlDesktopRow({
             )}
             {player.name}
           </span>
-          <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+          <span style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
             {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
           </span>
           {(() => {
@@ -280,14 +280,14 @@ function IlDesktopRow({
               .filter((s) => s !== player.assignedSlot)
               .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
             return secondary.length > 0 ? (
-              <span style={{ fontSize: 10.5, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
+              <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
                 {secondary.join(" · ")}
               </span>
             ) : null;
           })()}
         </div>
       </td>
-      <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)", color: "var(--am-text-muted)", fontSize: 12 }}>
+      <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)", color: "var(--am-text-muted)", fontSize: 13 }}>
         {player.statSnapshot ?? "—"}
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)", textAlign: "right" }}>
@@ -301,7 +301,7 @@ function IlDesktopRow({
               {...listeners}
               style={{
                 cursor: "grab",
-                fontSize: 14,
+                fontSize: 15,
                 padding: "4px 6px",
                 border: "1px solid transparent",
                 background: "transparent",
@@ -420,7 +420,7 @@ function IlMobileRow({
           )}
           {player.name}
         </span>
-        <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>
+        <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
           {(player.mlbTeam ?? "FA") + " · " + (player.statSnapshot ?? player.posPrimary)}
         </span>
       </div>
@@ -434,7 +434,7 @@ function IlMobileRow({
             {...listeners}
             style={{
               cursor: "grab",
-              fontSize: 14,
+              fontSize: 15,
               padding: "4px 6px",
               border: "1px solid transparent",
               background: "transparent",
@@ -509,7 +509,7 @@ function EmptyIlDesktopRow({ index, dndEnabled, ilStashEligible }: EmptyIlRowPro
         style={{
           padding: "10px 14px",
           color: showAffordance ? "var(--am-warning)" : "var(--am-text-faint)",
-          fontSize: 12,
+          fontSize: 13,
           borderBottom: "1px solid var(--am-border)",
           background: showLanding
             ? "color-mix(in srgb, var(--am-warning) 14%, transparent)"
@@ -538,7 +538,7 @@ function EmptyIlMobileRow({ index, dndEnabled, ilStashEligible }: EmptyIlRowProp
       data-testid="il-empty-row"
       style={{
         color: showAffordance ? "var(--am-warning)" : "var(--am-text-faint)",
-        fontSize: 12,
+        fontSize: 13,
         background: showLanding
           ? "color-mix(in srgb, var(--am-warning) 14%, transparent)"
           : showAffordance

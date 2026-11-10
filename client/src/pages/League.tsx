@@ -51,7 +51,7 @@ export default function League() {
                 justifyContent: "space-between",
                 minHeight: 48,
                 padding: "0 16px",
-                fontSize: 16,
+                fontSize: 17,
                 color: "var(--am-text)",
                 textDecoration: "none",
                 borderTop: "1px solid var(--am-border)",

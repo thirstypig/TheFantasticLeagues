@@ -176,7 +176,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                   {/* Status + countdown */}
                   <div style={{ textAlign: "center", padding: "14px 0" }}>
                       <SectionLabel>✦ Awaiting Nomination</SectionLabel>
-                      <p style={{ fontSize: 12, color: "var(--am-text-muted)", marginBottom: 10, marginTop: 2 }}>
+                      <p style={{ fontSize: 13, color: "var(--am-text-muted)", marginBottom: 10, marginTop: 2 }}>
                          {isMyTurn
                             ? <span style={{ color: "var(--am-accent)", fontWeight: 600 }}>Your turn — select a player</span>
                             : "Stand by for the next nominee"}
@@ -187,7 +187,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         <span
                           className={nomCritical ? "animate-pulse" : ""}
                           style={{
-                            fontSize: 28,
+                            fontSize: 24,
                             fontWeight: 700,
                             fontVariantNumeric: "tabular-nums",
                             fontFamily: "var(--am-display)",
@@ -259,8 +259,8 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
 
             {/* Player info */}
             <div style={{ flex: 1, paddingTop: 8, paddingBottom: 8, paddingRight: 8, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nomination.playerName}</div>
-                <div style={{ fontSize: 10, color: "var(--am-text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{nomination.playerTeam}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nomination.playerName}</div>
+                <div style={{ fontSize: 13, color: "var(--am-text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>{nomination.playerTeam}</div>
             </div>
 
             {/* Timer + Going Once visual (AUC-09) */}
@@ -269,7 +269,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                   <span
                     className="animate-pulse"
                     style={{
-                      fontSize: 36,
+                      fontSize: 32,
                       fontWeight: 700,
                       fontVariantNumeric: "tabular-nums",
                       fontFamily: "var(--am-display)",
@@ -282,7 +282,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                 ) : (
                   <span
                     style={{
-                      fontSize: 36,
+                      fontSize: 32,
                       fontWeight: 700,
                       fontVariantNumeric: "tabular-nums",
                       fontFamily: "var(--am-display)",
@@ -294,13 +294,13 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                   </span>
                 )}
                 {nomination.status === 'running' && timeLeft <= 5 && timeLeft > 3 && (
-                  <div className="animate-pulse" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "rgb(251, 191, 36)" }}>Going once...</div>
+                  <div className="animate-pulse" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "rgb(251, 191, 36)" }}>Going once...</div>
                 )}
                 {nomination.status === 'running' && timeLeft <= 3 && timeLeft > 1 && (
-                  <div className="animate-pulse" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "var(--am-negative)" }}>Going twice...</div>
+                  <div className="animate-pulse" style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "var(--am-negative)" }}>Going twice...</div>
                 )}
                 {nomination.status === 'running' && timeLeft <= 1 && timeLeft > 0 && (
-                  <div className="animate-bounce" style={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: 2, background: "var(--am-irid)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" as const }}>SOLD!</div>
+                  <div className="animate-bounce" style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: 2, background: "var(--am-irid)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" as const }}>SOLD!</div>
                 )}
             </div>
           </div>
@@ -319,7 +319,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
               </div>
               <div style={{ textAlign: "right" }}>
                   <SectionLabel style={{ marginBottom: 2 }}>High Bidder</SectionLabel>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: isHighBidder ? "var(--am-positive)" : "var(--am-text)" }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: isHighBidder ? "var(--am-positive)" : "var(--am-text)" }}>
                       {highBidderTeam?.name || '—'} {isHighBidder ? <Chip strong>You</Chip> : ''}
                   </div>
               </div>
@@ -331,8 +331,8 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <Glass>
                   <div style={{ textAlign: "center", padding: "8px 0" }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "rgb(251, 191, 36)" }}>Passing on this player</div>
-                    <div style={{ fontSize: 10, color: "var(--am-text-muted)", marginTop: 2 }}>You won't bid unless you rejoin</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "rgb(251, 191, 36)" }}>Passing on this player</div>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>You won't bid unless you rejoin</div>
                   </div>
                 </Glass>
                 <Button
@@ -347,7 +347,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             <>
                 {isPositionFull && !isHighBidder && (
                     <Glass>
-                      <div style={{ textAlign: "center", padding: "4px 0", fontSize: 12, fontWeight: 600, color: "rgb(251, 191, 36)" }}>
+                      <div style={{ textAlign: "center", padding: "4px 0", fontSize: 13, fontWeight: 600, color: "rgb(251, 191, 36)" }}>
                         Position full on your roster
                       </div>
                     </Glass>
@@ -359,8 +359,8 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         variant="default"
                         className="h-14 flex flex-col items-center justify-center gap-0.5"
                     >
-                        <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", opacity: 0.7 }}>+$1</span>
-                        <span style={{ fontSize: 18, fontWeight: 700 }}>${minRaise}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, textTransform: "uppercase", opacity: 0.7 }}>+$1</span>
+                        <span style={{ fontSize: 17, fontWeight: 700 }}>${minRaise}</span>
                     </Button>
                     <Button
                         disabled={!canAffordJump || isHighBidder || nomination.status !== 'running' || isPositionFull}
@@ -369,8 +369,8 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                         className="h-14 flex flex-col items-center justify-center gap-0.5"
                         style={{ background: "var(--am-chip)", borderColor: "var(--am-border)" }}
                     >
-                        <span style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", color: "var(--am-text-muted)", opacity: 0.7 }}>+$5</span>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--am-text)" }}>${jumpRaise}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, textTransform: "uppercase", color: "var(--am-text-muted)", opacity: 0.7 }}>+$5</span>
+                        <span style={{ fontSize: 17, fontWeight: 700, color: "var(--am-text)" }}>${jumpRaise}</span>
                     </Button>
                 </div>
                 {/* AI Bid Advice */}
@@ -403,7 +403,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                           justifyContent: "center",
                           gap: 6,
                           padding: "10px 0",
-                          fontSize: 12,
+                          fontSize: 13,
                           color: "var(--am-text-muted)",
                           background: "transparent",
                           border: "none",
@@ -416,7 +416,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                       </button>
                     )}
                     {bidAdviceError && (
-                      <div style={{ fontSize: 10, color: "rgb(248, 113, 113)", textAlign: "center" }}>{bidAdviceError}</div>
+                      <div style={{ fontSize: 13, color: "rgb(248, 113, 113)", textAlign: "center" }}>{bidAdviceError}</div>
                     )}
                     {bidAdvice && (
                       <Glass padded={false}>
@@ -427,22 +427,22 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                                 ? <Check size={12} style={{ color: "var(--am-positive)" }} />
                                 : <XCircle size={12} style={{ color: "var(--am-negative)" }} />
                               }
-                              <span style={{ fontSize: 12, fontWeight: 600, color: bidAdvice.shouldBid ? "var(--am-positive)" : "var(--am-negative)" }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: bidAdvice.shouldBid ? "var(--am-positive)" : "var(--am-negative)" }}>
                                 {bidAdvice.shouldBid ? 'Bid' : 'Pass'}
                               </span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                              <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                                 Max: <span style={{ fontWeight: 700, color: "var(--am-text)" }}>${bidAdvice.maxRecommendedBid}</span>
                               </span>
                               <Chip strong>
-                                <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>{bidAdvice.confidence}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase" }}>{bidAdvice.confidence}</span>
                               </Chip>
                             </div>
                           </div>
-                          <p style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.5, margin: 0 }}>{bidAdvice.reasoning}</p>
+                          <p style={{ fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.5, margin: 0 }}>{bidAdvice.reasoning}</p>
                           {bidAdvice.categoryImpact && (
-                            <p style={{ fontSize: 10, color: "var(--am-accent)", lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>{bidAdvice.categoryImpact}</p>
+                            <p style={{ fontSize: 13, color: "var(--am-accent)", lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>{bidAdvice.categoryImpact}</p>
                           )}
                         </div>
                       </Glass>
@@ -460,7 +460,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
                           justifyContent: "center",
                           gap: 6,
                           padding: "10px 0",
-                          fontSize: 12,
+                          fontSize: 13,
                           color: "var(--am-text-muted)",
                           background: "transparent",
                           border: "none",
@@ -487,7 +487,7 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             />
         )}
 
-        <div style={{ textAlign: "center", fontSize: 10, color: "var(--am-text-faint)" }}>
+        <div style={{ textAlign: "center", fontSize: 13, color: "var(--am-text-faint)" }}>
             {isHighBidder
               ? `You are the high bidder · Keeper next year: $${currentBid + 5}`
               : !myTeam
@@ -566,7 +566,7 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Target size={16} style={{ color: "var(--am-accent)" }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--am-accent)" }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: "var(--am-accent)" }}>
               Auto-bid up to ${myProxyBid}
             </span>
           </div>
@@ -590,7 +590,7 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
     return (
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <div style={{ position: "relative", flex: 1 }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--am-text-muted)" }}>$</span>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 15, color: "var(--am-text-muted)" }}>$</span>
           <input
             ref={inputRef}
             type="number"
@@ -606,7 +606,7 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
               paddingRight: 8,
               paddingTop: 8,
               paddingBottom: 8,
-              fontSize: 14,
+              fontSize: 15,
               borderRadius: 10,
               border: "1px solid var(--am-border)",
               background: "var(--am-surface-faint)",
@@ -640,7 +640,7 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
         justifyContent: "center",
         gap: 8,
         padding: "12px 16px",
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: 600,
         borderRadius: 12,
         border: "1px solid var(--am-border)",

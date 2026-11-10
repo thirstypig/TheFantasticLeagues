@@ -65,7 +65,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
 
   return (
     <div className="h-full overflow-y-auto px-4 py-3 space-y-1">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">
         Personal Preferences
       </div>
 
@@ -79,7 +79,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
           <s.icon size={16} className={prefs[s.key] ? 'text-[var(--lg-accent)]' : 'text-[var(--lg-text-muted)] opacity-30'} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-[var(--lg-text-primary)]">{s.label}</div>
-            <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">{s.desc}</div>
+            <div className="text-xs text-[var(--lg-text-muted)] leading-snug">{s.desc}</div>
           </div>
           <div className={`w-8 h-4.5 rounded-full p-0.5 transition-colors shrink-0 ${prefs[s.key] ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'bg-[var(--lg-border-subtle)]'}`}>
             <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${prefs[s.key] ? 'translate-x-3.5' : 'translate-x-0'}`} />
@@ -92,14 +92,14 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
         <Globe size={16} className="text-[var(--lg-accent)]" />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-semibold text-[var(--lg-text-primary)]">Default League Filter</div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">Set your default Player Pool filter</div>
+          <div className="text-xs text-[var(--lg-text-muted)] leading-snug">Set your default Player Pool filter</div>
         </div>
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
           {(['ALL', 'NL', 'AL'] as LeagueFilter[]).map(f => (
             <button
               key={f}
               onClick={() => onUpdate('defaultLeagueFilter', f)}
-              className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${
+              className={`px-2.5 py-1 text-xs font-semibold uppercase rounded transition-all ${
                 prefs.defaultLeagueFilter === f ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'
               }`}
             >
@@ -112,7 +112,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
       {/* My Rankings section */}
       {onImportRankings && (
         <>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mt-4 mb-2 pt-3 border-t border-[var(--lg-border-faint)]">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)] mt-4 mb-2 pt-3 border-t border-[var(--lg-border-faint)]">
             My Rankings
           </div>
 
@@ -124,7 +124,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
                 <div className="text-xs font-semibold text-[var(--lg-text-primary)]">
                   {rankingsCount > 0 ? `${rankingsCount} players ranked` : 'No rankings imported'}
                 </div>
-                <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">
+                <div className="text-xs text-[var(--lg-text-muted)] leading-snug">
                   Upload a CSV or paste player names to add a private rank column
                 </div>
               </div>
@@ -141,14 +141,14 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity"
               >
                 <Upload size={12} />
                 Upload CSV
               </button>
               <button
                 onClick={() => setShowPaste(!showPaste)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md border transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase rounded-md border transition-colors ${
                   showPaste
                     ? 'border-[var(--lg-accent)] text-[var(--lg-accent)] bg-[var(--lg-tint)]'
                     : 'border-[var(--lg-border-subtle)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-border-subtle)]'
@@ -159,7 +159,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
               {rankingsCount > 0 && (
                 <button
                   onClick={handleClear}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] text-red-400 hover:bg-red-400/10 transition-colors ml-auto"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] text-red-400 hover:bg-red-400/10 transition-colors ml-auto"
                   title="Clear all rankings"
                 >
                   <Trash2 size={12} />
@@ -180,7 +180,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
                 <button
                   onClick={handlePasteImport}
                   disabled={!pasteText.trim()}
-                  className="px-4 py-1.5 text-[10px] font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-4 py-1.5 text-xs font-semibold uppercase rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   Import
                 </button>
@@ -189,7 +189,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
 
             {/* Import result feedback */}
             {importResult && (
-              <div className="text-[10px] leading-snug space-y-1">
+              <div className="text-xs leading-snug space-y-1">
                 {importResult.imported > 0 && (
                   <div className="text-emerald-400 font-semibold">
                     Imported {importResult.imported} player rankings
@@ -213,7 +213,7 @@ export default function AuctionSettingsTabLegacy({ prefs, onToggle, onUpdate, ra
         </>
       )}
 
-      <div className="pt-3 text-[10px] text-[var(--lg-text-muted)] opacity-40 text-center">
+      <div className="pt-3 text-xs text-[var(--lg-text-muted)] opacity-40 text-center">
         Saved locally per device
       </div>
     </div>

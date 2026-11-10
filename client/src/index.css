@@ -425,7 +425,7 @@
     padding: 10px 12px;
     border-radius: var(--lg-radius-md);
     color: var(--lg-text-secondary);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     text-transform: none;
     letter-spacing: normal;
@@ -449,7 +449,7 @@
   }
 
   .lg-sidebar-section-label {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--lg-text-muted);
     text-transform: uppercase;

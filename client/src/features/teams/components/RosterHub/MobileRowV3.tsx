@@ -143,12 +143,12 @@ export function MobileRowV3({
             .filter((s) => s !== player.assignedSlot)
             .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
           return secondary.length > 0 ? (
-            <span style={{ fontSize: 10.5, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
+            <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
               {secondary.join(" · ")}
             </span>
           ) : null;
         })()}
-        <span style={{ fontSize: 11.5, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 13, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
           {statSummaryFor(player) || "—"}
         </span>
       </div>

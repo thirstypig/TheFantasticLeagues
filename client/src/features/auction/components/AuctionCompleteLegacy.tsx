@@ -341,15 +341,15 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Lots</div>
+          <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Lots</div>
           <div className="text-2xl font-bold text-[var(--lg-text-heading)] tabular-nums">{totalLots}</div>
         </div>
         <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Spent</div>
+          <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Total Spent</div>
           <div className="text-2xl font-bold text-[var(--lg-text-primary)] tabular-nums">${totalSpent}</div>
         </div>
         <div className="rounded-xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 text-center col-span-2 md:col-span-1">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Teams</div>
+          <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">Teams</div>
           <div className="text-2xl font-bold text-[var(--lg-text-heading)] tabular-nums">{teamResults.length}</div>
         </div>
       </div>
@@ -474,20 +474,20 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                   <div className="flex items-center gap-4 md:gap-6 text-right">
                     {team.keeperSpend > 0 && (
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Keepers</span>
+                        <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Keepers</span>
                         <span className="font-semibold text-amber-400 tabular-nums">${team.keeperSpend}</span>
                       </div>
                     )}
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">{team.keeperSpend > 0 ? 'Auction' : 'Spent'}</span>
+                      <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">{team.keeperSpend > 0 ? 'Auction' : 'Spent'}</span>
                       <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">${team.auctionSpend}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Total</span>
+                      <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Total</span>
                       <span className="font-semibold text-[var(--lg-text-primary)] tabular-nums">${team.totalSpent}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Left</span>
+                      <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Left</span>
                       <span className={`font-semibold tabular-nums ${(team.budget - team.totalSpent) < 0 ? 'text-red-400' : 'text-[var(--lg-text-primary)]'}`}>${team.budget - team.totalSpent}</span>
                     </div>
                     <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
@@ -526,7 +526,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                   <div className="border-t border-[var(--lg-border-faint)] animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* HITTERS */}
                     <div className="px-3 pt-3 pb-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Hitters ({hitters.length})</span>
+                      <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Hitters ({hitters.length})</span>
                     </div>
                     <ThemedTable>
                       <ThemedThead>
@@ -566,21 +566,21 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                               <ThemedTd className="py-1.5">
                                 <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
                                   {player.playerName}
-                                  {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                  {player.isKeeper && <span className="text-xs font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
                                 </span>
                               </ThemedTd>
                               <ThemedTd className="py-1.5">
-                                <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                                <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">
                                   {player.assignedPosition || mapPosition(player.positions?.split(",")[0]?.trim() || "", outfieldMode) || "—"}
                                 </span>
                               </ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-xs text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                               <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-text-primary)]'}`}>${player.price}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
                             </ThemedTr>
                             {isRowExpanded && (
                               <PlayerExpandedRow
@@ -599,7 +599,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
 
                     {/* PITCHERS */}
                     <div className="px-3 pt-3 pb-1 border-t border-[var(--lg-border-faint)]">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Pitchers ({pitchers.length})</span>
+                      <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Pitchers ({pitchers.length})</span>
                     </div>
                     <ThemedTable>
                       <ThemedThead>
@@ -630,17 +630,17 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                               <ThemedTd className="py-1.5">
                                 <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
                                   {player.playerName}
-                                  {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                  {player.isKeeper && <span className="text-xs font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
                                 </span>
                               </ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
-                              <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-xs text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
+                              <ThemedTd className="py-1.5 text-xs text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                               <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-text-primary)]'}`}>${player.price}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
-                              <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
+                              <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
                             </ThemedTr>
                             {isRowExpanded && (
                               <PlayerExpandedRow

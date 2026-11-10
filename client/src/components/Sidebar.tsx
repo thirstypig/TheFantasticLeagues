@@ -164,7 +164,7 @@ export default function Sidebar({
               <Logo size={32} />
               <div className="flex flex-col">
                 <span className="text-lg font-bold tracking-tight text-[var(--lg-text-heading)] leading-none">TFL</span>
-                <span className="text-[10px] font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
+                <span className="text-xs font-bold tracking-wide text-[var(--lg-text-muted)] opacity-60 uppercase mt-0.5">The Fantastic Leagues</span>
               </div>
             </Link>
           )}
@@ -281,7 +281,7 @@ export default function Sidebar({
                             {(gi > 0 || flatItems.length > 0) && (
                               <div className="h-px bg-[var(--lg-border-faint)] mx-2 mb-2" />
                             )}
-                            <div className="text-[10px] uppercase tracking-wider text-[var(--lg-text-muted)] px-3 py-1 opacity-70">
+                            <div className="text-xs uppercase tracking-wider text-[var(--lg-text-muted)] px-3 py-1 opacity-70">
                               {group.title}
                             </div>
                           </>
@@ -429,7 +429,7 @@ function AccountMenu({
           <>
             <span className="flex-1 min-w-0 text-left">
               <span className="block text-xs font-bold text-[var(--lg-text-primary)] truncate tracking-tight">{user.name || user.email}</span>
-              <span className="block text-[10px] text-[var(--lg-text-muted)] truncate">{user.email}</span>
+              <span className="block text-xs text-[var(--lg-text-muted)] truncate">{user.email}</span>
             </span>
             <svg
               className={`w-4 h-4 text-[var(--lg-text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}

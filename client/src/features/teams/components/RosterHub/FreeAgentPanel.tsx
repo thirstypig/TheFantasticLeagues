@@ -153,7 +153,7 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
       }}
     >
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontFamily: "var(--am-display)", fontSize: 18, color: "var(--am-text)" }}>
+        <div style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text)" }}>
           Free agents
         </div>
         <button
@@ -207,7 +207,7 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
               onClick={() => toggleChip(chip.tokens)}
               aria-pressed={active}
               style={{
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 600,
                 padding: "6px 10px",
                 borderRadius: 99,
@@ -223,14 +223,14 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
           );
         })}
 
-        <label style={{ marginLeft: "auto", fontSize: 11, color: "var(--am-text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+        <label style={{ marginLeft: "auto", fontSize: 13, color: "var(--am-text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
           Sort
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as FreeAgentSort)}
             aria-label="Sort free agents"
             style={{
-              fontSize: 12,
+              fontSize: 13,
               padding: "5px 8px",
               borderRadius: 8,
               border: "1px solid var(--am-border)",
@@ -266,13 +266,13 @@ export function FreeAgentPanel(props: FreeAgentPanelProps) {
         }}
       >
         {loading && (
-          <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: 8 }}>Loading…</div>
+          <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: 8 }}>Loading…</div>
         )}
         {error && (
-          <div role="alert" style={{ fontSize: 12, color: "var(--am-negative)", padding: 8 }}>{error}</div>
+          <div role="alert" style={{ fontSize: 13, color: "var(--am-negative)", padding: 8 }}>{error}</div>
         )}
         {!loading && !error && filtered.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: 8 }}>
+          <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: 8 }}>
             No free agents match those filters.
           </div>
         )}
@@ -368,15 +368,15 @@ function FreeAgentRow({ fa, top, height }: FreeAgentRowProps) {
     >
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", display: "flex", alignItems: "center", gap: 6 }}>
-          <span aria-hidden style={{ opacity: 0.55, fontSize: 11 }}>⋮⋮</span>
+          <span aria-hidden style={{ opacity: 0.55, fontSize: 13 }}>⋮⋮</span>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fa.name}</span>
         </div>
-        <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>
           {fa.posList || fa.posPrimary} · {fa.mlbTeam || "—"}
           {fa.statSnapshot ? ` · ${fa.statSnapshot}` : ""}
         </div>
       </div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
         {fa.projectedDollars > 0 ? `$${fa.projectedDollars}` : "—"}
       </div>
     </div>

@@ -82,15 +82,15 @@ export default function LeagueHealthTab({ leagueId }: { leagueId: number }) {
         <div className="flex gap-4">
           <div className="text-center">
             <div className="text-xl font-bold text-[var(--am-positive)]">{activeCount}</div>
-            <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Active</div>
+            <div className="text-xs text-[var(--lg-text-muted)] uppercase">Active</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-[var(--am-warning)]">{atRiskCount}</div>
-            <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">At Risk</div>
+            <div className="text-xs text-[var(--lg-text-muted)] uppercase">At Risk</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-[var(--am-negative)]">{inactiveCount}</div>
-            <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Inactive</div>
+            <div className="text-xs text-[var(--lg-text-muted)] uppercase">Inactive</div>
           </div>
         </div>
       </div>
@@ -121,13 +121,13 @@ export default function LeagueHealthTab({ leagueId }: { leagueId: number }) {
               return (
                 <ThemedTr key={h.teamId} className="hover:bg-[var(--lg-tint)] transition-colors">
                   <ThemedTd frozen>
-                    <span className="font-semibold text-[11px] text-[var(--lg-text-primary)]">{h.teamName}</span>
+                    <span className="font-semibold text-xs text-[var(--lg-text-primary)]">{h.teamName}</span>
                   </ThemedTd>
                   <ThemedTd>
-                    <span className="text-[11px] text-[var(--lg-text-secondary)]">{h.ownerName}</span>
+                    <span className="text-xs text-[var(--lg-text-secondary)]">{h.ownerName}</span>
                   </ThemedTd>
                   <ThemedTd align="center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${cfg.bg} ${cfg.color}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold uppercase ${cfg.bg} ${cfg.color}`}>
                       <StatusIcon size={10} />
                       {cfg.label}
                     </span>
@@ -138,14 +138,14 @@ export default function LeagueHealthTab({ leagueId }: { leagueId: number }) {
                     </span>
                   </ThemedTd>
                   <ThemedTd align="center">
-                    <span className="text-[10px] text-[var(--lg-text-muted)]">
+                    <span className="text-xs text-[var(--lg-text-muted)]">
                       {h.daysSinceLogin === null ? "Never" : h.daysSinceLogin === 0 ? "Today" : `${h.daysSinceLogin}d ago`}
                     </span>
                   </ThemedTd>
                   <ThemedTd align="center">{h.waiverClaimsThisSeason}</ThemedTd>
                   <ThemedTd align="center">{h.tradesThisSeason}</ThemedTd>
                   <ThemedTd align="center">
-                    <span className={`text-[10px] font-semibold ${lineupPct >= 80 ? "text-emerald-400" : lineupPct >= 50 ? "text-amber-400" : "text-rose-400"}`}>
+                    <span className={`text-xs font-semibold ${lineupPct >= 80 ? "text-emerald-400" : lineupPct >= 50 ? "text-amber-400" : "text-rose-400"}`}>
                       {lineupPct}%
                     </span>
                   </ThemedTd>
@@ -156,7 +156,7 @@ export default function LeagueHealthTab({ leagueId }: { leagueId: number }) {
         </ThemedTable>
       </div>
 
-      <p className="text-[10px] text-[var(--lg-text-muted)] italic">
+      <p className="text-xs text-[var(--lg-text-muted)] italic">
         Engagement score based on login recency (30pts), waiver activity (25pts), trade activity (20pts), and lineup set rate (25pts). Sorted by score ascending — at-risk teams shown first.
       </p>
     </div>

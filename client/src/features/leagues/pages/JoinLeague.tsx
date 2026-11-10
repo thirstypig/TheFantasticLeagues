@@ -65,7 +65,7 @@ export default function JoinLeague() {
       <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         <Glass strong>
           <SectionLabel>✦ Join League</SectionLabel>
-          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Join League</h1>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Join League</h1>
           <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Something went wrong.</div>
         </Glass>
         <Glass>
@@ -79,7 +79,7 @@ export default function JoinLeague() {
     <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Join League</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 28, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Join League</h1>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Join League</h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>You've been invited to join a league.</div>
       </Glass>
 

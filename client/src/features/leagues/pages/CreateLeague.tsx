@@ -94,7 +94,7 @@ export default function CreateLeague() {
         </div>
 
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 mb-6">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Invite Code</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-2">Invite Code</div>
           <div className="flex items-center gap-3">
             <code className="flex-1 px-4 py-3 rounded-xl bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)] text-sm font-mono font-bold text-[var(--lg-text-primary)] tracking-wider select-all">
               {result.inviteCode}
@@ -108,7 +108,7 @@ export default function CreateLeague() {
 
         {/* Setup Checklist */}
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-6 mb-6">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">Next Steps</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)] mb-3">Next Steps</div>
           <div className="space-y-2">
             {[
               { done: true, label: "Create league" },
@@ -144,7 +144,7 @@ export default function CreateLeague() {
     <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Create a League</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
           Create a League
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -155,7 +155,7 @@ export default function CreateLeague() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* League Info */}
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-4">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">League Info</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">League Info</div>
 
           <div>
             <label className="block text-xs font-medium text-[var(--lg-text-secondary)] mb-1">League Name</label>
@@ -198,7 +198,7 @@ export default function CreateLeague() {
 
         {/* Scoring Format */}
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-4">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Scoring Format</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Scoring Format</div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {([
               { id: "ROTO", name: "Rotisserie", desc: "Season-long stats across 10 categories. Classic format.", available: true },
@@ -219,9 +219,9 @@ export default function CreateLeague() {
                 }`}
               >
                 <div className="text-sm font-semibold">{fmt.name}</div>
-                <div className="text-[10px] mt-0.5 opacity-70">{fmt.desc}</div>
+                <div className="text-xs mt-0.5 opacity-70">{fmt.desc}</div>
                 {!fmt.available && (
-                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
                 )}
               </button>
             ))}
@@ -230,7 +230,7 @@ export default function CreateLeague() {
 
         {/* Draft Type */}
         <div className="rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-5 space-y-4">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Draft Type</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Draft Type</div>
           <div className="grid grid-cols-2 gap-3">
             {([
               { id: "AUCTION" as const, name: "Auction Draft", desc: "Budget-based bidding on all players. Most strategic.", available: true },
@@ -250,9 +250,9 @@ export default function CreateLeague() {
                 }`}
               >
                 <div className="text-sm font-semibold">{dt.name}</div>
-                <div className="text-[10px] mt-0.5 opacity-70">{dt.desc}</div>
+                <div className="text-xs mt-0.5 opacity-70">{dt.desc}</div>
                 {!dt.available && (
-                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
                 )}
               </button>
             ))}

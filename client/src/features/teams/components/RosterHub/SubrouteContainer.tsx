@@ -43,7 +43,7 @@ export function SubrouteContainer({ title, blurb, onBack, children }: SubrouteCo
             border: "1px solid var(--am-border)",
             background: "var(--am-chip)",
             color: "var(--am-text-muted)",
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             cursor: "pointer",
             marginBottom: 12,
@@ -54,7 +54,7 @@ export function SubrouteContainer({ title, blurb, onBack, children }: SubrouteCo
           <span>Back to roster</span>
         </button>
         <SectionLabel>✦ {title}</SectionLabel>
-        <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)", lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.5 }}>
           {blurb}
         </p>
         <div style={{ marginTop: 16 }}>{children}</div>

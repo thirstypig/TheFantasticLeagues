@@ -86,7 +86,7 @@ export function DesignScenarioComplex() {
       <Glass padded={false} style={{ overflow: "visible" }}>
         <div style={{ padding: 16, paddingBottom: 6 }}>
           <SectionLabel>✦ Complex batch · multi-step pending changes</SectionLabel>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
             One pending-changes panel that captures every kind of mutation in chronological
             order: drops, IL stashes, FA adds, slot swaps. Per-item revert removes a single
             change without touching the rest. Save commits the entire ordered batch.
@@ -193,7 +193,7 @@ function ChangeRow({
           justifyContent: "center",
           background: "var(--am-chip)",
           border: "1px solid var(--am-border)",
-          fontSize: 11,
+          fontSize: 13,
           color: "var(--am-text-muted)",
           fontWeight: 700,
           flexShrink: 0,
@@ -209,7 +209,7 @@ function ChangeRow({
         {change.secondary && (
           <>
             <span style={{ color: "var(--am-text-faint)", margin: "0 6px" }}>·</span>
-            <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>{change.secondary}</span>
+            <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{change.secondary}</span>
           </>
         )}
       </div>
@@ -247,7 +247,7 @@ function Tag({
       style={{
         padding: "2px 8px",
         borderRadius: 99,
-        fontSize: 10.5,
+        fontSize: 13,
         fontWeight: 700,
         letterSpacing: 0.4,
         textTransform: "uppercase",
@@ -267,7 +267,7 @@ const revertBtn: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   borderRadius: 8,
   padding: "4px 10px",
-  fontSize: 11.5,
+  fontSize: 13,
   color: "var(--am-text-muted)",
   cursor: "pointer",
   flexShrink: 0,
@@ -290,7 +290,7 @@ function ComplexFooter({
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
       <Glass>
         <SectionLabel>✦ Mock controls</SectionLabel>
-        <p style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, marginBottom: 10 }}>
+        <p style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, marginBottom: 10 }}>
           Build the batch incrementally without dragging.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -304,7 +304,7 @@ function ComplexFooter({
       </Glass>
       <Glass>
         <SectionLabel>✦ Open questions — Complex batch</SectionLabel>
-        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li><strong>Batch ordering</strong> — current is by timestamp; should the user be able to reorder? Drag-handle on the change row?</li>
           <li><strong>Partial revert UX</strong> — current is per-item; what about "revert this and everything after" (chained dependencies)?</li>
           <li><strong>Save confirm</strong> — explicit "Save" button only, or a confirm modal with diff preview when ≥3 changes?</li>
@@ -324,7 +324,7 @@ const ctlButton: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   background: "var(--am-chip)",
   color: "var(--am-text)",
-  fontSize: 12.5,
+  fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
   textAlign: "left",

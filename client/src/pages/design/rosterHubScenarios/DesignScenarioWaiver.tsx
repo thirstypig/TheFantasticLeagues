@@ -400,7 +400,7 @@ export function DesignScenarioWaiver() {
             >
               <div>
                 <SectionLabel>✦ Active roster · drag FAs or waiver claims onto slots</SectionLabel>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
                   Same panel, two tabs. <strong>Waiver claims</strong> queue until the next process
                   date and consume FAAB; <strong>free agents</strong> are instant. Pending-changes
                   panel mixes both kinds.
@@ -470,7 +470,7 @@ export function DesignScenarioWaiver() {
                   <div
                     style={{
                       padding: "8px 12px",
-                      fontSize: 10,
+                      fontSize: 13,
                       letterSpacing: 1.4,
                       textTransform: "uppercase",
                       color: "#fbbf24",
@@ -507,7 +507,7 @@ export function DesignScenarioWaiver() {
                             · {p.posPrimary} · {p.mlbTeam}
                           </span>
                           {pending && (
-                            <span style={{ marginLeft: 10, fontSize: 11.5, color: "var(--am-text-muted)" }}>
+                            <span style={{ marginLeft: 10, fontSize: 13, color: "var(--am-text-muted)" }}>
                               ↩ Adding {pending.player.name}
                               {isWaiver && pending.faabBid != null && (
                                 <>
@@ -562,7 +562,7 @@ export function DesignScenarioWaiver() {
                     border: "1px solid var(--am-border)",
                     background: "var(--am-chip)",
                     color: "var(--am-text)",
-                    fontSize: 12.5,
+                    fontSize: 13,
                   }}
                 />
                 <div style={{ marginTop: 8, marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -577,7 +577,7 @@ export function DesignScenarioWaiver() {
                         border: "1px solid var(--am-border)",
                         background: posFilter === p ? "var(--am-irid)" : "var(--am-chip)",
                         color: posFilter === p ? "#fff" : "var(--am-text-muted)",
-                        fontSize: 10.5,
+                        fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",
                         letterSpacing: 0.4,
@@ -663,20 +663,20 @@ function PanelHeader({
           }}
         >
           <div>
-            <div style={{ fontSize: 9.5, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-muted)", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-muted)", fontWeight: 600 }}>
               Your priority
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#bfdbfe", fontVariantNumeric: "tabular-nums" }}>
-              #{MOCK_TEAM_PRIORITY} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--am-text-faint)" }}>of {MOCK_TEAM_PRIORITY_TOTAL}</span>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#bfdbfe", fontVariantNumeric: "tabular-nums" }}>
+              #{MOCK_TEAM_PRIORITY} <span style={{ fontSize: 13, fontWeight: 400, color: "var(--am-text-faint)" }}>of {MOCK_TEAM_PRIORITY_TOTAL}</span>
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 9.5, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-muted)", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-muted)", fontWeight: 600 }}>
               FAAB remaining
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#bfdbfe", fontVariantNumeric: "tabular-nums" }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#bfdbfe", fontVariantNumeric: "tabular-nums" }}>
               ${MOCK_FAAB_REMAINING_INITIAL}{" "}
-              <span style={{ fontSize: 11, fontWeight: 400, color: "var(--am-text-faint)" }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: "var(--am-text-faint)" }}>
                 of ${MOCK_FAAB_BUDGET_TOTAL}
               </span>
             </div>
@@ -708,7 +708,7 @@ function PanelHeader({
             borderRadius: 8,
             background: tab === "fa" ? "var(--am-surface-strong)" : "transparent",
             color: tab === "fa" ? "var(--am-text)" : "var(--am-text-muted)",
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             border: tab === "fa" ? "1px solid var(--am-border)" : "1px solid transparent",
             cursor: "pointer",
@@ -726,7 +726,7 @@ function PanelHeader({
             borderRadius: 8,
             background: tab === "waivers" ? "color-mix(in srgb, #4a8cff 22%, transparent)" : "transparent",
             color: tab === "waivers" ? "#fff" : "var(--am-text-muted)",
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             border: tab === "waivers" ? "1px solid rgba(74, 140, 255, 0.5)" : "1px solid transparent",
             cursor: "pointer",
@@ -775,7 +775,7 @@ function BidSummary({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          fontSize: 11.5,
+          fontSize: 13,
           color: overBudget ? "#fca5a5" : "var(--am-text-muted)",
           fontWeight: 600,
           letterSpacing: 0.3,
@@ -791,7 +791,7 @@ function BidSummary({
         </span>
       </div>
       {overBudget && (
-        <div style={{ fontSize: 12, color: "#fca5a5", marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: "#fca5a5", marginBottom: 8 }}>
           Total bids ($
           {waiverPending.map((p) => p.faabBid ?? 0).join(" + ")}{" "}
           = ${totalBids}) exceed remaining FAAB (${MOCK_FAAB_REMAINING_INITIAL}). Reduce bids.
@@ -805,7 +805,7 @@ function BidSummary({
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              fontSize: 12,
+              fontSize: 13,
               color: "var(--am-text)",
               gap: 8,
             }}
@@ -819,7 +819,7 @@ function BidSummary({
                 display: "flex",
                 alignItems: "center",
                 gap: 4,
-                fontSize: 11.5,
+                fontSize: 13,
                 color: "var(--am-text-muted)",
               }}
             >
@@ -837,7 +837,7 @@ function BidSummary({
                   border: "1px solid var(--am-border)",
                   background: "var(--am-chip)",
                   color: "var(--am-text)",
-                  fontSize: 12,
+                  fontSize: 13,
                   fontVariantNumeric: "tabular-nums",
                   textAlign: "right",
                 }}
@@ -880,12 +880,12 @@ function FACard({ fa, isDragging }: { fa: PreviewPlayer; isDragging: boolean }) 
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{fa.name}</div>
-        <div style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
           {fa.posList} · {fa.mlbTeam}
           {fa.projectedValue != null && (
             <span style={{ color: "var(--am-text-muted)", marginLeft: 6 }}>· ${fa.projectedValue} proj</span>
           )}
-          <span style={{ marginLeft: 8, padding: "1px 5px", borderRadius: 4, fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#86efac", background: "color-mix(in srgb, #22c55e 14%, transparent)", border: "1px solid rgba(34, 197, 94, 0.35)" }}>
+          <span style={{ marginLeft: 8, padding: "1px 5px", borderRadius: 4, fontSize: 13, fontWeight: 700, letterSpacing: 0.5, color: "#86efac", background: "color-mix(in srgb, #22c55e 14%, transparent)", border: "1px solid rgba(34, 197, 94, 0.35)" }}>
             FA · INSTANT
           </span>
         </div>
@@ -925,11 +925,11 @@ function WaiverCard({ w, isDragging }: { w: WaiverPlayer; isDragging: boolean })
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
           {w.name}
-          <span style={{ marginLeft: 8, padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: "#bfdbfe", background: "color-mix(in srgb, #4a8cff 22%, transparent)", border: "1px solid rgba(74, 140, 255, 0.5)", textTransform: "uppercase" }}>
+          <span style={{ marginLeft: 8, padding: "1px 6px", borderRadius: 4, fontSize: 13, fontWeight: 700, letterSpacing: 0.5, color: "#bfdbfe", background: "color-mix(in srgb, #4a8cff 22%, transparent)", border: "1px solid rgba(74, 140, 255, 0.5)", textTransform: "uppercase" }}>
             On waivers
           </span>
         </div>
-        <div style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4, marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4, marginTop: 2 }}>
           {w.posList} · {w.mlbTeam}
           {w.projectedValue != null && (
             <span style={{ color: "var(--am-text-muted)", marginLeft: 6 }}>· ${w.projectedValue} proj</span>
@@ -940,7 +940,7 @@ function WaiverCard({ w, isDragging }: { w: WaiverPlayer; isDragging: boolean })
             display: "flex",
             gap: 8,
             marginTop: 4,
-            fontSize: 10.5,
+            fontSize: 13,
             color: "var(--am-text-muted)",
             flexWrap: "wrap",
           }}
@@ -978,7 +978,7 @@ function ChangeKindBadge({ kind }: { kind: "fa-add" | "waiver-claim" }) {
         display: "inline-block",
         padding: "1px 6px",
         borderRadius: 4,
-        fontSize: 9,
+        fontSize: 13,
         fontWeight: 700,
         letterSpacing: 0.5,
         textTransform: "uppercase",
@@ -998,7 +998,7 @@ function ChangeKindBadge({ kind }: { kind: "fa-add" | "waiver-claim" }) {
 
 function Empty() {
   return (
-    <div style={{ padding: 16, fontSize: 12, color: "var(--am-text-muted)", textAlign: "center" }}>
+    <div style={{ padding: 16, fontSize: 13, color: "var(--am-text-muted)", textAlign: "center" }}>
       No matches.
     </div>
   );
@@ -1011,7 +1011,7 @@ function dragHandle(isDragging: boolean): React.CSSProperties {
     borderRadius: 8,
     padding: "4px 6px",
     color: "var(--am-text-muted)",
-    fontSize: 14,
+    fontSize: 15,
     touchAction: "none",
     userSelect: "none",
     cursor: isDragging ? "grabbing" : "grab",
@@ -1025,7 +1025,7 @@ function WaiverFooter() {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
       <Glass>
         <SectionLabel>✦ How it works (proposed)</SectionLabel>
-        <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li>Same side panel as FA — second tab toggles "On waivers".</li>
           <li>Header shows your <strong>waiver priority</strong> + <strong>FAAB remaining</strong> on the waivers tab.</li>
           <li>Each waiver row shows <strong>process date</strong> (clears Tue) and <strong>conflict count</strong>.</li>
@@ -1036,7 +1036,7 @@ function WaiverFooter() {
       </Glass>
       <Glass>
         <SectionLabel>✦ Open questions — Waiver claim (5th scenario)</SectionLabel>
-        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li>
             <strong>Priority surfacing</strong> — show priority # always (current), or only when contested?
           </li>
@@ -1070,7 +1070,7 @@ function WaiverFooter() {
           style={{
             marginTop: 10,
             padding: 8,
-            fontSize: 11.5,
+            fontSize: 13,
             color: "var(--am-text-muted)",
             borderRadius: 8,
             border: "1px dashed var(--am-border)",
@@ -1093,7 +1093,7 @@ const ctlButton: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   background: "var(--am-irid)",
   color: "#fff",
-  fontSize: 12.5,
+  fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -1103,7 +1103,7 @@ const tinyBtn: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   borderRadius: 8,
   padding: "3px 7px",
-  fontSize: 11,
+  fontSize: 13,
   color: "var(--am-text-muted)",
   cursor: "pointer",
 };

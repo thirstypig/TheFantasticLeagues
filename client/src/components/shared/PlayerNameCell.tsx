@@ -23,11 +23,11 @@ export function PlayerNameCell({ position, name, isPitcher, className }: PlayerN
   return (
     <div className={`flex items-center gap-1.5 ${className ?? ""}`}>
       <span
-        className={`px-1 py-px rounded text-[8px] font-bold uppercase tracking-wide flex-shrink-0 ${badgeColor}`}
+        className={`px-1 py-px rounded text-xs font-bold uppercase tracking-wide flex-shrink-0 ${badgeColor}`}
       >
         {position}
       </span>
-      <span className="font-semibold text-[var(--lg-text-primary)] text-[11px] tracking-tight group-hover:text-[var(--lg-accent)] transition-colors leading-tight truncate">
+      <span className="font-semibold text-[var(--lg-text-primary)] text-xs tracking-tight group-hover:text-[var(--lg-accent)] transition-colors leading-tight truncate">
         {name ?? ""}
       </span>
     </div>

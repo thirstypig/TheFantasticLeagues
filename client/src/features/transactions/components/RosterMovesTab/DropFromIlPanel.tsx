@@ -74,7 +74,7 @@ export default function DropFromIlPanel({
   return (
     <div className="space-y-4">
       <div>
-        <label htmlFor="dfi-player-select" className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+        <label htmlFor="dfi-player-select" className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
           Player on IL
         </label>
         <select
@@ -96,14 +96,14 @@ export default function DropFromIlPanel({
       </div>
 
       {selectedPlayer && (
-        <p className="text-[11px] text-[var(--lg-text-muted)]">
+        <p className="text-xs text-[var(--lg-text-muted)]">
           Releasing <strong>{selectedPlayer.player_name}</strong> from the IL slot will remove
           them from your roster entirely. This cannot be undone.
         </p>
       )}
 
       {error && (
-        <div role="alert" className="rounded border border-red-500/40 bg-red-500/10 p-2 text-[11px] text-red-300">
+        <div role="alert" className="rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
           {error}
         </div>
       )}

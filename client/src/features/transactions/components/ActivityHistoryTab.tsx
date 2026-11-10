@@ -309,7 +309,7 @@ export default function ActivityHistoryTab({ completedTrades, transactions }: Pr
                           <span
                             data-testid="backdated-marker"
                             title={backdatedTooltip}
-                            className="inline-flex items-center gap-1 self-start rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300"
+                            className="inline-flex items-center gap-1 self-start rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-300"
                           >
                             <span aria-hidden>📅</span>
                             Submitted: {new Date(tx.submittedAt).toLocaleDateString()}

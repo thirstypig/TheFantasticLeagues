@@ -92,7 +92,7 @@ export default function BillPeriodPage() {
   } else if (!unbilled.data.some((u) => u.periodId === periodId)) {
     content = (
       <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>Already billed</p>
+        <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600 }}>Already billed</p>
         <Link to={base} style={LINK}>Back to Commissioner</Link>
       </Glass>
     );
@@ -104,7 +104,7 @@ export default function BillPeriodPage() {
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 16 }}>
       <header>
         <Link to={base} style={LINK}>‹ Commissioner</Link>
-        <h1 style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: "var(--am-text)" }}>Bill IL fees · {name}</h1>
+        <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>Bill IL fees · {name}</h1>
       </header>
       {content}
     </div>

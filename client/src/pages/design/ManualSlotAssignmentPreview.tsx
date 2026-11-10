@@ -135,7 +135,7 @@ export default function ManualSlotAssignmentPreview() {
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto", fontFamily: "Inter, sans-serif" }}>
       <div style={{ marginBottom: 16 }}>
-        <Link to="/" style={{ fontSize: 12, color: "#6b7280" }}>← Back to app</Link>
+        <Link to="/" style={{ fontSize: 13, color: "#6b7280" }}>← Back to app</Link>
       </div>
 
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
@@ -155,7 +155,7 @@ export default function ManualSlotAssignmentPreview() {
           <div style={{ background: "#f3f4f6", padding: "8px 12px", fontWeight: 600, fontSize: 13 }}>
             DLC roster (projected after planned moves)
           </div>
-          <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                 <th style={{ textAlign: "left", padding: "6px 12px", width: 60 }}>Slot</th>
@@ -182,7 +182,7 @@ export default function ManualSlotAssignmentPreview() {
                       <td style={{ padding: "6px 12px", fontFamily: "monospace", color: "#6b7280" }}>{slot}</td>
                       <td style={{ padding: "6px 12px", fontWeight: 600 }}>{p.name}</td>
                       <td style={{ padding: "6px 12px", color: "#6b7280" }}>{p.eligible.join(", ")}</td>
-                      <td style={{ padding: "6px 12px", fontSize: 11 }}>
+                      <td style={{ padding: "6px 12px", fontSize: 13 }}>
                         {isPending ? "⏳ awaiting slot" : wasMoved ? "✓ planned" : ""}
                       </td>
                     </tr>
@@ -196,7 +196,7 @@ export default function ManualSlotAssignmentPreview() {
                     <td style={{ padding: "6px 12px", fontFamily: "monospace", color: "#991b1b" }}>DROP</td>
                     <td style={{ padding: "6px 12px", fontWeight: 600, textDecoration: "line-through" }}>{p.name}</td>
                     <td style={{ padding: "6px 12px", color: "#6b7280" }}>{p.eligible.join(", ")}</td>
-                    <td style={{ padding: "6px 12px", fontSize: 11, color: "#991b1b" }}>✗ released</td>
+                    <td style={{ padding: "6px 12px", fontSize: 13, color: "#991b1b" }}>✗ released</td>
                   </tr>
                 );
               })}
@@ -213,16 +213,16 @@ export default function ManualSlotAssignmentPreview() {
             {pendingPlayer ? (
               <>
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, textTransform: "uppercase", color: "#6b7280", letterSpacing: ".05em" }}>
+                  <div style={{ fontSize: 13, textTransform: "uppercase", color: "#6b7280", letterSpacing: ".05em" }}>
                     Current step
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+                  <div style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>
                     {pendingPlayer.name}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
                     Eligible slots: <code>{pendingPlayer.eligible.join(", ")}</code>
                   </div>
-                  <div style={{ fontSize: 12, color: "#92400e", marginTop: 6, padding: "6px 10px", background: "#fef3c7", borderRadius: 4 }}>
+                  <div style={{ fontSize: 13, color: "#92400e", marginTop: 6, padding: "6px 10px", background: "#fef3c7", borderRadius: 4 }}>
                     {pendingReason}
                   </div>
                 </div>
@@ -247,7 +247,7 @@ export default function ManualSlotAssignmentPreview() {
                           borderRadius: 4,
                           background: eligible ? "white" : "#f9fafb",
                           color: eligible ? "#111827" : "#9ca3af",
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: 600,
                           cursor: eligible ? "pointer" : "not-allowed",
                           opacity: eligible ? 1 : 0.5,
@@ -271,7 +271,7 @@ export default function ManualSlotAssignmentPreview() {
                       borderRadius: 4,
                       background: "white",
                       color: "#991b1b",
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: 600,
                       cursor: "pointer",
                     }}
@@ -298,10 +298,10 @@ export default function ManualSlotAssignmentPreview() {
             {/* Planned moves list */}
             {planned.length > 0 && (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
-                <div style={{ fontSize: 11, textTransform: "uppercase", color: "#6b7280", letterSpacing: ".05em", marginBottom: 8 }}>
+                <div style={{ fontSize: 13, textTransform: "uppercase", color: "#6b7280", letterSpacing: ".05em", marginBottom: 8 }}>
                   Planned moves
                 </div>
-                <ol style={{ paddingLeft: 16, fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                <ol style={{ paddingLeft: 16, fontSize: 13, lineHeight: 1.6, margin: 0 }}>
                   {planned.map((m, i) => {
                     const p = INITIAL_ROSTER.find(x => x.id === m.playerId)!;
                     return (
@@ -326,7 +326,7 @@ export default function ManualSlotAssignmentPreview() {
                   background: chainComplete && dropAccountedFor ? "#10b981" : "#d1d5db",
                   color: "white",
                   fontWeight: 600,
-                  fontSize: 12,
+                  fontSize: 13,
                   cursor: chainComplete && dropAccountedFor ? "pointer" : "not-allowed",
                 }}
               >
@@ -341,7 +341,7 @@ export default function ManualSlotAssignmentPreview() {
                   borderRadius: 4,
                   background: "white",
                   fontWeight: 600,
-                  fontSize: 12,
+                  fontSize: 13,
                   cursor: "pointer",
                 }}
               >
@@ -354,7 +354,7 @@ export default function ManualSlotAssignmentPreview() {
 
       {/* Design rationale */}
       <div style={{ marginTop: 32, padding: 16, background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Design rationale</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Design rationale</div>
         <ul style={{ fontSize: 13, lineHeight: 1.6, paddingLeft: 20, color: "#374151" }}>
           <li><strong>Explicit cascade</strong> replaces silent auto-resolve. The commissioner sees and controls every shift, not just the headline activate + drop.</li>
           <li><strong>Single atomic transaction</strong>. The "Confirm all moves" button commits the entire chain in one server call (no partial states).</li>
@@ -363,7 +363,7 @@ export default function ManualSlotAssignmentPreview() {
           <li><strong>Drop is the chain terminator</strong>. Once a displaced player has no legal slot (or the commissioner chooses to drop them), the chain ends and the move can commit.</li>
         </ul>
 
-        <div style={{ fontSize: 14, fontWeight: 700, marginTop: 16, marginBottom: 8 }}>Open questions for review</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 16, marginBottom: 8 }}>Open questions for review</div>
         <ul style={{ fontSize: 13, lineHeight: 1.6, paddingLeft: 20, color: "#374151" }}>
           <li>When a target slot has multiple occupants (e.g. C × 2, OF × 5), should the commissioner pick which occupant to displace? Current preview picks the first.</li>
           <li>Should the planner allow "free" slot moves (e.g. proactively move Johnston CM→OF before placing Vaughn) so the cascade isn't strictly forced?</li>
@@ -371,7 +371,7 @@ export default function ManualSlotAssignmentPreview() {
           <li>Owner-facing flow same as commissioner, or simpler? (Today owners use a different panel that delegates to auto-resolve.)</li>
         </ul>
 
-        <div style={{ fontSize: 14, fontWeight: 700, marginTop: 16, marginBottom: 8 }}>What this preview does NOT do</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 16, marginBottom: 8 }}>What this preview does NOT do</div>
         <ul style={{ fontSize: 13, lineHeight: 1.6, paddingLeft: 20, color: "#374151" }}>
           <li>No server call. The Confirm button is a no-op.</li>
           <li>No real eligibility validation against league rules — only static lookups against the mocked <code>eligible</code> arrays.</li>

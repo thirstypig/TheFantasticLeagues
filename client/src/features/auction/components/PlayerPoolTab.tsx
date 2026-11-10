@@ -72,7 +72,7 @@ const SEGMENT_GROUP: React.CSSProperties = {
 
 const segmentBtn = (active: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
   padding: "4px 10px",
-  fontSize: 10,
+  fontSize: 13,
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: 0.4,
@@ -379,7 +379,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
               background: "var(--am-surface-faint)",
               border: "1px solid " + (searchFocused ? "var(--am-accent)" : "var(--am-border)"),
               color: "var(--am-text)",
-              fontSize: 12,
+              fontSize: 13,
               outline: "none",
               width: searchFocused || searchQuery ? 140 : 70,
               transition: "all 150ms",
@@ -414,7 +414,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             onChange={(e) => setFilterPos(e.target.value)}
             style={{
               padding: "5px 8px",
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: 0.4,
@@ -434,7 +434,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             onChange={(e) => setFilterTeam(e.target.value)}
             style={{
               padding: "5px 8px",
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: 0.4,
@@ -452,7 +452,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
         {/* Count */}
         <span
           style={{
-            fontSize: 10,
+            fontSize: 13,
             color: "var(--am-text-faint)",
             fontVariantNumeric: "tabular-nums",
             marginLeft: "auto",
@@ -524,9 +524,9 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     return (
                                         <ThemedTd align="center" className="px-1 w-8">
                                             {myRank ? (
-                                                <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--am-text)" }}>{myRank}</span>
+                                                <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--am-text)" }}>{myRank}</span>
                                             ) : (
-                                                <span style={{ fontSize: 10, color: "var(--am-text-faint)", opacity: 0.3 }}>-</span>
+                                                <span style={{ fontSize: 13, color: "var(--am-text-faint)", opacity: 0.3 }}>-</span>
                                             )}
                                         </ThemedTd>
                                     );
@@ -535,7 +535,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     <div style={{ fontWeight: 600, fontSize: 13, color: "var(--am-text)", lineHeight: 1.15 }}>
                                         {p.mlb_full_name || p.player_name}
                                     </div>
-                                    <div style={{ fontSize: 10, color: "var(--am-text-muted)", display: "flex", gap: 4, alignItems: "center", fontWeight: 500, textTransform: "uppercase" }}>
+                                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", display: "flex", gap: 4, alignItems: "center", fontWeight: 500, textTransform: "uppercase" }}>
                                         <span style={{ color: "var(--am-accent)" }}>{mapPosition(getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT'), outfieldMode)}</span>
                                         <span style={{ opacity: 0.3 }}>·</span>
                                         <span>{p.mlb_team || 'FA'}</span>
@@ -561,7 +561,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                         const myVal = myTeamId ? computeMyValue(p) : null;
                                         const displayVal = myVal ?? baseVal;
 
-                                        if (!displayVal && displayVal !== 0) return <span style={{ fontSize: 12, color: "var(--am-text-faint)", opacity: 0.4, cursor: "help" }} title="No projected value available for this player">-</span>;
+                                        if (!displayVal && displayVal !== 0) return <span style={{ fontSize: 13, color: "var(--am-text-faint)", opacity: 0.4, cursor: "help" }} title="No projected value available for this player">-</span>;
 
                                         if (isActiveBid) {
                                             const surplus = displayVal - activeBidAmount!;
@@ -569,8 +569,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                             return (
                                                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.1 }}>
                                                     <IridText size={13} weight={500}>${activeBidAmount}</IridText>
-                                                    <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>${displayVal}</span>
-                                                    <span style={{ fontSize: 10, fontWeight: 700, color: surplusColor }}>
+                                                    <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>${displayVal}</span>
+                                                    <span style={{ fontSize: 13, fontWeight: 700, color: surplusColor }}>
                                                         {surplus > 0 ? '+' : ''}{surplus}
                                                     </span>
                                                 </div>
@@ -590,7 +590,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
 
                                         return (
                                           <span
-                                            style={{ fontSize: 12, fontWeight: 600, cursor: "help", color: valColor }}
+                                            style={{ fontSize: 13, fontWeight: 600, cursor: "help", color: valColor }}
                                             title={tooltip}
                                           >
                                             ${displayVal}
@@ -604,7 +604,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     {!isTaken && onNominate && (
                                         showBidPicker && nominatingPlayer?.mlb_id === p.mlb_id ? (
                                             <div style={{ display: "flex", alignItems: "center", gap: 2 }} onClick={e => e.stopPropagation()}>
-                                                <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>$</span>
+                                                <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>$</span>
                                                 <input
                                                     ref={nomInputRef}
                                                     type="number"
@@ -627,7 +627,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                     style={{
                                                       width: 38,
                                                       padding: "2px 4px",
-                                                      fontSize: 10,
+                                                      fontSize: 13,
                                                       textAlign: "center",
                                                       borderRadius: 8,
                                                       border: "1px solid var(--am-border)",
@@ -644,7 +644,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                         setStartBidInput('1');
                                                     }}
                                                     style={{
-                                                      fontSize: 9,
+                                                      fontSize: 13,
                                                       fontWeight: 700,
                                                       textTransform: "uppercase",
                                                       letterSpacing: 0.4,
@@ -673,7 +673,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                     }
                                                 }}
                                                 style={{
-                                                  fontSize: 10,
+                                                  fontSize: 13,
                                                   fontWeight: 700,
                                                   textTransform: "uppercase",
                                                   letterSpacing: 0.4,
@@ -718,7 +718,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
               style={{
                 padding: "48px 0",
                 textAlign: "center",
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 500,
                 color: "var(--am-text-faint)",
                 textTransform: "uppercase",

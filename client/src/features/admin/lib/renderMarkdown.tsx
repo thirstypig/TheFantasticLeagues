@@ -6,7 +6,7 @@ function inlineRender(text: string): React.ReactNode {
     if (part.startsWith("**") && part.endsWith("**"))
       return <strong key={pi}>{part.slice(2, -2)}</strong>;
     if (part.startsWith("`") && part.endsWith("`"))
-      return <code key={pi} className="rounded bg-[var(--lg-tint)] px-1 py-0.5 font-mono text-[11px] text-[var(--lg-accent)]">{part.slice(1, -1)}</code>;
+      return <code key={pi} className="rounded bg-[var(--lg-tint)] px-1 py-0.5 font-mono text-xs text-[var(--lg-accent)]">{part.slice(1, -1)}</code>;
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch)
       return <a key={pi} href={linkMatch[2]} className="text-[var(--lg-accent)] underline underline-offset-2" target="_blank" rel="noreferrer">{linkMatch[1]}</a>;
@@ -64,7 +64,7 @@ export function renderMarkdown(md: string): React.ReactNode[] {
         i++;
       }
       nodes.push(
-        <pre key={key++} className="my-3 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)] p-3 overflow-x-auto text-[11px] font-mono text-[var(--lg-text-primary)] leading-relaxed">
+        <pre key={key++} className="my-3 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)] p-3 overflow-x-auto text-xs font-mono text-[var(--lg-text-primary)] leading-relaxed">
           {codeLines.join("\n")}
         </pre>
       );

@@ -186,7 +186,7 @@ export function PendingChangeBar({
               onClick={onRevertAll}
               disabled={saving}
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
                 padding: "8px 14px",
                 borderRadius: 10,
@@ -205,7 +205,7 @@ export function PendingChangeBar({
               onClick={onSave}
               disabled={saving}
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
                 padding: "8px 16px",
                 borderRadius: 10,
@@ -235,7 +235,7 @@ export function PendingChangeBar({
             background: "color-mix(in srgb, var(--am-warning) 8%, transparent)",
             border: "1px solid color-mix(in srgb, var(--am-warning) 32%, transparent)",
             borderRadius: 12,
-            fontSize: 12.5,
+            fontSize: 13,
             color: "var(--am-text)",
           }}
         >
@@ -255,7 +255,7 @@ export function PendingChangeBar({
             }}
             disabled={saving}
             style={{
-              fontSize: 12.5,
+              fontSize: 13,
               padding: "4px 8px",
               borderRadius: 8,
               border: "1px solid var(--am-border-strong)",
@@ -266,7 +266,7 @@ export function PendingChangeBar({
               minHeight: 28,
             }}
           />
-          <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+          <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
             (commissioner backdate — server logs the date for audit)
           </span>
         </div>
@@ -314,7 +314,7 @@ export function PendingChangeBar({
             border: "1px solid var(--am-negative)",
             borderRadius: 14,
             color: "var(--am-text)",
-            fontSize: 12.5,
+            fontSize: 13,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -328,7 +328,7 @@ export function PendingChangeBar({
                 onClick={onRetry}
                 disabled={saving}
                 style={{
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 600,
                   padding: "6px 12px",
                   borderRadius: 8,
@@ -349,7 +349,7 @@ export function PendingChangeBar({
                 onClick={onDismissError}
                 aria-label="Dismiss error"
                 style={{
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 600,
                   padding: "6px 10px",
                   borderRadius: 8,
@@ -416,7 +416,7 @@ function PendingChangeRow({
         <span
           aria-label={BADGE_LABELS[item.kind]}
           style={{
-            fontSize: 10,
+            fontSize: 13,
             fontWeight: 700,
             padding: "2px 6px",
             borderRadius: 6,
@@ -435,7 +435,7 @@ function PendingChangeRow({
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              fontSize: 12,
+              fontSize: 13,
               color: "var(--am-text)",
             }}
           >
@@ -461,7 +461,7 @@ function PendingChangeRow({
             aria-label={`Revert ${item.text}`}
             disabled={saving}
             style={{
-              fontSize: 11,
+              fontSize: 13,
               padding: "2px 8px",
               borderRadius: 6,
               border: "1px solid transparent",

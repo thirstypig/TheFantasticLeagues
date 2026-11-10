@@ -339,7 +339,7 @@ export default function Auction() {
       <Glass strong>
         <div style={{ textAlign: "center", padding: "24px 8px" }}>
           <SectionLabel>✦ Auction Draft</SectionLabel>
-          <h2 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: "8px 0 12px", lineHeight: 1.1 }}>
+          <h2 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: "8px 0 12px", lineHeight: 1.1 }}>
             Auction Draft
           </h2>
           <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: 0 }}>Waiting for the commissioner to start the auction…</p>
@@ -366,7 +366,7 @@ export default function Auction() {
               marginTop: 8,
               padding: "12px 28px",
               borderRadius: 99,
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: 700,
               letterSpacing: 0.4,
               background: "var(--am-irid)",

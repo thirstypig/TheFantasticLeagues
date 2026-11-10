@@ -63,7 +63,7 @@ const AURORA_BTN_BASE: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "6px 12px",
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 600,
   borderRadius: 99,
   background: "var(--am-chip)",
@@ -317,7 +317,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                 Auction Complete
               </span>
             </SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               All rosters filled.
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -361,7 +361,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
           <SectionLabel style={{ marginBottom: 6 }}>Total Spent</SectionLabel>
           <IridText size={28}>${totalSpent}</IridText>
           {totalKeeperSpend > 0 && (
-            <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 4 }}>
+            <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 4 }}>
               incl. ${totalKeeperSpend} in keeper salaries
             </div>
           )}
@@ -425,13 +425,13 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
         </div>
 
         {gradesError && (
-          <div style={{ fontSize: 12, color: "rgb(248, 113, 113)", padding: "8px 12px", borderRadius: 8, background: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.25)" }}>
+          <div style={{ fontSize: 13, color: "rgb(248, 113, 113)", padding: "8px 12px", borderRadius: 8, background: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.25)" }}>
             {gradesError}
           </div>
         )}
 
         {!draftGrades && !gradesError && !gradesLoading && (
-          <div style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+          <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
             Generate AI-powered grades for each team's draft. Uses post-auction roster data and projected values.
           </div>
         )}
@@ -461,9 +461,9 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{g.teamName}</span>
                       {isMe && <Chip strong>You</Chip>}
                     </span>
-                    <span style={{ fontSize: 22, fontWeight: 700, color: tone.text, fontFamily: "var(--am-display)" }}>{g.grade}</span>
+                    <span style={{ fontSize: 24, fontWeight: 700, color: tone.text, fontFamily: "var(--am-display)" }}>{g.grade}</span>
                   </div>
-                  <p style={{ fontSize: 12, lineHeight: 1.45, color: "var(--am-text-muted)", margin: 0 }}>{g.summary}</p>
+                  <p style={{ fontSize: 13, lineHeight: 1.45, color: "var(--am-text-muted)", margin: 0 }}>{g.summary}</p>
                 </div>
               );
             })}
@@ -548,7 +548,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                         <span style={{ fontWeight: 600, color: "var(--am-text)" }}>{team.name}</span>
                         {isMe && <Chip strong>You</Chip>}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+                      <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                         {team.roster.length} players acquired
                       </span>
                     </div>
@@ -610,7 +610,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                     return (
                       <div style={{ borderTop: "1px solid var(--am-border)", background: "var(--am-surface-faint)" }}>
                         {/* HITTERS */}
-                        <div style={{ padding: "10px 14px 4px", fontSize: 10, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
+                        <div style={{ padding: "10px 14px 4px", fontSize: 13, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
                           Hitters ({hitters.length})
                         </div>
                         <ThemedTable>
@@ -652,21 +652,21 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                                     <ThemedTd className="py-1.5">
                                       <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
                                         {player.playerName}
-                                        {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                        {player.isKeeper && <span className="text-xs font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
                                       </span>
                                     </ThemedTd>
                                     <ThemedTd className="py-1.5">
-                                      <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                                      <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">
                                         {(player as any).assignedPosition || mapPosition(player.positions?.split(",")[0]?.trim() || "", outfieldMode) || "—"}
                                       </span>
                                     </ThemedTd>
-                                    <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                                    <ThemedTd className="py-1.5 text-xs text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                                     <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-text-primary)]'}`}>${player.price}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.R) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.HR) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.RBI) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.SB) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{fmtAvg(stats?.AVG)}</ThemedTd>
                                   </ThemedTr>
                                   {isRowExpanded && (
                                     <PlayerExpandedRow
@@ -684,7 +684,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                         </ThemedTable>
 
                         {/* PITCHERS */}
-                        <div style={{ padding: "10px 14px 4px", fontSize: 10, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)", borderTop: "1px solid var(--am-border)" }}>
+                        <div style={{ padding: "10px 14px 4px", fontSize: 13, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)", borderTop: "1px solid var(--am-border)" }}>
                           Pitchers ({pitchers.length})
                         </div>
                         <ThemedTable>
@@ -716,17 +716,17 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                                     <ThemedTd className="py-1.5">
                                       <span className="font-semibold text-[var(--lg-text-primary)] text-xs inline-flex items-center gap-1">
                                         {player.playerName}
-                                        {player.isKeeper && <span className="text-[8px] font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
+                                        {player.isKeeper && <span className="text-xs font-bold uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 rounded">K</span>}
                                       </span>
                                     </ThemedTd>
-                                    <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
-                                    <ThemedTd className="py-1.5 text-[10px] text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
+                                    <ThemedTd className="py-1.5 text-xs text-[var(--lg-text-muted)] font-mono">{mapPosition(player.positions?.split(",")[0]?.trim() || "P", outfieldMode)}</ThemedTd>
+                                    <ThemedTd className="py-1.5 text-xs text-[var(--lg-text-muted)]">{player.mlbTeam || "—"}</ThemedTd>
                                     <ThemedTd align="right" className={`py-1.5 text-xs font-semibold tabular-nums ${player.isKeeper ? 'text-amber-500' : 'text-[var(--lg-text-primary)]'}`}>${player.price}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
-                                    <ThemedTd align="center" className="py-1.5 text-[10px] tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.W) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.SV) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{num(stats?.K) || '—'}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{fmtRate(stats?.ERA)}</ThemedTd>
+                                    <ThemedTd align="center" className="py-1.5 text-xs tabular-nums">{fmtRate(stats?.WHIP)}</ThemedTd>
                                   </ThemedTr>
                                   {isRowExpanded && (
                                     <PlayerExpandedRow
@@ -755,14 +755,14 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                               background: "var(--am-chip)",
                             }}
                           >
-                            <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                            <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                               {tradeBlockSelections.size > 0
                                 ? `${tradeBlockSelections.size} player${tradeBlockSelections.size !== 1 ? 's' : ''} on trade block`
                                 : 'Click the trade icons to flag players as available'}
                             </span>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               {tradeBlockError && (
-                                <span style={{ fontSize: 12, color: "rgb(248, 113, 113)" }}>{tradeBlockError}</span>
+                                <span style={{ fontSize: 13, color: "rgb(248, 113, 113)" }}>{tradeBlockError}</span>
                               )}
                               <button
                                 type="button"
@@ -819,8 +819,8 @@ function Stat({
     "var(--am-text)";
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-      <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 600, color, fontVariantNumeric: "tabular-nums" }}>{value}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{label}</span>
+      <span style={{ fontSize: 15, fontWeight: 600, color, fontVariantNumeric: "tabular-nums" }}>{value}</span>
     </div>
   );
 }

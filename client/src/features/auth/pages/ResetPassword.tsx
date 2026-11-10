@@ -77,14 +77,14 @@ export default function ResetPassword() {
     background: "var(--am-surface-faint)",
     border: "1px solid var(--am-border)",
     color: "var(--am-text)",
-    fontSize: 14,
+    fontSize: 15,
     outline: "none",
     fontFamily: "var(--am-body)",
   };
 
   const labelStyle: React.CSSProperties = {
     display: "block",
-    fontSize: 10,
+    fontSize: 13,
     letterSpacing: 1.4,
     textTransform: "uppercase",
     color: "var(--am-text-faint)",
@@ -115,7 +115,7 @@ export default function ResetPassword() {
     background: "var(--am-irid)",
     color: "var(--am-on-accent)",
     fontWeight: 600,
-    fontSize: 14,
+    fontSize: 15,
     border: "1px solid var(--am-border-strong)",
     cursor: loading ? "not-allowed" : "pointer",
     opacity: loading ? 0.6 : 1,
@@ -188,7 +188,7 @@ export default function ResetPassword() {
               <p style={{ fontSize: 13, color: "var(--am-text-muted)", marginBottom: 12 }}>
                 Verifying your reset link...
               </p>
-              <p style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+              <p style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                 If this takes too long, the link may have expired.{" "}
                 <Link
                   to="/forgot-password"
@@ -204,7 +204,7 @@ export default function ResetPassword() {
               <h1
                 style={{
                   fontFamily: "var(--am-display)",
-                  fontSize: 26,
+                  fontSize: 24,
                   fontWeight: 500,
                   color: "var(--am-text)",
                   letterSpacing: -0.4,
@@ -243,7 +243,7 @@ export default function ResetPassword() {
                         color: "var(--am-on-accent)",
                         display: "grid",
                         placeItems: "center",
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 700,
                         flexShrink: 0,
                       }}
@@ -314,7 +314,7 @@ export default function ResetPassword() {
                     {/* Inline match hint */}
                     <div
                       style={{
-                        fontSize: 11,
+                        fontSize: 13,
                         marginTop: 6,
                         marginLeft: 2,
                         color: showMismatchHint
@@ -341,7 +341,7 @@ export default function ResetPassword() {
                         background: "var(--am-surface-faint)",
                         border: "1px solid var(--am-border)",
                         color: "var(--am-negative)",
-                        fontSize: 12,
+                        fontSize: 13,
                       }}
                     >
                       {error}
@@ -356,7 +356,7 @@ export default function ResetPassword() {
                     <Link
                       to="/login"
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         color: "var(--am-text-faint)",
                         textDecoration: "none",
                       }}

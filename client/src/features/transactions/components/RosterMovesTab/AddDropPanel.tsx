@@ -160,7 +160,7 @@ function SortHeader({
 }) {
   const active = activeKey === sortKey;
   return (
-    <th className={`px-2 py-2 text-${align} text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]`}>
+    <th className={`px-2 py-2 text-${align} text-xs font-semibold uppercase text-[var(--lg-text-muted)]`}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
@@ -203,7 +203,7 @@ function PlayerStatsTable({
   const colSpan = includeSlot ? columns.length + 4 : columns.length + 3;
   return (
     <div className="overflow-x-auto rounded border border-[var(--lg-border-faint)]">
-      <table className="min-w-[720px] w-full border-collapse text-[11px]">
+      <table className="min-w-[720px] w-full border-collapse text-xs">
         <thead className="bg-[var(--lg-tint)]/70">
           <tr>
             <SortHeader label="Player" sortKey="name" activeKey={sortKey} direction={sortDir} onSort={onSort} align="left" />
@@ -253,12 +253,12 @@ function PlayerStatsTable({
                   >
                     <td className="sticky left-0 z-[1] min-w-[180px] bg-inherit px-3 py-2 font-semibold text-[var(--lg-text-primary)]">
                       <div className="flex items-center gap-2">
-                        <span aria-hidden className="inline-flex h-5 w-5 items-center justify-center rounded border border-[var(--lg-border-faint)] text-[10px] text-[var(--lg-text-muted)]">
+                        <span aria-hidden className="inline-flex h-5 w-5 items-center justify-center rounded border border-[var(--lg-border-faint)] text-xs text-[var(--lg-text-muted)]">
                           {expanded ? "-" : "+"}
                         </span>
                         <span>{playerName(p)}</span>
                         {selected && (
-                          <span className="rounded-full border border-[var(--lg-accent)]/50 bg-[var(--lg-accent)]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--lg-accent)]">
+                          <span className="rounded-full border border-[var(--lg-accent)]/50 bg-[var(--lg-accent)]/15 px-1.5 py-0.5 text-xs font-bold uppercase text-[var(--lg-accent)]">
                             Selected
                           </span>
                         )}
@@ -339,13 +339,13 @@ function PlayerCareerExpansion({
       <td colSpan={colSpan} className="bg-[var(--lg-bg-surface)] px-4 py-3">
         <div className="grid gap-3 md:grid-cols-[220px_1fr]">
           <div className="rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/40 p-3">
-            <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Player detail</div>
+            <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Player detail</div>
             <div className="mt-2 text-sm font-semibold text-[var(--lg-text-primary)]">{playerName(player)}</div>
             <div className="mt-1 text-xs text-[var(--lg-text-muted)]">{playerPositions(player)} · {playerMlbTeam(player)}</div>
-            <div className="mt-3 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Eligible slots</div>
+            <div className="mt-3 text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Eligible slots</div>
             <div className="mt-2 flex flex-wrap gap-1">
               {eligible.length ? eligible.map((slot) => (
-                <span key={slot} className="rounded border border-[var(--lg-border-faint)] bg-[var(--lg-bg-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--lg-text-primary)]">
+                <span key={slot} className="rounded border border-[var(--lg-border-faint)] bg-[var(--lg-bg-surface)] px-2 py-0.5 text-xs font-semibold text-[var(--lg-text-primary)]">
                   {slot}
                 </span>
               )) : (
@@ -354,7 +354,7 @@ function PlayerCareerExpansion({
             </div>
           </div>
           <div className="min-w-0 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/30">
-            <div className="border-b border-[var(--lg-border-faint)] px-3 py-2 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+            <div className="border-b border-[var(--lg-border-faint)] px-3 py-2 text-xs font-semibold uppercase text-[var(--lg-text-muted)]">
               Career stats
             </div>
             <div className="overflow-x-auto p-2">
@@ -384,16 +384,16 @@ function ComparisonTable({ add, drop }: { add: RosterMovesPlayer; drop: RosterMo
   const columns = columnsForMode(mode);
   return (
     <div className="overflow-x-auto rounded border border-[var(--lg-border-faint)]">
-      <table className="min-w-[720px] w-full border-collapse text-[11px]">
+      <table className="min-w-[720px] w-full border-collapse text-xs">
         <thead className="bg-[var(--lg-tint)]/70">
           <tr>
-            <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Move</th>
-            <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Player</th>
-            <th className="px-2 py-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Pos</th>
-            <th className="px-2 py-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">MLB</th>
-            <th className="px-2 py-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Slot</th>
+            <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Move</th>
+            <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Player</th>
+            <th className="px-2 py-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Pos</th>
+            <th className="px-2 py-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">MLB</th>
+            <th className="px-2 py-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Slot</th>
             {columns.map((column) => (
-              <th key={column} className="px-2 py-2 text-right text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">{column}</th>
+              <th key={column} className="px-2 py-2 text-right text-xs font-semibold uppercase text-[var(--lg-text-muted)]">{column}</th>
             ))}
           </tr>
         </thead>
@@ -479,31 +479,31 @@ function SlotRearrangementSection({
         className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-[var(--lg-tint)]"
       >
         <span className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+          <span className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">
             Adjust slot assignments
           </span>
           {changedCount > 0 && (
-            <span className="rounded-full bg-[var(--lg-accent)]/20 px-1.5 py-0.5 text-[9px] font-bold text-[var(--lg-accent)]">
+            <span className="rounded-full bg-[var(--lg-accent)]/20 px-1.5 py-0.5 text-xs font-bold text-[var(--lg-accent)]">
               {changedCount} change{changedCount !== 1 ? "s" : ""}
             </span>
           )}
-          <span className="text-[10px] text-[var(--lg-text-muted)]">(optional)</span>
+          <span className="text-xs text-[var(--lg-text-muted)]">(optional)</span>
         </span>
-        <span className="text-[10px] text-[var(--lg-text-muted)]" aria-hidden>{open ? "▲" : "▼"}</span>
+        <span className="text-xs text-[var(--lg-text-muted)]" aria-hidden>{open ? "▲" : "▼"}</span>
       </button>
       {open && (
         <div className="border-t border-[var(--lg-border-faint)] px-3 pb-3 pt-2">
-          <p className="mb-3 text-[10px] text-[var(--lg-text-muted)]">
+          <p className="mb-3 text-xs text-[var(--lg-text-muted)]">
             Move existing roster players to different slots before the claim applies. Use this to free up a specific slot for the incoming player.
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[11px]">
+            <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b border-[var(--lg-border-faint)]">
-                  <th className="pb-1.5 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Player</th>
-                  <th className="pb-1.5 pl-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Eligible</th>
-                  <th className="pb-1.5 pl-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Current</th>
-                  <th className="pb-1.5 pl-2 text-left text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Move to</th>
+                  <th className="pb-1.5 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Player</th>
+                  <th className="pb-1.5 pl-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Eligible</th>
+                  <th className="pb-1.5 pl-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Current</th>
+                  <th className="pb-1.5 pl-2 text-left text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Move to</th>
                 </tr>
               </thead>
               <tbody>
@@ -523,7 +523,7 @@ function SlotRearrangementSection({
                       <td className="py-1.5 pr-3 font-semibold text-[var(--lg-text-primary)]">
                         {playerName(p)}
                         {changed && (
-                          <span className="ml-1.5 text-[9px] font-normal text-[var(--lg-accent)]">✓ moved</span>
+                          <span className="ml-1.5 text-xs font-normal text-[var(--lg-accent)]">✓ moved</span>
                         )}
                       </td>
                       <td className="py-1.5 pl-2 text-[var(--lg-text-muted)]">
@@ -531,7 +531,7 @@ function SlotRearrangementSection({
                       </td>
                       <td className="py-1.5 pl-2">
                         <span
-                          className={`rounded border px-1.5 py-0.5 text-[10px] font-mono font-semibold ${
+                          className={`rounded border px-1.5 py-0.5 text-xs font-mono font-semibold ${
                             changed
                               ? "border-[var(--lg-border-faint)] text-[var(--lg-text-muted)] line-through"
                               : "border-[var(--lg-border-faint)] text-[var(--lg-text-primary)]"
@@ -544,7 +544,7 @@ function SlotRearrangementSection({
                         <select
                           value={selectedSlot}
                           onChange={(e) => handleSlotChange(pid, e.target.value, currentSlot)}
-                          className="rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-2 py-0.5 text-[11px] text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
+                          className="rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] px-2 py-0.5 text-xs text-[var(--lg-text-primary)] outline-none focus:border-[var(--lg-accent)]"
                         >
                           {eligible.map((slot) => (
                             <option key={slot} value={slot}>
@@ -563,7 +563,7 @@ function SlotRearrangementSection({
             <button
               type="button"
               onClick={resetAll}
-              className="mt-2 text-[10px] text-[var(--lg-text-muted)] underline hover:text-[var(--lg-text-primary)]"
+              className="mt-2 text-xs text-[var(--lg-text-muted)] underline hover:text-[var(--lg-text-primary)]"
             >
               Reset all
             </button>
@@ -889,13 +889,13 @@ export default function AddDropPanel({
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-[var(--lg-text-muted)]">
+      <p className="text-xs text-[var(--lg-text-muted)]">
         Select a free agent. The drop list shows direct matches, players whose slot can be swapped, and multi-step chain scenarios (e.g. move Tatis to OF, then drop an outfielder).
       </p>
 
       {hideAddSearch ? (
-        <div className="rounded border border-[var(--lg-border-faint)] bg-[var(--lg-bg-surface)] p-3 text-[11px]">
-          <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Add player</div>
+        <div className="rounded border border-[var(--lg-border-faint)] bg-[var(--lg-bg-surface)] p-3 text-xs">
+          <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Add player</div>
           {selectedAdd ? (
             <ComparisonTable add={selectedAdd} drop={null} />
           ) : (
@@ -904,7 +904,7 @@ export default function AddDropPanel({
         </div>
       ) : (
         <section>
-          <label className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+          <label className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
             Add player (free agents)
           </label>
           <input
@@ -920,7 +920,7 @@ export default function AddDropPanel({
                 key={pos}
                 type="button"
                 onClick={() => setPositionFilter(pos)}
-                className={`shrink-0 rounded border px-2 py-1 text-[10px] font-semibold ${
+                className={`shrink-0 rounded border px-2 py-1 text-xs font-semibold ${
                   positionFilter === pos
                     ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/15 text-[var(--lg-text-primary)]"
                     : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:bg-[var(--lg-tint-hover)]"
@@ -947,14 +947,14 @@ export default function AddDropPanel({
 
       <section>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-          <label className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+          <label className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">
             Drop player{" "}
             <span className="text-[var(--lg-text-muted)]">
               ({dropRequired ? "required in-season" : "optional"})
             </span>
           </label>
           {selectedAdd && (
-            <div className="text-[10px] text-[var(--lg-text-muted)]">
+            <div className="text-xs text-[var(--lg-text-muted)]">
               New player eligible for: {eligibleSlotLabels.length ? eligibleSlotLabels.join(", ") : "none"}
             </div>
           )}
@@ -976,13 +976,13 @@ export default function AddDropPanel({
 
       {dropRequired && stashCandidates.length > 0 && (
         <section>
-          <label className="mb-1 block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+          <label className="mb-1 block text-xs font-semibold uppercase text-[var(--lg-text-muted)]">
             Also stash to IL{" "}
             <span className="font-normal normal-case text-[var(--lg-text-faint)]">(optional — moves an injured active player to your IL slot)</span>
           </label>
           <select
             aria-label="also stash to IL"
-            className="w-full rounded border border-[var(--lg-border)] bg-[var(--lg-bg-surface)] px-2 py-1.5 text-[12px] text-[var(--lg-text)]"
+            className="w-full rounded border border-[var(--lg-border)] bg-[var(--lg-bg-surface)] px-2 py-1.5 text-xs text-[var(--lg-text)]"
             value={ilStashPlayerId}
             onChange={(e) =>
               setIlStashPlayerId(e.target.value === "" ? "" : Number(e.target.value))
@@ -1007,7 +1007,7 @@ export default function AddDropPanel({
       )}
 
       <div
-        className={`rounded border p-2 text-[11px] ${
+        className={`rounded border p-2 text-xs ${
           rosterRulesSatisfied
             ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
             : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 text-[var(--lg-text-muted)]"
@@ -1021,17 +1021,17 @@ export default function AddDropPanel({
       </div>
 
       {dropRequired && addMlbId !== null && dropPlayerId === "" && (
-        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-200">
           In-season adds require a matching drop. The drop table only includes players in eligible roster slots.
         </div>
       )}
       {selectedAdd && selectedDrop && !selectedDropIsValidCandidate && !needsServerPreview && (
-        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-200">
           {playerName(selectedAdd)} is not eligible for the {dropTargetSlot} slot. Pick a different drop.
         </div>
       )}
       {error && (
-        <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-[11px] text-red-300">
+        <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
           {error}
         </div>
       )}
@@ -1073,7 +1073,7 @@ export default function AddDropPanel({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">Review transaction</div>
+                <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)]">Review transaction</div>
                 <h3 className="mt-1 text-base font-semibold text-[var(--lg-text-primary)]">
                   {dropPlayerId !== "" ? "Add + Drop" : "Add Player"}
                 </h3>
@@ -1081,7 +1081,7 @@ export default function AddDropPanel({
               <button
                 type="button"
                 onClick={() => setReviewOpen(false)}
-                className="rounded border border-[var(--lg-border-faint)] px-2 py-1 text-[11px] text-[var(--lg-text-muted)] hover:bg-[var(--lg-tint)]"
+                className="rounded border border-[var(--lg-border-faint)] px-2 py-1 text-xs text-[var(--lg-text-muted)] hover:bg-[var(--lg-tint)]"
               >
                 Close
               </button>
@@ -1091,7 +1091,7 @@ export default function AddDropPanel({
               <ComparisonTable add={selectedAdd} drop={selectedDrop} />
             </div>
 
-            <div className="mt-3 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 p-3 text-[11px] text-[var(--lg-text-muted)]">
+            <div className="mt-3 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 p-3 text-xs text-[var(--lg-text-muted)]">
               {effectiveDate && <div>Effective date: {effectiveDate}</div>}
               {selectedDrop && <div>Drop slot: {dropTargetSlot}</div>}
               {slotChanges.length > 0 && (

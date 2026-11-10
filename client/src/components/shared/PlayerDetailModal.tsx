@@ -416,7 +416,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                       {newsRows.map((t, i) => (
                         <div key={i} className="flex items-start gap-3 px-3 py-2.5 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-faint)]">
                           <div className="shrink-0 mt-0.5">
-                            <span className={`inline-block px-2 py-0.5 rounded-[var(--lg-radius-sm)] text-[10px] font-medium uppercase ${transactionBadgeClass(t.typeDesc)}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-[var(--lg-radius-sm)] text-xs font-medium uppercase ${transactionBadgeClass(t.typeDesc)}`}>
                               {t.typeDesc}
                             </span>
                           </div>
@@ -453,11 +453,11 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
                           className="block px-3 py-2.5 rounded-[var(--lg-radius-md)] bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] hover:bg-[var(--lg-bg-hover)] transition-colors"
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-xs font-medium uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
                               {item.source}
                             </span>
                             {item.pubDate && (
-                              <span className="text-[10px] text-[var(--lg-text-muted)]">
+                              <span className="text-xs text-[var(--lg-text-muted)]">
                                 {formatRelativeDate(item.pubDate)}
                               </span>
                             )}
@@ -520,7 +520,7 @@ export default function PlayerDetailModal({ player, onClose, open }: Props) {
               {/* Recent Stats */}
               <div className={sectionCls}>
                 <div className={sectionHeadCls}>
-                  <div className={sectionTitleCls}>Recent Stats <span className="text-[var(--lg-accent)] opacity-40 mx-2">|</span> 7 / 14 / 21 Days &amp; YTD <span className="text-[9px] text-[var(--lg-text-muted)] opacity-60 ml-2 font-normal normal-case tracking-normal">Source: MLB · {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span></div>
+                  <div className={sectionTitleCls}>Recent Stats <span className="text-[var(--lg-accent)] opacity-40 mx-2">|</span> 7 / 14 / 21 Days &amp; YTD <span className="text-xs text-[var(--lg-text-muted)] opacity-60 ml-2 font-normal normal-case tracking-normal">Source: MLB · {new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span></div>
                 </div>
                 <div className={sectionBodyCls}>
                   {recentRows.length ? (

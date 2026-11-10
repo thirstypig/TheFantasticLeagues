@@ -59,9 +59,9 @@ function PickRow({ p, kind }: { p: PlayerPick; kind: "value" | "bust" }) {
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{p.name}</span>
           <Chip>{p.posPrimary || (p.isPitcher ? "P" : "—")}</Chip>
-          {p.team && <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{p.team}</span>}
+          {p.team && <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{p.team}</span>}
         </div>
-        <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>
           ${p.auctionPrice} · {statLine(p)}
         </div>
       </div>
@@ -87,7 +87,7 @@ function TeamCard({ team, isMyTeam }: { team: DraftReportCardData["teams"][numbe
           </h3>
           {isMyTeam && <Chip strong>You</Chip>}
         </div>
-        <div style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
           {team.values.length + team.busts.length} picks · ${auctionTotal}
         </div>
       </div>
@@ -97,7 +97,7 @@ function TeamCard({ team, isMyTeam }: { team: DraftReportCardData["teams"][numbe
             <TrendingUp size={11} /> Values
           </SectionLabel>
           {team.values.length === 0 ? (
-            <div style={{ fontSize: 11, color: "var(--am-text-faint)", padding: "8px 0" }}>
+            <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "8px 0" }}>
               No qualifying picks yet
             </div>
           ) : (
@@ -109,7 +109,7 @@ function TeamCard({ team, isMyTeam }: { team: DraftReportCardData["teams"][numbe
             <TrendingDown size={11} /> Busts
           </SectionLabel>
           {team.busts.length === 0 ? (
-            <div style={{ fontSize: 11, color: "var(--am-text-faint)", padding: "8px 0" }}>
+            <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "8px 0" }}>
               No qualifying picks yet
             </div>
           ) : (
@@ -167,13 +167,13 @@ export default function DraftReportCard() {
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Draft Report Card</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
           Draft Report Card
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
           Auction-day prices anchored to today's stats. Per team: three values (best surplus) and three busts (worst surplus), ranked by z-score performance minus z-score price.
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 11, color: "var(--am-text-faint)", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 13, color: "var(--am-text-faint)", flexWrap: "wrap" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             <Sparkles size={12} />
             Auction wins only — keepers excluded
@@ -184,7 +184,7 @@ export default function DraftReportCard() {
               display: "inline-flex", alignItems: "center", gap: 4,
               padding: "4px 8px", borderRadius: 4,
               background: "transparent", color: "var(--am-text-muted)",
-              border: "1px solid var(--am-border)", fontSize: 11, cursor: "pointer",
+              border: "1px solid var(--am-border)", fontSize: 13, cursor: "pointer",
             }}
           >
             <Info size={11} />
@@ -192,7 +192,7 @@ export default function DraftReportCard() {
           </button>
         </div>
         {showMethodology && (
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 6, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)", fontSize: 12, color: "var(--am-text-muted)", lineHeight: 1.55 }}>
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 6, background: "var(--am-surface-faint)", border: "1px solid var(--am-border)", fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.55 }}>
             <div style={{ fontWeight: 700, color: "var(--am-text)", marginBottom: 6 }}>
               How surplus is computed
             </div>
@@ -246,7 +246,7 @@ export default function DraftReportCard() {
                 border: "1px solid var(--am-border)",
                 background: active ? "var(--am-chip-strong)" : "var(--am-surface)",
                 color: active ? "var(--am-text)" : "var(--am-text-muted)",
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
                 display: "inline-flex",
@@ -256,7 +256,7 @@ export default function DraftReportCard() {
             >
               {cp.label}
               {cp.unlocksLabel && (
-                <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
+                <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                   · unlocks {cp.unlocksLabel}
                 </span>
               )}
@@ -293,7 +293,7 @@ export default function DraftReportCard() {
 
       {!loading && card && card.isPreview && (
         <Glass>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--am-text)", fontWeight: 600 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--am-text)", fontWeight: 600 }}>
             <Chip strong color="var(--am-accent)">PREVIEW</Chip>
             <span>
               {card.checkpointLabel} period still in flight — finalizes{" "}

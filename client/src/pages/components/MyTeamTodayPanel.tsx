@@ -268,15 +268,15 @@ export default function MyTeamTodayPanel({ leagueId }: Props) {
       </div>
 
       {loading && (
-        <div style={{ fontSize: 12, color: "var(--am-text-faint)" }}>Loading…</div>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>Loading…</div>
       )}
 
       {!loading && error && (
-        <div style={{ fontSize: 12, color: "var(--am-text-faint)" }}>{error}</div>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{error}</div>
       )}
 
       {!loading && !error && !hasAnyGames && (
-        <div style={{ fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
           No rostered players have MLB games for this date.
         </div>
       )}
@@ -321,7 +321,7 @@ function PlayerGroup({
     <div>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: 1.2,
           textTransform: "uppercase",
           color: "var(--am-text-faint)",
@@ -403,7 +403,7 @@ function TotalsRow({
     return (
       <tr style={{ background: "var(--am-surface-faint)", fontWeight: 700 }}>
         <TodayTd align="left">
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--am-text-muted)" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--am-text-muted)" }}>
             Team total
           </span>
         </TodayTd>
@@ -424,7 +424,7 @@ function TotalsRow({
   return (
     <tr style={{ background: "var(--am-surface-faint)", fontWeight: 700 }}>
       <TodayTd align="left">
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--am-text-muted)" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--am-text-muted)" }}>
           Team total
         </span>
       </TodayTd>
@@ -452,7 +452,7 @@ function IlGroup({ players }: { players: RosterStatsPlayer[] }) {
     <div>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: 1.2,
           textTransform: "uppercase",
           color: "var(--am-text-faint)",
@@ -481,7 +481,7 @@ function IlGroup({ players }: { players: RosterStatsPlayer[] }) {
                 <TodayTd align="center">IL</TodayTd>
                 <TodayTd align="center">{p.mlbTeam || "—"}</TodayTd>
                 <TodayTd align="left">
-                  <span style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+                  <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                     On fantasy IL — does not contribute to team totals
                   </span>
                 </TodayTd>
@@ -506,7 +506,7 @@ function TodayTh({
       style={{
         padding: "7px 8px",
         textAlign: align,
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: 750,
         letterSpacing: 0.9,
         textTransform: "uppercase",
@@ -532,7 +532,7 @@ function TodayTd({
       style={{
         padding: "7px 8px",
         textAlign: align,
-        fontSize: 12,
+        fontSize: 13,
         color: "var(--am-text)",
         borderTop: "1px solid var(--am-border)",
         fontVariantNumeric: "tabular-nums",
@@ -553,7 +553,7 @@ function PlayerRow({ player, kind }: { player: RosterStatsPlayer; kind: "hitter"
     const l = player.hitting;
     if (l) {
       lineNode = (
-        <span style={{ fontSize: 12, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 13, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
           {formatHittingLine(l)}
         </span>
       );
@@ -571,7 +571,7 @@ function PlayerRow({ player, kind }: { player: RosterStatsPlayer; kind: "hitter"
       // Pre-game or unknown status — show game time or a Pending chip.
       const t = formatGameTimeShort(player.gameTime);
       lineNode = (
-        <span style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+        <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
           {t || "Pending"}
         </span>
       );
@@ -580,7 +580,7 @@ function PlayerRow({ player, kind }: { player: RosterStatsPlayer; kind: "hitter"
     const l = player.pitching;
     if (l) {
       lineNode = (
-        <span style={{ fontSize: 12, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 13, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
           {formatPitchingLine(l)}
         </span>
       );
@@ -597,7 +597,7 @@ function PlayerRow({ player, kind }: { player: RosterStatsPlayer; kind: "hitter"
     } else {
       const t = formatGameTimeShort(player.gameTime);
       lineNode = (
-        <span style={{ fontSize: 12, color: "var(--am-text-faint)" }}>
+        <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
           {t || "Pending"}
         </span>
       );
@@ -608,7 +608,7 @@ function PlayerRow({ player, kind }: { player: RosterStatsPlayer; kind: "hitter"
     <tr style={{ background: hot ? "color-mix(in srgb, var(--am-accent) 8%, transparent)" : "transparent" }}>
       <TodayTd align="left">
         <span style={{ fontWeight: 650 }}>{player.playerName}</span>
-        {hot && <span style={{ marginLeft: 6 }}><Chip strong style={{ padding: "2px 6px", fontSize: 10 }}>Hot</Chip></span>}
+        {hot && <span style={{ marginLeft: 6 }}><Chip strong style={{ padding: "2px 6px", fontSize: 13 }}>Hot</Chip></span>}
       </TodayTd>
       <TodayTd align="center">{player.position || "—"}</TodayTd>
       <TodayTd align="center">{player.mlbTeam || "—"}</TodayTd>

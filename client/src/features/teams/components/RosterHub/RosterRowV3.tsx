@@ -190,7 +190,7 @@ export function RosterRowV3({
                 .filter((s) => s !== player.assignedSlot)
                 .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
               return secondary.length > 0 ? (
-                <span style={{ fontSize: 10.5, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
+                <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
                   {secondary.join(" · ")}
                 </span>
               ) : null;
@@ -248,7 +248,7 @@ export function RosterRowV3({
 function StatTd({ children }: { children: React.ReactNode }) {
   return (
     <ThemedTd align="right">
-      <span style={{ fontSize: 12, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
+      <span style={{ fontSize: 13, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
         {children}
       </span>
     </ThemedTd>

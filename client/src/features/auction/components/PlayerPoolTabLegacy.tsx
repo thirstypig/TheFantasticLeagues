@@ -307,13 +307,13 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
             <button
                 onClick={() => setViewGroup('hitters')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewGroup === 'hitters' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${viewGroup === 'hitters' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 H
             </button>
             <button
                 onClick={() => setViewGroup('pitchers')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${viewGroup === 'pitchers' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 P
             </button>
@@ -334,20 +334,20 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
             <button
                 onClick={() => setViewMode('all')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewMode === 'all' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${viewMode === 'all' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 All
             </button>
             <button
                 onClick={() => setViewMode('remaining')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${viewMode === 'remaining' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${viewMode === 'remaining' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 Avail
             </button>
             {onToggleStar && (
                 <button
                     onClick={() => setViewMode('starred')}
-                    className={`px-2 py-1 text-[10px] font-semibold rounded transition-all flex items-center gap-0.5 ${viewMode === 'starred' ? 'bg-amber-500/20 text-amber-400' : 'text-[var(--lg-text-muted)]'}`}
+                    className={`px-2 py-1 text-xs font-semibold rounded transition-all flex items-center gap-0.5 ${viewMode === 'starred' ? 'bg-amber-500/20 text-amber-400' : 'text-[var(--lg-text-muted)]'}`}
                     title="Starred players"
                 >
                     <Star size={10} fill={viewMode === 'starred' ? 'currentColor' : 'none'} />
@@ -359,19 +359,19 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)] shrink-0">
             <button
                 onClick={() => setFilterLeague('ALL')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'ALL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${filterLeague === 'ALL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 All
             </button>
             <button
                 onClick={() => setFilterLeague('NL')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'NL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${filterLeague === 'NL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 NL
             </button>
             <button
                 onClick={() => setFilterLeague('AL')}
-                className={`px-2 py-1 text-[10px] font-semibold uppercase rounded transition-all ${filterLeague === 'AL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
+                className={`px-2 py-1 text-xs font-semibold uppercase rounded transition-all ${filterLeague === 'AL' ? 'bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)]' : 'text-[var(--lg-text-muted)]'}`}
             >
                 AL
             </button>
@@ -381,7 +381,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
         <select
             value={filterPos}
             onChange={(e) => setFilterPos(e.target.value)}
-            className="px-1.5 py-1 text-[10px] font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] outline-none cursor-pointer"
+            className="px-1.5 py-1 text-xs font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] outline-none cursor-pointer"
         >
             <option value="ALL" className="text-black">Pos</option>
             {uniquePositions.map(p => <option key={p} value={p} className="text-black">{p}</option>)}
@@ -389,13 +389,13 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
         <select
             value={filterTeam}
             onChange={(e) => setFilterTeam(e.target.value)}
-            className="px-1.5 py-1 text-[10px] font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] outline-none cursor-pointer"
+            className="px-1.5 py-1 text-xs font-semibold uppercase rounded-md border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] text-[var(--lg-text-primary)] outline-none cursor-pointer"
         >
             {uniqueTeams.map(t => <option key={t} value={t} className="text-black">{t === 'ALL' ? 'Tm' : t}</option>)}
         </select>
 
         {/* Count */}
-        <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums ml-auto shrink-0">{filteredPlayers.length}</span>
+        <span className="text-xs text-[var(--lg-text-muted)] tabular-nums ml-auto shrink-0">{filteredPlayers.length}</span>
       </div>
 
       {/* Table */}
@@ -445,9 +445,9 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                     return (
                                         <ThemedTd align="center" className="px-1 w-8">
                                             {myRank ? (
-                                                <span className="text-[10px] font-bold tabular-nums text-[var(--lg-text-primary)]">{myRank}</span>
+                                                <span className="text-xs font-bold tabular-nums text-[var(--lg-text-primary)]">{myRank}</span>
                                             ) : (
-                                                <span className="text-[10px] text-[var(--lg-text-muted)] opacity-20">-</span>
+                                                <span className="text-xs text-[var(--lg-text-muted)] opacity-20">-</span>
                                             )}
                                         </ThemedTd>
                                     );
@@ -456,7 +456,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                     <div className="font-semibold text-sm text-[var(--lg-text-primary)] leading-tight">
                                         {p.mlb_full_name || p.player_name}
                                     </div>
-                                    <div className="text-[10px] text-[var(--lg-text-muted)] flex gap-1 items-center font-medium uppercase">
+                                    <div className="text-xs text-[var(--lg-text-muted)] flex gap-1 items-center font-medium uppercase">
                                         <span className="text-[var(--lg-accent)]">{mapPosition(getPrimaryPosition(p.positions) || (p.is_pitcher ? 'P' : 'UT'), outfieldMode)}</span>
                                         <span className="opacity-30">·</span>
                                         <span>{p.mlb_team || 'FA'}</span>
@@ -489,8 +489,8 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                             const surplus = displayVal - activeBidAmount!;
                                             return (
                                                 <div className="flex flex-col items-center leading-tight">
-                                                    <span className="text-[10px] text-[var(--lg-text-muted)]">${displayVal}</span>
-                                                    <span className={`text-[10px] font-bold ${surplus > 0 ? 'text-emerald-400' : surplus < 0 ? 'text-red-400' : 'text-[var(--lg-text-muted)]'}`}>
+                                                    <span className="text-xs text-[var(--lg-text-muted)]">${displayVal}</span>
+                                                    <span className={`text-xs font-bold ${surplus > 0 ? 'text-emerald-400' : surplus < 0 ? 'text-red-400' : 'text-[var(--lg-text-muted)]'}`}>
                                                         {surplus > 0 ? '+' : ''}{surplus}
                                                     </span>
                                                 </div>
@@ -519,7 +519,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                     {!isTaken && onNominate && (
                                         showBidPicker && nominatingPlayer?.mlb_id === p.mlb_id ? (
                                             <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                                                <span className="text-[10px] text-[var(--lg-text-muted)]">$</span>
+                                                <span className="text-xs text-[var(--lg-text-muted)]">$</span>
                                                 <input
                                                     ref={nomInputRef}
                                                     type="number"
@@ -539,7 +539,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                                             setStartBidInput('1');
                                                         }
                                                     }}
-                                                    className="w-10 px-1 py-0.5 text-[10px] text-center rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
+                                                    className="w-10 px-1 py-0.5 text-xs text-center rounded border border-[var(--lg-border-subtle)] bg-[var(--lg-bg-secondary)] text-[var(--lg-text-primary)] outline-none focus:ring-1 focus:ring-[var(--lg-accent)]"
                                                 />
                                                 <button
                                                     onClick={() => {
@@ -548,7 +548,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                                         setNominatingPlayer(null);
                                                         setStartBidInput('1');
                                                     }}
-                                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90"
+                                                    className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90"
                                                 >
                                                     Go
                                                 </button>
@@ -566,7 +566,7 @@ export default function PlayerPoolTabLegacy({ players, teams = [], onNominate, o
                                                         onNominate(p, 1);
                                                     }
                                                 }}
-                                                className={`text-[10px] font-semibold uppercase px-2 py-1 rounded-md transition-all ${
+                                                className={`text-xs font-semibold uppercase px-2 py-1 rounded-md transition-all ${
                                                     isPositionFullForMyTeam(p)
                                                         ? 'bg-[var(--lg-border-subtle)] text-[var(--lg-text-muted)] cursor-not-allowed opacity-60'
                                                         : 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 active:scale-95'

@@ -512,7 +512,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                 display: "grid",
                 placeItems: "center",
                 fontFamily: "var(--am-display)",
-                fontSize: 16,
+                fontSize: 17,
                 color: "var(--am-on-accent)",
               }}
             >
@@ -531,14 +531,14 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
               >
                 {teamName}
               </div>
-              <div style={{ fontSize: 10, color: "var(--am-text-muted)", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2 }}>
                 {hub?.team.owner ?? (isMyTeam ? "You" : "Manager")}
               </div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 13,
                   letterSpacing: 0.5,
                   color: "var(--am-text-faint)",
                   fontWeight: 600,
@@ -546,14 +546,14 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
               >
                 BUDGET
               </div>
-              <div style={{ fontFamily: "var(--am-display)", fontSize: 14 }}>
+              <div style={{ fontFamily: "var(--am-display)", fontSize: 15 }}>
                 {budget != null ? `$${budget}` : "—"}
               </div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 13,
                   letterSpacing: 0.5,
                   color: "var(--am-text-faint)",
                   fontWeight: 600,
@@ -561,14 +561,14 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
               >
                 IL
               </div>
-              <div style={{ fontFamily: "var(--am-display)", fontSize: 14 }}>
+              <div style={{ fontFamily: "var(--am-display)", fontSize: 15 }}>
                 {hub?.ilPlayers.length ?? 0}
               </div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 13,
                   letterSpacing: 0.5,
                   color: "var(--am-text-faint)",
                   fontWeight: 600,
@@ -633,7 +633,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                 style={{
                   padding: "5px 12px",
                   borderRadius: 99,
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 600,
                   background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
                   color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
@@ -647,7 +647,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
             );
           })}
           {periodLoading && (
-            <span style={{ fontSize: 11, color: "var(--am-text-faint)", marginLeft: 2 }}>
+            <span style={{ fontSize: 13, color: "var(--am-text-faint)", marginLeft: 2 }}>
               loading…
             </span>
           )}
@@ -665,7 +665,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       </div>
 
       {error && (
-        <div style={{ padding: "12px 18px", color: "var(--am-negative)", fontSize: 12 }}>{error}</div>
+        <div style={{ padding: "12px 18px", color: "var(--am-negative)", fontSize: 13 }}>{error}</div>
       )}
 
       {/* DENSE ROWS */}
@@ -685,7 +685,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
             <div />
             <div
               style={{
-                fontSize: 9,
+                fontSize: 13,
                 letterSpacing: 0.6,
                 color: "var(--am-text-faint)",
                 fontWeight: 700,
@@ -697,7 +697,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
               <div
                 key={s}
                 style={{
-                  fontSize: 9,
+                  fontSize: 13,
                   letterSpacing: 0.6,
                   color: "var(--am-text-faint)",
                   fontWeight: 700,
@@ -710,11 +710,11 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
             {showMoveCol && <div aria-hidden="true" />}
           </div>
           {(loading && !hub) || (periodMode !== "season" && periodLoading) ? (
-            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
+            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               Loading roster…
             </div>
           ) : list.length === 0 ? (
-            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
+            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               No {tab.toLowerCase()} on this roster.
             </div>
           ) : (
@@ -737,7 +737,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
               >
                 <div
                   style={{
-                    fontSize: 9.5,
+                    fontSize: 13,
                     fontWeight: 700,
                     color: "var(--am-text)",
                     background: "var(--am-chip-strong)",
@@ -752,7 +752,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: 12.5,
+                      fontSize: 13,
                       color: "var(--am-text)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -762,7 +762,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                   >
                     {p.playerName}
                   </div>
-                  <div style={{ fontSize: 9.5, color: "var(--am-text-faint)" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                     {(p.mlbTeam ?? "—")} · {p.posPrimary ?? p.position ?? "—"}
                   </div>
                 </div>
@@ -828,10 +828,10 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                     background: "var(--am-chip)",
                   }}
                 >
-                  <div style={{ fontSize: 8.5, fontWeight: 700, color: "var(--am-text-faint)", textAlign: "center" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--am-text-faint)", textAlign: "center" }}>
                     TOT
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--am-text-muted)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-muted)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {isHit ? "Hitter Totals" : "Pitcher Totals"}
                   </div>
                   {isHit ? (
@@ -870,7 +870,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
             border: "1px solid var(--am-negative)",
             borderRadius: 10,
             color: "var(--am-negative)",
-            fontSize: 12,
+            fontSize: 13,
             zIndex: 35,
             display: "flex",
             alignItems: "center",
@@ -922,7 +922,7 @@ function StatCell({ value }: { value: string }) {
   return (
     <div
       style={{
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: 600,
         color: "var(--am-text)",
         textAlign: "right",
