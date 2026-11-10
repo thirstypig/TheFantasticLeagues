@@ -216,6 +216,23 @@ describe("GET /period-category-standings", () => {
     },
   );
 
+  it("still returns 200 with minInnings null when the rules lookup rejects", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([]);
+    mockGetLeagueRules.mockRejectedValue(new Error("db down"));
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    expect(res.status).toBe(200);
+    expect(res.body.minInnings).toBeNull();
+    expect(res.body.periodId).toBe(5);
+    expect(res.body.categories).toHaveLength(10);
+    expect(res.body.teamCount).toBe(2);
+    expect(res.body.teamInnings).toHaveLength(2);
+  });
+
   it("ranks the previous standings from the persisted snapshot values (points delta)", async () => {
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
     mockGetSeasonStandings.mockResolvedValue({

@@ -7,10 +7,12 @@ vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
 }));
 
-vi.mock("../api", async () => ({
+vi.mock("../api", async () => {
+  const actual = await vi.importActual<typeof import("../api")>("../api");
+  return {
   // Pure helpers stay real so the card logic is exercised end to end.
-  teamsUnderInnings: (await vi.importActual<typeof import("../api")>("../api")).teamsUnderInnings,
-  formatInnings: (await vi.importActual<typeof import("../api")>("../api")).formatInnings,
+  teamsUnderInnings: actual.teamsUnderInnings,
+  formatInnings: actual.formatInnings,
   getCloseReadiness: vi.fn(),
   getGhostIlSummary: vi.fn(),
   getRosterCheck: vi.fn(),
@@ -18,7 +20,8 @@ vi.mock("../api", async () => ({
   toTeamTotals: vi.fn(),
   previewIlFees: vi.fn(),
   setPeriodStatus: vi.fn(),
-}));
+  };
+});
 
 import * as api from "../api";
 import ClosePeriodPage from "../pages/ClosePeriodPage";

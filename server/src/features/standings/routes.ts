@@ -297,10 +297,16 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
 
   // Innings check data for the commissioner's close checklist. Informational
   // only: the client flags teams under the minimum; nothing here blocks anything.
-  const rules = await getLeagueRules(prisma, leagueId);
-  const rawMin = rules.scoring?.min_innings;
-  const parsedMin = rawMin === undefined || rawMin.trim() === "" ? NaN : Number(rawMin);
-  const minInnings = Number.isFinite(parsedMin) ? parsedMin : null;
+  // A failed rules lookup must not take down the whole standings response.
+  let minInnings: number | null = null;
+  try {
+    const rules = await getLeagueRules(prisma, leagueId);
+    const rawMin = rules.scoring?.min_innings;
+    const parsedMin = rawMin === undefined || rawMin.trim() === "" ? NaN : Number(rawMin);
+    minInnings = Number.isFinite(parsedMin) ? parsedMin : null;
+  } catch (err: unknown) {
+    logger.warn({ err, leagueId }, "Innings rule lookup failed; omitting minInnings");
+  }
   const teamInnings = teamStats.map((t) => ({ teamId: t.team.id, teamName: t.team.name, ip: t.stats.IP ?? 0 }));
 
   res.json({ periodId: pid, categories, teamCount: teamStats.length, totalDelta: Object.fromEntries(totalDeltaMap), teamInnings, minInnings, computedAt: new Date().toISOString() });
