@@ -10,13 +10,15 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
 import { useSeasonGating } from "../../hooks/useSeasonGating";
 import League from "../League";
+import appSource from "../../App.tsx?raw";
+import { Navigate } from "react-router-dom";
 
-function setup(opts: { role?: "OWNER" | "COMMISSIONER"; isAdmin?: boolean }) {
+function setup(opts: { role?: "OWNER" | "COMMISSIONER"; isAdmin?: boolean; noMembership?: boolean }) {
   vi.mocked(useAuth).mockReturnValue({ user: { isAdmin: !!opts.isAdmin } } as any);
   vi.mocked(useLeague).mockReturnValue({
     leagueId: 7,
     draftMode: "AUCTION",
-    leagues: [{ id: 7, access: { type: "MEMBER", role: opts.role ?? "OWNER" } }],
+    leagues: opts.noMembership ? [] : [{ id: 7, access: { type: "MEMBER", role: opts.role ?? "OWNER" } }],
   } as any);
   vi.mocked(useSeasonGating).mockReturnValue({
     seasonStatus: "IN_SEASON",
@@ -63,20 +65,29 @@ describe("League page", () => {
     renderLeague();
     expect(screen.getByRole("link", { name: /^Commissioner/ })).toHaveAttribute("href", "/commissioner/7");
   });
+
+  it("shows the Commissioner row for an admin who is only an OWNER of the league", () => {
+    setup({ role: "OWNER", isAdmin: true });
+    renderLeague();
+    expect(screen.getByRole("link", { name: /^Commissioner/ })).toHaveAttribute("href", "/commissioner/7");
+  });
+
+  it("shows the Commissioner row for an admin with no membership in the league", () => {
+    setup({ isAdmin: true, noMembership: true });
+    renderLeague();
+    expect(screen.getByRole("link", { name: /^Commissioner/ })).toHaveAttribute("href", "/commissioner/7");
+  });
 });
 
 describe("/more redirect", () => {
-  it("App routes /more to /league", async () => {
-    // Mirror of the App.tsx route; also asserts the source line exists.
-    const fs = await import("node:fs");
-    const src = fs.readFileSync(require("node:path").resolve(__dirname, "../../App.tsx"), "utf8");
-    expect(src).toContain('<Route path="/more" element={<Navigate to="/league" replace />} />');
-    expect(src).toContain('<Route path="/league" element={<League />} />');
+  it("App routes /more to /league", () => {
+    // Guard that App.tsx still declares the redirect and the League route.
+    expect(appSource).toContain('<Route path="/more" element={<Navigate to="/league" replace />} />');
+    expect(appSource).toContain('<Route path="/league" element={<League />} />');
 
     function Where() {
       return <div data-testid="where">{useLocation().pathname}</div>;
     }
-    const { Navigate } = await import("react-router-dom");
     render(
       <MemoryRouter initialEntries={["/more"]}>
         <Routes>
