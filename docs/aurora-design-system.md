@@ -1,5 +1,7 @@
 # Score Sheet Design System — FBST Style Sheet
 
+> **Current source of truth:** the style foundation (DOC-032, `docs/superpowers/specs/2026-11-10-style-foundation-design.md`) and the live Style Bible at `/admin/style-bible`. Sofia Sans, four text sizes with a 13px floor, nine colors incl. Field. Where this file and those disagree, they win.
+
 > **Filename note:** This file was originally `aurora-design-system.md` and documented the Aurora design experiment (iridescent palette, glassmorphism, Space Grotesk). Aurora shipped in April 2026 as a proof-of-concept and was replaced by Score Sheet in May 2026 (PR #346). The filename is preserved so existing cross-references don't break. The Aurora reference is archived in the **Design History** section at the bottom.
 
 The Fantastic Leagues uses the **Score Sheet** design system. Scorebook / scoreboard aesthetic: flat paper, Inter only, warm taupe light mode, medium-gray dark mode, dark-green primary accent.

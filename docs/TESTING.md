@@ -156,6 +156,14 @@ Major covered areas (selected):
 - `features/transactions/api.test.ts` — 6 (ilStash + ilActivate wrappers: URL/method/body shape, optional params, error propagation)
 - `features/commissioner/api.test.ts` — 4 (getGhostIlSummary: URL interpolation, error propagation, GET semantics)
 - `features/admin/Admin.test.tsx` — 6
+- `features/admin/__tests__/AdminStyleBible.test.tsx` — 2 (Style Bible page: "Admins only." and no iframe for non-admins; iframe + full-page link for admins; the client-side gate, not server auth)
+- `components/aurora/__tests__/fontStack.test.ts` — 5 (Sofia Sans in index.html and aurora.css/index.css font stacks; Inter no longer loaded)
+- `components/aurora/__tests__/typeScale.test.ts` — 3 (Tailwind text-xs/sm/base/xl/3xl map to 13/15/17/24/32px; CSS `--am-t-*` scale; `--lg-font-size-*` remap)
+- `components/aurora/__tests__/textSizeSweep.test.ts` — 3 (no text sizes outside 13/15/17/24/32; scanner flags literals, multi-line ternaries and JSX props; computed expressions not flagged)
+- `components/shared/__tests__/PlayerFace.test.tsx` — 2 (headshot img, initials fallback after error; initials without mlbId)
+- `components/shared/__tests__/TeamLogo.test.tsx` — 3 (unknown code renders text only; known code renders img + code; falls back to code on image error)
+- `lib/__tests__/mlbImages.test.ts` — 3 (headshot URL with default width, width/generic variants, team logo URLs)
+- `scripts/__tests__/normalize-font-sizes.test.mjs` — 7 (font-size codemod: `snapPx`, `rewriteSource` on arbitrary classes, fontSize numbers, variables/computed sizes left alone, multi-line ternaries, JSX props, CSS; runs under Vitest via `include`)
 
 ### MCP (MLB Data Proxy) — 50 passing (not run by root `npm test`)
 
