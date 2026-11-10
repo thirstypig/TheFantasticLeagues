@@ -23,8 +23,11 @@ export function useTodayData(leagueId: number | null, hasTeam: boolean): TodayDa
   });
 
   useEffect(() => {
-    if (leagueId == null) return;
     let canceled = false;
+    if (leagueId == null) {
+      setData({ standings: loading, periods: loading, wirePeriod: loading, tonight: loading, news: loading });
+      return;
+    }
     setData({
       standings: loading,
       periods: loading,

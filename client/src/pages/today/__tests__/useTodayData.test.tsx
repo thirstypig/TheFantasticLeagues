@@ -74,4 +74,32 @@ describe("useTodayData", () => {
     expect(u.some((x) => x.includes("/mlb/"))).toBe(false);
     expect(u.some((x) => x.includes("/wire-list/"))).toBe(false);
   });
+  it("resets to loading when the league clears", async () => {
+    respond();
+    const { result, rerender } = renderHook(({ id }: { id: number | null }) => useTodayData(id, true), {
+      initialProps: { id: 8 as number | null },
+    });
+    await waitFor(() => expect(result.current.standings.status).toBe("ok"));
+    rerender({ id: null });
+    await waitFor(() => expect(result.current.standings.status).toBe("loading"));
+    expect(result.current.periods.status).toBe("loading");
+    expect(result.current.tonight.status).toBe("loading");
+  });
+
+  it("ignores a late response from a previous league", async () => {
+    let resolve9!: (v: unknown) => void;
+    const late9 = new Promise((r) => { resolve9 = r; });
+    respond({
+      "/season?leagueId=9": () => late9,
+      "/season?leagueId=10": () => ({ periodIds: [1], periodNames: ["L10"], rows: [] }),
+    });
+    const { result, rerender } = renderHook(({ id }: { id: number | null }) => useTodayData(id, true), {
+      initialProps: { id: 9 as number | null },
+    });
+    rerender({ id: 10 });
+    await waitFor(() => expect(result.current.standings).toEqual({ status: "ok", data: { rows: [], periodNames: ["L10"] } }));
+    resolve9({ periodIds: [1], periodNames: ["L9"], rows: [] });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(result.current.standings).toEqual({ status: "ok", data: { rows: [], periodNames: ["L10"] } });
+  });
 });
