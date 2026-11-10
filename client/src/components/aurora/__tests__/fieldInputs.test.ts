@@ -19,12 +19,18 @@ describe("Field rule reaches non-.lg-input inputs", () => {
   });
 
   it.each(["Login", "Signup", "ForgotPassword", "ResetPassword"])(
-    "%s: surface-faint cards never carry the Field border",
+    "%s: surface-faint cards use --am-border; only Signup's error alert is --am-negative",
     (name) => {
       const text = src(`features/auth/pages/${name}.tsx`);
-      // Non-input cards use --am-surface-faint + --am-border; Field border is input-only.
-      for (const m of text.matchAll(/background: "var\(--am-surface-faint\)",\n\s*(border[^\n]*)/g)) {
-        expect(m[1]).not.toContain("--am-field-line");
+      // Matches 928b3e12 reality: the error alerts in ForgotPassword/ResetPassword are
+      // --am-border cards, not negative. Signup's error alert (~line 348) is the only negative one.
+      const borders = [...text.matchAll(/background: "var\(--am-surface-faint\)",\n\s*(border[^\n]*)/g)].map(
+        (m) => m[1],
+      );
+      const negative = borders.filter((b) => b.includes("--am-negative")).length;
+      expect(negative, `${name} negative-bordered faint cards`).toBe(name === "Signup" ? 1 : 0);
+      for (const b of borders) {
+        if (!b.includes("--am-negative")) expect(b).toContain("--am-border");
       }
       expect(text).toContain("var(--am-field)");
     },
