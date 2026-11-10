@@ -9,7 +9,7 @@
  *   - Fixed bottom MobileTabBar: Today, My Team, Players, League
  *   - No drawer
  */
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useLeague } from "../contexts/LeagueContext";
@@ -37,6 +37,9 @@ function pickMobilePage(pathname: string): React.ReactElement | null {
   return null;
 }
 
+const SHELL_TOP_INSET = "50px";
+const SHELL_BOTTOM_INSET = "calc(64px + env(safe-area-inset-bottom))";
+
 interface MobileShellProps {
   children: React.ReactNode;
 }
@@ -50,6 +53,18 @@ export function MobileShell({ children }: MobileShellProps) {
   const nav = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
   const closeAccount = useCallback(() => setAccountOpen(false), []);
+
+  // Toasts render in a provider ABOVE the shell, so they cannot inherit the
+  // root's custom properties; publish the insets on <html> too.
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--shell-top-inset", SHELL_TOP_INSET);
+    root.setProperty("--shell-bottom-inset", SHELL_BOTTOM_INSET);
+    return () => {
+      root.removeProperty("--shell-top-inset");
+      root.removeProperty("--shell-bottom-inset");
+    };
+  }, []);
 
   async function onSignOut() {
     setAccountOpen(false);
@@ -68,7 +83,14 @@ export function MobileShell({ children }: MobileShellProps) {
     <div
       className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       data-testid="mobile-shell"
-      style={{ minHeight: "100vh", color: "var(--am-text)", background: "var(--am-bg)" }}
+      style={{
+        minHeight: "100vh",
+        color: "var(--am-text)",
+        background: "var(--am-bg)",
+        // Space the shell reserves; pages with fixed/full-height UI subtract it.
+        ["--shell-top-inset" as string]: SHELL_TOP_INSET,
+        ["--shell-bottom-inset" as string]: SHELL_BOTTOM_INSET,
+      }}
     >
       {/* ── Fixed 50px top app bar ── */}
       <header

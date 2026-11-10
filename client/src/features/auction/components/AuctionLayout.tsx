@@ -24,7 +24,7 @@ export default function AuctionLayout({ stage, context, isMuted, onToggleMute, c
   };
 
   return (
-    <div className="flex flex-col h-[calc(100svh-64px)] overflow-hidden bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)]">
+    <div className="flex flex-col h-[calc(100svh_-_var(--shell-top-inset,0px)_-_var(--shell-bottom-inset,0px))] overflow-hidden bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)]">
       {/* Compact header with layout toggle */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--lg-table-border)] bg-[var(--lg-bg-secondary)] shrink-0">
         <div className="text-xs font-semibold uppercase tracking-wide text-[var(--lg-text-muted)]">Auction Draft</div>

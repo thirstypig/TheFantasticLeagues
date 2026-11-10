@@ -66,6 +66,25 @@ describe("MobileShell — bottom tab bar", () => {
   });
 });
 
+describe("MobileShell — bottom/top insets for pages with fixed or full-height UI", () => {
+  it("publishes --shell-bottom-inset (tab bar + safe area) and --shell-top-inset (top bar)", () => {
+    renderShell();
+    const root = screen.getByTestId("mobile-shell");
+    expect(root.style.getPropertyValue("--shell-bottom-inset")).toBe("calc(64px + env(safe-area-inset-bottom))");
+    expect(root.style.getPropertyValue("--shell-top-inset")).toBe("50px");
+  });
+
+  it("also publishes them on <html> so portal-level UI (toasts) sees them, and cleans up", () => {
+    const { unmount } = renderShell();
+    const html = document.documentElement.style;
+    expect(html.getPropertyValue("--shell-bottom-inset")).toBe("calc(64px + env(safe-area-inset-bottom))");
+    expect(html.getPropertyValue("--shell-top-inset")).toBe("50px");
+    unmount();
+    expect(html.getPropertyValue("--shell-bottom-inset")).toBe("");
+    expect(html.getPropertyValue("--shell-top-inset")).toBe("");
+  });
+});
+
 describe("MobileShell — no drawer, no theme toggle", () => {
   it("has no navigation-menu button or dialog", () => {
     renderShell();

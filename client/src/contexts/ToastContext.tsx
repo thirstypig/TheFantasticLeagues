@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
 
       {/* Toast stack */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
+      <div style={{ bottom: "calc(var(--shell-bottom-inset, 0px) + 24px)" }} className="fixed right-6 z-[100] flex flex-col gap-3 pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}

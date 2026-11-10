@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import AuroraShell from "../AuroraShell";
 
 let isAdmin = false;
@@ -33,6 +33,24 @@ function renderAt(path: string) {
 }
 
 describe("AuroraShell left rail", () => {
+  beforeEach(() => {
+    isAdmin = false;
+  });
+
+  it("publishes zero shell insets (no top bar, no bottom bar on desktop)", () => {
+    const { container } = renderAt("/");
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue("--shell-top-inset")).toBe("0px");
+    expect(root.style.getPropertyValue("--shell-bottom-inset")).toBe("0px");
+  });
+
+  it("lets the nav region scroll so short windows never clip the account button", () => {
+    renderAt("/");
+    const rail = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(rail.style.overflowY).toBe("auto");
+    expect(screen.getByRole("button", { name: "Account menu" })).toBeInTheDocument();
+  });
+
   it("has exactly 4 tab links in spec order", () => {
     renderAt("/");
     const rail = screen.getByRole("navigation", { name: "Main navigation" });

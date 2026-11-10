@@ -71,7 +71,14 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
   return (
     <div
       className={`aurora-theme ${sportClass} ${theme === "dark" ? "dark" : ""}`}
-      style={{ minHeight: "100svh", background: "var(--am-bg)", display: "flex" }}
+      style={{
+        minHeight: "100svh",
+        background: "var(--am-bg)",
+        display: "flex",
+        // Desktop has no top or bottom bar; see MobileShell for the mobile values.
+        ["--shell-top-inset" as string]: "0px",
+        ["--shell-bottom-inset" as string]: "0px",
+      }}
     >
       <aside
         style={{
@@ -134,7 +141,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
 
         <nav
           aria-label="Main navigation"
-          style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 20 }}
+          style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 20, minHeight: 0, overflowY: "auto" }}
         >
           {tabs.map((tab) => {
             const active = tab.key === activeKey;

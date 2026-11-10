@@ -56,6 +56,13 @@ beforeEach(() => {
 });
 
 describe("KeeperSelection", () => {
+  it("offsets the sticky action footer by the shell's bottom inset so the mobile tab bar never covers it", async () => {
+    renderWithRoute();
+    const footer = (await screen.findByText("Keeping")).closest(".sticky") as HTMLElement;
+    expect(footer.style.bottom).toContain("var(--shell-bottom-inset");
+    expect(footer.style.bottom).toContain("16px");
+  });
+
   it("renders page header", async () => {
     renderWithRoute();
     await waitFor(() => {
