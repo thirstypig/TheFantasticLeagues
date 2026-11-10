@@ -1,4 +1,4 @@
-// server/src/features/transactions/lib/positionInherit.ts
+// server/src/lib/positionInherit.ts
 // Position-inherit guard — "added player must fill the dropped player's exact
 // slot" (plan Q8 follow-on). Deliberately stricter than every mainstream
 // fantasy platform (Yahoo/ESPN/CBS/Fantrax all use free-slot assignment) —
@@ -10,8 +10,8 @@
 //   - /transactions/il-activate (activated player takes dropped player's slot)
 //   - Waiver batch processor (same check, re-evaluated at processing time)
 
-import { positionToSlots, PITCHER_CODES_SET } from "../../../lib/sports/baseball.js";
-import { RosterRuleError } from "../../../lib/rosterRuleError.js";
+import { positionToSlots, PITCHER_CODES_SET } from "./sports/baseball.js";
+import { RosterRuleError } from "./rosterRuleError.js";
 import { slotsFor } from "./slotMatcher.js";
 
 /**
