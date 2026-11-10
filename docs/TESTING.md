@@ -141,8 +141,9 @@ Major covered areas (selected):
 - `mobile/__tests__/MobileTabBar.commish.test.tsx` — 7 (unified 5-tab set present; AI/Commish tabs absent; My Team tab scoped to own team code, not all /teams/ paths)
 - `mobile/__tests__/MobileLayoutGate.test.tsx` — 5 (desktop renders AppShell, mobile substitutes twin page, breakpoint boundary at 767px)
 - `contexts/__tests__/ThemeContext.test.tsx` — 13 (System / Light / Dark preference model under `fbst-theme-pref`: defaults to system and follows live OS changes, explicit preference wins and unsubscribes from the OS, restores a stored preference, invalid value falls back to system, legacy `fbst-theme` key removed and ignored, nothing persisted until chosen, toggleTheme sets the opposite explicit preference; dark/light class on documentElement; USC theme-color meta dark→#3a1f22, light→#e0d3ae, recolors EVERY theme-color meta so an explicit Light on a dark OS wins over index.html's media-scoped metas, updates an existing meta without duplicating, creates one when none exist)
-- `mobile/__tests__/MobileMore.test.tsx` — 5 (manager profile strip, league section, commish items hidden for non-commish)
-- `mobile/__tests__/MobileHome.test.tsx` — 6 (hero card with rank; standings top-5 with YOU badge; activity feed with kind chips; Trade Proposals section with team names and player names; League Board section with card title and author; view-roster link to user's team)
+- `pages/today/__tests__/TodayPage.test.tsx` — 20 (Today page: standings movement, tonight, wire, news sections and desktop/mobile layouts)
+- `pages/today/__tests__/todayModel.test.ts` — 30 (pure Today view-model helpers)
+- `pages/today/__tests__/useTodayData.test.tsx` — 5 (per-source loading/ok/error states of the Today data hook)
 - `mobile/__tests__/MobileTeam.test.tsx` — 23 (roster hub fetch, tab switching, IL tab, hero strip, standings rank, move sheet, IL stash/activate flows, optimistic updates, rollback, refetch-on-success, backdrop dismiss, Hitter Totals row with summed numerators, Pitcher Totals row with rate stats derived from IP/ER/BB_H, IL tab hides totals)
 - `mobile/__tests__/MobilePlayers.test.tsx` — 18 (hitter list default, NL filter, position chip filter, pitchers tab, search, sort direction toggle, watch star rendering, addToWatchlist/removeFromWatchlist, star click doesn't expand, row expand/collapse, career table in expanded panel, pitching career endpoint, Available filter chip, Available hides rostered players, Available restores all, Available persists as avail=1 URL param)
 - `mobile/__tests__/MobileStandings.test.tsx` — 8 (team rows render, YOU badge in standings row, segmented control switches Hitting/Pitching columns, sort direction toggle, Category Leaders section renders, card per category with key label, top-3 teams with actual stat values, rank numbers 1–3 per card)
@@ -152,7 +153,6 @@ Major covered areas (selected):
 - `features/periods/Season.test.tsx` — 8
 - `features/commissioner/Commissioner.test.tsx` — 11 (Phase 4 adds ghost-IL banner + lazy-load assertions)
 - `features/transactions/ActivityPage.test.tsx` — 6
-- `pages/__tests__/Home.test.tsx` — covers the dashboard sections added in the roster/home workstream: compact Around the League, League Board, quick links, fantasy-team names in League Activity, and pending trade proposal withdrawal affordance
 - `features/transactions/api.test.ts` — 6 (ilStash + ilActivate wrappers: URL/method/body shape, optional params, error propagation)
 - `features/commissioner/api.test.ts` — 4 (getGhostIlSummary: URL interpolation, error propagation, GET semantics)
 - `features/admin/Admin.test.tsx` — 6

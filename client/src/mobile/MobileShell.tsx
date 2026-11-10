@@ -19,7 +19,7 @@ import { activeTabFor, buildPrimaryTabs } from "../lib/navModel";
 import { AccountSheet } from "./AccountSheet";
 import { Glyph } from "./atoms/Glyph";
 import { MobileTabBar } from "./MobileTabBar";
-import { MobileHome } from "./pages/MobileHome";
+import TodayPage from "../pages/today/TodayPage";
 import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
 import { MobileTeam } from "./pages/MobileTeam";
@@ -27,7 +27,7 @@ import { MobileWireList } from "./pages/MobileWireList";
 
 /** Map a pathname to a mobile page (or `null` to fall through to desktop). */
 function pickMobilePage(pathname: string): React.ReactElement | null {
-  if (pathname === "/") return <MobileHome />;
+  if (pathname === "/") return <TodayPage />;
   if (pathname === "/season" || pathname.startsWith("/season/")) return <MobileStandings />;
   if (pathname === "/players") return <MobilePlayers />;
   const teamMatch = pathname.match(/^\/teams\/([^/]+)\/?$/);
