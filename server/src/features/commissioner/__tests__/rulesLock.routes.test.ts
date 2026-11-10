@@ -164,3 +164,20 @@ describe("POST /api/commissioner/:leagueId/rules honors the season rules lock", 
     expect(m.leagueRule.upsert).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/commissioner/:leagueId/rules validates trade_window", () => {
+  it("400s an invalid trade_window value and never upserts", async () => {
+    const res = await supertest(app).post("/api/commissioner/20/rules")
+      .send({ category: "transactions", key: "trade_window", value: "sometimes" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("When trades are allowed must be anytime or meeting_day");
+    expect(m.leagueRule.upsert).not.toHaveBeenCalled();
+  });
+
+  it("accepts meeting_day", async () => {
+    const res = await supertest(app).post("/api/commissioner/20/rules")
+      .send({ category: "transactions", key: "trade_window", value: "meeting_day" });
+    expect(res.status).toBe(200);
+    expect(m.leagueRule.upsert).toHaveBeenCalledTimes(1);
+  });
+});

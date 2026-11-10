@@ -79,8 +79,15 @@ export default function RulesPage() {
   if (failed) return <div style={{ padding: 16 }}>{back}<CardError>Couldn’t load the rules.</CardError></div>;
   if (!rules) return <div style={{ padding: 16 }}>{back}<Skeleton /></div>;
 
-  const byKey = new Map(rules.map((r) => [r.key, r]));
-  const get = (k: string) => byKey.get(k);
+  // Keyed by category + key so a stray row in another category can't shadow the real rule.
+  const byKey = new Map(rules.map((r) => [`${r.category}.${r.key}`, r]));
+  const CATEGORY_OF: Record<string, string> = {
+    stats_source: "overview", batter_count: "roster", pitcher_count: "roster",
+    il_slot_1_cost: "il", il_slot_2_cost: "il", min_innings: "scoring",
+    trade_window: "transactions", owner_self_serve: "transactions",
+    auction_budget: "draft", bid_timer: "draft", nomination_timer: "draft",
+  };
+  const get = (k: string) => byKey.get(`${CATEGORY_OF[k] ?? "payouts"}.${k}`);
   const seasonLocked = seasonStatus !== "SETUP";
   const isLocked = (sources: CommissionerRuleRow[]) => seasonLocked || sources.some((r) => r.isLocked);
 

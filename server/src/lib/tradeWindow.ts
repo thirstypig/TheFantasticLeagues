@@ -16,6 +16,7 @@ export async function getTradeWindow(leagueId: number): Promise<TradeWindow> {
 
   const active = await prisma.period.findFirst({
     where: { leagueId, status: "active" },
+    orderBy: { startDate: "desc" },
     select: { name: true },
   });
   if (!active) return { open: true };

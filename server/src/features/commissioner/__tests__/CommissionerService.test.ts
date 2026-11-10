@@ -129,6 +129,24 @@ describe("CommissionerService.updateRules", () => {
     expect(mockPrisma.season.findFirst).not.toHaveBeenCalled();
   });
 
+  it("rejects an invalid trade_window value before writing", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([
+      { id: 10, category: "transactions", key: "trade_window" },
+    ]);
+    await expect(
+      service.updateRules(1, [{ id: 10, value: "sometimes" }])
+    ).rejects.toThrow("When trades are allowed must be anytime or meeting_day");
+    expect(mockPrisma.leagueRule.update).not.toHaveBeenCalled();
+  });
+
+  it("accepts meeting_day for trade_window", async () => {
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([
+      { id: 10, category: "transactions", key: "trade_window" },
+    ]);
+    mockPrisma.leagueRule.update.mockResolvedValue({});
+    expect(await service.updateRules(1, [{ id: 10, value: "meeting_day" }])).toBe(1);
+  });
+
   it("rejects updates when rule IDs belong to a different league (IDOR prevention)", async () => {
     // findMany returns empty — rule 10 doesn't belong to league 1
     mockPrisma.leagueRule.findMany.mockResolvedValueOnce([]);

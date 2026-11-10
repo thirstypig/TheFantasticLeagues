@@ -25,15 +25,15 @@ function row(id: number, category: string, key: string, value: string, label: st
 const ROWS = [
   row(1, "roster", "batter_count", "14", "Batters"),
   row(2, "roster", "pitcher_count", "9", "Pitchers"),
-  row(3, "roster", "stats_source", "NL", "Stats source"),
+  row(3, "overview", "stats_source", "NL", "Stats source"),
   row(4, "il", "il_slot_1_cost", "10", "IL 1"),
   row(5, "il", "il_slot_2_cost", "15", "IL 2"),
   row(6, "scoring", "min_innings", "50", "Min innings"),
   row(7, "transactions", "trade_window", "anytime", "When trades are allowed"),
   row(8, "transactions", "owner_self_serve", "false", "Owner self serve"),
-  row(9, "auction", "auction_budget", "400", "Budget"),
-  row(10, "auction", "bid_timer", "15", "Bid timer"),
-  row(11, "auction", "nomination_timer", "30", "Nomination timer"),
+  row(9, "draft", "auction_budget", "400", "Budget"),
+  row(10, "draft", "bid_timer", "15", "Bid timer"),
+  row(11, "draft", "nomination_timer", "30", "Nomination timer"),
   ...["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map((n, i) =>
     row(20 + i, "payouts", `payout_${n}`, String([40, 25, 15, 10, 5, 3, 2, 0][i]), n),
   ),
@@ -69,6 +69,14 @@ describe("RulesPage", () => {
     expect(within(r).getByText("Locked for the season")).toBeTruthy();
     expect(within(r).queryByRole("switch")).toBeNull();
     expect(within(r).queryByRole("button")).toBeNull();
+  });
+
+  it("a stray transactions.il_slot_1_cost row does not override the real il fee", async () => {
+    m.getCommissionerRules.mockResolvedValue([...ROWS.map((r) => ({ ...r })), row(99, "transactions", "il_slot_1_cost", "99", "Stray")]);
+    renderPage();
+    await screen.findByText("IL fee, 1st player on IL");
+    expect(within(rowOf("IL fee, 1st player on IL")).getByText("$10")).toBeTruthy();
+    expect(screen.queryByText("$99")).toBeNull();
   });
 
   it("trade_window segmented control is enabled on a locked season and saves", async () => {

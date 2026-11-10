@@ -40,6 +40,7 @@ describe("getTradeWindow", () => {
     expect(await getTradeWindow(20)).toEqual({ open: true });
     expect(mockPrisma.period.findFirst).toHaveBeenCalledWith({
       where: { leagueId: 20, status: "active" },
+      orderBy: { startDate: "desc" },
       select: { name: true },
     });
   });
@@ -53,6 +54,7 @@ describe("getTradeWindow", () => {
     });
     expect(mockPrisma.period.findFirst).toHaveBeenCalledWith({
       where: { leagueId: 20, status: "active" },
+      orderBy: { startDate: "desc" },
       select: { name: true },
     });
   });

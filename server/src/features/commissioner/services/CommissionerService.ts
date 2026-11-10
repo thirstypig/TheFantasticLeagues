@@ -11,13 +11,17 @@ import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
 
 const auctionImportService = new AuctionImportService();
 
-/**
- * Rule keys introduced after leagues were first seeded. getRules backfills
- * ONLY these. Never backfill other defaults: categories like payouts/bonuses
- * are read whole, so a silently inserted row could change money math.
- */
 /** Categories editable at any time, regardless of the season rules lock. */
 const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
+
+const TRADE_WINDOW_VALUES = new Set(["anytime", "meeting_day"]);
+
+/** Throws if the value is not allowed for transactions.trade_window; no-op for other rules. */
+export function assertValidRuleValue(category: string, key: string, value: string): void {
+  if (category === "transactions" && key === "trade_window" && !TRADE_WINDOW_VALUES.has(value)) {
+    throw new Error("When trades are allowed must be anytime or meeting_day");
+  }
+}
 
 /** Thrown by assertRulesEditable; routes map it to HTTP 403. */
 export class RulesLockedError extends Error {
@@ -27,6 +31,11 @@ export class RulesLockedError extends Error {
   }
 }
 
+/**
+ * Rule keys introduced after leagues were first seeded. getRules backfills
+ * ONLY these. Never backfill other defaults: categories like payouts/bonuses
+ * are read whole, so a silently inserted row could change money math.
+ */
 export const BACKFILL_RULE_KEYS: ReadonlyArray<{ category: string; key: string }> = [
   { category: "transactions", key: "trade_window" },
 ];
@@ -1043,12 +1052,18 @@ export class CommissionerService {
       const ruleIds = updates.map(u => u.id);
       const ownedRules = await prisma.leagueRule.findMany({
         where: { id: { in: ruleIds }, leagueId },
-        select: { id: true, category: true },
+        select: { id: true, category: true, key: true },
       });
       const ownedIds = new Set(ownedRules.map(r => r.id));
       const unauthorized = ruleIds.filter(id => !ownedIds.has(id));
       if (unauthorized.length > 0) {
         throw new Error("One or more rule IDs do not belong to this league");
+      }
+
+      const byId = new Map(ownedRules.map(r => [r.id, r]));
+      for (const u of updates) {
+        const r = byId.get(u.id)!;
+        assertValidRuleValue(r.category, r.key, u.value);
       }
 
       await this.assertRulesEditable(leagueId, ownedRules.map(r => r.category));
