@@ -131,7 +131,7 @@ async function main() {
             "https://*.analytics.google.com",
             "https://googleads.g.doubleclick.net",
           ],
-          imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com", "https://img.mlbstatic.com", "https://*.mlb.com", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://www.googletagmanager.com"],
+          imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com", "https://img.mlbstatic.com", "https://www.mlbstatic.com", "https://*.mlb.com", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://www.googletagmanager.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https:"],
           fontSrc: ["'self'", "https:", "data:"],
           frameSrc: ["'self'", "https://accounts.google.com", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com", "https://www.google.com", "https://tpc.googlesyndication.com"],

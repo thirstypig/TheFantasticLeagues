@@ -33,6 +33,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { track } from '../../../lib/posthog';
 import { positionToSlots } from '../../../lib/sportConfig';
+import { playerHeadshotUrl } from '../../../lib/mlbImages';
 import { Glass, IridText, Chip, SectionLabel } from '../../../components/aurora/atoms';
 
 // AI Bid Advice types
@@ -247,10 +248,10 @@ export default function AuctionStage({ serverState, myTeamId, onBid, onFinish, o
             {/* Player headshot */}
             <div style={{ width: 80, flexShrink: 0, position: "relative", background: "var(--am-surface-faint)" }}>
                 <img
-                    src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${nomination.playerId}/headshot/67/current`}
+                    src={playerHeadshotUrl(nomination.playerId)}
                     alt={nomination.playerName}
                     style={{ objectFit: "cover", height: "100%", width: "100%" }}
-                    onError={(e) => (e.currentTarget.src = 'https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/generic/headshot/67/current')}
+                    onError={(e) => (e.currentTarget.src = playerHeadshotUrl('generic'))}
                 />
                 <div style={{ position: "absolute", bottom: 4, left: 4 }}>
                   <Chip strong>{nomination.positions || (nomination.isPitcher ? 'P' : 'UT')}</Chip>

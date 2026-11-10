@@ -24,6 +24,7 @@ import { DataFreshness } from "../../../components/shared/DataFreshness";
 import type { RosterAlertPlayer } from "../../../components/shared/RosterAlertAccordion";
 import { AL_TEAMS, NL_TEAMS } from "../../../lib/sports/baseball";
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
+import { playerHeadshotUrl } from "../../../lib/mlbImages";
 
 type ViewMode = "ALL" | "BY_LEAGUE" | "BY_TEAM";
 
@@ -34,7 +35,7 @@ interface IlEntry extends RosterAlertPlayer {
 }
 
 const MLB_HEADSHOT = (mlbId: number | null | undefined) =>
-  `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
+  playerHeadshotUrl(mlbId ?? "generic");
 
 function ilStatusLabel(mlbStatus: string): string {
   const m = (mlbStatus || "").match(/(\d+)/);

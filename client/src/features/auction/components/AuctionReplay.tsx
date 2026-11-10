@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Rewind, FastForward, X } from 'lucide-react';
 import type { AuctionLogEvent } from '../hooks/useAuctionState';
 import { track } from '../../../lib/posthog';
+import { playerHeadshotUrl } from '../../../lib/mlbImages';
 import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
 
 interface AuctionTeamBasic {
@@ -102,7 +103,7 @@ function formatTimestamp(ts: number): string {
 }
 
 function getHeadshotUrl(playerId: string): string {
-  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${playerId}/headshot/67/current`;
+  return playerHeadshotUrl(playerId);
 }
 
 const CTRL_BTN_BASE: React.CSSProperties = {
@@ -323,7 +324,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                   flexShrink: 0,
                 }}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/0/headshot/67/current`;
+                  (e.target as HTMLImageElement).src = playerHeadshotUrl(0);
                 }}
               />
               <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
