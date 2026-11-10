@@ -2,7 +2,7 @@
  * Tests for `GET /api/mlb/my-player-news` — 7-day MLB transactions filtered
  * to the owner's rostered players.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { NextFunction } from "express";
 
 vi.mock("../../../db/prisma.js", () => ({
@@ -99,11 +99,18 @@ const URL = "/my-player-news?leagueId=20";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // 12:00 ET on 2026-04-28. Only Date is faked so supertest's I/O still runs.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-04-28T16:00:00Z"));
   mockPrisma.team.findFirst.mockResolvedValue({ id: 7 });
   mockPrisma.roster.findMany.mockResolvedValue([
     { player: { mlbId: 100 } },
     { player: { mlbId: 200 } },
   ]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("GET /my-player-news", () => {
@@ -112,14 +119,68 @@ describe("GET /my-player-news", () => {
     const res = await supertest(app).get(URL);
     expect(res.status).toBe(200);
     expect(mockMlbGetJson).toHaveBeenCalledWith(
-      "https://statsapi.mlb.com/api/v1/transactions?startDate=2026-04-22&endDate=2026-04-28",
+      "https://statsapi.mlb.com/api/v1/transactions?startDate=2026-04-22&endDate=2026-04-28&sportId=1",
       1800,
+    );
+    expect(mockPrisma.team.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          leagueId: 20,
+          OR: [{ ownerUserId: 42 }, { ownerships: { some: { userId: 42 } } }],
+        },
+      }),
     );
     expect(mockPrisma.roster.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { teamId: 7, releasedAt: null, player: { mlbId: { not: null } } },
       }),
     );
+  });
+
+  it("ends the window on the real Eastern calendar date, not the rolled-back game day", async () => {
+    // 10:00 ET on Jul 2 — before noon PT, when mlbGameDayDate() would still say Jul 1.
+    vi.setSystemTime(new Date("2026-07-02T14:00:00Z"));
+    mockMlbGetJson.mockResolvedValue({ transactions: [] });
+    await supertest(app).get(URL);
+    expect(mockMlbGetJson).toHaveBeenCalledWith(
+      "https://statsapi.mlb.com/api/v1/transactions?startDate=2026-06-26&endDate=2026-07-02&sportId=1",
+      1800,
+    );
+  });
+
+  it("uses the Eastern date late in the evening (UTC already tomorrow)", async () => {
+    // 23:00 ET on Jul 1 = 03:00Z Jul 2.
+    vi.setSystemTime(new Date("2026-07-02T03:00:00Z"));
+    mockMlbGetJson.mockResolvedValue({ transactions: [] });
+    await supertest(app).get(URL);
+    expect(mockMlbGetJson).toHaveBeenCalledWith(
+      "https://statsapi.mlb.com/api/v1/transactions?startDate=2026-06-25&endDate=2026-07-01&sportId=1",
+      1800,
+    );
+  });
+
+  it("keeps waiver claims (CLW)", async () => {
+    mockMlbGetJson.mockResolvedValue({
+      transactions: [
+        tx({
+          id: 9,
+          typeCode: "CLW",
+          description: "Chicago White Sox claimed LHP Noah Schultz off waivers from New York Mets.",
+          fromTeam: { id: 121, name: "New York Mets" },
+          toTeam: { id: 145, name: "Chicago White Sox" },
+        }),
+      ],
+    });
+    const res = await supertest(app).get(URL);
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0]).toMatchObject({
+      id: 9,
+      typeCode: "CLW",
+      fromTeamAbbr: "NYM",
+      toTeamAbbr: "CWS",
+      fromLeague: "NL",
+      toLeague: "AL",
+    });
   });
 
   it("returns only rostered players and kept type codes, newest first", async () => {
@@ -169,11 +230,11 @@ describe("GET /my-player-news", () => {
     expect(mockMlbGetJson).not.toHaveBeenCalled();
   });
 
-  it("returns empty items when statsapi fails", async () => {
+  it("returns 502 when statsapi fails", async () => {
     mockMlbGetJson.mockRejectedValue(new Error("boom"));
     const res = await supertest(app).get(URL);
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ items: [] });
+    expect(res.status).toBe(502);
+    expect(res.body).toEqual({ error: "MLB transactions unavailable" });
     expect(mockLogger.warn).toHaveBeenCalled();
   });
 });

@@ -553,7 +553,21 @@ function filterLineByRole(
 
 // ─── GET /my-player-news ───
 
-const NEWS_TYPE_CODES = new Set(["SC", "OPT", "OUT", "CU", "TR", "DES", "REL", "SE"]);
+const NEWS_TYPE_CODES = new Set(["SC", "OPT", "OUT", "CU", "TR", "DES", "REL", "SE", "CLW"]);
+
+/**
+ * Today's calendar date in America/New_York as YYYY-MM-DD. Deliberately NOT
+ * mlbGameDayDate(): that rolls back to yesterday before noon PT, which would
+ * hide this morning's transactions.
+ */
+function easternToday(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
 
 /** YYYY-MM-DD minus N days, calendar-safe (UTC arithmetic on a date-only string). */
 function shiftDate(ymd: string, days: number): string {
@@ -594,8 +608,9 @@ router.get(
     }
     if (mlbIds.size === 0) return res.json({ items: [] });
 
-    const today = mlbGameDayDate();
-    const url = `https://statsapi.mlb.com/api/v1/transactions?startDate=${shiftDate(today, 6)}&endDate=${today}`;
+    const today = easternToday();
+    // sportId=1 keeps MLB-club moves only (drops winter-league / DSL noise).
+    const url = `https://statsapi.mlb.com/api/v1/transactions?startDate=${shiftDate(today, 6)}&endDate=${today}&sportId=1`;
 
     try {
       const [data, teamsMap] = await Promise.all([mlbGetJson(url, 1800), fetchMlbTeamsMap()]);
@@ -626,7 +641,8 @@ router.get(
       return res.json({ items });
     } catch (err) {
       logger.warn({ err, leagueId }, "my-player-news: statsapi transactions lookup failed");
-      return res.json({ items: [] });
+      // A failure must not read as "no news" — the client hides the section on error.
+      return res.status(502).json({ error: "MLB transactions unavailable" });
     }
   }),
 );
