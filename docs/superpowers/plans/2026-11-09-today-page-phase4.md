@@ -1,7 +1,7 @@
 ---
 id: DOC-031
 title: "Today page (UX Phase 4) — implementation plan"
-description: "Replace Home and MobileHome with one Today page: rank and trend, owner Needs-you list, tonight's players, top-5 standings."
+description: "Replace Home and MobileHome with one Today page: rank and trend, player news, tonight's players, top standings."
 type: plan
 status: active
 phase: null
@@ -394,10 +394,11 @@ Rules the implementer cannot infer:
 Follow memory `local_browser_check_setup`: Colima, local Supabase, process-env keys, seeded league 5, and the 440px same-origin iframe for phone width.
 
 - [ ] Phone (440px), light and dark, as `commish@fbst.test`:
-  - Rank card numbers match `/season` totals.
-  - Needs-you rows open the right pages, and Back returns to Today.
-  - The Tonight section renders, or its empty state does (local statsapi data depends on the date).
+  - The shell top bar says Today; the page H1 is visually hidden and the sub-line reads `<league> · <period> · <days left> · <date>`.
+  - Rank card numbers match `/season` totals (or "Your rank shows up once scoring starts." when no period is scored).
+  - Player news renders 7-day items for rostered players, including at least one "Leaves the NL" row (an NL-to-AL trade or waiver claim; stub the transactions response locally if the live week has none). If statsapi fails, the section is hidden, not empty.
+  - The Wire List reminder (when a pending deadline is within 48h) links to `/teams/<code>/wire-list`, and Back returns to Today.
+  - The Tonight section renders, or its empty state does (local statsapi data depends on the date). PRE rows have no chip; LIVE shows one "LIVE" chip; FINAL shows "FINAL".
   - The last standings row clears the tab bar.
-- [ ] Desktop (1920): two columns and full standings.
-- [ ] Seed one injured-in-lineup player and one PROPOSED trade addressed to the test user's team on the **local** DB. Confirm both rows appear and the count says 2. Remove the seed rows afterward.
+- [ ] Desktop (1920): two columns, `<league> <season>` in the sub-line, rank card, player news, Tonight, and full standings with "See all & by category".
 - [ ] No console errors. `npm run docs:refresh` before push. Never commit `docs/under-the-hood/system-status.md`.
