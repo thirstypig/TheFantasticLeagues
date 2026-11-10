@@ -11,6 +11,15 @@ import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
 
 const auctionImportService = new AuctionImportService();
 
+/**
+ * Rule keys introduced after leagues were first seeded. getRules backfills
+ * ONLY these. Never backfill other defaults: categories like payouts/bonuses
+ * are read whole, so a silently inserted row could change money math.
+ */
+export const BACKFILL_RULE_KEYS: ReadonlyArray<{ category: string; key: string }> = [
+  { category: "transactions", key: "trade_window" },
+];
+
 export class CommissionerService {
   /**
    * League Management
@@ -967,10 +976,14 @@ export class CommissionerService {
         return rules;
       }
 
-      // Backfill defaults added after this league was seeded (e.g.
-      // transactions.trade_window). Insert-only: existing rows are untouched.
+      // Backfill ONLY explicitly listed keys added after this league was
+      // seeded. Insert-only: existing rows are untouched.
       const have = new Set(rules.map((r) => `${r.category}.${r.key}`));
-      const missing = DEFAULT_RULES.filter((r) => !have.has(`${r.category}.${r.key}`));
+      const backfill = new Set(BACKFILL_RULE_KEYS.map((b) => `${b.category}.${b.key}`));
+      const missing = DEFAULT_RULES.filter((r) => {
+        const k = `${r.category}.${r.key}`;
+        return backfill.has(k) && !have.has(k);
+      });
       if (missing.length > 0) {
         await prisma.leagueRule.createMany({
           data: missing.map((r) => ({ ...r, leagueId })),

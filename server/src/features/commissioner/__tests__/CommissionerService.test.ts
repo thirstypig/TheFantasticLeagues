@@ -220,4 +220,34 @@ describe("CommissionerService.getRules backfill", () => {
     expect(arg.data).toHaveLength(DEFAULT_RULES.length);
     expect(arg.data.some((r: any) => r.key === "trade_window" && r.value === "anytime")).toBe(true);
   });
+
+  it("backfills ONLY trade_window when the league also lacks a non-backfill default (payout)", async () => {
+    const { DEFAULT_RULES } = await import("../../../lib/sportConfig.js");
+    const existing = DEFAULT_RULES.filter((r) => r.key !== "trade_window" && r.key !== "payout_3rd").map((r, i) => ({
+      id: i + 1, leagueId: 7, ...r,
+    }));
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce(existing).mockResolvedValueOnce(existing);
+    mockPrisma.leagueRule.createMany.mockResolvedValue({ count: 1 });
+
+    await service.getRules(7);
+
+    expect(mockPrisma.leagueRule.createMany).toHaveBeenCalledTimes(1);
+    const arg = mockPrisma.leagueRule.createMany.mock.calls[0][0];
+    expect(arg.data).toHaveLength(1);
+    expect(arg.data[0]).toMatchObject({ category: "transactions", key: "trade_window", leagueId: 7 });
+    expect(arg.skipDuplicates).toBe(true);
+  });
+
+  it("creates nothing when the league lacks only a non-backfill key", async () => {
+    const { DEFAULT_RULES } = await import("../../../lib/sportConfig.js");
+    const existing = DEFAULT_RULES.filter((r) => r.key !== "payout_3rd").map((r, i) => ({
+      id: i + 1, leagueId: 7, ...r,
+    }));
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce(existing);
+
+    const result = await service.getRules(7);
+
+    expect(mockPrisma.leagueRule.createMany).not.toHaveBeenCalled();
+    expect(result).toBe(existing);
+  });
 });
