@@ -87,7 +87,7 @@ vi.mock("../../../lib/utils.js", () => ({
 vi.mock("../../../lib/featureFlags.js", () => ({
   enforceRosterRules: () => false, // simplest: skip position-eligibility re-check
 }));
-vi.mock("../../transactions/lib/positionInherit.js", () => ({
+vi.mock("../../../lib/positionInherit.js", () => ({
   isEligibleForSlot: () => true,
 }));
 vi.mock("../../../lib/mlbTeams.js", () => ({

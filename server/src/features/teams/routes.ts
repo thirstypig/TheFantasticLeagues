@@ -11,7 +11,7 @@ import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
 import { buildIlWindows, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { periodOverlapFilter } from "../../lib/rosterWindow.js";
-import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
+import { isEligibleForSlot } from "../../lib/positionInherit.js";
 import { checkRosterVersion, incrementRosterVersion } from "./lib/rosterVersionGuard.js";
 
 // Swap-only mutation. `effectiveDate` is advisory metadata for the

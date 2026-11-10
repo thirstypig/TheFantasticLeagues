@@ -23,7 +23,12 @@ import ActivityPage from "./features/transactions/pages/ActivityPage";
 import Login from "./features/auth/pages/Login";
 
 // Non-critical routes — lazy-loaded (code-split chunks)
-const Commissioner = React.lazy(() => import("./features/commissioner/pages/Commissioner"));
+const CommissionerHub = React.lazy(() => import("./features/commissioner/pages/CommissionerHub"));
+const RecentChangesPage = React.lazy(() => import("./features/commissioner/pages/RecentChangesPage"));
+const CommissionerSectionPage = React.lazy(() => import("./features/commissioner/pages/CommissionerSectionPage"));
+const ClosePeriodPage = React.lazy(() => import("./features/commissioner/pages/ClosePeriodPage"));
+const StartPeriodPage = React.lazy(() => import("./features/commissioner/pages/StartPeriodPage"));
+const BillPeriodPage = React.lazy(() => import("./features/commissioner/pages/BillPeriodPage"));
 const ScoringSettings = React.lazy(() => import("./features/commissioner/pages/ScoringSettings").then(m => ({ default: m.ScoringSettings })));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
@@ -181,6 +186,12 @@ export default function App() {
                     <Route path="/teams/:teamCode/wire-list" element={<WireListOwnerPage />} />
                     <Route path="/commissioner/:leagueId/wire-list" element={<WireListCommissionerPage />} />
                     <Route path="/commissioner/:leagueId/scoring" element={<Suspense fallback={<div>Loading...</div>}><ScoringSettings /></Suspense>} />
+                    <Route path="/commissioner/:leagueId/recent" element={<ErrorBoundary name="commissioner-recent"><RecentChangesPage /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId/close/:periodId" element={<ErrorBoundary name="commissioner-close"><ClosePeriodPage /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId/start/:periodId" element={<ErrorBoundary name="commissioner-start"><StartPeriodPage /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId/bill/:periodId" element={<ErrorBoundary name="commissioner-bill"><BillPeriodPage /></ErrorBoundary>} />
+                    {/* Section pages. Literal sub-routes (recent, close/:periodId, start/:periodId, bill/:periodId, ...) must be declared ABOVE this catch. */}
+                    <Route path="/commissioner/:leagueId/:section" element={<ErrorBoundary name="commissioner-section"><CommissionerSectionPage /></ErrorBoundary>} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team
                         shortcut (PR #132) and external bookmarks both land here. */}
@@ -208,7 +219,7 @@ export default function App() {
                     <Route path="/draft" element={<ErrorBoundary name="draft"><Draft /></ErrorBoundary>} />
                     <Route path="/draft-results" element={<ErrorBoundary name="draft-results"><DraftResults /></ErrorBoundary>} />
                     <Route path="/matchup" element={<MatchupPage />} />
-                    <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><Commissioner /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><CommissionerHub /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     <Route path="/admin/users" element={<AdminUsers />} />

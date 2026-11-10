@@ -11,7 +11,7 @@ import { writeAuditLog } from "../../lib/auditLog.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { addMemberSchema } from "../../lib/schemas.js";
 import { isRuleLocked, getLockedFields, lockMessage } from "../../lib/ruleLock.js";
-import { isEligibleForSlot } from "../transactions/lib/positionInherit.js";
+import { isEligibleForSlot } from "../../lib/positionInherit.js";
 import { reconcileIlFeesForPeriod } from "../transactions/services/ilFeeService.js";
 import { resolveEffectiveDate } from "../../lib/rosterWindow.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";

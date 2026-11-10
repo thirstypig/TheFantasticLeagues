@@ -23,7 +23,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db/prisma.js";
 import { nextDayEffective } from "../../../lib/utils.js";
 import { enforceRosterRules } from "../../../lib/featureFlags.js";
-import { isEligibleForSlot } from "../../transactions/lib/positionInherit.js";
+import { isEligibleForSlot } from "../../../lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../../lib/mlbTeams.js";
 import type { WaiverPeriodStatus } from "../../../../../shared/api/wireList.js";
 import { SlotChangeSchema, type SlotChange } from "../../../../../shared/api/rosterMoves.js";

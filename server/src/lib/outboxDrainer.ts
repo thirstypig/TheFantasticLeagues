@@ -13,6 +13,7 @@ import { logger } from "./logger.js";
 import { reconcileIlFeesForPeriods } from "../features/transactions/services/ilFeeService.js";
 import { findPeriodsMissingReconcile, findExhaustedEvents } from "./outboxHealth.js";
 import { findIlLogDrift } from "./ilLogDrift.js";
+import { findDeferredPeriodIds } from "./deferredBilling.js";
 
 type OutboxPayloadFeeReconcile = {
   leagueId: number;
@@ -72,7 +73,18 @@ async function dispatch(kind: string, payload: unknown): Promise<void> {
       if (!p?.leagueId || !Array.isArray(p.periodIds) || p.periodIds.length === 0) {
         throw new Error("IL_FEE_RECONCILE payload missing leagueId or periodIds");
       }
-      await reconcileIlFeesForPeriods(p.leagueId, p.periodIds, { actorUserId: null });
+      // A period closed with "bill later" is billed only by the commissioner's
+      // manual reconcile. This covers every automatic enqueue (sweeper,
+      // backdated-move re-bill): deferred ids are dropped here and the event
+      // still completes.
+      const deferred = await findDeferredPeriodIds(p.periodIds);
+      const billable = p.periodIds.filter((id) => !deferred.has(id));
+      if (deferred.size > 0) {
+        logger.info({ leagueId: p.leagueId, deferred: [...deferred] },
+          "outbox: skipping IL fee reconcile for deferred (bill later) period(s)");
+      }
+      if (billable.length === 0) return;
+      await reconcileIlFeesForPeriods(p.leagueId, billable, { actorUserId: null });
       return;
     }
     default:
@@ -131,6 +143,11 @@ export async function sweepMissingFeeReconciles(): Promise<number> {
       events as Array<{ payload: { periodIds?: number[] }; completedAt: Date | null }>,
     ),
   );
+  if (missing.size === 0) return 0;
+
+  // "Bill later" periods are intentionally unbilled — don't enqueue them every hour.
+  const deferred = await findDeferredPeriodIds([...missing].sort((a, b) => a - b));
+  for (const id of deferred) missing.delete(id);
   if (missing.size === 0) return 0;
 
   // One event per league, carrying that league's missing period ids.

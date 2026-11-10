@@ -11,7 +11,7 @@
 // flag, none of which the matcher should care about.
 
 import type { Prisma } from "@prisma/client";
-import { resolveLineup, type RosterCandidate, type SlotAssignment } from "./slotMatcher.js";
+import { resolveLineup, type RosterCandidate, type SlotAssignment } from "../../../lib/slotMatcher.js";
 import { RosterRuleError } from "../../../lib/rosterRuleError.js";
 import { getLeagueRules } from "../../../lib/leagueRuleCache.js";
 

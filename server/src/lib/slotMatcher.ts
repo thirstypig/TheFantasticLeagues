@@ -1,4 +1,4 @@
-// server/src/features/transactions/lib/slotMatcher.ts
+// server/src/lib/slotMatcher.ts
 //
 // Yahoo-style auto-resolve for OGBA's "no bench" roster constraint.
 //
@@ -24,7 +24,7 @@
 //
 // See plan §4A: docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md
 
-import { positionToSlots } from "../../../lib/sports/baseball.js";
+import { positionToSlots } from "./sports/baseball.js";
 
 /** A single roster row participating in matching. */
 export interface RosterCandidate {

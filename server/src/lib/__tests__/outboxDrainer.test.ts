@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Hoisted mocks ────────────────────────────────────────────────
 
-const { mockReconcileIlFeesForPeriods, mockPrisma } = vi.hoisted(() => ({
+const { mockReconcileIlFeesForPeriods, mockFindDeferredPeriodIds, mockPrisma } = vi.hoisted(() => ({
   mockReconcileIlFeesForPeriods: vi.fn(),
+  mockFindDeferredPeriodIds: vi.fn(),
   mockPrisma: {
     $queryRaw: vi.fn(),
     outboxEvent: {
@@ -16,6 +17,9 @@ const { mockReconcileIlFeesForPeriods, mockPrisma } = vi.hoisted(() => ({
 vi.mock("../../db/prisma.js", () => ({ prisma: mockPrisma }));
 vi.mock("../../features/transactions/services/ilFeeService.js", () => ({
   reconcileIlFeesForPeriods: (...args: any[]) => mockReconcileIlFeesForPeriods(...args),
+}));
+vi.mock("../deferredBilling.js", () => ({
+  findDeferredPeriodIds: (...args: any[]) => mockFindDeferredPeriodIds(...args),
 }));
 vi.mock("../logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -35,6 +39,7 @@ beforeEach(() => {
   mockPrisma.outboxEvent.create.mockResolvedValue({ id: 1 });
   mockPrisma.outboxEvent.update.mockResolvedValue({});
   mockReconcileIlFeesForPeriods.mockResolvedValue([]);
+  mockFindDeferredPeriodIds.mockResolvedValue(new Set());
 });
 
 // ── drainOutboxOnce ──────────────────────────────────────────────
@@ -62,6 +67,39 @@ describe("drainOutboxOnce", () => {
         attempts: 1,
       }),
     });
+  });
+
+  it("skips a DEFERRED ('bill later') period but still bills the others in the same event", async () => {
+    // Regression this prevents: the hourly sweeper / backdate enqueue billing a
+    // period the commissioner explicitly closed with "bill later".
+    mockPrisma.$queryRaw.mockResolvedValue([
+      { id: 42, kind: "IL_FEE_RECONCILE", payload: { leagueId: 20, periodIds: [5, 6] }, attempts: 0 },
+    ]);
+    mockFindDeferredPeriodIds.mockResolvedValue(new Set([6]));
+
+    await drainOutboxOnce();
+
+    expect(mockFindDeferredPeriodIds).toHaveBeenCalledWith([5, 6]);
+    expect(mockReconcileIlFeesForPeriods).toHaveBeenCalledWith(20, [5], { actorUserId: null });
+    expect(mockPrisma.outboxEvent.update).toHaveBeenCalledWith({
+      where: { id: 42 },
+      data: expect.objectContaining({ completedAt: expect.any(Date) }),
+    });
+  });
+
+  it("completes an event whose periods are ALL deferred without billing anything", async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      { id: 43, kind: "IL_FEE_RECONCILE", payload: { leagueId: 20, periodIds: [6] }, attempts: 0 },
+    ]);
+    mockFindDeferredPeriodIds.mockResolvedValue(new Set([6]));
+
+    await drainOutboxOnce();
+
+    expect(mockReconcileIlFeesForPeriods).not.toHaveBeenCalled();
+    const updateCall = (mockPrisma.outboxEvent.update as any).mock.calls[0][0];
+    expect(updateCall.where).toEqual({ id: 43 });
+    expect(updateCall.data.completedAt).toBeInstanceOf(Date);
+    expect(updateCall.data.lastError).toBeUndefined();
   });
 
   it("processes multiple events in a single tick", async () => {
