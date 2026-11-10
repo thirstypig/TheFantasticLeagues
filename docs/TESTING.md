@@ -137,7 +137,7 @@ Major covered areas (selected):
 - `features/wire-list/__tests__/WireListRow.test.tsx` — 10 (content rendering; ▲▼× hidden when isReadOnly; ▲ disabled for isFirst, ▼ disabled for isLast; WaiverDropModeToggle shown only for drop rows; opacity 0.5 when isPending)
 - `features/wire-list/__tests__/WaiverDropModeToggle.test.tsx` — 5 (REL/IL buttons rendered; onChange fires on toggle; onChange blocked on already-active; onChange blocked when disabled; buttons disabled when disabled prop set)
 - `features/wire-list/__tests__/utils.test.ts` — 4 (formatDeadline: non-empty string, numeric day present, no [object Object]/NaN, past date doesn't throw)
-- `mobile/__tests__/MobileShell.test.tsx` — 6 (always-mounted drawer invariant: `data-testid="mobile-tab-bar"` present when drawer closed; hamburger aria-expanded starts false, flips true on click; overlay click closes drawer; Escape key closes; drawer persists on non-home paths)
+- `mobile/__tests__/MobileShell.test.tsx` — 16 (renders TodayPage at `/`; always-mounted drawer invariant: `data-testid="mobile-tab-bar"` present when drawer closed; hamburger aria-expanded starts false, flips true on click; overlay click closes drawer; Escape key closes; drawer persists on non-home paths)
 - `mobile/__tests__/MobileTabBar.commish.test.tsx` — 7 (unified 5-tab set present; AI/Commish tabs absent; My Team tab scoped to own team code, not all /teams/ paths)
 - `mobile/__tests__/MobileLayoutGate.test.tsx` — 5 (desktop renders AppShell, mobile substitutes twin page, breakpoint boundary at 767px)
 - `contexts/__tests__/ThemeContext.test.tsx` — 13 (System / Light / Dark preference model under `fbst-theme-pref`: defaults to system and follows live OS changes, explicit preference wins and unsubscribes from the OS, restores a stored preference, invalid value falls back to system, legacy `fbst-theme` key removed and ignored, nothing persisted until chosen, toggleTheme sets the opposite explicit preference; dark/light class on documentElement; USC theme-color meta dark→#3a1f22, light→#e0d3ae, recolors EVERY theme-color meta so an explicit Light on a dark OS wins over index.html's media-scoped metas, updates an existing meta without duplicating, creates one when none exist)
@@ -200,10 +200,10 @@ Run from `mcp-servers/fbst-app/` with `npx vitest run`.
 
 Recent roster/dashboard documentation session baseline:
 
-- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx` — 21 passing
-- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/__tests__/ActivityPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx src/features/trades/__tests__/TradesPage.test.tsx` — 50 passing
+- `npx vitest run src/pages/today/__tests__/TodayPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx` — 21 passing
+- `npx vitest run src/pages/today/__tests__/TodayPage.test.tsx src/features/transactions/__tests__/ActivityPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx src/features/trades/__tests__/TradesPage.test.tsx` — 50 passing
 - `cd client && npx tsc --noEmit` — passing
-- Browser smoke on Home at desktop and mobile: no horizontal overflow, expected right-column order, League Activity fantasy-team names, Board quick link present
+- Browser smoke on Home (since replaced by Today) at desktop and mobile: no horizontal overflow, expected right-column order, League Activity fantasy-team names, Board quick link present
 
 ## Workflow — slash commands
 

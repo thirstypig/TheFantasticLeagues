@@ -121,12 +121,9 @@ Some features import from other features' services or components.
 - `admin/components/AdminLeagueTools` imports `leagues/api` (adminCreateLeague, adminImportRosters, getLeagues)
 - `periods/pages/Season` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
 - `teams/pages/Team` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
-- `pages/Home` uses `useLeague()` from `contexts/LeagueContext` (outfieldMode for position mapping)
-- `pages/Home` imports `transactions/api` (getTransactions — recent league activity feed)
-- `pages/Home` imports `trades/api` (getTrades, cancelTrade — pending trade proposals widget)
-- `pages/Home` imports `board/api` (getBoardCards — league board summary widget)
+- `pages/today/TodayPage` uses `useLeague()` from `contexts/LeagueContext` (league, team and season context)
+- `pages/today/useTodayData` imports `players/api` (getSeasonStandings), `periods/api` (getPeriods) and `wire-list/api` (getActivePeriod); app-level pages may import feature API clients
 - `board/pages/Board` imports `trading-block/api` (auto-synced Trade Block cards)
 - `periods/pages/Season` imports `matchups/api` (Matchups tab for H2H scoring)
-- `pages/Home` imports `chat/components/ChatPanel` (league chat slide-over)
 
 When adding cross-feature imports, document them here to maintain visibility.
