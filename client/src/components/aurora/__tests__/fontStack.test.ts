@@ -21,23 +21,27 @@ function declaration(css: string, name: string): string {
 
 describe("typeface stack (Sofia Sans)", () => {
   it("index.html loads Sofia Sans and Sofia Sans Condensed", () => {
-    expect(indexHtml).toContain("family=Sofia+Sans:wght@400;600;700");
-    expect(indexHtml).toContain("family=Sofia+Sans+Condensed");
+    expect(indexHtml).toContain("family=Sofia+Sans:wght@400;500;600;700");
+    expect(indexHtml).toContain("family=Sofia+Sans+Condensed:wght@400;500;600;700");
   });
 
   it("index.html no longer loads Inter", () => {
     expect(indexHtml).not.toContain("family=Inter");
   });
 
-  it("aurora.css --am-body starts with Sofia Sans", () => {
-    expect(declaration(auroraCss, "--am-body")).toMatch(/^"Sofia Sans"/);
+  it("aurora.css --am-body starts with Sofia Sans and ends with the system fallback", () => {
+    const value = declaration(auroraCss, "--am-body");
+    expect(value).toMatch(/^"Sofia Sans"/);
+    expect(value).toMatch(/system-ui, sans-serif$/);
   });
 
   it("aurora.css --am-display starts with Sofia Sans Condensed", () => {
     expect(declaration(auroraCss, "--am-display")).toMatch(/^"Sofia Sans Condensed"/);
   });
 
-  it("index.css --lg-font-family starts with Sofia Sans", () => {
-    expect(declaration(indexCss, "--lg-font-family")).toMatch(/^"Sofia Sans"/);
+  it("index.css --lg-font-family starts with Sofia Sans and ends with a generic family", () => {
+    const value = declaration(indexCss, "--lg-font-family");
+    expect(value).toMatch(/^"Sofia Sans"/);
+    expect(value).toMatch(/sans-serif$/);
   });
 });
