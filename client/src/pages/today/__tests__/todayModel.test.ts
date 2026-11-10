@@ -7,6 +7,9 @@ import {
   periodHeader,
   orderTonight,
   formatLine,
+  classifyNews,
+  wireReminder,
+  type PlayerNewsTx,
   type TodayStandingsRow,
   type MyPlayerToday,
 } from "../todayModel";
@@ -148,5 +151,166 @@ describe("formatLine", () => {
     expect(formatLine(mp({ line: { hitting: { ...h, RBI: 0 } } }))).toBe("2-4");
     expect(formatLine(mp({ line: { pitching: { IP: 6.1, H: 4, R: 2, ER: 2, BB: 1, K: 8 } } }))).toBe("6.1 IP, 2 ER, 8 K");
     expect(formatLine(mp({}))).toBeNull();
+  });
+});
+
+// ─── Player news ────────────────────────────────────────────────────────
+
+// Tue 2026-04-28, local noon
+const NEWS_NOW = new Date(2026, 3, 28, 12, 0, 0);
+
+const ntx = (over: Partial<PlayerNewsTx>): PlayerNewsTx => ({
+  id: 1,
+  date: "2026-04-28",
+  playerName: "Noah Schultz",
+  mlbId: 100,
+  typeCode: "SC",
+  description: "Chicago White Sox activated LHP Noah Schultz from the 15-day injured list.",
+  fromTeamAbbr: null,
+  toTeamAbbr: "CWS",
+  fromLeague: null,
+  toLeague: "AL",
+  ...over,
+});
+
+describe("classifyNews", () => {
+  it("classifies IL placement with the injury", () => {
+    const [n] = classifyNews(
+      [ntx({
+        playerName: "Juan Soto",
+        description: "New York Mets placed LF Juan Soto on the 10-day injured list. Left hamstring strain.",
+      })],
+      NEWS_NOW,
+    );
+    expect(n).toMatchObject({
+      key: "1",
+      kind: "il-placed",
+      title: "Soto placed on the 10-day IL",
+      detail: "Left hamstring strain.",
+      tone: "warn",
+      leavesNl: false,
+    });
+  });
+
+  it("classifies IL placement with retroactive wording and no injury", () => {
+    const [n] = classifyNews(
+      [ntx({ description: "Mets placed LF Juan Soto on the 15-day injured list retroactive to April 20." })],
+      NEWS_NOW,
+    );
+    expect(n.kind).toBe("il-placed");
+    expect(n.detail).toBe("");
+  });
+
+  it("classifies IL activation", () => {
+    const [n] = classifyNews([ntx({})], NEWS_NOW);
+    expect(n).toMatchObject({
+      kind: "il-activated",
+      title: "Schultz activated from the IL",
+      detail: "Back on the active roster",
+      tone: "good",
+    });
+  });
+
+  it("drops reserve-list status changes", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, description: "Chicago White Sox placed LHP Noah Schultz on the paternity list." }),
+        ntx({ id: 2, description: "Chicago White Sox placed LHP Noah Schultz on the restricted list." }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out).toEqual([]);
+  });
+
+  it("classifies optioned and outrighted as sent down", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, typeCode: "OPT", description: "Optioned LHP Noah Schultz to Charlotte." }),
+        ntx({ id: 2, typeCode: "OUT", description: "Outrighted LHP Noah Schultz to Charlotte." }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out.map((n) => n.kind)).toEqual(["sent-down", "sent-down"]);
+    expect(out[0]).toMatchObject({
+      title: "Schultz sent down to the minors",
+      detail: "Optioned LHP Noah Schultz to Charlotte.",
+      tone: "neutral",
+    });
+  });
+
+  it("classifies recalled and selected as called up", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, typeCode: "CU", description: "Recalled." }),
+        ntx({ id: 2, typeCode: "SE", description: "Selected." }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out.map((n) => n.kind)).toEqual(["called-up", "called-up"]);
+    expect(out[0]).toMatchObject({ title: "Schultz called up", detail: "Recalled.", tone: "good" });
+  });
+
+  it("tags only NL-to-AL trades as leaving the NL", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, typeCode: "TR", description: "Traded.", fromTeamAbbr: "NYM", toTeamAbbr: "CWS", fromLeague: "NL", toLeague: "AL" }),
+        ntx({ id: 2, typeCode: "TR", description: "Traded.", fromTeamAbbr: "NYM", toTeamAbbr: "LAD", fromLeague: "NL", toLeague: "NL" }),
+        ntx({ id: 3, typeCode: "TR", description: "Traded.", fromTeamAbbr: "CWS", toTeamAbbr: "NYM", fromLeague: "AL", toLeague: "NL" }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out.map((n) => n.leavesNl)).toEqual([true, false, false]);
+    expect(out.map((n) => n.tone)).toEqual(["warn", "neutral", "neutral"]);
+    expect(out[0]).toMatchObject({ kind: "traded", title: "Schultz traded to CWS", detail: "From NYM to CWS" });
+  });
+
+  it("classifies DFA and release as warnings", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, typeCode: "DES", description: "Designated for assignment." }),
+        ntx({ id: 2, typeCode: "REL", description: "Released." }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out[0]).toMatchObject({ kind: "dfa", title: "Schultz designated for assignment", tone: "warn" });
+    expect(out[1]).toMatchObject({ kind: "released", title: "Schultz released", tone: "warn" });
+  });
+
+  it("labels when as Today, Yesterday or weekday", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, date: "2026-04-28" }),
+        ntx({ id: 2, date: "2026-04-27" }),
+        ntx({ id: 3, date: "2026-04-23" }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out.map((n) => n.when)).toEqual(["Today", "Yesterday", "Thu"]);
+  });
+
+  it("caps news at 8 items", () => {
+    const many = Array.from({ length: 12 }, (_, i) => ntx({ id: i + 1 }));
+    const out = classifyNews(many, NEWS_NOW);
+    expect(out).toHaveLength(8);
+    expect(out.map((n) => n.key)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8"]);
+  });
+});
+
+describe("wireReminder", () => {
+  const wp = (over: Record<string, unknown>) =>
+    ({ id: 5, status: "PENDING", deadlineAt: new Date(2026, 5, 21, 23, 0, 0).toISOString(), leagueId: 20, ...over }) as any;
+
+  it("wire reminder appears within 48 hours of a pending deadline", () => {
+    expect(wireReminder(wp({}), new Date(2026, 5, 20, 12, 0, 0))).toEqual({
+      text: "Wire List locks Sun 11:00 PM",
+    });
+  });
+
+  it("wire reminder hidden when locked, past, or more than 48 hours out", () => {
+    const now = new Date(2026, 5, 20, 12, 0, 0);
+    expect(wireReminder(null, now)).toBeNull();
+    expect(wireReminder(wp({ status: "LOCKED" }), now)).toBeNull();
+    expect(wireReminder(wp({}), new Date(2026, 5, 22, 0, 0, 0))).toBeNull();
+    expect(wireReminder(wp({}), new Date(2026, 5, 19, 12, 0, 0))).toBeNull();
   });
 });

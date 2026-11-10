@@ -4,6 +4,7 @@
  */
 import { toNum } from "../../api/base";
 import type { PeriodInfo } from "../../features/periods/api";
+import type { WaiverPeriod } from "../../features/wire-list/api";
 
 export interface TodayStandingsRow {
   teamId: number;
@@ -160,4 +161,108 @@ export function formatLine(p: MyPlayerToday): string | null {
   const pi = p.line?.pitching;
   if (pi) return `${pi.IP} IP, ${pi.ER} ER, ${pi.K} K`;
   return null;
+}
+
+// ─── Player news ────────────────────────────────────────────────────────
+
+export interface PlayerNewsTx {
+  id: number;
+  date: string;
+  playerName: string;
+  mlbId: number;
+  typeCode: string;
+  description: string;
+  fromTeamAbbr: string | null;
+  toTeamAbbr: string | null;
+  fromLeague: "NL" | "AL" | null;
+  toLeague: "NL" | "AL" | null;
+}
+
+export type NewsKind = "il-placed" | "il-activated" | "sent-down" | "called-up" | "traded" | "dfa" | "released";
+
+export interface NewsItem {
+  key: string;
+  kind: NewsKind;
+  title: string;
+  detail: string;
+  when: string;
+  leavesNl: boolean;
+  tone: "warn" | "good" | "neutral";
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const NEWS_CAP = 8;
+
+function newsWhen(date: string, now: Date): string {
+  const [y, m, d] = date.slice(0, 10).split("-").map(Number);
+  const days = Math.round(
+    (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(y, m - 1, d)) / 86_400_000,
+  );
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[] {
+  const out: NewsItem[] = [];
+  for (const t of txs) {
+    const last = t.playerName.trim().split(" ").pop() ?? t.playerName;
+    const leavesNl = t.typeCode === "TR" && t.fromLeague === "NL" && t.toLeague === "AL";
+    const base = { key: String(t.id), when: newsWhen(t.date, now), leavesNl };
+    const desc = t.description;
+    switch (t.typeCode) {
+      case "SC": {
+        const placed = desc.match(/placed .* on the (\d+)-day injured list/i);
+        if (placed) {
+          const marker = "injured list.";
+          const mi = desc.indexOf(marker);
+          let detail = "";
+          if (mi >= 0) detail = desc.slice(mi + marker.length).trim();
+          else {
+            const li = desc.lastIndexOf(". ");
+            if (li >= 0) detail = desc.slice(li + 2).trim();
+          }
+          out.push({ ...base, kind: "il-placed", title: `${last} placed on the ${placed[1]}-day IL`, detail, tone: "warn" });
+        } else if (/activated .* from the (\d+)-day injured list/i.test(desc)) {
+          out.push({ ...base, kind: "il-activated", title: `${last} activated from the IL`, detail: "Back on the active roster", tone: "good" });
+        }
+        break;
+      }
+      case "OPT":
+      case "OUT":
+        out.push({ ...base, kind: "sent-down", title: `${last} sent down to the minors`, detail: desc, tone: "neutral" });
+        break;
+      case "CU":
+      case "SE":
+        out.push({ ...base, kind: "called-up", title: `${last} called up`, detail: desc, tone: "good" });
+        break;
+      case "TR":
+        out.push({
+          ...base,
+          kind: "traded",
+          title: `${last} traded to ${t.toTeamAbbr}`,
+          detail: `From ${t.fromTeamAbbr} to ${t.toTeamAbbr}`,
+          tone: leavesNl ? "warn" : "neutral",
+        });
+        break;
+      case "DES":
+        out.push({ ...base, kind: "dfa", title: `${last} designated for assignment`, detail: desc, tone: "warn" });
+        break;
+      case "REL":
+        out.push({ ...base, kind: "released", title: `${last} released`, detail: desc, tone: "warn" });
+        break;
+    }
+  }
+  return out.slice(0, NEWS_CAP);
+}
+
+export function wireReminder(wirePeriod: WaiverPeriod | null, now: Date): { text: string } | null {
+  if (wirePeriod?.status !== "PENDING") return null;
+  const deadline = new Date(wirePeriod.deadlineAt);
+  const ms = deadline.getTime() - now.getTime();
+  if (!(ms > 0 && ms <= 48 * 3_600_000)) return null;
+  const h = deadline.getHours();
+  const mm = String(deadline.getMinutes()).padStart(2, "0");
+  const time = `${h % 12 === 0 ? 12 : h % 12}:${mm} ${h < 12 ? "AM" : "PM"}`;
+  return { text: `Wire List locks ${WEEKDAYS[deadline.getDay()]} ${time}` };
 }

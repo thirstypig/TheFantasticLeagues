@@ -1,6 +1,6 @@
 /**
  * Scores + schedule + per-player game-day routes — extracted from mlb-feed/routes.ts (#147).
- * Handles: /scores, /transactions, /roster-stats-today, /my-players-today
+ * Handles: /scores, /transactions, /roster-stats-today, /my-players-today, /my-player-news
  */
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
@@ -550,5 +550,85 @@ function filterLineByRole(
   if (line.hitting) return { hitting: line.hitting };
   return undefined;
 }
+
+// ─── GET /my-player-news ───
+
+const NEWS_TYPE_CODES = new Set(["SC", "OPT", "OUT", "CU", "TR", "DES", "REL", "SE"]);
+
+/** YYYY-MM-DD minus N days, calendar-safe (UTC arithmetic on a date-only string). */
+function shiftDate(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - days)).toISOString().slice(0, 10);
+}
+
+router.get(
+  "/my-player-news",
+  requireAuth,
+  requireLeagueMember("leagueId"),
+  asyncHandler(async (req, res) => {
+    const leagueId = Number(req.query.leagueId);
+    if (!Number.isFinite(leagueId)) {
+      return res.status(400).json({ error: "Invalid leagueId" });
+    }
+
+    const userId = req.user!.id;
+    const team = await prisma.team.findFirst({
+      where: {
+        leagueId,
+        OR: [
+          { ownerUserId: userId },
+          { ownerships: { some: { userId } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!team) return res.json({ items: [] });
+
+    const rosterEntries = await prisma.roster.findMany({
+      where: { teamId: team.id, releasedAt: null, player: { mlbId: { not: null } } },
+      select: { player: { select: { mlbId: true } } },
+    });
+    const mlbIds = new Set<number>();
+    for (const r of rosterEntries) {
+      if (r.player.mlbId != null) mlbIds.add(r.player.mlbId);
+    }
+    if (mlbIds.size === 0) return res.json({ items: [] });
+
+    const today = mlbGameDayDate();
+    const url = `https://statsapi.mlb.com/api/v1/transactions?startDate=${shiftDate(today, 6)}&endDate=${today}`;
+
+    try {
+      const [data, teamsMap] = await Promise.all([mlbGetJson(url, 1800), fetchMlbTeamsMap()]);
+      const leagueOf = (abbr: string | null): "NL" | "AL" | null =>
+        abbr && NL_TEAMS.has(abbr) ? "NL" : abbr && AL_TEAMS.has(abbr) ? "AL" : null;
+      const abbrOf = (t?: { id?: number }): string | null => (t?.id != null ? teamsMap[t.id] ?? null : null);
+
+      const items = ((data.transactions as any[]) || [])
+        .filter((t) => t?.person?.id != null && mlbIds.has(t.person.id) && NEWS_TYPE_CODES.has(t.typeCode))
+        .map((t) => {
+          const fromTeamAbbr = abbrOf(t.fromTeam);
+          const toTeamAbbr = abbrOf(t.toTeam);
+          return {
+            id: Number(t.id),
+            date: String(t.date ?? "").slice(0, 10),
+            playerName: String(t.person.fullName ?? ""),
+            mlbId: Number(t.person.id),
+            typeCode: String(t.typeCode),
+            description: String(t.description ?? ""),
+            fromTeamAbbr,
+            toTeamAbbr,
+            fromLeague: leagueOf(fromTeamAbbr),
+            toLeague: leagueOf(toTeamAbbr),
+          };
+        })
+        .sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1));
+
+      return res.json({ items });
+    } catch (err) {
+      logger.warn({ err, leagueId }, "my-player-news: statsapi transactions lookup failed");
+      return res.json({ items: [] });
+    }
+  }),
+);
 
 export const scoresRouter = router;
