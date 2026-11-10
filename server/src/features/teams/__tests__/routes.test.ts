@@ -14,7 +14,7 @@ vi.mock("../../../db/prisma.js", () => ({
 vi.mock("../../standings/services/standingsService.js", () => ({
   computeStandingsFromStats: vi.fn().mockResolvedValue([]),
 }));
-vi.mock("../../transactions/lib/positionInherit.js", () => ({
+vi.mock("../../../lib/positionInherit.js", () => ({
   isEligibleForSlot: vi.fn().mockReturnValue(true),
 }));
 vi.mock("../lib/rosterVersionGuard.js", () => ({

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isEligibleForSlot, assertAddEligibleForDropSlot, negotiateInheritedSlot, rosterSlotFor } from "../positionInherit.js";
-import { isRosterRuleError } from "../../../../lib/rosterRuleError.js";
+import { isRosterRuleError } from "../rosterRuleError.js";
 
 describe("isEligibleForSlot", () => {
   it("matches primary position to its own slot", () => {

@@ -3,7 +3,7 @@
 // Single source of truth for "is this player a free agent in this league?"
 // Extracted from `wire-list/routes.ts` (todo #175) so wire-list, legacy
 // waivers (different policy today), and any future transaction path can
-// share the same invariant. Mirrors the `transactions/lib/positionInherit`
+// share the same invariant. Mirrors the `lib/positionInherit`
 // pattern already imported by `wire-list/processor.ts`.
 //
 // Policy:
