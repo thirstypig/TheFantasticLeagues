@@ -61,7 +61,7 @@ export function WireNote({ text, teamCode }: { text: string; teamCode: string })
 function gapText(gap: NonNullable<RankSummary["gap"]>): string {
   if (gap.kind === "tied") return `tied with ${gap.teamName}`;
   if (gap.kind === "ahead") return `${gap.points} ahead of ${gap.teamName} (2nd)`;
-  return `${gap.points} behind ${gap.teamName}`;
+  return `${gap.points} behind ${gap.teamName}${gap.rank != null ? ` (${ordinal(gap.rank)})` : ""}`;
 }
 
 export function RankCard({
@@ -87,7 +87,9 @@ export function RankCard({
   if (!hasTeam || !summary) {
     return (
       <div className="today-card">
-        <div className="today-meta">You&apos;re not on a team in this league</div>
+        <div className="today-meta">
+          {hasTeam ? "Your rank shows up once scoring starts." : "You're not on a team in this league"}
+        </div>
       </div>
     );
   }
@@ -97,8 +99,6 @@ export function RankCard({
     meta = `Final · ${ordinal(rank)} of ${teamCount}`;
   } else {
     meta = `${totalPoints} pts${gap ? ` · ${gapText(gap)}` : ""}`;
-    // "behind" carries the rank of the team above, which is always rank - 1 or better
-    if (gap?.kind === "behind") meta = `${totalPoints} pts · ${gap.points} behind ${gap.teamName} (${ordinal(rank - 1)})`;
   }
   return (
     <div className="today-card">

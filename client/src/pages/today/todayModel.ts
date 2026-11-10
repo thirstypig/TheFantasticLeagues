@@ -54,7 +54,7 @@ export interface RankSummary {
   totalPoints: number;
   trend: number | null;
   trendSince: string | null;
-  gap: { kind: "behind" | "ahead" | "tied"; points: number; teamName: string } | null;
+  gap: { kind: "behind" | "ahead" | "tied"; points: number; teamName: string; rank?: number } | null;
 }
 
 export function summarizeRank(
@@ -85,7 +85,12 @@ export function summarizeRank(
     const above = others
       .filter((o) => o.totalPoints > me.totalPoints)
       .sort((a, b) => a.totalPoints - b.totalPoints)[0];
-    gap = { kind: "behind", points: round1(above.totalPoints - me.totalPoints), teamName: above.teamName };
+    gap = {
+      kind: "behind",
+      points: round1(above.totalPoints - me.totalPoints),
+      teamName: above.teamName,
+      rank: ranked.find((r) => r.teamId === above.teamId)!.rank,
+    };
   } else if (others.length > 0) {
     const second = [...others].sort((a, b) => b.totalPoints - a.totalPoints)[0];
     gap = { kind: "ahead", points: round1(me.totalPoints - second.totalPoints), teamName: second.teamName };

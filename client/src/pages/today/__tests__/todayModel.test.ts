@@ -67,6 +67,11 @@ describe("rankRows", () => {
 });
 
 describe("summarizeRank", () => {
+  it("gives the team above its competition rank under ties", () => {
+    const s = summarizeRank([row(1, [50], "A"), row(2, [40], "B"), row(3, [40], "C"), row(4, [30], "Me")], 4, ["P1"])!;
+    expect(s.rank).toBe(4);
+    expect(s.gap).toMatchObject({ kind: "behind", points: 10, rank: 2 });
+  });
   it("ties share a rank and the gap says tied", () => {
     const s = summarizeRank([row(1, [10]), row(2, [10]), row(3, [5])], 2, ["P1"])!;
     expect(s.rank).toBe(1);
@@ -84,7 +89,7 @@ describe("summarizeRank", () => {
     const s = summarizeRank([row(1, [10]), row(2, [5])], 2, ["P1"])!;
     expect(s.trend).toBeNull();
     expect(s.trendSince).toBeNull();
-    expect(s.gap).toEqual({ kind: "behind", points: 5, teamName: "T1" });
+    expect(s.gap).toEqual({ kind: "behind", points: 5, teamName: "T1", rank: 1 });
   });
   it("leader shows the gap ahead of 2nd", () => {
     const s = summarizeRank([row(1, [12.5]), row(2, [10]), row(3, [1])], 1, ["P1"])!;

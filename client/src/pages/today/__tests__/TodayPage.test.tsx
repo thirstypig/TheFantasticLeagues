@@ -125,6 +125,20 @@ describe("TodayPage", () => {
     expect(screen.getByText(/Period 8 · 4 days left · Sun Jun 14/)).toBeInTheDocument();
   });
 
+  it("names the team above by its tied rank", () => {
+    const rows = [row(10, "A", [50]), row(11, "B", [40]), row(12, "C", [40]), row(1, "Me", [30])];
+    setData({ standings: ok({ rows, periodNames: ["Period 1"] }) });
+    renderPage();
+    expect(screen.getByText(/10 behind B \(2nd\)/)).toBeInTheDocument();
+  });
+
+  it("does not say the user has no team when their team is missing from standings", () => {
+    setData({ standings: ok({ rows: baseRows().filter((r) => r.teamId !== 1), periodNames }) });
+    renderPage();
+    expect(screen.queryByText("You're not on a team in this league")).toBeNull();
+    expect(screen.getByText("Your rank shows up once scoring starts.")).toBeInTheDocument();
+  });
+
   it("calls useTodayData with null until the team is resolved", () => {
     setLeague({ myTeamResolved: false, myTeamId: null, myTeamCode: null });
     renderPage();
@@ -283,8 +297,6 @@ describe("TodayPage", () => {
   });
 
   it("shows skeletons, not the no-league line, while leagues are still loading", () => {
-    setLeague({ leagueId: null, leagues: [], myTeamId: null, myTeamCode: null, myTeamResolved: false });
-    // leagues.length===0 is the brief's signal; with leagues present but no leagueId we skeleton
     setLeague({ leagueId: null, leagues: [{ id: 20, name: "OGBA", season: 2026 }], myTeamResolved: false });
     setData({
       standings: { status: "loading" }, periods: { status: "loading" }, wirePeriod: { status: "loading" },
@@ -292,5 +304,6 @@ describe("TodayPage", () => {
     });
     renderPage();
     expect(screen.queryByText("You're not in a league yet.")).toBeNull();
+    expect(document.querySelectorAll('[aria-busy="true"]').length).toBeGreaterThan(0);
   });
 });
