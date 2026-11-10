@@ -12,6 +12,16 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		fontSize: {
+  			xs: ['13px', '18px'],
+  			sm: ['15px', '20px'],
+  			base: ['17px', '24px'],
+  			lg: ['17px', '24px'],
+  			xl: ['24px', '30px'],
+  			'2xl': ['24px', '30px'],
+  			'3xl': ['32px', '38px'],
+  			'4xl': ['32px', '38px']
+  		},
   		fontFamily: {
   			sans: ['"Sofia Sans"', 'system-ui', 'sans-serif'],
   			display: ['"Sofia Sans Condensed"', '"Sofia Sans"', 'system-ui', 'sans-serif']

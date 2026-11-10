@@ -20,6 +20,13 @@
   --am-display: "Sofia Sans Condensed", "Sofia Sans", system-ui, sans-serif;
   --am-body:    "Sofia Sans", system-ui, sans-serif;
 
+  /* Type scale — four text sizes plus a display size (UX step A). Sizes do not change by theme. */
+  --am-t-caption: 13px;
+  --am-t-small:   15px;
+  --am-t-body:    17px;
+  --am-t-title:   24px;
+  --am-t-display: 32px;
+
   /* ── Light mode: USC gold paper (medium tone, not pure white) ── */
   --am-bg:             #ded0a8;   /* page */
   --am-surface:        #fbf7ec;   /* card */
