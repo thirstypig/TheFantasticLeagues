@@ -363,3 +363,172 @@ export async function commissionerForceDrop(
     body: JSON.stringify({ playerId, effectiveDate }),
   });
 }
+
+// ── Commissioner hub (Phase 1) ───────────────────────────────────────
+
+export interface HubPeriod {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: "pending" | "active" | "completed" | string;
+}
+
+export async function getLeaguePeriods(leagueId: number): Promise<HubPeriod[]> {
+  const resp = await fetchJsonApi<{ data: HubPeriod[] }>(`${API_BASE}/periods?leagueId=${leagueId}`);
+  return resp.data;
+}
+
+export async function setPeriodStatus(
+  periodId: number,
+  body: { status: "active" | "completed"; billFees?: boolean },
+): Promise<HubPeriod> {
+  const resp = await fetchJsonApi<{ data: HubPeriod }>(`${API_BASE}/periods/${periodId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+  return resp.data;
+}
+
+export interface RosterCheck {
+  cap: number;
+  teams: Array<{ teamId: number; teamName: string; activeCount: number; over: boolean }>;
+}
+
+export async function getRosterCheck(leagueId: number): Promise<RosterCheck> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/roster-check`);
+}
+
+export interface CloseReadiness {
+  periodId: number;
+  name: string;
+  status: string;
+  endDate: string;
+  lastStatDate: string | null;
+  ready: boolean;
+}
+
+export async function getCloseReadiness(leagueId: number, periodId: number): Promise<CloseReadiness> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/periods/${periodId}/close-readiness`);
+}
+
+export interface MoveSinceStart {
+  id: number;
+  teamName: string | null;
+  playerName: string | null;
+  transactionType: string | null;
+  effDate: string;
+}
+
+export async function getMovesSinceStart(leagueId: number, periodId: number): Promise<MoveSinceStart[]> {
+  const resp = await fetchJsonApi<{ moves: MoveSinceStart[] }>(
+    `${API_BASE}/commissioner/${leagueId}/periods/${periodId}/moves-since-start`,
+  );
+  return resp.moves;
+}
+
+export interface RecentChange {
+  id: number;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  createdAt: string;
+  userName: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export async function getRecentChanges(leagueId: number, limit?: number): Promise<RecentChange[]> {
+  const qs = limit !== undefined ? `?limit=${limit}` : "";
+  const resp = await fetchJsonApi<{ changes: RecentChange[] }>(
+    `${API_BASE}/commissioner/${leagueId}/recent-changes${qs}`,
+  );
+  return resp.changes;
+}
+
+export interface UnbilledPeriod {
+  periodId: number;
+  closedAt: string;
+}
+
+export async function getUnbilledPeriods(leagueId: number): Promise<UnbilledPeriod[]> {
+  const resp = await fetchJsonApi<{ periods: UnbilledPeriod[] }>(
+    `${API_BASE}/commissioner/${leagueId}/unbilled-periods`,
+  );
+  return resp.periods;
+}
+
+/** Mirrors server ReconcilePreviewRow (ilFeeService.ts). */
+export interface IlFeeReconcilePreviewRow {
+  action: "add" | "void";
+  teamId: number;
+  playerId: number | null;
+  playerName?: string;
+  rank?: 1 | 2;
+  amount: number; // positive for an add, negative for a void/reversal
+}
+
+/** Mirrors server ReconcileResult (ilFeeService.ts). */
+export interface IlFeeReconcileResult {
+  leagueId: number;
+  periodId: number;
+  added: number;
+  voided: number;
+  unchanged: number;
+  dryRun: boolean;
+  preview?: IlFeeReconcilePreviewRow[];
+}
+
+/** Dry run through the one existing fee calculation; writes nothing. */
+export async function previewIlFees(leagueId: number, periodId: number): Promise<IlFeeReconcileResult> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/reconcile-il-fees/${periodId}?dryRun=true`, {
+    method: "POST",
+  });
+}
+
+export async function billIlFees(leagueId: number, periodId: number): Promise<IlFeeReconcileResult> {
+  return fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/reconcile-il-fees/${periodId}`, {
+    method: "POST",
+  });
+}
+
+export async function getAcceptedTradeCount(leagueId: number): Promise<number> {
+  const resp = await fetchJsonApi<{ trades: unknown[] }>(
+    `${API_BASE}/trades?leagueId=${leagueId}&status=ACCEPTED`,
+  );
+  return resp.trades.length;
+}
+
+/** Shape of GET /period-category-standings (standings/routes.ts res.json; mounted at /api). */
+export interface PeriodStandingsPreviewResponse {
+  periodId: number;
+  categories: Array<{
+    key: string;
+    label: string;
+    lowerIsBetter?: boolean;
+    group?: string;
+    rows: Array<{ teamId: number; teamName: string; teamCode?: string; value?: number; rank?: number; points: number }>;
+  }>;
+  teamCount: number;
+  totalDelta: Record<string, number>;
+  computedAt: string;
+}
+
+export async function getPeriodStandingsPreview(
+  leagueId: number,
+  periodId: number,
+): Promise<PeriodStandingsPreviewResponse> {
+  return fetchJsonApi(`${API_BASE}/period-category-standings?leagueId=${leagueId}&periodId=${periodId}`);
+}
+
+/** Sum each team's category points; highest first. */
+export function toTeamTotals(resp: PeriodStandingsPreviewResponse): { teamName: string; points: number }[] {
+  const totals = new Map<number, { teamName: string; points: number }>();
+  for (const cat of resp.categories) {
+    for (const row of cat.rows) {
+      const t = totals.get(row.teamId) ?? { teamName: row.teamName, points: 0 };
+      t.points += row.points;
+      totals.set(row.teamId, t);
+    }
+  }
+  return [...totals.values()].sort((a, b) => b.points - a.points);
+}

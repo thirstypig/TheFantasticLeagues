@@ -27,7 +27,18 @@ vi.mock("../../../middleware/asyncHandler.js", () => ({
   asyncHandler: (fn: Function) => fn,
 }));
 
+vi.mock("../../../lib/outboxDrainer.js", () => ({
+  enqueueIlFeeReconcile: vi.fn(),
+}));
+vi.mock("../../../lib/auditLog.js", () => ({
+  writeAuditLog: vi.fn(),
+  writeAuditLogAwait: vi.fn(),
+}));
+
 import { prisma } from "../../../db/prisma.js";
+import { enqueueIlFeeReconcile } from "../../../lib/outboxDrainer.js";
+import { writeAuditLog, writeAuditLogAwait } from "../../../lib/auditLog.js";
+import { logger } from "../../../lib/logger.js";
 
 const mockPrisma = prisma as any;
 
@@ -50,6 +61,7 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(writeAuditLogAwait).mockResolvedValue(undefined);
 });
 
 // ── GET / ────────────────────────────────────────────────────────
@@ -135,6 +147,88 @@ describe("PATCH /:id", () => {
     const res = await supertest(app).patch("/1").send({ name: "P1 Updated", status: "active" });
     expect(res.status).toBe(200);
     expect(res.body.data.name).toBe("P1 Updated");
+  });
+
+  it("completed without billFees enqueues IL fee reconcile and audits billed:true", async () => {
+    mockPrisma.period.findUnique.mockResolvedValue({ id: 1, leagueId: 1, status: "active" });
+    mockPrisma.period.update.mockResolvedValue({ id: 1, status: "completed" });
+
+    const res = await supertest(app).patch("/1").send({ status: "completed" });
+    expect(res.status).toBe(200);
+    expect(enqueueIlFeeReconcile).toHaveBeenCalledWith(null, 1, [1]);
+    // The close audit is the "bill later" record the drainer reads — awaited, not fire-and-forget.
+    expect(writeAuditLog).not.toHaveBeenCalled();
+    expect(writeAuditLogAwait).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "PERIOD_CLOSE",
+        resourceType: "Period",
+        resourceId: "1",
+        metadata: { leagueId: 1, periodId: 1, billed: true },
+      }),
+    );
+  });
+
+  it("completed with billFees:false does not enqueue and audits billed:false", async () => {
+    mockPrisma.period.findUnique.mockResolvedValue({ id: 1, leagueId: 1, status: "active" });
+    mockPrisma.period.update.mockResolvedValue({ id: 1, status: "completed" });
+
+    const res = await supertest(app).patch("/1").send({ status: "completed", billFees: false });
+    expect(res.status).toBe(200);
+    expect(enqueueIlFeeReconcile).not.toHaveBeenCalled();
+    expect(writeAuditLogAwait).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "PERIOD_CLOSE",
+        resourceType: "Period",
+        resourceId: "1",
+        metadata: { leagueId: 1, periodId: 1, billed: false },
+      }),
+    );
+    // billFees is a request flag, never persisted on the Period row
+    expect(mockPrisma.period.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { status: "completed" },
+    });
+  });
+
+  it("already-completed period does not re-enqueue or re-audit", async () => {
+    mockPrisma.period.findUnique.mockResolvedValue({ id: 1, leagueId: 1, status: "completed" });
+    mockPrisma.period.update.mockResolvedValue({ id: 1, status: "completed" });
+
+    const res = await supertest(app).patch("/1").send({ status: "completed" });
+    expect(res.status).toBe(200);
+    expect(enqueueIlFeeReconcile).not.toHaveBeenCalled();
+    expect(writeAuditLog).not.toHaveBeenCalled();
+    expect(writeAuditLogAwait).not.toHaveBeenCalled();
+  });
+
+  it("a failed close audit is logged and the close still succeeds (period simply isn't deferred)", async () => {
+    mockPrisma.period.findUnique.mockResolvedValue({ id: 1, leagueId: 1, status: "active" });
+    mockPrisma.period.update.mockResolvedValue({ id: 1, status: "completed" });
+    vi.mocked(writeAuditLogAwait).mockRejectedValue(new Error("audit db down"));
+
+    const res = await supertest(app).patch("/1").send({ status: "completed", billFees: false });
+    expect(res.status).toBe(200);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ periodId: 1, error: expect.stringContaining("audit db down") }),
+      expect.any(String),
+    );
+  });
+
+  it("pending → active audits PERIOD_START", async () => {
+    mockPrisma.period.findUnique.mockResolvedValue({ id: 1, leagueId: 1, status: "pending" });
+    mockPrisma.period.update.mockResolvedValue({ id: 1, status: "active" });
+
+    const res = await supertest(app).patch("/1").send({ status: "active" });
+    expect(res.status).toBe(200);
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "PERIOD_START",
+        resourceType: "Period",
+        resourceId: "1",
+        metadata: { leagueId: 1, periodId: 1 },
+      }),
+    );
+    expect(enqueueIlFeeReconcile).not.toHaveBeenCalled();
   });
 
   it("returns 404 for non-existent period", async () => {

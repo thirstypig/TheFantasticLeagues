@@ -5,7 +5,7 @@ import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, isTeamOwner } from "../../middleware/auth.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
 import { assertRosterLimit } from "../../lib/rosterGuard.js";
-import { rosterSlotFor } from "../transactions/lib/positionInherit.js";
+import { rosterSlotFor } from "../../lib/positionInherit.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireSeasonStatus } from "../../middleware/seasonGuard.js";

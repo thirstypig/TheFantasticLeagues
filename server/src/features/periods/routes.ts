@@ -6,6 +6,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
 import { computePeriodAwards } from "../../services/periodAwardsService.js";
 import { logger } from "../../lib/logger.js";
+import { writeAuditLog, writeAuditLogAwait } from "../../lib/auditLog.js";
 
 const router = Router();
 
@@ -25,6 +26,9 @@ const updatePeriodSchema = z.object({
   startDate: z.string().regex(DATE_REGEX, "Use YYYY-MM-DD format").optional(),
   endDate: z.string().regex(DATE_REGEX, "Use YYYY-MM-DD format").optional(),
   status: z.string().optional(),
+  // Request-only flag: false closes the period without enqueuing IL-fee billing
+  // ("bill later"). Never persisted on the Period row.
+  billFees: z.boolean().optional(),
 });
 
 // GET /api/periods?leagueId=N — list periods for a league's current season
@@ -136,7 +140,9 @@ router.patch("/:id", requireAuth, validateBody(updatePeriodSchema), asyncHandler
   // IL_FEE_RECONCILE outbox event so the drainer recomputes fees against
   // the authoritative RosterSlotEvent log. Durable — survives a crash
   // between this commit and the drainer's next tick.
-  if (req.body.status === "completed" && period.status !== "completed" && period.leagueId) {
+  const closing = req.body.status === "completed" && period.status !== "completed";
+  const billFees = req.body.billFees !== false;
+  if (closing && billFees && period.leagueId) {
     try {
       const { enqueueIlFeeReconcile } = await import("../../lib/outboxDrainer.js");
       await enqueueIlFeeReconcile(null, period.leagueId, [periodId]);
@@ -144,6 +150,35 @@ router.patch("/:id", requireAuth, validateBody(updatePeriodSchema), asyncHandler
       // Don't fail the period update if outbox enqueue fails — log and
       // continue. Commissioner can run /reconcile-il-fees manually.
       logger.error({ error: String(err), periodId }, "Failed to enqueue IL fee reconcile");
+    }
+  }
+
+  if (period.leagueId) {
+    if (closing) {
+      // Load-bearing: a billed:false close is the "bill later" record that
+      // stops automatic billing (lib/deferredBilling). Awaited so a failure is
+      // seen; the period stays closed either way, and without the row it is
+      // simply not deferred — the drainer bills it (the safe fallback).
+      try {
+        await writeAuditLogAwait({
+          userId: req.user!.id,
+          action: "PERIOD_CLOSE",
+          resourceType: "Period",
+          resourceId: String(periodId),
+          metadata: { leagueId: period.leagueId, periodId, billed: billFees },
+        });
+      } catch (err) {
+        logger.error({ error: String(err), periodId, billed: billFees },
+          "Failed to write PERIOD_CLOSE audit — period closed but not recorded as deferred");
+      }
+    } else if (req.body.status === "active" && period.status === "pending") {
+      writeAuditLog({
+        userId: req.user!.id,
+        action: "PERIOD_START",
+        resourceType: "Period",
+        resourceId: String(periodId),
+        metadata: { leagueId: period.leagueId, periodId },
+      });
     }
   }
 

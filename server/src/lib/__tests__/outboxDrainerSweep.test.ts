@@ -7,7 +7,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * a defect writes real outbox events nobody asked for.
  */
 
-const { mockPrisma } = vi.hoisted(() => ({
+const { mockPrisma, mockFindDeferredPeriodIds } = vi.hoisted(() => ({
+  mockFindDeferredPeriodIds: vi.fn(),
   mockPrisma: {
     period: { findMany: vi.fn() },
     outboxEvent: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -17,6 +18,9 @@ const { mockPrisma } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../db/prisma.js", () => ({ prisma: mockPrisma }));
+vi.mock("../deferredBilling.js", () => ({
+  findDeferredPeriodIds: (...args: any[]) => mockFindDeferredPeriodIds(...args),
+}));
 vi.mock("../logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
@@ -33,6 +37,7 @@ import {
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.outboxEvent.create.mockResolvedValue({ id: 1 });
+  mockFindDeferredPeriodIds.mockResolvedValue(new Set());
 });
 
 describe("sweepMissingFeeReconciles", () => {
@@ -86,6 +91,28 @@ describe("sweepMissingFeeReconciles", () => {
     const payloads = mockPrisma.outboxEvent.create.mock.calls.map((c) => c[0].data.payload);
     expect(payloads).toContainEqual({ leagueId: 20, periodIds: [36, 37] });
     expect(payloads).toContainEqual({ leagueId: 99, periodIds: [50] });
+  });
+
+  it("excludes DEFERRED ('bill later') periods so they are not billed or re-enqueued hourly", async () => {
+    mockPrisma.period.findMany.mockResolvedValue([period(36, 20), period(37, 20)]);
+    mockPrisma.outboxEvent.findMany.mockResolvedValue([]);
+    mockFindDeferredPeriodIds.mockResolvedValue(new Set([37]));
+
+    const n = await sweepMissingFeeReconciles();
+
+    expect(n).toBe(1);
+    expect(mockFindDeferredPeriodIds).toHaveBeenCalledWith([36, 37]);
+    const payloads = mockPrisma.outboxEvent.create.mock.calls.map((c) => c[0].data.payload);
+    expect(payloads).toEqual([{ leagueId: 20, periodIds: [36] }]);
+  });
+
+  it("enqueues nothing when every missing period is deferred", async () => {
+    mockPrisma.period.findMany.mockResolvedValue([period(37, 20)]);
+    mockPrisma.outboxEvent.findMany.mockResolvedValue([]);
+    mockFindDeferredPeriodIds.mockResolvedValue(new Set([37]));
+
+    expect(await sweepMissingFeeReconciles()).toBe(0);
+    expect(mockPrisma.outboxEvent.create).not.toHaveBeenCalled();
   });
 
   it("does nothing when there are no closed periods at all", async () => {

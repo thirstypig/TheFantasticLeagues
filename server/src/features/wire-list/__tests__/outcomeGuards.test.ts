@@ -48,7 +48,7 @@ vi.mock("../../../lib/utils.js", () => ({
   nextDayEffective: () => new Date("2026-05-07T00:00:00Z"),
 }));
 vi.mock("../../../lib/featureFlags.js", () => ({ enforceRosterRules: () => false }));
-vi.mock("../../transactions/lib/positionInherit.js", () => ({ isEligibleForSlot: () => true }));
+vi.mock("../../../lib/positionInherit.js", () => ({ isEligibleForSlot: () => true }));
 vi.mock("../../../lib/mlbTeams.js", () => ({
   getLeagueStatsSource: vi.fn().mockResolvedValue("MLB_ALL"),
   getTeamsForSource: vi.fn().mockReturnValue(null),

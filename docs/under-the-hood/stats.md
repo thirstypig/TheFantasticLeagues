@@ -21,24 +21,24 @@ updated: 2026-11-10
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-10 from 1,811 git-tracked files.*
+*Generated 2026-11-10 from 1,838 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 588 | 103,468 |
-| `.tsx` | 307 | 87,779 |
-| `.md` | 549 | 68,186 |
-| `.json` | 36 | 40,137 |
+| `.ts` | 595 | 105,054 |
+| `.tsx` | 323 | 90,300 |
+| `.md` | 551 | 68,739 |
+| `.json` | 36 | 40,134 |
 | `.sql` | 40 | 2,153 |
-| `.css` | 9 | 1,838 |
+| `.css` | 9 | 1,842 |
 | `.prisma` | 1 | 1,767 |
 | `.mjs` | 7 | 1,531 |
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,807** | **349,605** |
+| **All tracked** | **1,834** | **354,266** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -51,13 +51,13 @@ updated: 2026-11-10
 | Prisma migrations | 38 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
-| Cross-feature imports (ADR-015 baseline) | 91 |
+| Cross-feature imports (ADR-015 baseline) | 88 |
 
 ## Docs
 
-**205** board-scope markdown files (`docs/` plus the four root docs), of which **138** carry frontmatter.
+**209** board-scope markdown files (`docs/` plus the four root docs), of which **142** carry frontmatter.
 
-*553 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*557 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -67,10 +67,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 |---|---:|---|
 | `feat` | 20 | ❌ off-vocabulary |
 | `fix` | 6 | ❌ off-vocabulary |
-| `plan` | 4 | ✅ |
+| `plan` | 5 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
+| `tech-spec` | 3 | ✅ |
 | `report` | 3 | ✅ |
-| `tech-spec` | 2 | ✅ |
+| `stats` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
@@ -96,14 +97,13 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `privacy` | 1 | ✅ |
 | `risk` | 1 | ✅ |
 | `runbook` | 1 | ✅ |
-| `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
 **35 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 50 | ✅ |
+| `active` | 54 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
