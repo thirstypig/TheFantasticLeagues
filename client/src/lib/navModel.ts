@@ -50,6 +50,8 @@ export function activeTabFor(
 ): PrimaryTabKey | null {
   if (pathname === "/") return "today";
   if (pathname === "/my-team") return "myTeam";
+  // No team: the My Team tab itself points at /teams, so it owns that path.
+  if (!myTeamCode && pathname === "/teams") return "myTeam";
   if (myTeamCode) {
     const own = `/teams/${myTeamCode}`;
     if (pathname === own || pathname.startsWith(`${own}/`)) return "myTeam";
@@ -93,7 +95,7 @@ export function buildLeagueSections(args: {
     if (seasonStatus === "DRAFT") {
       draftLinks.push({ to: "/draft", label: "Snake draft" });
     } else if (seasonStatus === "IN_SEASON" || seasonStatus === "COMPLETED") {
-      draftLinks.push({ to: "/draft-report", label: "Draft report" });
+      draftLinks.push({ to: "/draft-results", label: "Draft results" });
     }
   }
   if (canKeepers && leagueId) {
@@ -125,6 +127,7 @@ export const ADMIN_LINKS: NavLink[] = [
   { to: "/analytics", label: "Analytics" },
   { to: "/weekly-report", label: "Weekly Report" },
   { to: "/board", label: "Board" },
+  { to: "/draft-report", label: "Draft Report" },
   { to: "/community", label: "Community" },
   { to: "/nba", label: "NBA" },
   { to: "/nfl", label: "NFL" },

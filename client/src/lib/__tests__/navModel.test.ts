@@ -53,8 +53,9 @@ describe("activeTabFor", () => {
   it("does not confuse a team code that merely starts with mine", () => {
     expect(activeTabFor("/teams/LDYX", "LDY")).toBe("league");
   });
-  it("treats /teams as League when the user has no team", () => {
-    expect(activeTabFor("/teams", null)).toBe("league");
+  it("treats /teams as My Team when the user has no team (the My Team tab's own target)", () => {
+    expect(activeTabFor("/teams", null)).toBe("myTeam");
+    expect(activeTabFor("/teams", "LDY")).toBe("league");
     expect(activeTabFor("/teams/SKD", null)).toBe("league");
   });
   it("treats /players and /players/:mlbId as Players", () => {
@@ -126,11 +127,13 @@ describe("buildLeagueSections", () => {
     const tos = draftTos({ draftMode: "DRAFT", seasonStatus: "DRAFT", canViewAuctionResults: false });
     expect(tos).toContain("/draft");
     expect(tos).not.toContain("/draft-report");
+    expect(tos).not.toContain("/draft-results");
   });
-  it("DRAFT-mode league after the draft: Draft report, no Snake draft", () => {
-    const tos = draftTos({ draftMode: "DRAFT", seasonStatus: "IN_SEASON", canViewAuctionResults: false });
-    expect(tos).toContain("/draft-report");
-    expect(tos).not.toContain("/draft");
+  it("DRAFT-mode league after the draft: Draft results (not the AI report), no Snake draft", () => {
+    for (const seasonStatus of ["IN_SEASON", "COMPLETED"]) {
+      const links = section({ draftMode: "DRAFT", seasonStatus, canViewAuctionResults: false }, "Draft")!.links;
+      expect(links).toEqual([{ to: "/draft-results", label: "Draft results" }]);
+    }
   });
   it("DRAFT-mode league in SETUP: no snake draft items", () => {
     expect(draftTos({ draftMode: "DRAFT", seasonStatus: "SETUP", canViewAuctionResults: false })).toEqual([]);
@@ -145,7 +148,11 @@ describe("buildLeagueSections", () => {
     const all = buildLeagueSections({
       ...base, canAuction: true, canKeepers: true, isH2H: true, canAccessCommissioner: true,
     }).flatMap((s) => s.links.map((l) => l.to));
-    for (const hidden of ["/ai", "/board", "/nba", "/nfl", "/weekly-report"]) {
+    const draftModeAll = buildLeagueSections({
+      ...base, draftMode: "DRAFT", seasonStatus: "IN_SEASON", canKeepers: true, isH2H: true, canAccessCommissioner: true,
+    }).flatMap((s) => s.links.map((l) => l.to));
+    for (const hidden of ["/ai", "/board", "/nba", "/nfl", "/weekly-report", "/draft-report"]) {
+      expect(draftModeAll).not.toContain(hidden);
       expect(all).not.toContain(hidden);
     }
   });
@@ -155,7 +162,7 @@ describe("ADMIN_LINKS", () => {
   it("holds the hidden pages including /ai, /nba, /admin/users and /admin/reports", () => {
     const tos = ADMIN_LINKS.map((l) => l.to);
     for (const t of ["/ai", "/nba", "/nfl", "/board", "/community", "/weekly-report", "/analytics", "/concepts",
-      "/roadmap", "/todo", "/docs", "/tech", "/status", "/changelog", "/admin/users", "/admin/reports"]) {
+      "/draft-report", "/roadmap", "/todo", "/docs", "/tech", "/status", "/changelog", "/admin/users", "/admin/reports"]) {
       expect(tos).toContain(t);
     }
     expect(ADMIN_LINKS.find((l) => l.to === "/tech")?.label).toBe("Under the Hood");
