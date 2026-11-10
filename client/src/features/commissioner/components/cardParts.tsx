@@ -41,7 +41,7 @@ export const PRIMARY: React.CSSProperties = {
   borderRadius: 6,
   border: "1px solid var(--am-accent)",
   background: "var(--am-accent)",
-  color: "var(--am-surface)",
+  color: "var(--am-on-accent)",
   fontSize: 16,
   fontWeight: 600,
   cursor: "pointer",
