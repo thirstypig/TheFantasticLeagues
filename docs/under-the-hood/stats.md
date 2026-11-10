@@ -21,24 +21,24 @@ updated: 2026-11-10
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-10 from 1,830 git-tracked files.*
+*Generated 2026-11-10 from 1,838 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 589 | 103,853 |
-| `.tsx` | 323 | 90,987 |
-| `.md` | 550 | 68,337 |
+| `.ts` | 595 | 105,054 |
+| `.tsx` | 323 | 90,300 |
+| `.md` | 551 | 68,739 |
 | `.json` | 36 | 40,134 |
 | `.sql` | 40 | 2,153 |
-| `.css` | 8 | 1,776 |
+| `.css` | 9 | 1,842 |
 | `.prisma` | 1 | 1,767 |
 | `.mjs` | 7 | 1,531 |
 | `.js` | 8 | 1,220 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,826** | **353,284** |
+| **All tracked** | **1,834** | **354,266** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,7 +46,7 @@ updated: 2026-11-10
 
 | Measure | Count |
 |---|---:|
-| API routes | 287 |
+| API routes | 288 |
 | Prisma models | 66 |
 | Prisma migrations | 38 |
 | Server feature modules | 33 |
@@ -55,9 +55,9 @@ updated: 2026-11-10
 
 ## Docs
 
-**208** board-scope markdown files (`docs/` plus the four root docs), of which **141** carry frontmatter.
+**209** board-scope markdown files (`docs/` plus the four root docs), of which **142** carry frontmatter.
 
-*556 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*557 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -67,7 +67,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 |---|---:|---|
 | `feat` | 20 | ❌ off-vocabulary |
 | `fix` | 6 | ❌ off-vocabulary |
-| `plan` | 4 | ✅ |
+| `plan` | 5 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
 | `report` | 3 | ✅ |
@@ -103,7 +103,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 53 | ✅ |
+| `active` | 54 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |

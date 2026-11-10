@@ -8,7 +8,7 @@ const InjuredListPage = React.lazy(() => import("./features/players/pages/Injure
 const AuctionLegacy = React.lazy(() => import("./features/auction/pages/AuctionLegacy"));
 
 // Core routes — static imports (high-traffic, always needed)
-import Home from "./pages/Home";
+import TodayPage from "./pages/today/TodayPage";
 import League from "./pages/League";
 import MyTeamRedirect from "./pages/MyTeamRedirect";
 import Season from "./features/periods/pages/Season";
@@ -158,7 +158,7 @@ export default function App() {
               <MobileLayoutGate desktopChrome={AuroraShell}>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
-                    <Route path="/" element={<Home />} />
+                    <Route path="/" element={<TodayPage />} />
                     <Route path="/season" element={<Season />} />
                     {/* Teams index — Explore section's "Teams" entry per
                         the Sitemap & Navigation design. Lists all teams in

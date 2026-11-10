@@ -137,12 +137,13 @@ Major covered areas (selected):
 - `features/wire-list/__tests__/WireListRow.test.tsx` — 10 (content rendering; ▲▼× hidden when isReadOnly; ▲ disabled for isFirst, ▼ disabled for isLast; WaiverDropModeToggle shown only for drop rows; opacity 0.5 when isPending)
 - `features/wire-list/__tests__/WaiverDropModeToggle.test.tsx` — 5 (REL/IL buttons rendered; onChange fires on toggle; onChange blocked on already-active; onChange blocked when disabled; buttons disabled when disabled prop set)
 - `features/wire-list/__tests__/utils.test.ts` — 4 (formatDeadline: non-empty string, numeric day present, no [object Object]/NaN, past date doesn't throw)
-- `mobile/__tests__/MobileShell.test.tsx` — 6 (always-mounted drawer invariant: `data-testid="mobile-tab-bar"` present when drawer closed; hamburger aria-expanded starts false, flips true on click; overlay click closes drawer; Escape key closes; drawer persists on non-home paths)
+- `mobile/__tests__/MobileShell.test.tsx` — 16 (renders TodayPage at `/`; always-mounted drawer invariant: `data-testid="mobile-tab-bar"` present when drawer closed; hamburger aria-expanded starts false, flips true on click; overlay click closes drawer; Escape key closes; drawer persists on non-home paths)
 - `mobile/__tests__/MobileTabBar.commish.test.tsx` — 7 (unified 5-tab set present; AI/Commish tabs absent; My Team tab scoped to own team code, not all /teams/ paths)
 - `mobile/__tests__/MobileLayoutGate.test.tsx` — 5 (desktop renders AppShell, mobile substitutes twin page, breakpoint boundary at 767px)
 - `contexts/__tests__/ThemeContext.test.tsx` — 13 (System / Light / Dark preference model under `fbst-theme-pref`: defaults to system and follows live OS changes, explicit preference wins and unsubscribes from the OS, restores a stored preference, invalid value falls back to system, legacy `fbst-theme` key removed and ignored, nothing persisted until chosen, toggleTheme sets the opposite explicit preference; dark/light class on documentElement; USC theme-color meta dark→#3a1f22, light→#e0d3ae, recolors EVERY theme-color meta so an explicit Light on a dark OS wins over index.html's media-scoped metas, updates an existing meta without duplicating, creates one when none exist)
-- `mobile/__tests__/MobileMore.test.tsx` — 5 (manager profile strip, league section, commish items hidden for non-commish)
-- `mobile/__tests__/MobileHome.test.tsx` — 6 (hero card with rank; standings top-5 with YOU badge; activity feed with kind chips; Trade Proposals section with team names and player names; League Board section with card title and author; view-roster link to user's team)
+- `pages/today/__tests__/TodayPage.test.tsx` — 20 (Today page: standings movement, tonight, wire, news sections and desktop/mobile layouts)
+- `pages/today/__tests__/todayModel.test.ts` — 30 (pure Today view-model helpers)
+- `pages/today/__tests__/useTodayData.test.tsx` — 5 (per-source loading/ok/error states of the Today data hook)
 - `mobile/__tests__/MobileTeam.test.tsx` — 23 (roster hub fetch, tab switching, IL tab, hero strip, standings rank, move sheet, IL stash/activate flows, optimistic updates, rollback, refetch-on-success, backdrop dismiss, Hitter Totals row with summed numerators, Pitcher Totals row with rate stats derived from IP/ER/BB_H, IL tab hides totals)
 - `mobile/__tests__/MobilePlayers.test.tsx` — 18 (hitter list default, NL filter, position chip filter, pitchers tab, search, sort direction toggle, watch star rendering, addToWatchlist/removeFromWatchlist, star click doesn't expand, row expand/collapse, career table in expanded panel, pitching career endpoint, Available filter chip, Available hides rostered players, Available restores all, Available persists as avail=1 URL param)
 - `mobile/__tests__/MobileStandings.test.tsx` — 8 (team rows render, YOU badge in standings row, segmented control switches Hitting/Pitching columns, sort direction toggle, Category Leaders section renders, card per category with key label, top-3 teams with actual stat values, rank numbers 1–3 per card)
@@ -152,7 +153,6 @@ Major covered areas (selected):
 - `features/periods/Season.test.tsx` — 8
 - `features/commissioner/Commissioner.test.tsx` — 11 (Phase 4 adds ghost-IL banner + lazy-load assertions)
 - `features/transactions/ActivityPage.test.tsx` — 6
-- `pages/__tests__/Home.test.tsx` — covers the dashboard sections added in the roster/home workstream: compact Around the League, League Board, quick links, fantasy-team names in League Activity, and pending trade proposal withdrawal affordance
 - `features/transactions/api.test.ts` — 6 (ilStash + ilActivate wrappers: URL/method/body shape, optional params, error propagation)
 - `features/commissioner/api.test.ts` — 4 (getGhostIlSummary: URL interpolation, error propagation, GET semantics)
 - `features/admin/Admin.test.tsx` — 6
@@ -200,10 +200,10 @@ Run from `mcp-servers/fbst-app/` with `npx vitest run`.
 
 Recent roster/dashboard documentation session baseline:
 
-- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx` — 21 passing
-- `npx vitest run src/pages/__tests__/Home.test.tsx src/features/transactions/__tests__/ActivityPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx src/features/trades/__tests__/TradesPage.test.tsx` — 50 passing
+- `npx vitest run src/pages/today/__tests__/TodayPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx` — 21 passing
+- `npx vitest run src/pages/today/__tests__/TodayPage.test.tsx src/features/transactions/__tests__/ActivityPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx src/features/trades/__tests__/TradesPage.test.tsx` — 50 passing
 - `cd client && npx tsc --noEmit` — passing
-- Browser smoke on Home at desktop and mobile: no horizontal overflow, expected right-column order, League Activity fantasy-team names, Board quick link present
+- Browser smoke on Home (since replaced by Today) at desktop and mobile: no horizontal overflow, expected right-column order, League Activity fantasy-team names, Board quick link present
 
 ## Workflow — slash commands
 

@@ -22,6 +22,17 @@ vi.mock("../../contexts/LeagueContext", () => ({
   }),
 }));
 
+// TodayPage (the mobile "/" page) — keep it off the network.
+vi.mock("../../pages/today/useTodayData", () => ({
+  useTodayData: () => ({
+    standings: { status: "loading" },
+    periods: { status: "loading" },
+    wirePeriod: { status: "loading" },
+    tonight: { status: "loading" },
+    news: { status: "loading" },
+  }),
+}));
+
 vi.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({ user: { id: 1, isAdmin }, loading: false, logout }),
 }));
@@ -159,5 +170,13 @@ describe("MobileShell — account sheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Account" }));
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(logout).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MobileShell — routes", () => {
+  it("renders TodayPage at /", () => {
+    renderShell("/");
+    expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeInTheDocument();
+    expect(screen.queryByTestId("page-content")).toBeNull();
   });
 });
