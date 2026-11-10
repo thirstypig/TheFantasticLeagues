@@ -235,6 +235,24 @@ describe("classifyNews", () => {
     expect(out[2]).toMatchObject({ title: "Schultz traded", detail: "" });
   });
 
+  it("keeps name suffixes in titles", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, playerName: "Fernando Tatis Jr.", description: "San Diego Padres placed RF Fernando Tatis Jr. on the 10-day injured list. Back spasms." }),
+        ntx({ id: 2, playerName: "Vladimir Guerrero Jr.", typeCode: "TR", description: "Traded.", fromTeamAbbr: "NYM", toTeamAbbr: "SEA", fromLeague: "NL", toLeague: "AL" }),
+        ntx({ id: 3, playerName: "Ken Griffey III", typeCode: "REL", description: "Released." }),
+        ntx({ id: 4, playerName: "Foo Bar Sr", typeCode: "REL", description: "Released." }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out.map((n) => n.title)).toEqual([
+      "Tatis Jr. placed on the 10-day IL",
+      "Guerrero Jr. traded to SEA",
+      "Griffey III released",
+      "Bar Sr released",
+    ]);
+  });
+
   it("classifies IL activation", () => {
     const [n] = classifyNews([ntx({})], NEWS_NOW);
     expect(n).toMatchObject({

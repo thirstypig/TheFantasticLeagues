@@ -193,6 +193,15 @@ export interface NewsItem {
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const NEWS_CAP = 8;
 
+const NAME_SUFFIX = /^(jr|sr|ii|iii|iv)\.?$/i;
+
+function lastName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  const final = parts[parts.length - 1] ?? fullName;
+  if (parts.length >= 3 && NAME_SUFFIX.test(final)) return `${parts[parts.length - 2]} ${final}`;
+  return final;
+}
+
 function newsWhen(date: string, now: Date): string {
   const [y, m, d] = date.slice(0, 10).split("-").map(Number);
   const days = Math.round(
@@ -206,7 +215,7 @@ function newsWhen(date: string, now: Date): string {
 export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[] {
   const out: NewsItem[] = [];
   for (const t of txs) {
-    const last = t.playerName.trim().split(" ").pop() ?? t.playerName;
+    const last = lastName(t.playerName);
     const leavesNl = t.typeCode === "TR" && t.fromLeague === "NL" && t.toLeague === "AL";
     const base = { key: String(t.id), when: newsWhen(t.date, now), leavesNl };
     const desc = t.description;
