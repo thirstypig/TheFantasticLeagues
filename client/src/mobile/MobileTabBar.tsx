@@ -1,118 +1,72 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { activeTabFor, buildPrimaryTabs, type PrimaryTabKey } from "../lib/navModel";
 import { Glyph, type GlyphKind } from "./atoms/Glyph";
 
-export type MobileTabKey = "Home" | "Players" | "MyTeam" | "Standings" | "More";
-
-interface TabDef {
-  k: MobileTabKey;
-  label: string;
-  glyph: GlyphKind;
-  to: string;
-  matches: (path: string) => boolean;
-}
-
-function buildTabs(myTeamCode: string | null | undefined): TabDef[] {
-  return [
-    {
-      k: "Home",
-      label: "Home",
-      glyph: "home",
-      to: "/",
-      matches: (p) => p === "/",
-    },
-    {
-      k: "Players",
-      label: "Players",
-      glyph: "players",
-      to: "/players",
-      matches: (p) => p === "/players" || p.startsWith("/players/"),
-    },
-    {
-      k: "MyTeam",
-      label: "My Team",
-      glyph: "me",
-      to: myTeamCode ? `/teams/${myTeamCode}` : "/teams",
-      matches: (p) => myTeamCode ? p.startsWith(`/teams/${myTeamCode}`) : false,
-    },
-    {
-      k: "Standings",
-      label: "Standings",
-      glyph: "trophy",
-      to: "/season",
-      matches: (p) => p === "/season" || p.startsWith("/season/"),
-    },
-    {
-      k: "More",
-      label: "More",
-      glyph: "more",
-      to: "/more",
-      matches: (p) => p === "/more" || p.startsWith("/more/"),
-    },
-  ];
-}
+const GLYPHS: Record<PrimaryTabKey, GlyphKind> = {
+  today: "home",
+  myTeam: "me",
+  players: "players",
+  league: "trophy",
+};
 
 interface MobileTabBarProps {
   myTeamCode?: string | null;
 }
 
+/** Fixed bottom bar: Today, My Team, Players, League. */
 export function MobileTabBar({ myTeamCode }: MobileTabBarProps) {
   const nav = useNavigate();
   const { pathname } = useLocation();
-  const tabs = buildTabs(myTeamCode);
+  const tabs = buildPrimaryTabs({ myTeamCode });
+  const active = activeTabFor(pathname, myTeamCode);
 
   return (
     <nav
       aria-label="Primary"
       data-testid="mobile-tab-bar"
       style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 30,
         display: "flex",
-        flexDirection: "column",
-        padding: "8px 0",
+        background: "var(--am-surface)",
+        borderTop: "1px solid var(--am-border-strong)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       {tabs.map((t) => {
-        const on = t.matches(pathname);
+        const on = t.key === active;
         return (
           <button
-            key={t.k}
+            key={t.key}
             type="button"
             aria-current={on ? "page" : undefined}
-            data-tab-key={t.k}
+            data-tab-key={t.key}
             onClick={() => nav(t.to)}
             style={{
+              flex: 1,
+              minWidth: 44,
+              minHeight: 44,
+              height: 64,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              gap: 12,
-              padding: "12px 16px",
-              background: on ? "var(--am-chip)" : "transparent",
+              justifyContent: "center",
+              gap: 3,
+              background: "transparent",
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
-              textAlign: "left",
-              width: "100%",
-              borderLeft: on ? "3px solid var(--am-accent)" : "3px solid transparent",
+              fontSize: 12,
+              fontWeight: on ? 700 : 500,
+              color: on ? "var(--am-accent)" : "var(--am-text-muted)",
             }}
           >
-            <span
-              style={{
-                color: on ? "var(--am-accent)" : "var(--am-text-muted)",
-                display: "flex",
-                alignItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Glyph kind={t.glyph} size={20} />
-            </span>
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: on ? 600 : 400,
-                color: on ? "var(--am-text)" : "var(--am-text-muted)",
-              }}
-            >
-              {t.label}
-            </span>
+            <Glyph kind={GLYPHS[t.key]} size={22} />
+            <span>{t.label}</span>
           </button>
         );
       })}

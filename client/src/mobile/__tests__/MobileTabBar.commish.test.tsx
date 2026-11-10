@@ -1,10 +1,5 @@
 /**
- * MobileTabBar — tab set and active-state tests.
- *
- * Regression targets:
- *  1. Unified tab set: all 5 tabs always present, no role-conditional hiding.
- *  2. My Team tab active-state scoping (P1 fix): only active on the user's own
- *     team path, not on any other /teams/* path.
+ * MobileTabBar — four-tab set and active-state tests.
  */
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -19,54 +14,52 @@ function renderBar(pathname: string, myTeamCode?: string) {
   );
 }
 
-describe("MobileTabBar — unified tab set", () => {
-  it("always shows all 5 tabs regardless of role", () => {
-    renderBar("/");
-    const dock = screen.getByTestId("mobile-tab-bar");
-    expect(dock.querySelector('[data-tab-key="Home"]')).not.toBeNull();
-    expect(dock.querySelector('[data-tab-key="Players"]')).not.toBeNull();
-    expect(dock.querySelector('[data-tab-key="MyTeam"]')).not.toBeNull();
-    expect(dock.querySelector('[data-tab-key="Standings"]')).not.toBeNull();
-    expect(dock.querySelector('[data-tab-key="More"]')).not.toBeNull();
+function tab(key: string) {
+  return screen.getByTestId("mobile-tab-bar").querySelector(`[data-tab-key="${key}"]`);
+}
+
+describe("MobileTabBar — four-tab set", () => {
+  it("shows exactly Today, My Team, Players, League", () => {
+    renderBar("/", "LDY");
+    const buttons = Array.from(screen.getByTestId("mobile-tab-bar").querySelectorAll("button"));
+    expect(buttons.map((b) => b.textContent)).toEqual(["Today", "My Team", "Players", "League"]);
+    expect(buttons.map((b) => b.getAttribute("data-tab-key"))).toEqual(["today", "myTeam", "players", "league"]);
   });
 
-  it("does not render Commish or AI tabs (removed in unified nav)", () => {
-    renderBar("/");
-    const dock = screen.getByTestId("mobile-tab-bar");
-    expect(dock.querySelector('[data-tab-key="Commish"]')).toBeNull();
-    expect(dock.querySelector('[data-tab-key="AI"]')).toBeNull();
+  it("gives every tab a 44px minimum touch target", () => {
+    renderBar("/", "LDY");
+    for (const b of screen.getByTestId("mobile-tab-bar").querySelectorAll("button")) {
+      expect((b as HTMLElement).style.minHeight).toBe("44px");
+      expect((b as HTMLElement).style.minWidth).toBe("44px");
+    }
   });
 });
 
-describe("MobileTabBar — My Team active-state scoping (P1 fix)", () => {
-  it("marks My Team active when on the user's own team path", () => {
+describe("MobileTabBar — active state", () => {
+  it("marks My Team active on the user's own team path", () => {
     renderBar("/teams/LDY", "LDY");
-    const tab = screen.getByTestId("mobile-tab-bar").querySelector('[data-tab-key="MyTeam"]');
-    expect(tab?.getAttribute("aria-current")).toBe("page");
+    expect(tab("myTeam")?.getAttribute("aria-current")).toBe("page");
+    expect(tab("league")?.getAttribute("aria-current")).toBeNull();
   });
 
-  it("does NOT mark My Team active when on a different team's path", () => {
-    // Before the fix, startsWith("/teams/") matched any team — this is the regression case.
-    renderBar("/teams/AWAY", "LDY");
-    const tab = screen.getByTestId("mobile-tab-bar").querySelector('[data-tab-key="MyTeam"]');
-    expect(tab?.getAttribute("aria-current")).toBeNull();
+  it("marks League (not My Team) active on another team's path", () => {
+    renderBar("/teams/SKD", "LDY");
+    expect(tab("league")?.getAttribute("aria-current")).toBe("page");
+    expect(tab("myTeam")?.getAttribute("aria-current")).toBeNull();
   });
 
-  it("does NOT mark My Team active when myTeamCode is not set", () => {
-    renderBar("/teams/LDY");
-    const tab = screen.getByTestId("mobile-tab-bar").querySelector('[data-tab-key="MyTeam"]');
-    expect(tab?.getAttribute("aria-current")).toBeNull();
-  });
-
-  it("marks Home active on /", () => {
+  it("marks Today active on /", () => {
     renderBar("/", "LDY");
-    const tab = screen.getByTestId("mobile-tab-bar").querySelector('[data-tab-key="Home"]');
-    expect(tab?.getAttribute("aria-current")).toBe("page");
+    expect(tab("today")?.getAttribute("aria-current")).toBe("page");
   });
 
-  it("marks Standings active on /season", () => {
+  it("marks League active on /season", () => {
     renderBar("/season", "LDY");
-    const tab = screen.getByTestId("mobile-tab-bar").querySelector('[data-tab-key="Standings"]');
-    expect(tab?.getAttribute("aria-current")).toBe("page");
+    expect(tab("league")?.getAttribute("aria-current")).toBe("page");
+  });
+
+  it("marks no tab active on a hidden page", () => {
+    renderBar("/ai", "LDY");
+    expect(screen.getByTestId("mobile-tab-bar").querySelector("[aria-current]")).toBeNull();
   });
 });

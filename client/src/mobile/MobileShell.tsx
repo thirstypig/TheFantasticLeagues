@@ -4,18 +4,20 @@
  * Mounted by `MobileLayoutGate` whenever `(max-width: 767px)` matches.
  *
  * Chrome:
- *   - 50px fixed top app bar: hamburger (left) → title (center) → spacer (right; theme lives in Profile → Appearance)
- *   - Left-slide drawer (260px, always in DOM, slides with transform) + dark overlay
- *   - MobileTabBar rendered inside the drawer as a vertical nav list; all
- *     data-testid / data-tab-key / aria-current attributes are preserved so
- *     existing tests pass without modification
- *   - No bottom dock
+ *   - 50px fixed top app bar: page title (center) + avatar button (right) that
+ *     opens the account bottom sheet (theme lives in Profile -> Appearance)
+ *   - Fixed bottom MobileTabBar: Today, My Team, Players, League
+ *   - No drawer
  */
-import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useCallback, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import { useLeague } from "../contexts/LeagueContext";
 import { useTheme } from "../contexts/ThemeContext";
 import "../components/aurora/aurora.css";
+import { activeTabFor, buildPrimaryTabs } from "../lib/navModel";
+import { AccountSheet } from "./AccountSheet";
+import { Glyph } from "./atoms/Glyph";
 import { MobileTabBar } from "./MobileTabBar";
 import { MobileHome } from "./pages/MobileHome";
 import { MobilePlayers } from "./pages/MobilePlayers";
@@ -44,24 +46,23 @@ export function MobileShell({ children }: MobileShellProps) {
   const { theme } = useTheme();
   const { myTeamCode, leagues, leagueId } = useLeague();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const nav = useNavigate();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const closeAccount = useCallback(() => setAccountOpen(false), []);
 
-  // Close drawer on navigation
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setDrawerOpen(false);
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  async function onSignOut() {
+    setAccountOpen(false);
+    await logout();
+    nav("/", { replace: true });
+  }
 
   const currentLeague = (leagues ?? []).find((l) => l.id === leagueId);
   const leagueName = currentLeague?.name ?? "The Fantastic Leagues";
   const mobilePage = pickMobilePage(pathname);
+  const activeKey = activeTabFor(pathname, myTeamCode);
+  const pageTitle =
+    buildPrimaryTabs({ myTeamCode }).find((t) => t.key === activeKey)?.label ?? leagueName;
 
   return (
     <div
@@ -86,17 +87,36 @@ export function MobileShell({ children }: MobileShellProps) {
           gap: 8,
         }}
       >
+        {/* Spacer mirrors the avatar so the title stays centered. */}
+        <div aria-hidden style={{ width: 44, height: 44, flexShrink: 0 }} />
+
+        <div style={{ flex: 1, textAlign: "center", minWidth: 0, overflow: "hidden" }}>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: "var(--am-text)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {pageTitle}
+          </div>
+        </div>
+
         <button
           type="button"
-          aria-label="Open navigation menu"
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen(true)}
+          aria-label="Account"
+          aria-haspopup="dialog"
+          aria-expanded={accountOpen}
+          onClick={() => setAccountOpen(true)}
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 36,
-            height: 36,
+            width: 44,
+            height: 44,
             flexShrink: 0,
             background: "transparent",
             border: "none",
@@ -105,122 +125,23 @@ export function MobileShell({ children }: MobileShellProps) {
             padding: 0,
           }}
         >
-          <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
+          <Glyph kind="me" size={24} />
         </button>
-
-        <div style={{ flex: 1, textAlign: "center", minWidth: 0, overflow: "hidden" }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: "var(--am-text)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            The Fantastic Leagues
-          </div>
-        </div>
-
-        {/* Spacer mirrors the hamburger so the title stays centered. */}
-        <div aria-hidden style={{ width: 36, height: 36, flexShrink: 0 }} />
       </header>
 
-      {/* ── Dark overlay (only visible when drawer is open) ── */}
-      <div
-        aria-hidden
-        onClick={() => setDrawerOpen(false)}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          zIndex: 40,
-          opacity: drawerOpen ? 1 : 0,
-          pointerEvents: drawerOpen ? "auto" : "none",
-          transition: "opacity 0.2s ease",
-        }}
-      />
+      {accountOpen && (
+        <AccountSheet isAdmin={Boolean(user?.isAdmin)} onClose={closeAccount} onSignOut={onSignOut} />
+      )}
 
-      {/* ── Drawer panel — always in DOM so data-testid="mobile-tab-bar" is findable ── */}
-      <div
-        role="dialog"
-        aria-label="Navigation menu"
-        aria-modal={drawerOpen}
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: 260,
-          zIndex: 50,
-          background: "var(--am-surface)",
-          borderRight: "1px solid var(--am-border-strong)",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          transform: drawerOpen ? "translateX(0)" : "translateX(-260px)",
-          transition: "transform 0.25s ease",
-        }}
-      >
-        {/* Drawer header */}
-        <div
-          style={{
-            padding: "16px 16px 14px",
-            borderBottom: "1px solid var(--am-border)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexShrink: 0,
-          }}
-        >
-          <div
-            aria-hidden
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 4,
-              background: "var(--am-accent)",
-              display: "grid",
-              placeItems: "center",
-              fontSize: 15,
-              fontWeight: 700,
-              color: "var(--am-on-accent)",
-              flexShrink: 0,
-            }}
-          >
-            F
-          </div>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: "var(--am-text)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {leagueName}
-          </div>
-        </div>
-
-        {/* MobileTabBar — all data-testid / data-tab-key / aria-current preserved */}
-        <div style={{ flex: 1 }}>
-          <MobileTabBar myTeamCode={myTeamCode} />
-        </div>
-      </div>
+      <MobileTabBar myTeamCode={myTeamCode} />
 
       {/* ── Page content ── */}
       <div
+        data-testid="mobile-content"
         style={{
           minHeight: "100vh",
           paddingTop: 50,
-          paddingBottom: 16,
+          paddingBottom: "calc(64px + env(safe-area-inset-bottom))",
           background: "var(--am-bg)",
         }}
       >
