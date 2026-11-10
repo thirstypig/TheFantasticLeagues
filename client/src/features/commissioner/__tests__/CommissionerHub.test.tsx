@@ -76,7 +76,7 @@ describe("CommissionerHub", () => {
       "/commissioner/20/rosters",
       "/commissioner/20/trades",
       "/commissioner/20/money",
-      "/commissioner/20/settings",
+      "/commissioner/20/rules",
       "/commissioner/20/owners",
     ]);
     expect(screen.getByRole("link", { name: /Overview/ }).getAttribute("href")).toBe("/commissioner/20/overview");

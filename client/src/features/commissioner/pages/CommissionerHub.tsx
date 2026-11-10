@@ -137,7 +137,7 @@ export default function CommissionerHub() {
               <JobRow label="Fix a roster" to={`${base}/rosters`} />
               <JobRow label="Trades" to={`${base}/trades`} />
               <JobRow label="Money" to={`${base}/money`} />
-              <JobRow label="League settings & rules" to={`${base}/settings`} />
+              <JobRow label="League settings & rules" to={`${base}/rules`} />
               <JobRow label="Owners & invites" to={`${base}/owners`} />
               {periods.state === "error" && <CardError>Couldn’t load periods.</CardError>}
             </>

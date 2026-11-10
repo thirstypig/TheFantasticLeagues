@@ -558,3 +558,27 @@ export function formatInnings(ip: number): string {
   const rem = outs % 3;
   return rem === 0 ? String(whole) : `${whole}${rem === 1 ? "⅓" : "⅔"}`;
 }
+
+// --- League rules (Rules screen) ---
+
+export interface CommissionerRuleRow {
+  id: number;
+  category: string;
+  key: string;
+  value: string;
+  label: string;
+  isLocked: boolean;
+}
+
+export async function getCommissionerRules(leagueId: number): Promise<CommissionerRuleRow[]> {
+  const resp = await fetchJsonApi<CommissionerRuleRow[] | { rules: CommissionerRuleRow[] }>(`${API_BASE}/leagues/${leagueId}/rules`);
+  return Array.isArray(resp) ? resp : resp.rules ?? [];
+}
+
+export async function saveCommissionerRules(leagueId: number, updates: Array<{ id: number; value: string }>): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/leagues/${leagueId}/rules`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ updates }),
+  });
+}
