@@ -54,10 +54,9 @@ const modes: Record<string, Tokens> = {
 };
 
 const TEXT_TOKENS = [
-  "--am-text", "--am-text-muted", "--am-text-faint",
-  "--am-accent", "--am-accent-2", "--am-positive", "--am-negative", "--am-warning",
+  "--am-text", "--am-text-muted", "--am-accent", "--am-positive", "--am-negative",
 ];
-const BACKGROUNDS = ["--am-bg", "--am-surface", "--am-surface-alt", "--am-chip"];
+const BACKGROUNDS = ["--am-bg", "--am-surface", "--am-chip", "--am-field"];
 
 describe.each(Object.entries(modes))("aurora tokens (%s)", (_mode, tokens) => {
   for (const fg of TEXT_TOKENS) {
@@ -67,17 +66,32 @@ describe.each(Object.entries(modes))("aurora tokens (%s)", (_mode, tokens) => {
   }
   it("--am-on-accent on --am-accent >= 4.5:1", () =>
     expectRatio(tokens, "--am-on-accent", "--am-accent", 4.5));
-  it("--am-border-strong on --am-surface >= 3:1", () =>
-    expectRatio(tokens, "--am-border-strong", "--am-surface", 3));
+  it("--am-field-line on --am-surface >= 3:1", () =>
+    expectRatio(tokens, "--am-field-line", "--am-surface", 3));
+  it("--am-field-line on --am-field >= 3:1", () =>
+    expectRatio(tokens, "--am-field-line", "--am-field", 3));
+  it("retired names alias the nine", () => {
+    expect(tokens["--am-surface-alt"]).toBe("var(--am-chip)");
+    expect(tokens["--am-surface-strong"]).toBe("var(--am-chip)");
+    expect(tokens["--am-chip-strong"]).toBe("var(--am-chip)");
+    expect(tokens["--am-surface-faint"]).toBe("var(--am-surface)");
+    expect(tokens["--am-border-strong"]).toBe("var(--am-field-line)");
+    expect(tokens["--am-text-faint"]).toBe("var(--am-text-muted)");
+    expect(tokens["--am-warning"]).toBe("var(--am-negative)");
+    expect(tokens["--am-accent-2"]).toBe("var(--am-accent)");
+    expect(tokens["--am-cardinal"]).toBe("var(--am-accent)");
+  });
 });
 
 describe("USC spec values", () => {
   it("light bg/accent", () => {
-    expect(modes.light["--am-bg"]).toBe("#e0d3ae");
+    expect(modes.light["--am-bg"]).toBe("#ded0a8");
+    expect(modes.light["--am-surface"]).toBe("#fbf7ec");
     expect(modes.light["--am-accent"]).toBe("#990000");
   });
   it("dark bg/accent", () => {
-    expect(modes.dark["--am-bg"]).toBe("#3a1f22");
+    expect(modes.dark["--am-bg"]).toBe("#341b1e");
+    expect(modes.dark["--am-surface"]).toBe("#5a3337");
     expect(modes.dark["--am-accent"]).toBe("#ffcc00");
   });
   it("light negative is distinct from the brand accent", () => {
@@ -98,8 +112,8 @@ describe("index.css legacy --lg-* tokens (logged-out pages)", () => {
     expectRatio(t, "--lg-text-muted", "--lg-bg-page", 4.5));
 
   it("page backgrounds equal the spec values", () => {
-    expect(lg.light["--lg-bg-page"]).toBe("#e0d3ae");
-    expect(lg.dark["--lg-bg-page"]).toBe("#3a1f22");
+    expect(lg.light["--lg-bg-page"]).toBe("#ded0a8");
+    expect(lg.dark["--lg-bg-page"]).toBe("#341b1e");
   });
   it("accent equals the spec values", () => {
     expect(lg.light["--lg-accent"]).toBe("#990000");
@@ -111,8 +125,8 @@ describe("aurora.css --lg-* redirect block", () => {
   const redirect = parseBlock(css, ".aurora-theme, .aurora-theme.dark, .dark .aurora-theme");
 
   it.each([
-    ["--lg-input-bg", "var(--am-surface)"],
-    ["--lg-input-border", "var(--am-border)"],
+    ["--lg-input-bg", "var(--am-field)"],
+    ["--lg-input-border", "var(--am-field-line)"],
     ["--lg-input-focus", "var(--am-accent)"],
     ["--lg-table-row-alt", "var(--am-surface-alt)"],
     ["--lg-warning", "var(--am-warning)"],

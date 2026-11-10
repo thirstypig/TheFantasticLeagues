@@ -14,9 +14,9 @@ const buttonVariants = cva(
         destructive:
           "bg-[var(--lg-error)] text-white shadow-sm hover:brightness-110",
         outline:
-          "liquid-glass border-[var(--lg-glass-border)] hover:bg-[var(--lg-glass-bg-hover)] text-[var(--lg-text-primary)] font-bold",
+          "bg-[var(--lg-tint)] border border-[var(--lg-input-border)] hover:bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)] font-bold",
         secondary:
-          "bg-[var(--lg-glass-bg)] text-[var(--lg-text-primary)] border border-[var(--lg-glass-border)] hover:bg-[var(--lg-glass-bg-hover)] font-bold",
+          "bg-[var(--lg-tint)] text-[var(--lg-text-primary)] border border-[var(--lg-input-border)] hover:bg-[var(--lg-tint-hover)] font-bold",
         ghost: "hover:bg-[var(--lg-glass-bg-hover)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] font-medium",
         link: "text-[var(--lg-accent)] underline-offset-4 hover:underline",
         amber: "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 font-bold tracking-wide uppercase text-xs",
