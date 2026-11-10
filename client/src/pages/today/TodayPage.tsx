@@ -31,8 +31,10 @@ export function TodayPage() {
   const now = new Date();
   const dateLabel = `${WEEKDAYS[now.getDay()]} ${MONTHS[now.getMonth()]} ${now.getDate()}`;
   const header = data.periods.status === "ok" ? periodHeader(data.periods.data, now) : null;
+  // Phone shows the league name too: the MobileShell top bar already says
+  // "Today", so the H1 is visually hidden there and this line carries context.
   const sub = [
-    desktop && currentLeagueName ? `${currentLeagueName} ${currentSeason}` : null,
+    currentLeagueName ? (desktop ? `${currentLeagueName} ${currentSeason}` : currentLeagueName) : null,
     header?.name,
     header?.label,
     dateLabel,
@@ -52,7 +54,7 @@ export function TodayPage() {
   return (
     <main className="today">
       <header className="today-header">
-        <h1 className="today-title">Today</h1>
+        <h1 className="today-title today-sr-only">Today</h1>
         <div className="today-sub">{sub}</div>
       </header>
       <div className="today-grid">

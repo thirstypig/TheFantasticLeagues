@@ -2,6 +2,10 @@
 .today-header { margin-bottom: 12px; }
 .today-title { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 .today-sub { font-size: 16px; color: var(--am-text-muted); margin-top: 2px; }
+/* Phone: MobileShell's top bar already reads "Today"; keep the H1 for screen readers only. */
+@media (max-width: 767px) {
+  .today-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+}
 .today-grid { display: grid; grid-template-columns: 1fr; gap: 0 20px; }
 .today-col { min-width: 0; }
 @media (min-width: 1024px) {

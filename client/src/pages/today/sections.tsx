@@ -142,7 +142,7 @@ export function NewsSection({ news, now }: { news: Source<PlayerNewsTx[]>; now: 
       ) : (
         <div className="today-card">
           {items.length === 0 ? (
-            <div className="today-quiet">No news on your players this week.</div>
+            <div className="today-quiet">No news on your players in the past 7 days.</div>
           ) : (
             items.map((n) => (
               <div className="today-item" key={n.key}>
@@ -199,7 +199,12 @@ export function TonightSection({
             <>
               {shown.map((p) => {
                 const live = p.gameStatus === "LIVE";
-                const status = formatLine(p) ?? p.gameStateDesc ?? "";
+                const final = p.gameStatus === "FINAL";
+                const desc = p.gameStateDesc ?? "";
+                // PRE: the sub-line already carries the start time, so no chip.
+                const chip = live ? (desc && desc !== "LIVE" ? `LIVE ${desc}` : "LIVE") : final ? "FINAL" : null;
+                const status =
+                  formatLine(p) ?? (live ? "" : final ? (desc !== "FINAL" ? desc : "") : desc);
                 return (
                   <div className="today-pl" key={`${p.mlbId}-${p.playerName}`}>
                     <div>
@@ -212,11 +217,7 @@ export function TonightSection({
                         {status ? ` · ${status}` : ""}
                       </div>
                     </div>
-                    {p.gameStateDesc && (
-                      <span className={live ? "today-chip today-chip-live" : "today-chip"}>
-                        {live ? `LIVE ${p.gameStateDesc}` : p.gameStateDesc}
-                      </span>
-                    )}
+                    {chip && <span className={live ? "today-chip today-chip-live" : "today-chip"}>{chip}</span>}
                   </div>
                 );
               })}

@@ -122,7 +122,47 @@ describe("TodayPage", () => {
     expect(screen.getByText("▲ 2 since Period 7")).toBeInTheDocument();
     expect(screen.getByText(/2\.5 behind Demolition \(2nd\)/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeInTheDocument();
-    expect(screen.getByText(/Period 8 · 4 days left · Sun Jun 14/)).toBeInTheDocument();
+    expect(screen.getByText("OGBA · Period 8 · 4 days left · Sun Jun 14")).toBeInTheDocument();
+  });
+
+  it("phone keeps the H1 for screen readers but hides it visually (the shell bar says Today)", () => {
+    renderPage();
+    const h1 = screen.getByRole("heading", { level: 1, name: "Today" });
+    expect(h1).toHaveClass("today-sr-only");
+  });
+
+  it("does not claim a rank before scoring starts", () => {
+    const rows = [row(10, "A", []), row(11, "B", []), row(1, "Me", [])];
+    setData({ standings: ok({ rows, periodNames: [] }) });
+    renderPage();
+    expect(screen.queryByText(/You're 1st/)).toBeNull();
+    expect(screen.getByText("Your rank shows up once scoring starts.")).toBeInTheDocument();
+  });
+
+  it("does not claim a rank when every team has 0 points", () => {
+    const rows = [row(10, "A", [0]), row(11, "B", [0]), row(1, "Me", [0])];
+    setData({ standings: ok({ rows, periodNames: ["Period 1"] }) });
+    renderPage();
+    expect(screen.queryByText(/You're 1st/)).toBeNull();
+    expect(screen.getByText("Your rank shows up once scoring starts.")).toBeInTheDocument();
+  });
+
+  it("tonight chips: none for PRE, LIVE never doubled, FINAL", () => {
+    setData({
+      tonight: ok([
+        player({ playerName: "Live Bare", mlbId: 1, gameStatus: "LIVE", gameStateDesc: "LIVE" }),
+        player({ playerName: "Live Empty", mlbId: 2, gameStatus: "LIVE", gameStateDesc: "" }),
+        player({ playerName: "Pre Game", mlbId: 3, gameStatus: "PRE", gameStateDesc: "7:10" }),
+        player({ playerName: "Done", mlbId: 4, gameStatus: "FINAL", gameStateDesc: "FINAL" }),
+      ]),
+    });
+    const { container } = renderPage();
+    const chips = Array.from(container.querySelectorAll(".today-chip")).map((c) => c.textContent);
+    expect(chips).toEqual(["LIVE", "LIVE", "FINAL"]);
+    const section = screen.getByRole("region", { name: "Tonight" });
+    expect(within(section).queryByText(/LIVE LIVE/)).toBeNull();
+    expect(within(section).getByText("LAD vs SF · 7:10")).toBeInTheDocument();
+    expect(within(section).queryByText(/· FINAL/)).toBeNull();
   });
 
   it("names the team above by its tied rank", () => {
@@ -172,14 +212,14 @@ describe("TodayPage", () => {
 
   it("shows the quiet line when there is no news", () => {
     renderPage();
-    expect(screen.getByText("No news on your players this week.")).toBeInTheDocument();
+    expect(screen.getByText("No news on your players in the past 7 days.")).toBeInTheDocument();
   });
 
   it("hides news when the news request failed", () => {
     setData({ news: { status: "error" } });
     renderPage();
     expect(screen.queryByText("Your player news")).toBeNull();
-    expect(screen.queryByText("No news on your players this week.")).toBeNull();
+    expect(screen.queryByText("No news on your players in the past 7 days.")).toBeNull();
   });
 
   it("shows the Wire List reminder linking to the wire list", () => {
