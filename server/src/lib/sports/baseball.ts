@@ -135,6 +135,8 @@ export const DEFAULT_RULES = [
   // Exempt from isLocked (see CommissionerService.updateRules) so commissioners
   // can change the policy mid-season without unlocking every rule.
   { category: "transactions", key: "owner_self_serve", value: "false", label: "Owner self-serve roster moves" },
+  // "anytime" | "meeting_day". meeting_day refuses propose/accept while a period is active.
+  { category: "transactions", key: "trade_window", value: "anytime", label: "When trades are allowed" },
   // Bonuses
   { category: "bonuses", key: "grand_slam", value: "5", label: "Grand Slam Bonus ($)" },
   { category: "bonuses", key: "shutout", value: "5", label: "Shutout Bonus ($)" },

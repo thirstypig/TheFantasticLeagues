@@ -21,24 +21,24 @@ updated: 2026-11-10
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-10 from 1,856 git-tracked files.*
+*Generated 2026-11-10 from 1,866 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 602 | 105,350 |
-| `.tsx` | 330 | 90,563 |
-| `.md` | 553 | 69,153 |
+| `.ts` | 607 | 106,191 |
+| `.tsx` | 333 | 91,130 |
+| `.md` | 554 | 69,388 |
 | `.json` | 36 | 40,134 |
 | `.sql` | 40 | 2,153 |
-| `.css` | 9 | 1,855 |
+| `.css` | 10 | 1,861 |
 | `.prisma` | 1 | 1,767 |
 | `.mjs` | 9 | 1,745 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,852** | **357,006** |
+| **All tracked** | **1,862** | **358,655** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,9 +55,9 @@ updated: 2026-11-10
 
 ## Docs
 
-**209** board-scope markdown files (`docs/` plus the four root docs), of which **142** carry frontmatter.
+**210** board-scope markdown files (`docs/` plus the four root docs), of which **143** carry frontmatter.
 
-*557 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*558 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -66,8 +66,8 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | Type | Docs | In vocabulary? |
 |---|---:|---|
 | `feat` | 20 | ❌ off-vocabulary |
+| `plan` | 7 | ✅ |
 | `fix` | 6 | ❌ off-vocabulary |
-| `plan` | 6 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
 | `report` | 3 | ✅ |
@@ -104,7 +104,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 54 | ✅ |
+| `active` | 55 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |

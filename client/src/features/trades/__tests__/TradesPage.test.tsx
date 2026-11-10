@@ -8,6 +8,7 @@ const mockRespondToTrade = vi.fn();
 const mockCancelTrade = vi.fn();
 const mockVetoTrade = vi.fn();
 const mockProcessTrade = vi.fn();
+const mockToast = vi.fn();
 
 // Mock the trades feature API (the actual source module)
 vi.mock("../../trades/api", () => ({
@@ -52,7 +53,7 @@ vi.mock("../../../contexts/LeagueContext", () => ({
 }));
 
 vi.mock("../../../contexts/ToastContext", () => ({
-  useToast: () => ({ toast: vi.fn(), confirm: vi.fn().mockResolvedValue(true) }),
+  useToast: () => ({ toast: mockToast, confirm: vi.fn().mockResolvedValue(true) }),
 }));
 
 vi.mock("../../../components/ui/EmptyState", () => ({
@@ -287,6 +288,24 @@ describe("TradeCard", () => {
       expect(mockRespondToTrade).toHaveBeenCalledWith(1, "ACCEPT");
       expect(onRefresh).toHaveBeenCalled();
     });
+  });
+
+  it("toasts the server message when owner Accept is refused", async () => {
+    const msg = "Trades open at the next meeting, after Period 8 closes.";
+    mockRespondToTrade.mockRejectedValue(new Error(msg));
+    const onRefresh = vi.fn();
+    render(<TradeCard trade={makeTrade({ status: "PROPOSED" })} onRefresh={onRefresh} currentUserId={2} />);
+    fireEvent.click(screen.getByText("Accept"));
+    await waitFor(() => expect(mockToast).toHaveBeenCalledWith(msg, "error"));
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("toasts the server message when Commissioner Accept is refused", async () => {
+    const msg = "Trades open at the next meeting, after Period 8 closes.";
+    mockRespondToTrade.mockRejectedValue(new Error(msg));
+    render(<LeagueTradeCard trade={makeTrade({ status: "PROPOSED" })} onRefresh={vi.fn()} currentUserId={99} isAdmin={true} />);
+    fireEvent.click(screen.getByText("Commissioner Accept"));
+    await waitFor(() => expect(mockToast).toHaveBeenCalledWith(msg, "error"));
   });
 
   it("calls respondToTrade with REJECT on Reject click", async () => {

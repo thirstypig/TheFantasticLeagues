@@ -3,6 +3,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { requireAuth, requireLeagueMember, requireCommissionerOrAdmin } from "../../middleware/auth.js";
 import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
+import { getLeagueRules } from "../../lib/leagueRuleCache.js";
 import {
   computeTeamStatsFromDb,
   computeStandingsFromStats,
@@ -294,7 +295,21 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     totalDeltaMap.set(s.teamId, snapshots.length > 0 ? s.points - prevTotal : 0);
   }
 
-  res.json({ periodId: pid, categories, teamCount: teamStats.length, totalDelta: Object.fromEntries(totalDeltaMap), computedAt: new Date().toISOString() });
+  // Innings check data for the commissioner's close checklist. Informational
+  // only: the client flags teams under the minimum; nothing here blocks anything.
+  // A failed rules lookup must not take down the whole standings response.
+  let minInnings: number | null = null;
+  try {
+    const rules = await getLeagueRules(prisma, leagueId);
+    const rawMin = rules.scoring?.min_innings;
+    const parsedMin = rawMin === undefined || rawMin.trim() === "" ? NaN : Number(rawMin);
+    minInnings = Number.isFinite(parsedMin) ? parsedMin : null;
+  } catch (err: unknown) {
+    logger.warn({ err, leagueId }, "Innings rule lookup failed; omitting minInnings");
+  }
+  const teamInnings = teamStats.map((t) => ({ teamId: t.team.id, teamName: t.team.name, ip: t.stats.IP ?? 0 }));
+
+  res.json({ periodId: pid, categories, teamCount: teamStats.length, totalDelta: Object.fromEntries(totalDeltaMap), teamInnings, minInnings, computedAt: new Date().toISOString() });
 }));
 
 // --- Season (cumulative) standings: /api/standings/season ---

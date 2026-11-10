@@ -1,0 +1,5 @@
+/* Rules screen: one column on phones, two from 1024px (Style Bible screen 2). */
+.rules-cols { display: grid; grid-template-columns: 1fr; gap: 0 24px; align-items: start; }
+@media (min-width: 1024px) {
+  .rules-cols { grid-template-columns: 1fr 1fr; }
+}

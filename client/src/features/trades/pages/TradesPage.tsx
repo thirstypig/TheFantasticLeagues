@@ -275,6 +275,7 @@ export function TradeCard({
   onViewContext?: () => void;
 }) {
   const { leagueId: currentLeagueId } = useLeague();
+  const { toast } = useToast();
   const isPending = trade.status === "PROPOSED";
   const isProposer = trade.proposingTeam?.ownerUserId === currentUserId
     || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId);
@@ -392,8 +393,12 @@ export function TradeCard({
                <button
                  onClick={async () => {
                     if (!confirm("Reject trade?")) return;
-                    await respondToTrade(trade.id, "REJECT");
-                    onRefresh();
+                    try {
+                      await respondToTrade(trade.id, "REJECT");
+                      onRefresh();
+                    } catch (e: any) {
+                      toast(e.message, "error");
+                    }
                  }}
                  className="px-3 py-1 bg-[var(--lg-error)]/10 hover:bg-[var(--lg-error)]/20 text-[var(--lg-error)] rounded text-sm transition-colors"
                >
@@ -402,8 +407,12 @@ export function TradeCard({
                <button
                  onClick={async () => {
                     if (!confirm("Accept trade?")) return;
-                    await respondToTrade(trade.id, "ACCEPT");
-                    onRefresh();
+                    try {
+                      await respondToTrade(trade.id, "ACCEPT");
+                      onRefresh();
+                    } catch (e: any) {
+                      toast(e.message, "error");
+                    }
                  }}
                  className="px-3 py-1 bg-[var(--lg-success)]/10 hover:bg-[var(--lg-success)]/20 text-[var(--lg-success)] rounded text-sm transition-colors"
                >
@@ -430,6 +439,7 @@ export function LeagueTradeCard({
   isAdmin?: boolean;
   onViewContext?: () => void;
 }) {
+  const { toast } = useToast();
   const isInvolved = trade.proposingTeam?.ownerUserId === currentUserId
     || (trade.proposingTeam?.ownerships || []).some((o: any) => o.userId === currentUserId)
     || trade.acceptingTeam?.ownerUserId === currentUserId
@@ -541,8 +551,12 @@ export function LeagueTradeCard({
           <button
             onClick={async () => {
               if (!confirm("Reject this trade as commissioner?")) return;
-              await respondToTrade(trade.id, "REJECT");
-              onRefresh();
+              try {
+                await respondToTrade(trade.id, "REJECT");
+                onRefresh();
+              } catch (e: any) {
+                toast(e.message, "error");
+              }
             }}
             className="px-3 py-1 bg-red-700 hover:bg-red-600 text-white rounded text-sm font-semibold"
           >
@@ -551,8 +565,12 @@ export function LeagueTradeCard({
           <button
             onClick={async () => {
               if (!confirm("Accept this trade as commissioner?")) return;
-              await respondToTrade(trade.id, "ACCEPT");
-              onRefresh();
+              try {
+                await respondToTrade(trade.id, "ACCEPT");
+                onRefresh();
+              } catch (e: any) {
+                toast(e.message, "error");
+              }
             }}
             className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-sm font-semibold"
           >

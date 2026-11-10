@@ -104,6 +104,7 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   il_slot_2_cost: { type: 'number', suffix: '$' },
   // Transactions — per-league toggles governing who can run roster moves.
   owner_self_serve: { type: 'toggle' },
+  trade_window: { type: 'select', options: ['anytime', 'meeting_day'] },
 };
 
 const CATEGORY_ORDER = ["overview", "roster", "scoring", "draft", "il", "bonuses", "payouts", "transactions"];

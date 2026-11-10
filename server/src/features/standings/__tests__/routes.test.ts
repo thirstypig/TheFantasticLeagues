@@ -14,6 +14,10 @@ vi.mock("../../../db/prisma.js", () => ({
     $transaction: vi.fn().mockResolvedValue([]),
   },
 }));
+const mockGetLeagueRules = vi.fn();
+vi.mock("../../../lib/leagueRuleCache.js", () => ({
+  getLeagueRules: (...args: any[]) => mockGetLeagueRules(...args),
+}));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
@@ -75,6 +79,7 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetLeagueRules.mockResolvedValue({});
 });
 
 // ── Sample data ─────────────────────────────────────────────────
@@ -172,6 +177,60 @@ describe("GET /period-category-standings", () => {
     expect(res.body.teamCount).toBe(2);
     expect(res.body.categories[0].key).toBe("R");
     expect(res.body.categories[0].rows).toHaveLength(2);
+  });
+
+  it("includes teamInnings and minInnings, reading rules for the requested league", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue([
+      { team: { id: 1, name: "Team A", code: "TMA" }, stats: { ...sampleTeamStats[0].stats, IP: 46.3333 } },
+      { team: { id: 2, name: "Team B", code: "TMB" }, stats: { ...sampleTeamStats[1].stats, IP: 61 } },
+    ]);
+    mockComputeCategoryRows.mockReturnValue([]);
+    mockGetLeagueRules.mockResolvedValue({ scoring: { min_innings: "50" } });
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=7");
+
+    expect(res.status).toBe(200);
+    expect(mockGetLeagueRules).toHaveBeenCalledWith(expect.anything(), 7);
+    expect(res.body.minInnings).toBe(50);
+    expect(res.body.teamInnings).toEqual([
+      { teamId: 1, teamName: "Team A", ip: 46.3333 },
+      { teamId: 2, teamName: "Team B", ip: 61 },
+    ]);
+    expect(res.body.teamCount).toBe(2);
+  });
+
+  it.each([[{}], [{ scoring: {} }], [{ scoring: { min_innings: "abc" } }], [{ scoring: { min_innings: "" } }]])(
+    "minInnings is null when the rule is missing or non-numeric (%j)",
+    async (rules) => {
+      mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+      mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
+      mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+      mockComputeCategoryRows.mockReturnValue([]);
+      mockGetLeagueRules.mockResolvedValue(rules);
+
+      const res = await supertest(app).get("/period-category-standings?leagueId=1");
+      expect(res.status).toBe(200);
+      expect(res.body.minInnings).toBeNull();
+    },
+  );
+
+  it("still returns 200 with minInnings null when the rules lookup rejects", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([]);
+    mockGetLeagueRules.mockRejectedValue(new Error("db down"));
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    expect(res.status).toBe(200);
+    expect(res.body.minInnings).toBeNull();
+    expect(res.body.periodId).toBe(5);
+    expect(res.body.categories).toHaveLength(10);
+    expect(res.body.teamCount).toBe(2);
+    expect(res.body.teamInnings).toHaveLength(2);
   });
 
   it("ranks the previous standings from the persisted snapshot values (points delta)", async () => {

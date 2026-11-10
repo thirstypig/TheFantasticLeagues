@@ -19,14 +19,37 @@ describe("Field rule reaches non-.lg-input inputs", () => {
   });
 
   it.each(["Login", "Signup", "ForgotPassword", "ResetPassword"])(
-    "%s has no surface-faint background or am-border on inputs",
+    "%s: surface-faint cards use --am-border; only Signup's error alert is --am-negative",
     (name) => {
       const text = src(`features/auth/pages/${name}.tsx`);
-      // The only allowed surface-faint background is Signup's error alert (negative border).
-      for (const m of text.matchAll(/background: "var\(--am-surface-faint\)",\n\s*(border[^\n]*)/g)) {
-        expect(m[1]).toContain("--am-negative");
+      // Matches 928b3e12 reality: the error alerts in ForgotPassword/ResetPassword are
+      // --am-border cards, not negative. Signup's error alert (~line 348) is the only negative one.
+      const borders = [...text.matchAll(/background: "var\(--am-surface-faint\)",\n\s*(border[^\n]*)/g)].map(
+        (m) => m[1],
+      );
+      const negative = borders.filter((b) => b.includes("--am-negative")).length;
+      expect(negative, `${name} negative-bordered faint cards`).toBe(name === "Signup" ? 1 : 0);
+      for (const b of borders) {
+        if (!b.includes("--am-negative")) expect(b).toContain("--am-border");
       }
       expect(text).toContain("var(--am-field)");
     },
   );
+
+  it("auth pages use Field only on their input style", () => {
+    // Expected field-line counts include input border + focus/blur handlers on the input.
+    const expected: Record<string, { field: number; fieldLine: number }> = {
+      Login: { field: 1, fieldLine: 1 },
+      Signup: { field: 1, fieldLine: 4 },
+      ForgotPassword: { field: 1, fieldLine: 2 },
+      ResetPassword: { field: 1, fieldLine: 1 },
+    };
+    for (const [name, counts] of Object.entries(expected)) {
+      const text = src(`features/auth/pages/${name}.tsx`);
+      expect(text.match(/var\(--am-field\)/g)?.length ?? 0, `${name} --am-field`).toBe(counts.field);
+      expect(text.match(/var\(--am-field-line\)/g)?.length ?? 0, `${name} --am-field-line`).toBe(
+        counts.fieldLine,
+      );
+    }
+  });
 });

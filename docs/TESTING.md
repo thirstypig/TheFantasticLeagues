@@ -208,6 +208,8 @@ Run from `mcp-servers/fbst-app/` with `npx vitest run`.
 
 Recent roster/dashboard documentation session baseline:
 
+- Commissioner B1 (Rules screen, trade window, innings check): `server/src/lib/__tests__/tradeWindow.test.ts`, `server/src/features/trades/__tests__/tradeWindow.routes.test.ts`, `server/src/features/commissioner/__tests__/rulesLock.routes.test.ts`, `client/src/features/commissioner/__tests__/innings.test.ts`, `client/src/features/commissioner/__tests__/RulesPage.test.tsx`
+
 - `npx vitest run src/pages/today/__tests__/TodayPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx` — 21 passing
 - `npx vitest run src/pages/today/__tests__/TodayPage.test.tsx src/features/transactions/__tests__/ActivityPage.test.tsx src/features/transactions/components/RosterMovesTab/__tests__/AddDropPanel.test.tsx src/features/trades/__tests__/TradesPage.test.tsx` — 50 passing
 - `cd client && npx tsc --noEmit` — passing

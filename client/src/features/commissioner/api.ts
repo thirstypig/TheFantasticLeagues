@@ -510,6 +510,10 @@ export interface PeriodStandingsPreviewResponse {
   }>;
   teamCount: number;
   totalDelta: Record<string, number>;
+  /** Period innings per team (true decimal, e.g. 46.333...). Absent on older servers. */
+  teamInnings?: Array<{ teamId: number; teamName: string; ip: number }>;
+  /** The league's scoring.min_innings rule; null when unset. */
+  minInnings?: number | null;
   computedAt: string;
 }
 
@@ -531,4 +535,50 @@ export function toTeamTotals(resp: PeriodStandingsPreviewResponse): { teamName: 
     }
   }
   return [...totals.values()].sort((a, b) => b.points - a.points);
+}
+
+/**
+ * Teams below the league's innings minimum. Compared in whole outs so float
+ * sums (49.99999) don't flag a team at exactly 50. Informational only.
+ */
+export function teamsUnderInnings(
+  resp: Pick<PeriodStandingsPreviewResponse, "teamInnings" | "minInnings">,
+): Array<{ teamName: string; ip: number; min: number }> {
+  const min = resp.minInnings;
+  if (min == null) return [];
+  return (resp.teamInnings ?? [])
+    .filter((t) => Math.round(t.ip * 3) < min * 3)
+    .map((t) => ({ teamName: t.teamName, ip: t.ip, min }));
+}
+
+/** Innings in thirds: 46.333 -> "46⅓", 49.667 -> "49⅔", 50 -> "50". */
+export function formatInnings(ip: number): string {
+  const outs = Math.round(ip * 3);
+  const whole = Math.floor(outs / 3);
+  const rem = outs % 3;
+  return rem === 0 ? String(whole) : `${whole}${rem === 1 ? "⅓" : "⅔"}`;
+}
+
+// --- League rules (Rules screen) ---
+
+export interface CommissionerRuleRow {
+  id: number;
+  category: string;
+  key: string;
+  value: string;
+  label: string;
+  isLocked: boolean;
+}
+
+export async function getCommissionerRules(leagueId: number): Promise<CommissionerRuleRow[]> {
+  const resp = await fetchJsonApi<CommissionerRuleRow[] | { rules: CommissionerRuleRow[] }>(`${API_BASE}/leagues/${leagueId}/rules`);
+  return Array.isArray(resp) ? resp : resp.rules ?? [];
+}
+
+export async function saveCommissionerRules(leagueId: number, updates: Array<{ id: number; value: string }>): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/leagues/${leagueId}/rules`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ updates }),
+  });
 }

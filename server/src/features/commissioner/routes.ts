@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { norm, normCode, mustOneOf } from "../../lib/utils.js";
 import multer from "multer";
-import { CommissionerService } from "./services/CommissionerService.js";
+import { CommissionerService, RulesLockedError, assertValidRuleValue } from "./services/CommissionerService.js";
 import { requireAuth, requireAdmin, requireCommissionerOrAdmin, evictMembershipCache } from "../../middleware/auth.js";
 import { validateBody } from "../../middleware/validate.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
@@ -998,6 +998,21 @@ router.get("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrAd
 router.post("/commissioner/:leagueId/rules", requireAuth, requireCommissionerOrAdmin(), validateBody(ruleSchema), asyncHandler(async (req, res) => {
         const leagueId = Number(req.params.leagueId);
         const { category, key, value, label } = req.body;
+
+        try {
+          assertValidRuleValue(category, key, value);
+        } catch (err: any) {
+          return res.status(400).json({ error: err.message });
+        }
+
+        try {
+          await commissionerService.assertRulesEditable(leagueId, [category]);
+        } catch (err) {
+          if (err instanceof RulesLockedError) {
+            return res.status(403).json({ error: err.message });
+          }
+          throw err;
+        }
 
         const rule = await prisma.leagueRule.upsert({
             where: { leagueId_category_key: { leagueId, category, key } },

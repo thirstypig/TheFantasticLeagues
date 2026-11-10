@@ -11,6 +11,35 @@ import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
 
 const auctionImportService = new AuctionImportService();
 
+/** Categories editable at any time, regardless of the season rules lock. */
+const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
+
+const TRADE_WINDOW_VALUES = new Set(["anytime", "meeting_day"]);
+
+/** Throws if the value is not allowed for transactions.trade_window; no-op for other rules. */
+export function assertValidRuleValue(category: string, key: string, value: string): void {
+  if (category === "transactions" && key === "trade_window" && !TRADE_WINDOW_VALUES.has(value)) {
+    throw new Error("When trades are allowed must be anytime or meeting_day");
+  }
+}
+
+/** Thrown by assertRulesEditable; routes map it to HTTP 403. */
+export class RulesLockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RulesLockedError";
+  }
+}
+
+/**
+ * Rule keys introduced after leagues were first seeded. getRules backfills
+ * ONLY these. Never backfill other defaults: categories like payouts/bonuses
+ * are read whole, so a silently inserted row could change money math.
+ */
+export const BACKFILL_RULE_KEYS: ReadonlyArray<{ category: string; key: string }> = [
+  { category: "transactions", key: "trade_window" },
+];
+
 export class CommissionerService {
   /**
    * League Management
@@ -964,8 +993,57 @@ export class CommissionerService {
           where: { leagueId },
           orderBy: [{ category: "asc" }, { key: "asc" }],
         });
+        return rules;
+      }
+
+      // Backfill ONLY explicitly listed keys added after this league was
+      // seeded. Insert-only: existing rows are untouched.
+      const have = new Set(rules.map((r) => `${r.category}.${r.key}`));
+      const backfill = new Set(BACKFILL_RULE_KEYS.map((b) => `${b.category}.${b.key}`));
+      const missing = DEFAULT_RULES.filter((r) => {
+        const k = `${r.category}.${r.key}`;
+        return backfill.has(k) && !have.has(k);
+      });
+      if (missing.length > 0) {
+        await prisma.leagueRule.createMany({
+          data: missing.map((r) => ({ ...r, leagueId })),
+          skipDuplicates: true,
+        });
+        invalidateLeagueRules(leagueId);
+        rules = await prisma.leagueRule.findMany({
+          where: { leagueId },
+          orderBy: [{ category: "asc" }, { key: "asc" }],
+        });
       }
       return rules;
+  }
+
+  /**
+   * Season rules lock. Throws RulesLockedError when any of `categories` is
+   * outside MUTABLE_ANY_TIME_CATEGORIES and (a) a league rule isLocked or
+   * (b) a season is past SETUP. Returns without querying when every
+   * category is mutable any time.
+   *
+   * `transactions` is a policy toggle (e.g. owner_self_serve) that
+   * commissioners may need to adjust mid-season, so lock semantics must
+   * not pin it to pre-draft.
+   */
+  async assertRulesEditable(leagueId: number, categories: string[]): Promise<void> {
+    if (!categories.some(c => !MUTABLE_ANY_TIME_CATEGORIES.has(c))) return;
+
+    const lockedRule = await prisma.leagueRule.findFirst({
+      where: { leagueId, isLocked: true },
+    });
+    if (lockedRule) {
+      throw new RulesLockedError("Rules are locked for this season");
+    }
+
+    const activeSeason = await prisma.season.findFirst({
+      where: { leagueId, status: { not: "SETUP" } },
+    });
+    if (activeSeason) {
+      throw new RulesLockedError("Rules cannot be changed after season setup.");
+    }
   }
 
   async updateRules(leagueId: number, updates: { id: number; value: string }[]) {
@@ -974,7 +1052,7 @@ export class CommissionerService {
       const ruleIds = updates.map(u => u.id);
       const ownedRules = await prisma.leagueRule.findMany({
         where: { id: { in: ruleIds }, leagueId },
-        select: { id: true, category: true },
+        select: { id: true, category: true, key: true },
       });
       const ownedIds = new Set(ownedRules.map(r => r.id));
       const unauthorized = ruleIds.filter(id => !ownedIds.has(id));
@@ -982,31 +1060,13 @@ export class CommissionerService {
         throw new Error("One or more rule IDs do not belong to this league");
       }
 
-      // Categories that are editable at any time. `transactions` is a policy
-      // toggle (e.g. owner_self_serve) that commissioners may need to adjust
-      // mid-season — lock semantics shouldn't pin it to pre-draft.
-      const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
-      const hasLockedSubjectUpdate = ownedRules.some(
-        r => !MUTABLE_ANY_TIME_CATEGORIES.has(r.category),
-      );
-
-      if (hasLockedSubjectUpdate) {
-        // Only enforce lock checks for updates that touch non-exempt
-        // categories. A pure `transactions` update skips these.
-        const lockedRule = await prisma.leagueRule.findFirst({
-          where: { leagueId, isLocked: true },
-        });
-        if (lockedRule) {
-          throw new Error("Rules are locked for this season");
-        }
-
-        const activeSeason = await prisma.season.findFirst({
-          where: { leagueId, status: { not: "SETUP" } },
-        });
-        if (activeSeason) {
-          throw new Error("Rules cannot be changed after season setup.");
-        }
+      const byId = new Map(ownedRules.map(r => [r.id, r]));
+      for (const u of updates) {
+        const r = byId.get(u.id)!;
+        assertValidRuleValue(r.category, r.key, u.value);
       }
+
+      await this.assertRulesEditable(leagueId, ownedRules.map(r => r.category));
 
       const results = await Promise.all(
         updates.map((u) =>

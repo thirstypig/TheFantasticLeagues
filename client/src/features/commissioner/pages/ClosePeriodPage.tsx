@@ -13,8 +13,10 @@ import {
   getCloseReadiness,
   getGhostIlSummary,
   getPeriodStandingsPreview,
+  formatInnings,
   getRosterCheck,
   setPeriodStatus,
+  teamsUnderInnings,
   toTeamTotals,
   type CloseReadiness,
 } from "../api";
@@ -116,7 +118,12 @@ function Step2({ leagueId, base, onNext }: { leagueId: number; base: string; onN
 }
 
 function Step3({ leagueId, periodId, name, onNext }: { leagueId: number; periodId: number; name: string; onNext: () => void }) {
-  const totals = useLoad(async () => toTeamTotals(await getPeriodStandingsPreview(leagueId, periodId)), [leagueId, periodId]);
+  const preview = useLoad(async () => {
+    const resp = await getPeriodStandingsPreview(leagueId, periodId);
+    return { totals: toTeamTotals(resp), under: teamsUnderInnings(resp) };
+  }, [leagueId, periodId]);
+  const totals = preview.state === "ready" ? { state: "ready" as const, data: preview.data.totals } : preview;
+  const under = preview.state === "ready" ? preview.data.under : [];
   return (
     <>
       <SectionLabel>{name} points · not final</SectionLabel>
@@ -136,6 +143,20 @@ function Step3({ leagueId, periodId, name, onNext }: { leagueId: number; periodI
           ))
         )}
       </Glass>
+      {under.length > 0 && (
+        <>
+          <SectionLabel>Innings minimum</SectionLabel>
+          <Glass padded={false}>
+            {under.map((t) => (
+              <div key={t.teamName} style={ROW}>
+                <span>{t.teamName} · {formatInnings(t.ip)} of {t.min} IP</span>
+                <strong style={{ fontSize: 15, color: "var(--am-negative)" }}>Review</strong>
+              </div>
+            ))}
+          </Glass>
+          <p style={{ margin: 0, ...MUTED }}>You decide what happens; closing isn't blocked.</p>
+        </>
+      )}
       <button type="button" style={PRIMARY} onClick={onNext}>Next</button>
     </>
   );
