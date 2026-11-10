@@ -33,6 +33,7 @@ const BillPeriodPage = React.lazy(() => import("./features/commissioner/pages/Bi
 const ScoringSettings = React.lazy(() => import("./features/commissioner/pages/ScoringSettings").then(m => ({ default: m.ScoringSettings })));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
+const AdminStyleBible = React.lazy(() => import("./features/admin/pages/AdminStyleBible"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const AdminReports = React.lazy(() => import("./features/admin/pages/AdminReports"));
 const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
@@ -223,6 +224,7 @@ export default function App() {
                     <Route path="/commissioner/:leagueId" element={<ErrorBoundary name="commissioner"><CommissionerHub /></ErrorBoundary>} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    <Route path="/admin/style-bible" element={<AdminStyleBible />} />
                     <Route path="/admin/users" element={<AdminUsers />} />
                     <Route path="/admin/reports" element={<AdminReports />} />
                     <Route path="/admin/reports/:slug" element={<AdminReports />} />
