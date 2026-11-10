@@ -15,11 +15,11 @@ updated: 2026-11-09
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `/` becomes the Today page on phone and desktop. It answers "where do I stand, do I need to do anything, who plays tonight, how's the race" with zero taps, and it replaces `pages/Home.tsx` and `mobile/pages/MobileHome.tsx`.
+**Goal:** `/` becomes the Today page on phone and desktop. It answers "where do I stand, what happened to my players, who plays tonight, how's the race" with zero taps, and it replaces `pages/Home.tsx` and `mobile/pages/MobileHome.tsx`.
 
 **Architecture:**
 - All derivation lives in one pure module (`todayModel.ts`) with exhaustive unit tests.
-- One hook (`useTodayData`) loads six existing endpoints in parallel. Each fails soft: a failed source hides its own section and nothing else.
+- One hook (`useTodayData`) loads six endpoints in parallel (five existing, one new from Task 1b). Each fails soft: a failed source hides its own section and nothing else.
 - One `TodayPage` component renders in both shells. It uses a single column below 1024px and two columns at or above it.
 - The page lives in `client/src/pages/today/`. `pages/` is app level, not a feature module, so importing feature API clients from it is allowed under ADR-015.
 
@@ -27,28 +27,30 @@ updated: 2026-11-09
 
 **Spec:** `docs/superpowers/specs/2026-11-09-ux-simplification-design.md` (DOC-027): "Navigation: 4 tabs" (Today row) and Phase 4.
 - The spec file is on branch `feat/commissioner-hub-phase1` (PR #473) and not on this branch. Read it with `git show origin/feat/commissioner-hub-phase1:docs/superpowers/specs/2026-11-09-ux-simplification-design.md`.
-- The approved mockup is `.superpowers/brainstorm/81243-1794281175/content/today-v1.html` (gitignored, local only).
+- The approved mockups are `.superpowers/brainstorm/81243-1794281175/content/today-v1.html` (layout) and `today-v2.html` (player news), both gitignored and local only.
+
+> **Amendment, 2026-11-09 (James, after Task 1).** In OGBA, lineups change only at the end of each period, when adds and drops run. So Today must not ask owners to "fix" anything mid-period. The "Needs you" list (`deriveOwnerNeedsYou`, trade-offer rows, Fix buttons) is **removed**. It is replaced by **"Your player news"**: a read-only feed of MLB transactions for the user's rostered players over the past 7 days. Trades to an AL team are tagged "Leaves the NL", because OGBA is NL-only. The only reminder is the Wire List deadline, shown only in the last 48 hours before it locks. Trade offers stay on League → Activity → Trades. Task 1b is new. Tasks 2 and 3 are rewritten for this.
 
 **Base branch:** `feat/today-page-phase4`, cut from `feat/four-tab-shell-phase3` (PR #475). It stacks on #475 → #474.
 
 ## Global Constraints
 
-- No pop-up modals. Every Needs-you row is a link to the page that fixes it. No inline accept/reject on Today.
+- No pop-up modals. Today has no action rows: player news is read-only. The only link-out is the Wire List reminder, which goes to the user's Wire List page.
 - Minimum 16px body text. Tap targets at least 44×44px.
 - Primary verification size is 440×956, light **and** dark. Desktop is verified too.
 - Colors come only from `--am-*` tokens. No hex literals in new files. Text on an accent fill uses `--am-on-accent`.
 - Red never means warning: warning rows use the amber tokens. The negative trend uses `--am-negative`, never the accent.
-- No new server endpoints and no schema changes. This phase is presentation only.
+- Exactly one new **read-only** server endpoint, from Task 1b. No schema changes and no writes.
 - No ad slot. News feeds, historical insights, league activity, depth chart and quick links are **not** on Today. Their components stay on disk, and only Home's use of them goes away.
 - ADR-015: `node scripts/check-feature-isolation.mjs` shows no new violations. Only the 2 known server violations, which #473 fixes, may appear.
 - Copy is American English, sentence case, and plain words for non-tech owners.
 
 ## Review Focus
 
-1. **No team in this league** (`myTeamId == null`, e.g. the commissioner or an admin browsing): the rank card shows "You're not on a team in this league", and Needs-you and Tonight are hidden. Standings still render. Owned by Task 3 test `renders standings only when the user has no team`.
+1. **No team in this league** (`myTeamId == null`, e.g. the commissioner or an admin browsing): the rank card shows "You're not on a team in this league", and player news, the Wire List reminder and Tonight are hidden. Standings still render. Owned by Task 3 test `renders standings only when the user has no team`.
 2. **Ties in total points**: two teams on 58.5 both rank 3rd, the next team is 5th, and the gap line says "tied with <team>". Owned by Task 1 test `ties share a rank and the gap says tied`.
-3. **A trade the user proposed** must not appear as "Trade offer from …". Only PROPOSED trades where `acceptingTeamId === myTeamId` count. Owned by Task 1 test `ignores trades the user proposed`.
-4. **One endpoint fails** (e.g. statsapi down, so my-players-today returns 500): Tonight hides, and rank, Needs-you and standings still render. No error toast. Owned by Task 2 test `a failed source leaves the others intact`.
+3. **Trades that don't leave the NL** (NL→NL, AL→NL, or a trade with an unknown team) must **not** get the "Leaves the NL" tag. Only NL→AL does. Owned by Task 1b test `tags only NL-to-AL trades as leaving the NL`.
+4. **One endpoint fails** (e.g. statsapi down, so my-players-today returns 500): Tonight hides, and rank, player news and standings still render. No error toast. Owned by Task 2 test `a failed source leaves the others intact`.
 5. **Between periods or off-season** (no period with status `active`): the header has no "days left", the rank card label reads "Final · 3rd of 8", and Tonight is hidden. Owned by Task 1 test `periodHeader returns null without an active period` and Task 3 test `hides tonight without an active period`.
 
 ---
@@ -57,9 +59,10 @@ updated: 2026-11-09
 
 | File | Responsibility |
 |---|---|
-| `client/src/pages/today/todayModel.ts` (create) | Pure derivations: standings normalize/rank, rank summary, standings preview, owner Needs-you, period header, tonight ordering |
+| `client/src/pages/today/todayModel.ts` (create) | Pure derivations: standings normalize/rank, rank summary, standings preview, period header, tonight ordering (Task 1); news classification and Wire List reminder (Task 1b) |
 | `client/src/pages/today/__tests__/todayModel.test.ts` (create) | Unit tests for the above |
-| `client/src/pages/today/api.ts` (create) | `getMyPlayersToday(leagueId)` client wrapper + `MyPlayerToday` type |
+| `client/src/pages/today/api.ts` (create) | `getMyPlayersToday(leagueId)` and `getMyPlayerNews(leagueId)` client wrappers |
+| `server/src/features/mlb-feed/playerNewsTxRoutes.ts` or an added handler in `scoresRoutes.ts` (Task 1b) | `GET /api/mlb/my-player-news` |
 | `client/src/pages/today/useTodayData.ts` (create) | Parallel fail-soft loading of the five sources |
 | `client/src/pages/today/__tests__/useTodayData.test.tsx` (create) | URL + fail-soft tests |
 | `client/src/pages/today/TodayPage.tsx` (create) | Page composition + layout |
@@ -71,7 +74,7 @@ updated: 2026-11-09
 
 ---
 
-### Task 1: Pure Today model
+### Task 1: Pure Today model (done; `deriveOwnerNeedsYou` and its tests were removed by the amendment)
 
 **Files:**
 - Create: `client/src/pages/today/todayModel.ts`
@@ -165,7 +168,79 @@ Rules the implementer cannot infer:
 - [ ] **Step 4: Run** the same command. Expected: PASS, every test.
 - [ ] **Step 5: Commit** `feat(today): pure model for rank, needs-you, tonight and standings preview`.
 
-### Task 2: API wrapper and fail-soft data hook
+### Task 1b: Player news (server endpoint + client classifier)
+
+**Files:**
+- Modify: `server/src/features/mlb-feed/scoresRoutes.ts` (add the handler next to `/my-players-today`; it already holds `NL_TEAMS`/`AL_TEAMS` at about lines 72-80, plus the `mlbGetJson` and `fetchMlbTeamsMap` imports).
+- Test: `server/src/features/mlb-feed/__tests__/myPlayerNews.test.ts` (create; follow the mocking pattern of the existing mlb-feed route tests in that folder).
+- Modify: `client/src/pages/today/todayModel.ts` and `client/src/pages/today/__tests__/todayModel.test.ts` (add the classifier and the reminder).
+
+**Interfaces:**
+- Produces (server): `GET /api/mlb/my-player-news?leagueId=<id>`, with `requireAuth` and `requireLeagueMember("leagueId")`.
+  - Resolves the user's team exactly like `/my-players-today` (`ownerUserId` or `ownerships`). No team → `{ items: [] }`.
+  - Roster = `prisma.roster.findMany({ where: { teamId, releasedAt: null, player: { mlbId: { not: null } } } })`.
+  - Calls `https://statsapi.mlb.com/api/v1/transactions?startDate=<today-6>&endDate=<today>` once via `mlbGetJson(url, 1800)`. `today` = `mlbGameDayDate()`. Dates are YYYY-MM-DD.
+  - Keeps only transactions whose `person.id` is in the roster's mlbIds and whose `typeCode` is in `["SC","OPT","OUT","CU","TR","DES","REL","SE"]`.
+  - Response:
+    ```ts
+    { items: Array<{ id: number; date: string; playerName: string; mlbId: number; typeCode: string; description: string;
+      fromTeamAbbr: string | null; toTeamAbbr: string | null;
+      fromLeague: "NL" | "AL" | null; toLeague: "NL" | "AL" | null }> }
+    ```
+    Sorted by date descending, then id descending. Team abbreviations come from `fetchMlbTeamsMap()`. A league is `"NL"`/`"AL"` by membership in `NL_TEAMS`/`AL_TEAMS`, else null.
+  - Fail-soft: if statsapi throws, log with `logger.warn` and return `{ items: [] }` with status 200. The client shows nothing rather than an error.
+- Produces (client, in `todayModel.ts`):
+  ```ts
+  export interface PlayerNewsTx { id: number; date: string; playerName: string; mlbId: number; typeCode: string; description: string; fromTeamAbbr: string | null; toTeamAbbr: string | null; fromLeague: "NL" | "AL" | null; toLeague: "NL" | "AL" | null; }
+  export type NewsKind = "il-placed" | "il-activated" | "sent-down" | "called-up" | "traded" | "dfa" | "released";
+  export interface NewsItem { key: string; kind: NewsKind; title: string; detail: string; when: string; leavesNl: boolean; tone: "warn" | "good" | "neutral"; }
+  export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[];
+  export function wireReminder(wirePeriod: WaiverPeriod | null, now: Date): { text: string } | null;
+  ```
+- **classifyNews rules.** `<last>` = the player's last name, i.e. the final space-separated token of `playerName`.
+
+  | Condition | kind | title | detail | tone |
+  |---|---|---|---|---|
+  | `SC` and description matches `/placed .* on the (\d+)-day injured list/i` | `il-placed` | `"<last> placed on the <n>-day IL"` | text after the last `". "`, or after `"injured list."` when present (the injury), else `""` | warn |
+  | `SC` and matches `/activated .* from the (\d+)-day injured list/i` | `il-activated` | `"<last> activated from the IL"` | `"Back on the active roster"` | good |
+  | `SC` matching neither | **dropped** (reserve lists, paternity, etc.) | | | |
+  | `OPT` or `OUT` | `sent-down` | `"<last> sent down to the minors"` | `description` | neutral |
+  | `CU` or `SE` | `called-up` | `"<last> called up"` | `description` | good |
+  | `TR` | `traded` | `"<last> traded to <toTeamAbbr>"` | `"From <fromTeamAbbr> to <toTeamAbbr>"` | warn when `leavesNl`, else neutral |
+  | `DES` | `dfa` | `"<last> designated for assignment"` | `description` | warn |
+  | `REL` | `released` | `"<last> released"` | `description` | warn |
+
+  - `leavesNl` = `typeCode === "TR" && fromLeague === "NL" && toLeague === "AL"`.
+  - `when`: "Today", "Yesterday", or a short weekday ("Thu"), from the local calendar day difference between `date` and `now`. Date-only parsing must be timezone-safe, the same way as `periodHeader`.
+  - The output keeps the input order and is capped at 8 items.
+  - `key` = `String(id)`.
+- **wireReminder**: when `wirePeriod?.status === "PENDING"` and `0 < deadlineAt − now ≤ 48h`, return `{ text: "Wire List locks <Weekday> <h:mm AM/PM>" }` in local time, e.g. "Wire List locks Sun 11:00 PM". Otherwise return null.
+
+- [ ] **Step 1: Write failing tests.**
+  - Server, using a mocked `prisma`, `mlbGetJson` and `fetchMlbTeamsMap`:
+    - `requests the 7-day transaction window`: assert the exact URL passed to `mlbGetJson` has `startDate=<today-6>&endDate=<today>`. Mock `mlbGameDayDate` to a fixed date.
+    - `returns only rostered players and kept type codes, newest first`: include a non-rostered player, and an `ASG` and an `SFA` for a rostered player. All are excluded.
+    - `labels from/to leagues`: NL→AL, NL→NL, unknown team → null.
+    - `returns empty items when the user has no team`.
+    - `returns empty items when statsapi fails`.
+  - Client (`todayModel.test.ts`):
+    - `classifies IL placement with the injury`, using a real-shaped description, e.g. "New York Mets placed LF Juan Soto on the 10-day injured list. Left hamstring strain."
+    - `classifies IL activation`.
+    - `drops reserve-list status changes`.
+    - `classifies optioned and outrighted as sent down`.
+    - `classifies recalled and selected as called up`.
+    - `tags only NL-to-AL trades as leaving the NL`.
+    - `classifies DFA and release as warnings`.
+    - `labels when as Today, Yesterday or weekday`.
+    - `caps news at 8 items`.
+    - `wire reminder appears within 48 hours of a pending deadline`.
+    - `wire reminder hidden when locked, past, or more than 48 hours out`.
+- [ ] **Step 2: Run** `cd server && npx vitest run src/features/mlb-feed/__tests__/myPlayerNews.test.ts` and `cd client && npx vitest run src/pages/today/__tests__/todayModel.test.ts`. Expected: the new tests FAIL.
+- [ ] **Step 3: Implement** the handler and the two client functions.
+- [ ] **Step 4: Run** both commands. Expected: PASS. Then run the full server suite (`cd server && npx vitest run`) and `cd server && npx tsc --noEmit`, reading the full output.
+- [ ] **Step 5: Commit** `feat(today): read-only player news endpoint and classifier`.
+
+### Task 2: API wrappers and fail-soft data hook
 
 **Files:**
 - Create: `client/src/pages/today/api.ts`, `client/src/pages/today/useTodayData.ts`
@@ -174,42 +249,42 @@ Rules the implementer cannot infer:
 **Interfaces:**
 - Consumes:
   - From Task 1: `MyPlayerToday`, `normalizeStandings`, `TodayStandingsRow`.
+  - From Task 1b: `PlayerNewsTx`.
   - Existing clients:
-    - `getSeasonStandings(leagueId)` from `client/src/features/players/api.ts`, which hits `GET /api/standings/season?leagueId=` and is cached per league.
-    - `getTrades(leagueId, { status: "PROPOSED", limit: 20 })` from `features/trades/api.ts`.
+    - `getSeasonStandings(leagueId)` from `client/src/features/players/api.ts`. It is cached per league and returns `{ periodIds, periodNames, rows, ... }`.
     - `getActivePeriod(leagueId)` from `features/wire-list/api.ts`.
     - `getPeriods(leagueId)` from `features/periods/api.ts`.
-    - The roster-status fetch: call `fetchJsonApi(`${API_BASE}/mlb/roster-status?leagueId=${leagueId}`)` directly, the same URL `useRosterStatus` uses. Don't nest that hook, so this hook owns all loading state.
 - Produces:
   ```ts
   // api.ts
-  export type { MyPlayerToday } from "./todayModel";
+  export type { MyPlayerToday, PlayerNewsTx } from "./todayModel";
   export function getMyPlayersToday(leagueId: number): Promise<{ players: MyPlayerToday[] }>; // GET `${API_BASE}/mlb/my-players-today?leagueId=<id>`
+  export function getMyPlayerNews(leagueId: number): Promise<{ items: PlayerNewsTx[] }>;     // GET `${API_BASE}/mlb/my-player-news?leagueId=<id>`
   // useTodayData.ts
-  type Source<T> = { status: "loading" } | { status: "ok"; data: T } | { status: "error" };
+  export type Source<T> = { status: "loading" } | { status: "ok"; data: T } | { status: "error" };
   export interface TodayData {
     standings: Source<{ rows: TodayStandingsRow[]; periodNames: string[] }>;
-    roster: Source<RosterAlertPlayer[]>;
-    trades: Source<TradeProposal[]>;
-    wirePeriod: Source<WaiverPeriod | null>;
     periods: Source<PeriodInfo[]>;
+    wirePeriod: Source<WaiverPeriod | null>;
     tonight: Source<MyPlayerToday[]>;
+    news: Source<PlayerNewsTx[]>;
   }
   export function useTodayData(leagueId: number | null, hasTeam: boolean): TodayData;
   ```
+  `API_BASE` and `fetchJsonApi` come from `client/src/api/base.ts`.
 - **Loading rules:**
-  - When `hasTeam` is false, `roster`, `trades`, `wirePeriod` and `tonight` are never fetched and stay `{status:"ok", data: []/null}`.
+  - When `hasTeam` is false, `wirePeriod`, `tonight` and `news` are never fetched and are `{status:"ok", data: null/[]}`.
   - Every source catches its own failure and becomes `{status:"error"}`. Nothing calls `reportError` or shows a toast.
   - Ignore results after unmount or a league change, using a canceled flag.
 
-- [ ] **Step 1: Write failing tests.** Mock `fetchJsonApi` from `client/src/api/base` and assert on the **URLs requested**, not only on returned data (see memory `feedback_mock_cannot_catch_wrong_query`).
-  - `requests the six sources with the league id`: assert the exact URL strings include `/mlb/my-players-today?leagueId=5`, `/mlb/roster-status?leagueId=5`, `/trades?leagueId=5&status=PROPOSED&limit=20`, `/periods?leagueId=5`, `/wire-list/periods/active?leagueId=5`, and the season standings URL.
-  - `a failed source leaves the others intact`: my-players-today rejects, so `tonight.status === "error"` and the rest are `"ok"`.
+- [ ] **Step 1: Write failing tests.** Mock `fetchJsonApi` from `client/src/api/base` and assert on the **URLs requested**, not only on returned data (memory `feedback_mock_cannot_catch_wrong_query`).
+  - `requests the five sources with the league id`: assert the URLs include `/mlb/my-players-today?leagueId=5`, `/mlb/my-player-news?leagueId=5`, `/periods?leagueId=5`, `/wire-list/periods/active?leagueId=5`, and the season standings URL (`/season?leagueId=5`).
+  - `a failed source leaves the others intact`: my-players-today rejects → `tonight.status === "error"`, the rest `"ok"`.
   - `skips team-only sources when the user has no team`: only standings and periods are requested.
 - [ ] **Step 2: Run** `cd client && npx vitest run src/pages/today/__tests__/useTodayData.test.tsx`. Expected: FAIL.
 - [ ] **Step 3: Implement** `api.ts` and `useTodayData.ts`.
 - [ ] **Step 4: Run** the same command. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(today): fail-soft data hook and my-players-today client`.
+- [ ] **Step 5: Commit** `feat(today): fail-soft data hook and Today API clients`.
 
 ### Task 3: TodayPage and sections
 
@@ -220,69 +295,73 @@ Rules the implementer cannot infer:
 **Interfaces:**
 - Consumes:
   - `useTodayData` (Task 2).
-  - Every Task 1 function.
+  - Task 1 functions: `summarizeRank`, `standingsPreview`, `periodHeader`, `orderTonight`, `formatLine`.
+  - Task 1b functions: `classifyNews`, `wireReminder`.
   - `useLeague()` → `{ leagueId, currentLeagueName, currentSeason, myTeamId, myTeamCode }` from `client/src/contexts/LeagueContext.tsx`.
 - Produces: `export default function TodayPage(): JSX.Element` (also named export `TodayPage`).
 
-**Layout and copy (from the approved mockup `today-v1.html`):**
+**Layout and copy** (mockups `today-v1.html` for layout, `today-v2.html` for news):
 - **Header:**
   - H1 "Today".
-  - Subline joined by " · ": desktop prefixes `currentLeagueName currentSeason`, then `periodHeader.name`, then `periodHeader.label`, then today's date (e.g. "Sun Jun 14").
-  - The phone header has no avatar, because the MobileShell top bar from Phase 3 owns account access.
+  - Subline joined by " · ": desktop prefixes `currentLeagueName currentSeason`, then `periodHeader.name`, `periodHeader.label`, and today's date (e.g. "Sun Jun 14").
+  - No avatar on the phone, because the MobileShell top bar owns account access.
+- **Wire List reminder:** shown only when `wireReminder(...)` returns a value.
+  - A dashed-border note above the rank card: "🗓 **Adds & drops:** <text>".
+  - The whole note is a `<Link>` to `/teams/<myTeamCode>/wire-list`, at least 44px tall.
+  - Hidden when there's no team.
 - **Rank card:**
-  - Big text "You're <ordinal>" (e.g. "You're 3rd").
+  - "You're <ordinal>".
   - Trend:
     - `▲ <n> since <trendSince>` in `--am-positive`.
     - `▼ <n> since <trendSince>` in `--am-negative`.
     - `Same as <trendSince>` in secondary text when 0.
     - Omitted when null.
-  - Meta line `"<totalPoints> pts · <gap>"`, where gap is one of:
-    - `"<pts> behind <team> (<ordinal rank-1>)"`
-    - `"<pts> ahead of <team> (2nd)"`
-    - `"tied with <team>"`
-  - With no active period: big text `"Final · <ordinal> of <teamCount>"`.
+  - Meta `"<totalPoints> pts · <gap>"`, where gap is `"<pts> behind <team> (<ordinal>)"`, `"<pts> ahead of <team> (2nd)"` or `"tied with <team>"`.
+  - No active period: `"Final · <ordinal> of <teamCount>"`.
   - No team: `"You're not on a team in this league"`.
-- **Needs you:**
-  - Heading "Needs you (<count of counts:true>)". Drop the parenthetical when the count is 0.
-  - Each row is a `<Link>` to `item.to`. The whole row is the tap target, at least 56px tall.
-  - The icon chip is amber (`--am-warning` text) for il-in-lineup and ghost-il, neutral otherwise.
-  - The CTA is an accent-filled pill for "Fix" (label `--am-on-accent`) and accent text for "Review"/"Open".
-  - Empty state: one line, "✓ Nothing needs you. Your lineup is set."
-  - Hidden entirely when there's no team.
-  - When `roster` or `trades` errored and the list is empty, show "Couldn't check your roster right now." instead of the all-clear. Never claim all clear on missing data.
+- **Your player news:**
+  - Heading "Your player news", with a right label "Past 7 days" (plain text, not a link).
+  - Rows come from `classifyNews(news, now)`: icon chip (warn → `--am-warning` on its amber background; good → `--am-positive`; neutral → secondary), title, detail (omitted when empty), and the `when` label on the right.
+  - When `leavesNl`, append a small amber tag "Leaves the NL" after the title.
+  - Rows are **not** links and have no buttons.
+  - Empty: "No news on your players this week."
+  - On `news` error: hide the section. Don't claim "no news".
+  - Hidden when there's no team.
 - **Tonight:**
-  - Heading "Tonight" with right link "All <n> ›" to `/teams/<myTeamCode>`.
-  - Each row: name + `posPrimary`; secondary line `"<mlbTeam> vs|@ <opponent> · <formatLine or gameStateDesc>"`.
-  - Right chip: `gameStateDesc`, styled as accent-filled "LIVE <desc>" when LIVE.
-  - Footer `"<more> more playing"` when more > 0.
-  - Empty list: "No games for your players today."
+  - Heading "Tonight", with a right link "All <n> ›" to `/teams/<myTeamCode>`.
+  - Each row: name + `posPrimary`, and a secondary line `"<mlbTeam> vs|@ <opponent> · <formatLine or gameStateDesc>"`.
+  - The right chip shows `gameStateDesc`. When LIVE it's accent-filled (`--am-on-accent` label) and reads "LIVE <desc>".
+  - Footer `"<more> more playing"`.
+  - Empty: "No games for your players today."
   - Hidden when there's no team, no active period, or `tonight` errored.
 - **Standings:**
-  - Heading "Standings" with right link "See all ›" (desktop: "See all & by category ›") to `/season`.
-  - Rows: rank, team name, total. The user's row gets a token-based highlight (e.g. `--am-bg` fill inside the card; no hex) and " (you)".
-  - When `mine` is set, render a thin separator, then the user's row.
-  - Desktop shows all ranked rows (`top = rows.length`). The phone shows top 5.
+  - Heading "Standings", with a right link "See all ›" (desktop: "See all & by category ›") to `/season`.
+  - Rows show rank, team, total. The user's row gets a token highlight (e.g. `--am-bg` fill; no hex) and " (you)".
+  - When `mine` is set, render a separator, then the user's row.
+  - Desktop shows all rows. The phone shows the top 5.
 - **Layout:**
-  - Below 1024px: one column in the order header, rank, needs you, tonight, standings.
-  - At or above 1024px: a two-column grid (1.25fr / 1fr). Left: rank, needs you, tonight. Right: standings.
-  - Use `useMediaQuery("(min-width: 1024px)")` from `client/src/hooks/useMediaQuery.ts` only for the top-N choice. Do the layout in CSS.
-- **Loading:** each section shows a skeleton block (token-colored, `aria-busy`) until its source settles.
-- Body text is 16px minimum and tap targets are 44px minimum.
+  - Below 1024px, one column: header, reminder, rank, news, tonight, standings.
+  - At or above 1024px, a two-column grid (1.25fr / 1fr). Left: reminder, rank, news, tonight. Right: standings.
+  - `useMediaQuery("(min-width: 1024px)")` (`client/src/hooks/useMediaQuery.ts`) decides only the top-N. The layout itself is CSS.
+- **Loading:** each section shows a token-colored skeleton with `aria-busy` until its source settles.
+- Body text is at least 16px and tap targets at least 44px.
 
-- [ ] **Step 1: Write failing render tests.** Mock `useTodayData` and `useLeague`, and wrap in `MemoryRouter`. Tests:
+- [ ] **Step 1: Write failing render tests.** Mock `useTodayData` and `useLeague`, and wrap in `MemoryRouter`. Use real-shaped `PlayerNewsTx` fixtures.
   - `shows rank, trend and gap for an owner`: "You're 3rd", "▲ 2 since Period 7", "2.5 behind Demolition (2nd)".
-  - `needs-you rows link to the fixing page`: the Soto row has an href of `/teams/LD`, and the trade row `/activity?tab=trades`.
-  - `shows the all-clear line when nothing needs the user`.
-  - `does not claim all clear when the roster check failed`.
+  - `shows player news with a Leaves the NL tag`.
+  - `player news rows are not links or buttons`: no `link` or `button` role inside the news section.
+  - `shows the quiet line when there is no news`.
+  - `hides news when the news request failed`.
+  - `shows the Wire List reminder linking to the wire list`: href `/teams/LD/wire-list`.
   - `renders standings only when the user has no team`.
   - `hides tonight without an active period` (the rank card shows "Final · 3rd of 8").
   - `tonight shows live first and the more count`.
   - `standings highlight the user and add their row below the top 5`.
-  - `has no ad, news or activity sections`: `queryByText(/League activity|News|Depth Chart/i)` is null.
+  - `has no ad, needs-you, activity or depth chart sections`: `queryByText(/Needs you|League activity|Depth Chart|Fix/i)` is null.
 - [ ] **Step 2: Run** `cd client && npx vitest run src/pages/today/__tests__/TodayPage.test.tsx`. Expected: FAIL.
 - [ ] **Step 3: Implement** the page, sections and CSS. Every class used must have its CSS in the same commit (memory `feedback_class_hook_without_css`).
 - [ ] **Step 4: Run** the same command. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(today): Today page with rank, needs-you, tonight and standings`.
+- [ ] **Step 5: Commit** `feat(today): Today page with rank, player news, tonight and standings`.
 
 ### Task 4: Route `/` to Today in both shells; retire Home
 
