@@ -181,7 +181,7 @@ export function IridText({
         fontSize: size,
         fontWeight: weight,
         lineHeight: 1,
-        color: "var(--am-accent)",
+        color: "var(--am-text)",
         fontVariantNumeric: "tabular-nums",
         ...style,
       }}
@@ -284,7 +284,7 @@ export function AIStrip({
                 display: "grid",
                 placeItems: "center",
                 fontSize: 11,
-                color: "#fff",
+                color: "var(--am-on-accent)",
               }}
             >
               {it.icon}
@@ -358,7 +358,7 @@ export function Topbar({
             placeItems: "center",
             fontSize: 15,
             fontWeight: 700,
-            color: "#fff",
+            color: "var(--am-on-accent)",
             flexShrink: 0,
           }}
         >

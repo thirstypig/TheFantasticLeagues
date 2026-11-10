@@ -73,4 +73,10 @@ describe("AdUnit", () => {
     expect(ins?.style.overflow).toBe("hidden");
     expect(ins?.style.marginTop).toBe("8px");
   });
+
+  it("paints its placeholder with the theme surface, not the browser default white", () => {
+    const { container } = render(<AdUnit slot="1234567890" />);
+    const ins = container.querySelector<HTMLElement>("ins");
+    expect(ins?.style.background).toBe("var(--am-surface)");
+  });
 });

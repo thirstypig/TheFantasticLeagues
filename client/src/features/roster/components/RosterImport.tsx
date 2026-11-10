@@ -99,7 +99,7 @@ export default function RosterImport({ year, onImportComplete }: RosterImportPro
           className={`px-4 py-2 rounded font-medium ${
             !file || uploading
               ? 'bg-[var(--lg-tint)] text-[var(--lg-text-muted)] cursor-not-allowed'
-              : 'bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white'
+              : 'bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-[var(--lg-on-accent)]'
           }`}
         >
           {uploading ? 'Importing...' : 'Import CSV'}

@@ -308,7 +308,7 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
                       <span className="text-[10px] text-[var(--lg-text-muted)] ml-1">{mc.position}</span>
                     </ThemedTd>
                     <ThemedTd className="text-right tabular-nums font-semibold">
-                      <span style={{ color: "var(--am-accent)" }}>${mc.price}</span>
+                      <span style={{ color: "var(--am-text)" }}>${mc.price}</span>
                     </ThemedTd>
                     <ThemedTd className="text-right tabular-nums">{mc.bidCount}</ThemedTd>
                     <ThemedTd className="text-right tabular-nums">{mc.teamsInvolved}</ThemedTd>

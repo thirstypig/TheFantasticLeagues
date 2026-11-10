@@ -170,7 +170,7 @@ export default function ColorLab() {
               onClick={() => setMode("dark")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium ${
                 mode === "dark"
-                  ? "bg-[var(--lg-accent)] text-white"
+                  ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                   : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
               }`}
             >
@@ -181,7 +181,7 @@ export default function ColorLab() {
               onClick={() => setMode("light")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium ${
                 mode === "light"
-                  ? "bg-[var(--lg-accent)] text-white"
+                  ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                   : "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
               }`}
             >

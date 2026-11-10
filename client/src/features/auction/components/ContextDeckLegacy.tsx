@@ -44,11 +44,11 @@ export default function ContextDeckLegacy({ tabs }: ContextDeckProps) {
               )}
               {/* Active indicator line */}
               {isActive && (
-                <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--lg-accent)] rounded-full" />
+                <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] rounded-full" />
               )}
               {/* Unread badge */}
               {tab.badge && !isActive && (
-                <span className="absolute top-1 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--lg-accent)]" />
+                <span className="absolute top-1 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--lg-accent)] text-[var(--lg-on-accent)]" />
               )}
             </button>
           );

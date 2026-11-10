@@ -292,7 +292,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
                 onClick={() => setViewGroup(g)}
                 className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase transition-colors ${
                   viewGroup === g
-                    ? "bg-[var(--lg-accent)] text-white"
+                    ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                     : "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
                 }`}
               >

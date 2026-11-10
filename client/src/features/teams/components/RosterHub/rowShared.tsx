@@ -95,7 +95,7 @@ export function PlayerNameContent({
     <>
       {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
       {player.isKeeper && (
-        <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
+        <span aria-label="Keeper" style={{ color: "var(--am-warning)", marginRight: 6 }}>
           ★
         </span>
       )}

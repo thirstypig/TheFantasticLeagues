@@ -264,7 +264,7 @@ export default function Season() {
                                     placeItems: "center",
                                     fontSize: 9.5,
                                     fontWeight: 700,
-                                    color: rank === 1 ? "#fff" : "var(--am-text)",
+                                    color: rank === 1 ? "var(--am-on-accent)" : "var(--am-text)",
                                     border: "1px solid var(--am-border)",
                                   }}
                                 >
@@ -298,7 +298,7 @@ export default function Season() {
                                       borderRadius: 6,
                                       fontSize: 11.5,
                                       fontWeight: 600,
-                                      color: isPeak ? "#fff" : "var(--am-text-muted)",
+                                      color: isPeak ? "var(--am-on-accent)" : "var(--am-text-muted)",
                                       background: isPeak
                                         ? "var(--am-irid)"
                                         : isStrong

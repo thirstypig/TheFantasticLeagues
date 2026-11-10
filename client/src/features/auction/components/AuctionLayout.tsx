@@ -41,14 +41,14 @@ export default function AuctionLayout({ stage, context, isMuted, onToggleMute, c
           <div className="hidden md:flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)]">
             <button
               onClick={() => toggleLayout('stacked')}
-              className={`p-1 rounded transition-all ${layout === 'stacked' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+              className={`p-1 rounded transition-all ${layout === 'stacked' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
               title="Stacked layout"
             >
               <Rows2 size={14} />
             </button>
             <button
               onClick={() => toggleLayout('side')}
-              className={`p-1 rounded transition-all ${layout === 'side' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+              className={`p-1 rounded transition-all ${layout === 'side' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
               title="Side-by-side layout"
             >
               <Columns2 size={14} />

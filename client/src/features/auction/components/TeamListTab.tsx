@@ -263,8 +263,8 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                           // Aurora tones: filled = cyan-tinted via accent, full = stronger irid background, empty = muted
                           const filledStyle: React.CSSProperties = isFull
                             ? {
-                                background: "rgba(34, 211, 238, 0.15)",
-                                color: "var(--am-accent)",
+                                background: "color-mix(in srgb, var(--am-accent-2) 15%, transparent)",
+                                color: "var(--am-text)",
                                 fontWeight: 700,
                               }
                             : filled > 0
@@ -406,7 +406,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                         >
                                             Max
                                         </span>
-                                        <span style={{ fontWeight: 600, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums" }}>
+                                        <span style={{ fontWeight: 600, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
                                             ${team.maxBid}
                                         </span>
                                     </div>
@@ -439,6 +439,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                             borderRadius: 99,
                                             width: `${spentPct}%`,
                                             background: "var(--am-irid)",
+                                            color: "var(--am-on-accent)",
                                             transition: "width 300ms",
                                         }}
                                     />
@@ -515,7 +516,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                                 <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
                                                             <ThemedTd align="right" className="py-2 pr-6">
-                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-accent)]"}>${entry.price}</span>
+                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (

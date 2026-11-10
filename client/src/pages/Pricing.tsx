@@ -127,7 +127,7 @@ export default function Pricing() {
             }`}
           >
             {tier.highlight && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[var(--lg-accent)] text-white text-[10px] font-bold uppercase tracking-wider rounded-full">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-[10px] font-bold uppercase tracking-wider rounded-full">
                 Most Popular
               </div>
             )}
@@ -146,8 +146,8 @@ export default function Pricing() {
                 to={tier.ctaLink}
                 className={`w-full text-center py-2.5 px-4 rounded-xl font-semibold text-sm transition-all ${
                   tier.highlight
-                    ? "bg-[var(--lg-accent)] text-white hover:opacity-90"
-                    : "bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)] hover:text-white"
+                    ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90"
+                    : "bg-[var(--lg-tint-hover)] text-[var(--lg-text-primary)] hover:bg-[var(--lg-accent)] hover:text-[var(--lg-on-accent)]"
                 }`}
               >
                 {tier.cta}

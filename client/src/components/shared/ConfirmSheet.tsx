@@ -100,7 +100,7 @@ export function ConfirmSheet({
               flex: 1,
               border: "1px solid var(--am-accent)",
               background: "var(--am-accent)",
-              color: "var(--am-surface)",
+              color: "var(--am-on-accent)",
               opacity: busy ? 0.6 : 1,
             }}
           >

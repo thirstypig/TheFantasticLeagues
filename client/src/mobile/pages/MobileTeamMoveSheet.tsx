@@ -195,7 +195,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
                   padding: "12px 0",
                   borderRadius: 12,
                   background: isCurrent ? "var(--am-irid)" : "var(--am-chip)",
-                  color: isCurrent ? "#fff" : "var(--am-text)",
+                  color: isCurrent ? "var(--am-on-accent)" : "var(--am-text)",
                   border: "1px solid " + (isCurrent ? "transparent" : "var(--am-border)"),
                   fontSize: 13,
                   fontWeight: 700,

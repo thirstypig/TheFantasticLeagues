@@ -370,7 +370,7 @@ export default function Auction() {
               fontWeight: 700,
               letterSpacing: 0.4,
               background: "var(--am-irid)",
-              color: "#fff",
+              color: "var(--am-on-accent)",
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",

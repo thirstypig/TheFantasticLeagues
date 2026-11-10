@@ -93,7 +93,7 @@ export default function NotificationSettings() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             isSubscribed
               ? "bg-[var(--lg-surface-alt)] text-[var(--lg-text)] hover:bg-[var(--lg-surface-hover)]"
-              : "bg-[var(--lg-accent)] text-white hover:opacity-90"
+              : "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {loading ? "..." : isSubscribed ? "Disable" : "Enable Push Notifications"}
@@ -117,7 +117,7 @@ export default function NotificationSettings() {
                   disabled={saving}
                   onClick={() => handlePrefChange(key, !prefs[key])}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    prefs[key] ? "bg-[var(--lg-accent)]" : "bg-[var(--lg-surface-alt)]"
+                    prefs[key] ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]" : "bg-[var(--lg-surface-alt)]"
                   } disabled:opacity-50`}
                 >
                   <span

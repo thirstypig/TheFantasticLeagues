@@ -743,7 +743,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
 
   // Season status chip variant
   function statusChipClass(s: string | null | undefined): string {
-    if (s === "IN_SEASON") return "cm-chip accent";
+    if (s === "IN_SEASON") return "cm-chip pos";
     if (s === "DRAFT") return "cm-chip warn";
     if (s === "SETUP") return "cm-chip";
     return "cm-chip";
@@ -790,7 +790,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
           </Glass>
         ) : error ? (
           <Glass>
-            <div style={{ padding: 8, color: "rgb(248, 113, 113)", fontSize: 13, textAlign: "center" }}>
+            <div style={{ padding: 8, color: "var(--am-negative)", fontSize: 13, textAlign: "center" }}>
               {error}
             </div>
           </Glass>
@@ -1093,7 +1093,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                               txType === 'IL_ACTIVATE' ? 'IL−' :
                               txType || '—';
                             const chipClass =
-                              txType === 'ADD' || txType === 'CLAIM' || txType === 'IL_ACTIVATE' ? "cm-chip accent" :
+                              txType === 'ADD' || txType === 'CLAIM' || txType === 'IL_ACTIVATE' ? "cm-chip pos" :
                               txType === 'DROP' || txType === 'IL_STASH' ? "cm-chip warn" :
                               "cm-chip";
                             const ts = ev.submittedAt || ev.effDate || '';
@@ -1738,7 +1738,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       Positive = the team owes the league.
                     */}
                     {balancesError && (
-                      <div className="cm-note" style={{ color: "var(--am-danger, #b3261e)" }}>{balancesError}</div>
+                      <div className="cm-note" style={{ color: "var(--am-negative)" }}>{balancesError}</div>
                     )}
                     {!balancesError && balances === null && (
                       <div className="cm-note" style={{ color: "var(--am-text-muted)" }}>Loading balances…</div>

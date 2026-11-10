@@ -114,7 +114,7 @@ const IRIDESCENT_PILL: CSSProperties = {
   fontWeight: 600,
   borderRadius: 99,
   background: "var(--am-irid)",
-  color: "#fff",
+  color: "var(--am-on-accent)",
   border: "1px solid var(--am-border-strong)",
   cursor: "pointer",
   boxShadow: "0 6px 20px rgba(255,80,80,0.22)",
@@ -352,6 +352,7 @@ export default function SeasonManager({ leagueId, draftMode }: Props) {
                           flex: 1,
                           height: 2,
                           background: isComplete ? "var(--am-irid)" : "var(--am-border)",
+                          color: "var(--am-on-accent)",
                           borderRadius: 1,
                         }}
                       />

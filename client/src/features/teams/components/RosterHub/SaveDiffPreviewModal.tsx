@@ -36,10 +36,10 @@ const BADGE_LABELS: Record<PendingChange["kind"], string> = {
 };
 
 const BADGE_TONES: Record<PendingChange["kind"], { fg: string; mix: number }> = {
-  swap: { fg: "#22d3ee", mix: 22 },
-  fa_add: { fg: "#22c55e", mix: 22 },
-  il_stash: { fg: "#f59e0b", mix: 22 },
-  il_activate: { fg: "#22d3ee", mix: 22 },
+  swap: { fg: "var(--am-accent-2)", mix: 22 },
+  fa_add: { fg: "var(--am-positive)", mix: 22 },
+  il_stash: { fg: "var(--am-warning)", mix: 22 },
+  il_activate: { fg: "var(--am-accent-2)", mix: 22 },
 };
 
 interface SaveDiffPreviewModalProps {
@@ -146,8 +146,8 @@ export function SaveDiffPreviewModal({
             style={{
               padding: "10px 14px",
               marginBottom: 12,
-              background: "color-mix(in srgb, #c41a85 14%, transparent)",
-              border: "1px solid #c41a85",
+              background: "color-mix(in srgb, var(--am-negative) 14%, transparent)",
+              border: "1px solid var(--am-negative)",
               borderRadius: 12,
               fontSize: 12.5,
             }}
@@ -181,12 +181,12 @@ export function SaveDiffPreviewModal({
                   flexDirection: "column",
                   padding: "10px 12px",
                   border: failure
-                    ? "1px solid #c41a85"
+                    ? "1px solid var(--am-negative)"
                     : "1px solid var(--am-border)",
                   borderRadius: 12,
                   background: failure
-                    ? "color-mix(in srgb, #c41a85 8%, var(--am-card))"
-                    : "var(--am-card)",
+                    ? "color-mix(in srgb, var(--am-negative) 8%, var(--am-surface))"
+                    : "var(--am-surface)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -268,7 +268,7 @@ export function SaveDiffPreviewModal({
                     style={{
                       display: "block",
                       fontSize: 11.5,
-                      color: "#fca5a5",
+                      color: "var(--am-negative)",
                       marginTop: 6,
                       paddingLeft: 36,
                     }}
@@ -319,13 +319,13 @@ export function SaveDiffPreviewModal({
               padding: "10px 22px",
               borderRadius: 10,
               border: "1px solid transparent",
-              // Cyan gradient per Complex-#3 spec.
-              background: "linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)",
-              color: "#fff",
+              // Primary confirm: solid accent (was a cyan gradient per Complex-#3 spec).
+              background: "var(--am-accent)",
+              color: "var(--am-on-accent)",
               cursor: saving ? "not-allowed" : "pointer",
               opacity: saving ? 0.7 : 1,
               minHeight: 40,
-              boxShadow: "0 8px 22px rgba(34, 211, 238, 0.25)",
+              boxShadow: "0 8px 22px color-mix(in srgb, var(--am-accent) 25%, transparent)",
             }}
           >
             {saving ? "Saving…" : hasFailures ? "Retry save" : "Confirm save"}

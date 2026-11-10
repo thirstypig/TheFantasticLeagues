@@ -91,7 +91,7 @@ export default function RosterManagementForm({ year, teamCodes }: RosterManageme
 
   const inputClass = `w-full px-3 py-2 rounded border bg-[var(--lg-input-bg)] border-[var(--lg-border-subtle)] text-[var(--lg-text-primary)]`;
 
-  const buttonClass = `px-4 py-2 rounded font-medium bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-white`;
+  const buttonClass = `px-4 py-2 rounded font-medium bg-[var(--lg-accent)] hover:bg-[var(--lg-accent-hover)] text-[var(--lg-on-accent)]`;
 
   return (
     <div className="space-y-6">

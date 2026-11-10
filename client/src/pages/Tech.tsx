@@ -1380,7 +1380,7 @@ export default function Tech() {
             <div key={entry.title} className="flex gap-4">
               {/* Timeline line */}
               <div className="flex flex-col items-center">
-                <div className="w-3 h-3 rounded-full bg-[var(--lg-accent)] shrink-0 mt-1" />
+                <div className="w-3 h-3 rounded-full bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shrink-0 mt-1" />
                 {idx < buildJournal.length - 1 && (
                   <div className="w-px flex-1 bg-[var(--lg-border-subtle)]" />
                 )}

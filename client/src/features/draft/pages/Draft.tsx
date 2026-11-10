@@ -401,7 +401,7 @@ export default function Draft() {
                   onClick={() => setPosFilter(pos)}
                   className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors ${
                     posFilter === pos
-                      ? "bg-[var(--lg-accent)] text-white"
+                      ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                       : "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
                   }`}
                 >

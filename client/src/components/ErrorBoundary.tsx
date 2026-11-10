@@ -85,7 +85,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={this.handleRetry}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--lg-accent)] text-white hover:opacity-90 transition-opacity"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 transition-opacity"
               >
                 Try Again
               </button>

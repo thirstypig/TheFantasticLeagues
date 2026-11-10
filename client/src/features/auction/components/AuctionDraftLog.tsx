@@ -61,13 +61,13 @@ export default function AuctionDraftLog({ log, teams }: Props) {
         <div className="flex bg-[var(--lg-tint)] rounded-md p-0.5 border border-[var(--lg-border-subtle)]">
           <button
             onClick={() => setView('board')}
-            className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${view === 'board' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+            className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${view === 'board' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
           >
             Draft Board
           </button>
           <button
             onClick={() => setView('feed')}
-            className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${view === 'feed' ? 'bg-[var(--lg-accent)] text-white' : 'text-[var(--lg-text-muted)]'}`}
+            className={`px-2.5 py-1 text-[10px] font-semibold uppercase rounded transition-all ${view === 'feed' ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]' : 'text-[var(--lg-text-muted)]'}`}
           >
             Live Feed
           </button>
@@ -127,7 +127,7 @@ export default function AuctionDraftLog({ log, teams }: Props) {
                         <ThemedTd className="px-2 text-[var(--lg-text-secondary)]">
                           {winner?.name || '—'}
                         </ThemedTd>
-                        <ThemedTd align="center" className="font-semibold text-[var(--lg-accent)] px-2">
+                        <ThemedTd align="center" className="font-semibold text-[var(--lg-text-primary)] px-2">
                           ${lot.finalPrice}
                         </ThemedTd>
                         <ThemedTd align="center" className="text-xs text-[var(--lg-text-muted)] px-1">

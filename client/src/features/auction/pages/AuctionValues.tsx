@@ -285,6 +285,7 @@ export default function AuctionValues() {
                                 height: 6,
                                 width: `${Math.round(ratio * 100)}%`,
                                 background: isTop ? "var(--am-irid)" : "var(--am-chip-strong)",
+                                color: "var(--am-on-accent)",
                                 borderRadius: 99,
                                 transition: "width 200ms ease",
                               }}
@@ -317,7 +318,7 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
     textTransform: "uppercase",
     border: active ? "1px solid var(--am-border-strong)" : "1px solid var(--am-border)",
     background: active ? "var(--am-irid)" : "var(--am-chip)",
-    color: active ? "#fff" : "var(--am-text-muted)",
+    color: active ? "var(--am-on-accent)" : "var(--am-text-muted)",
     cursor: "pointer",
     transition: "all 200ms ease",
   };

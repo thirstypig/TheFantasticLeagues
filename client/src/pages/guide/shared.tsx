@@ -34,7 +34,7 @@ export function Section({ title, icon: Icon, defaultOpen, children }: { title: s
 export function Step({ num, title, children }: { num: number; title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3">
-      <div className="shrink-0 w-6 h-6 rounded-full bg-[var(--lg-accent)] text-white flex items-center justify-center text-[10px] font-bold print:bg-gray-800">{num}</div>
+      <div className="shrink-0 w-6 h-6 rounded-full bg-[var(--lg-accent)] text-[var(--lg-on-accent)] flex items-center justify-center text-[10px] font-bold print:bg-gray-800">{num}</div>
       <div className="flex-1">
         <div className="font-semibold text-[var(--lg-text-primary)] text-sm mb-0.5">{title}</div>
         <div className="text-[var(--lg-text-secondary)] text-sm leading-relaxed">{children}</div>

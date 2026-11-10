@@ -16,8 +16,10 @@ import { supabase } from "../../../lib/supabase";
 import { track } from "../../../lib/posthog";
 import { AmbientBg, Glass } from "../../../components/aurora/atoms";
 import "../../../components/aurora/aurora.css";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function Login() {
+  const { theme } = useTheme();
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
 
@@ -91,7 +93,7 @@ export default function Login() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{
         position: "relative",
         minHeight: "100svh",
@@ -125,7 +127,8 @@ export default function Login() {
                 height: 36,
                 borderRadius: 10,
                 background: "var(--am-irid)",
-                boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                color: "var(--am-on-accent)",
+                boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                 marginBottom: 14,
               }}
             />
@@ -159,7 +162,7 @@ export default function Login() {
                 gap: 10,
                 padding: "0 14px",
                 borderRadius: 12,
-                background: "rgba(66, 133, 244, 0.08)",
+                background: "var(--am-surface-alt)",
                 border: "1px solid var(--am-border)",
                 color: "var(--am-text)",
                 fontSize: 13,
@@ -272,7 +275,7 @@ export default function Login() {
                 style={{
                   padding: 12,
                   borderRadius: 12,
-                  background: "rgba(255, 80, 80, 0.08)",
+                  background: "color-mix(in srgb, var(--am-negative) 10%, transparent)",
                   border: "1px solid var(--am-border)",
                   color: "var(--am-negative)",
                   fontSize: 12,
@@ -329,7 +332,7 @@ export default function Login() {
                 style={{
                   padding: 10,
                   borderRadius: 12,
-                  background: "rgba(255, 80, 80, 0.08)",
+                  background: "color-mix(in srgb, var(--am-negative) 10%, transparent)",
                   border: "1px solid var(--am-border)",
                   color: "var(--am-negative)",
                   fontSize: 12,
@@ -349,13 +352,13 @@ export default function Login() {
                 marginTop: 4,
                 borderRadius: 99,
                 background: "var(--am-irid)",
-                color: "#fff",
+                color: "var(--am-on-accent)",
                 fontSize: 14,
                 fontWeight: 600,
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
                 opacity: loading ? 0.6 : 1,
-                boxShadow: "0 8px 24px rgba(255, 80, 80, 0.32)",
+                boxShadow: "0 8px 24px color-mix(in srgb, var(--am-accent) 32%, transparent)",
                 transition: "opacity 120ms ease, transform 120ms ease",
                 letterSpacing: 0.2,
               }}
@@ -403,7 +406,7 @@ export default function Login() {
                   opacity: devLoading ? 0.5 : 1,
                 }}
               >
-                <span style={{ color: "#f5b400" }}>⚡</span>
+                <span style={{ color: "var(--am-accent)" }}>⚡</span>
                 {devLoading ? "Logging in..." : "Dev Login"}
               </button>
             </div>

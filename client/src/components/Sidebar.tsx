@@ -314,7 +314,7 @@ export default function Sidebar({
               <button
                 onClick={() => nav('/login')}
                 className={`
-                  w-full flex items-center gap-2 rounded-xl bg-[var(--lg-accent)] text-white font-semibold transition-all shadow-lg shadow-blue-500/20
+                  w-full flex items-center gap-2 rounded-xl bg-[var(--lg-accent)] text-[var(--lg-on-accent)] font-semibold transition-all shadow-lg shadow-blue-500/20
                   ${sidebarOpen ? 'px-4 py-2.5 justify-center' : 'p-2 justify-center'}
                 `}
                 title="Sign In"

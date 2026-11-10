@@ -1499,8 +1499,8 @@ export default function Team() {
                       padding: "10px 14px",
                       marginBottom: 10,
                       borderRadius: 12,
-                      background: "color-mix(in srgb, #f59e0b 10%, transparent)",
-                      border: "1px solid color-mix(in srgb, #f59e0b 38%, transparent)",
+                      background: "color-mix(in srgb, var(--am-warning) 10%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--am-warning) 38%, transparent)",
                       fontSize: 12.5,
                       color: "var(--am-text)",
                     }}
@@ -1518,7 +1518,7 @@ export default function Team() {
                         style={{
                           fontSize: 12,
                           fontWeight: 600,
-                          color: "#f59e0b",
+                          color: "var(--am-warning)",
                           textDecoration: "none",
                           whiteSpace: "nowrap",
                         }}
@@ -1619,8 +1619,8 @@ export default function Team() {
                         gap: 8,
                         padding: "6px 10px",
                         borderRadius: 10,
-                        background: "color-mix(in srgb, #f59e0b 8%, transparent)",
-                        border: "1px solid color-mix(in srgb, #f59e0b 28%, transparent)",
+                        background: "color-mix(in srgb, var(--am-warning) 8%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--am-warning) 28%, transparent)",
                         fontSize: 12,
                         color: "var(--am-text)",
                       }}
@@ -1675,7 +1675,7 @@ export default function Team() {
                         padding: "6px 12px",
                         borderRadius: 99,
                         border: "1px solid var(--am-border-strong)",
-                        background: "color-mix(in srgb, #22d3ee 10%, transparent)",
+                        background: "color-mix(in srgb, var(--am-accent-2) 10%, transparent)",
                         color: "var(--am-text)",
                         cursor: "pointer",
                       }}
@@ -1750,7 +1750,7 @@ export default function Team() {
                       style={{
                         fontSize: 12, fontWeight: 600, padding: "6px 14px",
                         borderRadius: 8, border: "1px solid transparent",
-                        background: "var(--am-irid)", color: "#fff", cursor: "pointer",
+                        background: "var(--am-irid)", color: "var(--am-on-accent)", cursor: "pointer",
                       }}
                     >
                       Restore
@@ -1827,7 +1827,7 @@ export default function Team() {
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: "8px 14px", borderRadius: 99,
-                      background: "var(--am-irid)", color: "#fff",
+                      background: "var(--am-irid)", color: "var(--am-on-accent)",
                       fontSize: 12, fontWeight: 600, textDecoration: "none",
                     }}
                   >
@@ -1862,7 +1862,7 @@ export default function Team() {
                           fontSize: 11, fontWeight: 600,
                           border: "1px solid " + (isActive ? "transparent" : "var(--am-border)"),
                           background: isActive ? "var(--am-irid)" : "var(--am-chip)",
-                          color: isActive ? "#fff" : "var(--am-text-muted)",
+                          color: isActive ? "var(--am-on-accent)" : "var(--am-text-muted)",
                           cursor: "pointer",
                         }}
                       >

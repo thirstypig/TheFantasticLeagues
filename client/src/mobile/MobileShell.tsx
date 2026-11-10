@@ -4,7 +4,7 @@
  * Mounted by `MobileLayoutGate` whenever `(max-width: 767px)` matches.
  *
  * Chrome:
- *   - 50px fixed top app bar: hamburger (left) → title (center) → theme toggle (right)
+ *   - 50px fixed top app bar: hamburger (left) → title (center) → spacer (right; theme lives in Profile → Appearance)
  *   - Left-slide drawer (260px, always in DOM, slides with transform) + dark overlay
  *   - MobileTabBar rendered inside the drawer as a vertical nav list; all
  *     data-testid / data-tab-key / aria-current attributes are preserved so
@@ -43,7 +43,7 @@ interface MobileShellProps {
 
 export function MobileShell({ children }: MobileShellProps) {
   const { pathname } = useLocation();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { myTeamCode, leagues, leagueId } = useLeague();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -129,27 +129,8 @@ export function MobileShell({ children }: MobileShellProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 36,
-            height: 36,
-            flexShrink: 0,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            fontSize: 16,
-            color: "var(--am-text-muted)",
-            padding: 0,
-          }}
-        >
-          {theme === "dark" ? "☀" : "☾"}
-        </button>
+        {/* Spacer mirrors the hamburger so the title stays centered. */}
+        <div aria-hidden style={{ width: 36, height: 36, flexShrink: 0 }} />
       </header>
 
       {/* ── Dark overlay (only visible when drawer is open) ── */}
@@ -210,7 +191,7 @@ export function MobileShell({ children }: MobileShellProps) {
               placeItems: "center",
               fontSize: 15,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--am-on-accent)",
               flexShrink: 0,
             }}
           >
@@ -233,37 +214,6 @@ export function MobileShell({ children }: MobileShellProps) {
         {/* MobileTabBar — all data-testid / data-tab-key / aria-current preserved */}
         <div style={{ flex: 1 }}>
           <MobileTabBar myTeamCode={myTeamCode} />
-        </div>
-
-        {/* User footer */}
-        <div
-          style={{
-            padding: 16,
-            borderTop: "1px solid var(--am-border)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            flexShrink: 0,
-          }}
-        >
-          <button
-            type="button"
-            onClick={toggleTheme}
-            style={{
-              textAlign: "left",
-              padding: "10px 12px",
-              borderRadius: 4,
-              fontSize: 13,
-              color: "var(--am-text-muted)",
-              background: "transparent",
-              border: "1px solid transparent",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              width: "100%",
-            }}
-          >
-            {theme === "dark" ? "Light theme" : "Dark theme"}
-          </button>
         </div>
       </div>
 

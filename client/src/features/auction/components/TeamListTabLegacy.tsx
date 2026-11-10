@@ -241,7 +241,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
                                     </div>
                                     <div className="flex flex-col items-end">
                                         <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-50">Max</span>
-                                        <span className="font-semibold text-[var(--lg-accent)]">${team.maxBid}</span>
+                                        <span className="font-semibold text-[var(--lg-text-primary)]">${team.maxBid}</span>
                                     </div>
                                     <div className={`text-[var(--lg-text-muted)] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -314,7 +314,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
                                                                 <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
                                                             <ThemedTd align="right" className="py-2 pr-6">
-                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-accent)]"}>${entry.price}</span>
+                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (

@@ -4,8 +4,10 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import "../../../components/aurora/aurora.css";
 import { AmbientBg, Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function ResetPassword() {
+  const { theme } = useTheme();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -111,20 +113,20 @@ export default function ResetPassword() {
     height: 44,
     borderRadius: 999,
     background: "var(--am-irid)",
-    color: "#fff",
+    color: "var(--am-on-accent)",
     fontWeight: 600,
     fontSize: 14,
     border: "1px solid var(--am-border-strong)",
     cursor: loading ? "not-allowed" : "pointer",
     opacity: loading ? 0.6 : 1,
-    boxShadow: "0 8px 24px rgba(74,140,255,0.25)",
+    boxShadow: "0 8px 24px color-mix(in srgb, var(--am-accent) 25%, transparent)",
     fontFamily: "var(--am-body)",
     letterSpacing: 0.2,
   };
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
     >
       <AmbientBg />
@@ -149,7 +151,8 @@ export default function ResetPassword() {
                 height: 36,
                 borderRadius: 10,
                 background: "var(--am-irid)",
-                boxShadow: "0 8px 24px rgba(255,80,80,0.25)",
+                color: "var(--am-on-accent)",
+                boxShadow: "0 8px 24px color-mix(in srgb, var(--am-accent) 25%, transparent)",
                 flexShrink: 0,
               }}
             />
@@ -237,7 +240,7 @@ export default function ResetPassword() {
                         height: 22,
                         borderRadius: 999,
                         background: "var(--am-positive)",
-                        color: "#0b1230",
+                        color: "var(--am-on-accent)",
                         display: "grid",
                         placeItems: "center",
                         fontSize: 12,

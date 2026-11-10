@@ -524,7 +524,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                     return (
                                         <ThemedTd align="center" className="px-1 w-8">
                                             {myRank ? (
-                                                <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--am-accent)" }}>{myRank}</span>
+                                                <span style={{ fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "var(--am-text)" }}>{myRank}</span>
                                             ) : (
                                                 <span style={{ fontSize: 10, color: "var(--am-text-faint)", opacity: 0.3 }}>-</span>
                                             )}
@@ -651,7 +651,7 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                       padding: "3px 7px",
                                                       borderRadius: 999,
                                                       background: "var(--am-irid)",
-                                                      color: "#fff",
+                                                      color: "var(--am-on-accent)",
                                                       border: "1px solid var(--am-border-strong)",
                                                       cursor: "pointer",
                                                     }}

@@ -128,7 +128,7 @@ export default function DraftResults() {
             onClick={() => setSelectedTeamId(team.teamId)}
             className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase transition-colors ${
               selectedTeamId === team.teamId
-                ? "bg-[var(--lg-accent)] text-white"
+                ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                 : "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]"
             }`}
           >

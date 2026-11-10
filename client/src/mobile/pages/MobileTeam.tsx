@@ -513,7 +513,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                 placeItems: "center",
                 fontFamily: "var(--am-display)",
                 fontSize: 16,
-                color: "#fff",
+                color: "var(--am-on-accent)",
               }}
             >
               {teamInitials(teamName)}

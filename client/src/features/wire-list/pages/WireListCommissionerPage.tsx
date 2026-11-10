@@ -210,7 +210,7 @@ export default function WireListCommissionerPage() {
     return (
       <Glass>
         <div style={{ padding: 24 }}>
-          <div style={{ color: "#f87171", marginBottom: 8 }}>{error}</div>
+          <div style={{ color: "var(--am-negative)", marginBottom: 8 }}>{error}</div>
           <button onClick={reload} style={btn}>Retry</button>
         </div>
       </Glass>
@@ -333,8 +333,8 @@ export default function WireListCommissionerPage() {
         {error && (
           <div style={{
             marginTop: 12, padding: "8px 12px", borderRadius: 8, fontSize: 13,
-            background: "color-mix(in srgb, #f87171 12%, transparent)",
-            border: "1px solid color-mix(in srgb, #f87171 40%, transparent)",
+            background: "color-mix(in srgb, var(--am-negative) 12%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--am-negative) 40%, transparent)",
             color: "var(--am-text)",
           }}>{error}</div>
         )}
@@ -548,23 +548,23 @@ function DropRow({ entry }: { entry: DropEntry }) {
 
 function StatusChip({ status }: { status: WaiverPeriod["status"] }) {
   const color =
-    status === "PENDING" ? "#22d3ee" :
-    status === "LOCKED" ? "#fbbf24" :
-    status === "PROCESSED" ? "#34d399" : "#9ca3af";
+    status === "PENDING" ? "var(--am-accent-2)" :
+    status === "LOCKED" ? "var(--am-warning)" :
+    status === "PROCESSED" ? "var(--am-positive)" : "var(--am-text-faint)";
   return <Chip color={color}>{status}</Chip>;
 }
 
 function OutcomeChip({ outcome }: { outcome: WaiverAddOutcome }) {
   if (outcome === "PENDING") return <span style={{ ...chipBase, color: "var(--am-text-muted)" }}>·</span>;
   const color =
-    outcome === "SUCCEEDED" ? "#34d399" :
-    outcome === "FAILED" ? "#f87171" : "#fbbf24";
+    outcome === "SUCCEEDED" ? "var(--am-positive)" :
+    outcome === "FAILED" ? "var(--am-negative)" : "var(--am-warning)";
   return <span style={{ ...chipBase, color, borderColor: color }}>{outcome}</span>;
 }
 
 function DropStatusChip({ status }: { status: DropEntry["status"] }) {
   if (status === "PENDING") return null;
-  const color = status === "CONSUMED" ? "#34d399" : "#9ca3af";
+  const color = status === "CONSUMED" ? "var(--am-positive)" : "var(--am-text-faint)";
   return <span style={{ ...chipBase, color, borderColor: color }}>{status}</span>;
 }
 
@@ -575,12 +575,12 @@ const btn: React.CSSProperties = {
   background: "var(--am-chip)", color: "var(--am-text)",
   border: "1px solid var(--am-border)", cursor: "pointer",
 };
-const btnPrimary: React.CSSProperties = { ...btn, background: "var(--am-accent)", color: "var(--am-bg)", border: "none" };
+const btnPrimary: React.CSSProperties = { ...btn, background: "var(--am-accent)", color: "var(--am-on-accent)", border: "none" };
 const btnDisabled: React.CSSProperties = { ...btn, opacity: 0.4, cursor: "not-allowed" };
 const btnSmall: React.CSSProperties = { ...btn, padding: "2px 8px", fontSize: 11 };
-const btnGreen: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, #34d399 20%, var(--am-chip))" };
-const btnRed: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, #f87171 20%, var(--am-chip))" };
-const btnAmber: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, #fbbf24 20%, var(--am-chip))" };
+const btnGreen: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, var(--am-positive) 20%, var(--am-chip))" };
+const btnRed: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, var(--am-negative) 20%, var(--am-chip))" };
+const btnAmber: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, var(--am-warning) 20%, var(--am-chip))" };
 
 const priorityBadge: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",

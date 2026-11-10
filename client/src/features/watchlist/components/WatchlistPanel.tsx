@@ -221,7 +221,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                 key={tag}
                 type="button"
                 onClick={() => setAddTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])}
-                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wide rounded-full border transition-colors ${addTags.includes(tag) ? "bg-[var(--lg-accent)] text-white border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] hover:border-[var(--lg-accent)]"}`}
+                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wide rounded-full border transition-colors ${addTags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] hover:border-[var(--lg-accent)]"}`}
               >
                 {tag}
               </button>
@@ -286,7 +286,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(item, tag)}
-                          className={`px-1.5 py-px text-[8px] font-bold uppercase rounded-full border transition-colors ${item.tags.includes(tag) ? "bg-[var(--lg-accent)] text-white border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] opacity-40 hover:opacity-100"}`}
+                          className={`px-1.5 py-px text-[8px] font-bold uppercase rounded-full border transition-colors ${item.tags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] opacity-40 hover:opacity-100"}`}
                         >
                           {tag}
                         </button>

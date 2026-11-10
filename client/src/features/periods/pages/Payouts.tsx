@@ -121,7 +121,7 @@ export default function Payouts() {
           </div>
           <div className="lg-card p-4 text-center">
             <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] mb-1">Total Pot</div>
-            <div className="text-2xl font-semibold text-[var(--lg-accent)]">
+            <div className="text-2xl font-semibold text-[var(--lg-text-primary)]">
               ${settlement.totalPot}
             </div>
           </div>
@@ -168,7 +168,7 @@ export default function Payouts() {
                   </ThemedTd>
                   <ThemedTd align="center">
                     {row.payoutPct > 0 ? (
-                      <span className="font-semibold text-[var(--lg-accent)]">{row.payoutPct}%</span>
+                      <span className="font-semibold text-[var(--lg-text-primary)]">{row.payoutPct}%</span>
                     ) : (
                       <span className="text-[var(--lg-text-muted)]">—</span>
                     )}

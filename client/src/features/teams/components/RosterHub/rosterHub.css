@@ -124,10 +124,10 @@
   border-color: var(--am-border-strong);
 }
 
-/* Selected pill — iridescent fill, white text. */
+/* Selected pill — accent fill, on-accent text. */
 .am-roster-pill[data-selected="true"] {
   background: var(--am-irid);
-  color: #fff;
+  color: var(--am-on-accent);
   border-color: transparent;
 }
 

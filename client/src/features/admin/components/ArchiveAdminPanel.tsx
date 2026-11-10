@@ -162,7 +162,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
         <button
           onClick={() => setActiveTab('archive')}
           className={`flex-1 px-8 py-4 text-xs font-medium uppercase transition-all rounded-2xl ${activeTab === 'archive'
-            ? 'bg-[var(--lg-accent)] text-white shadow-lg' 
+            ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)] shadow-lg' 
             : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]'
           }`}
         >
@@ -218,7 +218,7 @@ export default function ArchiveAdminPanel({ year }: ArchiveAdminPanelProps) {
                 </div>
               </td>
               <td className="px-4 py-3 text-center">
-                <button onClick={handleUpload} disabled={!file || uploading} className="px-5 py-2.5 rounded-xl text-xs font-medium uppercase bg-[var(--lg-accent)] text-white hover:brightness-110 disabled:opacity-20 disabled:grayscale transition-all shadow-lg shadow-red-500/10">
+                <button onClick={handleUpload} disabled={!file || uploading} className="px-5 py-2.5 rounded-xl text-xs font-medium uppercase bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:brightness-110 disabled:opacity-20 disabled:grayscale transition-all shadow-lg shadow-red-500/10">
                   {uploading ? 'Processing' : 'Execute'}
                 </button>
               </td>

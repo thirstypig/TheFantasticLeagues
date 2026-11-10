@@ -266,7 +266,7 @@ function IlDesktopRow({
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
             {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
             {player.isKeeper && (
-              <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
+              <span aria-label="Keeper" style={{ color: "var(--am-warning)", marginRight: 6 }}>
                 ★
               </span>
             )}
@@ -414,7 +414,7 @@ function IlMobileRow({
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
           {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
           {player.isKeeper && (
-            <span aria-label="Keeper" style={{ color: "#fbbf24", marginRight: 6 }}>
+            <span aria-label="Keeper" style={{ color: "var(--am-warning)", marginRight: 6 }}>
               ★
             </span>
           )}
@@ -508,13 +508,13 @@ function EmptyIlDesktopRow({ index, dndEnabled, ilStashEligible }: EmptyIlRowPro
         colSpan={4}
         style={{
           padding: "10px 14px",
-          color: showAffordance ? "#f59e0b" : "var(--am-text-faint)",
+          color: showAffordance ? "var(--am-warning)" : "var(--am-text-faint)",
           fontSize: 12,
           borderBottom: "1px solid var(--am-border)",
           background: showLanding
-            ? "color-mix(in srgb, #f59e0b 14%, transparent)"
+            ? "color-mix(in srgb, var(--am-warning) 14%, transparent)"
             : showAffordance
-            ? "color-mix(in srgb, #f59e0b 6%, transparent)"
+            ? "color-mix(in srgb, var(--am-warning) 6%, transparent)"
             : undefined,
           transition: "background 160ms ease, color 160ms ease",
         }}
@@ -537,12 +537,12 @@ function EmptyIlMobileRow({ index, dndEnabled, ilStashEligible }: EmptyIlRowProp
       className="am-roster-mobile-row am-roster-il-empty"
       data-testid="il-empty-row"
       style={{
-        color: showAffordance ? "#f59e0b" : "var(--am-text-faint)",
+        color: showAffordance ? "var(--am-warning)" : "var(--am-text-faint)",
         fontSize: 12,
         background: showLanding
-          ? "color-mix(in srgb, #f59e0b 14%, transparent)"
+          ? "color-mix(in srgb, var(--am-warning) 14%, transparent)"
           : showAffordance
-          ? "color-mix(in srgb, #f59e0b 6%, transparent)"
+          ? "color-mix(in srgb, var(--am-warning) 6%, transparent)"
           : undefined,
         transition: "background 160ms ease, color 160ms ease",
       }}

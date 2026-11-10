@@ -298,6 +298,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
             height: "100%",
             width: `${progressPercent}%`,
             background: "var(--am-irid)",
+            color: "var(--am-on-accent)",
             transition: "width 300ms ease",
           }}
         />
@@ -408,7 +409,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                           fontVariantNumeric: "tabular-nums",
                           fontWeight: 600,
                           flexShrink: 0,
-                          color: isWinning ? "var(--am-text)" : "var(--am-accent)",
+                          color: isWinning ? "var(--am-text)" : "var(--am-text-muted)",
                         }}
                       >
                         ${bid.amount}
@@ -526,7 +527,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
             style={{
               ...CTRL_BTN_BASE,
               background: isPlaying ? "var(--am-irid)" : "var(--am-chip-strong)",
-              color: isPlaying ? "#fff" : "var(--am-text)",
+              color: isPlaying ? "var(--am-on-accent)" : "var(--am-text)",
               border: "1px solid var(--am-border-strong)",
               opacity: isAtEnd ? 0.35 : 1,
               cursor: isAtEnd ? "not-allowed" : "pointer",

@@ -34,6 +34,17 @@ describe("TransactionResultModal — rendering", () => {
     expect(screen.queryByTestId("transaction-result-modal")).toBeNull();
   });
 
+  it("portals inside an .aurora-theme scope so --am-* tokens resolve", () => {
+    // The portal escapes AuroraShell's wrapper; without its own .aurora-theme
+    // every var(--am-*) is undefined (transparent panel and button). Dark mode
+    // comes from <html class="dark"> via the `.dark .aurora-theme` selector.
+    render(<TransactionResultModal result={baseResult} onClose={() => {}} />);
+    const dialog = screen.getByTestId("transaction-result-modal");
+    const scope = dialog.closest(".aurora-theme");
+    expect(scope).not.toBeNull();
+    expect(scope!.parentElement).toBe(document.body);
+  });
+
   it("renders title and primaryLine when result is provided", () => {
     render(<TransactionResultModal result={baseResult} onClose={() => {}} />);
     expect(screen.getByText(/Claim succeeded/)).toBeTruthy();

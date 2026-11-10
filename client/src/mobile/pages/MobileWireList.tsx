@@ -99,7 +99,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         {topbar}
         <div style={{ padding: "0 14px" }}>
           <MCard>
-            <div style={{ color: "#f87171", marginBottom: 8, fontSize: 13 }}>Error: {error}</div>
+            <div style={{ color: "var(--am-negative)", marginBottom: 8, fontSize: 13 }}>Error: {error}</div>
             <button
               type="button"
               onClick={reload}
@@ -150,8 +150,8 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         {showWarning && (
           <div style={{
             padding: "10px 14px",
-            background: "color-mix(in srgb, #fbbf24 8%, transparent)",
-            border: "1px dashed color-mix(in srgb, #fbbf24 40%, transparent)",
+            background: "color-mix(in srgb, var(--am-warning) 8%, transparent)",
+            border: "1px dashed color-mix(in srgb, var(--am-warning) 40%, transparent)",
             borderRadius: 12, fontSize: 13, color: "var(--am-text)",
           }}>
             <strong>Heads up:</strong> {overflow} more {overflow === 1 ? "Add" : "Adds"} than {drops.length === 1 ? "Drop" : "Drops"}.

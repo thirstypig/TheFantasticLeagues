@@ -86,7 +86,7 @@ function MockButton({ label, primary }: { label: string; primary?: boolean }) {
         padding: "10px 16px",
         borderRadius: 12,
         background: primary ? "var(--am-irid)" : "transparent",
-        color: primary ? "#fff" : "var(--am-text-muted)",
+        color: primary ? "var(--am-on-accent)" : "var(--am-text-muted)",
         border: primary ? "1px solid transparent" : "1px solid var(--am-border)",
         fontSize: 12,
         fontWeight: 600,

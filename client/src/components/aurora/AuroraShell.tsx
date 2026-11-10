@@ -7,8 +7,8 @@
  *   - Account popover anchored below the top bar
  *   - More popover anchored below the "More" tab
  *
- * All navigation items, route config, commissioner gating, league
- * switching, and theme toggle are preserved exactly as they were.
+ * All navigation items, route config, commissioner gating and league
+ * switching are preserved. The theme toggle moved to Profile → Appearance.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
@@ -35,7 +35,7 @@ interface MoreSection {
 export default function AuroraShell({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { user, logout } = useAuth();
   const { leagueId, setLeagueId, leagues, draftMode, myTeamCode, currentSeason } = useLeague();
   const gating = useSeasonGating();
@@ -223,7 +223,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
               placeItems: "center",
               fontSize: 15,
               fontWeight: 700,
-              color: "#fff",
+              color: "var(--am-on-accent)",
               flexShrink: 0,
             }}
           >
@@ -455,9 +455,6 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <button type="button" onClick={() => { setAccountOpen(false); nav("/profile"); }} style={popoverRowStyle(false)}>
                 Profile
-              </button>
-              <button type="button" onClick={toggleTheme} style={popoverRowStyle(false)}>
-                {theme === "dark" ? "Light theme" : "Dark theme"}
               </button>
               <button type="button" onClick={handleLogout} style={popoverRowStyle(false)}>
                 Sign out

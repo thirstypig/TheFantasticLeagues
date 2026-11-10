@@ -88,7 +88,7 @@ export function SlotCell({
     // animation. PR2 should formalize --am-glow as the eligible-slot
     // pulse if design wants a distinct token.)
     baseStyle.background = "var(--am-surface)";
-    baseStyle.boxShadow = "0 0 0 2px rgba(74,140,255,0.55), 0 0 22px rgba(138,43,214,0.25)";
+    baseStyle.boxShadow = "0 0 0 2px color-mix(in srgb, var(--am-accent) 55%, transparent), 0 0 22px color-mix(in srgb, var(--am-accent) 25%, transparent)";
     baseStyle.animation = "am-glow-pulse 2.4s ease-in-out infinite";
   }
   if (pendingSource || pendingDest) {
@@ -98,9 +98,9 @@ export function SlotCell({
     // Using a CSS variable trick: paint a dashed iridescent border via
     // background-clip on a wrapper would be cleaner, but for the static
     // preview a solid box-shadow + dashed outline reads correctly.
-    baseStyle.boxShadow = "0 0 0 2px rgba(214,43,155,0.65), 0 0 18px rgba(74,140,255,0.30)";
+    baseStyle.boxShadow = "0 0 0 2px color-mix(in srgb, var(--am-accent) 65%, transparent), 0 0 18px color-mix(in srgb, var(--am-accent) 30%, transparent)";
     baseStyle.borderStyle = "dashed";
-    baseStyle.borderColor = "rgba(214,43,155,0.7)";
+    baseStyle.borderColor = "color-mix(in srgb, var(--am-accent) 70%, transparent)";
   }
   if (selected) {
     baseStyle.transform = "scale(1.04)";
@@ -116,7 +116,7 @@ export function SlotCell({
   // is no Aurora --am-positive-warm token; TODO: surface a token if the
   // gold treatment proves load-bearing for keepers across other screens.
   const keeperRing = occupant?.isKeeper
-    ? { boxShadow: `${baseStyle.boxShadow ? baseStyle.boxShadow + ", " : ""}0 0 0 2px #fbbf24` }
+    ? { boxShadow: `${baseStyle.boxShadow ? baseStyle.boxShadow + ", " : ""}0 0 0 2px var(--am-warning)` }
     : null;
 
   return (
@@ -149,6 +149,7 @@ export function SlotCell({
             borderRadius: 16,
             padding: 2,
             background: "var(--am-irid)",
+            color: "var(--am-on-accent)",
             // mask-composite trick to create a gradient ring border
             WebkitMask:
               "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
@@ -177,7 +178,7 @@ export function SlotCell({
             <span
               aria-label="Keeper"
               title="Keeper"
-              style={{ fontSize: 12, color: "#fbbf24", lineHeight: 1 }}
+              style={{ fontSize: 12, color: "var(--am-warning)", lineHeight: 1 }}
             >
               ★
             </span>

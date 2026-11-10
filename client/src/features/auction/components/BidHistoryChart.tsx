@@ -128,7 +128,7 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
           Opening: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>${lot.openingBid}</span>
         </span>
         <span style={{ color: "var(--am-text-muted)" }}>
-          Final: <span className="font-semibold tabular-nums" style={{ color: "var(--am-accent)" }}>${lot.finalPrice}</span>
+          Final: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>${lot.finalPrice}</span>
         </span>
         <span style={{ color: "var(--am-text-muted)" }}>
           Bids: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>{lot.bidCount}</span>
@@ -457,7 +457,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                   {/* Price */}
                   <span
                     className="font-semibold tabular-nums"
-                    style={{ fontSize: 13, color: "var(--am-accent)" }}
+                    style={{ fontSize: 13, color: "var(--am-text)" }}
                   >
                     ${lot.finalPrice}
                   </span>

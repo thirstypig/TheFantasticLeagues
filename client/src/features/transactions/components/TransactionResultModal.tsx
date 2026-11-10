@@ -98,8 +98,12 @@ export default function TransactionResultModal({ result, onClose }: Props) {
     }
   }
 
+  // The portal leaves AuroraShell's `.aurora-theme` wrapper, so the dialog
+  // carries the class itself; dark mode resolves through `.dark .aurora-theme`
+  // (ThemeProvider puts `dark` on <html>).
   const modal = (
     <div
+      className="aurora-theme"
       role="dialog"
       aria-modal="true"
       aria-labelledby="transaction-result-title"
@@ -201,7 +205,7 @@ export default function TransactionResultModal({ result, onClose }: Props) {
               border: "none",
               borderRadius: 8,
               background: "var(--am-accent)",
-              color: "white",
+              color: "var(--am-on-accent)",
               fontWeight: 600,
               fontSize: 13,
               cursor: "pointer",

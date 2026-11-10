@@ -166,10 +166,10 @@ export function ScoringSettings() {
 
   if (loading) {
     return (
-      <div className="aurora-theme min-h-screen" style={{ "--am-accent": "#0891b2" } as React.CSSProperties}>
+      <div className="aurora-theme min-h-screen">
         <div className="border-b border-[var(--am-border)]">
           <div className="max-w-7xl mx-auto px-6 py-6">
-            <h1 className="text-2xl font-semibold text-[var(--am-text-primary)]">Scoring Settings</h1>
+            <h1 className="text-2xl font-semibold text-[var(--am-text)]">Scoring Settings</h1>
             <p className="text-sm text-[var(--am-text-muted)]">Loading...</p>
           </div>
         </div>
@@ -178,18 +178,15 @@ export function ScoringSettings() {
   }
 
   return (
-    <div
-      className="aurora-theme min-h-screen"
-      style={{ "--am-accent": "#0891b2" } as React.CSSProperties}
-    >
+    <div className="aurora-theme min-h-screen">
       {/* Page Header */}
       <div className="border-b border-[var(--am-border)]">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-semibold text-[var(--am-text-primary)]">
+            <h1 className="text-2xl font-semibold text-[var(--am-text)]">
               Scoring Settings
             </h1>
-            <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-[var(--am-accent)] text-white">
+            <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-[var(--am-accent)] text-[var(--am-on-accent)]">
               {sport}
             </span>
           </div>
@@ -207,7 +204,7 @@ export function ScoringSettings() {
             className={`pb-3 font-medium text-sm transition border-b-2 ${
               activeTab === "rules"
                 ? "border-[var(--am-accent)] text-[var(--am-accent)]"
-                : "border-transparent text-[var(--am-text-muted)] hover:text-[var(--am-text-primary)]"
+                : "border-transparent text-[var(--am-text-muted)] hover:text-[var(--am-text)]"
             }`}
           >
             Scoring Rules
@@ -217,7 +214,7 @@ export function ScoringSettings() {
             className={`pb-3 font-medium text-sm transition border-b-2 ${
               activeTab === "roster"
                 ? "border-[var(--am-accent)] text-[var(--am-accent)]"
-                : "border-transparent text-[var(--am-text-muted)] hover:text-[var(--am-text-primary)]"
+                : "border-transparent text-[var(--am-text-muted)] hover:text-[var(--am-text)]"
             }`}
           >
             Roster Config
@@ -229,15 +226,15 @@ export function ScoringSettings() {
           <div className="space-y-6">
             {/* Unsaved changes indicator */}
             {rulesChanged && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 text-yellow-900">
-                <div className="w-2 h-2 rounded-full bg-yellow-600" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-[color-mix(in_srgb,var(--am-warning)_12%,var(--am-surface))] text-[var(--am-text)]">
+                <div className="w-2 h-2 rounded-full bg-[var(--am-warning)]" />
                 <span className="text-sm font-medium">Unsaved changes</span>
               </div>
             )}
 
             {/* Error message */}
             {rulesError && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-900">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-[color-mix(in_srgb,var(--am-negative)_12%,var(--am-surface))] text-[var(--am-text)]">
                 <AlertCircle size={16} />
                 <span className="text-sm">{rulesError}</span>
               </div>
@@ -256,7 +253,7 @@ export function ScoringSettings() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-[var(--am-border)] bg-[var(--am-bg-secondary)]">
+                        <tr className="border-b border-[var(--am-border)] bg-[var(--am-surface-alt)]">
                           <th className="px-6 py-4 text-left text-xs font-semibold text-[var(--am-text-muted)] uppercase tracking-wide">
                             Stat
                           </th>
@@ -275,9 +272,9 @@ export function ScoringSettings() {
                         {rules.map((rule, idx) => (
                           <tr
                             key={rule.id || idx}
-                            className="border-b border-[var(--am-border)] hover:bg-[var(--am-bg-tertiary)] transition"
+                            className="border-b border-[var(--am-border)] hover:bg-[var(--am-chip)] transition"
                           >
-                            <td className="px-6 py-4 text-sm text-[var(--am-text-primary)] font-medium">
+                            <td className="px-6 py-4 text-sm text-[var(--am-text)] font-medium">
                               {rule.label}
                             </td>
                             <td className="px-6 py-4 text-right">
@@ -285,7 +282,7 @@ export function ScoringSettings() {
                                 type="number"
                                 value={rule.pointValue}
                                 step="0.01"
-                                className="w-20 px-2 py-1 text-sm text-right rounded border border-[var(--am-border)] bg-[var(--am-bg-primary)] text-[var(--am-text-primary)] font-mono"
+                                className="w-20 px-2 py-1 text-sm text-right rounded border border-[var(--am-border)] bg-[var(--am-surface)] text-[var(--am-text)] font-mono"
                                 style={{ fontVariantNumeric: "tabular-nums" }}
                                 onChange={(e) =>
                                   handleRuleChange(
@@ -307,7 +304,7 @@ export function ScoringSettings() {
                               />
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <button className="p-2 hover:bg-red-100 rounded text-red-600 transition">
+                              <button className="p-2 hover:bg-[color-mix(in_srgb,var(--am-negative)_12%,transparent)] rounded text-[var(--am-negative)] transition">
                                 <Trash2 size={16} />
                               </button>
                             </td>
@@ -318,7 +315,7 @@ export function ScoringSettings() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="px-6 py-4 border-t border-[var(--am-border)] bg-[var(--am-bg-secondary)] flex gap-4">
+                  <div className="px-6 py-4 border-t border-[var(--am-border)] bg-[var(--am-surface-alt)] flex gap-4">
                     <button className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--am-text-muted)] hover:text-[var(--am-accent)] transition">
                       <Plus size={16} />
                       Add Custom Rule
@@ -326,7 +323,7 @@ export function ScoringSettings() {
                     <button
                       disabled={!rulesChanged || rulesSaving}
                       onClick={saveRules}
-                      className="ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
+                      className="ml-auto px-6 py-2 text-sm font-medium text-[var(--am-on-accent)] rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
                     >
                       {rulesSaving ? "Saving..." : "Save Changes"}
                     </button>
@@ -339,13 +336,13 @@ export function ScoringSettings() {
                     {rules.map((cat, idx) => (
                       <div
                         key={cat.id || idx}
-                        className="px-6 py-4 flex items-center gap-4 hover:bg-[var(--am-bg-tertiary)] transition group"
+                        className="px-6 py-4 flex items-center gap-4 hover:bg-[var(--am-chip)] transition group"
                       >
                         <div className="opacity-0 group-hover:opacity-100 transition text-[var(--am-text-muted)]">
                           <GripVertical size={18} />
                         </div>
                         <div className="flex-1">
-                          <div className="font-medium text-[var(--am-text-primary)]">
+                          <div className="font-medium text-[var(--am-text)]">
                             {cat.label}
                           </div>
                         </div>
@@ -357,7 +354,7 @@ export function ScoringSettings() {
                             handleRuleChange(idx, "isActive", e.target.checked)
                           }
                         />
-                        <button className="p-2 hover:bg-red-100 rounded text-red-600 transition opacity-0 group-hover:opacity-100">
+                        <button className="p-2 hover:bg-[color-mix(in_srgb,var(--am-negative)_12%,transparent)] rounded text-[var(--am-negative)] transition opacity-0 group-hover:opacity-100">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -365,7 +362,7 @@ export function ScoringSettings() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="px-6 py-4 border-t border-[var(--am-border)] bg-[var(--am-bg-secondary)] flex gap-4">
+                  <div className="px-6 py-4 border-t border-[var(--am-border)] bg-[var(--am-surface-alt)] flex gap-4">
                     <button className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--am-text-muted)] hover:text-[var(--am-accent)] transition">
                       <Plus size={16} />
                       Add Category
@@ -373,7 +370,7 @@ export function ScoringSettings() {
                     <button
                       disabled={!rulesChanged || rulesSaving}
                       onClick={saveRules}
-                      className="ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
+                      className="ml-auto px-6 py-2 text-sm font-medium text-[var(--am-on-accent)] rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
                     >
                       {rulesSaving ? "Saving..." : "Save Changes"}
                     </button>
@@ -389,15 +386,15 @@ export function ScoringSettings() {
           <div className="space-y-6">
             {/* Unsaved changes indicator */}
             {rosterChanged && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 text-yellow-900">
-                <div className="w-2 h-2 rounded-full bg-yellow-600" />
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-[color-mix(in_srgb,var(--am-warning)_12%,var(--am-surface))] text-[var(--am-text)]">
+                <div className="w-2 h-2 rounded-full bg-[var(--am-warning)]" />
                 <span className="text-sm font-medium">Unsaved changes</span>
               </div>
             )}
 
             {/* Error message */}
             {rosterError && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-900">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-[color-mix(in_srgb,var(--am-negative)_12%,var(--am-surface))] text-[var(--am-text)]">
                 <AlertCircle size={16} />
                 <span className="text-sm">{rosterError}</span>
               </div>
@@ -411,7 +408,7 @@ export function ScoringSettings() {
               }}
             >
               <div className="p-6">
-                <h3 className="font-semibold text-[var(--am-text-primary)] mb-6">
+                <h3 className="font-semibold text-[var(--am-text)] mb-6">
                   {sport} Roster Slots
                 </h3>
 
@@ -420,15 +417,15 @@ export function ScoringSettings() {
                   {Object.entries(rosterSlots).map(([slot, count]) => (
                     <div
                       key={slot}
-                      className="flex items-center justify-between p-4 rounded-lg bg-[var(--am-bg-secondary)] border border-[var(--am-border)]"
+                      className="flex items-center justify-between p-4 rounded-lg bg-[var(--am-surface-alt)] border border-[var(--am-border)]"
                     >
-                      <span className="font-medium text-[var(--am-text-primary)] min-w-12">
+                      <span className="font-medium text-[var(--am-text)] min-w-12">
                         {slot}
                       </span>
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleSlotChange(slot, -1)}
-                          className="px-2 py-1 rounded hover:bg-[var(--am-bg-tertiary)] text-[var(--am-text-muted)]"
+                          className="px-2 py-1 rounded hover:bg-[var(--am-chip)] text-[var(--am-text-muted)]"
                         >
                           −
                         </button>
@@ -437,7 +434,7 @@ export function ScoringSettings() {
                         </span>
                         <button
                           onClick={() => handleSlotChange(slot, 1)}
-                          className="px-2 py-1 rounded hover:bg-[var(--am-bg-tertiary)] text-[var(--am-text-muted)]"
+                          className="px-2 py-1 rounded hover:bg-[var(--am-chip)] text-[var(--am-text-muted)]"
                         >
                           +
                         </button>
@@ -447,11 +444,11 @@ export function ScoringSettings() {
                 </div>
 
                 {/* Total Display */}
-                <div className="p-4 rounded-lg bg-[var(--am-accent)] bg-opacity-10 border border-[var(--am-accent)] border-opacity-30 mb-6">
+                <div className="p-4 rounded-lg bg-[color-mix(in_srgb,var(--am-accent)_10%,transparent)] border border-[color-mix(in_srgb,var(--am-accent)_30%,transparent)] mb-6">
                   <p className="text-sm text-[var(--am-text-muted)]">
                     Total Roster Spots
                   </p>
-                  <p className="text-2xl font-bold text-[var(--am-accent)]">
+                  <p className="text-2xl font-bold text-[var(--am-text)]">
                     {totalSlots}
                   </p>
                 </div>
@@ -460,7 +457,7 @@ export function ScoringSettings() {
                 <button
                   disabled={!rosterChanged || rosterSaving}
                   onClick={saveRoster}
-                  className="w-full px-6 py-3 text-sm font-medium text-white rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
+                  className="w-full px-6 py-3 text-sm font-medium text-[var(--am-on-accent)] rounded-lg bg-[var(--am-accent)] hover:opacity-90 disabled:opacity-50 transition"
                 >
                   {rosterSaving ? "Saving..." : "Save Roster Config"}
                 </button>

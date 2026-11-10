@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import "../../../components/aurora/aurora.css";
 import { AmbientBg, Glass } from "../../../components/aurora/atoms";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 function mapSupabaseError(msg: string): string {
   if (msg.includes("rate_limit") || msg.includes("over_email_send_rate_limit"))
@@ -13,6 +14,7 @@ function mapSupabaseError(msg: string): string {
 }
 
 export default function ForgotPassword() {
+  const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +47,7 @@ export default function ForgotPassword() {
 
   return (
     <div
-      className="aurora-theme dark"
+      className={`aurora-theme ${theme === "dark" ? "dark" : ""}`}
       style={{ position: "relative", minHeight: "100svh", background: "var(--am-bg)" }}
     >
       <AmbientBg />
@@ -69,7 +71,8 @@ export default function ForgotPassword() {
                 height: 30,
                 borderRadius: 9,
                 background: "var(--am-irid)",
-                boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                color: "var(--am-on-accent)",
+                boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                 flexShrink: 0,
               }}
             />
@@ -135,7 +138,7 @@ export default function ForgotPassword() {
                     height: 22,
                     borderRadius: 99,
                     background: "var(--am-positive)",
-                    color: "#0a0a0a",
+                    color: "var(--am-on-accent)",
                     display: "grid",
                     placeItems: "center",
                     fontSize: 13,
@@ -242,12 +245,12 @@ export default function ForgotPassword() {
                   borderRadius: 999,
                   background: "var(--am-irid)",
                   border: "1px solid var(--am-border-strong)",
-                  color: "#fff",
+                  color: "var(--am-on-accent)",
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: loading ? "not-allowed" : "pointer",
                   opacity: loading ? 0.5 : 1,
-                  boxShadow: "0 6px 20px rgba(255,80,80,0.28)",
+                  boxShadow: "0 6px 20px color-mix(in srgb, var(--am-accent) 28%, transparent)",
                   marginTop: 4,
                 }}
               >

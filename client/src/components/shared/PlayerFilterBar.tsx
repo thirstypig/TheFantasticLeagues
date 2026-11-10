@@ -7,7 +7,7 @@ import { OGBA_TEAM_NAMES } from "../../lib/ogbaTeams";
 const toggleBtnBase =
   "text-[11px] font-bold uppercase tracking-wide rounded-[var(--lg-radius-sm)] transition-colors";
 const toggleActive =
-  "bg-[var(--lg-accent)] text-white";
+  "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]";
 const toggleInactive =
   "text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]";
 

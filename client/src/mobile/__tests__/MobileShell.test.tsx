@@ -16,7 +16,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MobileShell } from "../MobileShell";
 
 vi.mock("../../contexts/ThemeContext", () => ({
-  useTheme: () => ({ theme: "light", toggleTheme: vi.fn() }),
+  useTheme: () => ({ theme: "light", preference: "system", setPreference: vi.fn(), toggleTheme: vi.fn() }),
 }));
 
 vi.mock("../../contexts/LeagueContext", () => ({
@@ -49,6 +49,15 @@ describe("MobileShell — always-mounted drawer", () => {
     expect(screen.getByTestId("mobile-tab-bar")).toBeInTheDocument();
   });
 
+});
+
+describe("MobileShell — theme control", () => {
+  it("renders no theme toggle (header or drawer)", () => {
+    renderShell();
+    expect(
+      screen.queryAllByRole("button", { name: /switch to (light|dark) theme|light theme|dark theme/i, hidden: true }),
+    ).toHaveLength(0);
+  });
 });
 
 describe("MobileShell — hamburger / drawer interaction", () => {

@@ -502,7 +502,7 @@ export default function Team() {
                           onClick={(e) => { e.stopPropagation(); setSelectedWeekKey(week.weekKey); }}
                           className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                             isActive
-                              ? "bg-[var(--lg-accent)] text-white"
+                              ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]"
                               : "bg-[var(--lg-bg-card)] text-[var(--lg-text-muted)] border border-[var(--lg-border-faint)] hover:text-[var(--lg-text-primary)] hover:border-[var(--lg-accent)]/30"
                           }`}
                         >

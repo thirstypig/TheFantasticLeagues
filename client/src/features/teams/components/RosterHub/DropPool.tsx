@@ -39,7 +39,7 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
       role="region"
       aria-label="Drop pool"
       style={{
-        background: "color-mix(in srgb, #c41a85 6%, transparent)",
+        background: "color-mix(in srgb, var(--am-negative) 6%, transparent)",
         border: "1px solid var(--am-border)",
         borderRadius: 14,
         padding: 12,
@@ -57,7 +57,7 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
             width: 8,
             height: 8,
             borderRadius: 99,
-            background: "#ff6b8a",
+            background: "var(--am-negative)",
           }}
         />
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
@@ -98,8 +98,8 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
                 fontWeight: 700,
                 padding: "2px 6px",
                 borderRadius: 6,
-                background: "color-mix(in srgb, #ff6b8a 24%, transparent)",
-                color: "#ff6b8a",
+                background: "color-mix(in srgb, var(--am-negative) 24%, transparent)",
+                color: "var(--am-negative)",
                 letterSpacing: 0.4,
               }}
             >

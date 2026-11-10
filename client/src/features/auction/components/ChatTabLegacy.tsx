@@ -46,7 +46,7 @@ export default function ChatTabLegacy({ messages, onSend, myUserId }: ChatTabPro
             <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 ${
                 isMe
-                  ? 'bg-[var(--lg-accent)] text-white'
+                  ? 'bg-[var(--lg-accent)] text-[var(--lg-on-accent)]'
                   : 'bg-[var(--lg-tint)] text-[var(--lg-text-primary)]'
               }`}>
                 {!isMe && (
@@ -80,7 +80,7 @@ export default function ChatTabLegacy({ messages, onSend, myUserId }: ChatTabPro
         <button
           onClick={handleSend}
           disabled={!input.trim()}
-          className="p-1.5 rounded-lg bg-[var(--lg-accent)] text-white hover:opacity-90 disabled:opacity-30 transition-opacity"
+          className="p-1.5 rounded-lg bg-[var(--lg-accent)] text-[var(--lg-on-accent)] hover:opacity-90 disabled:opacity-30 transition-opacity"
         >
           <Send size={14} />
         </button>

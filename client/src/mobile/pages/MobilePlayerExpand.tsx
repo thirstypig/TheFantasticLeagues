@@ -282,7 +282,7 @@ export function MobilePlayerExpand({
             padding: "9px 12px",
             borderRadius: 10,
             background: isWatched ? "var(--am-chip-strong)" : "var(--am-irid)",
-            color: isWatched ? "var(--am-text)" : "#fff",
+            color: isWatched ? "var(--am-text)" : "var(--am-on-accent)",
             border: isWatched ? "1px solid var(--am-border-strong)" : "none",
             fontSize: 12,
             fontWeight: 700,

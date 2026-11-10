@@ -28,14 +28,10 @@
        ============================================ */
 
     /* Background — warm gray, easy on eyes */
-    --lg-bg-primary: #d6dde7;
-    --lg-bg-secondary: #cdd5e1;
-    --lg-bg-page: linear-gradient(
-      145deg,
-      #d4dbe6 0%,
-      #c8d1de 50%,
-      #d0d9e5 100%
-    );
+    --lg-bg-primary: #ece2c6;
+    --lg-bg-secondary: #e5d9b8;
+    --lg-bg-card: #ece2c6;
+    --lg-bg-page: #e0d3ae;
 
     /* Glass — visible panels on the gray background */
     --lg-glass-bg: rgba(245, 247, 250, 0.7);
@@ -48,16 +44,17 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
 
     /* Text */
-    --lg-text-primary: #0f172a;
-    --lg-text-secondary: #374151;
-    --lg-text-muted: #4b5563;
-    --lg-text-heading: var(--lg-pantone-294);
+    --lg-text-primary: #15171a;
+    --lg-text-secondary: #33373b;
+    --lg-text-muted: #33373b;
+    --lg-text-heading: #15171a;
     --lg-text-accent: var(--lg-pantone-294-light);
 
     /* Accent */
-    --lg-accent: var(--lg-pantone-294);
-    --lg-accent-hover: var(--lg-pantone-294-light);
-    --lg-accent-active: var(--lg-pantone-294-bright);
+    --lg-accent: #990000;
+    --lg-accent-hover: #990000;
+    --lg-accent-active: #990000;
+    --lg-on-accent: #ffffff;   /* text/icons on --lg-accent fills */
 
     /* Tables */
     --lg-table-header-bg: rgba(0, 45, 114, 0.10);
@@ -86,7 +83,8 @@
     --lg-tint: rgba(0, 45, 114, 0.06);
     --lg-tint-hover: rgba(0, 45, 114, 0.10);
     --lg-border-faint: rgba(0, 45, 114, 0.08);
-    --lg-border-subtle: rgba(0, 45, 114, 0.12);
+    --lg-border-subtle: #c9b98c;
+    --lg-border-strong: #8a7a4f;
     --lg-divide: rgba(0, 45, 114, 0.08);
 
     /* Status Colors — WCAG AA on #d6dde7 (light bg) */
@@ -164,9 +162,10 @@
   .dark {
     color-scheme: dark;
 
-    --lg-bg-primary: #2d333b;
-    --lg-bg-secondary: #222630;
-    --lg-bg-page: #3d434b;
+    --lg-bg-primary: #4a2a2e;
+    --lg-bg-secondary: #553236;
+    --lg-bg-card: #4a2a2e;
+    --lg-bg-page: #3a1f22;
 
     /* Glass - Dark */
     --lg-glass-bg: rgba(15, 23, 42, 0.75);
@@ -179,16 +178,17 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
     /* Text - Dark */
-    --lg-text-primary: #f1f5f9;
-    --lg-text-secondary: #cbd5e1;
-    --lg-text-muted: #8b9bb5;
-    --lg-text-heading: var(--lg-pantone-294-bright);
+    --lg-text-primary: #f6f7f4;
+    --lg-text-secondary: #dde1dc;
+    --lg-text-muted: #dde1dc;
+    --lg-text-heading: #f6f7f4;
     --lg-text-accent: var(--lg-pantone-294-bright);
 
     /* Accent - Dark */
-    --lg-accent: var(--lg-pantone-294-bright);
-    --lg-accent-hover: #3b8bff;
-    --lg-accent-active: #5c9fff;
+    --lg-accent: #ffcc00;
+    --lg-accent-hover: #ffcc00;
+    --lg-accent-active: #ffcc00;
+    --lg-on-accent: #2a1a00;   /* text/icons on --lg-accent fills */
 
     /* Tables - Dark */
     --lg-table-header-bg: rgba(26, 117, 255, 0.08);
@@ -217,7 +217,8 @@
     --lg-tint: rgba(255, 255, 255, 0.06);
     --lg-tint-hover: rgba(255, 255, 255, 0.12);
     --lg-border-faint: rgba(255, 255, 255, 0.07);
-    --lg-border-subtle: rgba(255, 255, 255, 0.12);
+    --lg-border-subtle: #6a3d42;
+    --lg-border-strong: #a07a7e;
     --lg-divide: rgba(255, 255, 255, 0.07);
 
     /* Status Colors — Dark (lighter/vivid for dark bg) */
@@ -471,7 +472,7 @@
 
   .lg-button-primary {
     background: var(--lg-accent);
-    color: white;
+    color: var(--lg-on-accent);
     box-shadow: 0 2px 8px rgba(0, 45, 114, 0.25);
   }
 
@@ -512,7 +513,7 @@
   .lg-input:focus {
     outline: none;
     border-color: var(--lg-input-focus);
-    box-shadow: 0 0 0 3px rgba(26, 117, 255, 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lg-input-focus) 25%, transparent);
   }
 
   .lg-input::placeholder {
