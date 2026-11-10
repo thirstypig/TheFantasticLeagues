@@ -5,10 +5,12 @@ import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
 vi.mock("../../auth/AuthProvider", () => ({ useAuth: vi.fn() }));
 vi.mock("../../contexts/LeagueContext", () => ({ useLeague: vi.fn() }));
 vi.mock("../../hooks/useSeasonGating", () => ({ useSeasonGating: vi.fn() }));
+vi.mock("../../hooks/useMediaQuery", () => ({ useMediaQuery: vi.fn(() => false) }));
 
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
 import { useSeasonGating } from "../../hooks/useSeasonGating";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import League from "../League";
 import appSource from "../../App.tsx?raw";
 import { Navigate } from "react-router-dom";
@@ -52,6 +54,23 @@ describe("League page", () => {
     }
     expect(screen.queryByRole("link", { name: /^Commissioner/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Auction" })).toBeNull();
+  });
+
+  it("insets the page 16px on mobile only", () => {
+    setup({ role: "OWNER" });
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    const { unmount } = renderLeague();
+    expect(screen.getByRole("heading", { name: "League" }).parentElement).toHaveStyle({
+      paddingLeft: "16px",
+      paddingRight: "16px",
+    });
+    unmount();
+
+    vi.mocked(useMediaQuery).mockReturnValue(false);
+    renderLeague();
+    const wrapper = screen.getByRole("heading", { name: "League" }).parentElement!;
+    expect(wrapper.style.paddingLeft).toBe("");
+    expect(wrapper.style.paddingRight).toBe("");
   });
 
   it("links Standings to /season", () => {

@@ -4,6 +4,7 @@ import { Glass, SectionLabel } from "../components/aurora/atoms";
 import { useLeague } from "../contexts/LeagueContext";
 import { useSeasonGating } from "../hooks/useSeasonGating";
 import { useCanAccessCommissioner } from "../hooks/useCanAccessCommissioner";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { buildLeagueSections } from "../lib/navModel";
 
 /** League tab landing page, shared by the desktop and mobile shells. */
@@ -11,6 +12,8 @@ export default function League() {
   const { leagueId, draftMode } = useLeague();
   const gating = useSeasonGating();
   const canAccessCommissioner = useCanAccessCommissioner();
+  // Mobile content wrapper has no side padding; desktop shell already pads.
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const sections = buildLeagueSections({
     leagueId,
@@ -24,7 +27,16 @@ export default function League() {
   });
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div
+      style={{
+        maxWidth: 640,
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        padding: isMobile ? "0 16px" : undefined,
+      }}
+    >
       <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--am-text)", margin: 0 }}>League</h1>
       {sections.map((section) => (
         <Glass key={section.title} padded={false}>
