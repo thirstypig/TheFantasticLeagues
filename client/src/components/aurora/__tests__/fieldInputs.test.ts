@@ -19,14 +19,31 @@ describe("Field rule reaches non-.lg-input inputs", () => {
   });
 
   it.each(["Login", "Signup", "ForgotPassword", "ResetPassword"])(
-    "%s has no surface-faint background or am-border on inputs",
+    "%s: surface-faint cards never carry the Field border",
     (name) => {
       const text = src(`features/auth/pages/${name}.tsx`);
-      // The only allowed surface-faint background is Signup's error alert (negative border).
+      // Non-input cards use --am-surface-faint + --am-border; Field border is input-only.
       for (const m of text.matchAll(/background: "var\(--am-surface-faint\)",\n\s*(border[^\n]*)/g)) {
-        expect(m[1]).toContain("--am-negative");
+        expect(m[1]).not.toContain("--am-field-line");
       }
       expect(text).toContain("var(--am-field)");
     },
   );
+
+  it("auth pages use Field only on their input style", () => {
+    // Expected field-line counts include input border + focus/blur handlers on the input.
+    const expected: Record<string, { field: number; fieldLine: number }> = {
+      Login: { field: 1, fieldLine: 1 },
+      Signup: { field: 1, fieldLine: 4 },
+      ForgotPassword: { field: 1, fieldLine: 2 },
+      ResetPassword: { field: 1, fieldLine: 1 },
+    };
+    for (const [name, counts] of Object.entries(expected)) {
+      const text = src(`features/auth/pages/${name}.tsx`);
+      expect(text.match(/var\(--am-field\)/g)?.length ?? 0, `${name} --am-field`).toBe(counts.field);
+      expect(text.match(/var\(--am-field-line\)/g)?.length ?? 0, `${name} --am-field-line`).toBe(
+        counts.fieldLine,
+      );
+    }
+  });
 });

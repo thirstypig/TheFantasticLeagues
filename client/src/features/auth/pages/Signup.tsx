@@ -191,8 +191,8 @@ export default function Signup() {
                   style={{
                     padding: 16,
                     borderRadius: 14,
-                    background: "var(--am-field)",
-                    border: "1px solid var(--am-field-line)",
+                    background: "var(--am-surface-faint)",
+                    border: "1px solid var(--am-border)",
                     color: "var(--am-text)",
                     fontSize: 13,
                     textAlign: "center",

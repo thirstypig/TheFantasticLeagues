@@ -290,8 +290,8 @@ export default function Login() {
                 style={{
                   padding: 12,
                   borderRadius: 12,
-                  background: "var(--am-field)",
-                  border: "1px solid var(--am-field-line)",
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
                   fontSize: 13,
                   color: "var(--am-text)",
                 }}
@@ -395,8 +395,8 @@ export default function Login() {
                   justifyContent: "center",
                   gap: 8,
                   borderRadius: 12,
-                  background: "var(--am-field)",
-                  border: "1px solid var(--am-field-line)",
+                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-border)",
                   color: "var(--am-text-muted)",
                   fontSize: 13,
                   fontWeight: 600,
