@@ -964,6 +964,23 @@ export class CommissionerService {
           where: { leagueId },
           orderBy: [{ category: "asc" }, { key: "asc" }],
         });
+        return rules;
+      }
+
+      // Backfill defaults added after this league was seeded (e.g.
+      // transactions.trade_window). Insert-only: existing rows are untouched.
+      const have = new Set(rules.map((r) => `${r.category}.${r.key}`));
+      const missing = DEFAULT_RULES.filter((r) => !have.has(`${r.category}.${r.key}`));
+      if (missing.length > 0) {
+        await prisma.leagueRule.createMany({
+          data: missing.map((r) => ({ ...r, leagueId })),
+          skipDuplicates: true,
+        });
+        invalidateLeagueRules(leagueId);
+        rules = await prisma.leagueRule.findMany({
+          where: { leagueId },
+          orderBy: [{ category: "asc" }, { key: "asc" }],
+        });
       }
       return rules;
   }

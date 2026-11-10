@@ -12,6 +12,7 @@ import { requireSeasonStatus } from "../../middleware/seasonGuard.js";
 import { logger } from "../../lib/logger.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
 import { getWeekKey } from "../../lib/utils.js";
+import { getTradeWindow } from "../../lib/tradeWindow.js";
 
 const processSchema = z.object({
   effectiveDate: z
@@ -172,6 +173,9 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
     return res.status(403).json({ error: "Team does not belong to this league" });
   }
 
+  const tradeWindow = await getTradeWindow(leagueId);
+  if (!tradeWindow.open) return res.status(409).json({ error: tradeWindow.message });
+
   // Verify all involved teams belong to the same league
   const involvedTeamIds = [...new Set<number>(items.flatMap((i: any) => [i.senderId, i.recipientId]))];
   const teams = await prisma.team.findMany({
@@ -299,6 +303,10 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   // Verify caller owns a counterparty team (not the proposer), or is commissioner/admin
   const acceptErr = await assertCounterpartyAccess(req.user!, trade);
   if (acceptErr) return res.status(403).json({ error: acceptErr });
+
+  // A trade proposed inside the window can be accepted only inside it too.
+  const tradeWindow = await getTradeWindow(trade.leagueId);
+  if (!tradeWindow.open) return res.status(409).json({ error: tradeWindow.message });
 
   const updated = await prisma.trade.update({
     where: { id },

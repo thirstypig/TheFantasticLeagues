@@ -163,3 +163,61 @@ describe("CommissionerService.unlockRules", () => {
     });
   });
 });
+
+describe("CommissionerService.getRules backfill", () => {
+  const orderBy = [{ category: "asc" }, { key: "asc" }];
+
+  it("inserts only the missing trade_window default for a league with existing rules", async () => {
+    const { DEFAULT_RULES } = await import("../../../lib/sportConfig.js");
+    // Existing league: every default EXCEPT trade_window.
+    const existing = DEFAULT_RULES.filter((r) => r.key !== "trade_window").map((r, i) => ({
+      id: i + 1, leagueId: 7, ...r,
+    }));
+    const reloaded = [
+      ...existing,
+      { id: 999, leagueId: 7, category: "transactions", key: "trade_window", value: "anytime", label: "When trades are allowed" },
+    ];
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce(existing).mockResolvedValueOnce(reloaded);
+    mockPrisma.leagueRule.createMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.getRules(7);
+
+    expect(mockPrisma.leagueRule.createMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.leagueRule.createMany).toHaveBeenCalledWith({
+      data: [
+        { category: "transactions", key: "trade_window", value: "anytime", label: "When trades are allowed", leagueId: 7 },
+      ],
+      skipDuplicates: true,
+    });
+    expect(mockPrisma.leagueRule.findMany).toHaveBeenNthCalledWith(1, { where: { leagueId: 7 }, orderBy });
+    expect(mockPrisma.leagueRule.findMany).toHaveBeenNthCalledWith(2, { where: { leagueId: 7 }, orderBy });
+    expect(mockPrisma.leagueRule.updateMany).not.toHaveBeenCalled();
+    expect(mockPrisma.leagueRule.update).not.toHaveBeenCalled();
+    expect(result).toBe(reloaded);
+  });
+
+  it("does not create anything when the league already has every default key", async () => {
+    const { DEFAULT_RULES } = await import("../../../lib/sportConfig.js");
+    const all = DEFAULT_RULES.map((r, i) => ({ id: i + 1, leagueId: 7, ...r }));
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce(all);
+
+    const result = await service.getRules(7);
+
+    expect(mockPrisma.leagueRule.createMany).not.toHaveBeenCalled();
+    expect(mockPrisma.leagueRule.findMany).toHaveBeenCalledTimes(1);
+    expect(result).toBe(all);
+  });
+
+  it("seeds every default (no skipDuplicates path change) when the league has no rules", async () => {
+    const { DEFAULT_RULES } = await import("../../../lib/sportConfig.js");
+    mockPrisma.leagueRule.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 1 }]);
+    mockPrisma.leagueRule.createMany.mockResolvedValue({ count: DEFAULT_RULES.length });
+
+    await service.getRules(7);
+
+    expect(mockPrisma.leagueRule.createMany).toHaveBeenCalledTimes(1);
+    const arg = mockPrisma.leagueRule.createMany.mock.calls[0][0];
+    expect(arg.data).toHaveLength(DEFAULT_RULES.length);
+    expect(arg.data.some((r: any) => r.key === "trade_window" && r.value === "anytime")).toBe(true);
+  });
+});
