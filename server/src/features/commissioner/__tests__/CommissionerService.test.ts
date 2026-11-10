@@ -49,12 +49,45 @@ vi.mock("../../../lib/logger.js", () => ({
 }));
 vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
 
-import { CommissionerService } from "../services/CommissionerService.js";
+import { CommissionerService, RulesLockedError } from "../services/CommissionerService.js";
 
 const service = new CommissionerService();
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("CommissionerService.assertRulesEditable", () => {
+  const service = new CommissionerService();
+
+  it("returns without querying when every category is mutable any time", async () => {
+    mockPrisma.leagueRule.findFirst.mockClear();
+    mockPrisma.season.findFirst.mockClear();
+    await expect(service.assertRulesEditable(1, ["transactions", "transactions"])).resolves.toBeUndefined();
+    expect(mockPrisma.leagueRule.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.season.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("throws RulesLockedError (locked rule) for a non-exempt category", async () => {
+    mockPrisma.leagueRule.findFirst.mockResolvedValueOnce({ id: 1, isLocked: true });
+    await expect(service.assertRulesEditable(1, ["transactions", "il"])).rejects.toBeInstanceOf(RulesLockedError);
+    mockPrisma.leagueRule.findFirst.mockResolvedValueOnce({ id: 1, isLocked: true });
+    await expect(service.assertRulesEditable(1, ["il"])).rejects.toThrow("Rules are locked for this season");
+  });
+
+  it("throws the season-setup error when a season is past SETUP", async () => {
+    mockPrisma.leagueRule.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.season.findFirst.mockResolvedValueOnce({ id: 2, status: "IN_SEASON" });
+    await expect(service.assertRulesEditable(1, ["roster"])).rejects.toThrow(
+      "Rules cannot be changed after season setup.",
+    );
+  });
+
+  it("resolves when nothing is locked and no season is past SETUP", async () => {
+    mockPrisma.leagueRule.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.season.findFirst.mockResolvedValueOnce(null);
+    await expect(service.assertRulesEditable(1, ["roster"])).resolves.toBeUndefined();
+  });
 });
 
 describe("CommissionerService.updateRules", () => {
