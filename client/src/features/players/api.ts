@@ -33,7 +33,8 @@ type PeriodStatsCached = { stats: PeriodStatRow[]; computedAt: string | null };
 const _seasonStatsCache = new Map<number, Promise<SeasonStatsCached>>();
 const _periodStatsCache = new Map<number, Promise<PeriodStatsCached>>();
 let _auctionCache: Promise<PlayerSeasonStat[]> | null = null;
-const _seasonStandingsCache = new Map<number, Promise<SeasonStandingsApiResponse>>();
+const _seasonStandingsCache = new Map<number, { promise: Promise<SeasonStandingsApiResponse>; at: number }>();
+const SEASON_STANDINGS_TTL = 5 * 60 * 1000;
 const _periodCategoryCache = new Map<string, Promise<PeriodCategoryStandingsResponse>>();
 const MLB_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const _mlbCache = new Map<string, { promise: Promise<unknown>; ts: number }>();
@@ -197,30 +198,35 @@ export async function getPlayerPeriodStats(leagueId?: number): Promise<PeriodSta
 
 export async function getSeasonStandings(leagueId?: number): Promise<SeasonStandingsApiResponse> {
   const cacheKey = leagueId ?? 1;
-  if (!_seasonStandingsCache.has(cacheKey)) {
-    _seasonStandingsCache.set(cacheKey, (async () => {
-      const lid = leagueId || 1;
-      const url = `${API_BASE}/season?leagueId=${lid}`;
-      const raw = await fetchJsonApi<Record<string, unknown>>(url);
+  const hit = _seasonStandingsCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < SEASON_STANDINGS_TTL) return hit.promise;
+  const promise: Promise<SeasonStandingsApiResponse> = (async () => {
+    const lid = leagueId || 1;
+    const url = `${API_BASE}/season?leagueId=${lid}`;
+    const raw = await fetchJsonApi<Record<string, unknown>>(url);
 
-      const computedAt = typeof raw?.computedAt === "string" ? raw.computedAt : undefined;
+    const computedAt = typeof raw?.computedAt === "string" ? raw.computedAt : undefined;
 
-      // Backend returns { data: [...] }
-      if (raw && Array.isArray(raw.data)) {
-           return { periodIds: [], rows: raw.data as SeasonStandingRow[], computedAt };
-      }
+    // Backend returns { data: [...] }
+    if (raw && Array.isArray(raw.data)) {
+         return { periodIds: [], rows: raw.data as SeasonStandingRow[], computedAt };
+    }
 
-      if (raw && Array.isArray(raw.rows)) {
-        const periodIds = Array.isArray(raw.periodIds) ? (raw.periodIds as unknown[]).map((x) => Number(x)).filter(Number.isFinite) : [];
-        const periodNames = Array.isArray(raw.periodNames) ? raw.periodNames as string[] : [];
-        const categoryKeys = Array.isArray(raw.categoryKeys) ? raw.categoryKeys as string[] : [];
-        return { periodIds, periodNames, categoryKeys, rows: raw.rows as SeasonStandingRow[], computedAt };
-      }
-      if (Array.isArray(raw)) return { periodIds: [], rows: raw as SeasonStandingRow[], computedAt };
-      return { periodIds: [], rows: [], computedAt };
-    })());
-  }
-  return _seasonStandingsCache.get(cacheKey)!;
+    if (raw && Array.isArray(raw.rows)) {
+      const periodIds = Array.isArray(raw.periodIds) ? (raw.periodIds as unknown[]).map((x) => Number(x)).filter(Number.isFinite) : [];
+      const periodNames = Array.isArray(raw.periodNames) ? raw.periodNames as string[] : [];
+      const categoryKeys = Array.isArray(raw.categoryKeys) ? raw.categoryKeys as string[] : [];
+      return { periodIds, periodNames, categoryKeys, rows: raw.rows as SeasonStandingRow[], computedAt };
+    }
+    if (Array.isArray(raw)) return { periodIds: [], rows: raw as SeasonStandingRow[], computedAt };
+    return { periodIds: [], rows: [], computedAt };
+  })().catch((err) => {
+    // Evict failures so the next call retries instead of replaying the rejection.
+    if (_seasonStandingsCache.get(cacheKey)?.promise === promise) _seasonStandingsCache.delete(cacheKey);
+    throw err;
+  });
+  _seasonStandingsCache.set(cacheKey, { promise, at: Date.now() });
+  return promise;
 }
 
 export async function getPeriodCategoryStandings(periodId: string | number, leagueId?: number): Promise<PeriodCategoryStandingsResponse> {
@@ -267,6 +273,11 @@ function careerStatsCached(
 /** @internal — test-only reset hook. */
 export function _resetCareerStatsCache(): void {
   _careerStatsCache.clear();
+}
+
+/** @internal — test-only reset hook. */
+export function _resetSeasonStandingsCache(): void {
+  _seasonStandingsCache.clear();
 }
 
 export async function getPlayerProfile(mlbId: string): Promise<PlayerProfile> {
