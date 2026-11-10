@@ -45,7 +45,10 @@ export function rankRows(
   rows: TodayStandingsRow[],
   pick: (r: TodayStandingsRow) => number = (r) => r.totalPoints,
 ): RankedRow[] {
-  return rows.map((r) => ({ ...r, rank: 1 + rows.filter((o) => pick(o) > pick(r)).length }));
+  // Compare at display precision: roto tie-splits produce thirds, so float
+  // noise (33.3333333 vs 33.33333334) must not break a real tie.
+  const score = (r: TodayStandingsRow) => round1(pick(r));
+  return rows.map((r) => ({ ...r, rank: 1 + rows.filter((o) => score(o) > score(r)).length }));
 }
 
 export interface RankSummary {
@@ -64,6 +67,9 @@ export function summarizeRank(
 ): RankSummary | null {
   const me = rows.find((r) => r.teamId === myTeamId);
   if (!me) return null;
+  // /api/season returns a zero row per team before any period is scored;
+  // ranking those would say "You're 1st" before a single point exists.
+  if (me.periodPoints.length === 0 || rows.every((r) => round1(r.totalPoints) === 0)) return null;
   const ranked = rankRows(rows);
   const rank = ranked.find((r) => r.teamId === me.teamId)!.rank;
 
@@ -77,13 +83,14 @@ export function summarizeRank(
   }
 
   const others = rows.filter((r) => r.teamId !== me.teamId);
+  const mine = round1(me.totalPoints);
   let gap: RankSummary["gap"] = null;
-  const tied = others.find((o) => o.totalPoints === me.totalPoints);
+  const tied = others.find((o) => round1(o.totalPoints) === mine);
   if (tied) {
     gap = { kind: "tied", points: 0, teamName: tied.teamName };
   } else if (rank > 1) {
     const above = others
-      .filter((o) => o.totalPoints > me.totalPoints)
+      .filter((o) => round1(o.totalPoints) > mine)
       .sort((a, b) => a.totalPoints - b.totalPoints)[0];
     gap = {
       kind: "behind",
@@ -183,7 +190,15 @@ export interface PlayerNewsTx {
   toLeague: "NL" | "AL" | null;
 }
 
-export type NewsKind = "il-placed" | "il-activated" | "sent-down" | "called-up" | "traded" | "dfa" | "released";
+export type NewsKind =
+  | "il-placed"
+  | "il-activated"
+  | "sent-down"
+  | "called-up"
+  | "traded"
+  | "claimed"
+  | "dfa"
+  | "released";
 
 export interface NewsItem {
   key: string;
@@ -221,7 +236,8 @@ export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[] {
   const out: NewsItem[] = [];
   for (const t of txs) {
     const last = lastName(t.playerName);
-    const leavesNl = t.typeCode === "TR" && t.fromLeague === "NL" && t.toLeague === "AL";
+    const leavesNl =
+      (t.typeCode === "TR" || t.typeCode === "CLW") && t.fromLeague === "NL" && t.toLeague === "AL";
     const base = { key: String(t.id), when: newsWhen(t.date, now), leavesNl };
     const desc = t.description;
     switch (t.typeCode) {
@@ -256,6 +272,15 @@ export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[] {
                 : t.toTeamAbbr
                   ? `To ${t.toTeamAbbr}`
                   : "",
+          tone: leavesNl ? "warn" : "neutral",
+        });
+        break;
+      case "CLW":
+        out.push({
+          ...base,
+          kind: "claimed",
+          title: t.toTeamAbbr ? `${last} claimed by ${t.toTeamAbbr}` : `${last} claimed off waivers`,
+          detail: t.fromTeamAbbr ? `Off waivers from ${t.fromTeamAbbr}` : "",
           tone: leavesNl ? "warn" : "neutral",
         });
         break;

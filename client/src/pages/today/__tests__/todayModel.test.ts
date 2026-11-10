@@ -64,6 +64,10 @@ describe("rankRows", () => {
     const ranked = rankRows([row(1, [10]), row(2, [10]), row(3, [5]), row(4, [20])]);
     expect(ranked.map((r) => [r.teamId, r.rank]).sort()).toEqual([[1, 2], [2, 2], [3, 4], [4, 1]]);
   });
+  it("treats totals equal to one decimal as tied (roto tie-split thirds)", () => {
+    const ranked = rankRows([row(1, [33.3333333]), row(2, [33.33333334]), row(3, [10])]);
+    expect(ranked.map((r) => [r.teamId, r.rank])).toEqual([[1, 1], [2, 1], [3, 3]]);
+  });
 });
 
 describe("summarizeRank", () => {
@@ -96,6 +100,17 @@ describe("summarizeRank", () => {
     expect(s.gap).toEqual({ kind: "ahead", points: 2.5, teamName: "T2" });
     expect(s.teamCount).toBe(3);
     expect(s.totalPoints).toBe(12.5);
+  });
+  it("float tie-splits are tied in summarizeRank", () => {
+    const s = summarizeRank([row(1, [33.33333334], "A"), row(2, [33.3333333], "Me"), row(3, [10], "C")], 2, ["P1"])!;
+    expect(s.rank).toBe(1);
+    expect(s.gap).toEqual({ kind: "tied", points: 0, teamName: "A" });
+  });
+  it("returns null before scoring starts: user has no period points", () => {
+    expect(summarizeRank([row(1, []), row(2, [])], 1, [])).toBeNull();
+  });
+  it("returns null before scoring starts: every team's total is 0", () => {
+    expect(summarizeRank([row(1, [0]), row(2, [0]), row(3, [0])], 1, ["P1"])).toBeNull();
   });
   it("returns null rank when the user has no team", () => {
     expect(summarizeRank([row(1, [1])], null, ["P1"])).toBeNull();
@@ -319,6 +334,21 @@ describe("classifyNews", () => {
     expect(out.map((n) => n.leavesNl)).toEqual([true, false, false]);
     expect(out.map((n) => n.tone)).toEqual(["warn", "neutral", "neutral"]);
     expect(out[0]).toMatchObject({ kind: "traded", title: "Schultz traded to CWS", detail: "From NYM to CWS" });
+  });
+
+  it("classifies waiver claims and tags NL-to-AL claims as leaving the NL", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, typeCode: "CLW", playerName: "José Tena", description: "Cleveland Guardians claimed DH José Tena off waivers from Washington Nationals.", fromTeamAbbr: "WSH", toTeamAbbr: "CLE", fromLeague: "NL", toLeague: "AL" }),
+        ntx({ id: 2, typeCode: "CLW", description: "Claimed.", fromTeamAbbr: "NYM", toTeamAbbr: "LAD", fromLeague: "NL", toLeague: "NL" }),
+        ntx({ id: 3, typeCode: "CLW", description: "Claimed.", fromTeamAbbr: null, toTeamAbbr: null, fromLeague: null, toLeague: null }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out.map((n) => n.kind)).toEqual(["claimed", "claimed", "claimed"]);
+    expect(out[0]).toMatchObject({ title: "Tena claimed by CLE", detail: "Off waivers from WSH", leavesNl: true, tone: "warn" });
+    expect(out[1]).toMatchObject({ title: "Schultz claimed by LAD", detail: "Off waivers from NYM", leavesNl: false, tone: "neutral" });
+    expect(out[2]).toMatchObject({ title: "Schultz claimed off waivers", detail: "", leavesNl: false, tone: "neutral" });
   });
 
   it("classifies DFA and release as warnings", () => {

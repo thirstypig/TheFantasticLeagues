@@ -127,6 +127,7 @@ const ICON: Record<NewsItem["kind"], string> = {
   "sent-down": "↓",
   "called-up": "↑",
   traded: "⇄",
+  claimed: "⇄",
   dfa: "✕",
   released: "✕",
 };
