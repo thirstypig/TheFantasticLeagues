@@ -214,14 +214,7 @@ export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[] {
       case "SC": {
         const placed = desc.match(/placed .* on the (\d+)-day injured list/i);
         if (placed) {
-          const marker = "injured list.";
-          const mi = desc.indexOf(marker);
-          let detail = "";
-          if (mi >= 0) detail = desc.slice(mi + marker.length).trim();
-          else {
-            const li = desc.lastIndexOf(". ");
-            if (li >= 0) detail = desc.slice(li + 2).trim();
-          }
+          const detail = desc.match(/injured list(?: retroactive to [^.]*)?\.\s*(.*)$/i)?.[1]?.trim() ?? "";
           out.push({ ...base, kind: "il-placed", title: `${last} placed on the ${placed[1]}-day IL`, detail, tone: "warn" });
         } else if (/activated .* from the (\d+)-day injured list/i.test(desc)) {
           out.push({ ...base, kind: "il-activated", title: `${last} activated from the IL`, detail: "Back on the active roster", tone: "good" });
@@ -240,8 +233,15 @@ export function classifyNews(txs: PlayerNewsTx[], now: Date): NewsItem[] {
         out.push({
           ...base,
           kind: "traded",
-          title: `${last} traded to ${t.toTeamAbbr}`,
-          detail: `From ${t.fromTeamAbbr} to ${t.toTeamAbbr}`,
+          title: t.toTeamAbbr ? `${last} traded to ${t.toTeamAbbr}` : `${last} traded`,
+          detail:
+            t.fromTeamAbbr && t.toTeamAbbr
+              ? `From ${t.fromTeamAbbr} to ${t.toTeamAbbr}`
+              : t.fromTeamAbbr
+                ? `From ${t.fromTeamAbbr}`
+                : t.toTeamAbbr
+                  ? `To ${t.toTeamAbbr}`
+                  : "",
           tone: leavesNl ? "warn" : "neutral",
         });
         break;

@@ -201,6 +201,40 @@ describe("classifyNews", () => {
     expect(n.detail).toBe("");
   });
 
+  it("returns empty IL detail when team name contains a period", () => {
+    const [n] = classifyNews(
+      [ntx({ description: "St. Louis Cardinals placed 1B Foo Bar on the 15-day injured list retroactive to April 20." })],
+      NEWS_NOW,
+    );
+    expect(n.detail).toBe("");
+  });
+
+  it("extracts the injury for a Jr. player and for retroactive placements", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, playerName: "Ronald Acuna Jr.", description: "Atlanta Braves placed RF Ronald Acuna Jr. on the 10-day injured list. Right knee sprain." }),
+        ntx({ id: 2, description: "St. Louis Cardinals placed 1B Foo Bar on the 15-day injured list retroactive to April 20. Left oblique strain." }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out[0].detail).toBe("Right knee sprain.");
+    expect(out[1].detail).toBe("Left oblique strain.");
+  });
+
+  it("handles unknown trade teams without printing null", () => {
+    const out = classifyNews(
+      [
+        ntx({ id: 1, typeCode: "TR", description: "Traded.", fromTeamAbbr: "ARI", toTeamAbbr: null, fromLeague: "NL", toLeague: null }),
+        ntx({ id: 2, typeCode: "TR", description: "Traded.", fromTeamAbbr: null, toTeamAbbr: "SEA", fromLeague: null, toLeague: "AL" }),
+        ntx({ id: 3, typeCode: "TR", description: "Traded.", fromTeamAbbr: null, toTeamAbbr: null, fromLeague: null, toLeague: null }),
+      ],
+      NEWS_NOW,
+    );
+    expect(out[0]).toMatchObject({ title: "Schultz traded", detail: "From ARI" });
+    expect(out[1]).toMatchObject({ title: "Schultz traded to SEA", detail: "To SEA" });
+    expect(out[2]).toMatchObject({ title: "Schultz traded", detail: "" });
+  });
+
   it("classifies IL activation", () => {
     const [n] = classifyNews([ntx({})], NEWS_NOW);
     expect(n).toMatchObject({
