@@ -18,7 +18,6 @@ import { useTheme } from "../contexts/ThemeContext";
 import "../components/aurora/aurora.css";
 import { MobileTabBar } from "./MobileTabBar";
 import { MobileHome } from "./pages/MobileHome";
-import { MobileMore } from "./pages/MobileMore";
 import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
 import { MobileTeam } from "./pages/MobileTeam";
@@ -29,7 +28,6 @@ function pickMobilePage(pathname: string): React.ReactElement | null {
   if (pathname === "/") return <MobileHome />;
   if (pathname === "/season" || pathname.startsWith("/season/")) return <MobileStandings />;
   if (pathname === "/players") return <MobilePlayers />;
-  if (pathname === "/more") return <MobileMore />;
   const teamMatch = pathname.match(/^\/teams\/([^/]+)\/?$/);
   if (teamMatch) return <MobileTeam teamCode={teamMatch[1]} />;
   const wireListMatch = pathname.match(/^\/teams\/([^/]+)\/wire-list\/?$/);

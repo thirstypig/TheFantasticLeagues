@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
 import AdminLeagueTools from "../components/AdminLeagueTools";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { ADMIN_LINKS } from "../../../lib/navModel";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { subscribeErrors, type SurfacedError } from "../../../lib/errorBus";
 import {
@@ -405,6 +406,25 @@ export default function Admin() {
             {refreshing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             Refresh
           </button>
+        </div>
+      </Glass>
+
+      <Glass>
+        <SectionLabel>Hidden pages</SectionLabel>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {ADMIN_LINKS.map((l) => (
+            <Link
+              key={l.to}
+              to={l.to}
+              style={{
+                display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 14px",
+                borderRadius: 6, fontSize: 16, color: "var(--am-text)",
+                background: "var(--am-chip)", border: "1px solid var(--am-border)", textDecoration: "none",
+              }}
+            >
+              {l.label}
+            </Link>
+          ))}
         </div>
       </Glass>
 

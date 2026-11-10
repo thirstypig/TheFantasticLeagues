@@ -18,6 +18,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLeague } from "../../contexts/LeagueContext";
 import { useSeasonGating } from "../../hooks/useSeasonGating";
+import { useCanAccessCommissioner } from "../../hooks/useCanAccessCommissioner";
 import { Glass, SectionLabel } from "./atoms";
 import "./aurora.css";
 
@@ -79,11 +80,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const canAccessCommissioner = useMemo(() => {
-    if (Boolean(user?.isAdmin)) return true;
-    const selected = (leagues ?? []).find((l: LeagueListItem) => l.id === leagueId);
-    return selected?.access?.type === "MEMBER" && selected?.access?.role === "COMMISSIONER";
-  }, [leagues, user, leagueId]);
+  const canAccessCommissioner = useCanAccessCommissioner();
 
   // Sport nav tabs
   const sportTabs = useMemo(() => [
