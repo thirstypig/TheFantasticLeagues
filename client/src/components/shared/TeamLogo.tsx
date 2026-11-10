@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { teamLogoUrl } from "../../lib/mlbImages";
 
 export function TeamLogo({
@@ -11,6 +11,7 @@ export function TeamLogo({
   showCode?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [abbr]);
   const url = teamLogoUrl(abbr);
   const showImg = !!url && !failed;
 

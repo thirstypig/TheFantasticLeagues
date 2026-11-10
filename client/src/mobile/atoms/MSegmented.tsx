@@ -37,7 +37,7 @@ export function MSegmented<T extends string>({ options, active, onChange, ariaLa
               fontSize: 13,
               fontWeight: on ? 600 : 500,
               color: on ? "var(--am-text)" : "var(--am-text-muted)",
-              background: on ? "var(--am-surface-strong)" : "transparent",
+              background: on ? "var(--am-field)" : "transparent",
               borderRadius: 9,
               border: "none",
               cursor: "pointer",

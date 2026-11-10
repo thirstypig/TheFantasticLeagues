@@ -123,8 +123,8 @@ export default function ForgotPassword() {
                   gap: 10,
                   padding: 14,
                   borderRadius: 14,
-                  background: "var(--am-surface-faint)",
-                  border: "1px solid var(--am-border)",
+                  background: "var(--am-field)",
+                  border: "1px solid var(--am-field-line)",
                   color: "var(--am-text)",
                   fontSize: 13,
                   lineHeight: 1.5,
@@ -163,8 +163,8 @@ export default function ForgotPassword() {
                   justifyContent: "center",
                   height: 44,
                   borderRadius: 14,
-                  background: "var(--am-surface-faint)",
-                  border: "1px solid var(--am-border)",
+                  background: "var(--am-field)",
+                  border: "1px solid var(--am-field-line)",
                   color: "var(--am-text)",
                   fontSize: 13,
                   fontWeight: 500,
@@ -204,8 +204,8 @@ export default function ForgotPassword() {
                     height: 44,
                     padding: "0 14px",
                     borderRadius: 12,
-                    background: "var(--am-surface-faint)",
-                    border: "1px solid var(--am-border)",
+                    background: "var(--am-field)",
+                    border: "1px solid var(--am-field-line)",
                     color: "var(--am-text)",
                     fontSize: 15,
                     outline: "none",
@@ -215,7 +215,7 @@ export default function ForgotPassword() {
                     e.currentTarget.style.borderColor = "var(--am-accent)";
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "var(--am-border)";
+                    e.currentTarget.style.borderColor = "var(--am-field-line)";
                   }}
                 />
               </div>
@@ -225,8 +225,8 @@ export default function ForgotPassword() {
                   style={{
                     padding: "10px 12px",
                     borderRadius: 12,
-                    background: "var(--am-surface-faint)",
-                    border: "1px solid var(--am-border)",
+                    background: "var(--am-field)",
+                    border: "1px solid var(--am-field-line)",
                     color: "var(--am-cardinal)",
                     fontSize: 13,
                     lineHeight: 1.4,

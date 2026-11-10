@@ -81,7 +81,7 @@
 
     /* Mode-aware tints (navy on light, white on dark) */
     --lg-tint: #ece3c8;
-    --lg-tint-hover: #ece3c8;
+    --lg-tint-hover: #ddd0a8;
     --lg-border-faint: #c9b98c;
     --lg-border-subtle: #c9b98c;
     --lg-border-strong: #8a7a4f;
@@ -221,7 +221,7 @@
 
     /* Mode-aware tints - Dark (white tints) */
     --lg-tint: #4a2629;
-    --lg-tint-hover: #4a2629;
+    --lg-tint-hover: #633a3e;
     --lg-border-faint: #7a4a4f;
     --lg-border-subtle: #7a4a4f;
     --lg-border-strong: #b08488;

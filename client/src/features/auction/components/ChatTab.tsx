@@ -152,8 +152,8 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
             padding: '8px 12px',
             fontSize: 13,
             borderRadius: 12,
-            border: '1px solid var(--am-border)',
-            background: 'var(--am-surface-faint)',
+            border: '1px solid var(--am-field-line)',
+            background: 'var(--am-field)',
             color: 'var(--am-text)',
             outline: 'none',
           }}

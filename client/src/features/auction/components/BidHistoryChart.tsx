@@ -328,8 +328,8 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
             className="w-full pl-8 pr-3 py-2 focus:outline-none"
             style={{
               fontSize: 13,
-              background: "var(--am-surface-faint)",
-              border: "1px solid var(--am-border)",
+              background: "var(--am-field)",
+              border: "1px solid var(--am-field-line)",
               borderRadius: 12,
               color: "var(--am-text)",
             }}

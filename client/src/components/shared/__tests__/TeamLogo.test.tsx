@@ -19,4 +19,11 @@ describe("TeamLogo", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("SD")).toBeTruthy();
   });
+  it("resets the failed flag when abbr changes", () => {
+    const { container, rerender } = render(<TeamLogo abbr="SD" />);
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("img")).toBeNull();
+    rerender(<TeamLogo abbr="LAD" />);
+    expect(container.querySelector("img")!.getAttribute("src")).toMatch(/\/119\.svg$/);
+  });
 });

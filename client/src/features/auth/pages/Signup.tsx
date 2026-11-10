@@ -80,8 +80,8 @@ export default function Signup() {
     height: 44,
     padding: "0 14px",
     borderRadius: 12,
-    background: "var(--am-surface-faint)",
-    border: "1px solid var(--am-border)",
+    background: "var(--am-field)",
+    border: "1px solid var(--am-field-line)",
     color: "var(--am-text)",
     fontSize: 15,
     fontFamily: "var(--am-body)",
@@ -191,8 +191,8 @@ export default function Signup() {
                   style={{
                     padding: 16,
                     borderRadius: 14,
-                    background: "var(--am-surface-faint)",
-                    border: "1px solid var(--am-border)",
+                    background: "var(--am-field)",
+                    border: "1px solid var(--am-field-line)",
                     color: "var(--am-text)",
                     fontSize: 13,
                     textAlign: "center",
@@ -268,7 +268,7 @@ export default function Signup() {
                         e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 240, 212, 0.15)";
                       }}
                       onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "var(--am-border)";
+                        e.currentTarget.style.borderColor = "var(--am-field-line)";
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     />
@@ -289,7 +289,7 @@ export default function Signup() {
                         e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 240, 212, 0.15)";
                       }}
                       onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "var(--am-border)";
+                        e.currentTarget.style.borderColor = "var(--am-field-line)";
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     />
@@ -310,7 +310,7 @@ export default function Signup() {
                           e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 240, 212, 0.15)";
                         }}
                         onBlur={(e) => {
-                          e.currentTarget.style.borderColor = "var(--am-border)";
+                          e.currentTarget.style.borderColor = "var(--am-field-line)";
                           e.currentTarget.style.boxShadow = "none";
                         }}
                       />

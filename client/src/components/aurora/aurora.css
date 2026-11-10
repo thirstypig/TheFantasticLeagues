@@ -43,8 +43,8 @@
 
   /* Retired names: aliases of the nine */
   --am-surface-alt:    var(--am-chip);
-  --am-surface-strong: var(--am-chip);
-  --am-chip-strong:    var(--am-chip);
+  --am-surface-strong: var(--am-chip-strong);
+  --am-chip-strong:    #ddd0a8;
   --am-surface-faint:  var(--am-surface);
   --am-border-strong:  var(--am-field-line);
   --am-text-faint:     var(--am-text-muted);
@@ -82,8 +82,8 @@
 
   /* Retired names: aliases of the nine */
   --am-surface-alt:    var(--am-chip);
-  --am-surface-strong: var(--am-chip);
-  --am-chip-strong:    var(--am-chip);
+  --am-surface-strong: var(--am-chip-strong);
+  --am-chip-strong:    #633a3e;
   --am-surface-faint:  var(--am-surface);
   --am-border-strong:  var(--am-field-line);
   --am-text-faint:     var(--am-text-muted);
@@ -160,6 +160,8 @@
   --lg-bg-surface:     var(--am-surface);
   --lg-tint:           var(--am-chip);
   --lg-tint-hover:     var(--am-chip-strong);
+  --lg-bg-primary:     var(--am-surface);
+  --lg-bg-secondary:   var(--am-chip);
 
   --lg-input-bg:       var(--am-field);
   --lg-input-border:   var(--am-field-line);

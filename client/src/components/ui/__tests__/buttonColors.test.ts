@@ -22,5 +22,6 @@ describe("secondary button colors", () => {
     const v = variant(name);
     expect(v).toContain("bg-[var(--lg-tint)]");
     expect(v).not.toContain("--lg-glass-bg)]");
+    expect(v).not.toContain("liquid-glass");
   });
 });

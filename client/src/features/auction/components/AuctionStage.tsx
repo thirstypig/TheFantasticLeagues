@@ -609,8 +609,8 @@ function ProxyBidSection({ currentBid, maxAffordable, myProxyBid, onSet, onCance
               paddingBottom: 8,
               fontSize: 15,
               borderRadius: 10,
-              border: "1px solid var(--am-border)",
-              background: "var(--am-surface-faint)",
+              border: "1px solid var(--am-field-line)",
+              background: "var(--am-field)",
               color: "var(--am-text)",
               outline: "none",
             }}

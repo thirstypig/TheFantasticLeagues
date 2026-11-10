@@ -26,7 +26,7 @@
 .cm-btn.danger { color: var(--am-negative); border-color: color-mix(in srgb, var(--am-negative) 35%, var(--am-border)); background: color-mix(in srgb, var(--am-negative) 8%, var(--am-surface)); }
 .cm-btn.sm { padding: 4px 8px; font-size: 13px; }
 
-.cm-input, .cm-select { display: block; background: var(--am-surface); color: var(--am-text); border: 1px solid var(--am-border); border-radius: 4px; padding: 6px 9px; font-size: 13px; font-family: inherit; outline: none; }
+.cm-input, .cm-select { display: block; background: var(--am-field); color: var(--am-text); border: 1px solid var(--am-field-line); border-radius: 4px; padding: 6px 9px; font-size: 13px; font-family: inherit; outline: none; }
 .cm-input:focus, .cm-select:focus { border-color: var(--am-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--am-accent) 16%, transparent); }
 .cm-input.full, .cm-select.full { width: 100%; }
 

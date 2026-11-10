@@ -56,7 +56,7 @@ const modes: Record<string, Tokens> = {
 const TEXT_TOKENS = [
   "--am-text", "--am-text-muted", "--am-accent", "--am-positive", "--am-negative",
 ];
-const BACKGROUNDS = ["--am-bg", "--am-surface", "--am-chip", "--am-field"];
+const BACKGROUNDS = ["--am-bg", "--am-surface", "--am-chip", "--am-chip-strong", "--am-field"];
 
 describe.each(Object.entries(modes))("aurora tokens (%s)", (_mode, tokens) => {
   for (const fg of TEXT_TOKENS) {
@@ -64,6 +64,10 @@ describe.each(Object.entries(modes))("aurora tokens (%s)", (_mode, tokens) => {
       it(`${fg} on ${bg} >= 4.5:1`, () => expectRatio(tokens, fg, bg, 4.5));
     }
   }
+  it("chip-strong differs from chip", () => {
+    expect(tokens["--am-chip-strong"]).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(tokens["--am-chip-strong"]).not.toBe(tokens["--am-chip"]);
+  });
   it("--am-on-accent on --am-accent >= 4.5:1", () =>
     expectRatio(tokens, "--am-on-accent", "--am-accent", 4.5));
   it("--am-field-line on --am-surface >= 3:1", () =>
@@ -72,8 +76,7 @@ describe.each(Object.entries(modes))("aurora tokens (%s)", (_mode, tokens) => {
     expectRatio(tokens, "--am-field-line", "--am-field", 3));
   it("retired names alias the nine", () => {
     expect(tokens["--am-surface-alt"]).toBe("var(--am-chip)");
-    expect(tokens["--am-surface-strong"]).toBe("var(--am-chip)");
-    expect(tokens["--am-chip-strong"]).toBe("var(--am-chip)");
+    expect(tokens["--am-surface-strong"]).toBe("var(--am-chip-strong)");
     expect(tokens["--am-surface-faint"]).toBe("var(--am-surface)");
     expect(tokens["--am-border-strong"]).toBe("var(--am-field-line)");
     expect(tokens["--am-text-faint"]).toBe("var(--am-text-muted)");
@@ -121,6 +124,12 @@ describe("index.css legacy --lg-* tokens (logged-out pages)", () => {
   });
 });
 
+describe("index.css pre-auth --lg-tint-hover equals chip-strong", () => {
+  const indexCss = readFileSync(resolve(__dirname, "../../../index.css"), "utf8");
+  it("light", () => expect(parseBlock(indexCss, ":root")["--lg-tint-hover"]).toBe("#ddd0a8"));
+  it("dark", () => expect(parseBlock(indexCss, ".dark")["--lg-tint-hover"]).toBe("#633a3e"));
+});
+
 describe("aurora.css --lg-* redirect block", () => {
   const redirect = parseBlock(css, ".aurora-theme, .aurora-theme.dark, .dark .aurora-theme");
 
@@ -130,6 +139,9 @@ describe("aurora.css --lg-* redirect block", () => {
     ["--lg-input-focus", "var(--am-accent)"],
     ["--lg-table-row-alt", "var(--am-surface-alt)"],
     ["--lg-warning", "var(--am-warning)"],
+    ["--lg-bg-primary", "var(--am-surface)"],
+    ["--lg-bg-secondary", "var(--am-chip)"],
+    ["--lg-tint-hover", "var(--am-chip-strong)"],
   ])("%s redirects to %s (no navy/slate leak inside the app)", (token, value) => {
     expect(redirect[token]).toBe(value);
   });

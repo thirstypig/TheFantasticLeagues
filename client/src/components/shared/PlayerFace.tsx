@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { playerHeadshotUrl } from "../../lib/mlbImages";
 
 type FaceSize = 30 | 40 | 60 | 84;
@@ -25,6 +25,7 @@ export function PlayerFace({
   size?: FaceSize;
 }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [mlbId]);
   const base: React.CSSProperties = {
     width: size,
     height: size,

@@ -74,8 +74,8 @@ export default function ResetPassword() {
     height: 44,
     padding: "0 44px 0 14px",
     borderRadius: 12,
-    background: "var(--am-surface-faint)",
-    border: "1px solid var(--am-border)",
+    background: "var(--am-field)",
+    border: "1px solid var(--am-field-line)",
     color: "var(--am-text)",
     fontSize: 15,
     outline: "none",
@@ -224,8 +224,8 @@ export default function ResetPassword() {
                     style={{
                       padding: 14,
                       borderRadius: 12,
-                      background: "var(--am-surface-faint)",
-                      border: "1px solid var(--am-border)",
+                      background: "var(--am-field)",
+                      border: "1px solid var(--am-field-line)",
                       color: "var(--am-positive)",
                       fontSize: 13,
                       display: "flex",
@@ -338,8 +338,8 @@ export default function ResetPassword() {
                       style={{
                         padding: 12,
                         borderRadius: 10,
-                        background: "var(--am-surface-faint)",
-                        border: "1px solid var(--am-border)",
+                        background: "var(--am-field)",
+                        border: "1px solid var(--am-field-line)",
                         color: "var(--am-negative)",
                         fontSize: 13,
                       }}

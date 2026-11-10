@@ -376,8 +376,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
             style={{
               padding: "6px 10px",
               borderRadius: 12,
-              background: "var(--am-surface-faint)",
-              border: "1px solid " + (searchFocused ? "var(--am-accent)" : "var(--am-border)"),
+              background: "var(--am-field)",
+              border: "1px solid " + (searchFocused ? "var(--am-accent)" : "var(--am-field-line)"),
               color: "var(--am-text)",
               fontSize: 13,
               outline: "none",
@@ -630,8 +630,8 @@ export default function PlayerPoolTab({ players, teams = [], onNominate, onQueue
                                                       fontSize: 13,
                                                       textAlign: "center",
                                                       borderRadius: 8,
-                                                      border: "1px solid var(--am-border)",
-                                                      background: "var(--am-surface-faint)",
+                                                      border: "1px solid var(--am-field-line)",
+                                                      background: "var(--am-field)",
                                                       color: "var(--am-text)",
                                                       outline: "none",
                                                     }}
